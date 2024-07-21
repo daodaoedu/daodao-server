@@ -41,7 +41,7 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          echo "APP_DIR=/root/node_app" >> $GITHUB_ENV
+          echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
           echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "APP_ENV=prod" >> $GITHUB_ENV
@@ -158,7 +158,7 @@ jobs:
                 echo \"DEPLOYMENT_TYPE='update'\"
               else
                 # 如果不存在，克隆倉庫
-                git clone --branch  https://${{ env.GIT_HUB_USERNAME }}:${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \$APP_DIR
+                git clone --branch  https://${{ env.GIT_HUB_USERNAME }}:${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git
                 cd \$APP_DIR
                 DEPLOYMENT_TYPE='initial'
                 echo \"DEPLOYMENT_TYPE='initial'\"
