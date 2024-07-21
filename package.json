@@ -20,7 +20,7 @@
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "log4js": "^6.9.1",
-    "mongoose": "^7.2.3",
+    "mongoose": "^7.3.3",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.8",
     "passport": "^0.6.0",
