@@ -132,6 +132,8 @@ jobs:
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          GIT_HUB_USERNAME: ${{ secrets.GIT_HUB_USERNAME }}
+          GIT_HUB_ACCESS_TOKEN: ${{ secrets.GIT_HUB_ACCESS_TOKEN }}
         run: |
             ssh -o StrictHostKeyChecking=no root@$LINODE_INSTANCE_IP "
               export DOCKER_HUB_USERNAME=$DOCKER_HUB_USERNAME
@@ -157,7 +159,7 @@ jobs:
               else
                 # 如果不存在，克隆倉庫
                 rm -rf \$APP_DIR
-                git clone --branch ${{ github.ref_name }} https://github.com/${{ github.repository }}.git \$APP_DIR
+                git clone --branch ${{ env.GIT_HUB_USERNAME }}: ${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \$APP_DIR
                 cd \$APP_DIR
                 DEPLOYMENT_TYPE='initial'
                 echo \"DEPLOYMENT_TYPE='initial'\"
