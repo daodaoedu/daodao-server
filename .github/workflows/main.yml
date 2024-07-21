@@ -156,6 +156,7 @@ jobs:
                 echo \"DEPLOYMENT_TYPE='update'\"
               else
                 # 如果不存在，克隆倉庫
+                rm -rf \$APP_DIR
                 git clone --branch ${{ github.ref_name }} https://github.com/${{ github.repository }}.git \$APP_DIR
                 cd \$APP_DIR
                 DEPLOYMENT_TYPE='initial'
