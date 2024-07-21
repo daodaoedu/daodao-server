@@ -135,26 +135,38 @@ const updateActivity = async (req, res) => {
 
             // 更新 Redis 快取
             const updateCache = async () => {
-                const cacheKeys = await redis.keys('activities:*');
-                for (let cacheKey of cacheKeys) {
-                    const cachedData = await redis.get(cacheKey);
-                    if (cachedData) {
-                        const activities = JSON.parse(cachedData);
-                        const activityIndex = activities.findIndex(activity => activity._id.toString() === _id);
-                        if (activityIndex !== -1) {
-                            activities[activityIndex] = updatedActivity.toObject();
-                            await redis.set(cacheKey, JSON.stringify(activities), 'EX', 3600);
+                try {
+                    const cacheKeys = await redis.keys('activities:*');
+                    console.log("Found cache keys:", cacheKeys);
+
+                    for (let cacheKey of cacheKeys) {
+                        const cachedData = await redis.get(cacheKey);
+                        if (cachedData) {
+                            const activities = JSON.parse(cachedData);
+                            const activityIndex = activities.findIndex(activity => activity._id.toString() === _id);
+                            if (activityIndex !== -1) {
+                                activities[activityIndex] = updatedActivity.toObject();
+                                await redis.set(cacheKey, JSON.stringify(activities), 'EX', 3600);
+                                console.log(`Updated cache for key: ${cacheKey}`);
+                            }
                         }
                     }
+
+                    // 更新活動特定的快取
+                    const activityCacheKey = `activities:${_id}`;
+                    await redis.set(activityCacheKey, JSON.stringify(updatedActivity.toObject()), 'EX', 3600);
+                    console.log(`Updated specific activity cache: ${activityCacheKey}`);
+
+                } catch (error) {
+                    console.error("Error updating Redis cache:", error);
+                    // 可以考慮在這裡添加一些錯誤處理邏輯，例如重試或通知
                 }
-                // 更新活動特定的快取
-                const activityCacheKey = `activities:${_id}`;
-                console.log("activityCacheKey",activityCacheKey)
-                await redis.set(activityCacheKey, JSON.stringify(updatedActivity.toObject()), 'EX', 3600);
             };
 
             // 非同步更新快取，不阻塞響應
-            updateCache().catch(console.error);
+            updateCache().catch(error => {
+                console.error("Unhandled error in updateCache:", error);
+            });
 
             res.json({ data: updatedActivity, message: "Activity updated successfully." });
         } else {
