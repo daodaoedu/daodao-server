@@ -159,7 +159,7 @@ jobs:
               else
                 # 如果不存在，克隆倉庫
                 rm -rf \$APP_DIR
-                git clone --branch ${{ env.GIT_HUB_USERNAME }}: ${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \$APP_DIR
+                git clone --branch  https://${{ env.GIT_HUB_USERNAME }}:${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \$APP_DIR
                 cd \$APP_DIR
                 DEPLOYMENT_TYPE='initial'
                 echo \"DEPLOYMENT_TYPE='initial'\"
