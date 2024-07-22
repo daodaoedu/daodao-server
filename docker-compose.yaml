@@ -42,8 +42,6 @@ services:
   mongo_prod:
     image: mongo:4.4
     container_name: mongo_prod
-    ports:
-      - "27017:27017"
     volumes:
       - mongo_prod_data:/data/db
     networks:
@@ -60,8 +58,6 @@ services:
   redis_prod:
     image: redis:6
     container_name: redis_prod
-    ports:
-      - "6379:6379"
     volumes:
       - redis_prod_data:/data
     networks:
