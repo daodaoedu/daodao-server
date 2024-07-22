@@ -9,8 +9,6 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=prod
-    ports:
-      - "3000:3000"
     env_file:
       - .env.prod
     networks:
@@ -27,8 +25,6 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    ports:
-      - "3001:3000"
     env_file:
       - .env.dev
     volumes:

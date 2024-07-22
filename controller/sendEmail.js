@@ -297,6 +297,21 @@ const sendEmail = (req, res) => {
                                             ${information[3] ?? ''}</div>
                                         </td>
                                       </tr>
+                                      <tr>
+                                        <td align="left" style="font-size:0px;padding:20px 0 0 0 ;word-break:break-word;">
+                                          <div style="font-family:Noto Sans TC;font-size:14px;font-weight:700;line-height:140%;text-align:left;color:#536166;">
+                                            <img width="18px" height="18px" src="https://raw.githubusercontent.com/daodaoedu/daodao-f2e/prod/public/email/message-icon.png" alt="contact information" style="display:inline-block;padding:0;">
+                                            <span style="display:inline-block;padding:0;vertical-align:top;">試試Discord即時與夥伴交流</span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td align="left" style="font-size:0px;padding:0;word-break:break-word;">
+                                          <div style="font-family:Noto Sans TC;font-size:13px;font-weight:400;line-height:140%;text-align:left;color:#536166;">
+                                            <a href="https://daodaoedu.notion.site/Discord-bc406c730c814ce78c3ef446a2d326ec" target="_blank">查看Discord使用方式簡介</a>
+                                          </div>
+                                        </td>
+                                      </tr>  
                                     </table>
                                   </td>
                                 </tr>
@@ -575,6 +590,21 @@ const sendEmail = (req, res) => {
                                                   <div
                                                     style="font-family:Noto Sans TC;font-size:13px;font-weight:400;line-height:140%;text-align:left;color:#536166;">
                                                     ${information[3] ?? ''}</div>
+                                                </td>
+                                              </tr>
+                                              <tr>
+                                                <td align="left" style="font-size:0px;padding:20px 0 0 0 ;word-break:break-word;">
+                                                  <div style="font-family:Noto Sans TC;font-size:14px;font-weight:700;line-height:140%;text-align:left;color:#536166;">
+                                                    <img width="18px" height="18px" src="https://raw.githubusercontent.com/daodaoedu/daodao-f2e/prod/public/email/message-icon.png" alt="contact information" style="display:inline-block;padding:0;">
+                                                    <span style="display:inline-block;padding:0;vertical-align:top;">試試Discord即時與夥伴交流</span>
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                              <tr>
+                                                <td align="left" style="font-size:0px;padding:0;word-break:break-word;">
+                                                  <div style="font-family:Noto Sans TC;font-size:13px;font-weight:400;line-height:140%;text-align:left;color:#536166;">
+                                                    <a href="https://daodaoedu.notion.site/Discord-bc406c730c814ce78c3ef446a2d326ec" target="_blank">查看Discord使用方式簡介</a>
+                                                  </div>
                                                 </td>
                                               </tr>
                                             </table>
