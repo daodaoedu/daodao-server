@@ -92,9 +92,9 @@ const getOnePartner = async (req, res) => {
         }
 
         const response = {
-            data: user,
+            data: [user],
         };
-        
+
         res.json(response);
     } catch (error) {
         console.error(error);
