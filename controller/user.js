@@ -1,7 +1,7 @@
 const User = require("../models/user.model");
 const redis = require("../services/redis");
 
-const getPartner = async (req, res, next) => {
+const getPartner = async (req, res) => {
     try {
         let { query: { page = 1, pageSize = 30, educationStage, roleList, location, tag, search } } = req;
         page = parseInt(page, 10);
@@ -80,7 +80,29 @@ const getPartner = async (req, res, next) => {
     }
 };
 
-const update = async (req, res, next) => {
+
+const getOnePartner = async (req, res) => {
+    try {
+        const _id = req.params.id;
+        const token = req.headers.authorization;
+        let user = await User.findOne({ _id });
+
+        if(!token){
+            user.contactList = { "聯繫方式": "註冊或登入即可查看聯繫方式！" };
+        }
+
+        const response = {
+            data: user,
+        };
+        
+        res.json(response);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+};
+
+const update = async (req, res) => {
   try {
       const _id = req.params.id;
       let user = await User.findOne({ _id });
@@ -142,5 +164,6 @@ const update = async (req, res, next) => {
 
 module.exports = {
     getPartner,
+    getOnePartner,
     update,
 };
