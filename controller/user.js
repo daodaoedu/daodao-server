@@ -157,7 +157,7 @@ const update = async (req, res) => {
                         } catch (e) {
                             console.error('Error parsing cached data:', e);
                         }
-
+            
                         if (Array.isArray(partners)) {
                             const userIndex = partners.findIndex(partner => partner._id.toString() === _id);
                             if (userIndex !== -1) {
@@ -165,7 +165,12 @@ const update = async (req, res) => {
                                 await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
                             }
                         } else {
-                            console.error('Cached data is not an array:', partners);
+                            if (partners._id && partners._id.toString() === _id) {
+                                partners = updatedUserProfile.toObject();
+                                await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
+                            } else {
+                                console.error('Cached data is not an array and does not match user ID:', partners);
+                            }
                         }
                     }
                 }
