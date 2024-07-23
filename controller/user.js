@@ -8,7 +8,7 @@ const getPartner = async (req, res) => {
         pageSize = parseInt(pageSize, 10);
         const _id = req.params.id;
 
-        let filter = {};
+        let filter = { isOpenProfile: true };
         if (_id) {
             filter._id = _id;
         }
@@ -24,7 +24,15 @@ const getPartner = async (req, res) => {
 
         if (location) {
             location = location.split(',');
-            filter.location = { $in: location };
+            filter.$or = [
+                { isOpenLocation: true, location: { $in: location } },
+                { isOpenLocation: false, location: "" }
+            ];
+        } else {
+            filter.$or = [
+                { isOpenLocation: true },
+                { isOpenLocation: false, location: "" }
+            ];
         }
 
         if (tag) {
@@ -33,15 +41,22 @@ const getPartner = async (req, res) => {
         }
         if (search) {
             let searchQuery = {
-                $or: [
-                    { name: new RegExp(search, 'i') },
-                    { selfIntroduction: new RegExp(search, 'i') },
-                    { share: new RegExp(search, 'i') },
-                    { roleList: new RegExp(search, 'i') },
-                    { interestList: new RegExp(search, 'i') },
-                    { tagList: new RegExp(search, 'i') },
+                $and: [
+                    { isOpenProfile: true },
+                    { $or: [
+                        { name: new RegExp(search, 'i') },
+                        { selfIntroduction: new RegExp(search, 'i') },
+                        { share: new RegExp(search, 'i') },
+                        { roleList: new RegExp(search, 'i') },
+                        { interestList: new RegExp(search, 'i') },
+                        { tagList: new RegExp(search, 'i') },
+                    ]}
                 ]
             };
+            if (filter.$or) {
+                searchQuery.$and.push({ $or: filter.$or });
+            }
+
             filter = searchQuery;
         }
 
