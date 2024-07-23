@@ -151,13 +151,7 @@ const update = async (req, res) => {
                 for (let cacheKey of cacheKeys) {
                     const cachedData = await redis.get(cacheKey);
                     if (cachedData) {
-                        let partners = [];
-                        try {
-                            partners = JSON.parse(cachedData);
-                        } catch (e) {
-                            console.error('Error parsing cached data:', e);
-                        }
-            
+                        let partners = JSON.parse(cachedData);
                         if (Array.isArray(partners)) {
                             const userIndex = partners.findIndex(partner => partner._id.toString() === _id);
                             if (userIndex !== -1) {
@@ -165,12 +159,7 @@ const update = async (req, res) => {
                                 await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
                             }
                         } else {
-                            if (partners._id && partners._id.toString() === _id) {
-                                partners = updatedUserProfile.toObject();
-                                await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
-                            } else {
-                                console.error('Cached data is not an array and does not match user ID:', partners);
-                            }
+                            console.error('Cached data is not an array:', partners);
                         }
                     }
                 }
@@ -179,7 +168,7 @@ const update = async (req, res) => {
                 await redis.set(userCacheKey, JSON.stringify(updatedUserProfile.toObject()), 'EX', 3600);
             };
 
-            updateCache().catch(console.error);
+            await updateCache();
             res.json({ data: updatedUserProfile, message: "用戶資料已更新" });
         } else {
             res.json({ message: "沒有字段被更新" });
