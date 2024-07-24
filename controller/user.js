@@ -146,29 +146,14 @@ const update = async (req, res) => {
             user.updatedDate = Date.now();
             const updatedUserProfile = await user.save();
 
-            const updateCache = async () => {
+            const clearCache = async () => {
                 const cacheKeys = await redis.keys('partners:*');
-                for (let cacheKey of cacheKeys) {
-                    const cachedData = await redis.get(cacheKey);
-                    if (cachedData) {
-                        let partners = JSON.parse(cachedData);
-                        if (Array.isArray(partners)) {
-                            const userIndex = partners.findIndex(partner => partner._id.toString() === _id);
-                            if (userIndex !== -1) {
-                                partners[userIndex] = updatedUserProfile.toObject();
-                                await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
-                            }
-                        } else {
-                            console.error('Cached data is not an array:', partners);
-                        }
-                    }
-                }
-
-                const userCacheKey = `partners:${_id}`;
-                await redis.set(userCacheKey, JSON.stringify(updatedUserProfile.toObject()), 'EX', 3600);
+                const deletePromises = cacheKeys.map(cacheKey => redis.del(cacheKey));
+                deletePromises.push(redis.del(`partners:${_id}`));
+                await Promise.all(deletePromises);
             };
 
-            await updateCache();
+            await clearCache();
             res.json({ data: updatedUserProfile, message: "用戶資料已更新" });
         } else {
             res.json({ message: "沒有字段被更新" });
