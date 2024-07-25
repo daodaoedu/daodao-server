@@ -7,7 +7,7 @@ const sendRegisterEmail = require("../controller/sendRegisterEmail");
 const AUTH_OPTIONS = {
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL||'https://daodao-server.vercel.app/auth/google/callback'
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
 }
 
 passport.serializeUser((user, done) => {
@@ -43,7 +43,7 @@ passport.use(new GoogleStrategy(
                 photoURL: profile.photos[0].value,
                 isOpenLocation: false,
                 isOpenProfile: false,
-                isSubscribeEmail_: false,
+                isSubscribeEmail: false,
                 location: '',
                 selfIntroduction: '',
                 share: '',
