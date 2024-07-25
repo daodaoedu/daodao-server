@@ -24,15 +24,7 @@ const getPartner = async (req, res) => {
 
         if (location) {
             location = location.split(',');
-            filter.$or = [
-                { isOpenLocation: true, location: { $in: location } },
-                { isOpenLocation: false, location: "" }
-            ];
-        } else {
-            filter.$or = [
-                { isOpenLocation: true },
-                { isOpenLocation: false, location: "" }
-            ];
+            filter.location = { $in: location };
         }
 
         if (tag) {
@@ -73,7 +65,12 @@ const getPartner = async (req, res) => {
             const additionalData = await User.find(filter)
                 .skip(allData.length)
                 .limit(30);
-
+            additionalData = additionalData.map(user => {
+                if (!user.isOpenLocation) {
+                    user.location = "";
+                }
+                return user;
+            });
             allData = allData.concat(additionalData);
             await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600);
         }
@@ -146,14 +143,29 @@ const update = async (req, res) => {
             user.updatedDate = Date.now();
             const updatedUserProfile = await user.save();
 
-            const clearCache = async () => {
+            const updateCache = async () => {
                 const cacheKeys = await redis.keys('partners:*');
-                const deletePromises = cacheKeys.map(cacheKey => redis.del(cacheKey));
-                deletePromises.push(redis.del(`partners:${_id}`));
-                await Promise.all(deletePromises);
+                for (let cacheKey of cacheKeys) {
+                    const cachedData = await redis.get(cacheKey);
+                    if (cachedData) {
+                        let partners = JSON.parse(cachedData);
+                        if (Array.isArray(partners)) {
+                            const userIndex = partners.findIndex(partner => partner._id.toString() === _id);
+                            if (userIndex !== -1) {
+                                partners[userIndex] = updatedUserProfile.toObject();
+                                await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
+                            }
+                        } else {
+                            console.error('Cached data is not an array:', partners);
+                        }
+                    }
+                }
+
+                const userCacheKey = `partners:${_id}`;
+                await redis.set(userCacheKey, JSON.stringify(updatedUserProfile.toObject()), 'EX', 3600);
             };
 
-            await clearCache();
+            await updateCache();
             res.json({ data: updatedUserProfile, message: "用戶資料已更新" });
         } else {
             res.json({ message: "沒有字段被更新" });
