@@ -62,7 +62,7 @@ const getPartner = async (req, res) => {
         const endIndex = startIndex + pageSize;
 
         if (allData.length < endIndex) {
-            const additionalData = await User.find(filter)
+            let additionalData = await User.find(filter)
                 .skip(allData.length)
                 .limit(30);
             additionalData = additionalData.map(user => {
