@@ -1,9 +1,6 @@
 const jwt = require('jsonwebtoken');
 const secrect = process.env.JWT_SECURITY;
 const expiresIn = process.env.JWT_EXPIRATION
-console.log("Secret Key:", secrect);  // Check the secret key
-console.log("Expires In:", expiresIn);  // Check the expiration time
-
 
 const generateToken = (payload) => {
   try {
