@@ -11,14 +11,15 @@ router.get("/google",
     })
 );
 
-router.get("/google/callback", passport.authenticate("google"), async(req, res) => {
+router.get("/google/callback", passport.authenticate("google"), async (req, res) => {
     console.log("google/callback_req.session", req);
-    const {_id, name} = req.user;
+    const { _id, name, birthDay } = req.user;
+    let isNewUser = !birthDay;
     const time = Date.now();
-    const payload = {_id, name,time};
+    const payload = { _id, name, time };
     const token = generateToken(payload);
     console.log("google/callback_token", token);
-    return res.redirect(`${process.env.FRONTEND_URL}/signin?id=${req.user._id}&token=${token}`);
+    return res.redirect(`${process.env.FRONTEND_URL}/signin?id=${req.user._id}&token=${token}&isNewUser=${isNewUser}`);
     //TODO: different case redirect
     // res.send({
     //     status: true,
