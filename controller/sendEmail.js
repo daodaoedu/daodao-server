@@ -242,6 +242,10 @@ const sendEmail = (req, res) => {
                                                 target="_blank">查看檔案</a></span></div>
                                         </td>
                                       </tr>
+                                      <div
+                                        style="font-family:Noto Sans TC;font-size:10px;font-style:normal;font-weight:300;line-height:120%;text-align:left;color:#536166;padding:10px 0px;">
+                                        「建議點開「查看檔案」，多了解夥伴後再決定是否要聯繫對方唷！」
+                                      </div>
                                       <tr>
                                         <td align="left"
                                           style="font-size:0px;padding:0;padding-top:20px;word-break:break-word;">
@@ -536,6 +540,10 @@ const sendEmail = (req, res) => {
                                                         target="_blank">查看檔案</a></span></div>
                                                 </td>
                                               </tr>
+                                              <div
+                                                style="font-family:Noto Sans TC;font-size:8px;font-style:normal;font-weight:200;line-height:100%;text-align:left;color:#536166;padding:10px 0px;">
+                                                「建議點開「查看檔案」，多了解夥伴後再決定是否要聯繫對方唷！」
+                                              </div>
                                               <tr>
                                                 <td align="left"
                                                   style="font-size:0px;padding:0;padding-top:20px;word-break:break-word;">
