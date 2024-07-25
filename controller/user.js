@@ -54,27 +54,36 @@ const getPartner = async (req, res) => {
             filter = searchQuery;
         }
 
-        const cacheKey = `partners:${JSON.stringify(filter)}`;
-        const cachedData = await redis.get(cacheKey);
-        let allData = cachedData ? JSON.parse(cachedData) : [];
+        // const cacheKey = `partners:${JSON.stringify(filter)}`;
+        // const cachedData = await redis.get(cacheKey);
+        // let allData = cachedData ? JSON.parse(cachedData) : [];
+
+        // const startIndex = (page - 1) * pageSize;
+        // const endIndex = startIndex + pageSize;
+
+        // if (allData.length < endIndex) {
+        //     let additionalData = await User.find(filter)
+        //         .skip(allData.length)
+        //         .limit(30);
+        //     additionalData = additionalData.map(user => {
+        //         if (!user.isOpenLocation) {
+        //             user.location = "";
+        //         }
+        //         return user;
+        //     });
+        //     allData = allData.concat(additionalData);
+        //     await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600);
+        // }
 
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-
-        if (allData.length < endIndex) {
-            let additionalData = await User.find(filter)
-                .skip(allData.length)
-                .limit(30);
-            additionalData = additionalData.map(user => {
-                if (!user.isOpenLocation) {
-                    user.location = "";
-                }
-                return user;
-            });
-            allData = allData.concat(additionalData);
-            await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600);
-        }
-
+        let allData = await User.find(filter);
+        allData = allData.map(user => {
+            if (!user.isOpenLocation) {
+                user.location = "";
+            }
+            return user;
+        });
         const pagedData = allData.slice(startIndex, endIndex);
         const totalCount = await User.countDocuments(filter);
         const totalPages = Math.ceil(totalCount / pageSize);
@@ -144,28 +153,27 @@ const update = async (req, res) => {
             const updatedUserProfile = await user.save();
 
             const updateCache = async () => {
-                const cacheKeys = await redis.keys('partners:*');
-                for (let cacheKey of cacheKeys) {
-                    const cachedData = await redis.get(cacheKey);
-                    if (cachedData) {
-                        let partners = JSON.parse(cachedData);
-                        if (Array.isArray(partners)) {
-                            const userIndex = partners.findIndex(partner => partner._id.toString() === _id);
-                            if (userIndex !== -1) {
-                                partners[userIndex] = updatedUserProfile.toObject();
-                                await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
-                            }
-                        } else {
-                            console.error('Cached data is not an array:', partners);
-                        }
-                    }
-                }
-
-                const userCacheKey = `partners:${_id}`;
-                await redis.set(userCacheKey, JSON.stringify(updatedUserProfile.toObject()), 'EX', 3600);
+                // const cacheKeys = await redis.keys('partners:*');
+                // for (let cacheKey of cacheKeys) {
+                //     const cachedData = await redis.get(cacheKey);
+                //     if (cachedData) {
+                //         let partners = JSON.parse(cachedData);
+                //         if (Array.isArray(partners)) {
+                //             const userIndex = partners.findIndex(partner => partner._id.toString() === _id);
+                //             if (userIndex !== -1) {
+                //                 partners[userIndex] = updatedUserProfile.toObject();
+                //                 await redis.set(cacheKey, JSON.stringify(partners), 'EX', 3600);
+                //             }
+                //         } else {
+                //             console.error('Cached data is not an array:', partners);
+                //         }
+                //     }
+                // }
+            //     const userCacheKey = `partners:${_id}`;
+            //     await redis.set(userCacheKey, JSON.stringify(updatedUserProfile.toObject()), 'EX', 3600);
             };
 
-            await updateCache();
+            // await updateCache();
             res.json({ data: updatedUserProfile, message: "用戶資料已更新" });
         } else {
             res.json({ message: "沒有字段被更新" });
