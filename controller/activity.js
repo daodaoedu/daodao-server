@@ -23,22 +23,25 @@ const getActivity = async (req, res) => {
         if (isGrouping) filter.isGrouping = isGrouping;
         if (category) filter.category = category;
 
-        const cacheKey = `activities:${JSON.stringify(filter)}`;
-        const cachedData = await redis.get(cacheKey);
-        let allData = cachedData ? JSON.parse(cachedData) : [];
+        // const cacheKey = `activities:${JSON.stringify(filter)}`;
+        // const cachedData = await redis.get(cacheKey);
+        // let allData = cachedData ? JSON.parse(cachedData) : [];
+
+        // const startIndex = (page - 1) * pageSize;
+        // const endIndex = startIndex + pageSize;
+
+        // if (allData.length < endIndex) {
+        //     const additionalData = await Activity.find(filter)
+        //         .skip(allData.length)
+        //         .limit(30); 
+
+        //     allData = allData.concat(additionalData);
+        //     await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600); // 更新缓存
+        // }
 
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-
-        if (allData.length < endIndex) {
-            const additionalData = await Activity.find(filter)
-                .skip(allData.length)
-                .limit(30); 
-
-            allData = allData.concat(additionalData);
-            await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600); // 更新缓存
-        }
-
+        const allData = await Activity.find(filter);
         const pagedData = allData.slice(startIndex, endIndex);
         const totalCount = await Activity.countDocuments(filter);
         const totalPages = Math.ceil(totalCount / pageSize);
@@ -133,40 +136,40 @@ const updateActivity = async (req, res) => {
             const updatedActivity = await activity.save();
             console.log("updatedActivity",updatedActivity)
 
-            // 更新 Redis 快取
-            const updateCache = async () => {
-                try {
-                    const cacheKeys = await redis.keys('activities:*');
-                    console.log("Found cache keys:", cacheKeys);
+            // // 更新 Redis 快取
+            // const updateCache = async () => {
+            //     try {
+            //         const cacheKeys = await redis.keys('activities:*');
+            //         console.log("Found cache keys:", cacheKeys);
 
-                    for (let cacheKey of cacheKeys) {
-                        const cachedData = await redis.get(cacheKey);
-                        if (cachedData) {
-                            const activities = JSON.parse(cachedData);
-                            const activityIndex = activities.findIndex(activity => activity._id.toString() === _id);
-                            if (activityIndex !== -1) {
-                                activities[activityIndex] = updatedActivity.toObject();
-                                await redis.set(cacheKey, JSON.stringify(activities), 'EX', 3600);
-                                console.log(`Updated cache for key: ${cacheKey}`);
-                            }
-                        }
-                    }
+            //         for (let cacheKey of cacheKeys) {
+            //             const cachedData = await redis.get(cacheKey);
+            //             if (cachedData) {
+            //                 const activities = JSON.parse(cachedData);
+            //                 const activityIndex = activities.findIndex(activity => activity._id.toString() === _id);
+            //                 if (activityIndex !== -1) {
+            //                     activities[activityIndex] = updatedActivity.toObject();
+            //                     await redis.set(cacheKey, JSON.stringify(activities), 'EX', 3600);
+            //                     console.log(`Updated cache for key: ${cacheKey}`);
+            //                 }
+            //             }
+            //         }
 
-                    // 更新活動特定的快取
-                    const activityCacheKey = `activities:${_id}`;
-                    await redis.set(activityCacheKey, JSON.stringify(updatedActivity.toObject()), 'EX', 3600);
-                    console.log(`Updated specific activity cache: ${activityCacheKey}`);
+            //         // 更新活動特定的快取
+            //         const activityCacheKey = `activities:${_id}`;
+            //         await redis.set(activityCacheKey, JSON.stringify(updatedActivity.toObject()), 'EX', 3600);
+            //         console.log(`Updated specific activity cache: ${activityCacheKey}`);
 
-                } catch (error) {
-                    console.error("Error updating Redis cache:", error);
-                    // 可以考慮在這裡添加一些錯誤處理邏輯，例如重試或通知
-                }
-            };
+            //     } catch (error) {
+            //         console.error("Error updating Redis cache:", error);
+            //         // 可以考慮在這裡添加一些錯誤處理邏輯，例如重試或通知
+            //     }
+            // };
 
             // 非同步更新快取，不阻塞響應
-            updateCache().catch(error => {
-                console.error("Unhandled error in updateCache:", error);
-            });
+            // updateCache().catch(error => {
+            //     console.error("Unhandled error in updateCache:", error);
+            // });
 
             res.json({ data: updatedActivity, message: "Activity updated successfully." });
         } else {
@@ -195,25 +198,25 @@ const deleteActivity = async (req, res) => {
 
         const deletedActivity = await Activity.findByIdAndDelete(_id);
 
-        // Update Redis cache
-        try {
-            // 清除所有可能包含該活動的快取
-            const keys = await redis.keys('activities:*');
-            for (const key of keys) {
-                const cachedData = await redis.get(key);
-                if (cachedData) {
-                    const activities = JSON.parse(cachedData);
-                    const updatedActivities = activities.filter(a => a._id.toString() !== _id);
-                    if (activities.length !== updatedActivities.length) {
-                        await redis.set(key, JSON.stringify(updatedActivities), 'EX', 3600);
-                    }
-                }
-            }
-        } catch (cacheError) {
-            console.error('Error updating cache:', cacheError);
-            // 可以選擇清除所有快取
-            // await redis.flushall();
-        }
+        // // Update Redis cache
+        // try {
+        //     // 清除所有可能包含該活動的快取
+        //     const keys = await redis.keys('activities:*');
+        //     for (const key of keys) {
+        //         const cachedData = await redis.get(key);
+        //         if (cachedData) {
+        //             const activities = JSON.parse(cachedData);
+        //             const updatedActivities = activities.filter(a => a._id.toString() !== _id);
+        //             if (activities.length !== updatedActivities.length) {
+        //                 await redis.set(key, JSON.stringify(updatedActivities), 'EX', 3600);
+        //             }
+        //         }
+        //     }
+        // } catch (cacheError) {
+        //     console.error('Error updating cache:', cacheError);
+        //     // 可以選擇清除所有快取
+        //     // await redis.flushall();
+        // }
 
         res.status(200).json({ message: 'Activity deleted successfully.' });
     } catch (error) {
