@@ -13,8 +13,8 @@ router.get("/google",
 
 router.get("/google/callback", passport.authenticate("google"), async (req, res) => {
     console.log("google/callback_req.session", req);
-    const { _id, name, birthDay } = req.user;
-    let isNewUser = !birthDay;
+    const { _id, name, createdDate, updatedDate } = req.user;
+    let isNewUser = createdDate === updatedDate;
     const time = Date.now();
     const payload = { _id, name, time };
     const token = generateToken(payload);
