@@ -111,17 +111,23 @@ const getOnePartner = async (req, res) => {
         const _id = req.params.id;
         const token = req.headers.authorization || '';
         const cleanedToken = token.replace('Bearer', '').trim();
-        const decoded = verifyToken(cleanedToken);
+
         let user = await User.findOne({ _id });
 
-
-        if (!decoded) {
+        let response;
+        const decoded = verifyToken(cleanedToken);
+        
+        if (decoded) {
+            response = {
+                data: [user],
+            };
+        } else {
             user.contactList = { "聯繫方式": "註冊或登入即可查看聯繫方式！" };
+            response = {
+                data: [user],
+                message: 'Invalid token',
+            };
         }
-
-        const response = {
-            data: [user],
-        };
 
         res.json(response);
     } catch (error) {
