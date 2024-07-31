@@ -1,5 +1,7 @@
 const User = require("../models/user.model");
 const redis = require("../services/redis");
+const  { verifyToken } = require("../services/jwt");
+
 
 const getPartner = async (req, res) => {
     try {
@@ -108,9 +110,12 @@ const getOnePartner = async (req, res) => {
     try {
         const _id = req.params.id;
         const token = req.headers.authorization || '';
+        const cleanedToken = token.replace('Bearer', '').trim();
+        const decoded = verifyToken(cleanedToken);
         let user = await User.findOne({ _id });
 
-        if (!token) {
+
+        if (!decoded) {
             user.contactList = { "聯繫方式": "註冊或登入即可查看聯繫方式！" };
         }
 
