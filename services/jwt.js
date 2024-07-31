@@ -21,9 +21,11 @@ const verifyToken = (token) => {
     return decoded;
   } catch (error) {
     console.error('Token verification failed:', error.message);
-    throw new Error('Token verification failed');
+    return null;
   }
 }
+
+
 
 module.exports = {
   generateToken,
