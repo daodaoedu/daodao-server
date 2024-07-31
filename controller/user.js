@@ -107,7 +107,7 @@ const getPartner = async (req, res) => {
 const getOnePartner = async (req, res) => {
     try {
         const _id = req.params.id;
-        const token = req.headers.authorization;
+        const token = req.headers.authorization || '';
         let user = await User.findOne({ _id });
 
         if (!token) {
