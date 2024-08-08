@@ -1,9 +1,6 @@
 const jwt = require('jsonwebtoken');
 const secrect = process.env.JWT_SECURITY;
 const expiresIn = process.env.JWT_EXPIRATION
-console.log("Secret Key:", secrect);  // Check the secret key
-console.log("Expires In:", expiresIn);  // Check the expiration time
-
 
 const generateToken = (payload) => {
   try {
@@ -24,9 +21,11 @@ const verifyToken = (token) => {
     return decoded;
   } catch (error) {
     console.error('Token verification failed:', error.message);
-    throw new Error('Token verification failed');
+    return null;
   }
 }
+
+
 
 module.exports = {
   generateToken,
