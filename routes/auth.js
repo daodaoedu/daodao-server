@@ -14,7 +14,15 @@ router.get("/google",
 router.get("/google/callback", passport.authenticate("google"), async (req, res) => {
     console.log("google/callback_req.session", req.user);
     const { _id, name, createdDate, updatedDate } = req.user;
-    let isNewUser = createdDate == updatedDate;
+    console.log("google/callback_createdDate", typeof(createdDate));
+    console.log("google/callback_updatedDate", typeof(updatedDate));
+
+
+    let formattedCreatedDate = createdDate.toISOString();
+    let formattedUpdatedDate = updatedDate.toISOString();
+
+    let isNewUser = formattedCreatedDate === formattedUpdatedDate;
+    // let isNewUser = createdDate == updatedDate;
     console.log("google/callback_isNewUser", isNewUser);
     const time = Date.now();
     const payload = { _id, name, time };
