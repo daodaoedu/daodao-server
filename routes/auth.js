@@ -15,6 +15,7 @@ router.get("/google/callback", passport.authenticate("google"), async (req, res)
     console.log("google/callback_req.session", req.user);
     const { _id, name, createdDate, updatedDate } = req.user;
     let isNewUser = createdDate === updatedDate;
+    console.log("google/callback_isNewUser", isNewUser);
     const time = Date.now();
     const payload = { _id, name, time };
     const token = generateToken(payload);
@@ -22,6 +23,7 @@ router.get("/google/callback", passport.authenticate("google"), async (req, res)
     const url = isNewUser
         ? `${process.env.FRONTEND_URL}/signin?id=${req.user._id}&token=${token}`
         : `${process.env.FRONTEND_URL}?id=${req.user._id}&token=${token}`;
+    console.log("google/callback_url", url);
 
     return res.redirect(url);
 
