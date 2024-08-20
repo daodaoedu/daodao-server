@@ -6,6 +6,10 @@ const  { verifyToken } = require("../services/jwt");
 const getPartner = async (req, res) => {
     try {
         let { query: { page = 1, pageSize = 30, educationStage, roleList, location, tag, search } } = req;
+        console.log("educationStage___",educationStage);
+        console.log("roleList___",roleList);
+        console.log("location___",location);
+
         page = parseInt(page, 10);
         pageSize = parseInt(pageSize, 10);
         const _id = req.params.id;
@@ -25,7 +29,7 @@ const getPartner = async (req, res) => {
         }
 
         if (location) {
-            location = location.split(',');
+            location = location.split(',').map(loc => new RegExp(loc));
             filter.location = { $in: location };
         }
 
@@ -113,21 +117,16 @@ const getOnePartner = async (req, res) => {
         const cleanedToken = token.replace('Bearer', '').trim();
 
         let user = await User.findOne({ _id });
-
-        let response;
-        const decoded = verifyToken(cleanedToken);
         
-        if (decoded) {
-            response = {
-                data: [user],
-            };
-        } else {
+        let decoded = verifyToken(cleanedToken);
+        
+        if (!decoded) {
             user.contactList = { "聯繫方式": "註冊或登入即可查看聯繫方式！" };
-            response = {
-                data: [user],
-                message: 'Invalid token',
-            };
         }
+
+        const response = {
+            data: [user],
+        };
 
         res.json(response);
     } catch (error) {
