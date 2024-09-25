@@ -84,11 +84,10 @@ const getPartner = async (req, res) => {
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
         let allData = await User.find(filter)
-        .sort({ updatedDate: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .lean();
+        .sort({ updatedDate: -1 });
         
+        console.log('allData',allData);
+
         allData = allData.map(user => {
             if (!user.isOpenLocation) {
                 user.location = "";

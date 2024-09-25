@@ -42,9 +42,7 @@ const getActivity = async (req, res) => {
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
         const allData = await Activity.find(filter)
-        .sort({ updatedDate: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize);;
+        .sort({ updatedDate: -1 });
         const pagedData = allData.slice(startIndex, endIndex);
         const totalCount = await Activity.countDocuments(filter);
         const totalPages = Math.ceil(totalCount / pageSize);
