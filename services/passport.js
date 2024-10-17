@@ -1,6 +1,7 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20");
 const User = require("../models/user.model");
+const TempUser = require("../models/tempUser.model");
 const sendRegisterEmail = require("../controller/sendRegisterEmail");
 
 
@@ -26,34 +27,47 @@ passport.deserializeUser(async (_id, done) => {
 passport.use(new GoogleStrategy(
     AUTH_OPTIONS,
     async (accessToken, refreshToken, profile, done) => {
-        console.log('passport_profile',profile);
-        let foundUser = await User.findOne({ googleID: profile.id }).exec();
-        if (foundUser) {
-            console.log("使用者已註冊");
-            return done(null, foundUser);
-        } else {
-            console.log("新用戶註冊");
-            let newUser = new User({
-                birthDay: '',
-                educationStage: '',
-                email: profile.emails[0].value,
-                gender: '',
-                googleID: profile.id,
-                name: profile.displayName,
-                photoURL: profile.photos[0].value,
-                isOpenLocation: true,
-                isOpenProfile: true,
-                isSubscribeEmail: true,
-                location: '',
-                selfIntroduction: '',
-                share: '',
-            });
-            let saveUser = await newUser.save();
-            sendRegisterEmail(saveUser.email,saveUser.name,);
-
-            console.log("成功建立新用戶")
+        try {
+            console.log('passport_profile', profile);
             
-            return done(null, saveUser);
+            // 首先檢查是否存在正式用戶
+            let foundUser = await User.findOne({ googleID: profile.id }).exec();
+            if (foundUser) {
+                console.log("使用者已註冊");
+                return done(null, foundUser);
+            }
+
+            // 如果沒有正式用戶，則檢查或創建臨時用戶
+            let tempUser = await TempUser.findOne({ googleID: profile.id }).exec();
+            
+            if (!tempUser) {
+                console.log("新用戶，創建臨時資料");
+                tempUser = new TempUser({
+                    googleID: profile.id,
+                    email: profile.emails[0].value,
+                    name: profile.displayName,
+                    photoURL: profile.photos[0].value,
+                });
+                
+                try {
+                    tempUser = await tempUser.save();
+                } catch (saveError) {
+                    if (saveError.code === 11000) {
+                        // 如果是重複鍵錯誤，重新獲取該臨時用戶
+                        console.log("臨時用戶已存在，正在獲取");
+                        tempUser = await TempUser.findOne({ googleID: profile.id }).exec();
+                    } else {
+                        throw saveError;
+                    }
+                }
+            } else {
+                console.log("找到現有的臨時用戶");
+            }
+
+            return done(null, tempUser);
+        } catch (error) {
+            console.error("Google 策略錯誤:", error);
+            return done(error, null);
         }
     })
 );

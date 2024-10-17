@@ -1,11 +1,61 @@
 const User = require("../models/user.model");
 const redis = require("../services/redis");
 const  { verifyToken } = require("../services/jwt");
+const TempUser = require("../models/tempUser.model");
+const sendRegisterEmail = require("../controller/sendRegisterEmail");
 
+const createPartner = async (req, res) => {
+    try {
+        const userData = req.body;
+        const _id = req.params.id;
+        const token = req.headers.authorization || '';
+        const cleanedToken = token.replace('Bearer', '').trim();
+        const time = Date.now();
 
+        // 驗證 token
+        const decodedToken = verifyToken(cleanedToken);
+        if (!decodedToken || decodedToken._id !== _id) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+
+        // 查找臨時用戶
+        const tempUser = await TempUser.findById(_id);
+        if (!tempUser) {
+            return res.status(404).json({ error: 'Temporary user not found' });
+        }
+
+        // 創建新用戶
+        const newUser = new User({
+            ...userData,
+            googleID: tempUser.googleID,
+            email: tempUser.email,
+            name: tempUser.name,
+            photoURL: tempUser.photoURL,
+        });
+
+        const savedUser = await newUser.save();
+        
+        // 刪除臨時用戶
+        await TempUser.findByIdAndDelete(_id);
+
+        // 發送註冊郵件
+        await sendRegisterEmail(savedUser.email, savedUser.name);
+
+        const newToken = generateToken({
+            _id: newUser._id,
+            time,
+            isTemp: false
+        });
+
+        res.status(201).json({ message: "User created successfully", user: savedUser, token: newToken });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while creating the user' });
+    }
+};
 const getPartner = async (req, res) => {
     try {
-        let { query: { page = 1, pageSize = 30, educationStage, roleList, location, tag, search } } = req;
+        let { query: { page , pageSize, educationStage, roleList, location, tag, search } } = req;
         console.log("educationStage___",educationStage);
         console.log("roleList___",roleList);
         console.log("location___",location);
@@ -83,23 +133,22 @@ const getPartner = async (req, res) => {
 
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-        let allData = await User.find(filter)
-        .sort({ updatedDate: -1 });
+        // let allData = await User.find(filter)
+        // .sort({ updatedDate: -1 });
         
-        console.log('allData',allData);
-
-        allData = allData.map(user => {
-            if (!user.isOpenLocation) {
-                user.location = "";
-            }
-            return user;
-        });
-        const pagedData = allData.slice(startIndex, endIndex);
-        const totalCount = await User.countDocuments(filter);
+        let allData = await User.find();
+        // allData = allData.map(user => {
+        //     if (!user.isOpenLocation) {
+        //         user.location = "";
+        //     }
+        //     return user;
+        // });
+        // const pagedData = allData.slice(startIndex, endIndex);
+        const totalCount = await User.countDocuments();
         const totalPages = Math.ceil(totalCount / pageSize);
 
         const response = {
-            data: pagedData,
+            data: allData,
             page,
             pageSize,
             totalCount,
@@ -199,6 +248,7 @@ const update = async (req, res) => {
 };
 
 module.exports = {
+    createPartner,
     getPartner,
     getOnePartner,
     update,
