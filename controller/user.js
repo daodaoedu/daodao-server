@@ -133,22 +133,22 @@ const getPartner = async (req, res) => {
 
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-        // let allData = await User.find(filter)
-        // .sort({ updatedDate: -1 });
+        let allData = await User.find(filter)
+        .sort({ updatedDate: -1 });
         
-        let allData = await User.find();
-        // allData = allData.map(user => {
-        //     if (!user.isOpenLocation) {
-        //         user.location = "";
-        //     }
-        //     return user;
-        // });
-        // const pagedData = allData.slice(startIndex, endIndex);
+        // let allData = await User.find();
+        allData = allData.map(user => {
+            if (!user.isOpenLocation) {
+                user.location = "";
+            }
+            return user;
+        });
+        const pagedData = allData.slice(startIndex, endIndex);
         const totalCount = await User.countDocuments();
         const totalPages = Math.ceil(totalCount / pageSize);
 
         const response = {
-            data: allData,
+            data: pagedData,
             page,
             pageSize,
             totalCount,
