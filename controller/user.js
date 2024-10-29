@@ -1,6 +1,6 @@
 const User = require("../models/user.model");
 const redis = require("../services/redis");
-const  { verifyToken } = require("../services/jwt");
+const  { verifyToken,generateToken } = require("../services/jwt");
 const TempUser = require("../models/tempUser.model");
 const sendRegisterEmail = require("../controller/sendRegisterEmail");
 
