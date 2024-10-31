@@ -16,10 +16,16 @@ const activitySchema = new mongoose.Schema({
   category: {
     type: Array,
   },
+  activityCategory: {
+    type: Array,
+  },
   area: {
     type: Array,
   },
   time: {
+    type: String,
+  },
+  participator: {
     type: String,
   },
   partnerStyle: {
@@ -28,7 +34,19 @@ const activitySchema = new mongoose.Schema({
   partnerEducationStep: {
     type: Array,
   },
+  motivation: {
+    type: String,
+  },
+  content: {
+    type: String,
+  },
   description: {
+    type: String,
+  },
+  outcome: {
+    type: String,
+  },
+  notice: {
     type: String,
   },
   tagList: {
@@ -37,14 +55,24 @@ const activitySchema = new mongoose.Schema({
   isGrouping: {
     type: Boolean,
   },
-  createdDate: {//建立時間
+  createdDate: {
     type: Date,
     default: Date.now,
   },
-  updatedDate: {//更新時間
+  updatedDate: {
     type: Date,
     default: Date.now,
   },
+  deadline: {
+    type: Date,
+  },
+  isNeedDeadline: {
+    type: Boolean,  
+  },
+  views:{
+    type: Number,
+    default: 0,
+  }
 });
 
 module.exports = mongoose.model("Activity", activitySchema);
