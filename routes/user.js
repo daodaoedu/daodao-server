@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { update ,getPartner,getOnePartner} = require("../controller/user");
-const isAuthenticated = require("../middlewares/isAuthenticated");
+const { update ,getPartner,getOnePartner, createPartner} = require("../controller/user");
+const {isAuthenticated,requireCompleteProfile} = require("../middlewares/isAuthenticated");
 
 const CLIENT_URL = process.env.FRONTEND_URL;
 
@@ -19,8 +19,8 @@ router.get("/login/success", (req, res) => {
 
 router.get("/", getPartner);
 router.get("/:id", getOnePartner);
-router.use(isAuthenticated);
-router.put("/:id", update);
+router.post("/:id",isAuthenticated,createPartner);
+router.put("/:id",isAuthenticated,requireCompleteProfile, update);
 
 router.get("/logout", (req, res) => {
     req.logout();

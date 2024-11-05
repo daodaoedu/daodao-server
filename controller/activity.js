@@ -9,19 +9,46 @@ const handleErrors = (res, error) => {
 
 const getActivity = async (req, res) => {
     try {
-        let { query: { page = 1, pageSize = 30, area, partnerEducationStep, isGrouping, category } } = req;
+        let { query: { page = 1, pageSize = 30, activityCategory,area, partnerEducationStep, isGrouping, category,search } } = req;
         page = parseInt(page, 10);
         pageSize = parseInt(pageSize, 10);
         const id = req.params.id;
         const userId = req.params.userId;
 
-        const filter = {};
+        let filter = {};
         if (userId) filter.userId = userId;
         if (id) filter._id = id;
+        if (activityCategory) filter.activityCategory = activityCategory;
         if (area) filter.area = area;
         if (partnerEducationStep) filter.partnerEducationStep = partnerEducationStep;
         if (isGrouping) filter.isGrouping = isGrouping;
         if (category) filter.category = category;
+        if (search) {
+            let searchQuery = {
+                $and: [
+                    {
+                        $or: [
+                            { title: new RegExp(search, 'i') },
+                            { category: new RegExp(search, 'i') },
+                            { area: new RegExp(search, 'i') },
+                            { partnerStyle: new RegExp(search, 'i') },
+                            { partnerEducationStep: new RegExp(search, 'i') },
+                            { motivation: new RegExp(search, 'i') },
+                            { content: new RegExp(search, 'i') },
+                            { outcome: new RegExp(search, 'i') },
+                            { description: new RegExp(search, 'i') },
+                            { tagList: new RegExp(search, 'i') },
+                            { activityCategory: new RegExp(search, 'i') },
+                        ]
+                    }
+                ]
+            };
+            if (filter.$or) {
+                searchQuery.$and.push({ $or: filter.$or });
+            }
+
+            filter = searchQuery;
+        }
 
         // const cacheKey = `activities:${JSON.stringify(filter)}`;
         // const cachedData = await redis.get(cacheKey);
@@ -119,8 +146,9 @@ const updateActivity = async (req, res) => {
             return res.status(403).json({ error: "You are not authorized to delete this activity" });
         }
         const fieldsToUpdate = [
-            'title', 'photoURL', 'photoAlt', 'category', 'area', 'time', 'partnerStyle',
-            'partnerEducationStep', 'description', 'tagList', 'isGrouping'
+            'title', 'photoURL', 'photoAlt', 'category','activityCategory', 'area', 'time','participator', 'partnerStyle',
+            'partnerEducationStep','motivation','content', 'description','outcome', 'tagList','notice', 'isGrouping','deadline','isNeedDeadline',
+            'views'
         ];
 
         let isUpdated = false;
