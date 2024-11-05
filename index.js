@@ -13,6 +13,8 @@ const session = require("express-session");
 const rateLimit = require("express-rate-limit");
 const passport = require("passport");
 require("./services/passport");
+const User = require("./models/user.model");
+const Activity = require("./models/activity.model");
 const PORT = process.env.PORT || 3000;
 
 const app = express();
@@ -60,7 +62,9 @@ app.use('/image', imageRoutes);
 //     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 // });
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  const userCount = await User.countDocuments();
+  const activityCount = await Activity.countDocuments();
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -74,7 +78,8 @@ app.get('/', (req, res) => {
       <p>PORT: ${process.env.PORT}</p>
       <p>FRONTEND_URL: ${process.env.FRONTEND_URL}</p>
       <p>MONGODB_URL: ${process.env.MONGO_URL}</p>
-      <p>REDIS_HOST: ${process.env.REDIS_HOST}</p>
+      <p>USER_NUMBER: ${userCount}</p>
+      <p>ACTIVITY_NUMBER: ${activityCount}</p>
     </body>
     </html>
   `;
