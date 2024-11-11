@@ -133,14 +133,8 @@ const getPartner = async (req, res) => {
 
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;
-        // Sorting by the length of selfIntroduction in descending order, then by updatedDate
         let allData = await User.find(filter)
-            .sort({ 
-                $expr: { $meta: { selfIntroductionLength: { $strLenCP: "$selfIntroduction" } } }, // Sort by length of selfIntroduction
-                updatedDate: -1 // Then sort by updatedDate
-            })
-            .skip(startIndex)
-            .limit(pageSize);
+        .sort({ updatedDate: -1 });
         
         // let allData = await User.find();
         allData = allData.map(user => {
