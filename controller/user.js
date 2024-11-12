@@ -135,7 +135,13 @@ const getPartner = async (req, res) => {
         const endIndex = startIndex + pageSize;
         let allData = await User.find(filter)
         .sort({ updatedDate: -1 });
-        
+        allData = allData.sort((a, b) => {
+            const lengthDiff = (b.selfIntroduction?.length || 0) - (a.selfIntroduction?.length || 0);
+            if (lengthDiff !== 0) return lengthDiff; // Longer `selfIntroduction` first
+            return b.updatedDate - a.updatedDate; // Then by recent `updatedDate`
+        });
+
+
         // let allData = await User.find();
         allData = allData.map(user => {
             if (!user.isOpenLocation) {
