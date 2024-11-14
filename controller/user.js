@@ -6,17 +6,26 @@ const sendRegisterEmail = require("../controller/sendRegisterEmail");
 
 const createPartner = async (req, res) => {
     try {
-        const userData = req.body;
-        const _id = req.params.id;
-        const token = req.headers.authorization || '';
-        const cleanedToken = token.replace('Bearer', '').trim();
-        const time = Date.now();
 
-        // 驗證 token
-        const decodedToken = verifyToken(cleanedToken);
-        if (!decodedToken || decodedToken._id !== _id) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
+        const token = req.headers.authorization;
+
+        if(!token){
+            return res.status(401).json({message: "No token provided"});
+          }
+
+        const cleanedToken = token.replace('Bearer', '').trim();
+
+        
+        let decoded = verifyToken(cleanedToken);
+        if (decoded.error) {
+            return res.status(401).json({ message: decoded.error });
+          }
+
+        console.log("decoded",decoded);
+      
+        _id = decoded;
+        const userData = req.body;
+        const time = Date.now();
 
         // 查找臨時用戶
         const tempUser = await TempUser.findById(_id);

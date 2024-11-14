@@ -21,7 +21,7 @@ router.get("/", getPartner);
 router.get("/me", getMe);
 router.delete("/me", deleteMe);
 router.get("/:id", getOnePartner);
-router.post("/:id",isAuthenticated,createPartner);
+router.post("/",isAuthenticated,createPartner);
 router.put("/:id",isAuthenticated,requireCompleteProfile, update);
 
 
