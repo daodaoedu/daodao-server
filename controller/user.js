@@ -194,6 +194,41 @@ const getOnePartner = async (req, res) => {
     }
 };
 
+const getMe = async (req, res) => {
+    try {
+        const token = req.headers.authorization;
+
+        if(!token){
+            return res.status(401).json({message: "No token provided"});
+          }
+
+        const cleanedToken = token.replace('Bearer', '').trim();
+
+        
+        let decoded = verifyToken(cleanedToken);
+        if (decoded.error) {
+            return res.status(401).json({ message: decoded.error });
+          }
+
+        console.log("decoded",decoded);
+      
+        _id = decoded;
+
+        let user = await User.findOne({ _id });
+        if (!user) {
+            user = null;
+        }
+        const response = {
+            data: user,
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+};
+
 const update = async (req, res) => {
     try {
         const _id = req.params.id;
@@ -257,5 +292,6 @@ module.exports = {
     createPartner,
     getPartner,
     getOnePartner,
+    getMe,
     update,
 };
