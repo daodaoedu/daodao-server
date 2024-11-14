@@ -228,7 +228,41 @@ const getMe = async (req, res) => {
         res.status(500).json({ error: 'An error occurred' });
     }
 };
+const deleteMe = async (req, res) => {
+    try {
+        const token = req.headers.authorization;
 
+        if(!token){
+            return res.status(401).json({message: "No token provided"});
+          }
+
+        const cleanedToken = token.replace('Bearer', '').trim();
+
+        
+        let decoded = verifyToken(cleanedToken);
+        if (decoded.error) {
+            return res.status(401).json({ message: decoded.error });
+          }
+
+        console.log("decoded",decoded);
+      
+        _id = decoded;
+
+        const user = await User.findById(_id);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const deletedUser = await User.findByIdAndDelete(_id);
+   
+
+        res.status(200).json({ message: 'User deleted successfully.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+};
 const update = async (req, res) => {
     try {
         const _id = req.params.id;
@@ -294,4 +328,5 @@ module.exports = {
     getOnePartner,
     getMe,
     update,
+    deleteMe
 };
