@@ -1,4 +1,5 @@
 const Marathon = require("../models/marathon.model");
+const  { verifyToken } = require("../services/jwt");
 
 
 exports.createMarathon = async (req, res) => {
@@ -9,6 +10,7 @@ exports.createMarathon = async (req, res) => {
       }
     const cleanedToken = token.replace('Bearer', '').trim();
     let decoded = verifyToken(cleanedToken);
+
     if (decoded.error) {
         return res.status(401).json({ message: decoded.error });
     }
@@ -16,6 +18,7 @@ exports.createMarathon = async (req, res) => {
     await marathon.save();
     res.status(201).send(marathon);
   } catch (error) {
+    console.error(error);
     res.status(400).send(error);
   }
 };
