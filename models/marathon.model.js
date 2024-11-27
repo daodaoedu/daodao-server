@@ -18,8 +18,8 @@ const pricingOptionSchema = new mongoose.Schema({
 });
 const marathonSchema = new mongoose.Schema({
   title: { type: String },
-  event_id: { type: String},
-  user_id: { type: String},
+  eventId: { type: String},
+  userId: { type: String},
   description: { type: String},
   motivation: {
     tags: [{ type: String }],
@@ -38,8 +38,8 @@ const marathonSchema = new mongoose.Schema({
     description: { type: String },
   },
   status:{ type: String },
-  registration_status:{ type: String },
-  registration_date: {type: String},
+  registrationStatus:{ type: String },
+  registrationDate: {type: String},
   pricing: { type: [pricingOptionSchema] },
   isPublic: { type: Boolean, default: false },
   createdDate: {
