@@ -31,7 +31,10 @@ const marathonSchema = new mongoose.Schema({
     tags: [{ type: String }],
     description: { type: String },
   },
-  resources: { type: String},
+  resources: {
+    title: { type: String },
+    link: { type: String },
+  },
   milestones: [milestoneSchema],
   outcomes: {
     tags: [{ type: String }],
@@ -40,7 +43,7 @@ const marathonSchema = new mongoose.Schema({
   status:{ type: String },
   registrationStatus:{ type: String },
   registrationDate: {type: String},
-  pricing: { type: [pricingOptionSchema] },
+  pricing: { type: pricingOptionSchema },
   isPublic: { type: Boolean, default: false },
   createdDate: {
     type: Date,
