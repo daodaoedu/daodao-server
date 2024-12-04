@@ -5,7 +5,7 @@ const {isAuthenticated,requireCompleteProfile} = require("../middlewares/isAuthe
 const router = express.Router();
 
 router.post("/", marathonController.createMarathon);
-router.get("/", marathonController.getAllMarathons);
+router.get("/", marathonController.handleMarathonRequest);
 router.get("/:id", marathonController.getMarathonById);
 router.put("/:id",isAuthenticated,requireCompleteProfile, marathonController.updateMarathon);
 router.delete("/:id",isAuthenticated,requireCompleteProfile, marathonController.deleteMarathon);

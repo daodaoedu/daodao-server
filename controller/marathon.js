@@ -28,7 +28,19 @@ exports.createMarathon = async (req, res) => {
 };
 
 
-exports.getAllMarathons = async (req, res) => {
+exports.handleMarathonRequest = async (req, res) => {
+  const { userId, eventId } = req.query;
+
+  if (userId) {
+      // 如果有 userId，執行基於 userId 和 eventId 的邏輯
+      return getMarathonsByUserAndEvent(req, res);
+  } else {
+      // 如果沒有 userId，執行獲取所有資料的邏輯
+      return getAllMarathons(req, res);
+  }
+};
+
+const getAllMarathons = async (req, res) => {
   try {
     const marathon = await Marathon.find();
     const response = {
@@ -40,6 +52,38 @@ exports.getAllMarathons = async (req, res) => {
     res.status(500).send(error);
   }
 };
+
+const getMarathonsByUserAndEvent = async (req, res) => {
+  try {
+      const { userId, eventId } = req.query;
+
+      // 檢查 userId 是否存在
+      if (!userId) {
+          return res.status(400).json({ error: "userId is required" });
+      }
+
+      // 構建查詢條件
+      let query = { userId };
+
+      // 如果有提供 eventId，則添加到查詢條件
+      if (eventId) {
+          query.eventId = eventId;
+      }
+
+      // 查詢資料庫
+      const marathons = await Marathon.find(query);
+      const response = {
+        data: marathons,
+      };
+      // 回傳結果
+      return res.json(response);
+
+  } catch (error) {
+      console.error("Error fetching marathons:", error);
+      return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 
 
 exports.getMarathonById = async (req, res) => {
