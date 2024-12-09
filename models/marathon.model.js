@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 const subMilestoneSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  dates: [{ type: Date, required: true }],
-  description: { type: String, required: true },
+  name: { type: String },
+  dates: [{ type: Date }],
+  description: { type: String },
 });
 
 const milestoneSchema = new mongoose.Schema({
@@ -13,7 +13,7 @@ const milestoneSchema = new mongoose.Schema({
 });
 const pricingOptionSchema = new mongoose.Schema({
   option: { type: String, required: true, immutable: true },
-  price: { type: Number, required: true, immutable: true },
+  price: { type: Number },
   email: [{ type: String }],
 });
 const marathonSchema = new mongoose.Schema({
