@@ -2,7 +2,9 @@ const User = require("../models/user.model");
 const redis = require("../services/redis");
 const  { verifyToken,generateToken } = require("../services/jwt");
 const TempUser = require("../models/tempUser.model");
-const sendRegisterEmail = require("../controller/sendRegisterEmail");
+const sendVerifiedEmail = require("./sendVerifiedEmail");
+const { FRONTEND_URL,BACKEND_URL } = process.env;
+
 
 const createPartner = async (req, res) => {
     try {
@@ -25,6 +27,7 @@ const createPartner = async (req, res) => {
       
         _id = decoded;
         const userData = req.body;
+        const {isSendEmail} = userData
         const time = Date.now();
 
         // 查找臨時用戶
@@ -32,7 +35,12 @@ const createPartner = async (req, res) => {
         if (!tempUser) {
             return res.status(404).json({ error: 'Temporary user not found' });
         }
-
+        // const tempUser = {
+        //     googleID: "1234567890abcdef",
+        //     email: "innocent0705@gmail.com",
+        //     name: "Test User",
+        //     photoURL: "https://example.com/test-user-photo.jpg",
+        // };
         // 創建新用戶
         const newUser = new User({
             ...userData,
@@ -44,17 +52,23 @@ const createPartner = async (req, res) => {
 
         const savedUser = await newUser.save();
         
-        // 刪除臨時用戶
+        //刪除臨時用戶
         await TempUser.findByIdAndDelete(_id);
-
-        // 發送註冊郵件
-        await sendRegisterEmail(savedUser.email, savedUser.name);
-
+   
         const newToken = generateToken({
             _id: newUser._id,
             time,
-            isTemp: false
+            isTemp: false,
         });
+
+        const verifyLink = `${BACKEND_URL}/email/verify?token=${newToken}`;
+        console.log("verifyLink", verifyLink);
+
+        // 發送註冊郵件
+        console.log('isSendEmail',isSendEmail);
+        if(isSendEmail){
+            await sendVerifiedEmail(savedUser.email, savedUser.name,verifyLink);
+        }
 
         res.status(201).json({ message: "User created successfully", user: savedUser, token: newToken });
     } catch (error) {

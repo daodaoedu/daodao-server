@@ -46,6 +46,9 @@ const userSchema = new mongoose.Schema({
   isSubscribeEmail: {//訂閱訂電子報
     type: Boolean,
   },
+  isVerified: {//信箱驗證
+    type: Boolean,
+  },
   location: {//居住地
     type: String,
   },
