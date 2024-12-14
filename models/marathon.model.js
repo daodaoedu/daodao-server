@@ -6,9 +6,9 @@ const subMilestoneSchema = new mongoose.Schema({
 });
 
 const milestoneSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  startDate: { type: Date, required: true },
-  endDate: { type: Date, required: true },
+  name: { type: String},
+  startDate: { type: Date},
+  endDate: { type: Date},
   subMilestones: [subMilestoneSchema],
 });
 const pricingOptionSchema = new mongoose.Schema({
