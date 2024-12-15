@@ -34,16 +34,31 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
   // Rate limiter configuration
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // limit each IP to 100 requests per windowMs
+const globalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minutes
+  max: 1000, // limit each IP to 100 requests per windowMs
   message: "Too many requests from this IP, please try again later.",
+  headers: true,
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   trustProxy: true, 
 });
 
-app.use(limiter);
+const strictLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minutes
+  max: 60, // limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+  headers: true,
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  trustProxy: true, 
+});
+
+app.use(globalLimiter);
+app.use((req, res, next) => {
+  console.log(`IP: ${req.ip}, URL: ${req.originalUrl}`);
+  next();
+});
 app.use(session({
     secret: process.env.SESSION_SEVRET,
     resave: false,
@@ -57,8 +72,8 @@ app.use('/user', userRoutes);
 app.use('/activity', activityRoutes);
 app.use("/marathon", marathonRoutes);
 app.use('/tag', tagRoutes);
-app.use('/email', emailRoutes);
-app.use('/image', imageRoutes);
+app.use('/email',strictLimiter, emailRoutes);
+app.use('/image',strictLimiter, imageRoutes);
 
 // app.get('/', (req, res) => {
 //     res.sendFile(path.join(__dirname, 'public', 'index.html'));
