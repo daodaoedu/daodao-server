@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-const sendRegisterEmail = (to, name) => {
+const sendWelcomeEmail = (to, name) => {
   const { subject, title } = { "subject": "【島島阿學】歡迎成為島友！", "title": "歡迎成為島友！" };
   const htmlContent = `
 <!doctype html>
@@ -740,4 +740,4 @@ const sendRegisterEmail = (to, name) => {
   });
 };
 
-module.exports = sendRegisterEmail;
+module.exports = sendWelcomeEmail;

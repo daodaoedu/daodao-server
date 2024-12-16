@@ -2,7 +2,6 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20");
 const User = require("../models/user.model");
 const TempUser = require("../models/tempUser.model");
-const sendRegisterEmail = require("../controller/sendRegisterEmail");
 
 
 const AUTH_OPTIONS = {
