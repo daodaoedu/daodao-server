@@ -1,4 +1,7 @@
 const Marathon = require("../models/marathon.model");
+const User = require("../models/user.model");
+const sendMarathonEmail = require("../controller/sendMarathonEmail");
+
 const  { verifyToken } = require("../services/jwt");
 
 
@@ -15,6 +18,23 @@ exports.createMarathon = async (req, res) => {
         return res.status(401).json({ message: decoded.error });
     }
     const marathon = new Marathon(req.body);
+
+    const existingMarathon = await Marathon.findOne({ userId: req.body.userId });
+    if (existingMarathon) {
+      return res.status(400).json({ message: "You can only create one marathon" });
+    }
+    
+    let user = await User.findById(marathon.userId);
+    console.log('marathon.user'+ user);
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    await sendMarathonEmail(user.email, user.name, marathon.title);
+
+    marathon.isSendEmail = true;
+
     await marathon.save();
     const response = {
       data: marathon,

@@ -45,6 +45,7 @@ const marathonSchema = new mongoose.Schema({
   registrationDate: {type: String},
   pricing: { type: pricingOptionSchema },
   isPublic: { type: Boolean, default: false },
+  isSendEmail: { type: Boolean, default: false },
   createdDate: {
     type: Date,
     default: Date.now,
