@@ -26,9 +26,7 @@ router.get("/google/callback", passport.authenticate("google"), async (req, res)
     const payload = { _id, name, time, isTemp: isTemp };
     const token = generateToken(payload);
     console.log("google/callback_token", token);
-    const url = isUserExit
-        ? `${process.env.FRONTEND_URL}?id=${req.user._id}&token=${token}`
-        : `${process.env.FRONTEND_URL}/signin?id=${req.user._id}&token=${token}`;
+    const url = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`
     console.log("google/callback_url", url);
 
     return res.redirect(url);

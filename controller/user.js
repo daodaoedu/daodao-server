@@ -2,28 +2,45 @@ const User = require("../models/user.model");
 const redis = require("../services/redis");
 const  { verifyToken,generateToken } = require("../services/jwt");
 const TempUser = require("../models/tempUser.model");
-const sendRegisterEmail = require("../controller/sendRegisterEmail");
+const sendVerifiedEmail = require("./sendVerifiedEmail");
+const { FRONTEND_URL,BACKEND_URL } = process.env;
+
 
 const createPartner = async (req, res) => {
     try {
-        const userData = req.body;
-        const _id = req.params.id;
-        const token = req.headers.authorization || '';
-        const cleanedToken = token.replace('Bearer', '').trim();
-        const time = Date.now();
 
-        // 驗證 token
-        const decodedToken = verifyToken(cleanedToken);
-        if (!decodedToken || decodedToken._id !== _id) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
+        const token = req.headers.authorization;
+
+        if(!token){
+            return res.status(401).json({message: "No token provided"});
+          }
+
+        const cleanedToken = token.replace('Bearer', '').trim();
+
+        
+        let decoded = verifyToken(cleanedToken);
+        if (decoded.error) {
+            return res.status(401).json({ message: decoded.error });
+          }
+
+        console.log("decoded",decoded);
+      
+        _id = decoded;
+        const userData = req.body;
+        const {isSendEmail} = userData
+        const time = Date.now();
 
         // 查找臨時用戶
         const tempUser = await TempUser.findById(_id);
         if (!tempUser) {
             return res.status(404).json({ error: 'Temporary user not found' });
         }
-
+        // const tempUser = {
+        //     googleID: "1234567890abcdef",
+        //     email: "innocent0705@gmail.com",
+        //     name: "Test User",
+        //     photoURL: "https://example.com/test-user-photo.jpg",
+        // };
         // 創建新用戶
         const newUser = new User({
             ...userData,
@@ -35,17 +52,23 @@ const createPartner = async (req, res) => {
 
         const savedUser = await newUser.save();
         
-        // 刪除臨時用戶
+        //刪除臨時用戶
         await TempUser.findByIdAndDelete(_id);
-
-        // 發送註冊郵件
-        await sendRegisterEmail(savedUser.email, savedUser.name);
-
+   
         const newToken = generateToken({
             _id: newUser._id,
             time,
-            isTemp: false
+            isTemp: false,
         });
+
+        const verifyLink = `${BACKEND_URL}/email/verify?token=${newToken}`;
+        console.log("verifyLink", verifyLink);
+
+        // 發送註冊郵件
+        console.log('isSendEmail',isSendEmail);
+        if(isSendEmail){
+            await sendVerifiedEmail(savedUser.email, savedUser.name,verifyLink);
+        }
 
         res.status(201).json({ message: "User created successfully", user: savedUser, token: newToken });
     } catch (error) {
@@ -194,6 +217,75 @@ const getOnePartner = async (req, res) => {
     }
 };
 
+const getMe = async (req, res) => {
+    try {
+        const token = req.headers.authorization;
+
+        if(!token){
+            return res.status(401).json({message: "No token provided"});
+          }
+
+        const cleanedToken = token.replace('Bearer', '').trim();
+
+        
+        let decoded = verifyToken(cleanedToken);
+        if (decoded.error) {
+            return res.status(401).json({ message: decoded.error });
+          }
+
+        console.log("decoded",decoded);
+      
+        _id = decoded;
+
+        let user = await User.findOne({ _id });
+        if (!user) {
+            user = null;
+        }
+        const response = {
+            data: user,
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+};
+const deleteMe = async (req, res) => {
+    try {
+        const token = req.headers.authorization;
+
+        if(!token){
+            return res.status(401).json({message: "No token provided"});
+          }
+
+        const cleanedToken = token.replace('Bearer', '').trim();
+
+        
+        let decoded = verifyToken(cleanedToken);
+        if (decoded.error) {
+            return res.status(401).json({ message: decoded.error });
+          }
+
+        console.log("decoded",decoded);
+      
+        _id = decoded;
+
+        const user = await User.findById(_id);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const deletedUser = await User.findByIdAndDelete(_id);
+   
+
+        res.status(200).json({ message: 'User deleted successfully.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+};
 const update = async (req, res) => {
     try {
         const _id = req.params.id;
@@ -257,5 +349,7 @@ module.exports = {
     createPartner,
     getPartner,
     getOnePartner,
+    getMe,
     update,
+    deleteMe
 };

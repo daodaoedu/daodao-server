@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { update ,getPartner,getOnePartner, createPartner} = require("../controller/user");
+const { update ,getPartner,getOnePartner,getMe, createPartner,deleteMe} = require("../controller/user");
 const {isAuthenticated,requireCompleteProfile} = require("../middlewares/isAuthenticated");
 
 const CLIENT_URL = process.env.FRONTEND_URL;
@@ -18,9 +18,12 @@ router.get("/login/success", (req, res) => {
 });
 
 router.get("/", getPartner);
+router.get("/me", getMe);
+router.delete("/me", deleteMe);
 router.get("/:id", getOnePartner);
-router.post("/:id",isAuthenticated,createPartner);
+router.post("/",isAuthenticated,createPartner);
 router.put("/:id",isAuthenticated,requireCompleteProfile, update);
+
 
 router.get("/logout", (req, res) => {
     req.logout();
