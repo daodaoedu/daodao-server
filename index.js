@@ -16,6 +16,8 @@ const passport = require("passport");
 require("./services/passport");
 const User = require("./models/user.model");
 const Activity = require("./models/activity.model");
+const Marathon = require("./models/marathon.model");
+
 const PORT = process.env.PORT || 3000;
 
 const app = express();
@@ -82,6 +84,8 @@ app.use('/image',strictLimiter, imageRoutes);
 app.get('/', async (req, res) => {
   const userCount = await User.countDocuments();
   const activityCount = await Activity.countDocuments();
+  const marathonCount = await Marathon.countDocuments();
+  
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -97,6 +101,7 @@ app.get('/', async (req, res) => {
       <p>MONGODB_URL: ${process.env.MONGO_URL}</p>
       <p>USER_NUMBER: ${userCount}</p>
       <p>ACTIVITY_NUMBER: ${activityCount}</p>
+      <p>MARATHON_NUMBER: ${marathonCount}</p>
     </body>
     </html>
   `;
