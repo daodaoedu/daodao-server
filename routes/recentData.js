@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
         const recentUsers = await User.find({}, '_id name createdDate ').sort({ createdDate: -1 }).limit(50);
 
         const activities = await Activity.find().sort({ createdDate: -1 }).limit(50);
-        const activitiesUserIds = activities.map(activity => activity.userId);
+        const activitiesUserIds = activities.map(activity => activity.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
         const activitiesUsers = await User.find({ _id: { $in: activitiesUserIds } });
         const recentActivities = activities.map(activity => {
             const user = activitiesUsers.find(user => user._id.toString() === activity.userId.toString());
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 
 
         const marathons = await Marathon.find().sort({ createdDate: -1 }).limit(50);
-        const marathonsUserIds = marathons.map(marathon => marathon.userId);
+        const marathonsUserIds = marathons.map(marathon => marathon.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
         const marathonsUsers = await User.find({ _id: { $in: marathonsUserIds } });
         const recentMarathons = activities.map(marathon => {
             const user = marathonsUsers.find(user => user._id.toString() === marathon.userId.toString());
