@@ -78,14 +78,17 @@ router.get('/', async (req, res) => {
               <th>Detail URL</th>
               <th>Created At</th>
             </tr>
-            ${recentUsers.map((user, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${user._id}</td>
-                <td>${user.name}</td>
-                <td>${process.env.FRONTEND_URL}/partner/detail?id=${user._id}</td>
-                <td>${new Date(user.createdDate).toLocaleString()}</td>
-              </tr>`).join('')}
+            ${recentUsers.map((user, index) => {
+                const url = `${process.env.FRONTEND_URL}/partner/detail?id=${user._id || ''}`;
+                return `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${user._id}</td>
+                    <td>${user.name}</td>
+                    <td><a href="${url}" target="_blank">${url}</a></td>
+                    <td>${new Date(user.createdDate).toLocaleString()}</td>
+                  </tr>`;
+            }).join('')}
           </table>
   
           <h2>Recent Activities (50):</h2>
@@ -100,13 +103,14 @@ router.get('/', async (req, res) => {
             </tr>
             ${recentActivities.map((activity, index) => {
                 const activityObj = activity.toObject ? activity.toObject() : activity;
+                const url = `${process.env.FRONTEND_URL}/group/detail?id=${activityObj._id || ''}`;
                 return `
                     <tr>
                     <td>${index + 1}</td>
                     <td>${activityObj._id}</td>
                     <td>${activityObj.title}</td>
                     <td>${activityObj.user?.name || 'N/A'}</td>
-                    <td>${process.env.FRONTEND_URL}/group/detail?id=${activityObj._id}</td>
+                    <td><a href="${url}" target="_blank">${url}</a></td>
                     <td>${new Date(activityObj.createdDate).toLocaleString()}</td>
                     </tr>`;
             }).join('')}
@@ -117,6 +121,10 @@ router.get('/', async (req, res) => {
             <tr>
               <th>#</th>
               <th>Marathon ID</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Goals</th>
+              <th>Content</th>
               <th>User Name</th>
               <th>Created At</th>
             </tr>
@@ -126,6 +134,10 @@ router.get('/', async (req, res) => {
                 <tr>
                     <td>${index + 1}</td>
                     <td>${marathonObj._id}</td>
+                    <td>${marathonObj.title}</td>
+                    <td style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">${marathonObj.description}</td>
+                    <td>${marathonObj.goals}</td>
+                    <td style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">${marathonObj.content}</td>
                     <td>${marathonObj.user?.name || 'N/A'}</td>
                     <td>${new Date(marathonObj.createdDate).toLocaleString()}</td>
                 </tr>`;
