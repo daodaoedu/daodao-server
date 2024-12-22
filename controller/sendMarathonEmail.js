@@ -458,7 +458,7 @@ const sendMarathonEmail = (to, name ,marathonTitle) => {
                                                   
                                                   <p style="margin: 10px 0;">感謝申請「島島盃 - 2025 春季學習馬拉松」!</p>
                                                   
-                                                  <p style="margin: 10px 0;">我們收到你的申請了，計畫名稱是，計畫名稱是${marathonTitle}</p>
+                                                  <p style="margin: 10px 0;">我們收到你的申請了，計畫名稱是${marathonTitle}</p>
                                                   
                                                   <p style="margin: 10px 0;">在申請截止日前你都還可以登入修改你的計劃。</p>
                                                 </td>
