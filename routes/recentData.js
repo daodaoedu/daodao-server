@@ -5,40 +5,90 @@ const Activity = require('../models/activity.model');
 const Marathon = require('../models/marathon.model');
 
 router.get('/', async (req, res) => {
-    try {
-        const userCount = await User.countDocuments();
-        const activityCount = await Activity.countDocuments();
-        const marathonCount = await Marathon.countDocuments();
+  try {
+    const userCount = await User.countDocuments();
+    const activityCount = await Activity.countDocuments();
+    const marathonCount = await Marathon.countDocuments();
 
-        const recentUsers = await User.find({}, '_id name createdDate ').sort({ createdDate: -1 }).limit(50);
+    const recentUsers = await User.find({}, '_id name createdDate ').sort({ createdDate: -1 }).limit(50);
 
-        const activities = await Activity.find().sort({ createdDate: -1 }).limit(50);
-        const activitiesUserIds = activities.map(activity => activity.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
-        const activitiesUsers = await User.find({ _id: { $in: activitiesUserIds } });
-        const recentActivities = activities.map(activity => {
-            const user = activitiesUsers.find(user => user._id.toString() === activity.userId.toString());
-            return {
-                ...activity.toObject(),
-                user: user
-            };
-        });
+    const activities = await Activity.find().sort({ createdDate: -1 }).limit(50);
+    const activitiesUserIds = activities.map(activity => activity.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
+    const activitiesUsers = await User.find({ _id: { $in: activitiesUserIds } });
+    const recentActivities = activities.map(activity => {
+      const user = activitiesUsers.find(user => user._id.toString() === activity.userId.toString());
+      return {
+        ...activity.toObject(),
+        user: user
+      };
+    });
 
 
-        const marathons = await Marathon.find().sort({ createdDate: -1 }).limit(50);
-        const marathonsUserIds = marathons.map(marathon => marathon.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
-        const marathonsUsers = await User.find({ _id: { $in: marathonsUserIds } });
-        const recentMarathons = marathons.map(marathon => {
-            const user = marathon.userId ? 
-            marathonsUsers.find(user => user._id.toString() === marathon.userId.toString()) 
-            : null;
-    
-            return {
-                ...marathon.toObject(),
-                user: user
-            };
-        });
+    const marathons = await Marathon.find().sort({ createdDate: -1 }).limit(50);
+    const marathonsUserIds = marathons.map(marathon => marathon.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
+    const marathonsUsers = await User.find({ _id: { $in: marathonsUserIds } });
+    const recentMarathons = marathons.map(marathon => {
+      const user = marathon.userId ?
+        marathonsUsers.find(user => user._id.toString() === marathon.userId.toString())
+        : null;
 
-        const htmlContent = `
+      return {
+        ...marathon.toObject(),
+        user: user
+      };
+    });
+    function viewDetails(id) {
+      const marathon = recentMarathons.find(m => m._id === id);
+      if (!marathon) return;
+
+      const marathonObj = marathon.toObject ? marathon.toObject() : marathon;
+
+      const marathonDetails = `
+          <h2>${marathonObj.title}</h2>
+          <p><strong>ID:</strong> ${marathonObj._id}</p>
+          <p><strong>描述:</strong> ${marathonObj.description}</p>
+          <p><strong>目標:</strong> ${marathonObj.goals}</p>
+          <p><strong>內容:</strong> ${marathonObj.content}</p>
+          <p><strong>動機標籤:</strong> ${marathonObj.motivation?.tags?.join(', ') || 'N/A'}</p>
+          <p><strong>動機描述:</strong> ${marathonObj.motivation?.description || 'N/A'}</p>
+          <p><strong>策略標籤:</strong> ${marathonObj.strategies?.tags?.join(', ') || 'N/A'}</p>
+          <p><strong>策略描述:</strong> ${marathonObj.strategies?.description || 'N/A'}</p>
+          <p><strong>資源標題:</strong> ${marathonObj.resources?.title || 'N/A'}</p>
+          <p><strong>資源連結:</strong> <a href="${marathonObj.resources?.link}" target="_blank">${marathonObj.resources?.link || 'N/A'}</a></p>
+          <p><strong>結果標籤:</strong> ${marathonObj.outcomes?.tags?.join(', ') || 'N/A'}</p>
+          <p><strong>結果描述:</strong> ${marathonObj.outcomes?.description || 'N/A'}</p>
+          <p><strong>用戶:</strong> ${marathonObj.user?.name || 'N/A'}</p>
+          <p><strong>創建日期:</strong> ${new Date(marathonObj.createdDate).toLocaleString()}</p>
+      `;
+
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed';
+      modal.style.top = '50%';
+      modal.style.left = '50%';
+      modal.style.transform = 'translate(-50%, -50%)';
+      modal.style.backgroundColor = 'white';
+      modal.style.padding = '20px';
+      modal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+      modal.style.zIndex = '1000';
+      modal.style.maxWidth = '80%';
+      modal.style.maxHeight = '80%';
+      modal.style.overflowY = 'auto';
+
+      modal.innerHTML = `
+          ${marathonDetails}
+          <button onclick="closeModal()">關閉</button>
+      `;
+
+      document.body.appendChild(modal);
+    }
+
+    function closeModal() {
+      const modal = document.querySelector('div[style*="z-index: 1000"]');
+      if (modal) modal.remove();
+    }
+
+
+    const htmlContent = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -59,6 +109,31 @@ router.get('/', async (req, res) => {
             th {
               background-color: #f4f4f4;
             }
+            .marathons {
+              display: flex;
+              flex-direction: column;
+              gap: 20px; /* 每個馬拉松資料的間距 */
+            }
+
+            .marathon-item {
+              border: 1px solid #ddd;
+              padding: 15px;
+              border-radius: 8px;
+              background-color: #f9f9f9;
+            }
+
+            .marathon-item h3 {
+              margin-top: 0;
+            }
+
+            .marathon-item div {
+              margin-bottom: 10px;
+            }
+
+            .marathon-item strong {
+              color: #333;
+            }
+
           </style>
         </head>
         <body>
@@ -82,8 +157,8 @@ router.get('/', async (req, res) => {
               <th>Created At</th>
             </tr>
             ${recentUsers.map((user, index) => {
-                const url = `${process.env.FRONTEND_URL}/partner/detail?id=${user._id || ''}`;
-                return `
+      const url = `${process.env.FRONTEND_URL}/partner/detail?id=${user._id || ''}`;
+      return `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${user._id}</td>
@@ -91,7 +166,7 @@ router.get('/', async (req, res) => {
                     <td><a href="${url}" target="_blank">${url}</a></td>
                     <td>${new Date(user.createdDate).toLocaleString()}</td>
                   </tr>`;
-            }).join('')}
+    }).join('')}
           </table>
   
           <h2>Recent Activities (50):</h2>
@@ -105,9 +180,9 @@ router.get('/', async (req, res) => {
               <th>Created At</th>
             </tr>
             ${recentActivities.map((activity, index) => {
-                const activityObj = activity.toObject ? activity.toObject() : activity;
-                const url = `${process.env.FRONTEND_URL}/group/detail?id=${activityObj._id || ''}`;
-                return `
+      const activityObj = activity.toObject ? activity.toObject() : activity;
+      const url = `${process.env.FRONTEND_URL}/group/detail?id=${activityObj._id || ''}`;
+      return `
                     <tr>
                     <td>${index + 1}</td>
                     <td>${activityObj._id}</td>
@@ -116,45 +191,60 @@ router.get('/', async (req, res) => {
                     <td><a href="${url}" target="_blank">${url}</a></td>
                     <td>${new Date(activityObj.createdDate).toLocaleString()}</td>
                     </tr>`;
-            }).join('')}
-          </table>
-  
-          <h2>Recent Marathons (50):</h2>
-          <table>
-            <tr>
-              <th>#</th>
-              <th>Marathon ID</th>
-              <th>Title</th>
-              <th>Description</th>
-              <th>Goals</th>
-              <th>Content</th>
-              <th>User Name</th>
-              <th>Created At</th>
-            </tr>
-            ${recentMarathons.map((marathon, index) => {
-                const marathonObj = marathon.toObject? marathon.toObject() : marathon;
-                return `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${marathonObj._id}</td>
-                    <td>${marathonObj.title}</td>
-                    <td style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">${marathonObj.description}</td>
-                    <td>${marathonObj.goals}</td>
-                    <td style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">${marathonObj.content}</td>
-                    <td>${marathonObj.user?.name || 'N/A'}</td>
-                    <td>${new Date(marathonObj.createdDate).toLocaleString()}</td>
-                </tr>`;
-            }).join('')}
-          </table>
+    }).join('')}
+        <h2>Recent Marathons (50):</h2>
+        <div class="marathons">
+          ${recentMarathons.map((marathon, index) => {
+            const marathonObj = marathon.toObject ? marathon.toObject() : marathon;
+            return `
+              <div class="marathon-item">
+                <h3>Marathon #${index + 1}</h3>
+                <div><strong>Marathon ID:</strong> ${marathonObj._id}</div>
+                <div><strong>User Name:</strong> ${marathonObj.user?.name || 'N/A'}</div>
+                <div><strong>Title:</strong> ${marathonObj.title}</div>
+                <div><strong>Description:</strong>
+                  <div style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">
+                    ${marathonObj.description || 'N/A'}
+                  </div>
+                </div>
+                <div><strong>Goals:</strong> ${marathonObj.goals || 'N/A'}</div>
+                <div><strong>Content:</strong>
+                  <div style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">
+                    ${marathonObj.content || 'N/A'}
+                  </div>
+                </div>
+                <div><strong>Motivation Tags:</strong> ${marathonObj.motivation?.tags?.join(', ') || 'N/A'}</div>
+                <div><strong>Motivation Description:</strong> ${marathonObj.motivation?.description || 'N/A'}</div>
+                <div><strong>Strategies Tags:</strong> ${marathonObj.strategies?.tags?.join(', ') || 'N/A'}</div>
+                <div><strong>Strategies Description:</strong> ${marathonObj.strategies?.description || 'N/A'}</div>
+                <div><strong>Resource Title:</strong> ${marathonObj.resources?.title || 'N/A'}</div>
+                <div><strong>Resource Link:</strong>
+                  <a href="${marathonObj.resources?.link || '#'}" target="_blank">
+                    ${marathonObj.resources?.link || 'N/A'}
+                  </a>
+                </div>
+                <div><strong>Milestones:</strong>
+                  ${marathonObj.milestones?.map((milestone, idx) => `
+                    <div><b>Milestone ${idx + 1}:</b> ${milestone.title || 'N/A'} - ${milestone.description || 'N/A'}</div>
+                  `).join('') || 'N/A'}
+                </div>
+                <div><strong>Outcomes Tags:</strong> ${marathonObj.outcomes?.tags?.join(', ') || 'N/A'}</div>
+                <div><strong>Outcomes Description:</strong> ${marathonObj.outcomes?.description || 'N/A'}</div>
+                <div><strong>Created At:</strong> ${new Date(marathonObj.createdDate).toLocaleString()}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
         </body>
         </html>
       `;
 
-        res.send(htmlContent);
-    } catch (error) {
-        console.error('Error fetching recent data:', error);
-        res.status(500).send('An error occurred while fetching recent data.');
-    }
+    res.send(htmlContent);
+  } catch (error) {
+    console.error('Error fetching recent data:', error);
+    res.status(500).send('An error occurred while fetching recent data.');
+  }
 });
 
 module.exports = router;
