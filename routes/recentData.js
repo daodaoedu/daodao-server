@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const activityCount = await Activity.countDocuments();
     const marathonCount = await Marathon.countDocuments();
 
-    const recentUsers = await User.find({}, '_id name createdDate ').sort({ createdDate: -1 }).limit(50);
+    const recentUsers = await User.find({}, '_id name email createdDate updatedDate  ').sort({ createdDate: -1 }).limit(50);
 
     const activities = await Activity.find().sort({ createdDate: -1 }).limit(50);
     const activitiesUserIds = activities.map(activity => activity.userId).filter(id => id && id.toString().match(/^[0-9a-fA-F]{24}$/));
@@ -100,7 +100,7 @@ router.get('/', async (req, res) => {
           <table>
             <tr>
               <th>#</th>
-              <th>User ID</th>
+              <th>User Email</th>
               <th>Name</th>
               <th>Detail URL</th>
               <th>Created At</th>
@@ -111,7 +111,7 @@ router.get('/', async (req, res) => {
               return `
                           <tr>
                             <td>${index + 1}</td>
-                            <td>${user._id}</td>
+                            <td>${user.email}</td>
                             <td>${user.name}</td>
                             <td><a href="${url}" target="_blank">${url}</a></td>
                             <td>${new Date(user.createdDate).toLocaleString()}</td>
@@ -154,6 +154,7 @@ router.get('/', async (req, res) => {
                       <div class="marathon-item">
                         <h3>Marathon #${index + 1}</h3>
                         <div><strong>Marathon ID:</strong> ${marathonObj._id}</div>
+                        <div><strong>User Email:</strong> ${marathonObj.user?.email || 'N/A'}</div>
                         <div><strong>User Name:</strong> ${marathonObj.user?.name || 'N/A'}</div>
                         <div><strong>Title:</strong> ${marathonObj.title}</div>
                         <div><strong>Description:</strong>
