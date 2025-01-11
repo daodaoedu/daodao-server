@@ -123,12 +123,13 @@ exports.getMarathonById = async (req, res) => {
 
 exports.updateMarathon = async (req, res) => {
   try {
+    req.body.updatedDate = Date.now();
     const marathon = await Marathon.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
     if (!marathon) return res.status(404).send("Marathon not found");
-    
+
     const response = {
       data: marathon,
     };
