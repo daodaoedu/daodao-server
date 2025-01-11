@@ -147,48 +147,81 @@ router.get('/', async (req, res) => {
             }).join('')}
           </table>
           <h2>Recent Marathons (50):</h2>
-          <div class="marathons">
+          <div class="marathon-container" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="text-align: center; margin-bottom: 20px;">Marathon Details</h2>
             ${recentMarathons.map((marathon, index) => {
               const marathonObj = marathon.toObject ? marathon.toObject() : marathon;
               return `
-                      <div class="marathon-item">
-                        <h3>Marathon #${index + 1}</h3>
-                        <div><strong>Marathon ID:</strong> ${marathonObj._id}</div>
-                        <div><strong>User Email:</strong> ${marathonObj.user?.email || 'N/A'}</div>
-                        <div><strong>User Name:</strong> ${marathonObj.user?.name || 'N/A'}</div>
-                        <div><strong>Title:</strong> ${marathonObj.title}</div>
-                        <div><strong>Description:</strong>
-                          <div style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">
-                            ${marathonObj.description || 'N/A'}
-                          </div>
+                <div class="marathon-item" style="border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; padding: 20px; background-color: #f9f9f9;">
+                  <h3 style="color: #0056b3;">Marathon #${index + 1}</h3>
+                  <hr style="margin: 10px 0; border-top: 1px solid #ddd;">
+                  <div style="margin-bottom: 10px;"><strong>Marathon ID:</strong> ${marathonObj._id}</div>
+                  <div style="margin-bottom: 10px;"><strong>User Email:</strong> ${marathonObj.user?.email || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>User Name:</strong> ${marathonObj.user?.name || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Title:</strong> ${marathonObj.title || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Description:</strong>
+                    <div style="padding: 10px; background-color: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 100px; overflow-y: auto; word-break: break-word;">
+                      ${marathonObj.description || 'N/A'}
+                    </div>
+                  </div>
+                  <div style="margin-bottom: 10px;"><strong>Goals:</strong> ${marathonObj.goals || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Content:</strong>
+                    <div style="padding: 10px; background-color: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 100px; overflow-y: auto; word-break: break-word;">
+                      ${marathonObj.content || 'N/A'}
+                    </div>
+                  </div>
+                  <h4 style="color: #0056b3;">Motivation</h4>
+                  <div style="margin-bottom: 10px;"><strong>Tags:</strong> ${marathonObj.motivation?.tags?.join(', ') || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Description:</strong> ${marathonObj.motivation?.description || 'N/A'}</div>
+                  <h4 style="color: #0056b3;">Strategies</h4>
+                  <div style="margin-bottom: 10px;"><strong>Tags:</strong> ${marathonObj.strategies?.tags?.join(', ') || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Description:</strong> ${marathonObj.strategies?.description || 'N/A'}</div>
+                  <h4 style="color: #0056b3;">Resources</h4>
+                  <div style="margin-bottom: 10px;"><strong>Title:</strong> ${marathonObj.resources?.title || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Link:</strong>
+                    <a href="${marathonObj.resources?.link || '#'}" target="_blank" style="color: #007bff; text-decoration: none;">
+                      ${marathonObj.resources?.link || 'N/A'}
+                    </a>
+                  </div>
+                  <h4 style="color: #0056b3;">Milestones</h4>
+                  <div style="margin-bottom: 10px;">
+                    ${marathonObj.milestones?.length > 0 ? marathonObj.milestones.map((milestone, idx) => `
+                      <div style="margin-bottom: 5px;">
+                        <strong>Milestone ${idx + 1}:</strong> 
+                        <div><strong>Title:</strong> ${milestone.name || 'N/A'}</div>
+                        <div><strong>Start Date:</strong> ${milestone.startDate ? new Date(milestone.startDate).toLocaleDateString() : 'N/A'}</div>
+                        <div><strong>End Date:</strong> ${milestone.endDate ? new Date(milestone.endDate).toLocaleDateString() : 'N/A'}</div>
+                        <div><strong>Description:</strong> ${milestone.description || 'N/A'}</div>
+                        <div><strong>Sub-Milestones:</strong>
+                          ${milestone.subMilestones?.length > 0 ? milestone.subMilestones.map(sub => `
+                            <div style="padding-left: 10px;">
+                              <div><strong>Name:</strong> ${sub.name || 'N/A'}</div>
+                              <div><strong>Dates:</strong> ${sub.dates?.map(date => new Date(date).toLocaleDateString()).join(', ') || 'N/A'}</div>
+                              <div><strong>Description:</strong> ${sub.description || 'N/A'}</div>
+                            </div>
+                          `).join('') : 'None'}
                         </div>
-                        <div><strong>Goals:</strong> ${marathonObj.goals || 'N/A'}</div>
-                        <div><strong>Content:</strong>
-                          <div style="width:300px; max-height:100px; overflow-y:auto; word-break:break-word;">
-                            ${marathonObj.content || 'N/A'}
-                          </div>
-                        </div>
-                        <div><strong>Motivation Tags:</strong> ${marathonObj.motivation?.tags?.join(', ') || 'N/A'}</div>
-                        <div><strong>Motivation Description:</strong> ${marathonObj.motivation?.description || 'N/A'}</div>
-                        <div><strong>Strategies Tags:</strong> ${marathonObj.strategies?.tags?.join(', ') || 'N/A'}</div>
-                        <div><strong>Strategies Description:</strong> ${marathonObj.strategies?.description || 'N/A'}</div>
-                        <div><strong>Resource Title:</strong> ${marathonObj.resources?.title || 'N/A'}</div>
-                        <div><strong>Resource Link:</strong>
-                          <a href="${marathonObj.resources?.link || '#'}" target="_blank">
-                            ${marathonObj.resources?.link || 'N/A'}
-                          </a>
-                        </div>
-                        <div><strong>Milestones:</strong>
-                          ${marathonObj.milestones?.map((milestone, idx) => `
-                            <div><b>Milestone ${idx + 1}:</b> ${milestone.title || 'N/A'} - ${milestone.description || 'N/A'}</div>
-                          `).join('') || 'N/A'}
-                        </div>
-                        <div><strong>Outcomes Tags:</strong> ${marathonObj.outcomes?.tags?.join(', ') || 'N/A'}</div>
-                        <div><strong>Outcomes Description:</strong> ${marathonObj.outcomes?.description || 'N/A'}</div>
-                        <div><strong>Created At:</strong> ${new Date(marathonObj.createdDate).toLocaleString()}</div>
-                        <div><strong>Updated At:</strong> ${new Date(marathonObj.updatedDate).toLocaleString()}</div>
                       </div>
-                    `;
+                    `).join('') : 'N/A'}
+                  </div>
+                  <h4 style="color: #0056b3;">Outcomes</h4>
+                  <div style="margin-bottom: 10px;"><strong>Tags:</strong> ${marathonObj.outcomes?.tags?.join(', ') || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Description:</strong> ${marathonObj.outcomes?.description || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Status:</strong> ${marathonObj.status || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Registration Status:</strong> ${marathonObj.registrationStatus || 'N/A'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Registration Date:</strong> ${marathonObj.registrationDate || 'N/A'}</div>
+                  <h4 style="color: #0056b3;">Pricing</h4>
+                  <div style="margin-bottom: 10px;">
+                    <strong>Option:</strong> ${marathonObj.pricing?.option || 'N/A'}<br>
+                    <strong>Price:</strong> ${marathonObj.pricing?.price || 'N/A'}<br>
+                    <strong>Email:</strong> ${marathonObj.pricing?.email?.join(', ') || 'N/A'}
+                  </div>
+                  <div style="margin-bottom: 10px;"><strong>Public:</strong> ${marathonObj.isPublic ? 'Yes' : 'No'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Send Email:</strong> ${marathonObj.isSendEmail ? 'Yes' : 'No'}</div>
+                  <div style="margin-bottom: 10px;"><strong>Created At:</strong> ${new Date(marathonObj.createdDate).toLocaleString()}</div>
+                  <div style="margin-bottom: 10px;"><strong>Updated At:</strong> ${new Date(marathonObj.updatedDate).toLocaleString()}</div>
+                </div>
+              `;
             }).join('')}
           </div>
         </body>
