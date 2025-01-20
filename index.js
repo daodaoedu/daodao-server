@@ -27,6 +27,7 @@ const corsOptions = {
   origin: [
     process.env.FRONTEND_URL,
     'http://localhost:5000',
+    'https://feat-v2.daodao-notion-test.pages.dev',
     'https://dev.daodao-notion-test.pages.dev',
     'https://www.daoedu.tw',
   ],
