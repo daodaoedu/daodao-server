@@ -150,22 +150,28 @@ router.get('/', async (req, res) => {
           <table>
             <tr>
               <th>#</th>
+              <th>Marathon ID</th>
               <th>Title</th>
-              <th>User Email</th>
               <th>User Name</th>
+              <th>Pricing Option</th>
+              <th>Price</th>
+              <th>Email</th>
               <th>Detail URL</th>
               <th>Created At</th>
               <th>Updated At</th>
             </tr>
             ${recentMarathons.map((marathon, index) => {
               const marathonObj = marathon.toObject ? marathon.toObject() : marathon;
-              const url = `${process.env.FRONTEND_URL}/learning-marathon/profile?id=${marathonObj._id || ''}`;
+              const url = `${process.env.FRONTEND_URL}/group/detail?id=${marathonObj._id || ''}`;
               return `
                 <tr>
                   <td>${index + 1}</td>
+                  <td>${marathonObj._id}</td>
                   <td>${marathonObj.title}</td>
-                  <td>${marathonObj.user?.email || 'N/A'}</td>
                   <td>${marathonObj.user?.name || 'N/A'}</td>
+                  <td>${marathonObj.pricing?.option || 'N/A'}</td>
+                  <td>${marathonObj.pricing?.price || 'N/A'}</td>
+                  <td>${marathonObj.pricing?.email?.join(', ') || 'N/A'}</td>
                   <td><a href="${url}" target="_blank">${url}</a></td>
                   <td>${new Date(marathonObj.createdDate).toLocaleString()}</td>
                   <td>${new Date(marathonObj.updatedDate).toLocaleString()}</td>
