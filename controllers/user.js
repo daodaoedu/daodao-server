@@ -15,6 +15,7 @@ const  { verifyToken,generateToken } = require("../services/jwt");
 const TempUser = require("../models/tempUser.model");
 const sendVerifiedEmail = require("../controller/sendVerifiedEmail");
 const { FRONTEND_URL,BACKEND_URL } = process.env;
+const { validate: isUuid } = require('uuid');
 
 
 
@@ -177,7 +178,10 @@ exports.getAllUsers = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const currentUser = req.user;
-    
+
+    if (!isUuid(currentUser._id)) {
+      return res.status(404).json({ error: true, message: "User not found" });
+    }
     // 修改部分：添加格式化邏輯
     const user = await User.findOne({
       where: { external_id: currentUser._id },
@@ -521,11 +525,13 @@ exports.createUser = async (req, res) => {
   console.log('isSendEmail',isSendEmail);
   if(isSendEmail){
       await sendVerifiedEmail(userJson.Contact?.email, userJson.nickname,verifyLink);
+
+      await TempUser.findByIdAndDelete(req.user._id);
+      console.log('TempUser删除成功:');
   }
 
 
     await transaction.commit();
-    await TempUser.findByIdAndDelete(req.user._id);
     res.status(201).json({ message: "User created successfully", user: responseData, token: newToken });
 
   } catch (error) {
