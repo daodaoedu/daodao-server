@@ -300,7 +300,7 @@ exports.getOneUser = async (req, res) => {
       updatedAt: formatToTaipeiTime(userJson.updated_at)
     };
 
-    res.status(200).json(userData);
+    res.status(200).json({data: formattedData});
 
   } catch (error) {
     console.error('获取用户错误：', {
