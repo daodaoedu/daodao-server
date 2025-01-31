@@ -26,24 +26,9 @@ const UserProject = sequelize.define('UserProject', {
     onDelete: 'CASCADE'
   }
 }, {
-  tableName: 'user_project', // 明确指定表名
-  timestamps: false,         // 根据 SQL 表结构没有时间戳字段
-  underscored: true          // 使用下划线命名风格
+  tableName: 'user_project', 
+  timestamps: false,         
+  underscored: true          
 });
-
-// 定义模型关联
-UserProject.associate = function(models) {
-  UserProject.belongsTo(models.User, {
-    foreignKey: 'user_external_id',
-    targetKey: 'external_id',
-    as: 'user'
-  });
-  
-  UserProject.belongsTo(models.Project, {
-    foreignKey: 'project_id',
-    targetKey: 'id',
-    as: 'project'
-  });
-};
 
 module.exports = UserProject;
