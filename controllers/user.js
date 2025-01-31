@@ -281,6 +281,9 @@ exports.getOneUser = async (req, res) => {
       role: userJson.role,
       tagList: tagList,
       location: userJson.Location?.Area?.city || '',
+      selfIntroduction: userJson.BasicInfo?.self_introduction,
+      share: userJson.BasicInfo?.share_list,
+      wantToDoList: userJson.BasicInfo?.want_to_do_list,
       contactList: {
         email: userJson.Contact?.email,
         photoUrl: userJson.Contact?.photo_url,
