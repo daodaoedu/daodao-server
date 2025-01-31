@@ -10,6 +10,7 @@ const Location = require('./location');
 const Area = require('./area');
 const Contact = require('./contact');
 const BasicInfo = require('./basicInfo');
+const UserProject = require('./userProject');
 
 const Project = require('./project');
 const Milestone = require('./milestone');
@@ -87,11 +88,28 @@ const setupAssociations = () => {
   });
 
   // 3. 專案相關關聯
-  User.hasMany(Project, { 
+  User.hasMany(Project, {
     foreignKey: 'user_id',
   });
-  Project.belongsTo(User, { 
+
+  User.belongsToMany(Project, {
+    through: "user_projects",
     foreignKey: 'user_id',
+    otherKey: 'project_id',
+  });
+
+  Project.belongsTo(User, {
+    foreignKey: 'user_id'
+  });
+
+  UserProject.belongsTo(User, {
+    foreignKey: 'user_external_id',
+    targetKey: 'external_id',
+  });
+
+  UserProject.belongsTo(Project, {
+    foreignKey: 'project_id',
+    targetKey: 'id',
   });
 
   Project.hasMany(Milestone, { 

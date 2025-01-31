@@ -4,28 +4,28 @@ const projectController = require('../controllers/project');
 const noteController = require('../controllers/note');
 const outcomeController = require('../controllers/outcome');
 const reviewController = require('../controllers/review');
-const {isAuthenticated,requireCompleteProfile} = require("../middlewares/isAuthenticated");
+const { isAuthenticated, requireCompleteProfile } = require("../middlewares/isAuthenticated");
 
 // 獲取學習計畫列表
 router.get('/', projectController.getProjects);
+
+// 獲取我的學習計畫
+router.get('/me', isAuthenticated, projectController.getMyProjects);
 
 // 獲取單個學習計畫詳情
 router.get('/:externalId', projectController.getProject);
 
 // 創建學習計畫
-router.post('/',isAuthenticated, projectController.createProject);
+router.post('/', isAuthenticated, projectController.createProject);
 
 // 更新學習計畫
-router.put('/:externalId',isAuthenticated, projectController.updateProject);
+router.put('/:externalId', isAuthenticated, projectController.updateProject);
 
 // 刪除學習計畫
-router.delete('/:externalId',isAuthenticated,projectController.deleteProject);
+router.delete('/:externalId', isAuthenticated, projectController.deleteProject);
 
-router.post('/:projectId/notes',isAuthenticated,
-    noteController.createNote
-);
+router.post('/:projectId/notes', isAuthenticated,
 
-router.get('/:projectId/notes',
   noteController.getNotes
 );
 
@@ -33,52 +33,52 @@ router.get('/:projectId/notes/:noteId',
   noteController.getNoteDetail
 );
 
-router.put('/:projectId/notes/:noteId',isAuthenticated,
+router.put('/:projectId/notes/:noteId', isAuthenticated,
   noteController.updateNote
 );
 
-router.delete('/:projectId/notes/:noteId',isAuthenticated,
+router.delete('/:projectId/notes/:noteId', isAuthenticated,
   noteController.deleteNote
 );
 
 
-router.post('/:projectId/outcomes',isAuthenticated,
+router.post('/:projectId/outcomes', isAuthenticated,
   outcomeController.createOutcome
 );
 
 router.get('/:projectId/outcomes',
-    outcomeController.getOutcomes
+  outcomeController.getOutcomes
 );
 
 router.get('/:projectId/outcomes/:outcomeId',
-    outcomeController.getOutcomeDetail
+  outcomeController.getOutcomeDetail
 );
 
-router.put('/:projectId/outcomes/:outcomeId',isAuthenticated,
+router.put('/:projectId/outcomes/:outcomeId', isAuthenticated,
   outcomeController.updateOutcome
 );
 
-router.delete('/:projectId/outcomes/:outcomeId',isAuthenticated,
+router.delete('/:projectId/outcomes/:outcomeId', isAuthenticated,
   outcomeController.deleteOutcome
 );
 
-router.post('/:projectId/reviews',isAuthenticated,
-    reviewController.createReview
-  );
-  
+router.post('/:projectId/reviews', isAuthenticated,
+  reviewController.createReview
+);
+
 router.get('/:projectId/reviews',
-    reviewController.getReviews
+  reviewController.getReviews
 );
 router.get('/:projectId/reviews/:reviewId',
-    reviewController.getReviewDetail
+  reviewController.getReviewDetail
 );
 
-router.put('/:projectId/reviews/:reviewId',isAuthenticated,
-    reviewController.updateReview
+router.put('/:projectId/reviews/:reviewId', isAuthenticated,
+  reviewController.updateReview
 );
 
-router.delete('/:projectId/reviews/:reviewId',isAuthenticated,
-    reviewController.deleteReview
+router.delete('/:projectId/reviews/:reviewId', isAuthenticated,
+  reviewController.deleteReview
 );
 
 module.exports = router;

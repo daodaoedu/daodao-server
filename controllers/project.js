@@ -44,6 +44,8 @@ exports.createProject = async (req, res) => {
       });
     }
 
+    console.log("createProject.req.user",req.user);
+
     // 創建學習計畫
     const project = await Project.create({
       user_id: req.user.id,
@@ -325,7 +327,18 @@ const formatProjectResponse = (project) => {
   };
 };
 
-// 獲取單個學習計畫
+// 獲取我的學習計畫
+exports.getMyProjects = async (req, res) => {
+    console.log("user_id: ",req.user)
+    try {
+      const projects = await Project.findAll({ where: { user_id: req.user.id } });
+      res.status(200).json(projects.map(project => formatProjectResponse(project)));
+    } catch (error) {
+      console.error('獲取我的學習計畫錯誤：', error);
+      res.status(500).json({ error: true, message: '獲取我的學習計畫失敗' });
+    }
+  };
+  
 exports.getProject = async (req, res) => {
     try {
       const project = await Project.findOne({

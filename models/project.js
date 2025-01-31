@@ -3,9 +3,15 @@ const sequelize = require('../config/db');
 
 const Project = sequelize.define('Project', {
   id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  external_id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    allowNull: false,
+    unique: true
   },
   user_id: {
     type: DataTypes.INTEGER,
