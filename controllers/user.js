@@ -285,10 +285,10 @@ exports.getOneUser = async (req, res) => {
         email: userJson.Contact?.email,
         photoUrl: userJson.Contact?.photo_url,
         isSubscribeEmail: userJson.Contact?.is_subscribe_email,
-        ig: userJson.Contact?.ig,
+        instagram: userJson.Contact?.ig,
         discord: userJson.Contact?.discord,
         line: userJson.Contact?.line,
-        fb: userJson.Contact?.fb
+        facebook: userJson.Contact?.fb
       },
       basicInfo: {
         selfIntroduction: userJson.BasicInfo?.self_introduction,
