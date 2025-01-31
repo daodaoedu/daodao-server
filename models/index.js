@@ -4,7 +4,7 @@ const sequelize = require('../config/db');
 // 導入所有模型
 const User = require('./user');
 const Role = require('./role');
-const Permission = require('./Permission');
+const Permission = require('./permission');
 const Position = require('./position');
 const Location = require('./location');
 const Area = require('./area');
