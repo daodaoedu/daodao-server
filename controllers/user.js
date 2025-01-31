@@ -180,7 +180,7 @@ exports.getMe = async (req, res) => {
     
     // 修改部分：添加格式化邏輯
     const user = await User.findOne({
-      where: { external_id: currentUser.externalId },
+      where: { external_id: currentUser._id },
       include: [
         { model: Role },
         { 
@@ -510,7 +510,7 @@ exports.createUser = async (req, res) => {
 
     const newToken = generateToken({
       id: userJson.id,
-      externalId: userJson.external_id,
+      _id: userJson.external_id,
       isTemp: false,
   });
 
@@ -772,7 +772,7 @@ exports.deleteMe = async (req, res) => {
     const currentUser = req.user;
     // 1. 獲取完整用戶資料（不包含關聯）
     const user = await User.findOne({
-      where: { external_id: currentUser.externalId },
+      where: { external_id: currentUser._id },
       transaction
     });
 
