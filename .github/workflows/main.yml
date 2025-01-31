@@ -16,19 +16,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
-      - name: Install Linode CLI
-        run: pip install linode-cli
-      
-      - name: Verify Linode CLI Installation
-        run: linode-cli --version
-      
-      - name: Configure Linode CLI
-        env:
-          LINODE_CLI_TOKEN: ${{ secrets.LINODE_CLI_TOKEN }}
-        run: |
-          export LINODE_CLI_TOKEN
-          linode-cli --no-defaults linodes list
           
       - name: Set up SSH
         env:
