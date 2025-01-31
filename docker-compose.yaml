@@ -14,7 +14,9 @@ services:
       - prod_network
     depends_on:
       mongo_prod:
+        condition: service_healthy
       redis_prod:
+        condition: service_healthy
       postgres-prod:
         condition: service_healthy
 
@@ -34,7 +36,9 @@ services:
       - dev_network
     depends_on:
       mongo_dev:
+        condition: service_healthy
       redis_dev:
+        condition: service_healthy
       postgres-dev:
         condition: service_healthy
 
@@ -81,6 +85,11 @@ services:
       - mongo_prod_data:/data/db
     networks:
       - prod_network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   mongo_dev:
     image: mongo:4.4
@@ -89,6 +98,11 @@ services:
       - mongo_dev_data:/data/db
     networks:
       - dev_network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   redis_prod:
     image: redis:6
@@ -97,6 +111,11 @@ services:
       - redis_prod_data:/data
     networks:
       - prod_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis_dev:
     image: redis:6
@@ -105,6 +124,11 @@ services:
       - redis_dev_data:/data
     networks:
       - dev_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   nginx:
     image: nginx:latest
