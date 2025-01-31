@@ -14,9 +14,7 @@ services:
       - prod_network
     depends_on:
       mongo_prod:
-        condition: service_healthy
       redis_prod:
-        condition: service_healthy
       postgres-prod:
         condition: service_healthy
 
@@ -36,9 +34,7 @@ services:
       - dev_network
     depends_on:
       mongo_dev:
-        condition: service_healthy
       redis_dev:
-        condition: service_healthy
       postgres-dev:
         condition: service_healthy
 
