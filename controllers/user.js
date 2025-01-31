@@ -123,7 +123,7 @@ exports.getAllUsers = async (req, res) => {
         .filter(Boolean)      // 移除空值
         : [];
       return {
-        id: userJson.external_id,
+        _id: userJson.external_id,
         name: userJson.nickname,
         gender: userJson.gender,
         photoURL: userJson.Contact?.photo_url,
@@ -177,19 +177,25 @@ exports.getAllUsers = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const currentUser = req.user;
-    // Fetch fresh user data from database
+    
+    // 修改部分：添加格式化邏輯
     const user = await User.findOne({
       where: { external_id: currentUser.externalId },
       include: [
         { model: Role },
-        { model: Location },
-        { model: Contact },
+        { 
+          model: Location,
+          include: [{ model: Area, attributes: ['city'] }]
+        },
+        { 
+          model: Contact,
+          attributes: ['email', 'photo_url', 'ig', 'discord', 'line', 'fb']
+        },
         { model: BasicInfo },
         {
           model: Position,
-          as: 'position',  // Added required alias
           through: { attributes: [] },
-          attributes: { exclude: ['createdAt', 'updatedAt'] }
+          attributes: ['name']
         }
       ]
     });
@@ -197,8 +203,29 @@ exports.getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: true, message: "User not found" });
     }
-    
-    res.status(200).json(user);
+
+    // 統一使用與其他方法相同的格式化邏輯
+    const userJson = user.toJSON();
+    const tagList = userJson.tag_list ? 
+      userJson.tag_list
+        .replace(/{|}/g, '')
+        .split(',')
+        .filter(Boolean) : [];
+
+    const formattedUser = {
+      _id: userJson.external_id,
+      name: userJson.nickname,
+      photoURL: userJson.Contact?.photo_url,
+      birthDate: formatToTaipeiTime(userJson.birth_date),
+      isOpenLocation: userJson.is_open_location,
+      isOpenProfile: userJson.is_open_profile,
+      role: userJson.Role?.name || 'user',
+      createdAt: formatToTaipeiTime(userJson.created_at),
+      updatedAt: formatToTaipeiTime(userJson.updated_at)
+    };
+
+    res.status(200).json(formattedUser);
+
   } catch (error) {
     res.status(500).json({ 
       error: true, 
@@ -244,7 +271,7 @@ exports.getOneUser = async (req, res) => {
       .filter(Boolean)      // 移除空值
       : [];
     const userData = {
-      id: userJson.external_id,
+      _id: userJson.external_id,
       name: userJson.nickname,
       gender: userJson.gender,
       birthDate: userJson.birth_date,
@@ -449,7 +476,7 @@ exports.createUser = async (req, res) => {
       .filter(Boolean)      // 移除空值
       : [];
     const responseData = {
-      id: userJson.id,
+      _id: userJson.id,
       externalId: userJson.external_id,
       name: userJson.nickname,
       gender: userJson.gender,
@@ -687,7 +714,7 @@ exports.updateUser = async (req, res) => {
       .filter(Boolean)      // 移除空值
       : [];
     const userData = {
-      id: userJson.external_id,
+      _id: userJson.external_id,
       name: userJson.nickname,
       gender: userJson.gender,
       birthDate: userJson.birth_date,
