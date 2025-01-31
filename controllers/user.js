@@ -1,0 +1,853 @@
+// controllers/user.js
+const User = require("../models/user");
+const Role = require("../models/role");
+const UserProfile = require("../models/userProfile");
+const Location = require("../models/location");
+const { Op } = require("sequelize");
+const Contact = require("../models/contact");
+const BasicInfo = require("../models/basicInfo");
+const Area = require("../models/area");
+const Position = require("../models/position");
+const UserPosition = require("../models/userPosition");
+const sequelize = require("../config/db");
+const moment = require('moment-timezone');
+const  { verifyToken,generateToken } = require("../services/jwt");
+const TempUser = require("../models/tempUser.model");
+const sendVerifiedEmail = require("../controller/sendVerifiedEmail");
+const { FRONTEND_URL,BACKEND_URL } = process.env;
+
+
+
+const formatToTaipeiTime = (date) => {
+  if (!date) return null;
+  return moment(date).tz('Asia/Taipei').format('YYYY-MM-DD HH:mm:ss');
+};
+
+// 获取所有用户
+exports.getAllUsers = async (req, res) => {
+  try {
+    let { page = 1, pageSize = 30, educationStage, roleList, location, search } = req.query;
+
+    page = parseInt(page);
+    pageSize = parseInt(pageSize);
+    const offset = (page - 1) * pageSize;
+
+    const whereConditions = {
+      is_open_profile: true // 默认只显示开放资料的用户
+    };
+
+    // 教育阶段过滤
+    if (educationStage) {
+      whereConditions.education_stage = educationStage.split(',');
+    }
+
+    // 角色过滤
+    if (roleList) {
+      whereConditions['$Positions.name$'] = {
+        [Op.in]: roleList.split(',')
+      };
+    }
+
+    // 地区过滤
+    if (location) {
+      whereConditions['$Location.Area.city$'] = {
+        [Op.in]: location.split(',')
+      };
+    }
+
+    // 搜索条件
+    if (search) {
+      whereConditions[Op.or] = [
+        { nickname: { [Op.iLike]: `%${search}%` } },
+        { '$BasicInfo.self_introduction$': { [Op.iLike]: `%${search}%` } },
+        { '$BasicInfo.share_list$': { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows } = await User.findAndCountAll({
+      where: whereConditions,
+      include: [
+        { 
+          model: Role,
+          attributes: ['name']
+        },
+        { 
+          model: Location,
+          attributes: [],
+          include: [{
+            model: Area,
+            attributes: ['city'],
+            required: false
+          }],
+          required: false
+        },
+        { 
+          model: Contact,
+          attributes: ['email', 'photo_url'],
+          required: false
+        },
+        { 
+          model: BasicInfo,
+          attributes: ['self_introduction', 'share_list', 'want_to_do_list'],
+          required: false
+        },
+        {
+          model: Position,
+          through: { attributes: [] },
+          attributes: ['name'],
+          required: false
+        }
+      ],
+      attributes: [
+        'external_id',
+        'nickname',
+        'gender',
+        'birth_date',
+        'is_open_location',
+        'is_open_profile',
+        'created_at',
+        'updated_at'
+      ],
+      distinct: true,
+      offset,
+      limit: pageSize,
+      order: [['created_at', 'DESC']]
+    });
+
+    const formattedData = rows.map(user => {
+      const userJson = user.toJSON();
+      return {
+        id: userJson.external_id,
+        name: userJson.nickname,
+        gender: userJson.gender,
+        birthDate: formatToTaipeiTime(userJson.birth_date),
+        isOpenLocation: userJson.is_open_location,
+        isOpenProfile: userJson.is_open_profile,
+        role: userJson.Role?.name || 'user',
+        location: userJson.Location?.Area?.city || '',
+        contactList: {
+          email: userJson.Contact?.email,
+          photoUrl: userJson.Contact?.photo_url
+        },
+        basicInfo: {
+          selfIntroduction: userJson.BasicInfo?.self_introduction,
+          shareList: userJson.BasicInfo?.share_list
+        },
+        roleList: userJson.Positions?.map(p => p.name) || [],
+        createdAt: formatToTaipeiTime(userJson.created_at),
+        updatedAt: formatToTaipeiTime(userJson.updated_at)
+      };
+    });
+
+    res.status(200).json({
+      data: formattedData,
+      page,
+      pageSize,
+      totalCount: count,
+      totalPages: Math.ceil(count / pageSize)
+    });
+
+  } catch (error) {
+    console.error('获取用户列表错误:', error);
+    res.status(500).json({ 
+      error: true, 
+      message: "Internal Server Error",
+      details: error.message 
+    });
+  }
+};
+
+// 获取当前用户
+exports.getMe = async (req, res) => {
+  try {
+    const currentUser = req.user;
+    // Fetch fresh user data from database
+    const user = await User.findOne({
+      where: { external_id: currentUser.externalId },
+      include: [
+        { model: Role },
+        { model: Location },
+        { model: Contact },
+        { model: BasicInfo },
+        {
+          model: Position,
+          as: 'position',  // Added required alias
+          through: { attributes: [] },
+          attributes: { exclude: ['createdAt', 'updatedAt'] }
+        }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: true, message: "User not found" });
+    }
+    
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ 
+      error: true, 
+      message: "Internal Server Error", 
+      details: error.message 
+    });
+  }
+};
+
+exports.getOneUser = async (req, res) => {
+  try {
+    const user = await User.findOne({
+      where: { external_id: req.params.id },
+      include: [
+        { model: Role },
+        { model: Location },
+        { model: Contact },
+        { model: BasicInfo },
+        {
+          model: Position,
+          through: { attributes: [] },
+          attributes: { exclude: ['createdAt', 'updatedAt'] }
+        }
+      ],
+      attributes: {
+        exclude: ['createdAt', 'updatedAt']
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ 
+        error: true, 
+        message: "User not found" 
+      });
+    }
+
+    // 格式化返回數據
+    const userJson = user.toJSON();
+    const tagList = userJson.tag_list ? 
+    userJson.tag_list
+      .replace(/{|}/g, '')  // 移除 {}
+      .split(',')           // 分割成陣列
+      .filter(Boolean)      // 移除空值
+      : [];
+    const userData = {
+      id: userJson.external_id,
+      name: userJson.nickname,
+      gender: userJson.gender,
+      birthDate: userJson.birth_date,
+      isOpenLocation: userJson.is_open_location,
+      isOpenProfile: userJson.is_open_profile,
+      role: userJson.role,
+      tagList: tagList,
+      location: userJson.Location?.Area?.city || '',
+      contactList: {
+        email: userJson.Contact?.email,
+        photoUrl: userJson.Contact?.photo_url,
+        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
+        ig: userJson.Contact?.ig,
+        discord: userJson.Contact?.discord,
+        line: userJson.Contact?.line,
+        fb: userJson.Contact?.fb
+      },
+      basicInfo: {
+        selfIntroduction: userJson.BasicInfo?.self_introduction,
+        shareList: userJson.BasicInfo?.share_list,
+        wantToDoList: userJson.BasicInfo?.want_to_do_list
+      },
+      roleList: userJson.Positions?.map(p => p.name) || [],
+      createdAt: formatToTaipeiTime(userJson.created_at),
+      updatedAt: formatToTaipeiTime(userJson.updated_at)
+    };
+
+    res.status(200).json(userData);
+
+  } catch (error) {
+    console.error('获取用户错误：', {
+      error: error.toString(),
+      stack: error.stack,
+      externalId: req.params.id
+    });
+    
+    res.status(500).json({ 
+      error: true, 
+      message: "Error fetching user", 
+      details: error.message 
+    });
+  }
+};
+
+exports.createUser = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  const requestData = { ...req.body };
+  let newUser = null;
+
+  try {
+    const { 
+      mongoId,
+      name: nickname,
+      email,
+      googleID,
+      photoURL,
+      gender,
+      birthDate,
+      educationStage,
+      isOpenLocation,
+      isOpenProfile,
+      isSubscribeEmail,
+      location: areaCode,
+      roleList,
+      selfIntroduction,
+      share,
+      wantToDoList,
+      tagList,
+      interestList
+    } = requestData;
+
+
+    const userData = req.body;
+    const {isSendEmail} = userData
+    console.log("isSendEmail",isSendEmail);
+    console.log("req.user",req.user);
+    console.log("req.user._id",req.user._id);
+    // 查找臨時用戶
+    const tempUser = await TempUser.findById(req.user._id);
+    console.log("tempUser",tempUser);
+    if (!tempUser) {
+        return res.status(404).json({ error: 'Temporary user not found' });
+    }
+
+    const existingContact = await Contact.findOne({
+      where: { email },
+      transaction
+    });
+
+    if (existingContact) {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: true,
+        message: "建立失敗",
+        details: `信箱 ${email} 已被註冊`
+      });
+    }
+
+    let locationId = null;
+    if (areaCode) {
+      const area = await Area.findOne({ 
+        where: { city: areaCode },
+        transaction
+      });
+      
+      if (!area) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: true,
+          message: "Invalid area code",
+          details: `'${areaCode}' 不是有效的城市名稱`
+        });
+      }
+      locationId = area.id;
+    }
+
+    const contact = await Contact.create({
+      google_id: googleID,
+      photo_url: photoURL,
+      is_subscribe_email: isSubscribeEmail,
+      email
+    }, { transaction });
+
+    const basicInfo = await BasicInfo.create({
+      self_introduction: selfIntroduction,
+      share_list: share,
+      want_to_do_list: wantToDoList
+    }, { transaction });
+
+    newUser = await User.create({
+      mongo_id: mongoId,
+      nickname,
+      gender,
+      education_stage: educationStage,
+      tag_list: Array.isArray(tagList) ? `{${tagList.join(',')}}` : '{}',
+      contact_id: contact.id,
+      is_open_location: isOpenLocation,
+      location_id: locationId,
+      role_id: 2, // 默認角色
+      is_open_profile: isOpenProfile,
+      birth_date: birthDate,
+      basic_info_id: basicInfo.id,
+    }, { transaction });
+
+    // 处理职位关联
+    if (roleList && roleList.length) {
+      const positions = await Position.findAll({
+        where: { name: { [Op.in]: roleList } },
+        transaction
+      });
+
+      if (positions.length > 0) {
+        const positionValues = positions.map(position => ({
+          user_id: newUser.id,
+          position_id: position.id
+        }));
+
+        const insertQuery = `
+          INSERT INTO user_positions (user_id, position_id)
+          VALUES ${positionValues.map(v => `(${v.user_id}, ${v.position_id})`).join(',')}
+        `;
+
+        await sequelize.query(insertQuery, {
+          transaction
+        });
+      }
+    }
+
+    // 獲取完整的用戶信息
+    const createdUser = await User.findOne({
+      where: { id: newUser.id },
+      include: [
+        { model: Role },
+        { 
+          model: Location,
+          attributes: [],
+          include: [{
+            model: Area,
+            attributes: ['city'],
+            required: false
+          }],
+          required: false
+        },
+        Contact,
+        BasicInfo,
+        {
+          model: Position,
+          through: { attributes: [] },
+          attributes: { exclude: ['createdAt', 'updatedAt'] }
+        }
+      ],
+      transaction
+    });
+
+    // 格式化返回數據
+    const userJson = createdUser.toJSON();
+    const tagListTrans = userJson.tag_list ? 
+    userJson.tag_list
+      .replace(/{|}/g, '')  // 移除 {}
+      .split(',')           // 分割成陣列
+      .filter(Boolean)      // 移除空值
+      : [];
+    const responseData = {
+      id: userJson.id,
+      externalId: userJson.external_id,
+      name: userJson.nickname,
+      gender: userJson.gender,
+      birthDate: userJson.birth_date,
+      isOpenLocation: userJson.is_open_location,
+      isOpenProfile: userJson.is_open_profile,
+      role: userJson.role,
+      location: userJson.Location?.Area?.city || '',
+      contact: {
+        email: userJson.Contact?.email,
+        photoUrl: userJson.Contact?.photo_url,
+        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
+        ig: userJson.Contact?.ig,
+        discord: userJson.Contact?.discord,
+        line: userJson.Contact?.line,
+        fb: userJson.Contact?.fb
+      },
+      basicInfo: {
+        selfIntroduction: userJson.BasicInfo?.self_introduction,
+        share: userJson.BasicInfo?.share_list,
+        wantToDoList: userJson.BasicInfo?.want_to_do_list
+      },
+      roleList: userJson.Positions?.map(p => p.name) || [],
+      tagList: tagListTrans,
+      createdAt: formatToTaipeiTime(userJson.created_at),
+      updatedAt: formatToTaipeiTime(userJson.updated_at)
+    };
+
+    const newToken = generateToken({
+      id: userJson.id,
+      externalId: userJson.external_id,
+      isTemp: false,
+  });
+
+  const verifyLink = `${BACKEND_URL}/email/verify?token=${newToken}`;
+  console.log("verifyLink", verifyLink);
+
+  // 發送註冊郵件
+  console.log('isSendEmail',isSendEmail);
+  if(isSendEmail){
+      await sendVerifiedEmail(userJson.Contact?.email, userJson.nickname,verifyLink);
+  }
+
+
+    await transaction.commit();
+    await TempUser.findByIdAndDelete(req.user._id);
+    res.status(201).json({ message: "User created successfully", user: responseData, token: newToken });
+
+  } catch (error) {
+    if (transaction.finished !== 'commit') {
+      await transaction.rollback();
+    }
+    console.error('完整错误日志：', {
+      error: error.toString(),
+      stack: error.stack,
+      sql: error.sql,
+      requestData: {
+        roleList: requestData.roleList,
+        email: requestData.email,
+        nickname: requestData.nickname
+      },
+      newUserId: newUser?.id
+    });
+    res.status(500).json({
+      error: true,
+      message: "用户创建失败",
+      details: `数据库错误：${error.original ? error.original.message : error.message}`
+    });
+  }
+};
+
+exports.updateUser = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    console.log('Update request:', {
+      externalId: req.params.id,
+      body: req.body
+    });
+    const user = await User.findOne({
+      where: { external_id: req.params.id },
+      include: [
+        { 
+          model: Location,
+          attributes: [],
+          include: [{
+            model: Area,
+            attributes: ['city'],
+            required: false
+          }],
+          required: false
+        },
+        Contact,
+        BasicInfo,
+        {
+          model: Position,
+          as: 'position',
+          through: { attributes: [] }
+        }
+      ],
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({
+        error: true,
+        message: "用户不存在"
+      });
+    }
+
+    const { 
+      name:nickname,
+      email,
+      photoUrl,
+      gender,
+      birthDate,
+      educationStage,
+      isOpenLocation,
+      isOpenProfile,
+      isSubscribeEmail,
+      selfIntroduction,
+      share,
+      wantToDoList,
+      tagList,
+      roleList,
+      interestList
+    } = req.body;
+    console.log('Before update:', {
+      userId: user.id,
+      currentTagList: user.tag_list,
+      newTagList: tagList
+    });
+    // 更新联系方式
+    if (user.Contact) {
+      await user.Contact.update({
+        photo_url: photoUrl,
+        is_subscribe_email: isSubscribeEmail,
+        email
+      }, { transaction });
+    }
+
+    // 更新基本信息
+    if (user.BasicInfo) {
+      await user.BasicInfo.update({
+        self_introduction: selfIntroduction,
+        share_list: share,
+        want_to_do_list: wantToDoList
+      }, { transaction });
+    }
+
+    // 更新用户主表
+    await user.update({
+      nickname,
+      gender,
+      tag_list: Array.isArray(tagList) ? `{${tagList.join(',')}}` : '{}',
+      education_stage: educationStage,
+      is_open_location: isOpenLocation,
+      is_open_profile: isOpenProfile,
+      birth_date: birthDate,
+      updated_at: new Date()
+    }, { transaction });
+
+    // 更新职位关联
+    if (roleList && Array.isArray(roleList)) {
+      // 1. 先删除现有的关联
+      await sequelize.query(
+        'DELETE FROM user_positions WHERE user_id = ?',
+        {
+          replacements: [user.id],
+          type: sequelize.QueryTypes.DELETE,
+          transaction
+        }
+      );
+
+      // 2. 如果有新的角色列表，则添加新的关联
+      if (roleList.length > 0) {
+        const positions = await Position.findAll({
+          where: { name: { [Op.in]: roleList } },
+          transaction
+        });
+
+        if (positions.length > 0) {
+          const insertValues = positions.map(position => 
+            `(${user.id}, ${position.id})`
+          ).join(',');
+
+          await sequelize.query(
+            `INSERT INTO user_positions (user_id, position_id) VALUES ${insertValues}`,
+            {
+              transaction
+            }
+          );
+        }
+      }
+    }
+
+    // 获取更新后的完整用户信息
+    const updatedUser = await User.findOne({
+      where: { external_id: req.params.id },
+      include: [
+        { model: Role },
+        { 
+          model: Location,
+          attributes: [],
+          include: [{
+            model: Area,
+            attributes: ['city'],
+            required: false
+          }],
+          required: false
+        },
+        { model: Contact },
+        { model: BasicInfo },
+        {
+          model: Position,
+          through: { attributes: [] },
+          attributes: { exclude: ['createdAt', 'updatedAt'] }
+        }
+      ],
+      attributes: {
+        exclude: ['createdAt', 'updatedAt']
+      },
+      transaction
+    });
+    console.log('After update:', {
+      userId: updatedUser.id,
+      tagList: updatedUser.tag_list
+    });
+    // 格式化返回数据
+    const userJson = updatedUser.toJSON();
+    const tagListTrans = userJson.tag_list ? 
+    userJson.tag_list
+      .replace(/{|}/g, '')  // 移除 {}
+      .split(',')           // 分割成陣列
+      .filter(Boolean)      // 移除空值
+      : [];
+    const userData = {
+      id: userJson.external_id,
+      name: userJson.nickname,
+      gender: userJson.gender,
+      birthDate: userJson.birth_date,
+      isOpenLocation: userJson.is_open_location,
+      isOpenProfile: userJson.is_open_profile,
+      role: userJson.role.name,
+      tagList: tagListTrans,
+      location: userJson.Location?.Area?.city || '',
+      contactList: {
+        email: userJson.Contact?.email,
+        photoUrl: userJson.Contact?.photo_url,
+        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
+        ig: userJson.Contact?.ig,
+        discord: userJson.Contact?.discord,
+        line: userJson.Contact?.line,
+        fb: userJson.Contact?.fb
+      },
+      basicInfo: {
+        selfIntroduction: userJson.BasicInfo?.self_introduction,
+        shareList: userJson.BasicInfo?.share_list,
+        wantToDoList: userJson.BasicInfo?.want_to_do_list
+      },
+      roleList: userJson.Positions?.map(p => p.name) || [],
+      createdAt: formatToTaipeiTime(userJson.created_at),
+      updatedAt: formatToTaipeiTime(userJson.updated_at)
+    };
+
+    await transaction.commit();
+    res.status(200).json(userData);
+
+  } catch (error) {
+    if (transaction.finished !== 'commit') {
+      await transaction.rollback();
+    }
+    console.error('更新用户错误：', {
+      error: error.toString(),
+      stack: error.stack,
+      externalId: req.params.id,
+      requestBody: req.body
+    });
+    res.status(500).json({ 
+      error: true, 
+      message: "更新用户失败", 
+      details: error.message 
+    });
+  }
+};
+
+exports.deleteMe = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const currentUser = req.user;
+    // 1. 獲取完整用戶資料（不包含關聯）
+    const user = await User.findOne({
+      where: { external_id: currentUser.externalId },
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({ error: true, message: "User not found" });
+    }
+
+    // 2. 刪除關聯資料（新順序）
+    // 2.1 先刪除user_positions
+    await UserPosition.destroy({
+      where: { user_id: user.id },
+      transaction
+    });
+
+    // 2.2 刪除用戶主體（先刪除user解除外鍵約束）
+    await user.destroy({ transaction });
+
+    // 2.3 後刪除contact和basic_info
+    await Contact.destroy({
+      where: { id: user.contact_id },  // 使用user保存的contact_id
+      transaction
+    });
+
+    await BasicInfo.destroy({
+      where: { id: user.basic_info_id },  // 使用user保存的basic_info_id
+      transaction
+    });
+
+    await transaction.commit();
+    
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('刪除用戶錯誤:', error);
+    res.status(500).json({ 
+      error: true, 
+      message: "刪除失敗", 
+      details: error.message 
+    });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const userId = req.params.id;
+
+    // 查找用户及其关联数据
+    const user = await User.findByPk(userId, {
+      include: [
+        Contact,
+        BasicInfo
+      ],
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({
+        error: true,
+        message: "用户不存在"
+      });
+    }
+
+    // 保存关联ID以便后续删除
+    const contactId = user.Contact?.id;
+    const basicInfoId = user.BasicInfo?.id;
+
+    // 1. 删除用户职位关联
+    await sequelize.query(
+      'DELETE FROM user_positions WHERE user_id = ?',
+      {
+        replacements: [userId],
+        type: sequelize.QueryTypes.DELETE,
+        transaction
+      }
+    );
+
+    // 2. 先删除用户本身（解除外键约束）
+    await user.destroy({ transaction });
+
+    // 3. 删除基本信息
+    if (basicInfoId) {
+      await sequelize.query(
+        'DELETE FROM basic_info WHERE id = ?',
+        {
+          replacements: [basicInfoId],
+          type: sequelize.QueryTypes.DELETE,
+          transaction
+        }
+      );
+    }
+
+    // 4. 删除联系方式
+    if (contactId) {
+      await Contact.destroy({
+        where: { user_id: user.id },
+        transaction
+      });
+    }
+
+    // 提交事务
+    await transaction.commit();
+
+    res.status(200).json({ message: "User deleted successfully" });
+
+  } catch (error) {
+    // 回滚事务
+    if (transaction.finished !== 'commit') {
+      await transaction.rollback();
+    }
+    console.error('删除用户错误：', {
+      error: error.toString(),
+      stack: error.stack,
+      sql: error.sql,
+      userId: req.params.id
+    });
+    res.status(500).json({
+      error: true,
+      message: "删除用户失败",
+      details: error.message
+    });
+  }
+};
