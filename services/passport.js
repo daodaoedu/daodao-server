@@ -12,13 +12,17 @@ const AUTH_OPTIONS = {
 passport.serializeUser((user, done) => {
     console.log("SerializeUser")
     console.log("SerializeUser:",user)
-    done(null, user.external_id);
+    if(user._id){
+        done(null, user._id);
+    }else{
+        done(null, user.external_id);
+    }
 });
 
 passport.deserializeUser(async (_id, done) => {
     console.log("DeserializeUser")
     let foundUser = await User.findOne({ _id });
-    console.log("DeserializeUser:",foundUser)
+    console.log("DeserializeUser:", foundUser)
     done(null, foundUser)
 })
 
@@ -30,16 +34,16 @@ passport.use(new GoogleStrategy(
             
             // 首先檢查是否存在正式用戶
             const foundContact = await Contact.findOne({
-                where: { google_id: profile.id },
+                where: { email: profile.emails[0].value },
                 include: [{
                     model: User,
                     required: false
                 }]
             });
             console.log("foundContact", foundContact);
-            console.log("foundContact.User", foundContact.User);
             if (foundContact && foundContact.User) {
                 console.log("使用者已註冊");
+
                 return done(null, foundContact.User);
             }
 

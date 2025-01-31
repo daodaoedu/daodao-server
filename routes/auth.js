@@ -14,19 +14,17 @@ router.get("/google",
 router.get("/google/callback", passport.authenticate("google"), async (req, res) => {
     console.log("google/callback_req.session", req.user);
     let { googleID,_id,id,external_id, name } = req.user;
-
-    const isUserExit = await User.findOne({
-        where: { external_id }
-    });
-    // let isNewUser = createdDate == updatedDate;
-    console.log("google/callback_isUserExit", isUserExit);
-    const time = Date.now();
-    const isTemp = !isUserExit;
-
+    console.log("google/callback_req.user", req.user);
+    
+    let isUserExit = false;
 
     if(external_id){
         _id = external_id;
+        isUserExit = true;
     }
+    console.log("google/callback_isUserExit", isUserExit);
+    const time = Date.now();
+    const isTemp = !isUserExit;
 
     const payload = { id,_id, name, time, isTemp: isTemp };
     console.log("google/callback_payload", payload);
