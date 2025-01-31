@@ -74,14 +74,13 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use('/auth', authRoutes);
-app.use('/project', projectRoutes);
-app.use('/user', userRoutes);
-app.use('/users', usersRoutes);
-app.use('/activity', activityRoutes);
-app.use("/marathon", marathonRoutes);
-app.use('/tag', tagRoutes);
-app.use('/email',strictLimiter, emailRoutes);
-app.use('/image',strictLimiter, imageRoutes);
+app.use('/projects', projectRoutes);
+app.use('/users', userRoutes);
+app.use('/circles', activityRoutes);
+app.use("/marathons", marathonRoutes);
+app.use('/tags', tagRoutes);
+app.use('/emails',strictLimiter, emailRoutes);
+app.use('/images',strictLimiter, imageRoutes);
 
 // app.get('/', (req, res) => {
 //     res.sendFile(path.join(__dirname, 'public', 'index.html'));
