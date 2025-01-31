@@ -151,7 +151,7 @@ exports.getAllUsers = async (req, res) => {
         },
         roleList: userJson.Positions?.map(p => p.name) || [],
         createdAt: formatToTaipeiTime(userJson.created_at),
-        updatedAt: formatToTaipeiTime(userJson.updated_at)
+        updatedDate: formatToTaipeiTime(userJson.updated_at)
       };
     });
 
@@ -221,7 +221,7 @@ exports.getMe = async (req, res) => {
       isOpenProfile: userJson.is_open_profile,
       role: userJson.Role?.name || 'user',
       createdAt: formatToTaipeiTime(userJson.created_at),
-      updatedAt: formatToTaipeiTime(userJson.updated_at)
+      updatedDate: formatToTaipeiTime(userJson.updated_at)
     };
 
     res.status(200).json(formattedUser);
@@ -297,10 +297,10 @@ exports.getOneUser = async (req, res) => {
       },
       roleList: userJson.Positions?.map(p => p.name) || [],
       createdAt: formatToTaipeiTime(userJson.created_at),
-      updatedAt: formatToTaipeiTime(userJson.updated_at)
+      updatedDate: formatToTaipeiTime(userJson.updated_at)
     };
 
-    res.status(200).json({data: formattedData});
+    res.status(200).json({data: userData});
 
   } catch (error) {
     console.error('获取用户错误：', {
