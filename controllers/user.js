@@ -151,7 +151,7 @@ exports.getAllUsers = async (req, res) => {
           shareList: userJson.BasicInfo?.share_list
         },
         roleList: userJson.Positions?.map(p => p.name) || [],
-        createdAt: formatToTaipeiTime(userJson.created_at),
+        createdDate: formatToTaipeiTime(userJson.created_at),
         updatedDate: formatToTaipeiTime(userJson.updated_at)
       };
     });
@@ -219,12 +219,34 @@ exports.getMe = async (req, res) => {
     const formattedUser = {
       _id: userJson.external_id,
       name: userJson.nickname,
+      email: userJson.Contact?.email,
+      gender: userJson.gender,
+      birthDate: userJson.birth_date,
       photoURL: userJson.Contact?.photo_url,
-      birthDate: formatToTaipeiTime(userJson.birth_date),
       isOpenLocation: userJson.is_open_location,
       isOpenProfile: userJson.is_open_profile,
-      role: userJson.Role?.name || 'user',
-      createdAt: formatToTaipeiTime(userJson.created_at),
+      role: userJson.role,
+      tagList: tagList,
+      location: userJson.Location?.Area?.city || '',
+      selfIntroduction: userJson.BasicInfo?.self_introduction,
+      share: userJson.BasicInfo?.share_list,
+      wantToDoList: userJson.BasicInfo?.want_to_do_list,
+      contactList: {
+        email: userJson.Contact?.email,
+        photoUrl: userJson.Contact?.photo_url,
+        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
+        instagram: userJson.Contact?.ig,
+        discord: userJson.Contact?.discord,
+        line: userJson.Contact?.line,
+        facebook: userJson.Contact?.fb
+      },
+      basicInfo: {
+        selfIntroduction: userJson.BasicInfo?.self_introduction,
+        shareList: userJson.BasicInfo?.share_list,
+        wantToDoList: userJson.BasicInfo?.want_to_do_list
+      },
+      roleList: userJson.Positions?.map(p => p.name) || [],
+      createdDate: formatToTaipeiTime(userJson.created_at),
       updatedDate: formatToTaipeiTime(userJson.updated_at)
     };
 
