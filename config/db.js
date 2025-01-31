@@ -3,7 +3,7 @@ const { Sequelize } = require('sequelize');
 
 const sequelize = new Sequelize({
   dialect: 'postgres',
-  host: 'localhost',
+  host: process.env.APP_ENV === 'dev' ? 'postgres-dev' : 'postgres-prod',
   username: 'daodao',
   password: 'daodao',
   database: 'daodao',
