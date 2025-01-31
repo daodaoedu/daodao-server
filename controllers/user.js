@@ -26,7 +26,7 @@ const formatToTaipeiTime = (date) => {
 // 获取所有用户
 exports.getAllUsers = async (req, res) => {
   try {
-    let { page = 1, pageSize = 30, educationStage, roleList, location, search } = req.query;
+    let { page = 1, pageSize = 10, educationStage, roleList, location, search } = req.query;
 
     page = parseInt(page);
     pageSize = parseInt(pageSize);
@@ -116,18 +116,34 @@ exports.getAllUsers = async (req, res) => {
 
     const formattedData = rows.map(user => {
       const userJson = user.toJSON();
+      const tagList = userJson.tag_list ? 
+      userJson.tag_list
+        .replace(/{|}/g, '')  // 移除 {}
+        .split(',')           // 分割成陣列
+        .filter(Boolean)      // 移除空值
+        : [];
       return {
         id: userJson.external_id,
         name: userJson.nickname,
         gender: userJson.gender,
+        photoURL: userJson.Contact?.photo_url,
         birthDate: formatToTaipeiTime(userJson.birth_date),
         isOpenLocation: userJson.is_open_location,
         isOpenProfile: userJson.is_open_profile,
         role: userJson.Role?.name || 'user',
         location: userJson.Location?.Area?.city || '',
+        tagList,
+        wantToDoList: userJson.BasicInfo?.want_to_do_list,
+        educationStage: userJson.education_stage,
+        selfIntroduction: userJson.BasicInfo?.self_introduction,
+        share: userJson.BasicInfo?.share_list,
         contactList: {
           email: userJson.Contact?.email,
-          photoUrl: userJson.Contact?.photo_url
+          photoURl: userJson.Contact?.photo_url,
+          ig: userJson.Contact?.ig,
+          discord: userJson.Contact?.discord,
+          line: userJson.Contact?.line,
+          fb: userJson.Contact?.fb
         },
         basicInfo: {
           selfIntroduction: userJson.BasicInfo?.self_introduction,
@@ -232,6 +248,7 @@ exports.getOneUser = async (req, res) => {
       name: userJson.nickname,
       gender: userJson.gender,
       birthDate: userJson.birth_date,
+      photoURL: userJson.Contact?.photo_url,
       isOpenLocation: userJson.is_open_location,
       isOpenProfile: userJson.is_open_profile,
       role: userJson.role,
