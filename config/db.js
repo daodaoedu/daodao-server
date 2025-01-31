@@ -3,7 +3,7 @@ const { Sequelize } = require('sequelize');
 
 const sequelize = new Sequelize({
   dialect: 'postgres',
-  host: 'db-dev.daodao-server.orb.local',
+  host: 'localhost',
   username: 'daodao',
   password: 'daodao',
   database: 'daodao',

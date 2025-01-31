@@ -164,8 +164,8 @@ jobs:
                 docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d
               else
                 echo \"Performing update deployment...\"
-                docker-compose -f $COMPOSE_FILE stop \$APP_SERVICE nginx
-                docker-compose -f \$COMPOSE_FILE rm -f \$APP_SERVICE nginx
+                docker-compose stop \$APP_SERVICE
+                docker-compose rm -f \$APP_SERVICE
                 docker ps -a
                 docker container prune -f
                 docker image prune -f
@@ -173,9 +173,9 @@ jobs:
                 
                 echo \"Updating specific services for \${APP_ENV} environment...\"
 
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE nginx
+                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE
 
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d \$APP_SERVICE nginx
+                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
               fi
             "
       - name: Verify Deployment
