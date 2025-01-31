@@ -228,7 +228,11 @@ exports.getMe = async (req, res) => {
       updatedDate: formatToTaipeiTime(userJson.updated_at)
     };
 
-    res.status(200).json(formattedUser);
+    const response = {
+      data: formattedUser,
+  };
+
+    res.status(200).json(response);
 
   } catch (error) {
     res.status(500).json({ 
