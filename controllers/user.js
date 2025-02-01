@@ -308,7 +308,7 @@ exports.getOneUser = async (req, res) => {
       photoURL: userJson.Contact?.photo_url,
       isOpenLocation: userJson.is_open_location,
       isOpenProfile: userJson.is_open_profile,
-      role: userJson.role.name,
+      role: userJson.role?.name,
       tagList: tagList,
       location: userJson.Location?.Area?.city || '',
       selfIntroduction: userJson.BasicInfo?.self_introduction,
