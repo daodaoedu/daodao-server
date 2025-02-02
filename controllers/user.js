@@ -754,7 +754,7 @@ exports.updateUser = async (req, res) => {
       birthDate: userJson.birth_date,
       isOpenLocation: userJson.is_open_location,
       isOpenProfile: userJson.is_open_profile,
-      role: userJson.role.name,
+      role: userJson.role?.name,
       tagList: tagListTrans,
       location: userJson.Location?.Area?.city || '',
       contactList: {
