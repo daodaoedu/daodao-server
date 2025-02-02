@@ -28,6 +28,31 @@ exports.createProject = async (req, res) => {
       milestones = []    // 里程碑數據
     } = req.body;
 
+
+    // 新增角色和數量驗證
+    if (req.user.role === "User") {
+      await transaction.rollback();
+      return res.status(403).json({
+        error: true,
+        message: "此角色無權新增學習計畫"
+      });
+    }
+
+    if (req.user.role_id === "Participant") {
+      const projectCount = await Project.count({
+        where: { user_id: req.user.id },
+        transaction
+      });
+      
+      if (projectCount >= 3) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: true,
+          message: "已達最大學習計畫數量限制（3個）"
+        });
+      }
+    }
+
     // 驗證必填字段
     if (!topic || !startDate || !endDate || !interval) {
       return res.status(400).json({
@@ -93,7 +118,6 @@ exports.createProject = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'nickname', 'external_id']
         },
         {
           model: Milestone,
@@ -178,7 +202,6 @@ exports.getFilteredProjects = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'nickname', 'external_id'],
           required: false
         },
         {
@@ -242,7 +265,6 @@ exports.getProjects = async (req, res) => {
         include: [
           {
             model: User,
-            attributes: ['id', 'nickname', 'external_id'],
             required: false
           },
           {
@@ -304,12 +326,11 @@ const formatProjectResponse = (project) => {
     version: projectJson.version,
     user: projectJson.User ? {
       id: projectJson.User.id,
-      nickname: projectJson.User.nickname,
-      externalId: projectJson.User.external_id
+      name: projectJson.User.nickname,
+      _id: projectJson.User.external_id
     } : null,
     milestones: projectJson.Milestones?.map(m => ({
       id: m.id,
-      projectId: m.project_id,
       week: m.week,
       name: m.name,
       description: m.description,
@@ -342,7 +363,7 @@ exports.getMyProjects = async (req, res) => {
 exports.getProject = async (req, res) => {
     try {
       const project = await Project.findOne({
-        where: { external_id: req.params.externalId },
+        where: { external_id: req.params.projectId },
         include: [
           {
             model: User,
@@ -387,7 +408,7 @@ exports.getProject = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
       const project = await Project.findOne({
-        where: { external_id: req.params.id },
+        where: { external_id: req.params.projectId },
         include: [
           {
             model: User,
@@ -532,7 +553,7 @@ exports.getProject = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
       const project = await Project.findOne({
-        where: { id: req.params.id },
+        where: { external_id: req.params.projectId },
         transaction
       });
   
