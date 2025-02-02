@@ -12,14 +12,12 @@ exports.createNote = async (req, res) => {
       throw new Error('無效的日期格式，請使用 YYYY-MM-DD 格式');
     }
 
-    const project = await Project.findOne({external_id : req.params.projectId})
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
-    
-    console.log('project',project);
     const note = await Note.create({
       ...rest,
-      project_id: projectId,
-      date: parsedDate,  // 確保存入的是 Date 物件
+      project_id: project.id,
+      date: parsedDate,
     }, { transaction });
 
     await transaction.commit();
@@ -44,7 +42,7 @@ exports.createNote = async (req, res) => {
     
     res.status(400).json({ 
       error: true,
-      message: error.message || '建立成果失敗',
+      message: error.message || '建立便利貼失敗',
       details: error.errors?.map(e => e.message)
     });
   }
@@ -53,8 +51,11 @@ exports.createNote = async (req, res) => {
 
 exports.getNotes = async (req, res) => {
   try {
+
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const notes = await Note.findAll({
-      where: { project_id: req.params.projectId },
+      where: { project_id: project.id },
       attributes: ['id', 'week', 'title', 'description', 'date', 'img_url'],
       order: [
         ['week', 'ASC'],
@@ -86,7 +87,7 @@ exports.getNotes = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: true,
-      message: '取得專案成果失敗',
+      message: '取得專案便利貼失敗',
       details: error.message
     });
   }
@@ -115,9 +116,7 @@ exports.getMyNotes = async (req, res) => {
 
 exports.getNoteDetail = async (req, res) => {
   try {
-    const project = await Project.findByPk(req.params.projectId, {
-      attributes: ['id', 'is_public', 'user_id']
-    });
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
     
     if (!project) {
       return res.status(404).json({
@@ -126,23 +125,23 @@ exports.getNoteDetail = async (req, res) => {
       });
     }
 
-    // 權限檢查強化版
-    const hasAccess = project.is_public || 
-                     (req.user && (project.user_id === req.user.id || req.user.isAdmin));
+    // // 權限檢查強化版
+    // const hasAccess = project.is_public || 
+    //                  (req.user && (project.user_id === req.user.id || req.user.isAdmin));
     
-    if (!hasAccess) {
-      return res.status(403).json({
-        error: true,
-        message: '無權限查看此專案成果',
-        required: '專案擁有者或管理員權限'
-      });
-    }
+    // if (!hasAccess) {
+    //   return res.status(403).json({
+    //     error: true,
+    //     message: '無權限查看此專案便利貼',
+    //     required: '專案擁有者或管理員權限'
+    //   });
+    // }
 
-    // 修正為查詢單一成果
+    // 修正為查詢單一便利貼
     const note = await Note.findOne({
       where: {
         id: req.params.noteId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       attributes: ['id', 'week', 'title', 'description', 'date', 'img_url']
     });
@@ -150,7 +149,7 @@ exports.getNoteDetail = async (req, res) => {
     if (!note) {
       return res.status(404).json({
         error: true,
-        message: '成果不存在'
+        message: '便利貼不存在'
       });
     }
 
@@ -176,8 +175,8 @@ exports.getNoteDetail = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: true,
-      message: '取得成果失敗',
-      systemError: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: '取得便利貼失敗',
+      details: error.errors?.map(e => e.message)
     });
   }
 };
@@ -185,10 +184,13 @@ exports.getNoteDetail = async (req, res) => {
 exports.updateNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const note = await Note.findOne({
       where: {
         id: req.params.noteId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       transaction
     });
@@ -197,7 +199,7 @@ exports.updateNote = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         error: true,
-        message: '成果不存在'
+        message: '便利貼不存在'
       });
     }
 
@@ -233,10 +235,12 @@ exports.updateNote = async (req, res) => {
 exports.deleteNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const note = await Note.findOne({
       where: {
         id: req.params.noteId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       transaction
     });
@@ -245,14 +249,14 @@ exports.deleteNote = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         error: true,
-        message: '成果不存在'
+        message: '便利貼不存在'
       });
     }
 
     await note.destroy({ transaction });
     await transaction.commit();
     
-    res.json({ message: '成果已刪除' });
+    res.json({ message: '便利貼已刪除' });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({
