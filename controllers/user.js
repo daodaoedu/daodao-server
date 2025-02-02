@@ -52,10 +52,10 @@ const formatUserResponse = (user) => {
       email: userJson.Contact?.email,
       photoUrl: userJson.Contact?.photo_url,
       isSubscribeEmail: userJson.Contact?.is_subscribe_email,
-      ig: userJson.Contact?.ig,
+      instagram: userJson.Contact?.ig,
       discord: userJson.Contact?.discord,
       line: userJson.Contact?.line,
-      fb: userJson.Contact?.fb
+      facebook: userJson.Contact?.fb
     },
     basicInfo: {
       selfIntroduction: userJson.BasicInfo?.self_introduction,
@@ -114,32 +114,27 @@ exports.getAllUsers = async (req, res) => {
       include: [
         {
           model: Role,
-          attributes: ['name']
         },
         {
           model: Location,
           attributes: [],
           include: [{
             model: Area,
-            attributes: ['city'],
             required: false
           }],
           required: false
         },
         {
           model: Contact,
-          attributes: ['email', 'photo_url'],
           required: false
         },
         {
           model: BasicInfo,
-          attributes: ['self_introduction', 'share_list', 'want_to_do_list'],
           required: false
         },
         {
           model: Position,
           through: { attributes: [] },
-          attributes: ['name'],
           required: false
         }
       ],
@@ -203,13 +198,11 @@ exports.getMe = async (req, res) => {
         },
         {
           model: Contact,
-          attributes: ['email', 'photo_url', 'ig', 'discord', 'line', 'fb']
         },
         { model: BasicInfo },
         {
           model: Position,
           through: { attributes: [] },
-          attributes: ['name']
         }
       ]
     });
@@ -298,6 +291,7 @@ exports.createUser = async (req, res) => {
       photoURL,
       gender,
       birthDate,
+      contactList,
       educationStage,
       isOpenLocation,
       isOpenProfile,
@@ -360,7 +354,11 @@ exports.createUser = async (req, res) => {
       google_id: googleID,
       photo_url: photoURL,
       is_subscribe_email: isSubscribeEmail,
-      email
+      email,
+      ig:contactList?.instagram,
+      discord:contactList?.discord,
+      line:contactList?.line,
+      fb:contactList?.facebook
     }, { transaction });
 
     const basicInfo = await BasicInfo.create({
@@ -523,6 +521,7 @@ exports.updateUser = async (req, res) => {
       photoUrl,
       gender,
       birthDate,
+      contactList,
       educationStage,
       isOpenLocation,
       isOpenProfile,
@@ -544,7 +543,11 @@ exports.updateUser = async (req, res) => {
       await user.Contact.update({
         photo_url: photoUrl,
         is_subscribe_email: isSubscribeEmail,
-        email
+        email,
+        ig:contactList?.instagram,
+        discord:contactList?.discord,
+        line:contactList?.line,
+        fb:contactList?.facebook
       }, { transaction });
     }
 
