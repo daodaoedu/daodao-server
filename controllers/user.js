@@ -11,10 +11,10 @@ const Position = require("../models/position");
 const UserPosition = require("../models/userPosition");
 const sequelize = require("../config/db");
 const moment = require('moment-timezone');
-const  { verifyToken,generateToken } = require("../services/jwt");
+const { verifyToken, generateToken } = require("../services/jwt");
 const TempUser = require("../models/tempUser.model");
 const sendVerifiedEmail = require("../controller/sendVerifiedEmail");
-const { FRONTEND_URL,BACKEND_URL } = process.env;
+const { FRONTEND_URL, BACKEND_URL } = process.env;
 const { validate: isUuid } = require('uuid');
 
 
@@ -22,6 +22,49 @@ const { validate: isUuid } = require('uuid');
 const formatToTaipeiTime = (date) => {
   if (!date) return null;
   return moment(date).tz('Asia/Taipei').format('YYYY-MM-DD HH:mm:ss');
+};
+
+const formatUserResponse = (user) => {
+  const userJson = user.toJSON();
+  const tagList = userJson.tag_list ?
+    userJson.tag_list
+      .replace(/{|}/g, '')  // 移除 {}
+      .split(',')           // 分割成陣列
+      .filter(Boolean)      // 移除空值
+    : [];
+  return {
+    _id: userJson.external_id,
+    name: userJson.nickname,
+    gender: userJson.gender,
+    photoURL: userJson.Contact?.photo_url,
+    birthDay: userJson.birth_date,
+    isOpenLocation: userJson.is_open_location,
+    isOpenProfile: userJson.is_open_profile,
+    role: userJson.Role?.name,
+    location: userJson.Location?.Area?.city || '',
+    tagList,
+    wantToDoList: userJson.BasicInfo?.want_to_do_list,
+    educationStage: userJson.education_stage,
+    selfIntroduction: userJson.BasicInfo?.self_introduction,
+    share: userJson.BasicInfo?.share_list,
+    contactList: {
+      email: userJson.Contact?.email,
+      photoUrl: userJson.Contact?.photo_url,
+      isSubscribeEmail: userJson.Contact?.is_subscribe_email,
+      ig: userJson.Contact?.ig,
+      discord: userJson.Contact?.discord,
+      line: userJson.Contact?.line,
+      fb: userJson.Contact?.fb
+    },
+    basicInfo: {
+      selfIntroduction: userJson.BasicInfo?.self_introduction,
+      shareList: userJson.BasicInfo?.share_list,
+      wantToDoList: userJson.BasicInfo?.want_to_do_list
+    },
+    roleList: userJson.Positions?.map(p => p.name) || [],
+    createdDate: formatToTaipeiTime(userJson.created_at),
+    updatedDate: formatToTaipeiTime(userJson.updated_at)
+  };
 };
 
 // 获取所有用户
@@ -68,11 +111,11 @@ exports.getAllUsers = async (req, res) => {
     const { count, rows } = await User.findAndCountAll({
       where: whereConditions,
       include: [
-        { 
+        {
           model: Role,
           attributes: ['name']
         },
-        { 
+        {
           model: Location,
           attributes: [],
           include: [{
@@ -82,12 +125,12 @@ exports.getAllUsers = async (req, res) => {
           }],
           required: false
         },
-        { 
+        {
           model: Contact,
           attributes: ['email', 'photo_url'],
           required: false
         },
-        { 
+        {
           model: BasicInfo,
           attributes: ['self_introduction', 'share_list', 'want_to_do_list'],
           required: false
@@ -115,61 +158,27 @@ exports.getAllUsers = async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
-    const formattedData = rows.map(user => {
-      const userJson = user.toJSON();
-      const tagList = userJson.tag_list ? 
-      userJson.tag_list
-        .replace(/{|}/g, '')  // 移除 {}
-        .split(',')           // 分割成陣列
-        .filter(Boolean)      // 移除空值
-        : [];
-      return {
-        _id: userJson.external_id,
-        name: userJson.nickname,
-        gender: userJson.gender,
-        photoURL: userJson.Contact?.photo_url,
-        birthDate: formatToTaipeiTime(userJson.birth_date),
-        isOpenLocation: userJson.is_open_location,
-        isOpenProfile: userJson.is_open_profile,
-        role: userJson.Role?.name,
-        location: userJson.Location?.Area?.city || '',
-        tagList,
-        wantToDoList: userJson.BasicInfo?.want_to_do_list,
-        educationStage: userJson.education_stage,
-        selfIntroduction: userJson.BasicInfo?.self_introduction,
-        share: userJson.BasicInfo?.share_list,
-        contactList: {
-          email: userJson.Contact?.email,
-          photoURl: userJson.Contact?.photo_url,
-          ig: userJson.Contact?.ig,
-          discord: userJson.Contact?.discord,
-          line: userJson.Contact?.line,
-          fb: userJson.Contact?.fb
-        },
-        basicInfo: {
-          selfIntroduction: userJson.BasicInfo?.self_introduction,
-          shareList: userJson.BasicInfo?.share_list
-        },
-        roleList: userJson.Positions?.map(p => p.name) || [],
-        createdDate: formatToTaipeiTime(userJson.created_at),
-        updatedDate: formatToTaipeiTime(userJson.updated_at)
-      };
-    });
+    const formattedData = rows.map(user => ({
+      ...formatUserResponse(user)
+    })
+    );
 
-    res.status(200).json({
+    const response = {
       data: formattedData,
       page,
       pageSize,
       totalCount: count,
       totalPages: Math.ceil(count / pageSize)
-    });
+    };
+
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('获取用户列表错误:', error);
-    res.status(500).json({ 
-      error: true, 
+    res.status(500).json({
+      error: true,
       message: "Internal Server Error",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -187,11 +196,11 @@ exports.getMe = async (req, res) => {
       where: { external_id: currentUser._id },
       include: [
         { model: Role },
-        { 
+        {
           model: Location,
           include: [{ model: Area, attributes: ['city'] }]
         },
-        { 
+        {
           model: Contact,
           attributes: ['email', 'photo_url', 'ig', 'discord', 'line', 'fb']
         },
@@ -208,59 +217,17 @@ exports.getMe = async (req, res) => {
       return res.status(404).json({ error: true, message: "User not found" });
     }
 
-    // 統一使用與其他方法相同的格式化邏輯
-    const userJson = user.toJSON();
-    const tagList = userJson.tag_list ? 
-      userJson.tag_list
-        .replace(/{|}/g, '')
-        .split(',')
-        .filter(Boolean) : [];
-
-    const formattedUser = {
-      _id: userJson.external_id,
-      name: userJson.nickname,
-      email: userJson.Contact?.email,
-      gender: userJson.gender,
-      role: userJson.Role?.name,
-      birthDate: userJson.birth_date,
-      photoURL: userJson.Contact?.photo_url,
-      isOpenLocation: userJson.is_open_location,
-      isOpenProfile: userJson.is_open_profile,
-      tagList: tagList,
-      location: userJson.Location?.Area?.city || '',
-      selfIntroduction: userJson.BasicInfo?.self_introduction,
-      share: userJson.BasicInfo?.share_list,
-      wantToDoList: userJson.BasicInfo?.want_to_do_list,
-      contactList: {
-        email: userJson.Contact?.email,
-        photoUrl: userJson.Contact?.photo_url,
-        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
-        instagram: userJson.Contact?.ig,
-        discord: userJson.Contact?.discord,
-        line: userJson.Contact?.line,
-        facebook: userJson.Contact?.fb
-      },
-      basicInfo: {
-        selfIntroduction: userJson.BasicInfo?.self_introduction,
-        shareList: userJson.BasicInfo?.share_list,
-        wantToDoList: userJson.BasicInfo?.want_to_do_list
-      },
-      roleList: userJson.Positions?.map(p => p.name) || [],
-      createdDate: formatToTaipeiTime(userJson.created_at),
-      updatedDate: formatToTaipeiTime(userJson.updated_at)
-    };
-
     const response = {
-      data: formattedUser,
-  };
+      data: formatUserResponse(user),
+    };
 
     res.status(200).json(response);
 
   } catch (error) {
-    res.status(500).json({ 
-      error: true, 
-      message: "Internal Server Error", 
-      details: error.message 
+    res.status(500).json({
+      error: true,
+      message: "Internal Server Error",
+      details: error.message
     });
   }
 };
@@ -286,56 +253,19 @@ exports.getOneUser = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ 
-        error: true, 
-        message: "User not found" 
+      return res.status(404).json({
+        error: true,
+        message: "User not found"
       });
     }
 
-    console.log('user',user)
+    console.log('user', user)
 
-    // 格式化返回數據
-    const userJson = user.toJSON();
-    const tagList = userJson.tag_list ? 
-    userJson.tag_list
-      .replace(/{|}/g, '')  // 移除 {}
-      .split(',')           // 分割成陣列
-      .filter(Boolean)      // 移除空值
-      : [];
-    const userData = {
-      _id: userJson.external_id,
-      name: userJson.nickname,
-      gender: userJson.gender,
-      birthDate: userJson.birth_date ? formatToTaipeiTime(userJson.birth_date) : null,
-      photoURL: userJson.Contact?.photo_url,
-      isOpenLocation: userJson.is_open_location,
-      isOpenProfile: userJson.is_open_profile,
-      role: userJson.role?.name,
-      tagList: tagList,
-      location: userJson.Location?.Area?.city || '',
-      selfIntroduction: userJson.BasicInfo?.self_introduction,
-      share: userJson.BasicInfo?.share_list,
-      wantToDoList: userJson.BasicInfo?.want_to_do_list,
-      contactList: {
-        email: userJson.Contact?.email,
-        photoUrl: userJson.Contact?.photo_url,
-        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
-        instagram: userJson.Contact?.ig,
-        discord: userJson.Contact?.discord,
-        line: userJson.Contact?.line,
-        facebook: userJson.Contact?.fb
-      },
-      basicInfo: {
-        selfIntroduction: userJson.BasicInfo?.self_introduction,
-        shareList: userJson.BasicInfo?.share_list,
-        wantToDoList: userJson.BasicInfo?.want_to_do_list
-      },
-      roleList: userJson.Positions?.map(p => p.name) || [],
-      createdAt: formatToTaipeiTime(userJson.created_at),
-      updatedDate: formatToTaipeiTime(userJson.updated_at)
+    const response = {
+      data: [formatUserResponse(user)],
     };
 
-    res.status(200).json({data: [userData]});
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('获取用户错误：', {
@@ -343,11 +273,11 @@ exports.getOneUser = async (req, res) => {
       stack: error.stack,
       externalId: req.params.id
     });
-    
-    res.status(500).json({ 
-      error: true, 
-      message: "Error fetching user", 
-      details: error.message 
+
+    res.status(500).json({
+      error: true,
+      message: "Error fetching user",
+      details: error.message
     });
   }
 };
@@ -358,7 +288,7 @@ exports.createUser = async (req, res) => {
   let newUser = null;
 
   try {
-    const { 
+    const {
       mongoId,
       name: nickname,
       email,
@@ -381,15 +311,15 @@ exports.createUser = async (req, res) => {
 
 
     const userData = req.body;
-    const {isSendEmail} = userData
-    console.log("isSendEmail",isSendEmail);
-    console.log("req.user",req.user);
-    console.log("req.user._id",req.user._id);
+    const { isSendEmail } = userData
+    console.log("isSendEmail", isSendEmail);
+    console.log("req.user", req.user);
+    console.log("req.user._id", req.user._id);
     // 查找臨時用戶
     const tempUser = await TempUser.findById(req.user._id);
-    console.log("tempUser",tempUser);
+    console.log("tempUser", tempUser);
     if (!tempUser) {
-        return res.status(404).json({ error: 'Temporary user not found' });
+      return res.status(404).json({ error: 'Temporary user not found' });
     }
 
     const existingContact = await Contact.findOne({
@@ -408,11 +338,11 @@ exports.createUser = async (req, res) => {
 
     let locationId = null;
     if (areaCode) {
-      const area = await Area.findOne({ 
+      const area = await Area.findOne({
         where: { city: areaCode },
         transaction
       });
-      
+
       if (!area) {
         await transaction.rollback();
         return res.status(400).json({
@@ -481,7 +411,7 @@ exports.createUser = async (req, res) => {
       where: { id: newUser.id },
       include: [
         { model: Role },
-        { 
+        {
           model: Location,
           attributes: [],
           include: [{
@@ -502,65 +432,27 @@ exports.createUser = async (req, res) => {
       transaction
     });
 
-    // 格式化返回數據
-    const userJson = createdUser.toJSON();
-    const tagListTrans = userJson.tag_list ? 
-    userJson.tag_list
-      .replace(/{|}/g, '')  // 移除 {}
-      .split(',')           // 分割成陣列
-      .filter(Boolean)      // 移除空值
-      : [];
-    const responseData = {
-      _id: userJson.id,
-      externalId: userJson.external_id,
-      name: userJson.nickname,
-      gender: userJson.gender,
-      birthDate: userJson.birth_date,
-      isOpenLocation: userJson.is_open_location,
-      isOpenProfile: userJson.is_open_profile,
-      role: userJson.role,
-      location: userJson.Location?.Area?.city || '',
-      contact: {
-        email: userJson.Contact?.email,
-        photoUrl: userJson.Contact?.photo_url,
-        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
-        ig: userJson.Contact?.ig,
-        discord: userJson.Contact?.discord,
-        line: userJson.Contact?.line,
-        fb: userJson.Contact?.fb
-      },
-      basicInfo: {
-        selfIntroduction: userJson.BasicInfo?.self_introduction,
-        share: userJson.BasicInfo?.share_list,
-        wantToDoList: userJson.BasicInfo?.want_to_do_list
-      },
-      roleList: userJson.Positions?.map(p => p.name) || [],
-      tagList: tagListTrans,
-      createdAt: formatToTaipeiTime(userJson.created_at),
-      updatedAt: formatToTaipeiTime(userJson.updated_at)
-    };
 
     const newToken = generateToken({
       id: userJson.id,
       _id: userJson.external_id,
       isTemp: false,
-  });
+    });
 
-  const verifyLink = `${BACKEND_URL}/email/verify?token=${newToken}`;
-  console.log("verifyLink", verifyLink);
+    const verifyLink = `${BACKEND_URL}/email/verify?token=${newToken}`;
+    console.log("verifyLink", verifyLink);
 
-  // 發送註冊郵件
-  console.log('isSendEmail',isSendEmail);
-  if(isSendEmail){
-      await sendVerifiedEmail(userJson.Contact?.email, userJson.nickname,verifyLink);
+    // 發送註冊郵件
+    console.log('isSendEmail', isSendEmail);
+    if (isSendEmail) {
+      await sendVerifiedEmail(userJson.Contact?.email, userJson.nickname, verifyLink);
 
       await TempUser.findByIdAndDelete(req.user._id);
       console.log('TempUser删除成功:');
-  }
-
+    }
 
     await transaction.commit();
-    res.status(201).json({ message: "User created successfully", user: responseData, token: newToken });
+    res.status(201).json({ message: "User created successfully", user: formatUserResponse(createdUser), token: newToken });
 
   } catch (error) {
     if (transaction.finished !== 'commit') {
@@ -595,7 +487,7 @@ exports.updateUser = async (req, res) => {
     const user = await User.findOne({
       where: { external_id: req.params.id },
       include: [
-        { 
+        {
           model: Location,
           attributes: [],
           include: [{
@@ -623,8 +515,8 @@ exports.updateUser = async (req, res) => {
       });
     }
 
-    const { 
-      name:nickname,
+    const {
+      name: nickname,
       email,
       photoUrl,
       gender,
@@ -695,7 +587,7 @@ exports.updateUser = async (req, res) => {
         });
 
         if (positions.length > 0) {
-          const insertValues = positions.map(position => 
+          const insertValues = positions.map(position =>
             `(${user.id}, ${position.id})`
           ).join(',');
 
@@ -714,7 +606,7 @@ exports.updateUser = async (req, res) => {
       where: { external_id: req.params.id },
       include: [
         { model: Role },
-        { 
+        {
           model: Location,
           attributes: [],
           include: [{
@@ -737,49 +629,14 @@ exports.updateUser = async (req, res) => {
       },
       transaction
     });
-    console.log('After update:', {
-      userId: updatedUser.id,
-      tagList: updatedUser.tag_list
-    });
-    // 格式化返回数据
-    const userJson = updatedUser.toJSON();
-    const tagListTrans = userJson.tag_list ? 
-    userJson.tag_list
-      .replace(/{|}/g, '')  // 移除 {}
-      .split(',')           // 分割成陣列
-      .filter(Boolean)      // 移除空值
-      : [];
-    const userData = {
-      _id: userJson.external_id,
-      name: userJson.nickname,
-      gender: userJson.gender,
-      birthDate: userJson.birth_date,
-      isOpenLocation: userJson.is_open_location,
-      isOpenProfile: userJson.is_open_profile,
-      role: userJson.role?.name,
-      tagList: tagListTrans,
-      location: userJson.Location?.Area?.city || '',
-      contactList: {
-        email: userJson.Contact?.email,
-        photoUrl: userJson.Contact?.photo_url,
-        isSubscribeEmail: userJson.Contact?.is_subscribe_email,
-        ig: userJson.Contact?.ig,
-        discord: userJson.Contact?.discord,
-        line: userJson.Contact?.line,
-        fb: userJson.Contact?.fb
-      },
-      basicInfo: {
-        selfIntroduction: userJson.BasicInfo?.self_introduction,
-        shareList: userJson.BasicInfo?.share_list,
-        wantToDoList: userJson.BasicInfo?.want_to_do_list
-      },
-      roleList: userJson.Positions?.map(p => p.name) || [],
-      createdAt: formatToTaipeiTime(userJson.created_at),
-      updatedAt: formatToTaipeiTime(userJson.updated_at)
+
+    const response = {
+      data: formatUserResponse(updatedUser),
     };
 
     await transaction.commit();
-    res.status(200).json(userData);
+
+    res.status(200).json(response);
 
   } catch (error) {
     if (transaction.finished !== 'commit') {
@@ -791,10 +648,10 @@ exports.updateUser = async (req, res) => {
       externalId: req.params.id,
       requestBody: req.body
     });
-    res.status(500).json({ 
-      error: true, 
-      message: "更新用户失败", 
-      details: error.message 
+    res.status(500).json({
+      error: true,
+      message: "更新用户失败",
+      details: error.message
     });
   }
 };
@@ -836,15 +693,15 @@ exports.deleteMe = async (req, res) => {
     });
 
     await transaction.commit();
-    
+
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     await transaction.rollback();
     console.error('刪除用戶錯誤:', error);
-    res.status(500).json({ 
-      error: true, 
-      message: "刪除失敗", 
-      details: error.message 
+    res.status(500).json({
+      error: true,
+      message: "刪除失敗",
+      details: error.message
     });
   }
 };
