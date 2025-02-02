@@ -42,8 +42,8 @@ exports.createNote = async (req, res) => {
     
     res.status(400).json({ 
       error: true,
-      message: error.message || '建立便利貼失敗',
-      details: error.errors?.map(e => e.message)
+      message: '建立便利貼失敗',
+      details: error.message
     });
   }
 };

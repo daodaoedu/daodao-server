@@ -5,10 +5,7 @@ const sequelize = require('../config/db');
 exports.createMilestone = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const project = await Project.findOne({
-      where: { id: req.params.projectId },
-      transaction
-    });
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
     if (!project) {
       await transaction.rollback();
@@ -22,7 +19,7 @@ exports.createMilestone = async (req, res) => {
 
     const milestone = await Milestone.create({
       ...req.body,
-      project_id: req.params.projectId
+      project_id: project.id
     }, { transaction });
 
     await transaction.commit();
@@ -41,8 +38,9 @@ exports.createMilestone = async (req, res) => {
 // 獲取里程碑列表
 exports.getMilestones = async (req, res) => {
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
     const milestones = await Milestone.findAll({
-      where: { project_id: req.params.projectId },
+      where: { project_id: project.id },
       include: [Task]
     });
 
@@ -60,10 +58,12 @@ exports.getMilestones = async (req, res) => {
 exports.updateMilestone = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const milestone = await Milestone.findOne({
       where: { 
         id: req.params.milestoneId,
-        project_id: req.params.projectId 
+        project_id: project.id 
       },
       transaction
     });
@@ -72,8 +72,6 @@ exports.updateMilestone = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
-
-    const project = await Project.findByPk(req.params.projectId, { transaction });
     
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
@@ -98,10 +96,12 @@ exports.updateMilestone = async (req, res) => {
 exports.deleteMilestone = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const milestone = await Milestone.findOne({
       where: { 
         id: req.params.milestoneId,
-        project_id: req.params.projectId 
+        project_id: project.id 
       },
       transaction
     });
@@ -111,7 +111,6 @@ exports.deleteMilestone = async (req, res) => {
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
 
-    const project = await Project.findByPk(req.params.projectId, { transaction });
     
     if (project.user_id !== req.user.id) {
       await transaction.rollback();

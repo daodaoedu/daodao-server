@@ -43,6 +43,24 @@ exports.createTask = async (req, res) => {
   }
 };
 
+exports.getTasks = async (req, res) => {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const task = await Task.create({
+        ...req.body,
+        milestone_id: req.params.milestoneId
+      }, { transaction });
+      res.status(200).json(task);
+    } catch (error) {
+      res.status(500).json({ 
+        error: true, 
+        message: "獲取任務失敗",
+        details: error.message 
+      });
+    }
+  };
+
 // 更新任務狀態
 exports.updateTaskStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
