@@ -18,16 +18,16 @@ router.get('/outcomes/me', isAuthenticated, outcomeController.getMyOutcomes);
 router.get('/notes/me', isAuthenticated, noteController.getMyNotes);
 
 // 獲取單個學習計畫詳情
-router.get('/:externalId', projectController.getProject);
+router.get('/:projectId', projectController.getProject);
 
 // 創建學習計畫
 router.post('/', isAuthenticated, projectController.createProject);
 
 // 更新學習計畫
-router.put('/:externalId', isAuthenticated, projectController.updateProject);
+router.put('/:projectId', isAuthenticated, projectController.updateProject);
 
 // 刪除學習計畫
-router.delete('/:externalId', isAuthenticated, projectController.deleteProject);
+router.delete('/:projectId', isAuthenticated, projectController.deleteProject);
 
 
 // 里程碑相關路由
