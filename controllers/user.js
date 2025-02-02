@@ -36,6 +36,7 @@ const formatUserResponse = (user) => {
     _id: userJson.external_id,
     name: userJson.nickname,
     gender: userJson.gender,
+    email: userJson.Contact?.email,
     photoURL: userJson.Contact?.photo_url,
     birthDay: userJson.birth_date,
     isOpenLocation: userJson.is_open_location,
