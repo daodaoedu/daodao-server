@@ -28,30 +28,33 @@ exports.createProject = async (req, res) => {
       milestones = []    // 里程碑數據
     } = req.body;
 
+    console.log("req.user",req.user)
+    console.log("req.user.role",req.user.role)
 
-    // 新增角色和數量驗證
-    if (req.user.role === "User") {
-      await transaction.rollback();
-      return res.status(403).json({
-        error: true,
-        message: "此角色無權新增學習計畫"
-      });
-    }
+    const user = await User.findOne({where: {id : req.user.id}})
+    // // 新增角色和數量驗證
+    // if (user.roleId === 2) {
+    //   await transaction.rollback();
+    //   return res.status(403).json({
+    //     error: true,
+    //     message: "此角色無權新增學習計畫"
+    //   });
+    // }
 
-    if (req.user.role_id === "Participant") {
-      const projectCount = await Project.count({
-        where: { user_id: req.user.id },
-        transaction
-      });
+    // if (user.roleId === 3) {
+    //   const projectCount = await Project.count({
+    //     where: { user_id: req.user.id },
+    //     transaction
+    //   });
       
-      if (projectCount >= 3) {
-        await transaction.rollback();
-        return res.status(400).json({
-          error: true,
-          message: "已達最大學習計畫數量限制（3個）"
-        });
-      }
-    }
+    //   if (projectCount >= 3) {
+    //     await transaction.rollback();
+    //     return res.status(400).json({
+    //       error: true,
+    //       message: "已達最大學習計畫數量限制（3個）"
+    //     });
+    //   }
+    // }
 
     // 驗證必填字段
     if (!topic || !startDate || !endDate || !interval) {
@@ -304,7 +307,7 @@ const formatProjectResponse = (project) => {
     id: projectJson.external_id,
     userId: projectJson.user_id,
     imgUrl: projectJson.img_url,
-    topic: projectJson.topic,
+    title: projectJson.topic,
     description: projectJson.description,
     motivation: projectJson.motivation,
     motivationDescription: projectJson.motivation_description,
