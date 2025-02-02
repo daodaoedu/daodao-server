@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const projectController = require('../controllers/project');
+const milestoneController = require('../controllers/milestone');
+const taskController = require('../controllers/task');
 const noteController = require('../controllers/note');
 const outcomeController = require('../controllers/outcome');
 const reviewController = require('../controllers/review');
@@ -11,6 +13,9 @@ router.get('/', projectController.getProjects);
 
 // 獲取我的學習計畫
 router.get('/me', isAuthenticated, projectController.getMyProjects);
+
+router.get('/outcomes/me', isAuthenticated, outcomeController.getMyOutcomes);
+router.get('/notes/me', isAuthenticated, noteController.getMyNotes);
 
 // 獲取單個學習計畫詳情
 router.get('/:externalId', projectController.getProject);
@@ -24,61 +29,44 @@ router.put('/:externalId', isAuthenticated, projectController.updateProject);
 // 刪除學習計畫
 router.delete('/:externalId', isAuthenticated, projectController.deleteProject);
 
-router.post('/:projectId/notes', isAuthenticated,
 
-  noteController.getNotes
-);
+// 里程碑相關路由
+router.post('/:projectId/milestones', isAuthenticated, milestoneController.createMilestone);
+router.get('/:projectId/milestones', milestoneController.getMilestones);
+router.put('/:projectId/milestones/:milestoneId', isAuthenticated, milestoneController.updateMilestone);
+router.delete('/:projectId/milestones/:milestoneId', isAuthenticated, milestoneController.deleteMilestone);
 
-router.get('/:projectId/notes/:noteId',
-  noteController.getNoteDetail
-);
+// 任務相關路由
+router.post('/:projectId/milestones/:milestoneId/tasks', isAuthenticated, taskController.createTask);
+router.put('/:projectId/milestones/:milestoneId/tasks/:taskId', isAuthenticated, taskController.updateTaskStatus);
+router.delete('/:projectId/milestones/:milestoneId/tasks/:taskId', isAuthenticated, taskController.deleteTask);
 
-router.put('/:projectId/notes/:noteId', isAuthenticated,
-  noteController.updateNote
-);
+router.post('/:projectId/notes', isAuthenticated, noteController.createNote);
 
-router.delete('/:projectId/notes/:noteId', isAuthenticated,
-  noteController.deleteNote
-);
+router.get('/:projectId/notes/:noteId', noteController.getNoteDetail);
 
+router.put('/:projectId/notes/:noteId', isAuthenticated, noteController.updateNote);
 
-router.post('/:projectId/outcomes', isAuthenticated,
-  outcomeController.createOutcome
-);
+router.delete('/:projectId/notes/:noteId', isAuthenticated, noteController.deleteNote);
 
-router.get('/:projectId/outcomes',
-  outcomeController.getOutcomes
-);
+router.post('/:projectId/outcomes', isAuthenticated, outcomeController.createOutcome);
 
-router.get('/:projectId/outcomes/:outcomeId',
-  outcomeController.getOutcomeDetail
-);
+router.get('/:projectId/outcomes', outcomeController.getOutcomes);
 
-router.put('/:projectId/outcomes/:outcomeId', isAuthenticated,
-  outcomeController.updateOutcome
-);
+router.get('/:projectId/outcomes/:outcomeId', outcomeController.getOutcomeDetail);
 
-router.delete('/:projectId/outcomes/:outcomeId', isAuthenticated,
-  outcomeController.deleteOutcome
-);
+router.put('/:projectId/outcomes/:outcomeId', isAuthenticated, outcomeController.updateOutcome);
 
-router.post('/:projectId/reviews', isAuthenticated,
-  reviewController.createReview
-);
+router.delete('/:projectId/outcomes/:outcomeId', isAuthenticated, outcomeController.deleteOutcome);
 
-router.get('/:projectId/reviews',
-  reviewController.getReviews
-);
-router.get('/:projectId/reviews/:reviewId',
-  reviewController.getReviewDetail
-);
+router.post('/:projectId/reviews', isAuthenticated, reviewController.createReview);
 
-router.put('/:projectId/reviews/:reviewId', isAuthenticated,
-  reviewController.updateReview
-);
+router.get('/:projectId/reviews', reviewController.getReviews);
 
-router.delete('/:projectId/reviews/:reviewId', isAuthenticated,
-  reviewController.deleteReview
-);
+router.get('/:projectId/reviews/:reviewId', reviewController.getReviewDetail);
+
+router.put('/:projectId/reviews/:reviewId', isAuthenticated, reviewController.updateReview);
+
+router.delete('/:projectId/reviews/:reviewId', isAuthenticated, reviewController.deleteReview);
 
 module.exports = router;
