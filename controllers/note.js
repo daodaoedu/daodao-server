@@ -56,7 +56,6 @@ exports.getNotes = async (req, res) => {
 
     const notes = await Note.findAll({
       where: { project_id: project.id },
-      attributes: ['id', 'week', 'title', 'description', 'date', 'img_url'],
       order: [
         ['week', 'ASC'],
         ['date', 'ASC']

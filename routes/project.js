@@ -43,6 +43,8 @@ router.delete('/:projectId/milestones/:milestoneId/tasks/:taskId', isAuthenticat
 
 router.post('/:projectId/notes', isAuthenticated, noteController.createNote);
 
+router.get('/:projectId/notes/', noteController.getNotes);
+
 router.get('/:projectId/notes/:noteId', noteController.getNoteDetail);
 
 router.put('/:projectId/notes/:noteId', isAuthenticated, noteController.updateNote);
