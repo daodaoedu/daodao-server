@@ -607,7 +607,6 @@ exports.updateUser = async (req, res) => {
         BasicInfo,
         {
           model: Position,
-          as: 'position',
           through: { attributes: [] }
         }
       ],
