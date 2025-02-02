@@ -88,6 +88,27 @@ exports.getOutcomes = async (req, res) => {
   }
 };
 
+exports.getMyOutcomes = async (req, res) => {
+  try {
+    const outcomes = await Outcome.findAll({
+      include: [
+        {
+          model: Project,
+          where: { user_id: req.user.id }
+        }
+      ]
+    });
+    
+    res.status(200).json(outcomes);
+  } catch (error) {
+    res.status(500).json({
+      error: true,
+      message: "獲取用戶成果失敗",
+      details: error.message
+    });
+  }
+};
+
 exports.getOutcomeDetail = async (req, res) => {
   try {
     const project = await Project.findByPk(req.params.projectId, {
