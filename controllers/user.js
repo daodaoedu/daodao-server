@@ -292,6 +292,8 @@ exports.getOneUser = async (req, res) => {
       });
     }
 
+    console.log('user',user)
+
     // 格式化返回數據
     const userJson = user.toJSON();
     const tagList = userJson.tag_list ? 
@@ -304,7 +306,7 @@ exports.getOneUser = async (req, res) => {
       _id: userJson.external_id,
       name: userJson.nickname,
       gender: userJson.gender,
-      birthDate: userJson.birth_date,
+      birthDate: userJson.birth_date ? formatToTaipeiTime(userJson.birth_date) : null,
       photoURL: userJson.Contact?.photo_url,
       isOpenLocation: userJson.is_open_location,
       isOpenProfile: userJson.is_open_profile,

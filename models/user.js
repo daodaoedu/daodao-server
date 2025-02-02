@@ -18,13 +18,13 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  birthDate: {
+  birth_date: {
     type: DataTypes.DATE,
   },
   gender: {
     type: DataTypes.STRING,
   },
-  locationId: {
+  location_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
@@ -32,17 +32,17 @@ const User = sequelize.define('User', {
       key: 'id',
     },
   },
-  roleId: { 
+  role_id: { 
     type: DataTypes.INTEGER, 
     allowNull: false, 
     defaultValue: 2,
     references: { model: "roles", key: "id" } 
   },
-  isOpenProfile: {
+  is_open_profile: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
-  isOpenLocation: {
+  is_open_location: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
