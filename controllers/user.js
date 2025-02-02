@@ -220,7 +220,7 @@ exports.getMe = async (req, res) => {
     const response = {
       data: formatUserResponse(user),
     };
-
+    console.log("getMe_response",response)
     res.status(200).json(response);
 
   } catch (error) {
@@ -259,11 +259,12 @@ exports.getOneUser = async (req, res) => {
       });
     }
 
-    console.log('user', user)
-
     const response = {
       data: [formatUserResponse(user)],
     };
+
+    console.log("getOneUser_response",response)
+
 
     res.status(200).json(response);
 
