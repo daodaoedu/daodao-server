@@ -4,6 +4,8 @@ const sequelize = require('../config/db');
 exports.createOutcome = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const { date, ...rest } = req.body;
     
     // 強制日期轉換與驗證
@@ -14,7 +16,7 @@ exports.createOutcome = async (req, res) => {
 
     const outcome = await Outcome.create({
       ...rest,
-      project_id: req.params.projectId,
+      project_id: project.id,
       date: parsedDate,  // 確保存入的是 Date 物件
     }, { transaction });
 
@@ -49,8 +51,10 @@ exports.createOutcome = async (req, res) => {
 
 exports.getOutcomes = async (req, res) => {
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const outcomes = await Outcome.findAll({
-      where: { project_id: req.params.projectId },
+      where: { project_id: project.id },
       attributes: ['id', 'week', 'title', 'description', 'date', 'img_url'],
       order: [
         ['week', 'ASC'],
@@ -111,9 +115,8 @@ exports.getMyOutcomes = async (req, res) => {
 
 exports.getOutcomeDetail = async (req, res) => {
   try {
-    const project = await Project.findByPk(req.params.projectId, {
-      attributes: ['id', 'is_public', 'user_id']
-    });
+
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
     
     if (!project) {
       return res.status(404).json({
@@ -138,7 +141,7 @@ exports.getOutcomeDetail = async (req, res) => {
     const outcome = await Outcome.findOne({
       where: {
         id: req.params.outcomeId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       attributes: ['id', 'week', 'title', 'description', 'date', 'img_url']
     });
@@ -181,10 +184,12 @@ exports.getOutcomeDetail = async (req, res) => {
 exports.updateOutcome = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const outcome = await Outcome.findOne({
       where: {
         id: req.params.outcomeId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       transaction
     });
@@ -229,10 +234,12 @@ exports.updateOutcome = async (req, res) => {
 exports.deleteOutcome = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const outcome = await Outcome.findOne({
       where: {
         id: req.params.outcomeId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       transaction
     });

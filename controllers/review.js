@@ -4,6 +4,8 @@ const sequelize = require('../config/db');
 exports.createReview = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const { week, title, mood, stress_level, learning_review } = req.body;
     
     // 強制驗證必要字段
@@ -16,7 +18,7 @@ exports.createReview = async (req, res) => {
     }
 
     const review = await Review.create({
-      project_id: req.params.projectId,
+      project_id: project.id,
       week: parseInt(week),
       title: title || `第 ${week} 週覆盤`,
       mood,
@@ -48,8 +50,10 @@ exports.createReview = async (req, res) => {
 
 exports.getReviews = async (req, res) => {
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const reviews = await Review.findAll({
-      where: { project_id: req.params.projectId },
+      where: { project_id: project.id },
       attributes: ['id', 'week', 'title', 'mood', 'stress_level', 'created_at'],
       order: [['week', 'DESC']]
     });
@@ -68,10 +72,12 @@ exports.getReviews = async (req, res) => {
 
 exports.getReviewDetail = async (req, res) => {
     try {
+      const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
       const review = await Review.findOne({
         where: {
           id: req.params.reviewId,
-          project_id: req.params.projectId
+          project_id: project.id
         },
         attributes: [
           'id', 
@@ -111,10 +117,12 @@ exports.getReviewDetail = async (req, res) => {
 exports.updateReview = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const review = await Review.findOne({
       where: {
         id: req.params.reviewId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       transaction
     });
@@ -160,10 +168,12 @@ exports.updateReview = async (req, res) => {
 exports.deleteReview = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const review = await Review.findOne({
       where: {
         id: req.params.reviewId,
-        project_id: req.params.projectId
+        project_id: project.id
       },
       transaction
     });

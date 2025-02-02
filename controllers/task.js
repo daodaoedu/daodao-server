@@ -5,10 +5,12 @@ const sequelize = require('../config/db');
 exports.createTask = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const milestone = await Milestone.findOne({
       where: { 
         id: req.params.milestoneId,
-        project_id: req.params.projectId 
+        project_id: project.id 
       },
       transaction
     });
@@ -17,8 +19,6 @@ exports.createTask = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
-
-    const project = await Project.findByPk(req.params.projectId, { transaction });
     
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
@@ -47,6 +47,8 @@ exports.createTask = async (req, res) => {
 exports.updateTaskStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const task = await Task.findOne({
       where: { 
         id: req.params.taskId,
@@ -59,8 +61,6 @@ exports.updateTaskStatus = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ error: true, message: "任務不存在" });
     }
-
-    const project = await Project.findByPk(req.params.projectId, { transaction });
     
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
@@ -88,6 +88,8 @@ exports.updateTaskStatus = async (req, res) => {
 exports.deleteTask = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+
     const task = await Task.findOne({
       where: { 
         id: req.params.taskId,
@@ -100,8 +102,6 @@ exports.deleteTask = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ error: true, message: "任務不存在" });
     }
-
-    const project = await Project.findByPk(req.params.projectId, { transaction });
     
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
