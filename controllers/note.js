@@ -12,9 +12,13 @@ exports.createNote = async (req, res) => {
       throw new Error('無效的日期格式，請使用 YYYY-MM-DD 格式');
     }
 
+    const project = await Project.findOne({external_id : req.params.projectId})
+
+    
+    console.log('project',project);
     const note = await Note.create({
       ...rest,
-      project_id: req.params.projectId,
+      project_id: projectId,
       date: parsedDate,  // 確保存入的是 Date 物件
     }, { transaction });
 
@@ -83,6 +87,27 @@ exports.getNotes = async (req, res) => {
     res.status(500).json({
       error: true,
       message: '取得專案成果失敗',
+      details: error.message
+    });
+  }
+};
+
+exports.getMyNotes = async (req, res) => {
+  try {
+    const notes = await Note.findAll({
+      include: [
+        {
+          model: Project,
+          where: { user_id: req.user.id }
+        }
+      ]
+    });
+    
+    res.status(200).json(notes);
+  } catch (error) {
+    res.status(500).json({
+      error: true,
+      message: "獲取用戶Note失敗",
       details: error.message
     });
   }
