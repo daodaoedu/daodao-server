@@ -279,7 +279,7 @@ exports.getProjects = async (req, res) => {
 const formatProjectResponse = (project) => {
   const projectJson = project.toJSON();
   return {
-    id: projectJson.id,
+    id: projectJson.external_id,
     userId: projectJson.user_id,
     imgUrl: projectJson.img_url,
     topic: projectJson.topic,
@@ -387,7 +387,7 @@ exports.getProject = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
       const project = await Project.findOne({
-        where: { id: req.params.id },
+        where: { external_id: req.params.id },
         include: [
           {
             model: User,
