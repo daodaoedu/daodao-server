@@ -1,6 +1,56 @@
 const { Project, User, Milestone, Task } = require('../models');
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
+// 格式化響應數據
+const formatProjectResponse = (project) => {
+  const projectJson = project.toJSON();
+  return {
+    id: projectJson.external_id,
+    userId: projectJson.user_id,
+    imgUrl: projectJson.img_url,
+    title: projectJson.topic,
+    description: projectJson.description,
+    motivation: projectJson.motivation,
+    motivationDescription: projectJson.motivation_description,
+    goal: projectJson.goal,
+    content: projectJson.content,
+    strategy: projectJson.strategy,
+    strategyDescription: projectJson.strategy_description,
+    resourceName: projectJson.resource_name,
+    resourceUrl: projectJson.resource_url,
+    outcome: projectJson.outcome,
+    outcomeDescription: projectJson.outcome_description,
+    isPublic: projectJson.is_public,
+    status: projectJson.status,
+    startDate: projectJson.start_date,
+    endDate: projectJson.end_date,
+    interval: projectJson.interval,
+    createdAt: projectJson.created_at,
+    updatedAt: projectJson.updated_at,
+    version: projectJson.version,
+    user: projectJson.User ? {
+      id: projectJson.User.id,
+      name: projectJson.User.nickname,
+      _id: projectJson.User.external_id
+    } : null,
+    milestones: projectJson.Milestones?.map(m => ({
+      id: m.id,
+      week: m.week,
+      name: m.name,
+      description: m.description,
+      startDate: m.start_date,
+      endDate: m.end_date,
+      isCompleted: m.is_completed,
+      tasks: m.Tasks?.map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        daysOfWeek: t.days_of_week,
+        isCompleted: t.is_completed
+      }))
+    }))
+  };
+};
 
 // 創建學習計畫
 exports.createProject = async (req, res) => {
@@ -8,7 +58,7 @@ exports.createProject = async (req, res) => {
   try {
     const {
       imgUrl,
-      topic,
+      title,
       description,
       motivation,          // ['driven_by_curiosity', 'interest_and_passion', ...]
       motivationDescription,
@@ -78,7 +128,7 @@ exports.createProject = async (req, res) => {
     const project = await Project.create({
       user_id: req.user.id,
       img_url: imgUrl,
-      topic,
+      title,
       description,
       motivation,
       motivation_description: motivationDescription,
@@ -225,7 +275,7 @@ exports.getFilteredProjects = async (req, res) => {
       data: projects.rows.map(project => ({
         id: project.id,
         externalId: project.external_id,
-        topic: project.topic,
+        title: project.topic,
         description: project.description,
         isPublic: project.is_public,
         status: project.status,
@@ -240,7 +290,7 @@ exports.getFilteredProjects = async (req, res) => {
         }),
         owner: project.User ? {
           id: project.User.external_id,
-          nickname: project.User.nickname
+          name: project.User.nickname
         } : null
       }))
     });
@@ -298,58 +348,6 @@ exports.getProjects = async (req, res) => {
       });
     }
   };
-  
-
-// 格式化響應數據
-const formatProjectResponse = (project) => {
-  const projectJson = project.toJSON();
-  return {
-    id: projectJson.external_id,
-    userId: projectJson.user_id,
-    imgUrl: projectJson.img_url,
-    title: projectJson.topic,
-    description: projectJson.description,
-    motivation: projectJson.motivation,
-    motivationDescription: projectJson.motivation_description,
-    goal: projectJson.goal,
-    content: projectJson.content,
-    strategy: projectJson.strategy,
-    strategyDescription: projectJson.strategy_description,
-    resourceName: projectJson.resource_name,
-    resourceUrl: projectJson.resource_url,
-    outcome: projectJson.outcome,
-    outcomeDescription: projectJson.outcome_description,
-    isPublic: projectJson.is_public,
-    status: projectJson.status,
-    startDate: projectJson.start_date,
-    endDate: projectJson.end_date,
-    interval: projectJson.interval,
-    createdAt: projectJson.created_at,
-    updatedAt: projectJson.updated_at,
-    version: projectJson.version,
-    user: projectJson.User ? {
-      id: projectJson.User.id,
-      name: projectJson.User.nickname,
-      _id: projectJson.User.external_id
-    } : null,
-    milestones: projectJson.Milestones?.map(m => ({
-      id: m.id,
-      week: m.week,
-      name: m.name,
-      description: m.description,
-      startDate: m.start_date,
-      endDate: m.end_date,
-      isCompleted: m.is_completed,
-      tasks: m.Tasks?.map(t => ({
-        id: t.id,
-        name: t.name,
-        description: t.description,
-        daysOfWeek: t.days_of_week,
-        isCompleted: t.is_completed
-      }))
-    }))
-  };
-};
 
 // 獲取我的學習計畫
 exports.getMyProjects = async (req, res) => {
@@ -444,7 +442,7 @@ exports.getProject = async (req, res) => {
   
       const {
         imgUrl,
-        topic,
+        title,
         description,
         motivation,
         motivationDescription,
@@ -476,7 +474,7 @@ exports.getProject = async (req, res) => {
       // 更新學習計畫
       await project.update({
         imgUrl,
-        topic,
+        title,
         description,
         motivation,
         motivationDescription,
@@ -527,7 +525,6 @@ exports.getProject = async (req, res) => {
         include: [
           {
             model: User,
-            attributes: ['id', 'nickname', 'external_id']
           },
           {
             model: Milestone,
