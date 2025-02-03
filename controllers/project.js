@@ -81,8 +81,18 @@ exports.createProject = async (req, res) => {
     console.log("req.user",req.user)
     console.log("req.user.role",req.user.role)
 
-    const user = await User.findOne({where: {id : req.user.id}})
-    // // 新增角色和數量驗證
+    const user = await User.findOne({
+      where: { external_id: req.user._id },  // 使用external_id查詢
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({
+        error: true,
+        message: "用戶不存在"
+      });
+    }    // // 新增角色和數量驗證
     // if (user.roleId === 2) {
     //   await transaction.rollback();
     //   return res.status(403).json({
@@ -107,7 +117,7 @@ exports.createProject = async (req, res) => {
     // }
 
     // 驗證必填字段
-    if (!topic || !startDate || !endDate || !interval) {
+    if (!title || !startDate || !endDate || !interval) {
       return res.status(400).json({
         error: true,
         message: "缺少必要欄位"
@@ -492,7 +502,6 @@ exports.getProject = async (req, res) => {
         end_date: endDate,
         interval,
         updated_by: req.user.id,
-        version: project.version
       }, { transaction });
   
       // 如果提供了里程碑數據，更新里程碑
