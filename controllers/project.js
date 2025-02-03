@@ -138,7 +138,7 @@ exports.createProject = async (req, res) => {
     const project = await Project.create({
       user_id: req.user.id,
       img_url: imgUrl,
-      title,
+      topic: title,
       description,
       motivation,
       motivation_description: motivationDescription,
@@ -484,7 +484,7 @@ exports.getProject = async (req, res) => {
       // 更新學習計畫
       await project.update({
         img_url: imgUrl,
-        title,
+        topic: title,
         description,
         motivation,
         motivation_description: motivationDescription,
