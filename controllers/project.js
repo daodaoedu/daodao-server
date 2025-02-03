@@ -473,26 +473,26 @@ exports.getProject = async (req, res) => {
   
       // 更新學習計畫
       await project.update({
-        imgUrl,
+        img_url: imgUrl,
         title,
         description,
         motivation,
-        motivationDescription,
+        motivation_description: motivationDescription,
         goal,
         content,
         strategy,
-        strategyDescription,
-        resourceName,
-        resourceUrl,
+        strategy_description: strategyDescription,
+        resource_name: resourceName,
+        resource_url: resourceUrl,
         outcome,
-        outcomeDescription,
-        isPublic,
+        outcome_description: outcomeDescription,
+        is_public: isPublic,
         status,
-        startDate,
-        endDate,
+        start_date: startDate,
+        end_date: endDate,
         interval,
-        updatedBy: req.user.id,
-        version: project.version + 1
+        updated_by: req.user.id,
+        version: project.version
       }, { transaction });
   
       // 如果提供了里程碑數據，更新里程碑
