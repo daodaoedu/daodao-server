@@ -61,11 +61,19 @@ exports.getTasks = async (req, res) => {
     }
   };
 
-// 更新任務狀態
-exports.updateTaskStatus = async (req, res) => {
+// 更新任務
+exports.updateTask = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+    // 取得專案，確認用戶權限
+    const project = await Project.findOne({ 
+      where: { external_id: req.params.projectId } 
+    });
+
+    if (!project) {
+      await transaction.rollback();
+      return res.status(404).json({ error: true, message: "專案不存在" });
+    }
 
     const task = await Task.findOne({
       where: { 
@@ -80,17 +88,17 @@ exports.updateTaskStatus = async (req, res) => {
       return res.status(404).json({ error: true, message: "任務不存在" });
     }
     
+    // 確保用戶有權限修改這個專案內的任務
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此任務" });
     }
 
-    await task.update({ 
-      is_completed: req.body.isCompleted 
-    }, { transaction });
+    // 更新任務
+    await task.update(req.body, { transaction });
 
     await transaction.commit();
-    res.status(200).json(task);
+    res.status(200).json({ success: true, task });
 
   } catch (error) {
     await transaction.rollback();
