@@ -39,7 +39,7 @@ router.delete('/:projectId/milestones/:milestoneId', isAuthenticated, milestoneC
 // 任務相關路由
 router.post('/:projectId/milestones/:milestoneId/tasks', isAuthenticated, taskController.createTask);
 router.get('/:projectId/milestones/:milestoneId/tasks', taskController.getTasks);
-router.put('/:projectId/milestones/:milestoneId/tasks/:taskId', isAuthenticated, taskController.updateTaskStatus);
+router.put('/:projectId/milestones/:milestoneId/tasks/:taskId', isAuthenticated, taskController.updateTask);
 router.delete('/:projectId/milestones/:milestoneId/tasks/:taskId', isAuthenticated, taskController.deleteTask);
 
 router.post('/:projectId/notes', isAuthenticated, noteController.createNote);
