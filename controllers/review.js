@@ -135,7 +135,7 @@ exports.updateReview = async (req, res) => {
       });
     }
 
-    const allowedFields = ['title', 'mood_description', 'stress_level', 'learning_feedback', 'adjustment_plan'];
+    const allowedFields = ['title', 'mood','mood_description', 'stress_level', 'learning_feedback', 'adjustment_plan'];
     const updates = {};
     
     allowedFields.forEach(field => {
