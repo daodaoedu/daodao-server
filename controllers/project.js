@@ -363,7 +363,19 @@ exports.getProjects = async (req, res) => {
 exports.getMyProjects = async (req, res) => {
     console.log("user_id: ",req.user)
     try {
-      const projects = await Project.findAll({ where: { user_id: req.user.id } });
+      const projects = await Project.findOne({
+        where: { user_id: req.user.id },
+        include: [
+          {
+            model: User,
+            attributes: ['id', 'nickname', 'external_id']
+          },
+          {
+            model: Milestone,
+            include: [Task]
+          }
+        ]
+      });
       res.status(200).json(projects.map(project => formatProjectResponse(project)));
     } catch (error) {
       console.error('獲取我的學習計畫錯誤：', error);
