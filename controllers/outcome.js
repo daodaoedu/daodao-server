@@ -125,17 +125,17 @@ exports.getOutcomeDetail = async (req, res) => {
       });
     }
 
-    // 權限檢查強化版
-    const hasAccess = project.is_public || 
-                     (req.user && (project.user_id === req.user.id || req.user.isAdmin));
+    // // 權限檢查強化版
+    // const hasAccess = project.is_public || 
+    //                  (req.user && (project.user_id === req.user.id || req.user.isAdmin));
     
-    if (!hasAccess) {
-      return res.status(403).json({
-        error: true,
-        message: '無權限查看此專案成果',
-        required: '專案擁有者或管理員權限'
-      });
-    }
+    // if (!hasAccess) {
+    //   return res.status(403).json({
+    //     error: true,
+    //     message: '無權限查看此專案成果',
+    //     required: '專案擁有者或管理員權限'
+    //   });
+    // }
 
     // 修正為查詢單一成果
     const outcome = await Outcome.findOne({
