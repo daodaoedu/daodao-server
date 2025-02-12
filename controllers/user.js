@@ -208,7 +208,7 @@ exports.getMe = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: true, message: "User not found" });
+      return res.status(404).json({ error: true, data:null ,message: "User not found" });
     }
 
     const response = {
