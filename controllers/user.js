@@ -41,7 +41,7 @@ const formatUserResponse = (user) => {
     birthDay: userJson.birth_date,
     isOpenLocation: userJson.is_open_location,
     isOpenProfile: userJson.is_open_profile,
-    role: userJson.Role?.name,
+    role: userJson.Role?.id,
     location: userJson.Location?.Area?.city || '',
     tagList,
     wantToDoList: userJson.BasicInfo?.want_to_do_list,
