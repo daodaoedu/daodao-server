@@ -328,19 +328,33 @@ exports.createUser = async (req, res) => {
       return res.status(404).json({ error: 'Temporary user not found' });
     }
 
-    const existingContact = await Contact.findOne({
-      where: { email },
+    const existingUser = await User.findOne({
+      where: { nickname },
       transaction
     });
 
-    if (existingContact) {
+    if (existingUser) {
       await transaction.rollback();
       return res.status(400).json({
         error: true,
         message: "建立失敗",
-        details: `信箱 ${email} 已被註冊`
+        details: `使用者名稱 ${nickname} 已存在`
       });
     }
+
+    // const existingContact = await Contact.findOne({
+    //   where: { email },
+    //   transaction
+    // });
+
+    // if (existingContact) {
+    //   await transaction.rollback();
+    //   return res.status(400).json({
+    //     error: true,
+    //     message: "建立失敗",
+    //     details: `信箱 ${email} 已被註冊`
+    //   });
+    // }
 
     let locationId = null;
     if (areaCode) {
@@ -468,7 +482,7 @@ exports.createUser = async (req, res) => {
     if (transaction.finished !== 'commit') {
       await transaction.rollback();
     }
-    console.error('完整错误日志：', {
+    console.error('完整錯誤日誌：', {
       error: error.toString(),
       stack: error.stack,
       sql: error.sql,
@@ -481,8 +495,8 @@ exports.createUser = async (req, res) => {
     });
     res.status(500).json({
       error: true,
-      message: "用户创建失败",
-      details: `数据库错误：${error.original ? error.original.message : error.message}`
+      message: "使用者建立失敗",
+      details: `資料庫錯誤：${error.original ? error.original.message : error.message}`
     });
   }
 };
