@@ -388,8 +388,8 @@ exports.createUser = async (req, res) => {
     }, { transaction });
 
     newUser = await User.create({
-      mongo_id: tempUser._id,,
-      nickname: tempUser.name,,
+      mongo_id: tempUser._id,
+      nickname: tempUser.name,
       gender,
       education_stage: educationStage,
       tag_list: Array.isArray(tagList) ? `{${tagList.join(',')}}` : '{}',
