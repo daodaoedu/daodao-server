@@ -1,6 +1,29 @@
 const { Milestone, Task, Project } = require('../models');
 const sequelize = require('../config/db');
 
+const formatMilestoneResponse = (milestones) => {
+  return {
+    milestones: milestones.map(m => {
+      const milestone = m.toJSON ? m.toJSON() : m;
+      return {
+        id: milestone.id,
+        week: milestone.week,
+        name: milestone.name,
+        description: milestone.description,
+        startDate: milestone.start_date,
+        endDate: milestone.end_date,
+        isCompleted: milestone.is_completed,
+        tasks: (milestone.Tasks || []).map(t => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          daysOfWeek: t.days_of_week,
+          isCompleted: t.is_completed
+        }))
+      };
+    })
+  };
+};
 // 創建里程碑
 exports.createMilestone = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -44,7 +67,7 @@ exports.getMilestones = async (req, res) => {
       include: [Task]
     });
 
-    res.status(200).json(milestones);
+    res.status(200).json(formatMilestoneResponse(milestones));
   } catch (error) {
     res.status(500).json({ 
       error: true, 
@@ -80,7 +103,7 @@ exports.updateMilestone = async (req, res) => {
 
     await milestone.update(req.body, { transaction });
     await transaction.commit();
-    res.status(200).json(milestone);
+    res.status(200).json(formatMilestoneResponse(milestones));
 
   } catch (error) {
     await transaction.rollback();
