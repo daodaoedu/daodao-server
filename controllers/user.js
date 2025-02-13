@@ -1,4 +1,5 @@
 // controllers/user.js
+const { Types } = require('mongoose');
 const User = require("../models/user");
 const Role = require("../models/role");
 const UserProfile = require("../models/userProfile");
@@ -16,6 +17,7 @@ const TempUser = require("../models/tempUser.model");
 const sendVerifiedEmail = require("../controller/sendVerifiedEmail");
 const { FRONTEND_URL, BACKEND_URL } = process.env;
 const { validate: isUuid } = require('uuid');
+
 
 
 
@@ -322,7 +324,7 @@ exports.createUser = async (req, res) => {
     console.log("req.user", req.user);
     console.log("req.user._id", req.user._id);
     // 查找臨時用戶
-    const tempUser = await TempUser.findById(req.user._id);
+    const tempUser = await TempUser.findById(Types.ObjectId(req.user._id));
     console.log("tempUser", tempUser);
     if (!tempUser) {
       return res.status(404).json({ error: 'Temporary user not found' });
