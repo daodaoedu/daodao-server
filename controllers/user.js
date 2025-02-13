@@ -371,10 +371,10 @@ exports.createUser = async (req, res) => {
     }
 
     const contact = await Contact.create({
-      google_id: googleID,
-      photo_url: photoURL,
+      google_id: tempUser.googleID,
+      photo_url: tempUser.photoURL,
       is_subscribe_email: isSubscribeEmail,
-      email,
+      email: tempUser.email,
       ig:contactList?.instagram,
       discord:contactList?.discord,
       line:contactList?.line,
@@ -388,8 +388,8 @@ exports.createUser = async (req, res) => {
     }, { transaction });
 
     newUser = await User.create({
-      mongo_id: mongoId,
-      nickname,
+      mongo_id: tempUser._id,,
+      nickname: tempUser.name,,
       gender,
       education_stage: educationStage,
       tag_list: Array.isArray(tagList) ? `{${tagList.join(',')}}` : '{}',
@@ -484,8 +484,8 @@ exports.createUser = async (req, res) => {
       sql: error.sql,
       requestData: {
         roleList: requestData.roleList,
-        email: requestData.email,
-        nickname: requestData.nickname
+        email: tempUser.email,
+        nickname: tempUser.name
       },
       newUserId: newUser?.id
     });
