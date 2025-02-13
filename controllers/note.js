@@ -1,11 +1,37 @@
 const { Note, Project } = require('../models');
 const sequelize = require('../config/db');
 
+// 新增統一格式化方法
+const formatNoteResponse = (note) => {
+  return {
+    id: note.id,
+    week: note.week,
+    title: note.title,
+    date: note.date,  // 保持原始日期，外部再格式化
+    imgUrl: note.img_url,
+  };
+}
+
+// 安全日期格式化處理
+const safeDateFormatter = (dateValue) => {
+  try {
+    const dateObj = dateValue instanceof Date
+      ? dateValue
+      : new Date(dateValue)
+    if (isNaN(dateObj.getTime())) {
+      return '無效日期';
+    }
+    return dateObj.toISOString().split('T')[0];
+  } catch (e) {
+    return '日期格式錯誤';
+  }
+};
+
 exports.createNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { date, ...rest } = req.body;
-    
+
     // 強制日期轉換與驗證
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
@@ -22,25 +48,18 @@ exports.createNote = async (req, res) => {
 
     await transaction.commit();
 
-    // 安全處理日期格式化
-    const responseDate = note.date instanceof Date 
-      ? note.date.toISOString().split('T')[0]
-      : new Date(note.date).toISOString().split('T')[0];
-
     res.status(201).json({
-      id: note.id,
-      week: note.week,
-      title: note.title,
-      date: responseDate,
-      img_url: note.img_url
+      ...formatNoteResponse(note.get({ plain: true })),
+      date: safeDateFormatter(note.date)
     });
+
 
   } catch (error) {
     if (transaction.finished !== 'commit') {
       await transaction.rollback();
     }
-    
-    res.status(400).json({ 
+
+    res.status(400).json({
       error: true,
       message: '建立便利貼失敗',
       details: error.message
@@ -62,27 +81,11 @@ exports.getNotes = async (req, res) => {
       ]
     });
 
-    // 安全日期格式化處理
-    const safeDateFormatter = (dateValue) => {
-      try {
-        const dateObj = dateValue instanceof Date 
-          ? dateValue 
-          : new Date(dateValue);
-        
-        if (isNaN(dateObj.getTime())) {
-          return '無效日期';
-        }
-        return dateObj.toISOString().split('T')[0];
-      } catch (e) {
-        return '日期格式錯誤';
-      }
-    };
-
     res.json(notes.map(o => ({
-      ...o.get({ plain: true }),
-      date: safeDateFormatter(o.date) // 使用安全格式化函式
+      ...formatNoteResponse(o.get({ plain: true })),
+      date: safeDateFormatter(o.date)
     })));
-    
+
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -102,8 +105,11 @@ exports.getMyNotes = async (req, res) => {
         }
       ]
     });
-    
-    res.status(200).json(notes);
+
+    res.status(200).json(notes.map(o => ({
+      ...formatNoteResponse(o.get({ plain: true })),
+      date: safeDateFormatter(o.date)
+    })));
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -116,7 +122,7 @@ exports.getMyNotes = async (req, res) => {
 exports.getNoteDetail = async (req, res) => {
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
-    
+
     if (!project) {
       return res.status(404).json({
         error: true,
@@ -127,7 +133,7 @@ exports.getNoteDetail = async (req, res) => {
     // // 權限檢查強化版
     // const hasAccess = project.is_public || 
     //                  (req.user && (project.user_id === req.user.id || req.user.isAdmin));
-    
+
     // if (!hasAccess) {
     //   return res.status(403).json({
     //     error: true,
@@ -152,25 +158,11 @@ exports.getNoteDetail = async (req, res) => {
       });
     }
 
-    // 安全日期格式化
-    const safeDateFormatter = (dateValue) => {
-      try {
-        const dateObj = dateValue instanceof Date 
-          ? dateValue 
-          : new Date(dateValue);
-        return isNaN(dateObj.getTime()) 
-          ? '日期格式錯誤' 
-          : dateObj.toISOString().split('T')[0];
-      } catch {
-        return '無效日期';
-      }
-    };
-
     res.json({
-      ...note.get({ plain: true }),
+      ...formatNoteResponse(note.get({ plain: true })),
       date: safeDateFormatter(note.date)
     });
-    
+
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -212,14 +204,10 @@ exports.updateNote = async (req, res) => {
     await note.update(updates, { transaction });
     await transaction.commit();
     const responseData = {
-        id: note.id,
-        week: note.week,
-        title: note.title,
-        description: note.description,
-        date: note.date.toISOString().split('T')[0],
-        img_url: note.img_url
-      };
-  
+      ...formatNoteResponse(note.get({ plain: true })),
+      date: safeDateFormatter(note.date)
+    };
+
     res.json(responseData);
   } catch (error) {
     await transaction.rollback();
@@ -254,7 +242,7 @@ exports.deleteNote = async (req, res) => {
 
     await note.destroy({ transaction });
     await transaction.commit();
-    
+
     res.json({ message: '便利貼已刪除' });
   } catch (error) {
     await transaction.rollback();

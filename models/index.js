@@ -19,6 +19,11 @@ const Review = require('./review');
 const Note = require('./note');
 const Outcome = require('./outcome');
 
+const ProjectMarathon = require('./projectMarathon');
+const Eligibility = require('./eligibility');
+const Marathon = require('./marathon');
+const FeePlan = require('./feePlan');
+
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
   User.belongsTo(Role, { 
@@ -152,6 +157,47 @@ const setupAssociations = () => {
   Task.belongsTo(Milestone, { 
     foreignKey: 'milestone_id',
   });
+
+  // 5. 專案馬拉松關聯
+  ProjectMarathon.belongsTo(Project, {
+    foreignKey: 'project_id',
+    as: 'project'
+  });
+  
+  Project.hasMany(ProjectMarathon, {
+    foreignKey: 'project_id',
+  });
+
+  ProjectMarathon.belongsTo(Marathon, {
+    foreignKey: 'marathon_id',
+  });
+
+  ProjectMarathon.belongsTo(Eligibility, {
+    foreignKey: 'eligibility_id',
+  });
+
+  // 马拉松关联
+  Marathon.belongsTo(User, {
+    foreignKey: 'created_by',
+  });
+
+  // 资格关联
+  Eligibility.belongsTo(FeePlan, {
+    foreignKey: 'fee_plans_id',
+  });
+
+  // 反向关联
+  Project.hasMany(ProjectMarathon, {
+    foreignKey: 'project_id',
+  });
+
+  Marathon.hasMany(ProjectMarathon, {
+    foreignKey: 'marathon_id',
+  });
+
+  FeePlan.hasMany(Eligibility, {
+    foreignKey: 'fee_plans_id',
+  });
 };
 
 // 執行關聯設置
@@ -174,5 +220,9 @@ module.exports = {
   Task,
   Review,
   Note,
-  Outcome
+  Outcome,
+  ProjectMarathon,
+  Eligibility,
+  Marathon,
+  FeePlan
 };

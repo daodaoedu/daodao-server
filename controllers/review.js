@@ -1,6 +1,22 @@
 const { Review, Project } = require('../models');
 const sequelize = require('../config/db');
 
+const formatReviewResponse = (review) => ({
+  id: review.id,
+  week: review.week,
+  title: review.title,
+  mood: review.mood,
+  stressLevel: review.stress_level,
+  ...(review.mood_description && { moodDescription: review.mood_description }),
+  ...(review.learning_review && { learningReview: review.learning_review }),
+  ...(review.learning_feedback && { learningFeedback: review.learning_feedback }),
+  ...(review.adjustment_plan && { adjustmentPlan: review.adjustment_plan }),
+  createdAt: safeDateFormatter(review.created_at),
+  ...(review.updated_at && { updatedAt: safeDateFormatter(review.updated_at) })
+});
+
+const safeDateFormatter = (date) => date ? date.toISOString().split('T')[0] : null;
+
 exports.createReview = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -31,13 +47,10 @@ exports.createReview = async (req, res) => {
 
     await transaction.commit();
     
-    res.status(201).json({
-      id: review.id,
-      week: review.week,
-      title: review.title,
-      mood: review.mood,
-      stress_level: review.stress_level
-    });
+    res.status(201).json(formatReviewResponse({
+      ...review.get({ plain: true }),
+      created_at: review.created_at
+    }));
   } catch (error) {
     await transaction.rollback();
     res.status(400).json({
@@ -54,14 +67,10 @@ exports.getReviews = async (req, res) => {
 
     const reviews = await Review.findAll({
       where: { project_id: project.id },
-      attributes: ['id', 'week', 'title', 'mood', 'stress_level', 'created_at'],
       order: [['week', 'DESC']]
     });
     
-    res.json(reviews.map(r => ({
-      ...r.dataValues,
-      created_at: r.created_at.toISOString().split('T')[0]
-    })));
+    res.json(reviews.map(formatReviewResponse));
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -79,19 +88,6 @@ exports.getReviewDetail = async (req, res) => {
           id: req.params.reviewId,
           project_id: project.id
         },
-        attributes: [
-          'id', 
-          'week', 
-          'title', 
-          'mood',
-          'mood_description',
-          'stress_level',
-          'learning_review',
-          'learning_feedback',
-          'adjustment_plan',
-          'created_at',
-          'updated_at'
-        ]
       });
   
       if (!review) {
@@ -101,9 +97,9 @@ exports.getReviewDetail = async (req, res) => {
         });
       }
   
-      const responseData = {
+      const responseData = formatReviewResponse({
         ...review.dataValues,
-      };
+      });
   
       res.json(responseData);
     } catch (error) {
@@ -135,7 +131,7 @@ exports.updateReview = async (req, res) => {
       });
     }
 
-    const allowedFields = ['title', 'mood','mood_description', 'stress_level', 'learning_feedback', 'adjustment_plan'];
+    const allowedFields = ['title', 'mood','mood_description', 'stress_level','learning_review', 'learning_feedback', 'adjustment_plan'];
     const updates = {};
     
     allowedFields.forEach(field => {
@@ -151,10 +147,10 @@ exports.updateReview = async (req, res) => {
     await review.update(updates, { transaction });
     await transaction.commit();
     
-    res.json({
-      id: review.id,
+    res.json(formatReviewResponse({
+      ...review.get({ plain: true }),
       ...updates,
-    });
+    }));
   } catch (error) {
     await transaction.rollback();
     res.status(400).json({

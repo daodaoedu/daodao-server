@@ -1,9 +1,13 @@
-const { Project, User, Milestone, Task } = require('../models');
+const { Project, User, Milestone, Task, Contact, BasicInfo, Position, ProjectMarathon, Marathon } = require('../models');
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
 // 格式化響應數據
 const formatProjectResponse = (project) => {
   const projectJson = project.toJSON();
+  
+  // 获取关联的马拉松信息
+  const marathonInfo = projectJson.ProjectMarathons?.[0]?.Marathon;
+  
   return {
     id: projectJson.external_id,
     userId: projectJson.user_id,
@@ -22,16 +26,19 @@ const formatProjectResponse = (project) => {
     outcomeDescription: projectJson.outcome_description,
     isPublic: projectJson.is_public,
     status: projectJson.status,
-    startDate: projectJson.start_date,
-    endDate: projectJson.end_date,
+    startDate: marathonInfo?.start_date || projectJson.start_date, // 優先使用馬拉松日期
+    endDate: marathonInfo?.end_date || projectJson.end_date,
     interval: projectJson.interval,
     createdAt: projectJson.created_at,
     updatedAt: projectJson.updated_at,
     version: projectJson.version,
+    eventId: marathonInfo?.event_id || null, // 新增關聯馬拉松ID
     user: projectJson.User ? {
       id: projectJson.User.id,
       name: projectJson.User.nickname,
-      _id: projectJson.User.external_id
+      _id: projectJson.User.external_id,
+      roleList: projectJson.User.Positions?.map(p => p.name) || [],
+      photoURL: projectJson.User.Contact?.photo_url,
     } : null,
     milestones: projectJson.Milestones?.map(m => ({
       id: m.id,
@@ -328,12 +335,25 @@ exports.getProjects = async (req, res) => {
         include: [
           {
             model: User,
-            required: false
+            attributes: ['id', 'nickname', 'external_id'],
+            include: [
+              { model: Contact },
+              { model: BasicInfo},
+              { 
+                model: Position,
+                through: { attributes: [] }
+              }
+            ]
+          },
+          {
+            model: ProjectMarathon,
+            include: [{
+              model: Marathon,
+            }]
           },
           {
             model: Milestone,
-            include: [Task],
-            required: false
+            include: [Task]
           }
         ],
         limit: parseInt(limit),
@@ -368,6 +388,21 @@ exports.getMyProjects = async (req, res) => {
         include: [
           {
             model: User,
+            attributes: ['id', 'nickname', 'external_id'],
+            include: [
+              { model: Contact },
+              { model: BasicInfo},
+              { 
+                model: Position,
+                through: { attributes: [] }
+              }
+            ]
+          },
+          {
+            model: ProjectMarathon,
+            include: [{
+              model: Marathon,
+            }]
           },
           {
             model: Milestone,
@@ -390,7 +425,21 @@ exports.getProject = async (req, res) => {
         include: [
           {
             model: User,
-            attributes: ['id', 'nickname', 'external_id']
+            attributes: ['id', 'nickname', 'external_id'],
+            include: [
+              { model: Contact },
+              { model: BasicInfo},
+              { 
+                model: Position,
+                through: { attributes: [] }
+              }
+            ]
+          },
+          {
+            model: ProjectMarathon,
+            include: [{
+              model: Marathon,
+            }]
           },
           {
             model: Milestone,
@@ -435,7 +484,21 @@ exports.getProject = async (req, res) => {
         include: [
           {
             model: User,
-            attributes: ['id', 'nickname', 'external_id']
+            attributes: ['id', 'nickname', 'external_id'],
+            include: [
+              { model: Contact },
+              { model: BasicInfo},
+              { 
+                model: Position,
+                through: { attributes: [] }
+              }
+            ]
+          },
+          {
+            model: ProjectMarathon,
+            include: [{
+              model: Marathon,
+            }]
           },
           {
             model: Milestone,
