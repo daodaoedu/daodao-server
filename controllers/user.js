@@ -185,7 +185,12 @@ exports.getMe = async (req, res) => {
     const currentUser = req.user;
 
     if (!isUuid(currentUser._id)) {
-      return res.status(404).json({ error: true, message: "User not found" });
+      let user = null;
+      const response = {
+            data: user,
+            message: "User not found"
+      };
+      return res.status(200).json(response);
     }
     // 修改部分：添加格式化邏輯
     const user = await User.findOne({
