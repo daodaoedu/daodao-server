@@ -295,11 +295,6 @@ exports.createUser = async (req, res) => {
 
   try {
     const {
-      mongoId,
-      name: nickname,
-      email,
-      googleID,
-      photoURL,
       gender,
       birthDate,
       contactList,
