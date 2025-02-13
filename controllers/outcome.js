@@ -1,6 +1,32 @@
 const { Outcome, Project } = require('../models');
 const sequelize = require('../config/db');
 
+// 更新統一格式化方法，加入description並使用safeDateFormatter
+const formatOutcomeResponse = (outcome) => {
+  return {
+    id: outcome.id,
+    week: outcome.week,
+    title: outcome.title,
+    description: outcome.description, // 新增description欄位
+    date: safeDateFormatter(outcome.date), // 改用安全格式化方法
+    imgUrl: outcome.img_url,
+  };
+}
+
+// 安全日期格式化處理
+const safeDateFormatter = (dateValue) => {
+  try {
+    const dateObj = dateValue instanceof Date
+      ? dateValue
+      : new Date(dateValue)
+    if (isNaN(dateObj.getTime())) {
+      return '無效日期';
+    }
+    return dateObj.toISOString().split('T')[0];
+  } catch (e) {
+    return '日期格式錯誤';
+  }
+};
 exports.createOutcome = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -22,18 +48,7 @@ exports.createOutcome = async (req, res) => {
 
     await transaction.commit();
 
-    // 安全處理日期格式化
-    const responseDate = outcome.date instanceof Date 
-      ? outcome.date.toISOString().split('T')[0]
-      : new Date(outcome.date).toISOString().split('T')[0];
-
-    res.status(201).json({
-      id: outcome.id,
-      week: outcome.week,
-      title: outcome.title,
-      date: responseDate,
-      img_url: outcome.img_url
-    });
+    res.status(201).json(formatOutcomeResponse(outcome)); // 改用統一格式化方法
 
   } catch (error) {
     if (transaction.finished !== 'commit') {
@@ -62,26 +77,7 @@ exports.getOutcomes = async (req, res) => {
       ]
     });
 
-    // 安全日期格式化處理
-    const safeDateFormatter = (dateValue) => {
-      try {
-        const dateObj = dateValue instanceof Date 
-          ? dateValue 
-          : new Date(dateValue);
-        
-        if (isNaN(dateObj.getTime())) {
-          return '無效日期';
-        }
-        return dateObj.toISOString().split('T')[0];
-      } catch (e) {
-        return '日期格式錯誤';
-      }
-    };
-
-    res.json(outcomes.map(o => ({
-      ...o.get({ plain: true }),
-      date: safeDateFormatter(o.date) // 使用安全格式化函式
-    })));
+    res.json(outcomes.map(formatOutcomeResponse)); // 直接使用格式化方法
     
   } catch (error) {
     res.status(500).json({
@@ -153,24 +149,7 @@ exports.getOutcomeDetail = async (req, res) => {
       });
     }
 
-    // 安全日期格式化
-    const safeDateFormatter = (dateValue) => {
-      try {
-        const dateObj = dateValue instanceof Date 
-          ? dateValue 
-          : new Date(dateValue);
-        return isNaN(dateObj.getTime()) 
-          ? '日期格式錯誤' 
-          : dateObj.toISOString().split('T')[0];
-      } catch {
-        return '無效日期';
-      }
-    };
-
-    res.json({
-      ...outcome.get({ plain: true }),
-      date: safeDateFormatter(outcome.date)
-    });
+    res.json(formatOutcomeResponse(outcome)); // 改用統一格式化方法
     
   } catch (error) {
     res.status(500).json({
@@ -211,14 +190,7 @@ exports.updateOutcome = async (req, res) => {
 
     await outcome.update(updates, { transaction });
     await transaction.commit();
-    const responseData = {
-        id: outcome.id,
-        week: outcome.week,
-        title: outcome.title,
-        description: outcome.description,
-        date: outcome.date.toISOString().split('T')[0],
-        img_url: outcome.img_url
-      };
+    const responseData = formatOutcomeResponse(outcome); // 改用統一格式化方法
   
     res.json(responseData);
   } catch (error) {
