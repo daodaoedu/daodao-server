@@ -329,7 +329,7 @@ exports.createUser = async (req, res) => {
     }
 
     const existingUser = await User.findOne({
-      where: { req.user.name },
+      where: { nickname:req.user.name },
       transaction
     });
 
