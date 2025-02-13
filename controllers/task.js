@@ -1,6 +1,21 @@
 const { Task, Milestone, Project } = require('../models');
 const sequelize = require('../config/db');
 
+
+
+const formatTask = (task) => {
+  return {
+    isCompleted: task?.is_completed,
+    isDeleted: task?.is_deleted,
+    createdAt: task?.created_at,
+    updatedAt: task?.updated_at,
+    id: task?.id,
+    name: task?.name,
+    description: task?.description,
+    milestoneId: task?.milestone_id,
+    daysOfWeek: task?.days_of_week
+  };
+};
 // 創建任務
 exports.createTask = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -31,7 +46,8 @@ exports.createTask = async (req, res) => {
     }, { transaction });
 
     await transaction.commit();
-    res.status(201).json(task);
+
+    res.status(201).json(formatTask(task));
 
   } catch (error) {
     await transaction.rollback();
@@ -62,7 +78,8 @@ exports.getTasks = async (req, res) => {
       order: [['created_at', 'DESC']] // 依建立時間排序
     });
 
-    res.status(200).json({ success: true, tasks });
+    const formattedTasks = tasks.map(formatTask);
+    res.status(200).json({ success: true, tasks: formattedTasks });
 
   } catch (error) {
     res.status(500).json({ 
@@ -81,6 +98,8 @@ exports.getTask = async (req, res) => {
       where: { external_id: req.params.projectId } 
     });
 
+    console.log("project",project)
+
     if (!project) {
       return res.status(404).json({ error: true, message: "專案不存在" });
     }
@@ -93,6 +112,8 @@ exports.getTask = async (req, res) => {
       }
     });
 
+    console.log("task",task)
+
     if (!task) {
       return res.status(404).json({ error: true, message: "任務不存在" });
     }
@@ -102,7 +123,7 @@ exports.getTask = async (req, res) => {
       return res.status(403).json({ error: true, message: "無權存取此任務" });
     }
 
-    res.status(200).json({ success: true, task });
+    res.status(200).json({ success: true, task: formatTask(task) });
 
   } catch (error) {
     res.status(500).json({ 
@@ -151,7 +172,7 @@ exports.updateTask = async (req, res) => {
     await task.update(req.body, { transaction });
 
     await transaction.commit();
-    res.status(200).json({ success: true, task });
+    res.status(200).json({ success: true, task: formatTask(task) });
 
   } catch (error) {
     await transaction.rollback();
