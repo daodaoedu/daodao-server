@@ -64,7 +64,7 @@ exports.getMilestones = async (req, res) => {
       include: [Task]
     });
 
-    res.status(200).json(formatMilestoneResponse(milestones));
+    res.status(200).json(milestones.map(m => formatMilestoneResponse(m)));
   } catch (error) {
     res.status(500).json({
       error: true,
