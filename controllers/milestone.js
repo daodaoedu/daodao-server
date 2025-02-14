@@ -1,27 +1,24 @@
 const { Milestone, Task, Project } = require('../models');
 const sequelize = require('../config/db');
 
-const formatMilestoneResponse = (milestones) => {
+const formatMilestoneResponse = (milestone) => {
+  const milestoneJson = milestone.toJSON();
+
   return {
-    milestones: milestones.map(m => {
-      const milestone = m.toJSON ? m.toJSON() : m;
-      return {
-        id: milestone.id,
-        week: milestone.week,
-        name: milestone.name,
-        description: milestone.description,
-        startDate: milestone.start_date,
-        endDate: milestone.end_date,
-        isCompleted: milestone.is_completed,
-        tasks: (milestone.Tasks || []).map(t => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          daysOfWeek: t.days_of_week,
-          isCompleted: t.is_completed
-        }))
-      };
-    })
+    id: milestoneJson.id,
+    week: milestoneJson.week,
+    name: milestoneJson.name,
+    description: milestoneJson.description,
+    startDate: milestoneJson.start_date,
+    endDate: milestoneJson.end_date,
+    isCompleted: milestoneJson.is_completed,
+    tasks: (milestoneJson.Tasks || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      daysOfWeek: t.days_of_week,
+      isCompleted: t.is_completed
+    }))
   };
 };
 // 創建里程碑
@@ -50,10 +47,10 @@ exports.createMilestone = async (req, res) => {
 
   } catch (error) {
     await transaction.rollback();
-    res.status(500).json({ 
-      error: true, 
+    res.status(500).json({
+      error: true,
       message: "創建里程碑失敗",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -69,10 +66,10 @@ exports.getMilestones = async (req, res) => {
 
     res.status(200).json(formatMilestoneResponse(milestones));
   } catch (error) {
-    res.status(500).json({ 
-      error: true, 
+    res.status(500).json({
+      error: true,
       message: "獲取里程碑失敗",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -84,9 +81,9 @@ exports.updateMilestone = async (req, res) => {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
     const milestone = await Milestone.findOne({
-      where: { 
+      where: {
         id: req.params.milestoneId,
-        project_id: project.id 
+        project_id: project.id
       },
       transaction
     });
@@ -95,7 +92,7 @@ exports.updateMilestone = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
-    
+
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此里程碑" });
@@ -107,10 +104,10 @@ exports.updateMilestone = async (req, res) => {
 
   } catch (error) {
     await transaction.rollback();
-    res.status(500).json({ 
-      error: true, 
+    res.status(500).json({
+      error: true,
       message: "更新里程碑失敗",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -122,9 +119,9 @@ exports.deleteMilestone = async (req, res) => {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
     const milestone = await Milestone.findOne({
-      where: { 
+      where: {
         id: req.params.milestoneId,
-        project_id: project.id 
+        project_id: project.id
       },
       transaction
     });
@@ -134,7 +131,7 @@ exports.deleteMilestone = async (req, res) => {
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
 
-    
+
     if (project.user_id !== req.user.id) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此里程碑" });
@@ -146,10 +143,10 @@ exports.deleteMilestone = async (req, res) => {
 
   } catch (error) {
     await transaction.rollback();
-    res.status(500).json({ 
-      error: true, 
+    res.status(500).json({
+      error: true,
       message: "刪除里程碑失敗",
-      details: error.message 
+      details: error.message
     });
   }
 };
