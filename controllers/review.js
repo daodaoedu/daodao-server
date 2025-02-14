@@ -22,14 +22,14 @@ exports.createReview = async (req, res) => {
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
-    const { week, title, mood, stress_level, learning_review } = req.body;
-    
+    const { week, title, mood, moodDescription, stressLevel, learningReview, learningFeedback, adjustmentPlan } = req.body;
+
     // 強制驗證必要字段
-    if (!mood || stress_level === undefined || learning_review === undefined) {
+    if (!mood || stressLevel === undefined || learningReview === undefined) {
       await transaction.rollback();
       return res.status(400).json({
         error: true,
-        message: 'mood/stress_level/learning_review 為必填字段'
+        message: 'mood/stressLevel/learningReview 為必填字段'
       });
     }
 
@@ -38,15 +38,15 @@ exports.createReview = async (req, res) => {
       week: parseInt(week),
       title: title || `第 ${week} 週覆盤`,
       mood,
-      stress_level: Math.min(Math.max(1, stress_level), 10),
-      learning_review: Math.min(Math.max(1, learning_review), 10),
-      mood_description: req.body.mood_description,
-      learning_feedback: req.body.learning_feedback,
-      adjustment_plan: req.body.adjustment_plan
+      stress_level: Math.min(Math.max(1, stressLevel), 10),
+      learning_review: Math.min(Math.max(1, learningReview), 10),
+      mood_description: req.body.moodDescription,
+      learning_feedback: req.body.learningFeedback,
+      adjustment_plan: req.body.adjustmentPlan
     }, { transaction });
 
     await transaction.commit();
-    
+
     res.status(201).json(formatReviewResponse({
       ...review.get({ plain: true }),
       created_at: review.created_at
@@ -69,7 +69,7 @@ exports.getReviews = async (req, res) => {
       where: { project_id: project.id },
       order: [['week', 'DESC']]
     });
-    
+
     res.json(reviews.map(formatReviewResponse));
   } catch (error) {
     res.status(500).json({
@@ -80,35 +80,35 @@ exports.getReviews = async (req, res) => {
 };
 
 exports.getReviewDetail = async (req, res) => {
-    try {
-      const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+  try {
+    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
-      const review = await Review.findOne({
-        where: {
-          id: req.params.reviewId,
-          project_id: project.id
-        },
-      });
-  
-      if (!review) {
-        return res.status(404).json({
-          error: true,
-          message: '覆盤記錄不存在'
-        });
-      }
-  
-      const responseData = formatReviewResponse({
-        ...review.dataValues,
-      });
-  
-      res.json(responseData);
-    } catch (error) {
-      res.status(500).json({
+    const review = await Review.findOne({
+      where: {
+        id: req.params.reviewId,
+        project_id: project.id
+      },
+    });
+
+    if (!review) {
+      return res.status(404).json({
         error: true,
-        message: '取得覆盤詳細資訊失敗'
+        message: '覆盤記錄不存在'
       });
     }
-  };  
+
+    const responseData = formatReviewResponse({
+      ...review.dataValues,
+    });
+
+    res.json(responseData);
+  } catch (error) {
+    res.status(500).json({
+      error: true,
+      message: '取得覆盤詳細資訊失敗'
+    });
+  }
+};
 
 exports.updateReview = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -131,9 +131,9 @@ exports.updateReview = async (req, res) => {
       });
     }
 
-    const allowedFields = ['title', 'mood','mood_description', 'stress_level','learning_review', 'learning_feedback', 'adjustment_plan'];
+    const allowedFields = ['title', 'mood', 'mood_description', 'stress_level', 'learning_review', 'learning_feedback', 'adjustment_plan'];
     const updates = {};
-    
+
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
@@ -146,7 +146,7 @@ exports.updateReview = async (req, res) => {
 
     await review.update(updates, { transaction });
     await transaction.commit();
-    
+
     res.json(formatReviewResponse({
       ...review.get({ plain: true }),
       ...updates,
@@ -184,7 +184,7 @@ exports.deleteReview = async (req, res) => {
 
     await review.destroy({ transaction });
     await transaction.commit();
-    
+
     res.json({ success: true });
   } catch (error) {
     await transaction.rollback();
