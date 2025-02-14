@@ -7,6 +7,7 @@ const formatNoteResponse = (note) => {
     id: note.id,
     week: note.week,
     title: note.title,
+    description: note.description,
     date: note.date,  // 保持原始日期，外部再格式化
     imgUrl: note.img_url,
   };
