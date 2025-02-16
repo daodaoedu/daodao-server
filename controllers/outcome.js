@@ -44,6 +44,7 @@ exports.createOutcome = async (req, res) => {
       ...rest,
       project_id: project.id,
       date: parsedDate,  // 確保存入的是 Date 物件
+      img_url: req.body.imgUrl
     }, { transaction });
 
     await transaction.commit();
