@@ -45,6 +45,7 @@ exports.createNote = async (req, res) => {
       ...rest,
       project_id: project.id,
       date: parsedDate,
+      img_url: req.body.imgUrl
     }, { transaction });
 
     await transaction.commit();
