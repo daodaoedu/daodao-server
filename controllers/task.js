@@ -6,7 +6,6 @@ const sequelize = require('../config/db');
 const formatTask = (task) => {
   return {
     isCompleted: task?.is_completed,
-    isDeleted: task?.is_deleted,
     createdAt: task?.created_at,
     updatedAt: task?.updated_at,
     id: task?.id,
@@ -41,7 +40,10 @@ exports.createTask = async (req, res) => {
     }
 
     const task = await Task.create({
-      ...req.body,
+        name: req.body.name,
+        description: req.body.description,
+        days_of_week: req.body.daysOfWeek,
+        is_completed: req.body?.isCompleted || false,
       milestone_id: req.params.milestoneId
     }, { transaction });
 
@@ -169,7 +171,13 @@ exports.updateTask = async (req, res) => {
     }
 
     // 更新任務
-    await task.update(req.body, { transaction });
+    await task.update({
+        name: req.body?.name,
+        description: req.body?.description,
+        days_of_week: req.body?.daysOfWeek,
+        is_completed: req.body?.isCompleted 
+    }
+    , { transaction });
 
     await transaction.commit();
     res.status(200).json({ success: true, task: formatTask(task) });
