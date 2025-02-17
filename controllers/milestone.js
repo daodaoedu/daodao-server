@@ -38,17 +38,16 @@ exports.createMilestone = async (req, res) => {
     }
 
     const milestone = await Milestone.create({
-        project_id: project.id,
-        week: req.body.week,
-        name: req.body.name,
-        description: req.body.description,
-        start_date: req.body.startDate,
-        end_date: req.body.endDate,
-        is_completed: false
+        week: req.body?.week,
+        name: req.body?.name,
+        description: req.body?.description,
+        start_date: req.body?.startDate,
+        end_date: req.body?.endDate,
+        is_completed: req.body?.isCompleted || false
     }, { transaction });
 
     await transaction.commit();
-    res.status(201).json(milestone);
+    res.status(201).json(formatMilestoneResponse(milestone));
 
   } catch (error) {
     await transaction.rollback();
@@ -104,7 +103,6 @@ exports.updateMilestone = async (req, res) => {
     }
 
     await milestone.update({
-        project_id: project.id,
         week: req.body?.week,
         name: req.body?.name,
         description: req.body?.description,
