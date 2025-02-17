@@ -38,8 +38,13 @@ exports.createMilestone = async (req, res) => {
     }
 
     const milestone = await Milestone.create({
-      ...req.body,
-      project_id: project.id
+        project_id: project.id,
+        week: req.body.week,
+        name: req.body.name,
+        description: req.body.description,
+        start_date: req.body.startDate,
+        end_date: req.body.endDate,
+        is_completed: false
     }, { transaction });
 
     await transaction.commit();
@@ -98,7 +103,16 @@ exports.updateMilestone = async (req, res) => {
       return res.status(403).json({ error: true, message: "無權操作此里程碑" });
     }
 
-    await milestone.update(req.body, { transaction });
+    await milestone.update({
+        project_id: project.id,
+        week: req.body?.week,
+        name: req.body?.name,
+        description: req.body?.description,
+        start_date: req.body?.startDate,
+        end_date: req.body?.endDate,
+        is_completed: req.body?.isCompleted
+    }
+    , { transaction });
     await transaction.commit();
     res.status(200).json(formatMilestoneResponse(milestones));
 
