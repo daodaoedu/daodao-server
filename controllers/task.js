@@ -43,7 +43,7 @@ exports.createTask = async (req, res) => {
         name: req.body.name,
         description: req.body.description,
         days_of_week: req.body.daysOfWeek,
-        is_completed: req.body?.isCompleted || false
+        is_completed: req.body?.isCompleted || false,
       milestone_id: req.params.milestoneId
     }, { transaction });
 
