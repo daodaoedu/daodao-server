@@ -321,63 +321,70 @@ exports.getFilteredProjects = async (req, res) => {
     });
   }
 };
+
 // 獲取學習計畫列表
 exports.getProjects = async (req, res) => {
-    try {
-      const { 
-        page = 1, 
-        limit = 20
-      } = req.query;
-  
-      const projects = await Project.findAndCountAll({
-        where: {},  // 移除所有過濾條件
-        distinct: true,  
-        include: [
-          {
-            model: User,
-            attributes: ['id', 'nickname', 'external_id'],
-            include: [
-              { model: Contact },
-              { model: BasicInfo},
-              { 
-                model: Position,
-                through: { attributes: [] }
-              }
-            ]
-          },
-          {
-            model: ProjectMarathon,
-            include: [{
-              model: Marathon,
-            }]
-          },
-          {
-            model: Milestone,
-            include: [Task]
-          }
-        ],
-        limit: parseInt(limit),
-        offset: (parseInt(page) - 1) * parseInt(limit),
-        order: [['created_at', 'DESC']]
-      });
-  
-      res.status(200).json({
-        total: projects.count,
-        page: parseInt(page),
-        totalPages: Math.ceil(projects.count / limit),
-        data: projects.rows.map(project => ({
-            ...formatProjectResponse(project) }))
-      });
-  
-    } catch (error) {
-      console.error('獲取學習計畫列表錯誤：', error);
-      res.status(500).json({
-        error: true,
-        message: "獲取學習計畫列表失敗",
-        details: process.env.NODE_ENV === 'development' ? error.message : null
-      });
+  try {
+    const { page = 1, limit = 20, isPublic } = req.query;
+
+    // 根據 isPublic 參數建立 where 條件
+    const where = {};
+    if (typeof isPublic !== 'undefined') {
+      // 將字串 "true" 或 "false" 轉換成布林值
+      where.isPublic = isPublic === 'true';
     }
-  };
+
+    const projects = await Project.findAndCountAll({
+      where, // 使用 where 條件
+      distinct: true,
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'nickname', 'external_id'],
+          include: [
+            { model: Contact },
+            { model: BasicInfo },
+            { 
+              model: Position,
+              through: { attributes: [] }
+            }
+          ]
+        },
+        {
+          model: ProjectMarathon,
+          include: [{
+            model: Marathon,
+          }]
+        },
+        {
+          model: Milestone,
+          include: [Task]
+        }
+      ],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+      order: [['created_at', 'DESC']]
+    });
+
+    res.status(200).json({
+      total: projects.count,
+      page: parseInt(page),
+      totalPages: Math.ceil(projects.count / limit),
+      data: projects.rows.map(project => ({
+        ...formatProjectResponse(project)
+      }))
+    });
+
+  } catch (error) {
+    console.error('獲取學習計畫列表錯誤：', error);
+    res.status(500).json({
+      error: true,
+      message: "獲取學習計畫列表失敗",
+      details: process.env.NODE_ENV === 'development' ? error.message : null
+    });
+  }
+};
+
 
 // 獲取我的學習計畫
 exports.getMyProjects = async (req, res) => {
