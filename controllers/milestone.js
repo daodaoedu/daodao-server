@@ -32,7 +32,7 @@ exports.createMilestone = async (req, res) => {
       return res.status(404).json({ error: true, message: "專案不存在" });
     }
 
-    if (project.user_id !== req.user.id) {
+    if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此專案" });
     }
@@ -93,17 +93,23 @@ exports.updateMilestone = async (req, res) => {
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
 
-    if (project.user_id !== req.user.id) {
+    console.log('project.user_id',project.user_id)
+    console.log('req.user.id',req.user.id)
+
+    // 將兩者都轉換為字串進行比較
+    if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此里程碑" });
     }
 
     await milestone.update(req.body, { transaction });
     await transaction.commit();
-    res.status(200).json(formatMilestoneResponse(milestones));
+    res.status(200).json(formatMilestoneResponse(milestone));
 
   } catch (error) {
-    await transaction.rollback();
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
     res.status(500).json({
       error: true,
       message: "更新里程碑失敗",

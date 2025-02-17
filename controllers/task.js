@@ -35,7 +35,7 @@ exports.createTask = async (req, res) => {
       return res.status(404).json({ error: true, message: "里程碑不存在" });
     }
     
-    if (project.user_id !== req.user.id) {
+    if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此任務" });
     }
@@ -119,7 +119,7 @@ exports.getTask = async (req, res) => {
     }
 
     // 確保用戶有權限查看這個專案內的任務
-    if (project.user_id !== req.user.id) {
+    if (project.user_id.toString() !== req.user.id.toString()) {
       return res.status(403).json({ error: true, message: "無權存取此任務" });
     }
 
@@ -163,7 +163,7 @@ exports.updateTask = async (req, res) => {
     }
     
     // 確保用戶有權限修改這個專案內的任務
-    if (project.user_id !== req.user.id) {
+    if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此任務" });
     }
@@ -203,7 +203,7 @@ exports.deleteTask = async (req, res) => {
       return res.status(404).json({ error: true, message: "任務不存在" });
     }
     
-    if (project.user_id !== req.user.id) {
+    if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此任務" });
     }

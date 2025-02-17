@@ -517,7 +517,7 @@ exports.getProject = async (req, res) => {
       }
   
       // 檢查權限
-      if (project.user_id !== req.user.id) {
+      if (project.user_id.toString() !== req.user.id.toString()) {
         await transaction.rollback();
         return res.status(403).json({
           error: true,
@@ -650,7 +650,7 @@ exports.getProject = async (req, res) => {
       }
   
       // 檢查權限
-      if (project.user_id !== req.user.id) {
+      if (project.user_id.toString() !== req.user.id.toString()) {
         await transaction.rollback();
         return res.status(403).json({
           error: true,
