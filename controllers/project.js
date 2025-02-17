@@ -331,7 +331,7 @@ exports.getProjects = async (req, res) => {
     const where = {};
     if (typeof isPublic !== 'undefined') {
       // 將字串 "true" 或 "false" 轉換成布林值
-      where.isPublic = isPublic === 'true';
+      where.is_public = isPublic === 'true';
     }
 
     const projects = await Project.findAndCountAll({
