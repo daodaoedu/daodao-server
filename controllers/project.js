@@ -551,7 +551,6 @@ exports.getProject = async (req, res) => {
         startDate,
         endDate,
         interval,
-        milestones
       } = req.body;
   
       // 驗證日期
@@ -586,30 +585,6 @@ exports.getProject = async (req, res) => {
         updated_by: req.user.id,
       }, { transaction });
   
-      // 如果提供了里程碑數據，更新里程碑
-      if (milestones) {
-        // 刪除現有里程碑（會級聯刪除相關的任務）
-        await Milestone.destroy({
-          where: { project_id: project.id },
-          transaction
-        });
-  
-        // 創建新的里程碑
-        if (milestones.length > 0) {
-          const milestonesData = milestones.map(milestone => ({
-            projectId: project.id,
-            week: milestone.week,
-            name: milestone.name,
-            description: milestone.description,
-            startDate: milestone.startDate,
-            endDate: milestone.endDate,
-            isCompleted: milestone.isCompleted || false
-          }));
-  
-          await Milestone.bulkCreate(milestonesData, { transaction });
-        }
-      }
-  
       // 獲取更新後的完整信息
       const updatedProject = await Project.findOne({
         where: { id: project.id },
@@ -624,6 +599,8 @@ exports.getProject = async (req, res) => {
         ],
         transaction
       });
+
+      console.log(updatedProject);
   
       await transaction.commit();
       res.status(200).json(formatProjectResponse(updatedProject));
