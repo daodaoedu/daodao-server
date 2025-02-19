@@ -15,13 +15,15 @@ const getActivity = async (req, res) => {
         pageSize = parseInt(pageSize, 10);
         const id = req.params.id;
 
-        console.log('req.params.userId',req.params.userId)
+        console.log('req.params.userId', req.params.userId)
 
-        const user = await User.findOne({
-            where: { external_id: req.params.userId },
-        });
-        console.log('user',user);
-        const userId = user?.mongo_id;
+        let userId;
+        if (req.params.userId) {
+            const user = await Users.findOne({
+                where: { external_id: req.params.userId },
+            });
+            userId = user?.mongo_id;
+        }
 
         let filter = {};
         if (userId) filter.userId = userId;
@@ -71,7 +73,7 @@ const getActivity = async (req, res) => {
         //         .limit(30); 
 
         //     allData = allData.concat(additionalData);
-        //     await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600); // 更新缓存
+        //     await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600); // 更新緩存
         // }
 
         const startIndex = (page - 1) * pageSize;
