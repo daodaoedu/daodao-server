@@ -72,7 +72,8 @@ const Project = sequelize.define('Project', {
   },
   strategy_description: DataTypes.TEXT,
   resourceName: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT,
+    field: 'resourceName'
   },
   // resource_url: {
   //   type: DataTypes.ARRAY(DataTypes.TEXT)
@@ -122,7 +123,7 @@ const Project = sequelize.define('Project', {
 }, {
   tableName: 'project',
   timestamps: true,
-  underscored: true
+  underscored: false
 });
 
 module.exports = Project;
