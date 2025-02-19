@@ -22,7 +22,7 @@ const Project = sequelize.define('Project', {
     }
   },
   img_url: DataTypes.STRING,
-  topic: DataTypes.STRING,
+  title: DataTypes.STRING,
   description: DataTypes.TEXT,
   motivation: {
     type: DataTypes.ARRAY(DataTypes.ENUM(
