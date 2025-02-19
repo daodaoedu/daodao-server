@@ -23,7 +23,9 @@ const getActivity = async (req, res) => {
                 where: { external_id: req.params.userId },
             });
             userId = user?.mongo_id;
+            console.log('userId = user?.mongo_id;',userId);
         }
+
 
         let filter = {};
         if (userId) filter.userId = userId;
