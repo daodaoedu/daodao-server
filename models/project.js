@@ -72,11 +72,11 @@ const Project = sequelize.define('Project', {
   },
   strategy_description: DataTypes.TEXT,
   resourceName: {
-    type: DataTypes.ARRAY(DataTypes.TEXT)
+    type: DataTypes.TEXT
   },
-  resource_url: {
-    type: DataTypes.ARRAY(DataTypes.TEXT)
-  },
+  // resource_url: {
+  //   type: DataTypes.ARRAY(DataTypes.TEXT)
+  // },
   outcome: {
     type: DataTypes.ARRAY(DataTypes.ENUM(
       'building_websites',
