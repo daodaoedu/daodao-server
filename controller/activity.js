@@ -15,8 +15,10 @@ const getActivity = async (req, res) => {
         pageSize = parseInt(pageSize, 10);
         const id = req.params.id;
 
+        console.log('req.params.userId',req.params.userId)
+
         const user = await User.findOne({
-            where: { external_id: req.params._id },
+            where: { external_id: req.params.userId },
         });
         console.log('user',user);
         const userId = user?.mongo_id;
