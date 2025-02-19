@@ -1,5 +1,6 @@
 const Activity = require("../models/activity.model");
 const User = require("../models/user.model");
+const Users = require("../models/user");
 const redis = require("../services/redis");
 
 const handleErrors = (res, error) => {
@@ -13,7 +14,11 @@ const getActivity = async (req, res) => {
         page = parseInt(page, 10);
         pageSize = parseInt(pageSize, 10);
         const id = req.params.id;
-        const userId = req.params.userId;
+
+        const user = await User.findOne({
+            where: { external_id: currentUser._id },
+        });
+        const userId = user.mongo_id;
 
         let filter = {};
         if (userId) filter.userId = userId;
