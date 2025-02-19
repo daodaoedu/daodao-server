@@ -16,9 +16,10 @@ const getActivity = async (req, res) => {
         const id = req.params.id;
 
         const user = await User.findOne({
-            where: { external_id: currentUser._id },
+            where: { external_id: req.params._id },
         });
-        const userId = user.mongo_id;
+        console.log('user',user);
+        const userId = user?.mongo_id;
 
         let filter = {};
         if (userId) filter.userId = userId;
