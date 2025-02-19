@@ -12,7 +12,7 @@ const formatProjectResponse = (project) => {
     id: projectJson.external_id,
     userId: projectJson.user_id,
     imgUrl: projectJson.img_url,
-    title: projectJson.topic,
+    title: projectJson.title,
     description: projectJson.description,
     motivation: projectJson.motivation,
     motivationDescription: projectJson.motivation_description,
@@ -145,7 +145,7 @@ exports.createProject = async (req, res) => {
     const project = await Project.create({
       user_id: req.user.id,
       img_url: imgUrl,
-      topic: title,
+      title: title,
       description,
       motivation,
       motivation_description: motivationDescription,
@@ -260,7 +260,7 @@ exports.getFilteredProjects = async (req, res) => {
     if (search) {
       whereConditions[Op.and].push({
         [Op.or]: [
-          { topic: { [Op.iLike]: `%${search}%` } },
+          { title: { [Op.iLike]: `%${search}%` } },
           { description: { [Op.iLike]: `%${search}%` } }
         ]
       });
@@ -292,7 +292,7 @@ exports.getFilteredProjects = async (req, res) => {
       data: projects.rows.map(project => ({
         id: project.id,
         externalId: project.external_id,
-        title: project.topic,
+        title: project.title,
         description: project.description,
         isPublic: project.is_public,
         status: project.status,
@@ -565,7 +565,7 @@ exports.getProject = async (req, res) => {
       // 更新學習計畫
       await project.update({
         img_url: imgUrl,
-        topic: title,
+        title: title,
         description,
         motivation,
         motivation_description: motivationDescription,

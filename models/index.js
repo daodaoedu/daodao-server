@@ -7,7 +7,8 @@ const Role = require('./role');
 const Permission = require('./permission');
 const Position = require('./position');
 const Location = require('./location');
-const Area = require('./area');
+const City = require('./city');
+const Country = require('./country');
 const Contact = require('./contact');
 const BasicInfo = require('./basicInfo');
 const UserProject = require('./userProject');
@@ -63,13 +64,6 @@ const setupAssociations = () => {
     foreignKey: 'location_id',
   });
 
-  User.belongsTo(Area, { 
-    foreignKey: 'location_id', 
-  });
-  Area.hasMany(User, { 
-    foreignKey: 'location_id',
-  });
-
   User.belongsTo(Contact, { 
     foreignKey: 'contact_id',
   });
@@ -83,13 +77,17 @@ const setupAssociations = () => {
   BasicInfo.hasOne(User, { 
     foreignKey: 'basic_info_id',
   });
-
-  Location.belongsTo(Area, {
-    foreignKey: 'area_id',
+  Location.belongsTo(City, {
+    foreignKey: 'city_id',
   });
-
-  Area.hasMany(Location, {
-    foreignKey: 'area_id',
+  City.hasMany(Location, {
+    foreignKey: 'city_id',
+  });
+  Location.belongsTo(Country, {
+    foreignKey: 'country_id',
+  });
+  Country.hasMany(Location, {
+    foreignKey: 'country_id',
   });
 
   // 3. 專案相關關聯
@@ -212,7 +210,8 @@ module.exports = {
   Permission,
   Position,
   Location,
-  Area,
+  City,
+  Country,
   Contact,
   BasicInfo,
   Project,

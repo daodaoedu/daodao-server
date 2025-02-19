@@ -16,9 +16,8 @@ const TempUser = require("../models/tempUser.model");
 const sendVerifiedEmail = require("../controller/sendVerifiedEmail");
 const { FRONTEND_URL, BACKEND_URL } = process.env;
 const { validate: isUuid } = require('uuid');
-
-
-
+const City = require("../models/city");
+const Country = require("../models/country");
 
 const formatToTaipeiTime = (date) => {
   if (!date) return null;
@@ -43,7 +42,7 @@ const formatUserResponse = (user) => {
     isOpenLocation: userJson.is_open_location,
     isOpenProfile: userJson.is_open_profile,
     role: userJson.Role?.id,
-    location: userJson.Location?.Area?.city || '',
+    location: userJson.Location?.City?.name || '',
     tagList,
     wantToDoList: userJson.BasicInfo?.want_to_do_list,
     educationStage: userJson.education_stage,
@@ -96,7 +95,7 @@ exports.getAllUsers = async (req, res) => {
 
     // 地区过滤
     if (location) {
-      whereConditions['$Location.Area.city$'] = {
+      whereConditions['$Location.City.name$'] = {
         [Op.in]: location.split(',')
       };
     }
@@ -119,10 +118,10 @@ exports.getAllUsers = async (req, res) => {
         {
           model: Location,
           attributes: [],
-          include: [{
-            model: Area,
-            required: false
-          }],
+          include: [
+            { model: City, required: false },
+            { model: Country, required: false }
+          ],
           required: false
         },
         {
@@ -200,7 +199,10 @@ exports.getMe = async (req, res) => {
         { model: Role },
         {
           model: Location,
-          include: [{ model: Area, attributes: ['city'] }]
+          include: [
+            { model: City, attributes: ['name'] },
+            { model: Country, attributes: ['name'] }
+          ]
         },
         {
           model: Contact,
@@ -434,11 +436,10 @@ exports.createUser = async (req, res) => {
         {
           model: Location,
           attributes: [],
-          include: [{
-            model: Area,
-            attributes: ['city'],
-            required: false
-          }],
+          include: [
+            { model: City, attributes: ['name'] },
+            { model: Country, attributes: ['name'] }
+          ],
           required: false
         },
         Contact,
@@ -510,11 +511,10 @@ exports.updateUser = async (req, res) => {
         {
           model: Location,
           attributes: [],
-          include: [{
-            model: Area,
-            attributes: ['city'],
-            required: false
-          }],
+          include: [
+            { model: City, attributes: ['name'] },
+            { model: Country, attributes: ['name'] }
+          ],
           required: false
         },
         Contact,
@@ -634,11 +634,10 @@ exports.updateUser = async (req, res) => {
         {
           model: Location,
           attributes: [],
-          include: [{
-            model: Area,
-            attributes: ['city'],
-            required: false
-          }],
+          include: [
+            { model: City, attributes: ['name'] },
+            { model: Country, attributes: ['name'] }
+          ],
           required: false
         },
         { model: Contact },
