@@ -71,7 +71,7 @@ const Project = sequelize.define('Project', {
     ))
   },
   strategy_description: DataTypes.TEXT,
-  resource_name: {
+  resourceName: {
     type: DataTypes.ARRAY(DataTypes.TEXT)
   },
   resource_url: {
