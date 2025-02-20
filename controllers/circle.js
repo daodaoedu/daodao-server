@@ -2,6 +2,32 @@ const { Circle, User } = require('../models');
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
 
+
+// 輔助函式：格式化 user 資料
+const formatUserData = (user) => {
+  if (!user) return null;
+  const userJson = user.toJSON();
+  return {
+    id: userJson.id,
+    externalId: userJson.external_id,
+    name: userJson.nickname,
+    // 利用 alias 轉換，從關聯的 Contact 拿 photo_url 並轉成 photoURL
+    photoURL: userJson.Contact ? userJson.Contact.photo_url : null,
+    email: userJson.Contact ? userJson.Contact.email : null,
+    // 如有其他欄位，依需求加入
+    // 例如：educationStage、location、roleList（可進一步從 Position 整理）
+  };
+};
+
+// 輔助函式：格式化 Circle 資料，將內部 User 資料另外整理
+const formatCircleResponse = (circle) => {
+  const circleData = circle.toJSON();
+  return {
+    ...circleData,
+    // 將原本的 User 改成整理後的 user 資料
+    formatUserData(circleData.User)
+  };
+};
 // 取得活動清單（含分頁與搜尋）
 exports.getCircle = async (req, res) => {
   try {
@@ -58,15 +84,25 @@ exports.getCircle = async (req, res) => {
       ],
       offset: (pageInt - 1) * pageSizeInt,
       limit: pageSizeInt,
-      include: [{
-        model: User,
-        attributes: ['photoURL', 'name', 'email', 'educationStage', 'location', 'roleList']
-      }]
+      include: [          
+        {
+            model: User,
+            attributes: ['id', 'nickname', 'external_id'],
+            include: [
+              { model: Contact },
+              { model: BasicInfo},
+              { 
+                model: Position,
+                through: { attributes: [] }
+              }
+            ]
+        }
+      ]
     });
 
     const totalPages = Math.ceil(count / pageSizeInt);
     res.json({
-      data: rows,
+      data: rows.map(circle => formatCircleResponse(circle)),
       page: pageInt,
       pageSize: pageSizeInt,
       totalCount: count,
@@ -105,13 +141,16 @@ exports.updateCircle = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const id = req.params.id;
-    const userId = req.user.id; // 注意：此處根據你驗證 middleware 提供的 user 資訊
-    const circle = await Circle.findByPk(id, { transaction });
+    const userId = req.user.id;
+    const circle = await Circle.findOne({
+      where: { external_id: id },
+      transaction
+    });
     if (!circle) {
       await transaction.rollback();
       return res.status(404).json({ error: "Circle not found" });
     }
-    if (circle.userId !== userId) {
+    if (circle.created_by !== userId) {
       await transaction.rollback();
       return res.status(403).json({ error: "You are not authorized to update this circle" });
     }
@@ -135,7 +174,24 @@ exports.updateCircle = async (req, res) => {
       circle.updatedDate = new Date();
       await circle.save({ transaction });
       await transaction.commit();
-      res.json({ data: circle, message: "Circle updated successfully." });
+
+      const updatedCircle = await Circle.findByPk(id, {
+      include: [
+          {
+            model: User,
+            attributes: ['id', 'nickname', 'external_id'],
+            include: [
+              { model: Contact },
+              { model: BasicInfo},
+              { 
+                model: Position,
+                through: { attributes: [] }
+              }
+            ]
+          }
+        ]
+      });
+      res.json({ data: formatCircleResponse(updatedCircle), message: "Circle updated successfully." });
     } else {
       await transaction.rollback();
       res.json({ message: "No fields were updated" });
