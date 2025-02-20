@@ -24,6 +24,7 @@ const ProjectMarathon = require('./projectMarathon');
 const Eligibility = require('./eligibility');
 const Marathon = require('./marathon');
 const FeePlan = require('./feePlan');
+const Circle = require('./circle');
 
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
@@ -196,6 +197,11 @@ const setupAssociations = () => {
   FeePlan.hasMany(Eligibility, {
     foreignKey: 'fee_plans_id',
   });
+  
+  User.hasMany(Circle, { foreignKey: 'created_by' });
+
+  Circle.belongsTo(User, { foreignKey: 'created_by' });
+
 };
 
 // 執行關聯設置
@@ -223,5 +229,6 @@ module.exports = {
   ProjectMarathon,
   Eligibility,
   Marathon,
-  FeePlan
+  FeePlan,
+  Circle,
 };
