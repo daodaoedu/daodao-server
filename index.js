@@ -74,6 +74,7 @@ app.use(session({
 }))
 app.use(passport.initialize());
 app.use(passport.session());
+app.use('/project-list',projectListRoutes);
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
 app.use('/users', userRoutes);
@@ -88,7 +89,6 @@ app.use('/images',strictLimiter, imageRoutes);
 // });
 
 app.get('/',recentDataRoutes);
-app.use('/project-list',projectListRoutes);
 
 
 async function startServer() {
