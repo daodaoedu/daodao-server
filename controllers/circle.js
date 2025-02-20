@@ -60,7 +60,6 @@ exports.getCircle = async (req, res) => {
       limit: pageSizeInt,
       include: [{
         model: User,
-        as: 'user',
         attributes: ['photoURL', 'name', 'email', 'educationStage', 'location', 'roleList']
       }]
     });
