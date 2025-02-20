@@ -99,7 +99,7 @@ const Circle = sequelize.define('Circle', {
   },
   TBD: {
     type: DataTypes.BOOLEAN,
-    field: 'tbd'
+    field: 'TBD'
   }
 }, {
   tableName: 'groups', // 對應原本的 groups 表
