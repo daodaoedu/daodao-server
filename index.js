@@ -74,7 +74,7 @@ app.use(session({
 }))
 app.use(passport.initialize());
 app.use(passport.session());
-app.use('/project-list',projectListRoutes);
+app.use('/list',projectListRoutes);
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
 app.use('/users', userRoutes);
