@@ -54,7 +54,7 @@ const formatCircleResponse = (circle) => {
     updatedDate: plainCircle.updated_date,
     deadline: plainCircle.group_deadline,
     isNeedDeadline: plainCircle?.isneedDeadline || false,
-    user: formatUserData(circleData.User)
+    user: formatUserData(plainCircle.User)
   };
 };
 // 取得活動清單（含分頁與搜尋）
