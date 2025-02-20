@@ -1,7 +1,26 @@
-// 在這個檔案的最上方引入 Sequelize 的 Project 模型（注意與 Mongoose 的 User 模型區分）
 const express = require('express');
 const router = express.Router();
 const { Project: SequelizeProject, User: SequelizeUser } = require('../models');
+
+/**
+ * 輔助函式：將專案資料格式化為前端期望的物件格式
+ * @param {Object} project - 專案資料實例
+ * @param {number} index - 序號（從 0 開始）
+ */
+const formatProjectResponse = (project, index) => {
+  const ownerNickname = project.User ? project.User.nickname : 'N/A';
+  const startDate = project.start_date ? new Date(project.start_date).toLocaleDateString() : null;
+  const endDate = project.end_date ? new Date(project.end_date).toLocaleDateString() : null;
+  return {
+    index: index + 1,
+    title: project.title,
+    description: project.description || '',
+    status: project.status,
+    startDate,
+    endDate,
+    owner: ownerNickname
+  };
+};
 
 // 新增一個顯示 version = 2 的 project 資料列表的路由
 router.get('/', async (req, res) => {
@@ -17,56 +36,22 @@ router.get('/', async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Project List (Version 2)</title>
-        <style>
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f4f4f4; }
-        </style>
-      </head>
-      <body>
-        <h1>Project List (Version 2)</h1>
-        <table>
-          <tr>
-            <th>#</th>
-            <th>Title</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Owner</th>
-          </tr>
-          ${projects.map((project, index) => {
-            const userNickname = project.User ? project.User.nickname : 'N/A';
-            const startDate = project.start_date ? new Date(project.start_date).toLocaleDateString() : '';
-            const endDate = project.end_date ? new Date(project.end_date).toLocaleDateString() : '';
-            return `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${project.title}</td>
-                <td>${project.description || ''}</td>
-                <td>${project.status}</td>
-                <td>${startDate}</td>
-                <td>${endDate}</td>
-                <td>${userNickname}</td>
-              </tr>
-            `;
-          }).join('')}
-        </table>
-      </body>
-      </html>
-    `;
+    const formattedProjects = projects.map((project, index) =>
+      formatProjectResponse(project, index)
+    );
 
-    res.send(htmlContent);
+    return res.status(200).json({
+      data: formattedProjects,
+      message: "Projects fetched successfully"
+    });
   } catch (error) {
-    console.error('Error fetching project list:', error);
-    res.status(500).send('An error occurred while fetching project list.');
+    console.error("Error fetching project list:", error);
+    return res.status(500).json({
+      error: true,
+      message: "An error occurred while fetching project list.",
+      details: error.message
+    });
   }
 });
+
 module.exports = router;
