@@ -88,7 +88,7 @@ app.use('/images',strictLimiter, imageRoutes);
 // });
 
 app.get('/',recentDataRoutes);
-app.get('/project-list',projectListRoutes);
+app.use('/project-list',projectListRoutes);
 
 
 async function startServer() {
