@@ -1,4 +1,4 @@
-const { Circle, User, Location, Country, Contact, BasicInfo, Position} = require('../models');
+const { Circle, User, Location, Country, City, Contact, BasicInfo, Position} = require('../models');
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
 
