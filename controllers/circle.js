@@ -1,9 +1,9 @@
-const { Activity, User } = require('../models');
+const { Circle, User } = require('../models');
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
 
 // 取得活動清單（含分頁與搜尋）
-exports.getActivity = async (req, res) => {
+exports.getCircle = async (req, res) => {
   try {
     // 從 query 或 params 取得相關條件
     const {
@@ -50,7 +50,7 @@ exports.getActivity = async (req, res) => {
     }
 
     // 使用 findAndCountAll 同時取得資料與總筆數
-    const { count, rows } = await Activity.findAndCountAll({
+    const { count, rows } = await Circle.findAndCountAll({
       where: filter,
       order: [
         ['isGrouping', 'DESC'],
@@ -80,20 +80,20 @@ exports.getActivity = async (req, res) => {
 };
 
 // 新增活動
-exports.createActivity = async (req, res) => {
+exports.createCircle = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { title } = req.body;
     // 檢查是否已存在相同 title 的活動
-    const existingActivity = await Activity.findOne({ where: { title } });
-    if (existingActivity) {
+    const existingCircle = await Circle.findOne({ where: { title } });
+    if (existingCircle) {
       await transaction.rollback();
-      return res.status(400).json({ message: "Activity already exists" });
+      return res.status(400).json({ message: "Circle already exists" });
     }
     // 建立新的活動記錄
-    const newActivity = await Activity.create(req.body, { transaction });
+    const newCircle = await Circle.create(req.body, { transaction });
     await transaction.commit();
-    res.status(201).json({ data: newActivity });
+    res.status(201).json({ data: newCircle });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
     console.error(error);
@@ -102,19 +102,19 @@ exports.createActivity = async (req, res) => {
 };
 
 // 更新活動
-exports.updateActivity = async (req, res) => {
+exports.updateCircle = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const id = req.params.id;
     const userId = req.user.id; // 注意：此處根據你驗證 middleware 提供的 user 資訊
-    const activity = await Activity.findByPk(id, { transaction });
-    if (!activity) {
+    const circle = await Circle.findByPk(id, { transaction });
+    if (!circle) {
       await transaction.rollback();
-      return res.status(404).json({ error: "Activity not found" });
+      return res.status(404).json({ error: "Circle not found" });
     }
-    if (activity.userId !== userId) {
+    if (circle.userId !== userId) {
       await transaction.rollback();
-      return res.status(403).json({ error: "You are not authorized to update this activity" });
+      return res.status(403).json({ error: "You are not authorized to update this circle" });
     }
 
     // 指定可更新的欄位
@@ -127,16 +127,16 @@ exports.updateActivity = async (req, res) => {
     let updated = false;
     fieldsToUpdate.forEach(field => {
       if (req.body[field] !== undefined) {
-        activity[field] = req.body[field];
+        circle[field] = req.body[field];
         updated = true;
       }
     });
 
     if (updated) {
-      activity.updatedDate = new Date();
-      await activity.save({ transaction });
+      circle.updatedDate = new Date();
+      await circle.save({ transaction });
       await transaction.commit();
-      res.json({ data: activity, message: "Activity updated successfully." });
+      res.json({ data: circle, message: "Circle updated successfully." });
     } else {
       await transaction.rollback();
       res.json({ message: "No fields were updated" });
@@ -149,23 +149,23 @@ exports.updateActivity = async (req, res) => {
 };
 
 // 刪除活動
-exports.deleteActivity = async (req, res) => {
+exports.deleteCircle = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const id = req.params.id;
     const userId = req.user.id;
-    const activity = await Activity.findByPk(id, { transaction });
-    if (!activity) {
+    const circle = await Circle.findByPk(id, { transaction });
+    if (!circle) {
       await transaction.rollback();
-      return res.status(404).json({ error: "Activity not found" });
+      return res.status(404).json({ error: "Circle not found" });
     }
-    if (activity.userId !== userId) {
+    if (circle.userId !== userId) {
       await transaction.rollback();
-      return res.status(403).json({ error: "You are not authorized to delete this activity" });
+      return res.status(403).json({ error: "You are not authorized to delete this circle" });
     }
-    await activity.destroy({ transaction });
+    await circle.destroy({ transaction });
     await transaction.commit();
-    res.status(200).json({ message: "Activity deleted successfully." });
+    res.status(200).json({ message: "Circle deleted successfully." });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
     console.error(error);
@@ -174,24 +174,24 @@ exports.deleteActivity = async (req, res) => {
 };
 
 // 變更活動狀態（例如更新部分欄位）
-exports.changeActivityStatus = async (req, res) => {
+exports.changeCircleStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const id = req.params.id;
     const userId = req.user.id;
-    const activity = await Activity.findByPk(id, { transaction });
-    if (!activity) {
+    const circle = await Circle.findByPk(id, { transaction });
+    if (!circle) {
       await transaction.rollback();
-      return res.status(404).json({ error: "Activity not found" });
+      return res.status(404).json({ error: "Circle not found" });
     }
-    if (activity.userId !== userId) {
+    if (circle.userId !== userId) {
       await transaction.rollback();
-      return res.status(403).json({ error: "You are not authorized to change the status of this activity" });
+      return res.status(403).json({ error: "You are not authorized to change the status of this circle" });
     }
     // 更新傳入的狀態欄位（例如 isGrouping、TBD 等）
-    await activity.update(req.body, { transaction });
+    await circle.update(req.body, { transaction });
     await transaction.commit();
-    res.status(200).json({ message: "Activity status changed successfully." });
+    res.status(200).json({ message: "Circle status changed successfully." });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
     console.error(error);
