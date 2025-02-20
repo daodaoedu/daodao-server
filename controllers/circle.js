@@ -2,7 +2,15 @@ const { Circle, User, Location, Country, City, Contact, BasicInfo, Position} = r
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
 
-
+function splitAndTrim(input, separator = ',') {
+  if (typeof input !== 'string') {
+    return [];
+  }
+  return input
+    .split(separator)
+    .map(item => item.trim())
+    .filter(item => item !== '');
+}
 // 輔助函式：格式化 user 資料
 const formatUserData = (user) => {
   if (!user) return null;
@@ -24,8 +32,29 @@ const formatCircleResponse = (circle) => {
   const circleData = typeof circle.toJSON === 'function' ? circle.toJSON() : circle;
   const { photoUrl, ...rest } = circleData;
   return {
-    ...rest,
-    photoURL: photoUrl,
+    id: plainCircle.id,
+    _id: plainCircle.external_id,
+    title: plainCircle.title,
+    photoURL: plainCircle.photo_url,
+    photoAlt: plainCircle.photo_alt,
+    category: plainCircle.category,
+    activityCategory: plainCircle.group_type,
+    area: plainCircle?.area || [],
+    time: plainCircle.is_grouping,
+    participator: plainCircle?.participator || "",
+    partnerStyle: plainCircle.partner_style,
+    partnerEducationStep: plainCircle.partner_education_step,
+    motivation: plainCircle.motivation,
+    content: plainCircle.contents,
+    description: plainCircle.description,
+    outcome: plainCircle?.outcome || "",
+    notice: plainCircle.notice,
+    tagList: splitAndTrim(plainCircle.tag_list),
+    isGrouping: plainCircle.is_grouping,
+    createdDate: plainCircle.created_date,
+    updatedDate: plainCircle.updated_date,
+    deadline: plainCircle.group_deadline,
+    isNeedDeadline: plainCircle?.isneedDeadline || false,
     user: formatUserData(circleData.User)
   };
 };
