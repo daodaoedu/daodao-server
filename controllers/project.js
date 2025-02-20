@@ -322,14 +322,15 @@ exports.getFilteredProjects = async (req, res) => {
 // 獲取學習計畫列表
 exports.getProjects = async (req, res) => {
   try {
-    const { page = 1, limit = 20, isPublic } = req.query;
+    const { page = 1, limit = 20 } = req.query;
 
-    // 根據 isPublic 參數建立 where 條件
+    // // 根據 isPublic 參數建立 where 條件
     const where = {};
-    if (typeof isPublic !== 'undefined') {
-      // 將字串 "true" 或 "false" 轉換成布林值
-      where.is_public = isPublic === 'true';
-    }
+    where.version = 2;
+    // if (typeof isPublic !== 'undefined') {
+    //   // 將字串 "true" 或 "false" 轉換成布林值
+    //   where.is_public = isPublic === 'true';
+    // }
 
     const projects = await Project.findAndCountAll({
       where, // 使用 where 條件
