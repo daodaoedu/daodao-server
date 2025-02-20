@@ -2,7 +2,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-const Activity = sequelize.define('Circle', {
+const Circle = sequelize.define('Circle', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
