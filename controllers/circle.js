@@ -6,7 +6,8 @@ function splitAndTrim(input, separator = ',') {
   if (typeof input !== 'string') {
     return [];
   }
-  return input
+  const cleanedInput = input.replace(/[{}]/g, '');
+  return cleanedInput
     .split(separator)
     .map(item => item.trim())
     .filter(item => item !== '');
@@ -38,15 +39,15 @@ const formatCircleResponse = (circle) => {
     photoAlt: plainCircle.photo_alt,
     category: plainCircle.category,
     activityCategory: plainCircle.group_type,
-    area: plainCircle?.area || [],
-    time: plainCircle.is_grouping,
+    area: plainCircle?.TBD ? 'tbd' : [],
+    time: plainCircle.time,
     participator: plainCircle?.participator || "",
     partnerStyle: plainCircle.partner_style,
     partnerEducationStep: plainCircle.partner_education_step,
     motivation: plainCircle.motivation,
     content: plainCircle.contents,
     description: plainCircle.description,
-    outcome: plainCircle?.outcome || "",
+    outcome: plainCircle?.expectation_result || "",
     notice: plainCircle.notice,
     tagList: splitAndTrim(plainCircle.tag_list),
     isGrouping: plainCircle.is_grouping,
