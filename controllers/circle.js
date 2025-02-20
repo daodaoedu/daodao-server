@@ -22,8 +22,10 @@ const formatUserData = (user) => {
 // 輔助函式：格式化 Circle 資料，將內部 User 資料另外整理
 const formatCircleResponse = (circle) => {
   const circleData = typeof circle.toJSON === 'function' ? circle.toJSON() : circle;
+  const { photoUrl, ...rest } = circleData;
   return {
-    ...circleData,
+    ...rest,
+    photoURL: photoUrl,
     user: formatUserData(circleData.User)
   };
 };
@@ -49,7 +51,7 @@ exports.getCircle = async (req, res) => {
     // 組合 where 條件
     const filter = {};
     if (userId) filter.created_by = userId;
-    if (id) filter.id = id;
+    if (id) filter.external_id = id;
     if (activityCategory) filter.group_type = activityCategory;
     if (area) filter.area = area;
     if (partnerEducationStep) filter.partner_education_step = partnerEducationStep;
