@@ -29,8 +29,7 @@ const formatUserData = (user) => {
 
 // 輔助函式：格式化 Circle 資料，將內部 User 資料另外整理
 const formatCircleResponse = (circle) => {
-  const circleData = typeof circle.toJSON === 'function' ? circle.toJSON() : circle;
-  const { photoUrl, ...rest } = circleData;
+  const plainCircle = typeof circle.get === 'function' ? circle.get({ plain: true }) : circle;
   return {
     id: plainCircle.id,
     _id: plainCircle.external_id,
