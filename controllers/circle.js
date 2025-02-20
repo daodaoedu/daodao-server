@@ -8,14 +8,14 @@ const formatUserData = (user) => {
   if (!user) return null;
   const userJson = user.toJSON();
   return {
-    id: userJson.id,
     externalId: userJson.external_id,
     name: userJson.nickname,
     // 利用 alias 轉換，從關聯的 Contact 拿 photo_url 並轉成 photoURL
     photoURL: userJson.Contact ? userJson.Contact.photo_url : null,
     email: userJson.Contact ? userJson.Contact.email : null,
-    // 如有其他欄位，依需求加入
-    // 例如：educationStage、location、roleList（可進一步從 Position 整理）
+    roleList: userJson.Positions?.map(p => p.name) || [],
+    educationStage: userJson.education_stage,
+    location: userJson.Location?.City?.name || '',
   };
 };
 
@@ -24,8 +24,7 @@ const formatCircleResponse = (circle) => {
   const circleData = circle.toJSON();
   return {
     ...circleData,
-    // 將原本的 User 改成整理後的 user 資料
-    formatUserData(circleData.User)
+    user: formatUserData(circleData.User)
   };
 };
 // 取得活動清單（含分頁與搜尋）
@@ -91,6 +90,13 @@ exports.getCircle = async (req, res) => {
             include: [
               { model: Contact },
               { model: BasicInfo},
+              {
+                model: Location,
+                include: [
+                  { model: City, attributes: ['name'] },
+                  { model: Country, attributes: ['name'] }
+                ]
+              },
               { 
                 model: Position,
                 through: { attributes: [] }
@@ -176,20 +182,27 @@ exports.updateCircle = async (req, res) => {
       await transaction.commit();
 
       const updatedCircle = await Circle.findByPk(id, {
-      include: [
-          {
+      include: [          
+        {
             model: User,
             attributes: ['id', 'nickname', 'external_id'],
             include: [
               { model: Contact },
               { model: BasicInfo},
+              {
+                model: Location,
+                include: [
+                  { model: City, attributes: ['name'] },
+                  { model: Country, attributes: ['name'] }
+                ]
+              },
               { 
                 model: Position,
                 through: { attributes: [] }
               }
             ]
-          }
-        ]
+        }
+      ]
       });
       res.json({ data: formatCircleResponse(updatedCircle), message: "Circle updated successfully." });
     } else {
