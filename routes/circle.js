@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { isAuthenticated, requireCompleteProfile } = require("../middlewares/isAuthenticated");
-const { createCircle, updateCircle, getCircle, deleteCircle, changeCircleStatus } = require("../controller/circle");
+const { createCircle, updateCircle, getCircle, deleteCircle, changeCircleStatus } = require("../controllers/circle");
 
 router.get("", getCircle);
 router.get("/:id", getCircle);
