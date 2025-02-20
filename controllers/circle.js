@@ -6,7 +6,7 @@ const { Op } = require('sequelize');
 // 輔助函式：格式化 user 資料
 const formatUserData = (user) => {
   if (!user) return null;
-  const userJson = user.toJSON();
+  const userJson = typeof user.toJSON === 'function' ? user.toJSON() : user;
   return {
     externalId: userJson.external_id,
     name: userJson.nickname,
@@ -21,7 +21,7 @@ const formatUserData = (user) => {
 
 // 輔助函式：格式化 Circle 資料，將內部 User 資料另外整理
 const formatCircleResponse = (circle) => {
-  const circleData = circle.toJSON();
+  const circleData = typeof circle.toJSON === 'function' ? circle.toJSON() : circle;
   return {
     ...circleData,
     user: formatUserData(circleData.User)
