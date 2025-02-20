@@ -20,8 +20,7 @@ const formatProjectResponse = (project) => {
     content: projectJson.content,
     strategy: projectJson.strategy,
     strategyDescription: projectJson.strategy_description,
-    resourceName: projectJson.resource_name,
-    resourceUrl: projectJson.resource_url,
+    resourceName: projectJson.resource,
     outcome: projectJson.outcome,
     outcomeDescription: projectJson.outcome_description,
     isPublic: projectJson.is_public,
@@ -74,7 +73,6 @@ exports.createProject = async (req, res) => {
       strategy,           // ['book_reading', 'watching_videos', ...]
       strategyDescription,
       resourceName,       // ['資源1', '資源2']
-      resourceUrl,        // ['url1', 'url2']
       outcome,            // ['building_websites', 'making_videos', ...]
       outcomeDescription,
       isPublic = false,
@@ -153,8 +151,7 @@ exports.createProject = async (req, res) => {
       content,
       strategy,
       strategy_description: strategyDescription,
-      resource_name: resourceName,
-      resource_url: resourceUrl,
+      resource: resourceName,
       outcome,
       outcome_description: outcomeDescription,
       is_public: isPublic,
@@ -543,7 +540,6 @@ exports.getProject = async (req, res) => {
         strategy,
         strategyDescription,
         resourceName,
-        resourceUrl,
         outcome,
         outcomeDescription,
         isPublic,
@@ -573,8 +569,7 @@ exports.getProject = async (req, res) => {
         content,
         strategy,
         strategy_description: strategyDescription,
-        resource_name: resourceName,
-        resource_url: resourceUrl,
+        resource: resourceName,
         outcome,
         outcome_description: outcomeDescription,
         is_public: isPublic,

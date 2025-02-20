@@ -1,6 +1,5 @@
 const Activity = require("../models/activity.model");
 const User = require("../models/user.model");
-const Users = require("../models/user");
 const redis = require("../services/redis");
 
 const handleErrors = (res, error) => {
@@ -14,18 +13,7 @@ const getActivity = async (req, res) => {
         page = parseInt(page, 10);
         pageSize = parseInt(pageSize, 10);
         const id = req.params.id;
-
-        console.log('req.params.userId', req.params.userId)
-
-        let userId;
-        if (req.params.userId) {
-            const user = await Users.findOne({
-                where: { external_id: req.params.userId },
-            });
-            userId = user?.mongo_id;
-            console.log('userId = user?.mongo_id;',userId);
-        }
-
+        const userId = req.params.userId;
 
         let filter = {};
         if (userId) filter.userId = userId;
@@ -75,7 +63,7 @@ const getActivity = async (req, res) => {
         //         .limit(30); 
 
         //     allData = allData.concat(additionalData);
-        //     await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600); // 更新緩存
+        //     await redis.set(cacheKey, JSON.stringify(allData), 'EX', 3600); // 更新缓存
         // }
 
         const startIndex = (page - 1) * pageSize;
