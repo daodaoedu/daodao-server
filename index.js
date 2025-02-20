@@ -13,6 +13,7 @@ const marathonRoutes = require('./routes/marathon');
 const tagRoutes = require('./routes/tag');
 const emailRoutes = require('./routes/email');
 const imageRoutes = require('./routes/image');
+const projectListRoutes = require('./routes/projectList');
 const session = require("express-session");
 const rateLimit = require("express-rate-limit");
 const passport = require("passport");
@@ -87,6 +88,7 @@ app.use('/images',strictLimiter, imageRoutes);
 // });
 
 app.get('/',recentDataRoutes);
+app.get('/project-list',projectListRoutes);
 
 
 async function startServer() {
