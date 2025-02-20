@@ -1,4 +1,6 @@
 // 在這個檔案的最上方引入 Sequelize 的 Project 模型（注意與 Mongoose 的 User 模型區分）
+const express = require('express');
+const router = express.Router();
 const { Project: SequelizeProject, User: SequelizeUser } = require('../models');
 
 // 新增一個顯示 version = 2 的 project 資料列表的路由
@@ -67,3 +69,4 @@ router.get('/', async (req, res) => {
     res.status(500).send('An error occurred while fetching project list.');
   }
 });
+module.exports = router;
