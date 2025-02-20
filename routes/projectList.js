@@ -2,7 +2,7 @@
 const { Project: SequelizeProject, User: SequelizeUser } = require('../models');
 
 // 新增一個顯示 version = 2 的 project 資料列表的路由
-router.get('/project-list', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const projects = await SequelizeProject.findAll({
       where: { version: 2 }, // 僅查詢 version 為 2 的專案
