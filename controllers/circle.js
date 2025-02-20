@@ -48,13 +48,13 @@ exports.getCircle = async (req, res) => {
 
     // 組合 where 條件
     const filter = {};
-    if (userId) filter.userId = userId;
+    if (userId) filter.created_by = userId;
     if (id) filter.id = id;
-    if (activityCategory) filter.activityCategory = activityCategory;
+    if (activityCategory) filter.group_type = activityCategory;
     if (area) filter.area = area;
-    if (partnerEducationStep) filter.partnerEducationStep = partnerEducationStep;
+    if (partnerEducationStep) filter.partner_education_step = partnerEducationStep;
     // 注意 isGrouping 可能為布林值，需判斷是否為 undefined
-    if (typeof isGrouping !== 'undefined') filter.isGrouping = isGrouping;
+    if (typeof isGrouping !== 'undefined') filter.is_grouping = isGrouping;
     if (category) filter.category = category;
 
     // 當有搜尋條件時，利用 OR 條件模糊搜尋各個欄位
@@ -63,14 +63,14 @@ exports.getCircle = async (req, res) => {
         { title: { [Op.iLike]: `%${search}%` } },
         { category: { [Op.iLike]: `%${search}%` } },
         { area: { [Op.iLike]: `%${search}%` } },
-        { partnerStyle: { [Op.iLike]: `%${search}%` } },
-        { partnerEducationStep: { [Op.iLike]: `%${search}%` } },
+        { partner_style: { [Op.iLike]: `%${search}%` } },
+        { partner_education_step: { [Op.iLike]: `%${search}%` } },
         { motivation: { [Op.iLike]: `%${search}%` } },
         { content: { [Op.iLike]: `%${search}%` } },
         { outcome: { [Op.iLike]: `%${search}%` } },
         { description: { [Op.iLike]: `%${search}%` } },
-        { tagList: { [Op.iLike]: `%${search}%` } },
-        { activityCategory: { [Op.iLike]: `%${search}%` } },
+        { tag_list: { [Op.iLike]: `%${search}%` } },
+        { group_type: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
@@ -78,8 +78,8 @@ exports.getCircle = async (req, res) => {
     const { count, rows } = await Circle.findAndCountAll({
       where: filter,
       order: [
-        ['isGrouping', 'DESC'],
-        ['updatedDate', 'DESC']
+        ['is_grouping', 'DESC'],
+        ['updated_date', 'DESC']
       ],
       offset: (pageInt - 1) * pageSizeInt,
       limit: pageSizeInt,
@@ -177,11 +177,12 @@ exports.updateCircle = async (req, res) => {
     });
 
     if (updated) {
-      circle.updatedDate = new Date();
+      circle.updated_date = new Date();
       await circle.save({ transaction });
       await transaction.commit();
 
-      const updatedCircle = await Circle.findByPk(id, {
+      const updatedCircle = await Circle.findOne({
+      where: { external_id: id },
       include: [          
         {
             model: User,
