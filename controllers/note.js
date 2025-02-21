@@ -9,8 +9,8 @@ const formatNoteResponse = (note,post) => {
     title: note.title,
     description: post.content,
     date: safeDateFormatter(post.date),
-    image_urls: note?.image_urls[0],
-    video_urls: note?.video_urls[0],
+    imageUrls: note?.image_urls,
+    videoUrls: note?.video_urls,
     visibility: post?.visibility
   };
 }
@@ -42,38 +42,42 @@ exports.createNote = async (req, res) => {
     }
 
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+    if (!project) {
+      throw new Error('專案不存在');
+    }
 
     const post = await Post.create({
       study_plan_id: project.id,
       user_id: req.user.id,
+      week: note.week,
+      title: note.title,
       type: 'note',
-      content: description, // 可將原先 title/description 組合後存入此欄
+      content: description,
       date: parsedDate,
       visibility: visibility || 'private'
     }, { transaction });
 
     const note = await Note.create({
       post_id: post.id,
-      image_urls: image_urls ? (Array.isArray(image_urls) ? image_urls : [image_urls]) : [],
-      video_urls: video_urls ? (Array.isArray(video_urls) ? video_urls : [video_urls]) : [],
+      image_urls: image_urls
+        ? (Array.isArray(image_urls) ? image_urls : [image_urls])
+        : [],
+      video_urls: video_urls
+        ? (Array.isArray(video_urls) ? video_urls : [video_urls])
+        : [],
       visibility: visibility || 'private'
     }, { transaction });
 
-
     await transaction.commit();
 
-    res.status(201).json({
-      ...formatNoteResponse(note.get({ plain: true }),post.get({ plain: true })),
-      date: safeDateFormatter(note.date)
-    });
-
-
+    return res.status(201).json(
+      formatNoteResponse(note.get({ plain: true }), post.get({ plain: true }))
+    );
   } catch (error) {
     if (transaction.finished !== 'commit') {
       await transaction.rollback();
     }
-
-    res.status(400).json({
+    return res.status(400).json({
       error: true,
       message: '建立便利貼失敗',
       details: error.message
@@ -112,7 +116,6 @@ exports.getNotes = async (req, res) => {
 
 exports.getMyNotes = async (req, res) => {
   try {
-    // 透過 Note 取得關聯 Post 與 Project，並以 Project.user_id 過濾
     const notes = await Note.findAll({
       include: [{
         model: Post,
@@ -188,14 +191,18 @@ exports.getNoteDetail = async (req, res) => {
 exports.updateNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+    if (!project) {
+      throw new Error('專案不存在');
+    }
 
+    // 查詢 Note 並 include 關聯的 Post（以確認該筆便利貼屬於此專案）
     const note = await Note.findOne({
-      where: {
-        id: req.params.noteId,
-        project_id: project.id
-      },
+      where: { id: req.params.noteId },
+      include: [{
+        model: Post,
+        where: { study_plan_id: project.id }
+      }],
       transaction
     });
 
@@ -207,9 +214,10 @@ exports.updateNote = async (req, res) => {
       });
     }
 
-    const { 'week', 'title', description, date, image_urls, video_urls, visibility } = req.body;
+    // 解構 req.body（請直接使用變數名稱）
+    const { week, title, description, date, image_urls, video_urls, visibility } = req.body;
     const updatesPost = {};
-    
+
     if (week !== undefined) updatesPost.week = week;
     if (title !== undefined) updatesPost.title = title;
     if (description !== undefined) updatesPost.content = description;
@@ -221,7 +229,8 @@ exports.updateNote = async (req, res) => {
       updatesPost.date = parsedDate;
     }
     if (visibility !== undefined) updatesPost.visibility = visibility;
-    if (Object.keys(updatesPost).length > 0) {
+
+    if (Object.keys(updatesPost).length > 0 && note.Post) {
       await note.Post.update(updatesPost, { transaction });
     }
 
@@ -237,16 +246,19 @@ exports.updateNote = async (req, res) => {
     }
 
     await transaction.commit();
-    return res.json(formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true })));
+    return res.json(
+      formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true }))
+    );
   } catch (error) {
     await transaction.rollback();
-    res.status(400).json({
+    return res.status(400).json({
       error: true,
       message: '更新失敗',
-      details: error.errors?.map(e => e.message)
+      details: error.errors?.map(e => e.message) || error.message
     });
   }
 };
+
 
 exports.deleteNote = async (req, res) => {
   const transaction = await sequelize.transaction();
