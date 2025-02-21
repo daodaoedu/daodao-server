@@ -7,7 +7,7 @@ const formatNoteResponse = (note,post) => {
     id: note.id,
     week: note.week,
     title: note.title,
-    description: post.content,
+    content: post.content,
     date: safeDateFormatter(post.date),
     imageUrls: note?.image_urls,
     videoUrls: note?.video_urls,
@@ -33,7 +33,7 @@ const safeDateFormatter = (dateValue) => {
 exports.createNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { date, description, image_urls, video_urls, visibility } = req.body;
+    const { date, content, image_urls, video_urls, visibility } = req.body;
 
     // 強制日期轉換與驗證
     const parsedDate = new Date(date);
@@ -52,7 +52,7 @@ exports.createNote = async (req, res) => {
       week: note.week,
       title: note.title,
       type: 'note',
-      content: description,
+      content: content,
       date: parsedDate,
       visibility: visibility || 'private'
     }, { transaction });
@@ -215,12 +215,12 @@ exports.updateNote = async (req, res) => {
     }
 
     // 解構 req.body（請直接使用變數名稱）
-    const { week, title, description, date, image_urls, video_urls, visibility } = req.body;
+    const { week, title, content, date, image_urls, video_urls, visibility } = req.body;
     const updatesPost = {};
 
     if (week !== undefined) updatesPost.week = week;
     if (title !== undefined) updatesPost.title = title;
-    if (description !== undefined) updatesPost.content = description;
+    if (description !== undefined) updatesPost.content = content;
     if (date !== undefined) {
       const parsedDate = new Date(date);
       if (isNaN(parsedDate.getTime())) {
