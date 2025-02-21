@@ -1,3 +1,4 @@
+// models/Outcome.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
@@ -7,31 +8,28 @@ const Outcome = sequelize.define('Outcome', {
     primaryKey: true,
     autoIncrement: true
   },
-  project_id: {
-    type: DataTypes.UUID,
+  post_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'project',
+      model: 'post',
       key: 'id'
     }
   },
-  week: {
-    type: DataTypes.INTEGER,
-    allowNull: false
+  image_urls: {
+    type: DataTypes.ARRAY(DataTypes.TEXT),
+    defaultValue: []
   },
-  title: {
+  video_urls: {
+    type: DataTypes.ARRAY(DataTypes.TEXT),
+    defaultValue: []
+  },
+  visibility: {
     type: DataTypes.STRING,
-    allowNull: false
-  },
-  description: {
-    type: DataTypes.TEXT
-  },
-  date: {
-    type: DataTypes.DATE,
-    allowNull: false
-  },
-  img_url: {
-    type: DataTypes.STRING
+    defaultValue: 'private',
+    validate: {
+      isIn: [['public', 'private']]
+    }
   },
   created_at: {
     type: DataTypes.DATE,
@@ -43,7 +41,7 @@ const Outcome = sequelize.define('Outcome', {
   }
 }, {
   tableName: 'outcome',
-  timestamps: true,
+  timestamps: false,
   underscored: true
 });
 
