@@ -26,7 +26,8 @@ const Eligibility = require('./eligibility');
 const Marathon = require('./marathon');
 const FeePlan = require('./feePlan');
 const Circle = require('./circle');
-
+const Comment = require('./comment');
+const MentorParticipants = require('./mentorParticipants');
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
   User.belongsTo(Role, { 
