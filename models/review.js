@@ -7,21 +7,13 @@ const Review = sequelize.define('Review', {
     primaryKey: true,
     autoIncrement: true
   },
-  project_id: {
-    type: DataTypes.UUID,
+  post_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'project',
+      model: 'post',
       key: 'id'
     }
-  },
-  week: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  title: {
-    type: DataTypes.STRING,
-    allowNull: false
   },
   mood: {
     type: DataTypes.ENUM('happy', 'calm', 'anxious', 'tired', 'frustrated'),
