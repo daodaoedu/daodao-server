@@ -125,12 +125,12 @@ const setupAssociations = () => {
     foreignKey: 'project_id',
   });
 
-  Project.hasMany(Review, { 
-    foreignKey: 'project_id',
+  Post.hasMany(Review, { 
+    foreignKey: 'post_id',
     onDelete: 'CASCADE'
   });
-  Review.belongsTo(Project, { 
-    foreignKey: 'project_id',
+  Review.belongsTo(Post, { 
+    foreignKey: 'post_id',
   });
 
   Post.hasMany(Note, { 
