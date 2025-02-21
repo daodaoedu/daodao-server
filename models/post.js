@@ -22,6 +22,14 @@ const Post = sequelize.define('Post', {
     allowNull: false,
     validate: { isIn: [['outcome', 'note', 'review']] }
   },
+  week: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   content: {
     type: DataTypes.TEXT,
     allowNull: false
