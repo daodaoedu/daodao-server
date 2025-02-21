@@ -5,11 +5,13 @@ const sequelize = require('../config/db');
 const formatNoteResponse = (note,post) => {
   return {
     id: note.id,
-    content: post.content,
+    week: note.week,
+    title: note.title,
+    description: post.content,
     date: safeDateFormatter(post.date),
-    image_urls: note.image_urls,
-    video_urls: note.video_urls,
-    visibility: post.visibility
+    image_urls: note?.image_urls[0],
+    video_urls: note?.video_urls[0],
+    visibility: post?.visibility
   };
 }
 
@@ -94,21 +96,11 @@ exports.getNotes = async (req, res) => {
       order: [['date', 'ASC']]
     });
 
-    const notes = posts.map(post => ({
-      note_id: post.Note ? post.Note.id : null,
-      post_id: post.id,
-      content: post.content,
-      date: safeDateFormatter(post.date),
-      image_urls: post.Note ? post.Note.image_urls : [],
-      video_urls: post.Note ? post.Note.video_urls : [],
-      visibility: post.visibility
-    }));
+    const notes = posts
+      .filter(post => post.Note)
+      .map(post => formatNoteResponse(post.Note.get({ plain: true }), post.get({ plain: true })));
 
-    res.json(notes.map(o => ({
-      ...formatNoteResponse(o.get({ plain: true })),
-      date: safeDateFormatter(o.date)
-    })));
-
+    return res.json(notes);
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -120,23 +112,26 @@ exports.getNotes = async (req, res) => {
 
 exports.getMyNotes = async (req, res) => {
   try {
+    // 透過 Note 取得關聯 Post 與 Project，並以 Project.user_id 過濾
     const notes = await Note.findAll({
-      include: [
-        {
+      include: [{
+        model: Post,
+        include: [{
           model: Project,
           where: { user_id: req.user.id }
-        }
-      ]
+        }]
+      }]
     });
 
-    res.status(200).json(notes.map(o => ({
-      ...formatNoteResponse(o.get({ plain: true })),
-      date: safeDateFormatter(o.date)
-    })));
+    const formattedNotes = notes
+      .filter(note => note.Post)
+      .map(note => formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true })));
+
+    return res.status(200).json(formattedNotes);
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: true,
-      message: "獲取用戶Note失敗",
+      message: "取得Note失敗",
       details: error.message
     });
   }
@@ -164,14 +159,13 @@ exports.getNoteDetail = async (req, res) => {
     //     required: '專案擁有者或管理員權限'
     //   });
     // }
-
-    // 修正為查詢單一便利貼
+    
     const note = await Note.findOne({
-      where: {
-        id: req.params.noteId,
-        project_id: project.id
-      },
-      attributes: ['id', 'week', 'title', 'description', 'date', 'img_url']
+      where: { id: req.params.noteId },
+      include: [{
+        model: Post,
+        where: { study_plan_id: project.id }
+      }]
     });
 
     if (!note) {
@@ -181,11 +175,7 @@ exports.getNoteDetail = async (req, res) => {
       });
     }
 
-    res.json({
-      ...formatNoteResponse(note.get({ plain: true })),
-      date: safeDateFormatter(note.date)
-    });
-
+    return res.json(formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true })));
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -217,21 +207,37 @@ exports.updateNote = async (req, res) => {
       });
     }
 
-    const updates = {};
-    ['week', 'title', 'description', 'date', 'img_url'].forEach(field => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+    const { 'week', 'title', description, date, image_urls, video_urls, visibility } = req.body;
+    const updatesPost = {};
+    
+    if (week !== undefined) updatesPost.week = week;
+    if (title !== undefined) updatesPost.title = title;
+    if (description !== undefined) updatesPost.content = description;
+    if (date !== undefined) {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        throw new Error('無效的日期格式，請使用 YYYY-MM-DD 格式');
       }
-    });
+      updatesPost.date = parsedDate;
+    }
+    if (visibility !== undefined) updatesPost.visibility = visibility;
+    if (Object.keys(updatesPost).length > 0) {
+      await note.Post.update(updatesPost, { transaction });
+    }
 
-    await note.update(updates, { transaction });
+    const updatesNote = {};
+    if (image_urls !== undefined) {
+      updatesNote.image_urls = Array.isArray(image_urls) ? image_urls : [image_urls];
+    }
+    if (video_urls !== undefined) {
+      updatesNote.video_urls = Array.isArray(video_urls) ? video_urls : [video_urls];
+    }
+    if (Object.keys(updatesNote).length > 0) {
+      await note.update(updatesNote, { transaction });
+    }
+
     await transaction.commit();
-    const responseData = {
-      ...formatNoteResponse(note.get({ plain: true })),
-      date: safeDateFormatter(note.date)
-    };
-
-    res.json(responseData);
+    return res.json(formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true })));
   } catch (error) {
     await transaction.rollback();
     res.status(400).json({
@@ -248,10 +254,11 @@ exports.deleteNote = async (req, res) => {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
     const note = await Note.findOne({
-      where: {
-        id: req.params.noteId,
-        project_id: project.id
-      },
+      where: { id: req.params.noteId },
+      include: [{
+        model: Post,
+        where: { study_plan_id: project.id }
+      }],
       transaction
     });
 
@@ -265,8 +272,7 @@ exports.deleteNote = async (req, res) => {
 
     await note.destroy({ transaction });
     await transaction.commit();
-
-    res.json({ message: '便利貼已刪除' });
+    return res.json({ message: '便利貼已刪除' });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({
