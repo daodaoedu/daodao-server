@@ -141,12 +141,12 @@ const setupAssociations = () => {
     foreignKey: 'post_id',
   });
 
-  Project.hasMany(Outcome, { 
-    foreignKey: 'project_id',
+  Post.hasMany(Outcome, { 
+    foreignKey: 'post_id',
     onDelete: 'CASCADE'
   });
-  Outcome.belongsTo(Project, { 
-    foreignKey: 'project_id',
+  Outcome.belongsTo(Post, { 
+    foreignKey: 'post_id',
   });
 
   // 4. 里程碑和任務關聯
@@ -203,6 +203,27 @@ const setupAssociations = () => {
 
   Circle.belongsTo(User, { foreignKey: 'created_by' });
 
+  
+  // 6. Post 與 Comment 的關聯
+  Post.hasMany(Comment, { foreignKey: 'post_id', onDelete: 'CASCADE' });
+  Comment.belongsTo(Post, { foreignKey: 'post_id' });
+  User.hasMany(Comment, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+  Comment.belongsTo(User, { foreignKey: 'user_id' });
+
+  // 7. 導師與參與者關聯（MentorParticipants）
+  // 建立 User 與 User 之間的多對多關聯，分別以 'Participants' 與 'Mentors' 為別名
+  User.belongsToMany(User, {
+    as: 'Participants',
+    through: MentorParticipants,
+    foreignKey: 'mentor_id',
+    otherKey: 'participant_id'
+  });
+  User.belongsToMany(User, {
+    as: 'Mentors',
+    through: MentorParticipants,
+    foreignKey: 'participant_id',
+    otherKey: 'mentor_id'
+  });
 };
 
 // 執行關聯設置
@@ -213,6 +234,7 @@ module.exports = {
   sequelize,
   Sequelize,
   User,
+  UserProject,
   Role,
   Permission,
   Position,
@@ -233,4 +255,6 @@ module.exports = {
   Marathon,
   FeePlan,
   Circle,
+  Comment,
+  MentorParticipants
 };
