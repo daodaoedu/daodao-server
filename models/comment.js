@@ -1,10 +1,7 @@
-// models/comment.js
-const { DataTypes, Model } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-class Comment extends Model {}
-
-Comment.init({
+const Comment = sequelize.define('Comment', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -13,12 +10,14 @@ Comment.init({
   post_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: { model: 'post', key: 'id' }
+    references: { model: 'post', key: 'id' },
+    onDelete: 'CASCADE'
   },
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: { model: 'users', key: 'id' }
+    references: { model: 'users', key: 'id' },
+    onDelete: 'CASCADE'
   },
   content: {
     type: DataTypes.TEXT,
@@ -28,24 +27,16 @@ Comment.init({
     type: DataTypes.ENUM('public', 'private', 'mentor_participant'),
     defaultValue: 'private'
   },
+  // 當 visibility 為 'mentor_participant' 時，指定留言所屬的導師 ID
   mentor_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: '當 visibility 為 mentor_participant 時指定留言所屬的導師 ID'
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    comment: "當 visibility 為 mentor_participant 時，指定留言所屬的導師 ID"
   }
 }, {
-  sequelize,
-  modelName: 'Comment',
   tableName: 'comments',
-  timestamps: false
+  timestamps: true,
+  underscored: true // 使 createdAt -> created_at, updatedAt -> updated_at
 });
 
 module.exports = Comment;
