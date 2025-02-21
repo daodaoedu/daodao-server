@@ -14,6 +14,7 @@ const BasicInfo = require('./basicInfo');
 const UserProject = require('./userProject');
 
 const Project = require('./project');
+const Post = require('./post');
 const Milestone = require('./milestone');
 const Task = require('./task');
 const Review = require('./review');
@@ -132,12 +133,12 @@ const setupAssociations = () => {
     foreignKey: 'project_id',
   });
 
-  Project.hasMany(Note, { 
-    foreignKey: 'project_id',
+  Post.hasMany(Note, { 
+    foreignKey: 'post_id',
     onDelete: 'CASCADE'
   });
-  Note.belongsTo(Project, { 
-    foreignKey: 'project_id',
+  Note.belongsTo(Post, { 
+    foreignKey: 'post_id',
   });
 
   Project.hasMany(Outcome, { 
@@ -221,6 +222,7 @@ module.exports = {
   Contact,
   BasicInfo,
   Project,
+  Post,
   Milestone,
   Task,
   Review,

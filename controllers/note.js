@@ -1,15 +1,15 @@
-const { Note, Project } = require('../models');
+const { Note, Post, Project } = require('../models');
 const sequelize = require('../config/db');
 
 // 新增統一格式化方法
-const formatNoteResponse = (note) => {
+const formatNoteResponse = (note,post) => {
   return {
     id: note.id,
-    week: note.week,
-    title: note.title,
-    description: note.description,
-    date: note.date,  // 保持原始日期，外部再格式化
-    imgUrl: note.img_url,
+    content: post.content,
+    date: safeDateFormatter(post.date),
+    image_urls: note.image_urls,
+    video_urls: note.video_urls,
+    visibility: post.visibility
   };
 }
 
@@ -31,7 +31,7 @@ const safeDateFormatter = (dateValue) => {
 exports.createNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { date, ...rest } = req.body;
+    const { date, description, image_urls, video_urls, visibility } = req.body;
 
     // 強制日期轉換與驗證
     const parsedDate = new Date(date);
@@ -41,17 +41,27 @@ exports.createNote = async (req, res) => {
 
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
-    const note = await Note.create({
-      ...rest,
-      project_id: project.id,
+    const post = await Post.create({
+      study_plan_id: project.id,
+      user_id: req.user.id,
+      type: 'note',
+      content: description, // 可將原先 title/description 組合後存入此欄
       date: parsedDate,
-      img_url: req.body.imgUrl
+      visibility: visibility || 'private'
     }, { transaction });
+
+    const note = await Note.create({
+      post_id: post.id,
+      image_urls: image_urls ? (Array.isArray(image_urls) ? image_urls : [image_urls]) : [],
+      video_urls: video_urls ? (Array.isArray(video_urls) ? video_urls : [video_urls]) : [],
+      visibility: visibility || 'private'
+    }, { transaction });
+
 
     await transaction.commit();
 
     res.status(201).json({
-      ...formatNoteResponse(note.get({ plain: true })),
+      ...formatNoteResponse(note.get({ plain: true }),post.get({ plain: true })),
       date: safeDateFormatter(note.date)
     });
 
@@ -74,14 +84,25 @@ exports.getNotes = async (req, res) => {
   try {
 
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+    if (!project) {
+      return res.status(404).json({ error: true, message: '專案不存在' });
+    }
 
-    const notes = await Note.findAll({
-      where: { project_id: project.id },
-      order: [
-        ['week', 'ASC'],
-        ['date', 'ASC']
-      ]
+    const posts = await Post.findAll({
+      where: { study_plan_id: project.id, type: 'note' },
+      include: [{ model: Note}],
+      order: [['date', 'ASC']]
     });
+
+    const notes = posts.map(post => ({
+      note_id: post.Note ? post.Note.id : null,
+      post_id: post.id,
+      content: post.content,
+      date: safeDateFormatter(post.date),
+      image_urls: post.Note ? post.Note.image_urls : [],
+      video_urls: post.Note ? post.Note.video_urls : [],
+      visibility: post.visibility
+    }));
 
     res.json(notes.map(o => ({
       ...formatNoteResponse(o.get({ plain: true })),
