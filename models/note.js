@@ -12,6 +12,10 @@ const Note = sequelize.define('Note', {
     allowNull: false,
     references: { model: 'post', key: 'id' }
   },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
   image_urls: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
     defaultValue: []
@@ -35,7 +39,7 @@ const Note = sequelize.define('Note', {
   }
 }, {
   tableName: 'note',
-  timestamps: false,
+  timestamps: true,
   underscored: true
 });
 

@@ -16,6 +16,10 @@ const Outcome = sequelize.define('Outcome', {
       key: 'id'
     }
   },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
   image_urls: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
     defaultValue: []
@@ -41,7 +45,7 @@ const Outcome = sequelize.define('Outcome', {
   }
 }, {
   tableName: 'outcome',
-  timestamps: false,
+  timestamps: true,
   underscored: true
 });
 

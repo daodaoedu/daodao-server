@@ -7,7 +7,7 @@ const Post = sequelize.define('Post', {
     primaryKey: true,
     autoIncrement: true
   },
-  study_plan_id: {
+  project_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: { model: 'project', key: 'id' }
@@ -28,10 +28,6 @@ const Post = sequelize.define('Post', {
   },
   title: {
     type: DataTypes.STRING,
-    allowNull: false
-  },
-  content: {
-    type: DataTypes.TEXT,
     allowNull: false
   },
   date: {
@@ -58,7 +54,7 @@ const Post = sequelize.define('Post', {
   }
 }, {
   tableName: 'post',
-  timestamps: false,
+  timestamps: true,
   underscored: true
 });
 

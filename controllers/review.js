@@ -1,10 +1,10 @@
-const { Review, Project } = require('../models');
+const { Review, Project, Post } = require('../models');
 const sequelize = require('../config/db');
 
-const formatReviewResponse = (review) => ({
+const formatReviewResponse = (review,post) => ({
   id: review.id,
-  week: review.week,
-  title: review.title,
+  week: post.week,
+  title: post.title,
   mood: review.mood,
   stressLevel: review.stress_level,
   ...(review.mood_description && { moodDescription: review.mood_description }),
@@ -33,24 +33,38 @@ exports.createReview = async (req, res) => {
       });
     }
 
-    const review = await Review.create({
+    // 日期轉換與驗證
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      throw new Error('無效的日期格式，請使用 YYYY-MM-DD 格式');
+    }    
+    // 先建立 Post（type 設為 outcome）
+    const post = await Post.create({
       project_id: project.id,
+      user_id: req.user.id,
+      week,
+      title,
+      type: 'review',
+      date: parsedDate,
+      visibility: visibility || 'private'
+    }, { transaction });
+
+    const review = await Review.create({
+      post_id: post.id,
       week: parseInt(week),
       title: title || `第 ${week} 週覆盤`,
       mood,
       stress_level: Math.min(Math.max(1, stressLevel), 10),
       learning_review: Math.min(Math.max(1, learningReview), 10),
-      mood_description: req.body.moodDescription,
-      learning_feedback: req.body.learningFeedback,
-      adjustment_plan: req.body.adjustmentPlan
+      mood_description: moodDescription,
+      learning_feedback: learningFeedback,
+      adjustment_plan: adjustmentPlan
     }, { transaction });
 
     await transaction.commit();
 
-    res.status(201).json(formatReviewResponse({
-      ...review.get({ plain: true }),
-      created_at: review.created_at
-    }));
+    res.status(201).json(formatReviewResponse(review.get({ plain: true }), post.get({ plain: true })));
+
   } catch (error) {
     await transaction.rollback();
     res.status(400).json({
@@ -64,13 +78,23 @@ exports.createReview = async (req, res) => {
 exports.getReviews = async (req, res) => {
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
-
+    if (!project) {
+      return res.status(404).json({ error: true, message: '專案不存在' });
+    }
+    // include Post，並根據專案與類型篩選
     const reviews = await Review.findAll({
-      where: { project_id: project.id },
-      order: [['week', 'DESC']]
+      include: [{
+        model: Post,
+        where: { project_id: project.id, type: 'review' }
+      }],
+      order: [
+        [Post, 'week', 'DESC']
+      ]
     });
 
-    res.json(reviews.map(formatReviewResponse));
+    res.json(reviews.map(review =>
+      formatReviewResponse(review.get({ plain: true }), review.Post.get({ plain: true }))
+    ));  
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -82,12 +106,18 @@ exports.getReviews = async (req, res) => {
 exports.getReviewDetail = async (req, res) => {
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
-
+    if (!project) {
+      return res.status(404).json({ error: true, message: '專案不存在' });
+    }
+    // 查詢時 include Post
     const review = await Review.findOne({
       where: {
-        id: req.params.reviewId,
-        project_id: project.id
+        id: req.params.reviewId
       },
+      include: [{
+        model: Post,
+        where: { project_id: project.id, type: 'review' }
+      }]
     });
 
     if (!review) {
@@ -97,11 +127,7 @@ exports.getReviewDetail = async (req, res) => {
       });
     }
 
-    const responseData = formatReviewResponse({
-      ...review.dataValues,
-    });
-
-    res.json(responseData);
+    res.json(formatReviewResponse(review.get({ plain: true }), review.Post.get({ plain: true })));
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -114,12 +140,18 @@ exports.updateReview = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
-
+    if (!project) {
+      return res.status(404).json({ error: true, message: '專案不存在' });
+    }
+    // 查詢時 include Post
     const review = await Review.findOne({
       where: {
-        id: req.params.reviewId,
-        project_id: project.id
+        id: req.params.reviewId
       },
+      include: [{
+        model: Post,
+        where: { project_id: project.id, type: 'review' }
+      }],
       transaction
     });
 
@@ -131,26 +163,25 @@ exports.updateReview = async (req, res) => {
       });
     }
 
-    const allowedFields = ['title', 'mood', 'mood_description', 'stress_level', 'learning_review', 'learning_feedback', 'adjustment_plan'];
-    const updates = {};
-
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
-    });
-
-    if (updates.stress_level) {
-      updates.stress_level = Math.min(Math.max(1, updates.stress_level), 10);
+    const { title, mood, moodDescription, stressLevel, learningReview, learningFeedback, adjustmentPlan } = req.body;
+    if (title !== undefined) {
+      await review.Post.update({ title }, { transaction });
     }
 
-    await review.update(updates, { transaction });
-    await transaction.commit();
+    const updates = {};
+    if (mood !== undefined) updates.mood = mood;
+    if (moodDescription !== undefined) updates.mood_description = moodDescription;
+    if (stressLevel !== undefined) updates.stress_level = Math.min(Math.max(1, stressLevel), 10);
+    if (learningReview !== undefined) updates.learning_review = Math.min(Math.max(1, learningReview), 10);
+    if (learningFeedback !== undefined) updates.learning_feedback = learningFeedback;
+    if (adjustmentPlan !== undefined) updates.adjustment_plan = adjustmentPlan;
 
-    res.json(formatReviewResponse({
-      ...review.get({ plain: true }),
-      ...updates,
-    }));
+    if (Object.keys(updates).length > 0) {
+      await review.update(updates, { transaction });
+    }
+
+    await transaction.commit();
+    res.json(formatReviewResponse(review.get({ plain: true }), review.Post.get({ plain: true })));
   } catch (error) {
     await transaction.rollback();
     res.status(400).json({
@@ -165,15 +196,22 @@ exports.deleteReview = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+    if (!project) {
+      return res.status(404).json({ error: true, message: '專案不存在' });
+    }
 
+    // 查詢時 include Post
     const review = await Review.findOne({
       where: {
-        id: req.params.reviewId,
-        project_id: project.id
+        id: req.params.reviewId
       },
+      include: [{
+        model: Post,
+        where: { project_id: project.id, type: 'review' }
+      }],
       transaction
     });
-
+    
     if (!review) {
       await transaction.rollback();
       return res.status(404).json({
