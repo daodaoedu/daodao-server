@@ -37,9 +37,8 @@ const Circle = sequelize.define('Circle', {
   description: {
     type: DataTypes.STRING(255)
   },
-  // 若一個活動可屬於多個 city，則以陣列方式存放 city_id
   city_id: {
-    type: DataTypes.ARRAY(DataTypes.INTEGER)
+    type: DataTypes.INTEGER
   },
   is_grouping: {
     type: DataTypes.BOOLEAN
@@ -86,7 +85,9 @@ const Circle = sequelize.define('Circle', {
     type: DataTypes.TEXT
   },
   tag_list: {
-    type: DataTypes.TEXT
+    type: DataTypes.ARRAY(DataTypes.TEXT),
+    allowNull: true,
+    defaultValue: []  
   },
   group_deadline: {
     type: DataTypes.DATE,
@@ -97,13 +98,19 @@ const Circle = sequelize.define('Circle', {
   is_online: {
     type: DataTypes.BOOLEAN,
   },
+  is_need_deadline: {
+    type: DataTypes.BOOLEAN
+  },
+  participator: {
+    type: DataTypes.INTEGER
+  },
   TBD: {
     type: DataTypes.BOOLEAN,
     field: 'TBD'
   }
 }, {
-  tableName: 'groups', // 對應原本的 groups 表
-  timestamps: false,
+  tableName: 'groups',
+  timestamps: true,
   underscored: true,
 });
 
