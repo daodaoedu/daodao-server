@@ -29,9 +29,9 @@ const formatCircleResponse = (circle) => {
     photoAlt: plainCircle.photo_alt,
     category: plainCircle.category,
     activityCategory: plainCircle.group_type,
-    area: plainCircle?.TBD ? 'tbd' : [],
+    area: plainCircle?.TBD ? 'tbd' : plainCircle.city_id,
     time: plainCircle.time,
-    participator: plainCircle?.participator || "",
+    participator: plainCircle.participator,
     partnerStyle: plainCircle.partner_style,
     partnerEducationStep: plainCircle.partner_education_step,
     motivation: plainCircle.motivation,
@@ -44,7 +44,7 @@ const formatCircleResponse = (circle) => {
     createdDate: plainCircle.created_date,
     updatedDate: plainCircle.updated_date,
     deadline: plainCircle.group_deadline,
-    isNeedDeadline: plainCircle?.isneedDeadline || false,
+    isNeedDeadline: plainCircle.is_need_deadline,
     user: formatUserData(plainCircle.User)
   };
 };
@@ -72,7 +72,7 @@ exports.getCircle = async (req, res) => {
     if (userId) filter.created_by = userId;
     if (id) filter.external_id = id;
     if (activityCategory) filter.group_type = activityCategory;
-    if (area) filter.area = area;
+    if (area) filter.city_id = area;
     if (partnerEducationStep) filter.partner_education_step = partnerEducationStep;
     // 注意 isGrouping 可能為布林值，需判斷是否為 undefined
     if (typeof isGrouping !== 'undefined') filter.is_grouping = isGrouping;
@@ -83,12 +83,12 @@ exports.getCircle = async (req, res) => {
       filter[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
         { category: { [Op.iLike]: `%${search}%` } },
-        { area: { [Op.iLike]: `%${search}%` } },
+        { city_id: { [Op.iLike]: `%${search}%` } },
         { partner_style: { [Op.iLike]: `%${search}%` } },
         { partner_education_step: { [Op.iLike]: `%${search}%` } },
         { motivation: { [Op.iLike]: `%${search}%` } },
-        { content: { [Op.iLike]: `%${search}%` } },
-        { outcome: { [Op.iLike]: `%${search}%` } },
+        { contents: { [Op.iLike]: `%${search}%` } },
+        { expectation_result: { [Op.iLike]: `%${search}%` } },
         { description: { [Op.iLike]: `%${search}%` } },
         { tag_list: { [Op.iLike]: `%${search}%` } },
         { group_type: { [Op.iLike]: `%${search}%` } },
@@ -114,8 +114,8 @@ exports.getCircle = async (req, res) => {
             {
               model: Location,
               include: [
-                { model: City, attributes: ['name'] },
-                { model: Country, attributes: ['name'] }
+                { model: City },
+                { model: Country }
               ]
             },
             {
@@ -184,10 +184,10 @@ exports.updateCircle = async (req, res) => {
 
     // 指定可更新的欄位
     const fieldsToUpdate = [
-      'title', 'photoURL', 'photoAlt', 'category', 'activityCategory',
-      'area', 'time', 'participator', 'partnerStyle', 'partnerEducationStep',
-      'motivation', 'content', 'description', 'outcome', 'tagList',
-      'notice', 'isGrouping', 'deadline', 'isNeedDeadline', 'views'
+      'title', 'photo_url', 'photo_alt', 'category', 'group_type',
+      'city_id', 'time', 'participator', 'partner_style', 'partner_education_step',
+      'motivation', 'contents', 'description', 'expectation_result', 'tag_list',
+      'notice', 'is_grouping', 'group_deadline', 'is_need_deadline', 'views'
     ];
     let updated = false;
     fieldsToUpdate.forEach(field => {
@@ -214,8 +214,8 @@ exports.updateCircle = async (req, res) => {
               {
                 model: Location,
                 include: [
-                  { model: City, attributes: ['name'] },
-                  { model: Country, attributes: ['name'] }
+                  { model: City },
+                  { model: Country }
                 ]
               },
               {

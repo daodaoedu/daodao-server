@@ -12,7 +12,7 @@ const User = sequelize.define('User', {
     type: DataTypes.UUID,
     allowNull: false,
     unique: true,
-    defaultValue: DataTypes.UUIDV4 // 添加自动生成UUIDv4
+    defaultValue: DataTypes.UUIDV4
   },
   nickname: {
     type: DataTypes.STRING,
@@ -52,17 +52,15 @@ const User = sequelize.define('User', {
     defaultValue: DataTypes.UUIDV4
   },
   tag_list: {
-    type: DataTypes.STRING,
+    type: DataTypes.ARRAY(DataTypes.TEXT),
     allowNull: true,
-    defaultValue: ''
+    defaultValue: []
   }
 }, 
 {
   tableName: "users",
   timestamps: true,
   underscored: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at', 
   paranoid: false
 });
 
