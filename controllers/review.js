@@ -22,7 +22,7 @@ exports.createReview = async (req, res) => {
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
 
-    const { week, title, mood, moodDescription, stressLevel, learningReview, learningFeedback, adjustmentPlan } = req.body;
+    const { week, title, mood, moodDescription, stressLevel, learningReview, learningFeedback, adjustmentPlan, visibility } = req.body;
 
     // 強制驗證必要字段
     if (!mood || stressLevel === undefined || learningReview === undefined) {
@@ -33,12 +33,10 @@ exports.createReview = async (req, res) => {
       });
     }
 
-    // 日期轉換與驗證
-    const parsedDate = new Date(date);
-    if (isNaN(parsedDate.getTime())) {
-      throw new Error('無效的日期格式，請使用 YYYY-MM-DD 格式');
-    }    
-    // 先建立 Post（type 設為 outcome）
+    // 修改為自動產生當前日期
+    const parsedDate = new Date(); // 直接使用系統時間
+
+    // 先建立 Post（type 設為 review)
     const post = await Post.create({
       project_id: project.id,
       user_id: req.user.id,
@@ -70,7 +68,7 @@ exports.createReview = async (req, res) => {
     res.status(400).json({
       error: true,
       message: '建立覆盤失敗',
-      details: error.errors?.map(e => e.message)
+      details: error.message
     });
   }
 };
