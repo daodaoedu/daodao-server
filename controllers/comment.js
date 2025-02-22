@@ -87,7 +87,7 @@ const attachUserToComment = async (comment) => {
 const canViewComment = async (comment, currentUser, post, mentorRelations = null) => {
   if (comment.visibility === 'public') return true;
   if (comment.user_id === currentUser.id) return true;
-  if (currentUser.role === 'mentor') {
+  if (currentUser.role === '4') {
     if (mentorRelations) {
       if (mentorRelations.has(comment.user_id)) return true;
     } else {
@@ -97,7 +97,7 @@ const canViewComment = async (comment, currentUser, post, mentorRelations = null
       if (relation) return true;
     }
   }
-  if (currentUser.role === 'participant' && post && post.user_id === currentUser.id) {
+  if (currentUser.role === '3' && post && post.user_id === currentUser.id) {
     return true;
   }
   return false;
@@ -167,17 +167,19 @@ exports.getComments = async (req, res) => {
     );
 
     let mentorRelations = null;
-    if (req.user.role === 'mentor') {
+    if (req.user?.role === '4') {
       const relations = await MentorParticipants.findAll({
         where: { mentor_id: req.user.id }
       });
       mentorRelations = new Set(relations.map(rel => rel.participant_id));
     }
 
+    const currentUser = req.user || { id: null, role: null };
+
     // 篩選可檢視的留言
     const filteredComments = [];
     for (const comment of comments) {
-      if (await canViewComment(comment, req.user, post, mentorRelations)) {
+      if (await canViewComment(comment, currentUser, post, mentorRelations)) {
         filteredComments.push(formatCommentResponse(comment));
       }
     }
@@ -205,13 +207,14 @@ exports.getCommentDetail = async (req, res) => {
 
     const post = await Post.findOne({ where: { id: comment.post_id } });
     let mentorRelations = null;
-    if (req.user.role === 'mentor') {
+    const currentUser = req.user || { id: null, role: null }; // 添加当前用户默认值
+    if (req.user.role === '4') {
       const relations = await MentorParticipants.findAll({
         where: { mentor_id: req.user.id }
       });
       mentorRelations = new Set(relations.map(rel => rel.participant_id));
     }
-    if (!(await canViewComment(comment, req.user, post, mentorRelations))) {
+    if (!(await canViewComment(comment, currentUser, post, mentorRelations))) {
       return res.status(403).json({ error: true, message: '無權查看此留言' });
     }
     return res.json(formatCommentResponse(comment));

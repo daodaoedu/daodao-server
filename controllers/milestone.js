@@ -37,6 +37,26 @@ exports.createMilestone = async (req, res) => {
       return res.status(403).json({ error: true, message: "無權操作此專案" });
     }
 
+    // 新增日期格式和關係驗證
+    if (!req.body.startDate || !req.body.endDate) {
+      await transaction.rollback();
+      return res.status(400).json({ error: true, message: "必須提供開始和結束日期" });
+    }
+
+    const startDate = new Date(req.body.startDate);
+    const endDate = new Date(req.body.endDate);
+    
+    if (startDate >= endDate) {
+      await transaction.rollback();
+      return res.status(400).json({ error: true, message: "結束日期必須晚於開始日期" });
+    }
+
+    // 新增週數驗證 (根據 schema 的註解要求)
+    if (req.body.week && req.body.week <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({ error: true, message: "週數必須為正整數" });
+    }
+
     const milestone = await Milestone.create({
         project_id: project.id,
         week: req.body?.week,
@@ -105,6 +125,23 @@ exports.updateMilestone = async (req, res) => {
     if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({ error: true, message: "無權操作此里程碑" });
+    }
+
+    // 新增日期驗證
+    if (req.body.startDate || req.body.endDate) {
+      const startDate = new Date(req.body.startDate || milestone.start_date);
+      const endDate = new Date(req.body.endDate || milestone.end_date);
+      
+      if (startDate >= endDate) {
+        await transaction.rollback();
+        return res.status(400).json({ error: true, message: "結束日期必須晚於開始日期" });
+      }
+    }
+
+    // 新增週數驗證
+    if (req.body.week !== undefined && req.body.week <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({ error: true, message: "週數必須為正整數" });
     }
 
     await milestone.update({
