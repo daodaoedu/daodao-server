@@ -5,9 +5,9 @@ const sequelize = require('../config/db');
 const formatNoteResponse = (note,post) => {
   return {
     id: note.id,
-    week: note.week,
-    title: note.title,
-    content: post.content,
+    week: post.week,
+    title: post.title,
+    content: note.content,
     date: safeDateFormatter(post.date),
     imageUrls: note?.image_urls,
     videoUrls: note?.video_urls,
@@ -33,7 +33,7 @@ const safeDateFormatter = (dateValue) => {
 exports.createNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { date, content, image_urls, video_urls, visibility } = req.body;
+    const { week, title ,date, content, image_urls, video_urls, visibility } = req.body;
 
     // 強制日期轉換與驗證
     const parsedDate = new Date(date);
@@ -47,18 +47,18 @@ exports.createNote = async (req, res) => {
     }
 
     const post = await Post.create({
-      study_plan_id: project.id,
+      project_id: project.id,
       user_id: req.user.id,
-      week: note.week,
-      title: note.title,
+      week,
+      title,
       type: 'note',
-      content: content,
       date: parsedDate,
       visibility: visibility || 'private'
     }, { transaction });
 
     const note = await Note.create({
       post_id: post.id,
+      content: content,
       image_urls: image_urls
         ? (Array.isArray(image_urls) ? image_urls : [image_urls])
         : [],
@@ -95,7 +95,7 @@ exports.getNotes = async (req, res) => {
     }
 
     const posts = await Post.findAll({
-      where: { study_plan_id: project.id, type: 'note' },
+      where: { project_id: project.id, type: 'note' },
       include: [{ model: Note}],
       order: [['date', 'ASC']]
     });
@@ -167,7 +167,7 @@ exports.getNoteDetail = async (req, res) => {
       where: { id: req.params.noteId },
       include: [{
         model: Post,
-        where: { study_plan_id: project.id }
+        where: { project_id: project.id }
       }]
     });
 
@@ -201,7 +201,7 @@ exports.updateNote = async (req, res) => {
       where: { id: req.params.noteId },
       include: [{
         model: Post,
-        where: { study_plan_id: project.id }
+        where: { project_id: project.id }
       }],
       transaction
     });
@@ -220,7 +220,6 @@ exports.updateNote = async (req, res) => {
 
     if (week !== undefined) updatesPost.week = week;
     if (title !== undefined) updatesPost.title = title;
-    if (description !== undefined) updatesPost.content = content;
     if (date !== undefined) {
       const parsedDate = new Date(date);
       if (isNaN(parsedDate.getTime())) {
@@ -235,6 +234,8 @@ exports.updateNote = async (req, res) => {
     }
 
     const updatesNote = {};
+    if (content !== undefined) updatesPost.content = content;
+
     if (image_urls !== undefined) {
       updatesNote.image_urls = Array.isArray(image_urls) ? image_urls : [image_urls];
     }
@@ -269,7 +270,7 @@ exports.deleteNote = async (req, res) => {
       where: { id: req.params.noteId },
       include: [{
         model: Post,
-        where: { study_plan_id: project.id }
+        where: { project_id: project.id }
       }],
       transaction
     });

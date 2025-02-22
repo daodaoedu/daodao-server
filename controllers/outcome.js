@@ -7,7 +7,7 @@ const formatOutcomeResponse = (outcome, post) => {
     id: outcome.id,
     week: post.week,
     title: post.title,
-    content: post.content,
+    content: outcome.content,
     date: safeDateFormatter(post.date),
     imageUrls: outcome?.image_urls,  // 改用 imageUrls
     videoUrls: outcome?.video_urls,  // 新增 videoUrls
@@ -48,12 +48,11 @@ exports.createOutcome = async (req, res) => {
 
     // 先建立 Post（type 設為 outcome）
     const post = await Post.create({
-      study_plan_id: project.id,
+      project_id: project.id,
       user_id: req.user.id,
       week,
       title,
       type: 'outcome',
-      content: content,
       date: parsedDate,
       visibility: visibility || 'private'
     }, { transaction });
@@ -61,6 +60,7 @@ exports.createOutcome = async (req, res) => {
     // 建立 Outcome，關聯 post_id，並存入 image_urls 與 video_urls
     const outcome = await Outcome.create({
       post_id: post.id,
+      content: content,
       image_urls: imageUrls || [],
       video_urls: videoUrls || []
     }, { transaction });
@@ -94,7 +94,7 @@ exports.getOutcomes = async (req, res) => {
     const outcomes = await Outcome.findAll({
       include: [{
         model: Post,
-        where: { study_plan_id: project.id, type: 'outcome' }
+        where: { project_id: project.id, type: 'outcome' }
       }],
       order: [
         [Post, 'week', 'ASC'],
@@ -158,7 +158,7 @@ exports.getOutcomeDetail = async (req, res) => {
       where: { id: req.params.outcomeId },
       include: [{
         model: Post,
-        where: { study_plan_id: project.id, type: 'outcome' }
+        where: { project_id: project.id, type: 'outcome' }
       }]
     });
 
@@ -195,7 +195,7 @@ exports.updateOutcome = async (req, res) => {
       where: { id: req.params.outcomeId },
       include: [{
         model: Post,
-        where: { study_plan_id: project.id, type: 'outcome' }
+        where: { project_id: project.id, type: 'outcome' }
       }],
       transaction
     });
@@ -213,7 +213,6 @@ exports.updateOutcome = async (req, res) => {
     const updatesPost = {};
     if (week !== undefined) updatesPost.week = week;
     if (title !== undefined) updatesPost.title = title;
-    if (description !== undefined) updatesPost.content = content;
     if (date !== undefined) {
       const parsedDate = new Date(date);
       if (isNaN(parsedDate.getTime())) {
@@ -228,6 +227,7 @@ exports.updateOutcome = async (req, res) => {
     }
 
     const updatesOutcome = {};
+    if (content !== undefined) updatesPost.content = content;
     if (imageUrls !== undefined) {
       updatesOutcome.image_urls = imageUrls;
     }
@@ -266,7 +266,7 @@ exports.deleteOutcome = async (req, res) => {
       where: { id: req.params.outcomeId },
       include: [{
         model: Post,
-        where: { study_plan_id: project.id, type: 'outcome' }
+        where: { project_id: project.id, type: 'outcome' }
       }],
       transaction
     });
