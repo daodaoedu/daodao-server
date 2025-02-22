@@ -122,7 +122,7 @@ exports.createProject = async (req, res) => {
     // }
 
     // 驗證必填字段
-    if (!title || !startDate || !endDate || !interval) {
+    if (!title) {
       return res.status(400).json({
         error: true,
         message: "缺少必要欄位"
