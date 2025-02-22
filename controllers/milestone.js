@@ -38,6 +38,7 @@ exports.createMilestone = async (req, res) => {
     }
 
     const milestone = await Milestone.create({
+        project_id: project.id,
         week: req.body?.week,
         name: req.body?.name,
         description: req.body?.description,
