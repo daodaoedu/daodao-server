@@ -1,5 +1,7 @@
 const { Comment, User, Contact, BasicInfo, Position, Post, MentorParticipants, Review, Outcome, Note } = require('../models');
 const sequelize = require('../config/db');
+const jwt = require('jsonwebtoken');
+const { verifyRequest } = require('../utils/auth');
 
 /**
  * 格式化留言回應資料
@@ -85,7 +87,12 @@ const attachUserToComment = async (comment) => {
  * @param {Set} mentorRelations 若 currentUser 為導師，預先查詢的輔導關係 Set
  */
 const canViewComment = async (comment, currentUser, post, mentorRelations = null) => {
+  // 第一層檢查：公開留言所有人可見
   if (comment.visibility === 'public') return true;
+
+  // 以下檢查需要登入狀態
+  if (!currentUser.id) return false;
+
   if (comment.user_id === currentUser.id) return true;
   if (currentUser.role === '4') {
     if (mentorRelations) {
@@ -105,7 +112,7 @@ const canViewComment = async (comment, currentUser, post, mentorRelations = null
 
 /**
  * 建立留言
- * API 路徑：POST /api/comments
+ * API 路徑：POST /comments
  */
 exports.createComment = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -143,10 +150,17 @@ exports.createComment = async (req, res) => {
 
 /**
  * 取得指定文章下的所有留言
- * API 路徑：GET /api/comments
+ * API 路徑：GET /comments
  */
 exports.getComments = async (req, res) => {
   try {
+    // 修改驗證邏輯為可選
+    let currentUser = null;
+    const { user, error } = verifyRequest(req);
+    if (!error && user) {
+      currentUser = user;
+    }
+
     const { type, entityId } = req.query;
     if (!type || !entityId) {
       return res.status(400).json({ error: true, message: '缺少 type 或 entityId 查詢參數' });
@@ -157,29 +171,34 @@ exports.getComments = async (req, res) => {
       order: [['created_at', 'ASC']]
     });
 
-    // 對每筆留言進行手動查詢 user 並附加資料
     const comments = await Promise.all(
       commentsInstances.map(async (instance) => {
         let comment = instance.get({ plain: true });
         comment = await attachUserToComment(comment);
+
         return comment;
       })
     );
 
+    // 權限檢查調整
     let mentorRelations = null;
-    if (req.user?.role === '4') {
+    if (currentUser?.role === '4') {
       const relations = await MentorParticipants.findAll({
-        where: { mentor_id: req.user.id }
+        where: { mentor_id: currentUser.id }
       });
       mentorRelations = new Set(relations.map(rel => rel.participant_id));
     }
 
-    const currentUser = req.user || { id: null, role: null };
-
-    // 篩選可檢視的留言
+    // 篩選留言邏輯調整
     const filteredComments = [];
     for (const comment of comments) {
-      if (await canViewComment(comment, currentUser, post, mentorRelations)) {
+      const canView = await canViewComment(
+        comment,
+        currentUser || { id: null, role: null }, // 未登入時傳入空用戶
+        post,
+        mentorRelations
+      );
+      if (canView) {
         filteredComments.push(formatCommentResponse(comment));
       }
     }
@@ -195,28 +214,47 @@ exports.getComments = async (req, res) => {
 
 /**
  * 取得單一留言詳細資訊
- * API 路徑：GET /api/comments/:commentId
+ * API 路徑：GET /comments/:commentId
  */
 exports.getCommentDetail = async (req, res) => {
   try {
+    // 修改驗證為可選
+    let currentUser = null;
+    const { user, error } = verifyRequest(req);
+    if (!error && user) {
+      currentUser = user;
+    }
+
     const { commentId } = req.params;
-    let commentInstance = await Comment.findOne({ where: { id: commentId } });
+    const commentInstance = await Comment.findOne({ where: { id: commentId } });
     if (!commentInstance) return res.status(404).json({ error: true, message: '留言不存在' });
+
     let comment = commentInstance.get({ plain: true });
+
     comment = await attachUserToComment(comment);
 
     const post = await Post.findOne({ where: { id: comment.post_id } });
+
+    // 權限檢查調整
     let mentorRelations = null;
-    const currentUser = req.user || { id: null, role: null }; // 添加当前用户默认值
-    if (req.user.role === '4') {
+    if (currentUser?.role === '4') {
       const relations = await MentorParticipants.findAll({
-        where: { mentor_id: req.user.id }
+        where: { mentor_id: currentUser.id }
       });
       mentorRelations = new Set(relations.map(rel => rel.participant_id));
     }
-    if (!(await canViewComment(comment, currentUser, post, mentorRelations))) {
+
+    const canView = await canViewComment(
+      comment,
+      currentUser || { id: null, role: null },
+      post,
+      mentorRelations
+    );
+
+    if (!canView) {
       return res.status(403).json({ error: true, message: '無權查看此留言' });
     }
+
     return res.json(formatCommentResponse(comment));
   } catch (error) {
     return res.status(500).json({
@@ -229,7 +267,7 @@ exports.getCommentDetail = async (req, res) => {
 
 /**
  * 更新留言
- * API 路徑：PUT /api/comments/:commentId
+ * API 路徑：PUT /comments/:commentId
  */
 exports.updateComment = async (req, res) => {
   const transaction = await sequelize.transaction();
