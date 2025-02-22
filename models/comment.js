@@ -24,19 +24,13 @@ const Comment = sequelize.define('Comment', {
     allowNull: false
   },
   visibility: {
-    type: DataTypes.ENUM('public', 'private', 'mentor_participant'),
+    type: DataTypes.ENUM('public', 'private'),
     defaultValue: 'private'
   },
-  // 當 visibility 為 'mentor_participant' 時，指定留言所屬的導師 ID
-  mentor_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: "當 visibility 為 mentor_participant 時，指定留言所屬的導師 ID"
-  }
 }, {
   tableName: 'comments',
   timestamps: true,
-  underscored: true // 使 createdAt -> created_at, updatedAt -> updated_at
+  underscored: true
 });
 
 module.exports = Comment;

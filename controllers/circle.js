@@ -1,17 +1,7 @@
-const { Circle, User, Location, Country, City, Contact, BasicInfo, Position} = require('../models');
+const { Circle, User, Location, Country, City, Contact, BasicInfo, Position } = require('../models');
 const sequelize = require('../config/db');
 const { Op } = require('sequelize');
 
-function splitAndTrim(input, separator = ',') {
-  if (typeof input !== 'string') {
-    return [];
-  }
-  const cleanedInput = input.replace(/[{}]/g, '');
-  return cleanedInput
-    .split(separator)
-    .map(item => item.trim())
-    .filter(item => item !== '');
-}
 // 輔助函式：格式化 user 資料
 const formatUserData = (user) => {
   if (!user) return null;
@@ -49,7 +39,7 @@ const formatCircleResponse = (circle) => {
     description: plainCircle.description,
     outcome: plainCircle?.expectation_result || "",
     notice: plainCircle.notice,
-    tagList: splitAndTrim(plainCircle.tag_list),
+    tagList: plainCircle.tag_list,
     isGrouping: plainCircle.is_grouping,
     createdDate: plainCircle.created_date,
     updatedDate: plainCircle.updated_date,
@@ -114,25 +104,25 @@ exports.getCircle = async (req, res) => {
       ],
       offset: (pageInt - 1) * pageSizeInt,
       limit: pageSizeInt,
-      include: [          
+      include: [
         {
-            model: User,
-            attributes: ['id', 'nickname', 'external_id'],
-            include: [
-              { model: Contact },
-              { model: BasicInfo},
-              {
-                model: Location,
-                include: [
-                  { model: City, attributes: ['name'] },
-                  { model: Country, attributes: ['name'] }
-                ]
-              },
-              { 
-                model: Position,
-                through: { attributes: [] }
-              }
-            ]
+          model: User,
+          attributes: ['id', 'nickname', 'external_id'],
+          include: [
+            { model: Contact },
+            { model: BasicInfo },
+            {
+              model: Location,
+              include: [
+                { model: City, attributes: ['name'] },
+                { model: Country, attributes: ['name'] }
+              ]
+            },
+            {
+              model: Position,
+              through: { attributes: [] }
+            }
+          ]
         }
       ]
     });
@@ -213,14 +203,14 @@ exports.updateCircle = async (req, res) => {
       await transaction.commit();
 
       const updatedCircle = await Circle.findOne({
-      where: { external_id: id },
-      include: [          
-        {
+        where: { external_id: id },
+        include: [
+          {
             model: User,
             attributes: ['id', 'nickname', 'external_id'],
             include: [
               { model: Contact },
-              { model: BasicInfo},
+              { model: BasicInfo },
               {
                 model: Location,
                 include: [
@@ -228,13 +218,13 @@ exports.updateCircle = async (req, res) => {
                   { model: Country, attributes: ['name'] }
                 ]
               },
-              { 
+              {
                 model: Position,
                 through: { attributes: [] }
               }
             ]
-        }
-      ]
+          }
+        ]
       });
       res.json({ data: formatCircleResponse(updatedCircle), message: "Circle updated successfully." });
     } else {

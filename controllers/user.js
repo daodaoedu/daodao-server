@@ -26,12 +26,6 @@ const formatToTaipeiTime = (date) => {
 
 const formatUserResponse = (user) => {
   const userJson = user.toJSON();
-  const tagList = userJson.tag_list ?
-    userJson.tag_list
-      .replace(/{|}/g, '')  // 移除 {}
-      .split(',')           // 分割成陣列
-      .filter(Boolean)      // 移除空值
-    : [];
   return {
     _id: userJson.external_id,
     name: userJson.nickname,
@@ -43,7 +37,7 @@ const formatUserResponse = (user) => {
     isOpenProfile: userJson.is_open_profile,
     role: userJson.Role?.id,
     location: userJson.Location?.City?.name || '',
-    tagList,
+    tagList: userJson.tag_list,
     wantToDoList: userJson.BasicInfo?.want_to_do_list,
     educationStage: userJson.education_stage,
     selfIntroduction: userJson.BasicInfo?.self_introduction,
@@ -187,8 +181,8 @@ exports.getMe = async (req, res) => {
     if (!isUuid(currentUser._id)) {
       let user = null;
       const response = {
-            data: user,
-            message: "User not found"
+        data: user,
+        message: "User not found"
       };
       return res.status(200).json(response);
     }
@@ -218,8 +212,8 @@ exports.getMe = async (req, res) => {
     if (!user) {
       user = null;
       const response = {
-            data: user,
-            message: "User not found"
+        data: user,
+        message: "User not found"
       };
       return res.status(200).json(response);
     }
@@ -227,7 +221,7 @@ exports.getMe = async (req, res) => {
     const response = {
       data: formatUserResponse(user),
     };
-    console.log("getMe_response",response)
+    console.log("getMe_response", response)
     res.status(200).json(response);
 
   } catch (error) {
@@ -270,7 +264,7 @@ exports.getOneUser = async (req, res) => {
       data: [formatUserResponse(user)],
     };
 
-    console.log("getOneUser_response",response)
+    console.log("getOneUser_response", response)
 
 
     res.status(200).json(response);
@@ -327,7 +321,7 @@ exports.createUser = async (req, res) => {
     }
 
     const existingUser = await User.findOne({
-      where: { nickname:req.user.name },
+      where: { nickname: req.user.name },
       transaction
     });
 
@@ -377,10 +371,10 @@ exports.createUser = async (req, res) => {
       photo_url: tempUser.photoURL,
       is_subscribe_email: isSubscribeEmail,
       email: tempUser.email,
-      ig:contactList?.instagram,
-      discord:contactList?.discord,
-      line:contactList?.line,
-      fb:contactList?.facebook
+      ig: contactList?.instagram,
+      discord: contactList?.discord,
+      line: contactList?.line,
+      fb: contactList?.facebook
     }, { transaction });
 
     const basicInfo = await BasicInfo.create({
@@ -564,10 +558,10 @@ exports.updateUser = async (req, res) => {
         photo_url: photoUrl,
         is_subscribe_email: isSubscribeEmail,
         email,
-        ig:contactList?.instagram,
-        discord:contactList?.discord,
-        line:contactList?.line,
-        fb:contactList?.facebook
+        ig: contactList?.instagram,
+        discord: contactList?.discord,
+        line: contactList?.line,
+        fb: contactList?.facebook
       }, { transaction });
     }
 
