@@ -74,12 +74,6 @@ const User = sequelize.define('User', {
     allowNull: true,
     references: { model: 'basic_info', key: 'id' }
   },
-  createdDate: {
-    type: DataTypes.DATE
-  },
-  updatedDate: {
-    type: DataTypes.DATE
-  },
   created_by: {
     type: DataTypes.STRING
   },
