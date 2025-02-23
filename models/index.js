@@ -150,6 +150,15 @@ const setupAssociations = () => {
     foreignKey: 'post_id',
   });
 
+  // 新增專案與文章的關聯
+  Project.hasMany(Post, { 
+    foreignKey: 'project_id',
+    onDelete: 'CASCADE'
+  });
+  Post.belongsTo(Project, { 
+    foreignKey: 'project_id',
+  });
+
   // 4. 里程碑和任務關聯
   Milestone.hasMany(Task, { 
     foreignKey: 'milestone_id',
