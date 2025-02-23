@@ -1,8 +1,7 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20");
-const User = require("../models/user.model");
 const TempUser = require("../models/tempUser.model");
-
+const { User, Contact } = require('../models');
 
 const AUTH_OPTIONS = {
     clientID: process.env.GOOGLE_CLIENT_ID,
@@ -13,13 +12,17 @@ const AUTH_OPTIONS = {
 passport.serializeUser((user, done) => {
     console.log("SerializeUser")
     console.log("SerializeUser:",user)
-    done(null, user._id);
+    if(user._id){
+        done(null, user._id);
+    }else{
+        done(null, user.external_id);
+    }
 });
 
 passport.deserializeUser(async (_id, done) => {
     console.log("DeserializeUser")
     let foundUser = await User.findOne({ _id });
-    console.log("DeserializeUser:",foundUser)
+    console.log("DeserializeUser:", foundUser)
     done(null, foundUser)
 })
 
@@ -30,10 +33,18 @@ passport.use(new GoogleStrategy(
             console.log('passport_profile', profile);
             
             // 首先檢查是否存在正式用戶
-            let foundUser = await User.findOne({ googleID: profile.id }).exec();
-            if (foundUser) {
+            const foundContact = await Contact.findOne({
+                where: { email: profile.emails[0].value },
+                include: [{
+                    model: User,
+                    required: false
+                }]
+            });
+            console.log("foundContact", foundContact);
+            if (foundContact && foundContact.User) {
                 console.log("使用者已註冊");
-                return done(null, foundUser);
+
+                return done(null, foundContact.User);
             }
 
             // 如果沒有正式用戶，則檢查或創建臨時用戶

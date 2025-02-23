@@ -16,19 +16,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
-      - name: Install Linode CLI
-        run: pip install linode-cli
-      
-      - name: Verify Linode CLI Installation
-        run: linode-cli --version
-      
-      - name: Configure Linode CLI
-        env:
-          LINODE_CLI_TOKEN: ${{ secrets.LINODE_CLI_TOKEN }}
-        run: |
-          export LINODE_CLI_TOKEN
-          linode-cli --no-defaults linodes list
           
       - name: Set up SSH
         env:
@@ -46,98 +33,19 @@ jobs:
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "APP_ENV=prod" >> $GITHUB_ENV
             echo "APP_SERVICE=prod_app" >> $GITHUB_ENV
-            echo "DOCKER_TAG=prod" >> $GITHUB_ENV
           else
             echo "APP_ENV=dev" >> $GITHUB_ENV
             echo "APP_SERVICE=dev_app" >> $GITHUB_ENV
-            echo "DOCKER_TAG=dev" >> $GITHUB_ENV
           fi
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Check if Docker image exists on Docker Hub
-        env:
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: |
-          docker pull $DOCKER_HUB_USERNAME/app:${{ env.DOCKER_TAG }} || true
-  
-      - name: Build and push Docker image if not exists
-        env:
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: |
-          if ! docker image inspect $DOCKER_HUB_USERNAME/app:${{ env.DOCKER_TAG }} > /dev/null 2>&1; then
-            echo "Image does not exist, building and pushing..."
-            docker build -t $DOCKER_HUB_USERNAME/app:${{ env.DOCKER_TAG }} .
-            docker push $DOCKER_HUB_USERNAME/app:${{ env.DOCKER_TAG }}
-          else
-            echo "Image already exists, skipping build and push."
-          fi
-
-      - name: Verify Docker Hub Push
-        env:
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: |
-          MANIFEST=$(docker manifest inspect $DOCKER_HUB_USERNAME/app:${{ env.DOCKER_TAG }})
-          if [ $? -eq 0 ]; then
-            echo "Image successfully pushed and verified on Docker Hub"
-          else
-            echo "Failed to verify image on Docker Hub"
-            exit 1
-          fi
-
-      - name: Set up Docker on Host
-        env:
-          LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
-        run: |
-          ssh root@$LINODE_INSTANCE_IP "
-            # 移除舊版本的 Docker（如果存在）
-            apt-get remove -y docker docker-engine docker.io containerd runc || true
-            
-            # 更新包索引並安裝必要的依賴
-            apt-get update
-            apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-
-            # 添加 Docker 的官方 GPG 密鑰
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
-            # 設置穩定版本的 Docker 倉庫
-            echo \
-              'deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-              $(lsb_release -cs) stable' | tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-            # 再次更新包索引
-            apt-get update
-
-            # 安裝最新版本的 Docker Engine 和 containerd
-            apt-get install -y docker-ce docker-ce-cli containerd.io
-
-            # 安裝 Docker Compose
-            curl -L 'https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)' -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose
-
-            # 啟動 Docker 服務並設置為開機自啟
-            systemctl start docker
-            systemctl enable docker
-
-            # 驗證安裝
-            docker --version
-            docker-compose --version
-          "
       - name: Deploy to Linode
         if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           GIT_HUB_USERNAME: ${{ secrets.GIT_HUB_USERNAME }}
           GIT_HUB_ACCESS_TOKEN: ${{ secrets.GIT_HUB_ACCESS_TOKEN }}
         run: |
             ssh -o StrictHostKeyChecking=no root@$LINODE_INSTANCE_IP "
-              export DOCKER_HUB_USERNAME=$DOCKER_HUB_USERNAME
-              export DOCKER_TAG=${{ env.DOCKER_TAG }}
               export APP_SERVICE=${{ env.APP_SERVICE }}
               export APP_DIR=${{ env.APP_DIR }}
               export COMPOSE_FILE=${{ env.COMPOSE_FILE }}
@@ -177,8 +85,8 @@ jobs:
                 docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d
               else
                 echo \"Performing update deployment...\"
-                docker-compose -f $COMPOSE_FILE stop \$APP_SERVICE nginx
-                docker-compose -f \$COMPOSE_FILE rm -f \$APP_SERVICE nginx
+                docker-compose stop \$APP_SERVICE
+                docker-compose rm -f \$APP_SERVICE
                 docker ps -a
                 docker container prune -f
                 docker image prune -f
@@ -186,9 +94,11 @@ jobs:
                 
                 echo \"Updating specific services for \${APP_ENV} environment...\"
 
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE nginx
+                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE
 
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d \$APP_SERVICE nginx
+                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
+
+                
               fi
             "
       - name: Verify Deployment

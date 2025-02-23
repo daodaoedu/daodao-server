@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   prod_app:
     image: ${DOCKER_HUB_USERNAME}/app:prod
@@ -14,8 +13,12 @@ services:
     networks:
       - prod_network
     depends_on:
-      - mongo_prod
-      - redis_prod
+      mongo_prod:
+        condition: service_healthy
+      redis_prod:
+        condition: service_healthy
+      postgres-prod:
+        condition: service_healthy
 
   dev_app:
     image: ${DOCKER_HUB_USERNAME}/app:dev
@@ -32,9 +35,49 @@ services:
     networks:
       - dev_network
     depends_on:
-      - mongo_dev
-      - redis_dev
+      mongo_dev:
+        condition: service_healthy
+      redis_dev:
+        condition: service_healthy
+      postgres-dev:
+        condition: service_healthy
 
+  postgres-dev:
+    image: postgres:14
+    container_name: postgres-dev
+    environment:
+      POSTGRES_USER: daodao
+      POSTGRES_PASSWORD: daodao
+      POSTGRES_DB: daodao
+    networks:
+      - dev_network
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U daodao -d daodao" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-prod:
+    image: postgres:14
+    container_name: postgres-prod
+    environment:
+      POSTGRES_USER: daodao
+      POSTGRES_PASSWORD: daodao
+      POSTGRES_DB: daodao
+    networks:
+      - prod_network
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U daodao -d daodao" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  
   mongo_prod:
     image: mongo:4.4
     container_name: mongo_prod
@@ -42,6 +85,11 @@ services:
       - mongo_prod_data:/data/db
     networks:
       - prod_network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   mongo_dev:
     image: mongo:4.4
@@ -50,6 +98,11 @@ services:
       - mongo_dev_data:/data/db
     networks:
       - dev_network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   redis_prod:
     image: redis:6
@@ -58,6 +111,11 @@ services:
       - redis_prod_data:/data
     networks:
       - prod_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis_dev:
     image: redis:6
@@ -66,6 +124,11 @@ services:
       - redis_dev_data:/data
     networks:
       - dev_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   nginx:
     image: nginx:latest
@@ -89,6 +152,8 @@ volumes:
   mongo_dev_data:
   redis_prod_data:
   redis_dev_data:
+  postgres-dev-data:
+  postgres-prod-data:
 
 networks:
   prod_network:
