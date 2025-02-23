@@ -9,7 +9,7 @@ const formatNoteResponse = (note,post) => {
     title: post.title,
     content: note.content,
     date: safeDateFormatter(post.date),
-    imageUrls: note?.image_urls,
+    imgUrls: note?.image_urls,
     videoUrls: note?.video_urls,
     visibility: post?.visibility
   };
@@ -33,7 +33,7 @@ const safeDateFormatter = (dateValue) => {
 exports.createNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { week, title ,date, content, imageUrls, videoUrls, visibility } = req.body;
+    const { week, title ,date, content, imgUrls, videoUrls, visibility } = req.body;
 
     // 強制日期轉換與驗證
     const parsedDate = new Date(date);
@@ -59,8 +59,8 @@ exports.createNote = async (req, res) => {
     const note = await Note.create({
       post_id: post.id,
       content: content,
-      image_urls: imageUrls
-        ? (Array.isArray(imageUrls) ? imageUrls : [imageUrls])
+      image_urls: imgUrls
+        ? (Array.isArray(imgUrls) ? imgUrls : [imgUrls])
         : [],
       video_urls: videoUrls
         ? (Array.isArray(videoUrls) ? videoUrls : [videoUrls])
@@ -235,7 +235,7 @@ exports.updateNote = async (req, res) => {
     }
 
     // 解構 req.body（請直接使用變數名稱）
-    const { week, title, content, date, imageUrls, videoUrls, visibility } = req.body;
+    const { week, title, content, date, imgUrls, videoUrls, visibility } = req.body;
     const updatesPost = {};
 
     if (week !== undefined) updatesPost.week = week;
@@ -256,8 +256,8 @@ exports.updateNote = async (req, res) => {
     const updatesNote = {};
     if (content !== undefined) updatesPost.content = content;
 
-    if (imageUrls !== undefined) {
-      updatesNote.image_urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+    if (imgUrls !== undefined) {
+      updatesNote.image_urls = Array.isArray(imgUrls) ? imgUrls : [imgUrls];
     }
     if (videoUrls !== undefined) {
       updatesNote.video_urls = Array.isArray(videoUrls) ? videoUrls : [videoUrls];
