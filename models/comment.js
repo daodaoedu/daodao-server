@@ -27,6 +27,12 @@ const Comment = sequelize.define('Comment', {
     type: DataTypes.ENUM('public', 'private'),
     defaultValue: 'private'
   },
+  parent_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'comments', key: 'id' },
+    onDelete: 'CASCADE'
+  },
 }, {
   tableName: 'comments',
   timestamps: true,
