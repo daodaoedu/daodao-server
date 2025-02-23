@@ -88,23 +88,43 @@ exports.createNote = async (req, res) => {
 
 exports.getNotes = async (req, res) => {
   try {
-
-    const project = await Project.findOne({ where: { external_id: req.params.projectId } });
+    const project = await Project.findOne({ 
+      where: { external_id: req.params.projectId } 
+    });
     if (!project) {
       return res.status(404).json({ error: true, message: '專案不存在' });
     }
 
-    const posts = await Post.findAll({
-      where: { project_id: project.id, type: 'note' },
-      include: [{ model: Note}],
-      order: [['date', 'ASC']]
+    const notes = await Note.findAll({
+      include: [{
+        model: Post,
+        where: { 
+          project_id: project.id, 
+          type: 'note' 
+        },
+        required: true
+      }],
+      order: [
+        [Post, 'week', 'ASC'],
+        [Post, 'date', 'ASC']
+      ]
     });
 
-    const notes = posts
-      .filter(post => post.Note)
-      .map(post => formatNoteResponse(post.Note.get({ plain: true }), post.get({ plain: true })));
+    const formattedNotes = notes
+      .map(note => {
+        const post = note.Post; // 使用解構方式取得關聯
+        if (!post) {
+          console.error(`發現無效的便利貼關聯，note ID: ${note.id}`);
+          return null;
+        }
+        return formatNoteResponse(
+          note.get({ plain: true }), 
+          post.get({ plain: true })
+        );
+      })
+      .filter(Boolean);
 
-    return res.json(notes);
+    return res.json(formattedNotes);
   } catch (error) {
     res.status(500).json({
       error: true,
