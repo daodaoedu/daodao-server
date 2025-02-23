@@ -9,8 +9,8 @@ const formatOutcomeResponse = (outcome, post) => {
     title: post.title,
     content: outcome.content,
     date: safeDateFormatter(post.date),
-    imgUrls: outcome?.image_urls,  // 改用 imageUrls
-    videoUrls: outcome?.video_urls,  // 新增 videoUrls
+    imgUrls: outcome?.image_urls,
+    videoUrls: outcome?.video_urls,
     visibility: post.visibility
   };
 };
@@ -227,7 +227,7 @@ exports.updateOutcome = async (req, res) => {
     }
 
     const updatesOutcome = {};
-    if (content !== undefined) updatesPost.content = content;
+    if (content !== undefined) updatesOutcome.content = content;
     if (imgUrls !== undefined) {
       updatesOutcome.image_urls = imgUrls;
     }

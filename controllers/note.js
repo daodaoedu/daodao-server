@@ -254,7 +254,7 @@ exports.updateNote = async (req, res) => {
     }
 
     const updatesNote = {};
-    if (content !== undefined) updatesPost.content = content;
+    if (content !== undefined) updatesNote.content = content;
 
     if (imgUrls !== undefined) {
       updatesNote.image_urls = Array.isArray(imgUrls) ? imgUrls : [imgUrls];
