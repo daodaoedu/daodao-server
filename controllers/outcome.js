@@ -9,7 +9,7 @@ const formatOutcomeResponse = (outcome, post) => {
     title: post.title,
     content: outcome.content,
     date: safeDateFormatter(post.date),
-    imageUrls: outcome?.image_urls,  // 改用 imageUrls
+    imgUrls: outcome?.image_urls,  // 改用 imageUrls
     videoUrls: outcome?.video_urls,  // 新增 videoUrls
     visibility: post.visibility
   };
@@ -38,7 +38,7 @@ exports.createOutcome = async (req, res) => {
     }
 
     // 從 req.body 取得成果共用欄位與 Outcome 專屬欄位
-    const { date, week, title, content, imageUrls, videoUrls, visibility } = req.body;
+    const { date, week, title, content, imgUrls, videoUrls, visibility } = req.body;
 
     // 日期轉換與驗證
     const parsedDate = new Date(date);
@@ -61,7 +61,7 @@ exports.createOutcome = async (req, res) => {
     const outcome = await Outcome.create({
       post_id: post.id,
       content: content,
-      image_urls: imageUrls || [],
+      image_urls: imgUrls || [],
       video_urls: videoUrls || []
     }, { transaction });
 
@@ -209,7 +209,7 @@ exports.updateOutcome = async (req, res) => {
     }
 
     // 解構 req.body 取得共用欄位與 Outcome 專屬欄位
-    const { week, title, content, date, imageUrls, videoUrls, visibility } = req.body;
+    const { week, title, content, date, imgUrls, videoUrls, visibility } = req.body;
     const updatesPost = {};
     if (week !== undefined) updatesPost.week = week;
     if (title !== undefined) updatesPost.title = title;
@@ -228,8 +228,8 @@ exports.updateOutcome = async (req, res) => {
 
     const updatesOutcome = {};
     if (content !== undefined) updatesPost.content = content;
-    if (imageUrls !== undefined) {
-      updatesOutcome.image_urls = imageUrls;
+    if (imgUrls !== undefined) {
+      updatesOutcome.image_urls = imgUrls;
     }
     if (videoUrls !== undefined) {
       updatesOutcome.video_urls = videoUrls;
