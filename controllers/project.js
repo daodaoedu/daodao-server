@@ -75,7 +75,7 @@ exports.createProject = async (req, res) => {
       resourceName,       // ['資源1', '資源2']
       outcome,            // ['building_websites', 'making_videos', ...]
       outcomeDescription,
-      isPublic = false,
+      isPublic = true,
       status = 'Not Started',
       startDate,
       endDate,
@@ -161,7 +161,7 @@ exports.createProject = async (req, res) => {
       interval,
       created_by: req.user.id,
       updated_by: req.user.id,
-      version: 2
+      version: 1
     }, { transaction });
 
     // 創建里程碑
@@ -494,11 +494,9 @@ exports.getProject = async (req, res) => {
 exports.updateProject = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const project = await Project.findOne({
-      where: { 
-        external_id: req.params.projectId,
-        version: 2  // 新增 version 條件
-      },
+    // 取得該專案（不做版本過濾）
+    let project = await Project.findOne({
+      where: { external_id: req.params.projectId },
       include: [
         {
           model: User,
@@ -506,17 +504,12 @@ exports.updateProject = async (req, res) => {
           include: [
             { model: Contact },
             { model: BasicInfo },
-            {
-              model: Position,
-              through: { attributes: [] }
-            }
+            { model: Position, through: { attributes: [] } }
           ]
         },
         {
           model: ProjectMarathon,
-          include: [{
-            model: Marathon,
-          }]
+          include: [{ model: Marathon }]
         },
         {
           model: Milestone,
@@ -557,7 +550,7 @@ exports.updateProject = async (req, res) => {
       outcome,
       outcomeDescription,
       isPublic,
-      status,
+      status,      // 新狀態（可能為 "Not Started" 或其他）
       startDate,
       endDate,
       interval,
@@ -572,44 +565,70 @@ exports.updateProject = async (req, res) => {
       });
     }
 
-    // 更新學習計畫
-    await project.update({
-      img_url: imgUrl,
-      title: title,
-      description,
-      motivation,
-      motivation_description: motivationDescription,
-      goal,
-      content,
-      strategy,
-      strategy_description: strategyDescription,
-      resource: resourceName,
-      outcome,
-      outcome_description: outcomeDescription,
-      is_public: isPublic,
-      status,
-      start_date: startDate,
-      end_date: endDate,
-      interval,
-      updated_by: req.user.id,
-    }, { transaction });
+    let targetProject;
 
-    // 獲取更新後的完整信息
+    // 若目前是第一版且狀態變更（即更新後狀態不為 "Not Started"）
+    if (project.version === 1 && status && status !== 'Not Started') {
+      // 複製現有專案資料，再將更新內容寫入新版
+      const newProjectData = {
+        user_id: project.user_id,
+        img_url: imgUrl || project.img_url,
+        title: title || project.title,
+        description: description || project.description,
+        motivation: motivation || project.motivation,
+        motivation_description: motivationDescription || project.motivation_description,
+        goal: goal || project.goal,
+        content: content || project.content,
+        strategy: strategy || project.strategy,
+        strategy_description: strategyDescription || project.strategy_description,
+        resource: resourceName || project.resource,
+        outcome: outcome || project.outcome,
+        outcome_description: outcomeDescription || project.outcome_description,
+        is_public: typeof isPublic !== 'undefined' ? isPublic : project.is_public,
+        status: status, // 新狀態（例如 "Ongoing"）
+        start_date: startDate || project.start_date,
+        end_date: endDate || project.end_date,
+        interval: interval || project.interval,
+        created_by: project.created_by,
+        updated_by: req.user.id,
+        version: 2  // 建立新版
+      };
+
+      targetProject = await Project.create(newProjectData, { transaction });
+    } else {
+      // 如果是第一版且不改變狀態（仍維持 "Not Started"），或已是新版，直接更新
+      await project.update({
+        img_url: imgUrl,
+        title: title,
+        description,
+        motivation,
+        motivation_description: motivationDescription,
+        goal,
+        content,
+        strategy,
+        strategy_description: strategyDescription,
+        resource: resourceName,
+        outcome,
+        outcome_description: outcomeDescription,
+        is_public: isPublic,
+        status,       // 若 status 為 "Not Started" 或未改變，直接更新
+        start_date: startDate,
+        end_date: endDate,
+        interval,
+        updated_by: req.user.id,
+      }, { transaction });
+      targetProject = project;
+    }
+
+    // 重新查詢更新後的完整專案資訊
     const updatedProject = await Project.findOne({
-      where: { id: project.id },
+      where: { id: targetProject.id },
       include: [
-        {
-          model: User,
-        },
-        {
-          model: Milestone,
-          include: [Task]
-        }
+        { model: User },
+        { model: Milestone, include: [Task] }
       ],
       transaction
     });
-
-    console.log(updatedProject);
 
     await transaction.commit();
     res.status(200).json(formatProjectResponse(updatedProject));
