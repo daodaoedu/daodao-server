@@ -327,7 +327,7 @@ exports.getFilteredProjects = async (req, res) => {
 // 獲取學習計畫列表
 exports.getProjects = async (req, res) => {
   try {
-    const { page = 1, pageSize = 20 } = req.query;
+    const { page = 1, pageSize = 50 } = req.query;
 
     // // 根據 isPublic 參數建立 where 條件
     const where = {
