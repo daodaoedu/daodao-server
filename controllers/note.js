@@ -33,7 +33,7 @@ const safeDateFormatter = (dateValue) => {
 exports.createNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { week, title ,date, content, image_urls, video_urls, visibility } = req.body;
+    const { week, title ,date, content, imageUrls, videoUrls, visibility } = req.body;
 
     // 強制日期轉換與驗證
     const parsedDate = new Date(date);
@@ -59,11 +59,11 @@ exports.createNote = async (req, res) => {
     const note = await Note.create({
       post_id: post.id,
       content: content,
-      image_urls: image_urls
-        ? (Array.isArray(image_urls) ? image_urls : [image_urls])
+      image_urls: imageUrls
+        ? (Array.isArray(imageUrls) ? imageUrls : [imageUrls])
         : [],
-      video_urls: video_urls
-        ? (Array.isArray(video_urls) ? video_urls : [video_urls])
+      video_urls: videoUrls
+        ? (Array.isArray(videoUrls) ? videoUrls : [videoUrls])
         : [],
       visibility: visibility || 'private'
     }, { transaction });
@@ -215,7 +215,7 @@ exports.updateNote = async (req, res) => {
     }
 
     // 解構 req.body（請直接使用變數名稱）
-    const { week, title, content, date, image_urls, video_urls, visibility } = req.body;
+    const { week, title, content, date, imageUrls, videoUrls, visibility } = req.body;
     const updatesPost = {};
 
     if (week !== undefined) updatesPost.week = week;
@@ -236,11 +236,11 @@ exports.updateNote = async (req, res) => {
     const updatesNote = {};
     if (content !== undefined) updatesPost.content = content;
 
-    if (image_urls !== undefined) {
-      updatesNote.image_urls = Array.isArray(image_urls) ? image_urls : [image_urls];
+    if (imageUrls !== undefined) {
+      updatesNote.image_urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
     }
-    if (video_urls !== undefined) {
-      updatesNote.video_urls = Array.isArray(video_urls) ? video_urls : [video_urls];
+    if (videoUrls !== undefined) {
+      updatesNote.video_urls = Array.isArray(videoUrls) ? videoUrls : [videoUrls];
     }
     if (Object.keys(updatesNote).length > 0) {
       await note.update(updatesNote, { transaction });
