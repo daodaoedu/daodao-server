@@ -6,11 +6,16 @@ dotenv.config();
 const recentDataRoutes = require('./routes/recentData'); 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const projectRoutes = require('./routes/project');
+const usersRoutes = require('./routes/users');
 const activityRoutes = require('./routes/activity');
+const circleRoutes = require('./routes/circle');
+const commentRoutes = require('./routes/comment');
 const marathonRoutes = require('./routes/marathon');
 const tagRoutes = require('./routes/tag');
 const emailRoutes = require('./routes/email');
 const imageRoutes = require('./routes/image');
+const projectListRoutes = require('./routes/projectList');
 const session = require("express-session");
 const rateLimit = require("express-rate-limit");
 const passport = require("passport");
@@ -71,13 +76,16 @@ app.use(session({
 }))
 app.use(passport.initialize());
 app.use(passport.session());
+app.use('/list',projectListRoutes);
 app.use('/auth', authRoutes);
-app.use('/user', userRoutes);
-app.use('/activity', activityRoutes);
-app.use("/marathon", marathonRoutes);
-app.use('/tag', tagRoutes);
-app.use('/email',strictLimiter, emailRoutes);
-app.use('/image',strictLimiter, imageRoutes);
+app.use('/projects', projectRoutes);
+app.use('/users', userRoutes);
+app.use('/circles', circleRoutes);
+app.use('/comments', commentRoutes);
+app.use("/marathons", marathonRoutes);
+app.use('/tags', tagRoutes);
+app.use('/emails',strictLimiter, emailRoutes);
+app.use('/images',strictLimiter, imageRoutes);
 
 // app.get('/', (req, res) => {
 //     res.sendFile(path.join(__dirname, 'public', 'index.html'));
