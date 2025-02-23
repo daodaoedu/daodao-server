@@ -227,7 +227,7 @@ exports.updateOutcome = async (req, res) => {
     }
 
     const updatesOutcome = {};
-    if (content !== undefined) updatesPost.content = content;
+    if (content !== undefined) updatesOutcome.content = content;
     if (imgUrls !== undefined) {
       updatesOutcome.image_urls = imgUrls;
     }
