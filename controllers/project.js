@@ -332,7 +332,7 @@ exports.getProjects = async (req, res) => {
     // // 根據 isPublic 參數建立 where 條件
     const where = {
       version: 2,
-      // is_public: true
+      is_public: true
     };
     // if (typeof isPublic !== 'undefined') {
     //   // 將字串 "true" 或 "false" 轉換成布林值
