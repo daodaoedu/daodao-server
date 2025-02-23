@@ -57,8 +57,8 @@ const formatUserResponse = (user) => {
       wantToDoList: userJson.BasicInfo?.want_to_do_list
     },
     roleList: userJson.Positions?.map(p => p.name) || [],
-    createdDate: formatToTaipeiTime(userJson.created_at),
-    updatedDate: formatToTaipeiTime(userJson.updated_at)
+    createdDate: formatToTaipeiTime(userJson.createdDate || userJson.created_at),
+    updatedDate: formatToTaipeiTime(userJson.updatedDate || userJson.updated_at)
   };
 };
 

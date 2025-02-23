@@ -36,6 +36,13 @@ const Review = sequelize.define('Review', {
   },
   learning_feedback: DataTypes.TEXT,
   adjustment_plan: DataTypes.TEXT,
+  visibility: {
+    type: DataTypes.STRING,
+    defaultValue: 'private',
+    validate: {
+      isIn: [['public', 'private']]
+    }
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

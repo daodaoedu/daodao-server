@@ -49,12 +49,48 @@ const User = sequelize.define('User', {
   mongo_id: {
     type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: DataTypes.UUIDV4
+    unique: true
   },
   tag_list: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
     allowNull: true,
     defaultValue: []
+  },
+  language: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  education_stage: {
+    type: DataTypes.STRING,
+    defaultValue: 'other'
+  },
+  contact_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'contacts', key: 'id' }
+  },
+  basic_info_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'basic_info', key: 'id' }
+  },
+  createdDate: {
+    type: DataTypes.DATE
+  },
+  updatedDate: {
+    type: DataTypes.DATE
+  },
+  created_by: {
+    type: DataTypes.STRING
+  },
+  created_at: {
+    type: DataTypes.DATE
+  },
+  updated_by: {
+    type: DataTypes.STRING
+  },
+  updated_at: {
+    type: DataTypes.DATE
   }
 }, 
 {
