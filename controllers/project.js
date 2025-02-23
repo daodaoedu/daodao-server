@@ -327,11 +327,12 @@ exports.getFilteredProjects = async (req, res) => {
 // 獲取學習計畫列表
 exports.getProjects = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, pageSize = 20 } = req.query;
 
     // // 根據 isPublic 參數建立 where 條件
     const where = {
-      version: 2
+      version: 2,
+      is_public: true
     };
     // if (typeof isPublic !== 'undefined') {
     //   // 將字串 "true" 或 "false" 轉換成布林值
@@ -365,15 +366,15 @@ exports.getProjects = async (req, res) => {
           include: [Task]
         }
       ],
-      limit: parseInt(limit),
-      offset: (parseInt(page) - 1) * parseInt(limit),
+      limit: parseInt(pageSize),
+      offset: (parseInt(page) - 1) * parseInt(pageSize),
       order: [['created_at', 'DESC']]
     });
 
     res.status(200).json({
       total: projects.count,
       page: parseInt(page),
-      totalPages: Math.ceil(projects.count / limit),
+      totalPages: Math.ceil(projects.count / pageSize),
       data: projects.rows.map(project => ({
         ...formatProjectResponse(project)
       }))
@@ -434,7 +435,7 @@ exports.getProject = async (req, res) => {
     const project = await Project.findOne({
       where: { 
         external_id: req.params.projectId,
-        version: 2  // 新增 version 條件
+        version: 2 , // 新增 version 條件
       },
       include: [
         {
