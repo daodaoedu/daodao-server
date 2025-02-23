@@ -57,8 +57,8 @@ const formatUserResponse = (user) => {
       wantToDoList: userJson.BasicInfo?.want_to_do_list
     },
     roleList: userJson.Positions?.map(p => p.name) || [],
-    createdDate: formatToTaipeiTime(userJson.createdDate || userJson.created_at),
-    updatedDate: formatToTaipeiTime(userJson.updatedDate || userJson.updated_at)
+    createdDate: formatToTaipeiTime(userJson.created_at),
+    updatedDate: formatToTaipeiTime(userJson.updated_at)
   };
 };
 
@@ -131,16 +131,6 @@ exports.getAllUsers = async (req, res) => {
           through: { attributes: [] },
           required: false
         }
-      ],
-      attributes: [
-        'external_id',
-        'nickname',
-        'gender',
-        'birth_date',
-        'is_open_location',
-        'is_open_profile',
-        'created_at',
-        'updated_at'
       ],
       distinct: true,
       offset,
@@ -245,12 +235,8 @@ exports.getOneUser = async (req, res) => {
         {
           model: Position,
           through: { attributes: [] },
-          attributes: { exclude: ['createdAt', 'updatedAt'] }
         }
       ],
-      attributes: {
-        exclude: ['createdAt', 'updatedAt']
-      }
     });
 
     if (!user) {
@@ -441,7 +427,6 @@ exports.createUser = async (req, res) => {
         {
           model: Position,
           through: { attributes: [] },
-          attributes: { exclude: ['createdAt', 'updatedAt'] }
         }
       ],
       transaction
@@ -639,12 +624,8 @@ exports.updateUser = async (req, res) => {
         {
           model: Position,
           through: { attributes: [] },
-          attributes: { exclude: ['createdAt', 'updatedAt'] }
         }
       ],
-      attributes: {
-        exclude: ['createdAt', 'updatedAt']
-      },
       transaction
     });
 
