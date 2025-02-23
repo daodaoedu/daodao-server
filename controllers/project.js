@@ -4,10 +4,10 @@ const { Op } = require('sequelize');
 // 格式化響應數據
 const formatProjectResponse = (project) => {
   const projectJson = project.toJSON();
-  
+
   // 获取关联的马拉松信息
   const marathonInfo = projectJson.ProjectMarathons?.[0]?.Marathon;
-  
+
   return {
     id: projectJson.external_id,
     userId: projectJson.user_id,
@@ -83,8 +83,8 @@ exports.createProject = async (req, res) => {
       milestones = []    // 里程碑數據
     } = req.body;
 
-    console.log("req.user",req.user)
-    console.log("req.user.role",req.user.role)
+    console.log("req.user", req.user)
+    console.log("req.user.role", req.user.role)
 
     const user = await User.findOne({
       where: { external_id: req.user._id },  // 使用external_id查詢
@@ -111,7 +111,7 @@ exports.createProject = async (req, res) => {
     //     where: { user_id: req.user.id },
     //     transaction
     //   });
-      
+
     //   if (projectCount >= 3) {
     //     await transaction.rollback();
     //     return res.status(400).json({
@@ -122,7 +122,7 @@ exports.createProject = async (req, res) => {
     // }
 
     // 驗證必填字段
-    if (!title ) {
+    if (!title) {
       return res.status(400).json({
         error: true,
         message: "缺少必要欄位"
@@ -137,7 +137,7 @@ exports.createProject = async (req, res) => {
       });
     }
 
-    console.log("createProject.req.user",req.user);
+    console.log("createProject.req.user", req.user);
 
     // 創建學習計畫
     const project = await Project.create({
@@ -161,7 +161,7 @@ exports.createProject = async (req, res) => {
       interval,
       created_by: req.user.id,
       updated_by: req.user.id,
-      version: 1
+      version: 2
     }, { transaction });
 
     // 創建里程碑
@@ -211,8 +211,8 @@ exports.createProject = async (req, res) => {
 // 獲取學習計畫列表
 exports.getFilteredProjects = async (req, res) => {
   try {
-    const { 
-      page = 1, 
+    const {
+      page = 1,
       limit = 20,
       status,
       isPublic,
@@ -221,7 +221,12 @@ exports.getFilteredProjects = async (req, res) => {
 
     // 修正後的條件構建邏輯
     const whereConditions = {
-      [Op.and]: [] // 使用 AND 組合多個條件組
+      [Op.and]: [
+        { version: 2 },  // 新增 version 過濾
+        {
+          [Op.or]: [] // 使用 OR 組合多個條件組
+        }
+      ]
     };
 
     // 權限條件組
@@ -239,7 +244,7 @@ exports.getFilteredProjects = async (req, res) => {
       });
     }
 
-    whereConditions[Op.and].push(permissionConditions);
+    whereConditions[Op.and][1] = permissionConditions;
 
     // 添加狀態過濾
     if (status) {
@@ -248,8 +253,8 @@ exports.getFilteredProjects = async (req, res) => {
 
     // 添加公開性過濾
     if (isPublic !== undefined) {
-      whereConditions[Op.and].push({ 
-        is_public: isPublic === 'true' 
+      whereConditions[Op.and].push({
+        is_public: isPublic === 'true'
       });
     }
 
@@ -325,8 +330,9 @@ exports.getProjects = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
 
     // // 根據 isPublic 參數建立 where 條件
-    const where = {};
-    where.version = 2;
+    const where = {
+      version: 2
+    };
     // if (typeof isPublic !== 'undefined') {
     //   // 將字串 "true" 或 "false" 轉換成布林值
     //   where.is_public = isPublic === 'true';
@@ -342,7 +348,7 @@ exports.getProjects = async (req, res) => {
           include: [
             { model: Contact },
             { model: BasicInfo },
-            { 
+            {
               model: Position,
               through: { attributes: [] }
             }
@@ -386,80 +392,83 @@ exports.getProjects = async (req, res) => {
 
 // 獲取我的學習計畫
 exports.getMyProjects = async (req, res) => {
-    console.log("user_id: ",req.user)
-    try {
-      const projects = await Project.findAll({
-        where: { user_id: req.user.id },
-        include: [
-          {
-            model: User,
-            attributes: ['id', 'nickname', 'external_id'],
-            include: [
-              { model: Contact },
-              { model: BasicInfo},
-              { 
-                model: Position,
-                through: { attributes: [] }
-              }
-            ]
-          },
-          {
-            model: ProjectMarathon,
-            include: [{
-              model: Marathon,
-            }]
-          },
-          {
-            model: Milestone,
-            include: [Task]
-          }
-        ]
-      });
-      console.log('projects',projects);
-      res.status(200).json(projects.map(project => formatProjectResponse(project)));
-    } catch (error) {
-      console.error('獲取我的學習計畫錯誤：', error);
-      res.status(500).json({ error: true, message: '獲取我的學習計畫失敗' });
-    }
-  };
-  
+  console.log("user_id: ", req.user)
+  try {
+    const projects = await Project.findAll({
+      where: { user_id: req.user.id, version: 2 },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'nickname', 'external_id'],
+          include: [
+            { model: Contact },
+            { model: BasicInfo },
+            {
+              model: Position,
+              through: { attributes: [] }
+            }
+          ]
+        },
+        {
+          model: ProjectMarathon,
+          include: [{
+            model: Marathon,
+          }]
+        },
+        {
+          model: Milestone,
+          include: [Task]
+        }
+      ]
+    });
+    console.log('projects', projects);
+    res.status(200).json(projects.map(project => formatProjectResponse(project)));
+  } catch (error) {
+    console.error('獲取我的學習計畫錯誤：', error);
+    res.status(500).json({ error: true, message: '獲取我的學習計畫失敗' });
+  }
+};
+
 exports.getProject = async (req, res) => {
-    try {
-      const project = await Project.findOne({
-        where: { external_id: req.params.projectId },
-        include: [
-          {
-            model: User,
-            attributes: ['id', 'nickname', 'external_id'],
-            include: [
-              { model: Contact },
-              { model: BasicInfo},
-              { 
-                model: Position,
-                through: { attributes: [] }
-              }
-            ]
-          },
-          {
-            model: ProjectMarathon,
-            include: [{
-              model: Marathon,
-            }]
-          },
-          {
-            model: Milestone,
-            include: [Task]
-          }
-        ]
+  try {
+    const project = await Project.findOne({
+      where: { 
+        external_id: req.params.projectId,
+        version: 2  // 新增 version 條件
+      },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'nickname', 'external_id'],
+          include: [
+            { model: Contact },
+            { model: BasicInfo },
+            {
+              model: Position,
+              through: { attributes: [] }
+            }
+          ]
+        },
+        {
+          model: ProjectMarathon,
+          include: [{
+            model: Marathon,
+          }]
+        },
+        {
+          model: Milestone,
+          include: [Task]
+        }
+      ]
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        error: true,
+        message: "學習計畫不存在"
       });
-  
-      if (!project) {
-        return res.status(404).json({
-          error: true,
-          message: "學習計畫不存在"
-        });
-      }
-  
+    }
+
     //   // 檢查訪問權限
     //   if (!project.is_public && project.user_id !== req.user.id) {
     //     return res.status(403).json({
@@ -467,193 +476,196 @@ exports.getProject = async (req, res) => {
     //       message: "無權訪問此學習計畫"
     //     });
     //   }
-  
-      res.status(200).json(formatProjectResponse(project));
-  
-    } catch (error) {
-      console.error('獲取學習計畫詳情錯誤：', error);
-      res.status(500).json({
-        error: true,
-        message: "獲取學習計畫詳情失敗",
-        details: error.message
-      });
-    }
-  };
-  
-  // 更新學習計畫
-  exports.updateProject = async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const project = await Project.findOne({
-        where: { external_id: req.params.projectId },
-        include: [
-          {
-            model: User,
-            attributes: ['id', 'nickname', 'external_id'],
-            include: [
-              { model: Contact },
-              { model: BasicInfo},
-              { 
-                model: Position,
-                through: { attributes: [] }
-              }
-            ]
-          },
-          {
-            model: ProjectMarathon,
-            include: [{
-              model: Marathon,
-            }]
-          },
-          {
-            model: Milestone,
-            include: [Task]
-          }
-        ],
-        transaction
-      });
-  
-      if (!project) {
-        await transaction.rollback();
-        return res.status(404).json({
-          error: true,
-          message: "學習計畫不存在"
-        });
-      }
-  
-      // 檢查權限
-      if (project.user_id.toString() !== req.user.id.toString()) {
-        await transaction.rollback();
-        return res.status(403).json({
-          error: true,
-          message: "無權更新此學習計畫"
-        });
-      }
-  
-      const {
-        imgUrl,
-        title,
-        description,
-        motivation,
-        motivationDescription,
-        goal,
-        content,
-        strategy,
-        strategyDescription,
-        resourceName,
-        outcome,
-        outcomeDescription,
-        isPublic,
-        status,
-        startDate,
-        endDate,
-        interval,
-      } = req.body;
-  
-      // 驗證日期
-      if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
-        await transaction.rollback();
-        return res.status(400).json({
-          error: true,
-          message: "結束日期必須晚於開始日期"
-        });
-      }
-  
-      // 更新學習計畫
-      await project.update({
-        img_url: imgUrl,
-        title: title,
-        description,
-        motivation,
-        motivation_description: motivationDescription,
-        goal,
-        content,
-        strategy,
-        strategy_description: strategyDescription,
-        resource: resourceName,
-        outcome,
-        outcome_description: outcomeDescription,
-        is_public: isPublic,
-        status,
-        start_date: startDate,
-        end_date: endDate,
-        interval,
-        updated_by: req.user.id,
-      }, { transaction });
-  
-      // 獲取更新後的完整信息
-      const updatedProject = await Project.findOne({
-        where: { id: project.id },
-        include: [
-          {
-            model: User,
-          },
-          {
-            model: Milestone,
-            include: [Task]
-          }
-        ],
-        transaction
-      });
 
-      console.log(updatedProject);
-  
-      await transaction.commit();
-      res.status(200).json(formatProjectResponse(updatedProject));
-  
-    } catch (error) {
+    res.status(200).json(formatProjectResponse(project));
+
+  } catch (error) {
+    console.error('獲取學習計畫詳情錯誤：', error);
+    res.status(500).json({
+      error: true,
+      message: "獲取學習計畫詳情失敗",
+      details: error.message
+    });
+  }
+};
+
+// 更新學習計畫
+exports.updateProject = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const project = await Project.findOne({
+      where: { 
+        external_id: req.params.projectId,
+        version: 2  // 新增 version 條件
+      },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'nickname', 'external_id'],
+          include: [
+            { model: Contact },
+            { model: BasicInfo },
+            {
+              model: Position,
+              through: { attributes: [] }
+            }
+          ]
+        },
+        {
+          model: ProjectMarathon,
+          include: [{
+            model: Marathon,
+          }]
+        },
+        {
+          model: Milestone,
+          include: [Task]
+        }
+      ],
+      transaction
+    });
+
+    if (!project) {
       await transaction.rollback();
-      console.error('更新學習計畫錯誤：', error);
-      res.status(500).json({
+      return res.status(404).json({
         error: true,
-        message: "更新學習計畫失敗",
-        details: error.message
+        message: "學習計畫不存在"
       });
     }
-  };
-  
-  // 刪除學習計畫
-  exports.deleteProject = async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const project = await Project.findOne({
-        where: { external_id: req.params.projectId },
-        transaction
-      });
-  
-      if (!project) {
-        await transaction.rollback();
-        return res.status(404).json({
-          error: true,
-          message: "學習計畫不存在"
-        });
-      }
-  
-      // 檢查權限
-      if (project.user_id.toString() !== req.user.id.toString()) {
-        await transaction.rollback();
-        return res.status(403).json({
-          error: true,
-          message: "無權刪除此學習計畫"
-        });
-      }
-  
-      // 刪除學習計畫（會級聯刪除相關的里程碑、任務等）
-      await project.destroy({ transaction });
-  
-      await transaction.commit();
-      res.status(200).json({
-        message: "學習計畫已成功刪除"
-      });
-  
-    } catch (error) {
+
+    // 檢查權限
+    if (project.user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
-      console.error('刪除學習計畫錯誤：', error);
-      res.status(500).json({
+      return res.status(403).json({
         error: true,
-        message: "刪除學習計畫失敗",
-        details: error.message
+        message: "無權更新此學習計畫"
       });
     }
-  };
-  
+
+    const {
+      imgUrl,
+      title,
+      description,
+      motivation,
+      motivationDescription,
+      goal,
+      content,
+      strategy,
+      strategyDescription,
+      resourceName,
+      outcome,
+      outcomeDescription,
+      isPublic,
+      status,
+      startDate,
+      endDate,
+      interval,
+    } = req.body;
+
+    // 驗證日期
+    if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: true,
+        message: "結束日期必須晚於開始日期"
+      });
+    }
+
+    // 更新學習計畫
+    await project.update({
+      img_url: imgUrl,
+      title: title,
+      description,
+      motivation,
+      motivation_description: motivationDescription,
+      goal,
+      content,
+      strategy,
+      strategy_description: strategyDescription,
+      resource: resourceName,
+      outcome,
+      outcome_description: outcomeDescription,
+      is_public: isPublic,
+      status,
+      start_date: startDate,
+      end_date: endDate,
+      interval,
+      updated_by: req.user.id,
+    }, { transaction });
+
+    // 獲取更新後的完整信息
+    const updatedProject = await Project.findOne({
+      where: { id: project.id },
+      include: [
+        {
+          model: User,
+        },
+        {
+          model: Milestone,
+          include: [Task]
+        }
+      ],
+      transaction
+    });
+
+    console.log(updatedProject);
+
+    await transaction.commit();
+    res.status(200).json(formatProjectResponse(updatedProject));
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('更新學習計畫錯誤：', error);
+    res.status(500).json({
+      error: true,
+      message: "更新學習計畫失敗",
+      details: error.message
+    });
+  }
+};
+
+// 刪除學習計畫
+exports.deleteProject = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const project = await Project.findOne({
+      where: { external_id: req.params.projectId },
+      transaction
+    });
+
+    if (!project) {
+      await transaction.rollback();
+      return res.status(404).json({
+        error: true,
+        message: "學習計畫不存在"
+      });
+    }
+
+    // 檢查權限
+    if (project.user_id.toString() !== req.user.id.toString()) {
+      await transaction.rollback();
+      return res.status(403).json({
+        error: true,
+        message: "無權刪除此學習計畫"
+      });
+    }
+
+    // 刪除學習計畫（會級聯刪除相關的里程碑、任務等）
+    await project.destroy({ transaction });
+
+    await transaction.commit();
+    res.status(200).json({
+      message: "學習計畫已成功刪除"
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('刪除學習計畫錯誤：', error);
+    res.status(500).json({
+      error: true,
+      message: "刪除學習計畫失敗",
+      details: error.message
+    });
+  }
+};
+
