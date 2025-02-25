@@ -64,38 +64,44 @@ const {
    * 權限檢查
    */
   const canViewComment = async (comment, currentUser, entity, mentorRelations = null) => {
-    // 強制轉換為相同型別比較
+    // 若留言為 public，任何人皆可看到
+    if (comment.visibility === 'public') return true;
+    
+    // 若沒有 currentUser 或 currentUser.id 不存在，則無法觀看非公開留言
+    if (!currentUser || !currentUser.id) return false;
+    
+    // 強制轉換 id 為數字
     const commentUserId = Number(comment.user_id);
     const currentUserId = Number(currentUser.id);
     const entityUserId = entity ? Number(entity.user_id) : null;
-
-    if (comment.visibility === 'public') return true;
-    if (!currentUserId) return false;
     
-    // 新增除錯日誌
-    console.log(`權限檢查: 
-      留言擁有者: ${commentUserId} (${typeof commentUserId})
-      當前使用者: ${currentUserId} (${typeof currentUserId})
-      目標物件擁有者: ${entityUserId} (${typeof entityUserId})`);
-
+    console.log(`權限檢查: 留言擁有者: ${commentUserId}, 當前使用者: ${currentUserId}, 目標物件擁有者: ${entityUserId}`);
+    
+    // 若留言屬於當前使用者，則可觀看
     if (commentUserId === currentUserId) return true;
     
-    // 修改 mentor 檢查邏輯
+    // 如果當前使用者為 mentor，檢查其關係
     if (currentUser.role === '4') {
-      const relations = mentorRelations || await MentorParticipants.findAll({
-        where: { mentor_id: currentUserId }
-      });
-      const participantIds = new Set(relations.map(rel => Number(rel.participant_id)));
+      let relations;
+      if (mentorRelations) {
+        relations = Array.isArray(mentorRelations) ? mentorRelations : [...mentorRelations];
+      } else {
+        relations = await MentorParticipants.findAll({
+          where: { mentor_id: currentUserId }
+        });
+      }
+      // 確保 relations 為陣列，再進行 map
+      const relationsArray = Array.isArray(relations) ? relations : [];
+      const participantIds = new Set(relationsArray.map(rel => Number(rel.participant_id)));
       if (participantIds.has(commentUserId)) return true;
     }
-
-    // 強化目標物件擁有者檢查
-    if (entityUserId !== null && entityUserId === currentUserId) {
-      return true;
-    }
-
+    
+    // 如果當前使用者為目標物件的擁有者，也允許觀看
+    if (entityUserId !== null && entityUserId === currentUserId) return true;
+    
     return false;
   };
+  
   
   /**
    * 組成樹狀留言結構
@@ -210,15 +216,22 @@ const {
       const relations = await MentorParticipants.findAll({
         where: { mentor_id: currentUser.id }
       });
-      mentorRelations = new Set(relations.map(rel => rel.participant_id));
+      mentorRelations = new Set(Array.isArray(relations) ? relations.map(rel => rel.participant_id) : []);
     }
     
-    comments = comments.filter(comment =>
-      canViewComment(comment, currentUser || { id: null, role: null }, entity, mentorRelations)
+    // 因 canViewComment 為 async，先取得每筆留言是否可見的結果
+    const canViewArray = await Promise.all(
+      comments.map(comment =>
+        canViewComment(comment, currentUser || { id: null, role: null }, entity, mentorRelations)
+      )
     );
     
+    // 根據 canViewArray 的結果過濾留言
+    comments = comments.filter((_, index) => canViewArray[index]);
+  
     return buildCommentTree(comments);
   };
+  
   
   /**
    * 取得單一留言詳細資訊
