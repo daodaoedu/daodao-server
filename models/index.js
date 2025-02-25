@@ -28,7 +28,7 @@ const FeePlan = require('./feePlan');
 const Circle = require('./circle');
 const Comment = require('./comment');
 const MentorParticipants = require('./mentorParticipants');
-const MentorMarathon = require('./mentorMarathon'); // 新增：導入 MentorMarathon 模型
+// const MentorMarathon = require('./mentorMarathon'); // 新增：導入 MentorMarathon 模型
 
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
@@ -235,12 +235,12 @@ const setupAssociations = () => {
     otherKey: 'mentor_id'
   });
 
-  // 8. 導師與馬拉松關聯（新加入 MentorMarathon）
-  User.hasMany(MentorMarathon, { foreignKey: 'mentor_id', as: 'MentorMarathons' });
-  MentorMarathon.belongsTo(User, { foreignKey: 'mentor_id', as: 'Mentor' });
+  // // 8. 導師與馬拉松關聯（新加入 MentorMarathon）
+  // User.hasMany(MentorMarathon, { foreignKey: 'mentor_id', as: 'MentorMarathons' });
+  // MentorMarathon.belongsTo(User, { foreignKey: 'mentor_id', as: 'Mentor' });
 
-  Marathon.hasMany(MentorMarathon, { foreignKey: 'marathon_id', as: 'MentorMarathons' });
-  MentorMarathon.belongsTo(Marathon, { foreignKey: 'marathon_id', as: 'Marathon' });
+  // Marathon.hasMany(MentorMarathon, { foreignKey: 'marathon_id', as: 'MentorMarathons' });
+  // MentorMarathon.belongsTo(Marathon, { foreignKey: 'marathon_id', as: 'Marathon' });
 };
 
 // 執行關聯設置
@@ -274,5 +274,5 @@ module.exports = {
   Circle,
   Comment,
   MentorParticipants,
-  MentorMarathon
+  // MentorMarathon
 };
