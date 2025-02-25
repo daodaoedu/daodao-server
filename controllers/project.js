@@ -363,7 +363,15 @@ exports.getProjects = async (req, res) => {
         },
         {
           model: Milestone,
-          include: [Task]
+          separate: true,
+          order: [['id', 'ASC']],
+          include: [
+            {
+              model: Task,
+              separate: true,
+              order: [['id', 'ASC']],
+            }
+          ]
         }
       ],
       limit: parseInt(pageSize),
@@ -418,7 +426,15 @@ exports.getMyProjects = async (req, res) => {
         },
         {
           model: Milestone,
-          include: [Task]
+          separate: true,
+          order: [['id', 'ASC']],
+          include: [
+            {
+              model: Task,
+              separate: true,
+              order: [['id', 'ASC']],
+            }
+          ]
         }
       ]
     });
@@ -458,9 +474,17 @@ exports.getProject = async (req, res) => {
         },
         {
           model: Milestone,
-          include: [Task]
+          separate: true,
+          order: [['id', 'ASC']],
+          include: [
+            {
+              model: Task,
+              separate: true,
+              order: [['id', 'ASC']],
+            }
+          ]
         }
-      ]
+      ],
     });
 
     if (!project) {
@@ -625,7 +649,18 @@ exports.updateProject = async (req, res) => {
       where: { id: targetProject.id },
       include: [
         { model: User },
-        { model: Milestone, include: [Task] }
+        {
+          model: Milestone,
+          separate: true,
+          order: [['id', 'ASC']],
+          include: [
+            {
+              model: Task,
+              separate: true,
+              order: [['id', 'ASC']],
+            }
+          ]
+        }
       ],
       transaction
     });
