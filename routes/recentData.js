@@ -166,7 +166,7 @@ router.get('/', async (req, res) => {
       const user = project.User;
       const email = user && user.Contact ? user.Contact.email : 'N/A';
       const userName = user ? user.nickname : 'N/A';
-      const detailUrl = `${process.env.FRONTEND_URL}/learning-marathon/profile?id=${project.external_id || project.id}`;
+      const detailUrl = `${process.env.FRONTEND_URL}/admin/projects/detail?id=${project.external_id || project.id}`;
       htmlContent += `
           <tr>
             <td>${index + 1}</td>
