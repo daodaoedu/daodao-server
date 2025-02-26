@@ -323,9 +323,8 @@ exports.getFilteredProjects = async (req, res) => {
     });
   }
 };
-
 // 獲取學習計畫列表
-exports.getProjects = async (req, res) => {
+exports.getPublicProjects = async (req, res) => {
   try {
     const { page = 1, pageSize = 50 } = req.query;
 
@@ -333,6 +332,78 @@ exports.getProjects = async (req, res) => {
     const where = {
       version: 2,
       is_public: true
+    };
+    // if (typeof isPublic !== 'undefined') {
+    //   // 將字串 "true" 或 "false" 轉換成布林值
+    //   where.is_public = isPublic === 'true';
+    // }
+
+    const projects = await Project.findAndCountAll({
+      where, // 使用 where 條件
+      distinct: true,
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'nickname', 'external_id'],
+          include: [
+            { model: Contact },
+            { model: BasicInfo },
+            {
+              model: Position,
+              through: { attributes: [] }
+            }
+          ]
+        },
+        {
+          model: ProjectMarathon,
+          include: [{
+            model: Marathon,
+          }]
+        },
+        {
+          model: Milestone,
+          separate: true,
+          order: [['id', 'ASC']],
+          include: [
+            {
+              model: Task,
+              separate: true,
+              order: [['id', 'ASC']],
+            }
+          ]
+        }
+      ],
+      limit: parseInt(pageSize),
+      offset: (parseInt(page) - 1) * parseInt(pageSize),
+      order: [['created_at', 'DESC']]
+    });
+
+    res.status(200).json({
+      total: projects.count,
+      page: parseInt(page),
+      totalPages: Math.ceil(projects.count / pageSize),
+      data: projects.rows.map(project => ({
+        ...formatProjectResponse(project)
+      }))
+    });
+
+  } catch (error) {
+    console.error('獲取學習計畫列表錯誤：', error);
+    res.status(500).json({
+      error: true,
+      message: "獲取學習計畫列表失敗",
+      details: process.env.NODE_ENV === 'development' ? error.message : null
+    });
+  }
+};
+// 獲取學習計畫列表
+exports.getProjects = async (req, res) => {
+  try {
+    const { page = 1, pageSize = 50 } = req.query;
+
+    // // 根據 isPublic 參數建立 where 條件
+    const where = {
+      version: 2
     };
     // if (typeof isPublic !== 'undefined') {
     //   // 將字串 "true" 或 "false" 轉換成布林值
