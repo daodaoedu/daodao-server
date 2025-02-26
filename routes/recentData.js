@@ -38,7 +38,8 @@ router.get('/', async (req, res) => {
 
     // 取得最近 50 筆 Project（學習計畫）資料
     const recentProjects = await Project.findAll({
-      order: [['created_at', 'DESC']],
+      where: {version: 2},
+      order: [['updated_at', 'DESC']],
       limit: 50,
       include: [{
         model: User,
