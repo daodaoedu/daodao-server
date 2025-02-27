@@ -107,7 +107,26 @@ jobs:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
         run: |
           ssh root@$LINODE_INSTANCE_IP "
-            cd ${{ env.APP_DIR }} &&
-            docker ps &&
-            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=50 ${{ env.APP_SERVICE }} nginx
+            echo '=== Checking Docker Containers ==='
+            docker ps
+
+            echo '=== Checking System Resources ==='
+            echo 'CPU Load:' && uptime
+            echo 'Memory Usage:' && free -h
+            echo 'Disk Usage:' && df -h /
+
+            echo '=== Checking Docker Networks ==='
+            docker network ls
+
+            echo '=== Checking Nginx Logs ==='
+            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 nginx | tail -n 10
+
+            echo '=== Checking Application Logs ==='
+            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
+
+            echo '=== Running API Health Check ==='
+            if ! curl -fsSL http://localhost:3000/health; then
+              echo 'ERROR: API is not responding!'
+              exit 1
+            fi
           "
