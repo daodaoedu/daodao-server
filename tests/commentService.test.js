@@ -17,6 +17,19 @@ const {
 // Import sequelize to mock transactions
 const sequelize = require('../config/db');
 
+// Mock sequelize
+jest.mock('../config/db', () => ({
+  transaction: jest.fn().mockImplementation(() => ({
+    commit: jest.fn(),
+    rollback: jest.fn(),
+    finished: false
+  })),
+  authenticate: jest.fn().mockResolvedValue(),
+  options: {
+    logging: false
+  }
+}));
+
 // Mock all model dependencies
 jest.mock('../models', () => {
   const mockModel = (name) => {
@@ -44,18 +57,7 @@ jest.mock('../models', () => {
   };
 });
 
-// Mock sequelize
-jest.mock('../config/db', () => ({
-  transaction: jest.fn().mockImplementation(() => ({
-    commit: jest.fn(),
-    rollback: jest.fn(),
-    finished: false
-  })),
-  authenticate: jest.fn().mockResolvedValue(),
-  options: {
-    logging: false
-  }
-}));
+
 
 // Mock console.log to prevent debugging logs from cluttering test output
 console.log = jest.fn();
@@ -446,6 +448,7 @@ describe('Comment Service', () => {
       
       // We're not testing the exact result here because it depends on the 
       // specific implementation of canViewComment, just that it runs without error
+
       expect(result).toBeDefined();
       expect(result.length).toBeGreaterThan(0);
     });
