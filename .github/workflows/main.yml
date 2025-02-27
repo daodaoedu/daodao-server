@@ -162,14 +162,6 @@ jobs:
             echo 'Memory Usage:' && free -h
             echo 'Disk Usage:' && df -h /
 
-            echo '=== Remove Unuse Resources ==='
-            docker system prune -a
-
-            echo '=== Checking Again System Resources ==='
-            echo 'CPU Load:' && uptime
-            echo 'Memory Usage:' && free -h
-            echo 'Disk Usage:' && df -h /
-
             echo '=== Checking Docker Networks ==='
             docker network ls
 
@@ -179,3 +171,21 @@ jobs:
             echo '=== Checking Application Logs ==='
             docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
           " 
+  # Step 4: Discord 通知
+  notify:
+    needs: verify
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify Discord on Failure
+        if: ${{ needs.verify.result == 'failure' }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "🚨 SERVER部署失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"color": 16711680}]}' \
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - name: Notify Discord on Success
+        if: ${{ needs.verify.result == 'success' }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "✅ SERVER部署成功！🎉", "embeds": [{"color": 3066993}]}' \
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
