@@ -29,12 +29,33 @@ const {
     //     break;
       case 'note':
         entity = await Note.findOne({ where: { id: targetId } });
+        if (entity) {
+          // 透過 outcome.post_id 取得對應的 Post，並將 post.user_id 附加給 outcome
+          const post = await Post.findOne({ where: { id: entity.post_id } });
+          if (post) {
+            entity.user_id = post.user_id;
+          }
+        }
         break;
       case 'outcome':
         entity = await Outcome.findOne({ where: { id: targetId } });
+        if (entity) {
+          // 透過 outcome.post_id 取得對應的 Post，並將 post.user_id 附加給 outcome
+          const post = await Post.findOne({ where: { id: entity.post_id } });
+          if (post) {
+            entity.user_id = post.user_id;
+          }
+        }
         break;
       case 'review':
         entity = await Review.findOne({ where: { id: targetId } });
+        if (entity) {
+          // 透過 outcome.post_id 取得對應的 Post，並將 post.user_id 附加給 outcome
+          const post = await Post.findOne({ where: { id: entity.post_id } });
+          if (post) {
+            entity.user_id = post.user_id;
+          }
+        }
         break;
       default:
         throw new Error('無效的 target_type');
@@ -198,11 +219,16 @@ const {
    * 取得指定對象下所有留言，並組成樹狀結構
    */
   const getComments = async ({ targetType, targetId, currentUser }) => {
+    console.log(targetType, targetId)
     const entity = await getTargetEntity(targetType, targetId);
+    console.log(entity);
+    
+
     const commentInstances = await Comment.findAll({
       where: { target_type: targetType, target_id: targetId },
       order: [['created_at', 'ASC']]
     });
+    console.log(commentInstances);
     let comments = await Promise.all(
       commentInstances.map(async (instance) => {
         let comment = instance.get({ plain: true });
@@ -210,6 +236,7 @@ const {
         return formatCommentResponse(comment);
       })
     );
+    console.log(comments);
     
     let mentorRelations = null;
     if (currentUser?.role === '4') {
