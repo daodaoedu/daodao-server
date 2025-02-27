@@ -95,16 +95,22 @@ jobs:
 
             set -o allexport && source .env.\${APP_ENV} && set +o allexport
 
-            echo 'Performing update deployment...'
+            if [ \"\$DEPLOYMENT_TYPE\" = 'initial' ]; then
+              echo \"Performing initial deployment...\"
+              docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d
+            else
+              echo \"Performing update deployment...\"
+              docker-compose stop \$APP_SERVICE
+              docker-compose rm -f \$APP_SERVICE
+              docker ps -a
+              docker container prune -f
+              docker image prune -f
+              docker network prune -f
+              
+              echo \"Updating specific services for \${APP_ENV} environment...\"
+              docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE
+              docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
 
-            # 清理 24 小時前的 Docker Image（避免影響當前運行的 Image）
-            docker image prune -a --filter \"until=24h\" -f
-
-            # 使用 Docker Cache 進行建置
-            docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build \$APP_SERVICE
-
-            # 啟動服務
-            docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
           "
 
   # Step 3: 驗證部署狀態
@@ -151,11 +157,11 @@ jobs:
         if: ${{ needs.verify.result == 'failure' }}
         run: |
           curl -X POST -H "Content-Type: application/json" \
-            -d '{"content": "🚨 部署失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"color": 16711680}]}' \
-            ${{ secrets.DISCORD_WEBHOOK }}
+            -d '{"content": "🚨 SERVER部署失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"color": 16711680}]}' \
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
       - name: Notify Discord on Success
         if: ${{ needs.verify.result == 'success' }}
         run: |
           curl -X POST -H "Content-Type: application/json" \
-            -d '{"content": "✅ 部署成功！🎉", "embeds": [{"color": 3066993}]}' \
-            ${{ secrets.DISCORD_WEBHOOK }}
+            -d '{"content": "✅ SERVER部署成功！🎉", "embeds": [{"color": 3066993}]}' \
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
