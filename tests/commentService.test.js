@@ -7,12 +7,6 @@ const {
   deleteComment
 } = require('../services/commentService');
 
-// Import models to mock
-const {
-  Comment, User, Contact, BasicInfo, Position,
-  Post, Circle, Note, Outcome, Review,
-  MentorParticipants
-} = require('../models');
 
 process.env.NODE_ENV = 'test';
 
@@ -29,6 +23,12 @@ jest.mock('../config/db', () => ({
   }
 }));
 
+// Import models to mock
+const {
+  Comment, User, Contact, BasicInfo, Position,
+  Post, Circle, Note, Outcome, Review,
+  MentorParticipants
+} = require('../models');
 
 // Import sequelize to mock transactions
 const sequelize = require('../config/db');
