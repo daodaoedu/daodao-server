@@ -14,6 +14,7 @@ jest.mock('../config/db', () => ({
     finished: false
   })),
   authenticate: jest.fn().mockResolvedValue(),
+  close: jest.fn().mockResolvedValue(), // Add this line
   options: {
     logging: false
   }
