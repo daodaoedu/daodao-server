@@ -1,13 +1,5 @@
 // tests/unit/services/commentService.test.js
-const {
-  createComment,
-  getComments,
-  getCommentDetail,
-  updateComment,
-  deleteComment
-} = require('../services/commentService');
-
-
+jest.resetModules();
 process.env.NODE_ENV = 'test';
 
 // Mock sequelize
@@ -62,6 +54,13 @@ jest.mock('../models', () => {
 });
 
 
+const {
+  createComment,
+  getComments,
+  getCommentDetail,
+  updateComment,
+  deleteComment
+} = require('../services/commentService');
 
 // Mock console.log to prevent debugging logs from cluttering test output
 console.log = jest.fn();
