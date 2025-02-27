@@ -128,11 +128,14 @@ jobs:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Setup SSH for Host Key Verification
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.LINODE_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
     
       - name: Set Environment Variables
         run: |
@@ -145,7 +148,7 @@ jobs:
             echo "APP_ENV=dev" >> $GITHUB_ENV
             echo "APP_SERVICE=dev_app" >> $GITHUB_ENV
           fi
-          
+
       - name: Verify Deployment
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
@@ -155,6 +158,14 @@ jobs:
             docker ps
 
             echo '=== Checking System Resources ==='
+            echo 'CPU Load:' && uptime
+            echo 'Memory Usage:' && free -h
+            echo 'Disk Usage:' && df -h /
+
+            echo '=== Remove Unuse Resources ==='
+            docker system prune -a
+
+            echo '=== Checking Again System Resources ==='
             echo 'CPU Load:' && uptime
             echo 'Memory Usage:' && free -h
             echo 'Disk Usage:' && df -h /
