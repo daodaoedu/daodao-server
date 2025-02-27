@@ -14,6 +14,8 @@ const {
   MentorParticipants
 } = require('../models');
 
+process.env.NODE_ENV = 'test';
+
 // Mock sequelize
 jest.mock('../config/db', () => ({
   transaction: jest.fn().mockImplementation(() => ({
