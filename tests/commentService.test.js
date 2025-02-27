@@ -576,4 +576,11 @@ describe('Comment Service', () => {
       expect(fakeTransaction.rollback).toHaveBeenCalled();
     });
   });
+  // At the end of your test file
+  afterAll(async () => {
+    // Close the sequelize connection
+    await sequelize.close();
+    // Wait a moment to ensure connections are fully closed
+    await new Promise(resolve => setTimeout(resolve, 500));
+  });
 });
