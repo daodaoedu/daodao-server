@@ -14,9 +14,6 @@ const {
   MentorParticipants
 } = require('../models');
 
-// Import sequelize to mock transactions
-const sequelize = require('../config/db');
-
 // Mock sequelize
 jest.mock('../config/db', () => ({
   transaction: jest.fn().mockImplementation(() => ({
@@ -29,6 +26,11 @@ jest.mock('../config/db', () => ({
     logging: false
   }
 }));
+
+
+// Import sequelize to mock transactions
+const sequelize = require('../config/db');
+
 
 // Mock all model dependencies
 jest.mock('../models', () => {
