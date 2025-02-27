@@ -93,10 +93,8 @@ jobs:
             cp \".env.\${APP_ENV}_temp\" \".env.\${APP_ENV}\"
             fi
 
-            # 正確載入環境變數
-            set -o allexport 
-            source \".env.\${APP_ENV}\" 
-            set +o allexport
+            set -o allexport && source .env.\${APP_ENV} && set +o allexport
+            echo 'Environment variables loaded:'
 
             if [ \"\$DEPLOYMENT_TYPE\" = 'initial' ]; then
               echo \"Performing initial deployment...\"
