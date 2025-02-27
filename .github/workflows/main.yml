@@ -90,12 +90,22 @@ jobs:
 
             # 檢查 .env 是否存在；若無則建立
             if [ ! -f \".env.\${APP_ENV}\" ]; then
-              cp \".env.\${APP_ENV}_temp\" \".env.\${APP_ENV}\"
+            cp \".env.\${APP_ENV}_temp\" \".env.\${APP_ENV}\"
             fi
-            
-            # 檢查並修正 .env 檔案中的錯誤
-            # 找出並修正 line 14 的 ulcg 錯誤
-            sed -i '14s/ulcg//' \".env.\${APP_ENV}\"
+                    
+            # 顯示 .env 內容以便除錯
+            echo 'Contents of .env.${APP_ENV}:'
+            cat \".env.\${APP_ENV}\"
+                    
+            # 修正 .env 檔案中的潛在錯誤（假設 line 14 是問題）
+            sed -i '14s/vhyi//' \".env.\${APP_ENV}\"
+                    
+            # 驗證 .env 檔案語法
+            if grep -vE '^[A-Za-z_][A-Za-z0-9_]*=.*$' \".env.\${APP_ENV}\" > /dev/null; then
+            echo 'Error: Invalid syntax in .env.${APP_ENV}'
+            cat \".env.\${APP_ENV}\"
+            exit 1
+            fi
 
             # 正確載入環境變數
             set -o allexport 
