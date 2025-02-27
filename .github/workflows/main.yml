@@ -128,6 +128,12 @@ jobs:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     steps:
+      - name: Setup SSH for Host Key Verification
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+    
       - name: Set Environment Variables
         run: |
           echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
@@ -139,6 +145,7 @@ jobs:
             echo "APP_ENV=dev" >> $GITHUB_ENV
             echo "APP_SERVICE=dev_app" >> $GITHUB_ENV
           fi
+          
       - name: Verify Deployment
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
