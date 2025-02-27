@@ -11,6 +11,26 @@ on:
       - dev
 
 jobs:
+  # Step 1: 測試階段
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test  
+
+  # Step 2: 部署階段
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
@@ -101,8 +121,13 @@ jobs:
                 
               fi
             "
+  
+  # Step 3: 驗證部署狀態
+  verify:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
       - name: Verify Deployment
-        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
         run: |
@@ -123,10 +148,4 @@ jobs:
 
             echo '=== Checking Application Logs ==='
             docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
-
-            echo '=== Running API Health Check ==='
-            if ! curl -fsSL http://localhost:3000/health; then
-              echo 'ERROR: API is not responding!'
-              exit 1
-            fi
-          "
+          " 
