@@ -66,14 +66,14 @@ jobs:
           ssh -o StrictHostKeyChecking=no root@$LINODE_INSTANCE_IP "
             set -euo pipefail
 
-            export APP_SERVICE=${{ env.APP_SERVICE }}
-            export APP_DIR=${{ env.APP_DIR }}
-            export COMPOSE_FILE=${{ env.COMPOSE_FILE }}
-            export APP_ENV=${{ env.APP_ENV }}
+            export APP_SERVICE=\"${{ env.APP_SERVICE }}\"
+            export APP_DIR=\"${{ env.APP_DIR }}\"
+            export COMPOSE_FILE=\"${{ env.COMPOSE_FILE }}\"
+            export APP_ENV=\"${{ env.APP_ENV }}\"
 
             # 確保目標目錄存在
-            mkdir -p \$APP_DIR
-            cd \$APP_DIR
+            mkdir -p \"\$APP_DIR\"
+            cd \"\$APP_DIR\"
 
             # 檢查專案是否已存在
             if [ -d .git ]; then
@@ -84,33 +84,40 @@ jobs:
               git clean -fd
             else
               echo 'No repository found, performing initial clone...'
-              git clone https://${{ env.GIT_HUB_USERNAME }}:${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \$APP_DIR
-              cd \$APP_DIR
+              git clone https://${{ env.GIT_HUB_USERNAME }}:${{ env.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \"\$APP_DIR\"
+              cd \"\$APP_DIR\"
             fi
 
             # 檢查 .env 是否存在；若無則建立
-            if [ ! -f .env.\${APP_ENV} ]; then
-              cp .env.\${APP_ENV}_temp .env.\${APP_ENV}
+            if [ ! -f \".env.\${APP_ENV}\" ]; then
+              cp \".env.\${APP_ENV}_temp\" \".env.\${APP_ENV}\"
             fi
+            
+            # 檢查並修正 .env 檔案中的錯誤
+            # 找出並修正 line 14 的 ulcg 錯誤
+            sed -i '14s/ulcg//' \".env.\${APP_ENV}\"
 
-            set -o allexport && source .env.\${APP_ENV} && set +o allexport
+            # 正確載入環境變數
+            set -o allexport 
+            source \".env.\${APP_ENV}\" 
+            set +o allexport
 
             if [ \"\$DEPLOYMENT_TYPE\" = 'initial' ]; then
               echo \"Performing initial deployment...\"
-              docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d
+              docker-compose --env-file \".env.\${APP_ENV}\" -f \"\$COMPOSE_FILE\" up -d
             else
               echo \"Performing update deployment...\"
-              docker-compose stop \$APP_SERVICE
-              docker-compose rm -f \$APP_SERVICE
+              docker-compose stop \"\$APP_SERVICE\"
+              docker-compose rm -f \"\$APP_SERVICE\"
               docker ps -a
               docker container prune -f
               docker image prune -f
               docker network prune -f
               
               echo \"Updating specific services for \${APP_ENV} environment...\"
-              docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE
-              docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
-
+              docker-compose --env-file \".env.\${APP_ENV}\" -f \"\$COMPOSE_FILE\" build --no-cache \"\$APP_SERVICE\"
+              docker-compose --env-file \".env.\${APP_ENV}\" -f \"\$COMPOSE_FILE\" up -d --no-deps \"\$APP_SERVICE\"
+            fi
           "
 
   # Step 3: 驗證部署狀態
@@ -118,11 +125,23 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
+      - name: Set Environment Variables
+        run: |
+          echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
+          echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "APP_ENV=prod" >> $GITHUB_ENV
+            echo "APP_SERVICE=prod_app" >> $GITHUB_ENV
+          else
+            echo "APP_ENV=dev" >> $GITHUB_ENV
+            echo "APP_SERVICE=dev_app" >> $GITHUB_ENV
+          fi
+
       - name: Verify Deployment
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
         run: |
-          ssh root@$LINODE_INSTANCE_IP "
+          ssh -o StrictHostKeyChecking=no root@$LINODE_INSTANCE_IP "
             echo '=== Checking Docker Containers ==='
             docker ps
 
