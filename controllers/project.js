@@ -41,7 +41,7 @@ const formatProjectResponse = (project) => {
     } : null,
     milestones: projectJson.Milestones?.map(m => ({
       id: m.id,
-      week: m.week,
+      position: m.position,
       name: m.name,
       description: m.description,
       startDate: m.start_date,
@@ -50,6 +50,7 @@ const formatProjectResponse = (project) => {
       tasks: m.Tasks?.map(t => ({
         id: t.id,
         name: t.name,
+        position: t.position,
         description: t.description,
         daysOfWeek: t.days_of_week,
         isCompleted: t.is_completed
@@ -168,7 +169,7 @@ exports.createProject = async (req, res) => {
     if (milestones.length > 0) {
       const milestonesData = milestones.map(milestone => ({
         project_id: project.id,
-        week: milestone.week,
+        position: milestone.position,
         name: milestone.name,
         description: milestone.description,
         start_date: milestone.startDate,
