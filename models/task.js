@@ -15,6 +15,10 @@ const Task = sequelize.define('Task', {
       key: 'id'
     }
   },
+  position: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
   name: DataTypes.STRING,
   description: DataTypes.TEXT,
   days_of_week: {
