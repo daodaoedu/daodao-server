@@ -173,20 +173,22 @@ jobs:
           " 
   # Step 4: Discord 通知
   notify:
-    needs: verify
+    needs: [test, verify]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Notify Discord on Failure
-        if: ${{ needs.verify.result == 'failure' }}
+      - name: Notify Discord
         run: |
-          curl -X POST -H "Content-Type: application/json" \
-            -d '{"content": "🚨 SERVER部署失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Deployment Failed", "description": "Error in the deployment process", "color": 16711680}]}' \
-            ${{ secrets.DISCORD_WEBHOOK_URL }}
-      
-      - name: Notify Discord on Success
-        if: ${{ needs.verify.result == 'success' }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-            -d '{"content": "✅ SERVER部署成功！🎉", "embeds": [{"title": "Deployment Successful", "description": "All steps completed successfully", "color": 3066993}]}' \
-            ${{ secrets.DISCORD_WEBHOOK_URL }}
+          if [ "${{ needs.test.result }}" == "failure" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "🚨 測試階段失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Test Failure", "description": "Tests failed during execution", "color": 16711680}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          elif [ "${{ needs.verify.result }}" == "failure" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "🚨 部署失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Deployment Failed", "description": "Error in the deployment process", "color": 16711680}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          else
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "✅ SERVER部署成功！🎉", "embeds": [{"title": "Deployment Successful", "description": "All steps completed successfully", "color": 3066993}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          fi
