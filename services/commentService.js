@@ -241,11 +241,11 @@ const {
     
     let mentorRelations = null;
     if (currentUser?.role === '4') {
-      const relations = await MentorParticipants.findAll({
+      // 傳入原始的陣列，避免格式不符問題
+      mentorRelations = await MentorParticipants.findAll({
         where: { mentor_id: currentUser.id }
       });
-      mentorRelations = new Set(Array.isArray(relations) ? relations.map(rel => rel.participant_id) : []);
-    }
+    }  
     
     // 因 canViewComment 為 async，先取得每筆留言是否可見的結果
     const canViewArray = await Promise.all(
