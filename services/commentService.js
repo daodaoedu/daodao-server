@@ -92,7 +92,7 @@ const {
     if (!currentUser || !currentUser.id) return false;
     
     // 強制轉換 id 為數字
-    const commentUserId = Number(comment.user_id);
+    const commentUserId = Number(comment.userId);
     const currentUserId = Number(currentUser.id);
     const entityUserId = entity ? Number(entity.user_id) : null;
     
@@ -152,6 +152,7 @@ const {
   const formatCommentResponse = (comment) => {
     return {
       id: comment.id,
+      userId: comment.user_id,
       content: comment.content,
       visibility: comment.visibility,
       createdAt: comment.created_at,
