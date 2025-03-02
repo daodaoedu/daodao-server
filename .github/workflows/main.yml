@@ -11,7 +11,28 @@ on:
       - dev
 
 jobs:
+  # Step 1: 測試階段
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test  
+
+  # Step 2: 部署階段
   build-and-deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -101,13 +122,73 @@ jobs:
                 
               fi
             "
+  
+  # Step 3: 驗證部署狀態
+  verify:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.LINODE_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
+    
+      - name: Set Environment Variables
+        run: |
+          echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
+          echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "APP_ENV=prod" >> $GITHUB_ENV
+            echo "APP_SERVICE=prod_app" >> $GITHUB_ENV
+          else
+            echo "APP_ENV=dev" >> $GITHUB_ENV
+            echo "APP_SERVICE=dev_app" >> $GITHUB_ENV
+          fi
+
       - name: Verify Deployment
-        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
         run: |
           ssh root@$LINODE_INSTANCE_IP "
-            cd ${{ env.APP_DIR }} &&
-            docker ps &&
-            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=50 ${{ env.APP_SERVICE }} nginx
-          "
+            echo '=== Checking Docker Containers ==='
+            docker ps
+
+            echo '=== Checking System Resources ==='
+            echo 'CPU Load:' && uptime
+            echo 'Memory Usage:' && free -h
+            echo 'Disk Usage:' && df -h /
+
+            echo '=== Checking Docker Networks ==='
+            docker network ls
+
+            echo '=== Checking Nginx Logs ==='
+            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 nginx | tail -n 10
+
+            echo '=== Checking Application Logs ==='
+            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
+          " 
+  # Step 4: Discord 通知
+  notify:
+    needs: [test, verify]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify Discord
+        run: |
+          if [ "${{ needs.test.result }}" == "failure" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "🚨 測試階段失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Test Failure", "description": "Tests failed during execution", "color": 16711680}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          elif [ "${{ needs.verify.result }}" == "failure" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "🚨 部署失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Deployment Failed", "description": "Error in the deployment process", "color": 16711680}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          else
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "✅ SERVER部署成功！🎉", "embeds": [{"title": "Deployment Successful", "description": "All steps completed successfully", "color": 3066993}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          fi

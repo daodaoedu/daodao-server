@@ -374,7 +374,7 @@ exports.createUser = async (req, res) => {
       nickname: tempUser.name,
       gender,
       education_stage: educationStage,
-      tag_list: Array.isArray(tagList) ? `{${tagList.join(',')}}` : '{}',
+      tag_list: tagList,
       contact_id: contact.id,
       is_open_location: isOpenLocation,
       location_id: locationId,
@@ -563,7 +563,7 @@ exports.updateUser = async (req, res) => {
     await user.update({
       nickname,
       gender,
-      tag_list: Array.isArray(tagList) ? `{${tagList.join(',')}}` : '{}',
+      tag_list: tagList,
       education_stage: educationStage,
       is_open_location: isOpenLocation,
       is_open_profile: isOpenProfile,

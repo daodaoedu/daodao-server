@@ -6,7 +6,7 @@ const formatMilestoneResponse = (milestone) => {
 
   return {
     id: milestoneJson.id,
-    week: milestoneJson.week,
+    position: milestoneJson.position,
     name: milestoneJson.name,
     description: milestoneJson.description,
     startDate: milestoneJson.start_date,
@@ -15,6 +15,7 @@ const formatMilestoneResponse = (milestone) => {
     tasks: (milestoneJson.Tasks || []).map(t => ({
       id: t.id,
       name: t.name,
+      position: t.position,
       description: t.description,
       daysOfWeek: t.days_of_week,
       isCompleted: t.is_completed
@@ -52,14 +53,14 @@ exports.createMilestone = async (req, res) => {
     }
 
     // 新增週數驗證 (根據 schema 的註解要求)
-    if (req.body.week && req.body.week <= 0) {
+    if (req.body.position && req.body.position  <= 0) {
       await transaction.rollback();
-      return res.status(400).json({ error: true, message: "週數必須為正整數" });
+      return res.status(400).json({ error: true, message: "position 必須為正整數" });
     }
 
     const milestone = await Milestone.create({
         project_id: project.id,
-        week: req.body?.week,
+        position: req.body?.position,
         name: req.body?.name,
         description: req.body?.description,
         start_date: req.body?.startDate,
@@ -139,13 +140,13 @@ exports.updateMilestone = async (req, res) => {
     }
 
     // 新增週數驗證
-    if (req.body.week !== undefined && req.body.week <= 0) {
+    if (req.body.position !== undefined && req.body.position <= 0) {
       await transaction.rollback();
-      return res.status(400).json({ error: true, message: "週數必須為正整數" });
+      return res.status(400).json({ error: true, message: "position必須為正整數" });
     }
 
     await milestone.update({
-        week: req.body?.week,
+        position: req.body?.position,
         name: req.body?.name,
         description: req.body?.description,
         start_date: req.body?.startDate,
