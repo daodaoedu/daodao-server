@@ -11,7 +11,7 @@ const formatTask = (task) => {
     id: task?.id,
     position: task?.position,
     name: task?.name,
-    description: task?.description,
+    description: task?.description || "",
     milestoneId: task?.milestone_id,
     daysOfWeek: task?.days_of_week
   };
