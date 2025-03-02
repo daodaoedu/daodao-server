@@ -7,11 +7,20 @@ const Comment = sequelize.define('Comment', {
     primaryKey: true,
     autoIncrement: true
   },
-  post_id: {
+  target_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: { model: 'post', key: 'id' },
-    onDelete: 'CASCADE'
+  },
+  target_type: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    validate: {
+      isIn: [['post', 'resource', 'note', 'outcome', 'review', 'circle', 'idea', 'portfolio']]
+    }
+  },
+  target_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
   },
   user_id: {
     type: DataTypes.INTEGER,

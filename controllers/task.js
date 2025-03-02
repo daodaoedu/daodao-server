@@ -9,6 +9,7 @@ const formatTask = (task) => {
     createdAt: task?.created_at,
     updatedAt: task?.updated_at,
     id: task?.id,
+    position: task?.position,
     name: task?.name,
     description: task?.description,
     milestoneId: task?.milestone_id,
@@ -41,6 +42,7 @@ exports.createTask = async (req, res) => {
 
     const task = await Task.create({
         name: req.body.name,
+        position: req.body.position,
         description: req.body.description,
         days_of_week: req.body.daysOfWeek,
         is_completed: req.body?.isCompleted || false,
@@ -173,6 +175,7 @@ exports.updateTask = async (req, res) => {
     // 更新任務
     await task.update({
         name: req.body?.name,
+        position: req.body?.position,
         description: req.body?.description,
         days_of_week: req.body?.daysOfWeek,
         is_completed: req.body?.isCompleted 

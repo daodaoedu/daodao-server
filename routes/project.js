@@ -9,7 +9,8 @@ const reviewController = require('../controllers/review');
 const { isAuthenticated, requireCompleteProfile } = require("../middlewares/isAuthenticated");
 
 // 獲取學習計畫列表
-router.get('/', projectController.getProjects);
+router.get('/public', projectController.getPublicProjects);
+router.get('/admin', projectController.getProjects);
 
 // 獲取我的學習計畫
 router.get('/me', isAuthenticated, projectController.getMyProjects);

@@ -9,6 +9,11 @@ const uploadImage = async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded.' });
     }
 
+    const MAX_FILE_SIZE = 500 * 1024; // 500KB
+    if (file.size > MAX_FILE_SIZE) {
+      return res.status(413).json({ error: 'File size exceeds 500KB limit' });
+    }
+
     const uniqueFileName = uuidv4();
     await uploadToR2(file, uniqueFileName);
 

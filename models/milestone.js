@@ -15,7 +15,7 @@ const Milestone = sequelize.define('Milestone', {
       key: 'id'
     }
   },
-  week: {
+  position: {
     type: DataTypes.INTEGER,
     allowNull: false
   },
