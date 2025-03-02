@@ -13,7 +13,7 @@ const formatProjectResponse = (project) => {
     userId: projectJson.user_id,
     imgUrl: projectJson.img_url,
     title: projectJson.title,
-    description: projectJson.description,
+    description: projectJson.description || "",
     motivation: projectJson.motivation,
     motivationDescription: projectJson.motivation_description,
     goal: projectJson.goal,
@@ -43,7 +43,7 @@ const formatProjectResponse = (project) => {
       id: m.id,
       position: m.position,
       name: m.name,
-      description: m.description,
+      description: m.description || "",
       startDate: m.start_date,
       endDate: m.end_date,
       isCompleted: m.is_completed,
@@ -51,7 +51,7 @@ const formatProjectResponse = (project) => {
         id: t.id,
         name: t.name,
         position: t.position,
-        description: t.description,
+        description: t.description || "",
         daysOfWeek: t.days_of_week,
         isCompleted: t.is_completed
       }))
