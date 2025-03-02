@@ -8,7 +8,7 @@ const formatMilestoneResponse = (milestone) => {
     id: milestoneJson.id,
     position: milestoneJson.position,
     name: milestoneJson.name,
-    description: milestoneJson.description,
+    description: milestoneJson.description || "",
     startDate: milestoneJson.start_date,
     endDate: milestoneJson.end_date,
     isCompleted: milestoneJson.is_completed,
@@ -16,7 +16,7 @@ const formatMilestoneResponse = (milestone) => {
       id: t.id,
       name: t.name,
       position: t.position,
-      description: t.description,
+      description: t.description || "",
       daysOfWeek: t.days_of_week,
       isCompleted: t.is_completed
     }))
