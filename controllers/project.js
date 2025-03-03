@@ -521,9 +521,9 @@ exports.getMyProjects = async (req, res) => {
 exports.getProject = async (req, res) => {
   try {
     const project = await Project.findOne({
-      where: { 
+      where: {
         external_id: req.params.projectId,
-        version: 2 , // 新增 version 條件
+        version: 2, // 新增 version 條件
       },
       include: [
         {
@@ -690,7 +690,48 @@ exports.updateProject = async (req, res) => {
         version: 2  // 建立新版
       };
 
-      targetProject = await Project.create(newProjectData, { transaction });
+      // 建立新版專案
+      const newProject = await Project.create(newProjectData, { transaction });
+
+      // 複製原專案的 milestone 與 task
+      const milestones = await Milestone.findAll({
+        where: { project_id: project.id },
+        transaction
+      });
+
+      for (const milestone of milestones) {
+        // 建立新版的里程碑，並指向新專案
+        const newMilestone = await Milestone.create({
+          project_id: newProject.id,
+          title: milestone.title,
+          position: milestone.position || 1,
+          name: milestone.name,
+          description: milestone.description,
+          start_date: milestone.start_date,
+          end_date: milestone.end_date,
+          is_completed: milestone.is_completed
+        }, { transaction });
+
+        // 取得該里程碑下所有任務
+        const tasks = await Task.findAll({
+          where: { milestone_id: milestone.id },
+          transaction
+        });
+
+        // 複製每個任務到新版的里程碑
+        for (const task of tasks) {
+          await Task.create({
+            milestone_id: newMilestone.id,
+            position: task.position || 1,
+            name: task.name,
+            description: task.description,
+            days_of_week: task.days_of_week,
+            is_completed: task.is_completed,
+          }, { transaction });
+        }
+      }
+
+      targetProject = newProject;
     } else {
       // 如果是第一版且不改變狀態（仍維持 "Not Started"），或已是新版，直接更新
       await project.update({
@@ -715,6 +756,7 @@ exports.updateProject = async (req, res) => {
       }, { transaction });
       targetProject = project;
     }
+
 
     // 重新查詢更新後的完整專案資訊
     const updatedProject = await Project.findOne({
