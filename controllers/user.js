@@ -273,6 +273,7 @@ exports.getOneUser = async (req, res) => {
 exports.createUser = async (req, res) => {
   const transaction = await sequelize.transaction();
   const requestData = { ...req.body };
+  let tempUser = null;
   let newUser = null;
 
   try {
@@ -300,7 +301,7 @@ exports.createUser = async (req, res) => {
     console.log("req.user", req.user);
     console.log("req.user._id", req.user._id);
     // 查找臨時用戶
-    const tempUser = await TempUser.findOne({ _id: req.user._id });
+    tempUser = await TempUser.findOne({ _id: req.user._id });
     console.log("tempUser", tempUser);
     if (!tempUser) {
       return res.status(404).json({ error: 'Temporary user not found' });
