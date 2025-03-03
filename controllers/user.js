@@ -435,8 +435,8 @@ exports.createUser = async (req, res) => {
 
 
     const newToken = generateToken({
-      id: userJson.id,
-      _id: userJson.external_id,
+      id: createdUser.id,
+      _id: createdUser.external_id,
       isTemp: false,
     });
 
@@ -446,7 +446,7 @@ exports.createUser = async (req, res) => {
     // 發送註冊郵件
     console.log('isSendEmail', isSendEmail);
     if (isSendEmail) {
-      await sendVerifiedEmail(userJson.Contact?.email, userJson.nickname, verifyLink);
+      await sendVerifiedEmail(createdUser.Contact?.email, createdUser.nickname, verifyLink);
 
       await TempUser.findByIdAndDelete(req.user._id);
       console.log('TempUser删除成功:');
