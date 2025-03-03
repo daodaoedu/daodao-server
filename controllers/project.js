@@ -704,7 +704,7 @@ exports.updateProject = async (req, res) => {
         const newMilestone = await Milestone.create({
           project_id: newProject.id,
           title: milestone.title,
-          position: milestone.position || "",
+          position: milestone.position || 1,
           name: milestone.name,
           description: milestone.description,
           startdate: milestone.start_date,
@@ -722,7 +722,7 @@ exports.updateProject = async (req, res) => {
         for (const task of tasks) {
           await Task.create({
             milestone_id: newMilestone.id,
-            position: task.position || "",
+            position: task.position || 1,
             name: task.name,
             description: task.description,
             days_of_week: task.days_of_week,
