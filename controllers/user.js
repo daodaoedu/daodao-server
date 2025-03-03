@@ -371,7 +371,7 @@ exports.createUser = async (req, res) => {
     }, { transaction });
 
     newUser = await User.create({
-      mongo_id: tempUser._id,
+      mongo_id: tempUser._id.toString(),
       nickname: tempUser.name,
       gender,
       education_stage: educationStage,
