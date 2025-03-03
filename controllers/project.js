@@ -707,7 +707,7 @@ exports.updateProject = async (req, res) => {
           position: milestone.position || 1,
           name: milestone.name,
           description: milestone.description,
-          startdate: milestone.start_date,
+          start_date: milestone.start_date,
           end_date: milestone.end_date,
           is_completed: milestone.is_completed
         }, { transaction });
