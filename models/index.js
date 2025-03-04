@@ -28,7 +28,9 @@ const FeePlan = require('./feePlan');
 const Circle = require('./circle');
 const Comment = require('./comment');
 const MentorParticipants = require('./mentorParticipants');
-const MentorMarathon = require('./mentorMarathon'); // 新增：導入 MentorMarathon 模型
+const MentorMarathon = require('./mentorMarathon');
+const Idea = require('./idea');
+const IdeaResource = require('./ideaResource');
 
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
@@ -240,6 +242,19 @@ const setupAssociations = () => {
 
   Marathon.hasMany(MentorMarathon, { foreignKey: 'marathon_id' });
   MentorMarathon.belongsTo(Marathon, { foreignKey: 'marathon_id' });
+
+  // 一個 Idea 可能會有多筆學習資源
+  Idea.hasMany(IdeaResource, {
+    foreignKey: 'idea_id',
+    onDelete: 'CASCADE'
+  });
+
+  // 學習資源屬於某個 Idea
+  IdeaResource.belongsTo(Idea, {
+    foreignKey: 'idea_id',
+    as : 'IdeaResources'
+  });
+
 };
 
 // 執行關聯設置
@@ -273,5 +288,7 @@ module.exports = {
   Circle,
   Comment,
   MentorParticipants,
-  MentorMarathon
+  MentorMarathon,
+  Idea,
+  IdeaResource
 };
