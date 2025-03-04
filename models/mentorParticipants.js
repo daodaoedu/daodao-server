@@ -18,7 +18,9 @@ const MentorParticipants = sequelize.define('MentorParticipants', {
   }
 }, {
   tableName: 'mentor_participants',
-  timestamps: false
+  timestamps: false,
+  underscored: true
+
 });
 
 module.exports = MentorParticipants;
