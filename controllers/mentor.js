@@ -290,6 +290,11 @@ exports.getMentorParticipantsByMarathon = async (req, res) => {
                     _id: participant.external_id,
                     roleList: participant.Positions ? participant.Positions.map(p => p.name) : [],
                     photoURL: participant.Contact ? participant.Contact.photo_url : null,
+                    location: participant.Location?.City?.name || '',
+                    tagList: participant.tag_list,
+                    wantToDoList: participant.BasicInfo?.want_to_do_list,
+                    educationStage: participant.education_stage,
+                    share: participant.BasicInfo?.share_list,
                     projectId: participant.projectId,
                 }))
             };
