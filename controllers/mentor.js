@@ -243,13 +243,17 @@ exports.getMentorParticipantsByMarathon = async (req, res) => {
         });
         console.log('registrations', registrations);
 
-        // 從報名記錄中整理出參賽者 id 與對應的 project external_id
+        // 從報名記錄中整理出參賽者 id 與對應的 project external_id 和 title
         const participantMap = {};
         registrations.forEach(reg => {
             const userId = reg.Project.user_id;
-            // 若同一個 user 有多筆 registration，這裡只取第一筆的 external_id（根據需求可進行調整）
+            console.log('reg.Project', reg.Project);
+            // 若同一個 user 有多筆 registration，這裡只取第一筆的 external_id 和 title（根據需求可進行調整）
             if (!participantMap[userId]) {
-                participantMap[userId] = reg.Project.external_id;
+                participantMap[userId] = {
+                    externalId: reg.Project.external_id,
+                    title: reg.Project.title
+                };
             }
         });
         const participantIdsFromRegistration = Object.keys(participantMap);
@@ -273,7 +277,8 @@ exports.getMentorParticipantsByMarathon = async (req, res) => {
         // 將 project external_id 與使用者資料結合
         const participants = users.map(user => ({
             ...user.toJSON(),
-            projectId: participantMap[user.id],
+            projectId: participantMap[user.id].externalId,
+            projectTitle: participantMap[user.id].title
         }));
 
         const formatResponse = (marathon, participants) => {
@@ -295,7 +300,9 @@ exports.getMentorParticipantsByMarathon = async (req, res) => {
                     wantToDoList: participant.BasicInfo?.want_to_do_list,
                     educationStage: participant.education_stage,
                     share: participant.BasicInfo?.share_list,
+                    updatedDate: participant.updated_at,
                     projectId: participant.projectId,
+                    projectTitle: participant.projectTitle,
                 }))
             };
           };
