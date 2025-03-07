@@ -248,6 +248,8 @@ const setupAssociations = () => {
     foreignKey: 'idea_id',
     onDelete: 'CASCADE'
   });
+  
+  Idea.belongsTo(User, { foreignKey: 'user_id' });
 
   // 學習資源屬於某個 Idea
   IdeaResource.belongsTo(Idea, {

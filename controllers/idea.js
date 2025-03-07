@@ -34,7 +34,7 @@ const formatIdeaResponse = (idea) => {
 };
 
 // 將前端傳入的 camelCase 資料轉換成指定欄位（snake_case）
-const transformIdeaRequest = (data) => {
+const transformIdeaRequest = (data,userId) => {
   console.log(data);
   console.log(data.ideaResources);
 
@@ -42,8 +42,9 @@ const transformIdeaRequest = (data) => {
     title: data.title,
     content: data.content,
     visibility: data.visibility,
-    image_urls: data.imgUrls,
+    image_urls: data.imageUrls,
     video_urls: data.videoUrls,
+    user_id: userId,
     IdeaResources: data.ideaResources // Ensure this is correctly transformed
       ? data.ideaResources.map(resource => ({
           name: resource.name,
@@ -108,8 +109,9 @@ exports.getIdea = async (req, res) => {
 exports.createIdea = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
+    const userId = req.user.id; // 假設 `req.user` 是登入用戶資訊
+    const payload = transformIdeaRequest(req.body, userId);
     // 先將前端 camelCase 轉換成資料庫對應欄位
-    const payload = transformIdeaRequest(req.body);
     const { title, IdeaResources } = payload;
 
     // Log the transformed payload
@@ -142,9 +144,10 @@ exports.updateIdea = async (req, res) => {
   try {
     const externalId = req.params.id; // 此 id 為 external_id
     // 將前端傳入資料轉型
-    const payload = transformIdeaRequest(req.body);
+    const userId = req.user.id; // 當前用戶 ID
+    const payload = transformIdeaRequest(req.body, userId);
     const [updatedRows] = await Idea.update(payload, {
-      where: { external_id: externalId },
+      where: { external_id: externalId, user_id: userId },
       returning: true,
       transaction
     });
@@ -155,7 +158,7 @@ exports.updateIdea = async (req, res) => {
     await transaction.commit();
     // 重新查詢取得完整關聯資料
     const idea = await Idea.findOne({
-      where: { external_id: externalId },
+      where: { external_id: externalId, user_id: userId },
       include: [{ model: IdeaResource , as: 'IdeaResources'}]
     });
     return res.json({ data: formatIdeaResponse(idea), message: "Idea updated successfully." });
@@ -171,8 +174,10 @@ exports.deleteIdea = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const externalId = req.params.id;
+    const userId = req.user.id; // 當前用戶 ID
+
     const idea = await Idea.findOne({
-      where: { external_id: externalId },
+      where: { external_id: externalId, user_id: userId },
       transaction
     });
     if (!idea) {
