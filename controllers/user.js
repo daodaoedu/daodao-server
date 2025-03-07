@@ -38,7 +38,7 @@ const formatUserResponse = (user) => {
     isOpenProfile: userJson.is_open_profile,
     role: userJson.Role?.id,
     location: userJson.Location?.City?.name || '',
-    tagList: userJson.tag_list,
+    tagList: userJson.tag_list || [],
     wantToDoList: userJson.BasicInfo?.want_to_do_list || [],
     educationStage: userJson.education_stage,
     selfIntroduction: userJson.BasicInfo?.self_introduction,
