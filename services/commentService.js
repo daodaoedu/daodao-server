@@ -21,9 +21,9 @@ const {
       case 'circle':
         entity = await Circle.findOne({ where: { id: targetId } });
         break;
-    //   case 'idea':
-    //     entity = await Idea.findOne({ where: { id: targetId } });
-    //     break;
+      case 'idea':
+        entity = await Idea.findOne({ where: { id: targetId } });
+        break;
     //   case 'portfolio':
     //     entity = await Portfolio.findOne({ where: { id: targetId } });
     //     break;
