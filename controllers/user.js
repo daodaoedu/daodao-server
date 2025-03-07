@@ -27,6 +27,7 @@ const formatToTaipeiTime = (date) => {
 const formatUserResponse = (user) => {
   const userJson = user.toJSON();
   return {
+    id: userJson.id,
     _id: userJson.external_id,
     name: userJson.nickname,
     gender: userJson.gender,
@@ -37,8 +38,8 @@ const formatUserResponse = (user) => {
     isOpenProfile: userJson.is_open_profile,
     role: userJson.Role?.id,
     location: userJson.Location?.City?.name || '',
-    tagList: userJson.tag_list,
-    wantToDoList: userJson.BasicInfo?.want_to_do_list,
+    tagList: userJson.tag_list || [],
+    wantToDoList: userJson.BasicInfo?.want_to_do_list || [],
     educationStage: userJson.education_stage,
     selfIntroduction: userJson.BasicInfo?.self_introduction,
     share: userJson.BasicInfo?.share_list,
@@ -54,7 +55,7 @@ const formatUserResponse = (user) => {
     basicInfo: {
       selfIntroduction: userJson.BasicInfo?.self_introduction,
       shareList: userJson.BasicInfo?.share_list,
-      wantToDoList: userJson.BasicInfo?.want_to_do_list
+      wantToDoList: userJson.BasicInfo?.want_to_do_list || []
     },
     roleList: userJson.Positions?.map(p => p.name) || [],
     createdDate: formatToTaipeiTime(userJson.created_at),

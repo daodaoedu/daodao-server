@@ -28,24 +28,26 @@ const FeePlan = require('./feePlan');
 const Circle = require('./circle');
 const Comment = require('./comment');
 const MentorParticipants = require('./mentorParticipants');
-// const MentorMarathon = require('./mentorMarathon'); // 新增：導入 MentorMarathon 模型
+const MentorMarathon = require('./mentorMarathon');
+const Idea = require('./idea');
+const IdeaResource = require('./ideaResource');
 
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
-  User.belongsTo(Role, { 
-    foreignKey: 'role_id', 
-  });
-
-  Role.hasMany(User, { 
+  User.belongsTo(Role, {
     foreignKey: 'role_id',
   });
 
-  User.belongsToMany(Permission, { 
+  Role.hasMany(User, {
+    foreignKey: 'role_id',
+  });
+
+  User.belongsToMany(Permission, {
     through: 'user_permissions',
     foreignKey: 'user_id',
     otherKey: 'permission_id',
   });
-  Permission.belongsToMany(User, { 
+  Permission.belongsToMany(User, {
     through: 'user_permissions',
     foreignKey: 'permission_id',
     otherKey: 'user_id',
@@ -63,24 +65,24 @@ const setupAssociations = () => {
   });
 
   // 2. 用戶資料相關關聯
-  User.belongsTo(Location, { 
-    foreignKey: 'location_id', 
+  User.belongsTo(Location, {
+    foreignKey: 'location_id',
   });
-  Location.hasMany(User, { 
+  Location.hasMany(User, {
     foreignKey: 'location_id',
   });
 
-  User.belongsTo(Contact, { 
+  User.belongsTo(Contact, {
     foreignKey: 'contact_id',
   });
-  Contact.hasOne(User, { 
+  Contact.hasOne(User, {
     foreignKey: 'contact_id',
   });
 
-  User.belongsTo(BasicInfo, { 
+  User.belongsTo(BasicInfo, {
     foreignKey: 'basic_info_id',
   });
-  BasicInfo.hasOne(User, { 
+  BasicInfo.hasOne(User, {
     foreignKey: 'basic_info_id',
   });
   Location.belongsTo(City, {
@@ -121,62 +123,61 @@ const setupAssociations = () => {
     targetKey: 'id',
   });
 
-  Project.hasMany(Milestone, { 
+  Project.hasMany(Milestone, {
     foreignKey: 'project_id',
     onDelete: 'CASCADE'
   });
-  Milestone.belongsTo(Project, { 
+  Milestone.belongsTo(Project, {
     foreignKey: 'project_id',
   });
 
-  Post.hasMany(Review, { 
+  Post.hasMany(Review, {
     foreignKey: 'post_id',
     onDelete: 'CASCADE'
   });
-  Review.belongsTo(Post, { 
+  Review.belongsTo(Post, {
     foreignKey: 'post_id',
   });
 
-  Post.hasMany(Note, { 
+  Post.hasMany(Note, {
     foreignKey: 'post_id',
     onDelete: 'CASCADE'
   });
-  Note.belongsTo(Post, { 
+  Note.belongsTo(Post, {
     foreignKey: 'post_id',
   });
 
-  Post.hasMany(Outcome, { 
+  Post.hasMany(Outcome, {
     foreignKey: 'post_id',
     onDelete: 'CASCADE'
   });
-  Outcome.belongsTo(Post, { 
+  Outcome.belongsTo(Post, {
     foreignKey: 'post_id',
   });
 
   // 新增專案與文章的關聯
-  Project.hasMany(Post, { 
+  Project.hasMany(Post, {
     foreignKey: 'project_id',
     onDelete: 'CASCADE'
   });
-  Post.belongsTo(Project, { 
+  Post.belongsTo(Project, {
     foreignKey: 'project_id',
   });
 
   // 4. 里程碑和任務關聯
-  Milestone.hasMany(Task, { 
+  Milestone.hasMany(Task, {
     foreignKey: 'milestone_id',
     onDelete: 'CASCADE'
   });
-  Task.belongsTo(Milestone, { 
+  Task.belongsTo(Milestone, {
     foreignKey: 'milestone_id',
   });
 
   // 5. 專案馬拉松關聯
   ProjectMarathon.belongsTo(Project, {
     foreignKey: 'project_id',
-    as: 'project'
   });
-  
+
   Project.hasMany(ProjectMarathon, {
     foreignKey: 'project_id',
   });
@@ -211,12 +212,12 @@ const setupAssociations = () => {
   FeePlan.hasMany(Eligibility, {
     foreignKey: 'fee_plans_id',
   });
-  
+
   User.hasMany(Circle, { foreignKey: 'created_by' });
 
   Circle.belongsTo(User, { foreignKey: 'created_by' });
 
-  
+
   User.hasMany(Comment, { foreignKey: 'user_id', onDelete: 'CASCADE' });
   Comment.belongsTo(User, { foreignKey: 'user_id' });
 
@@ -235,12 +236,27 @@ const setupAssociations = () => {
     otherKey: 'mentor_id'
   });
 
-  // // 8. 導師與馬拉松關聯（新加入 MentorMarathon）
-  // User.hasMany(MentorMarathon, { foreignKey: 'mentor_id', as: 'MentorMarathons' });
-  // MentorMarathon.belongsTo(User, { foreignKey: 'mentor_id', as: 'Mentor' });
+  // 8. 導師與馬拉松關聯（新加入 MentorMarathon）
+  User.hasMany(MentorMarathon, { foreignKey: 'mentor_id' });
+  MentorMarathon.belongsTo(User, { foreignKey: 'mentor_id' });
 
-  // Marathon.hasMany(MentorMarathon, { foreignKey: 'marathon_id', as: 'MentorMarathons' });
-  // MentorMarathon.belongsTo(Marathon, { foreignKey: 'marathon_id', as: 'Marathon' });
+  Marathon.hasMany(MentorMarathon, { foreignKey: 'marathon_id' });
+  MentorMarathon.belongsTo(Marathon, { foreignKey: 'marathon_id' });
+
+  // 一個 Idea 可能會有多筆學習資源
+  Idea.hasMany(IdeaResource, {
+    foreignKey: 'idea_id',
+    onDelete: 'CASCADE'
+  });
+  
+  Idea.belongsTo(User, { foreignKey: 'user_id' });
+
+  // 學習資源屬於某個 Idea
+  IdeaResource.belongsTo(Idea, {
+    foreignKey: 'idea_id',
+    as : 'IdeaResources'
+  });
+
 };
 
 // 執行關聯設置
@@ -274,5 +290,7 @@ module.exports = {
   Circle,
   Comment,
   MentorParticipants,
-  // MentorMarathon
+  MentorMarathon,
+  Idea,
+  IdeaResource
 };
