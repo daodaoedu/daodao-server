@@ -19,29 +19,32 @@ const formatIdeaResource = (resource) => {
 const formatIdeaResponse = (idea) => {
   const plainIdea = typeof idea.get === 'function' ? idea.get({ plain: true }) : idea;
   return {
-    id: plainIdea.external_id, // 新增 external_id 回傳給前端
+    id: plainIdea.external_id + '_' + plainIdea.id, // 新增 external_id 回傳給前端
     title: plainIdea.title,
     content: plainIdea.content,
-    imageURLs: plainIdea.image_urls,
-    videoURLs: plainIdea.video_urls,
+    imageUrls: plainIdea.image_urls,
+    videoUrls: plainIdea.video_urls,
     visibility: plainIdea.visibility,
     createdAt: plainIdea.created_at,
     updatedAt: plainIdea.updated_at,
-    ideaResources: plainIdea.idea_resources
-      ? plainIdea.idea_resources.map(resource => formatIdeaResource(resource))
+    ideaResources: plainIdea.IdeaResources
+      ? plainIdea.IdeaResources.map(resource => formatIdeaResource(resource))
       : []
   };
 };
 
 // 將前端傳入的 camelCase 資料轉換成指定欄位（snake_case）
 const transformIdeaRequest = (data) => {
+  console.log(data);
+  console.log(data.ideaResources);
+
   return {
     title: data.title,
     content: data.content,
     visibility: data.visibility,
-    image_urls: data.imageURLs,
-    video_urls: data.videoURLs,
-    idea_resources: data.ideaResources
+    image_urls: data.imgUrls,
+    video_urls: data.videoUrls,
+    IdeaResources: data.ideaResources // Ensure this is correctly transformed
       ? data.ideaResources.map(resource => ({
           name: resource.name,
           url: resource.url
@@ -107,21 +110,28 @@ exports.createIdea = async (req, res) => {
   try {
     // 先將前端 camelCase 轉換成資料庫對應欄位
     const payload = transformIdeaRequest(req.body);
-    const { title, idea_resources } = payload;
-    const existingIdea = await Idea.findOne({ where: { title } });
-    if (existingIdea) {
-      await transaction.rollback();
-      return res.status(400).json({ message: "Idea already exists" });
-    }
+    const { title, IdeaResources } = payload;
+
+    // Log the transformed payload
+    console.log('Transformed Payload:', JSON.stringify(payload, null, 2));
+    console.log('Idea Resources:', IdeaResources); // Log the idea_resources for debugging
+
+    // const existingIdea = await Idea.findOne({ where: { title } });
+    // if (existingIdea) {
+    //   await transaction.rollback();
+    //   return res.status(400).json({ message: "Idea already exists" });
+    // }
+
     const newIdea = await Idea.create(payload, {
-      include: idea_resources ? [{ association: Idea.associations.idea_resources }] : [],
-      transaction
+      transaction,
+      include: IdeaResources ? [{ model: IdeaResource, as: 'IdeaResources' }] : [] // Ensure the association is correctly referenced
     });
+
     await transaction.commit();
     return res.status(201).json({ data: formatIdeaResponse(newIdea), message: "Idea created successfully" });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
-    console.error(error);
+    console.error('Error creating idea:', error); // Log the error for debugging
     return res.status(500).json({ error: error.message });
   }
 };
@@ -146,7 +156,7 @@ exports.updateIdea = async (req, res) => {
     // 重新查詢取得完整關聯資料
     const idea = await Idea.findOne({
       where: { external_id: externalId },
-      include: [{ model: IdeaResource }]
+      include: [{ model: IdeaResource , as: 'IdeaResources'}]
     });
     return res.json({ data: formatIdeaResponse(idea), message: "Idea updated successfully." });
   } catch (error) {
