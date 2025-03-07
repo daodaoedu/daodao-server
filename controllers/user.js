@@ -27,6 +27,7 @@ const formatToTaipeiTime = (date) => {
 const formatUserResponse = (user) => {
   const userJson = user.toJSON();
   return {
+    id: userJson.id,
     _id: userJson.external_id,
     name: userJson.nickname,
     gender: userJson.gender,
