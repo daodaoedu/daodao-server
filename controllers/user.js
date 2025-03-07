@@ -55,7 +55,7 @@ const formatUserResponse = (user) => {
     basicInfo: {
       selfIntroduction: userJson.BasicInfo?.self_introduction,
       shareList: userJson.BasicInfo?.share_list,
-      wantToDoList: userJson.BasicInfo?.want_to_do_list
+      wantToDoList: userJson.BasicInfo?.want_to_do_list || []
     },
     roleList: userJson.Positions?.map(p => p.name) || [],
     createdDate: formatToTaipeiTime(userJson.created_at),
