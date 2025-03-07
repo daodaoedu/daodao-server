@@ -39,7 +39,7 @@ const formatUserResponse = (user) => {
     role: userJson.Role?.id,
     location: userJson.Location?.City?.name || '',
     tagList: userJson.tag_list,
-    wantToDoList: userJson.BasicInfo?.want_to_do_list,
+    wantToDoList: userJson.BasicInfo?.want_to_do_list || [],
     educationStage: userJson.education_stage,
     selfIntroduction: userJson.BasicInfo?.self_introduction,
     share: userJson.BasicInfo?.share_list,
