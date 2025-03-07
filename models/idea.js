@@ -11,7 +11,16 @@ const Idea = sequelize.define('Idea', {
         allowNull: false,
         unique: true,
         defaultValue: DataTypes.UUIDV4
-      },
+    },
+    user_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'users',
+            key: 'id'
+        },
+        onDelete: 'CASCADE'
+    },
     title: {
         type: DataTypes.STRING(255),
         allowNull: false
