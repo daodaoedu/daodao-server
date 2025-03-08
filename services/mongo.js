@@ -31,7 +31,11 @@ async function mongoDisconnect() {
     await mongoose.disconnect();
 };
 
+// 將 mongoose.connection 當作 mongoClient 匯出
+const mongoClient = mongoose.connection;
+
 module.exports = {
     mongoConnect,
     mongoDisconnect,
+    mongoClient
 }

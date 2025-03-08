@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>資料庫資訊視覺化 Dashboard</title>
+  <!-- 引入 Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .section-container {
+      margin-bottom: 40px;
+    }
+    .schema-container {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    h3 {
+      margin: 0 0 5px;
+    }
+    ul {
+      list-style-type: disc;
+      margin-left: 20px;
+      padding-left: 0;
+    }
+    li {
+      margin-bottom: 3px;
+    }
+    .chart-container {
+      width: 400px;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>資料庫資訊視覺化 Dashboard</h1>
+  
+  <section class="section-container" id="mongo-section">
+    <h2>MongoDB Collections Schema</h2>
+    <!-- MongoDB 的各個 collection 欄位會動態產生 -->
+  </section>
+
+  <section class="section-container" id="postgres-section">
+    <h2>PostgreSQL Tables Schema</h2>
+    <!-- PostgreSQL 的各個 table 欄位會動態產生 -->
+  </section>
+
+  <section class="section-container" id="chart-section">
+    <h2>資料庫表格數量統計</h2>
+    <div class="chart-container">
+      <canvas id="dbInfoChart"></canvas>
+    </div>
+  </section>
+
+  <script>
+    // 從 /db-info API 取得資料庫資訊
+    fetch('/db-info')
+      .then(response => response.json())
+      .then(data => {
+        // 顯示 MongoDB 的 schema
+        const mongoSection = document.getElementById('mongo-section');
+        let mongoTableCount = 0;
+        for (let collection in data.mongo) {
+          mongoTableCount++;
+          const container = document.createElement('div');
+          container.className = 'schema-container';
+          let html = `<h3>${collection}</h3>`;
+          if (data.mongo[collection].fields && data.mongo[collection].fields.length > 0) {
+            html += '<ul>';
+            data.mongo[collection].fields.forEach(field => {
+              html += `<li>${field}</li>`;
+            });
+            html += '</ul>';
+          } else {
+            html += '<p>無欄位資訊</p>';
+          }
+          container.innerHTML = html;
+          mongoSection.appendChild(container);
+        }
+
+        // 顯示 PostgreSQL 的 schema
+        const postgresSection = document.getElementById('postgres-section');
+        let postgresTableCount = 0;
+        for (let table in data.postgres) {
+          postgresTableCount++;
+          const container = document.createElement('div');
+          container.className = 'schema-container';
+          let html = `<h3>${table}</h3>`;
+          if (data.postgres[table].columns && data.postgres[table].columns.length > 0) {
+            html += '<ul>';
+            data.postgres[table].columns.forEach(column => {
+              html += `<li>${column.column_name} (${column.data_type})</li>`;
+            });
+            html += '</ul>';
+          } else {
+            html += '<p>無欄位資訊</p>';
+          }
+          container.innerHTML = html;
+          postgresSection.appendChild(container);
+        }
+
+        // 使用 Chart.js 建立直條圖，顯示各資料庫的表格數量
+        const ctx = document.getElementById('dbInfoChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['MongoDB Tables', 'PostgreSQL Tables'],
+            datasets: [{
+              label: 'Table Count',
+              data: [mongoTableCount, postgresTableCount],
+              backgroundColor: ['#FF6384', '#36A2EB']
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                precision: 0
+              }
+            }
+          }
+        });
+      })
+      .catch(error => {
+        console.error('取得資料庫資訊失敗:', error);
+      });
+  </script>
+</body>
+</html>

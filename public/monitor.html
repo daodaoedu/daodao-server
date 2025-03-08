@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>系統監控 Dashboard</title>
+  <!-- 引入 Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .chart-container {
+      width: 300px;
+      margin: 20px;
+      display: inline-block;
+      vertical-align: top;
+      text-align: center;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>系統監控 Dashboard</h1>
+
+  <section id="system-info">
+    <h2>系統基本資訊</h2>
+    <!-- 系統資訊將以列表呈現 -->
+  </section>
+
+  <section id="disk-section">
+    <h2>磁碟資訊</h2>
+    <div id="disk-charts">
+      <!-- 每個磁碟會建立一個圖表 -->
+    </div>
+  </section>
+
+  <section id="database-info">
+    <h2>資料庫資訊</h2>
+    <!-- MongoDB 與 PostgreSQL 狀態資訊 -->
+  </section>
+
+  <script>
+    // 從 /monitor API 取得監控資料
+    fetch('/monitor')
+      .then(response => response.json())
+      .then(data => {
+        // 顯示系統基本資訊
+        const sysInfo = data.system;
+        const sysInfoSection = document.getElementById('system-info');
+        sysInfoSection.innerHTML += `
+          <ul>
+            <li><strong>Hostname:</strong> ${sysInfo.hostname}</li>
+            <li><strong>Platform:</strong> ${sysInfo.platform}</li>
+            <li><strong>Architecture:</strong> ${sysInfo.arch}</li>
+            <li><strong>Uptime:</strong> ${sysInfo.uptime} 秒</li>
+            <li><strong>Total Memory:</strong> ${Math.round(sysInfo.totalMemory / (1024 * 1024))} MB</li>
+            <li><strong>Free Memory:</strong> ${Math.round(sysInfo.freeMemory / (1024 * 1024))} MB</li>
+            <li><strong>OS Version:</strong> ${sysInfo.release}</li>
+            <li><strong>OS Type:</strong> ${sysInfo.type}</li>
+          </ul>
+        `;
+
+        // 依磁碟資訊建立圖表 (使用 Doughnut 圖呈現已用 vs 剩餘空間)
+        const diskChartsDiv = document.getElementById('disk-charts');
+        data.disk.forEach((disk, index) => {
+          // 建立一個容器
+          const container = document.createElement('div');
+          container.className = 'chart-container';
+          // 建立 canvas 元素
+          const canvas = document.createElement('canvas');
+          canvas.id = 'diskChart' + index;
+          container.appendChild(canvas);
+          // 顯示磁碟掛載點資訊
+          const info = document.createElement('p');
+          info.innerText = `Mount: ${disk.mount}`;
+          container.appendChild(info);
+          diskChartsDiv.appendChild(container);
+
+          // 使用 Chart.js 繪製 Doughnut 圖
+          const ctx = canvas.getContext('2d');
+          new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Used', 'Free'],
+              datasets: [{
+                data: [disk.used, disk.available],
+                backgroundColor: ['#FF6384', '#36A2EB']
+              }]
+            },
+            options: {
+              title: {
+                display: true,
+                text: `Disk (${disk.fs})`
+              }
+            }
+          });
+        });
+
+        // 顯示資料庫資訊 (以 JSON 格式呈現)
+        const dbInfoSection = document.getElementById('database-info');
+        dbInfoSection.innerHTML += `
+          <h3>MongoDB 狀態</h3>
+          <pre>${JSON.stringify(data.mongo, null, 2)}</pre>
+          <h3>PostgreSQL 狀態</h3>
+          <pre>${JSON.stringify(data.postgres, null, 2)}</pre>
+        `;
+      })
+      .catch(error => {
+        console.error('取得監控資料失敗:', error);
+      });
+  </script>
+</body>
+</html>
