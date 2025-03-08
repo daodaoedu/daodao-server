@@ -20,6 +20,8 @@ const session = require("express-session");
 const rateLimit = require("express-rate-limit");
 const passport = require("passport");
 require("./services/passport");
+const monitorRoutes = require('./routes/monitor');
+const dbInfoRoutes = require('./routes/dbInfo');
 const User = require("./models/user.model");
 const Activity = require("./models/activity.model");
 const Marathon = require("./models/marathon.model");
@@ -28,14 +30,23 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
+app.use(express.static('public'));
+
 const corsOptions = {
-  origin: [
-    process.env.FRONTEND_URL,
-    'http://localhost:5000',
-    'https://feat-v2.daodao-notion-test.pages.dev',
-    'https://dev.daodao-notion-test.pages.dev',
-    'https://www.daoedu.tw',
-  ],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'http://localhost:5000',
+      'https://www.daoedu.tw'
+    ];
+    const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
+
+    if (!origin || allowedOrigins.includes(origin) || daodaoTestPattern.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: "GET,POST,PUT,DELETE",
   credentials: true,
 };
@@ -76,6 +87,8 @@ app.use(session({
 }))
 app.use(passport.initialize());
 app.use(passport.session());
+app.get('/',recentDataRoutes);
+
 app.use('/list',projectListRoutes);
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
@@ -88,12 +101,13 @@ app.use("/mentors", mentorRoutes);
 app.use('/tags', tagRoutes);
 app.use('/emails',strictLimiter, emailRoutes);
 app.use('/images',strictLimiter, imageRoutes);
+app.use('/monitor', monitorRoutes);
+app.use('/db-info', dbInfoRoutes);
 
 // app.get('/', (req, res) => {
 //     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 // });
 
-app.get('/',recentDataRoutes);
 
 
 async function startServer() {
