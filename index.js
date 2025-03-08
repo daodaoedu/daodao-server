@@ -3,7 +3,7 @@ const { mongoConnect } = require('./services/mongo');
 const cors = require("cors");
 const dotenv = require('dotenv');
 dotenv.config();
-const recentDataRoutes = require('./routes/recentData'); 
+const dashboardRoutes = require('./routes/dashboard'); 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const projectRoutes = require('./routes/project');
@@ -87,8 +87,7 @@ app.use(session({
 }))
 app.use(passport.initialize());
 app.use(passport.session());
-app.get('/',recentDataRoutes);
-
+app.use('/',dashboardRoutes);
 app.use('/list',projectListRoutes);
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
