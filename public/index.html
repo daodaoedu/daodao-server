@@ -1,15 +1,182 @@
+<!-- public/dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-  </head>
-  <body>
-    <h1>Hello!</h1>
-    Here is dev world!
-    <a href="/secret">Show me!</a>
-    <a href="/auth/google">Google login</a>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dashboard</h1>
+  <div id="stats">
+    <p>Environment: <span id="environment"></span></p>
+    <p>PORT: <span id="port"></span></p>
+    <p>FRONTEND_URL: <span id="frontendUrl"></span></p>
+  </div>
+
+  <h2>Total Counts</h2>
+  <ul>
+    <li>Users: <span id="userCount"></span></li>
+    <li>Circles: <span id="circleCount"></span></li>
+    <li>Projects: <span id="projectCount"></span></li>
+  </ul>
+
+  <h2>Recent Users (50)</h2>
+  <table id="usersTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>User Email</th>
+        <th>User Name</th>
+        <th>Detail URL</th>
+        <th>Created At</th>
+        <th>Updated At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Recent Circles (50)</h2>
+  <table id="circlesTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Circle Title</th>
+        <th>User Email</th>
+        <th>User Name</th>
+        <th>Detail URL</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Recent Projects (50)</h2>
+  <table id="projectsTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Project ID</th>
+        <th>Title</th>
+        <th>User Email</th>
+        <th>User Name</th>
+        <th>Detail URL</th>
+        <th>Created At</th>
+        <th>Updated At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadDashboardData() {
+      try {
+        const response = await fetch('/dashboard');
+        const data = await response.json();
+
+        // 更新統計資訊
+        document.getElementById('environment').innerText = data.environment;
+        document.getElementById('port').innerText = data.port;
+        document.getElementById('frontendUrl').innerText = data.frontendUrl;
+        document.getElementById('databaseUrl').innerText = data.databaseUrl;
+        document.getElementById('userCount').innerText = data.userCount;
+        document.getElementById('circleCount').innerText = data.circleCount;
+        document.getElementById('projectCount').innerText = data.projectCount;
+
+        // 更新 Recent Users 表格
+        const usersTableBody = document.querySelector('#usersTable tbody');
+        if (data.recentUsers && data.recentUsers.length > 0) {
+          data.recentUsers.forEach((user, index) => {
+            const email = user.Contact ? user.Contact.email : 'N/A';
+            const detailUrl = `${data.frontendUrl}/partner/detail?id=${user.external_id}`;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${email}</td>
+              <td>${user.nickname}</td>
+              <td><a href="${detailUrl}" target="_blank">${detailUrl}</a></td>
+              <td>${new Date(user.created_at).toLocaleString()}</td>
+              <td>${new Date(user.updated_at).toLocaleString()}</td>
+            `;
+            usersTableBody.appendChild(tr);
+          });
+        } else {
+          usersTableBody.innerHTML = '<tr><td colspan="6">沒有資料</td></tr>';
+        }
+
+        // 更新 Recent Circles 表格
+        const circlesTableBody = document.querySelector('#circlesTable tbody');
+        if (data.recentCircles && data.recentCircles.length > 0) {
+          data.recentCircles.forEach((circle, index) => {
+            const title = circle.title || 'N/A';
+            const userEmail = circle.User && circle.User.Contact ? circle.User.Contact.email : 'N/A';
+            const userName = circle.User ? circle.User.nickname : 'N/A';
+            const detailUrl = `${data.frontendUrl}/group/detail?id=${circle.external_id || circle.id}`;
+            const createdAt = new Date(circle.created_date).toLocaleString();
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${title}</td>
+              <td>${userEmail}</td>
+              <td>${userName}</td>
+              <td><a href="${detailUrl}" target="_blank">${detailUrl}</a></td>
+              <td>${createdAt}</td>
+            `;
+            circlesTableBody.appendChild(tr);
+          });
+        } else {
+          circlesTableBody.innerHTML = '<tr><td colspan="6">沒有資料</td></tr>';
+        }
+
+        // 更新 Recent Projects 表格
+        const projectsTableBody = document.querySelector('#projectsTable tbody');
+        if (data.recentProjects && data.recentProjects.length > 0) {
+          data.recentProjects.forEach((project, index) => {
+            const projectId = project.external_id || project.id;
+            const title = project.title || 'N/A';
+            const userEmail = project.User && project.User.Contact ? project.User.Contact.email : 'N/A';
+            const userName = project.User ? project.User.nickname : 'N/A';
+            const detailUrl = `${data.frontendUrl}/admin/projects/detail?id=${projectId}`;
+            const createdAt = new Date(project.created_at).toLocaleString();
+            const updatedAt = new Date(project.updated_at).toLocaleString();
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${projectId}</td>
+              <td>${title}</td>
+              <td>${userEmail}</td>
+              <td>${userName}</td>
+              <td><a href="${detailUrl}" target="_blank">${detailUrl}</a></td>
+              <td>${createdAt}</td>
+              <td>${updatedAt}</td>
+            `;
+            projectsTableBody.appendChild(tr);
+          });
+        } else {
+          projectsTableBody.innerHTML = '<tr><td colspan="8">沒有資料</td></tr>';
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      }
+    }
+
+    // 頁面載入時呼叫
+    loadDashboardData();
+  </script>
+</body>
 </html>
