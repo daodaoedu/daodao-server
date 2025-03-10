@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { uploadToR2, getFromR2, deleteFromR2 } = require('../services/r2Service');
+const { uploadToR2, getFromR2, deleteFromR2, deleteMultipleFromR2 } = require('../services/r2Service');
 const { z } = require('zod');
 
 // 定義允許的檔案類型和大小
@@ -57,30 +57,46 @@ const uploadMultipleImages = async (req, res) => {
       return res.status(400).json({ error: validation.error.errors });
     }
 
-    // 上傳處理
-    const uploadPromises = files.map(async (file) => {
-      try {
-        const uniqueFileName = uuidv4();
-        await uploadToR2(file, uniqueFileName);
-        return { url: `${process.env.R2_PUBLIC_URL}/${uniqueFileName}` };
-      } catch (error) {
-        console.error(`Error uploading file ${file.mimetype}:`, error);
-        return { file: file.mimetype, error: 'Upload failed' };
+    // 先準備所有要上傳的檔案資訊
+    const filesToUpload = files.map(file => ({
+      file,
+      uniqueFileName: uuidv4()
+    }));
+
+    // 用於追蹤已上傳的檔案
+    const uploadedFiles = [];
+
+    try {
+      // 逐個上傳檔案並追蹤成功上傳的檔案
+      for (const { file, uniqueFileName } of filesToUpload) {
+        try {
+          await uploadToR2(file, uniqueFileName);
+          uploadedFiles.push(uniqueFileName);
+        } catch (error) {
+          // 如果上傳過程中出現錯誤，刪除已上傳的檔案
+          if (uploadedFiles.length > 0) {
+            await deleteMultipleFromR2(uploadedFiles);
+          }
+          throw error; // 重新拋出錯誤
+        }
       }
-    });
 
-    const results = await Promise.all(uploadPromises);
-    const errors = results.filter(item => item.error);
-    const data = results.filter(item => item.url);
+      // 所有檔案都上傳成功，回傳 URL
+      const uploadResults = uploadedFiles.map(uniqueFileName => ({
+        url: `${process.env.R2_PUBLIC_URL}/${uniqueFileName}`
+      }));
 
-    res.status(200).json({
-      message: 'Upload process completed',
-      data,
-      ...(errors.length > 0 && { errors }),
-    });
+      res.status(200).json({
+        message: 'All images uploaded successfully',
+        data: uploadResults,
+      });
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      res.status(500).json({ error: 'Upload failed. All uploaded files have been cleaned up.' });
+    }
   } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).json({ error: 'Error uploading file.' });
+    console.error('Error uploading files:', error);
+    res.status(500).json({ error: 'Error uploading files.' });
   }
 };
 
