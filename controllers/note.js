@@ -283,7 +283,11 @@ exports.updateNote = async (req, res) => {
 
 exports.getPublicNotes = async (req, res) => {
   try {
-    const notes = await Note.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const offset = (page - 1) * pageSize;
+
+    const { count, rows: notes } = await Note.findAndCountAll({
       include: [{
         model: Post,
         where: { visibility: 'public' },
@@ -292,10 +296,12 @@ exports.getPublicNotes = async (req, res) => {
       order: [
         [Post, 'week', 'ASC'],
         [Post, 'date', 'ASC']
-      ]
+      ],
+      limit: pageSize,
+      offset: offset
     });
 
-    const formattedNotes = notes
+    const formattedData = notes
       .map(note => {
         const post = note.Post;
         if (!post) {
@@ -309,7 +315,15 @@ exports.getPublicNotes = async (req, res) => {
       })
       .filter(Boolean);
 
-    return res.json(formattedNotes);
+    const response = {
+      data: formattedData,
+      page,
+      pageSize,
+      totalCount: count,
+      totalPages: Math.ceil(count / pageSize)
+    };
+
+    return res.json(response);
   } catch (error) {
     res.status(500).json({
       error: true,
