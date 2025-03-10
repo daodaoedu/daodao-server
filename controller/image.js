@@ -71,11 +71,11 @@ const uploadMultipleImages = async (req, res) => {
 
     const results = await Promise.all(uploadPromises);
     const errors = results.filter(item => item.error);
-    const uploaded = results.filter(item => item.url);
+    const data = results.filter(item => item.url);
 
     res.status(200).json({
       message: 'Upload process completed',
-      uploaded,
+      data,
       ...(errors.length > 0 && { errors }),
     });
   } catch (error) {
