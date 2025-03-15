@@ -40,7 +40,7 @@ const corsOptions = {
       'https://www.daoedu.tw'
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
-    const localhostPattern = /^http:\/\/localhost(:[0-9]+)?$/;
+    const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
 
     if (!origin || 
         allowedOrigins.includes(origin) || 
@@ -51,9 +51,9 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: "GET,POST,PUT,DELETE",
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
