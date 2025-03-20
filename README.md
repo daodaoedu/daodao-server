@@ -151,7 +151,7 @@ DaoDao Server 提供以下主要 API 路由:
 - `JWT_SECRET`: JWT 令牌密鑰
 - `SESSION_SECRET`: 會話密鑰
 - `FRONTEND_URL`: 前端應用 URL
-- `AWS_*`: AWS S3 配置
+- `CLOUDFLARE_R2_*`: Cloudflare R2 配置
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google OAuth 設定
 - `EMAIL_*`: 電子郵件設定
 
