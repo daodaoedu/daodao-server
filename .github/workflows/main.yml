@@ -1,4 +1,4 @@
-name: Deploy to Linode and Docker Hub
+name: Deploy to Linode
 
 on:
   push:
@@ -166,10 +166,10 @@ jobs:
             docker network ls
 
             echo '=== Checking Nginx Logs ==='
-            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 nginx | tail -n 10
+            cd ${{ env.APP_DIR }} && docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 nginx | tail -n 10
 
             echo '=== Checking Application Logs ==='
-            docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
+            cd ${{ env.APP_DIR }} && docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
           " 
   # Step 4: Discord 通知
   notify:
