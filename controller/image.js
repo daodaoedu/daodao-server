@@ -65,6 +65,7 @@ const uploadMultipleImages = async (req, res) => {
 
     // 用於追蹤已上傳的檔案
     const uploadedFiles = [];
+    let hasError = false;
 
     try {
       // 逐個上傳檔案並追蹤成功上傳的檔案
@@ -73,12 +74,19 @@ const uploadMultipleImages = async (req, res) => {
           await uploadToR2(file, uniqueFileName);
           uploadedFiles.push(uniqueFileName);
         } catch (error) {
-          // 如果上傳過程中出現錯誤，刪除已上傳的檔案
-          if (uploadedFiles.length > 0) {
-            await deleteMultipleFromR2(uploadedFiles);
-          }
-          throw error; // 重新拋出錯誤
+          console.error(`Error uploading file: ${file.originalname}`, error);
+          hasError = true;
+          // 如果上傳過程中出現錯誤，停止嘗試上傳其他檔案
+          break;
         }
+      }
+
+      // 如果有任何上傳錯誤，清理已上傳的檔案
+      if (hasError) {
+        if (uploadedFiles.length > 0) {
+          await deleteMultipleFromR2(uploadedFiles);
+        }
+        return res.status(500).json({ error: 'Upload failed. All uploaded files have been cleaned up.' });
       }
 
       // 所有檔案都上傳成功，回傳 URL
@@ -91,11 +99,22 @@ const uploadMultipleImages = async (req, res) => {
         data: uploadResults,
       });
     } catch (error) {
-      console.error('Error uploading files:', error);
+      // 處理其他可能的錯誤
+      console.error('Error in upload process:', error);
+      
+      // 清理已上傳的檔案
+      if (uploadedFiles.length > 0) {
+        try {
+          await deleteMultipleFromR2(uploadedFiles);
+        } catch (cleanupError) {
+          console.error('Error cleaning up uploaded files:', cleanupError);
+        }
+      }
+      
       res.status(500).json({ error: 'Upload failed. All uploaded files have been cleaned up.' });
     }
   } catch (error) {
-    console.error('Error uploading files:', error);
+    console.error('Error handling upload request:', error);
     res.status(500).json({ error: 'Error uploading files.' });
   }
 };
