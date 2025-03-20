@@ -17,6 +17,7 @@ router.get('/me', isAuthenticated, projectController.getMyProjects);
 
 router.get('/outcomes/me', isAuthenticated, outcomeController.getMyOutcomes);
 router.get('/notes/me', isAuthenticated, noteController.getMyNotes);
+router.get('/notes/public', noteController.getPublicNotes);
 
 // 獲取單個學習計畫詳情
 router.get('/:projectId', projectController.getProject);

@@ -17,25 +17,31 @@ const uploadToR2 = async (file, filename) => {
       Key: filename,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read',
-    };
-    const command = new PutObjectCommand(params);
-    await s3Client.send(command);
+    ACL: 'public-read',
+  };
+  const command = new PutObjectCommand(params);
+  await s3Client.send(command);
+  return filename; // 返回成功上傳的檔案名稱
   } catch (error) {
-    console.error('Error uploading to R2:', error);
-    throw new Error('Upload to R2 failed');
+    console.error('Upload to R2 failed:', error);
+    throw error;
   }
 };
 const getFromR2 = async (filename) => {
-  const params = {
-    Bucket: process.env.R2_BUCKET_NAME,
-    Key: filename,
-  };
-  const command = new GetObjectCommand(params);
-  const { Body } = await s3Client.send(command);
-  const passThrough = new stream.PassThrough();
-  Body.pipe(passThrough);
-  return passThrough;
+  try {
+    const params = {
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: filename,
+    };
+    const command = new GetObjectCommand(params);
+    const { Body } = await s3Client.send(command);
+    const passThrough = new stream.PassThrough();
+    Body.pipe(passThrough);
+    return passThrough;
+  } catch (error) {
+    console.error('Get from R2 failed:', error);
+    throw error;
+  }
 };
 
 const deleteFromR2 = async (filename) => {
@@ -47,13 +53,19 @@ const deleteFromR2 = async (filename) => {
     const command = new DeleteObjectCommand(params);
     await s3Client.send(command);
   } catch (error) {
-    console.error('Error deleting from R2:', error);
-    throw new Error('Delete from R2 failed');
+    console.error('Delete from R2 failed:', error);
+    throw error;
   }
+};
+
+const deleteMultipleFromR2 = async (filenames) => {
+  const deletePromises = filenames.map(filename => deleteFromR2(filename));
+  await Promise.all(deletePromises);
 };
 
 module.exports = {
   uploadToR2,
   getFromR2,
   deleteFromR2,
+  deleteMultipleFromR2,
 };

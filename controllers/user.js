@@ -63,7 +63,7 @@ const formatUserResponse = (user) => {
   };
 };
 
-// 获取所有用户
+// 獲取所有用戶
 exports.getAllUsers = async (req, res) => {
   try {
     let { page = 1, pageSize = 10, educationStage, roleList, location, search } = req.query;
@@ -73,29 +73,29 @@ exports.getAllUsers = async (req, res) => {
     const offset = (page - 1) * pageSize;
 
     const whereConditions = {
-      is_open_profile: true // 默认只显示开放资料的用户
+      is_open_profile: true // 默認只顯示開放資料的用戶
     };
 
-    // 教育阶段过滤
+    // 教育階段過濾
     if (educationStage) {
       whereConditions.education_stage = educationStage.split(',');
     }
 
-    // 角色过滤
+    // 角色過濾
     if (roleList) {
       whereConditions['$Positions.name$'] = {
         [Op.in]: roleList.split(',')
       };
     }
 
-    // 地区过滤
+    // 地區過濾
     if (location) {
       whereConditions['$Location.City.name$'] = {
         [Op.in]: location.split(',')
       };
     }
 
-    // 搜索条件
+    // 搜索條件
     if (search) {
       whereConditions[Op.or] = [
         { nickname: { [Op.iLike]: `%${search}%` } },
@@ -104,7 +104,8 @@ exports.getAllUsers = async (req, res) => {
       ];
     }
 
-    const { count, rows } = await User.findAndCountAll({
+    // 使用子查詢計算各用戶的內容完整度
+    const users = await User.findAll({
       where: whereConditions,
       include: [
         {
@@ -134,28 +135,90 @@ exports.getAllUsers = async (req, res) => {
         }
       ],
       distinct: true,
-      offset,
-      limit: pageSize,
       order: [['created_at', 'DESC']]
     });
 
-    const formattedData = rows.map(user => ({
-      ...formatUserResponse(user)
-    })
-    );
+    // 計算每個用戶的資料完整度
+    const usersWithCompleteness = users.map(user => {
+      const userJson = user.toJSON();
+
+      // 計算資料完整度分數
+      let completenessScore = 0;
+
+      // 計算填寫項目數量
+      if (userJson.nickname) completenessScore++;
+      if (userJson.avatar_url) completenessScore++;
+      if (userJson.education_stage) completenessScore++;
+
+      // 計算基本資料完整度
+      if (userJson.BasicInfo) {
+        // 自我介紹按字數分級
+        if (userJson.BasicInfo.self_introduction) {
+          const introLength = userJson.BasicInfo.self_introduction.length;
+          if (introLength > 300) completenessScore += 10;
+          else if (introLength > 200) completenessScore += 8;
+          else if (introLength > 100) completenessScore += 6;
+          else if (introLength > 50) completenessScore += 4;
+          else completenessScore += 2;
+        }
+
+        // 分享列表按字數分級
+        if (userJson.BasicInfo.share_list) {
+          const shareLength = typeof userJson.BasicInfo.share_list === 'string'
+            ? userJson.BasicInfo.share_list.length
+            : JSON.stringify(userJson.BasicInfo.share_list).length;
+
+          if (shareLength > 300) completenessScore += 10;
+          else if (shareLength > 200) completenessScore += 8;
+          else if (shareLength > 100) completenessScore += 6;
+          else if (shareLength > 50) completenessScore += 4;
+          else completenessScore += 2;
+        }
+      }
+
+      if (userJson.tag_list && userJson.tag_list.length > 0) {
+        // 每個標籤加0.5分，最多加4分
+        const tagScore = Math.min(userJson.tag_list.length * 0.5, 4);
+        completenessScore += tagScore;
+      }
+
+      // 檢查聯絡方式是否填寫
+      if (userJson.Contact && Object.keys(userJson.Contact).length > 1) completenessScore++;
+
+      // 檢查位置是否填寫
+      if (userJson.Location && userJson.Location.City) completenessScore++;
+
+      // 檢查職位/角色是否填寫
+      if (userJson.Positions && userJson.Positions.length > 0) completenessScore++;
+
+      return {
+        user,
+        completenessScore
+      };
+    });
+
+    // 按照完整度分數排序
+    usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
+
+    // 分頁處理
+    const paginatedUsers = usersWithCompleteness
+      .slice(offset, offset + pageSize)
+      .map(item => item.user);
+
+    const formattedData = paginatedUsers.map(user => formatUserResponse(user));
 
     const response = {
       data: formattedData,
       page,
       pageSize,
-      totalCount: count,
-      totalPages: Math.ceil(count / pageSize)
+      totalCount: users.length,
+      totalPages: Math.ceil(users.length / pageSize)
     };
 
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('获取用户列表错误:', error);
+    console.error('獲取用戶列表錯誤:', error);
     res.status(500).json({
       error: true,
       message: "Internal Server Error",
