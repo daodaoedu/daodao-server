@@ -63,6 +63,12 @@ const formatUserResponse = (user) => {
   };
 };
 
+const calculateScore = (length, config) => {
+  const { base, levels } = config;
+  const levelIndex = levels.findIndex(level => length > level);
+  return base + (levelIndex > -1 ? levelIndex * 2 : 0);
+};
+
 // 獲取所有用戶
 exports.getAllUsers = async (req, res) => {
   try {
@@ -142,54 +148,39 @@ exports.getAllUsers = async (req, res) => {
     const usersWithCompleteness = users.map(user => {
       const userJson = user.toJSON();
 
-      // 計算資料完整度分數
+      const completenessWeights = {
+        self_introduction: { base: 2, levels: [50, 100, 200, 300] },
+        share_list: { base: 2, levels: [50, 100, 200, 300] },
+        tag_list: { tagWeight: 0.5, maxScore: 4 },
+        contact: 1,
+        location: 1,
+        positions: 1,
+      };
+
       let completenessScore = 0;
 
-      // 計算填寫項目數量
-      if (userJson.nickname) completenessScore++;
-      if (userJson.avatar_url) completenessScore++;
-      if (userJson.education_stage) completenessScore++;
-
-      // 計算基本資料完整度
       if (userJson.BasicInfo) {
-        // 自我介紹按字數分級
         if (userJson.BasicInfo.self_introduction) {
           const introLength = userJson.BasicInfo.self_introduction.length;
-          if (introLength > 300) completenessScore += 10;
-          else if (introLength > 200) completenessScore += 8;
-          else if (introLength > 100) completenessScore += 6;
-          else if (introLength > 50) completenessScore += 4;
-          else completenessScore += 2;
+          completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
         }
 
-        // 分享列表按字數分級
         if (userJson.BasicInfo.share_list) {
           const shareLength = typeof userJson.BasicInfo.share_list === 'string'
             ? userJson.BasicInfo.share_list.length
             : JSON.stringify(userJson.BasicInfo.share_list).length;
-
-          if (shareLength > 300) completenessScore += 10;
-          else if (shareLength > 200) completenessScore += 8;
-          else if (shareLength > 100) completenessScore += 6;
-          else if (shareLength > 50) completenessScore += 4;
-          else completenessScore += 2;
+          completenessScore += calculateScore(shareLength, completenessWeights.share_list);
         }
       }
 
       if (userJson.tag_list && userJson.tag_list.length > 0) {
-        // 每個標籤加0.5分，最多加4分
-        const tagScore = Math.min(userJson.tag_list.length * 0.5, 4);
+        const tagScore = Math.min(userJson.tag_list.length * completenessWeights.tag_list.tagWeight, completenessWeights.tag_list.maxScore);
         completenessScore += tagScore;
       }
 
-      // 檢查聯絡方式是否填寫
-      if (userJson.Contact && Object.keys(userJson.Contact).length > 1) completenessScore++;
-
-      // 檢查位置是否填寫
-      if (userJson.Location && userJson.Location.City) completenessScore++;
-
-      // 檢查職位/角色是否填寫
-      if (userJson.Positions && userJson.Positions.length > 0) completenessScore++;
+      if (userJson.Contact && Object.keys(userJson.Contact).length > 1) completenessScore += completenessWeights.contact;
+      if (userJson.Location && userJson.Location.City) completenessScore += completenessWeights.location;
+      if (userJson.Positions && userJson.Positions.length > 0) completenessScore += completenessWeights.positions;
 
       return {
         user,
