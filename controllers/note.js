@@ -281,6 +281,58 @@ exports.updateNote = async (req, res) => {
 };
 
 
+exports.getPublicNotes = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const offset = (page - 1) * pageSize;
+
+    const { count, rows: notes } = await Note.findAndCountAll({
+      include: [{
+        model: Post,
+        where: { visibility: 'public' },
+        required: true
+      }],
+      order: [
+        [Post, 'week', 'ASC'],
+        [Post, 'date', 'ASC']
+      ],
+      limit: pageSize,
+      offset: offset
+    });
+
+    const formattedData = notes
+      .map(note => {
+        const post = note.Post;
+        if (!post) {
+          console.error(`發現無效的便利貼關聯，note ID: ${note.id}`);
+          return null;
+        }
+        return formatNoteResponse(
+          note.get({ plain: true }), 
+          post.get({ plain: true })
+        );
+      })
+      .filter(Boolean);
+
+    const response = {
+      data: formattedData,
+      page,
+      pageSize,
+      totalCount: count,
+      totalPages: Math.ceil(count / pageSize)
+    };
+
+    return res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      error: true,
+      message: '取得公開便利貼失敗',
+      details: error.message
+    });
+  }
+};
+
 exports.deleteNote = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {

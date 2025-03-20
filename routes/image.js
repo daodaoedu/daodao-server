@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('../middlewares/multer');
 const {isAuthenticated,requireCompleteProfile} = require("../middlewares/isAuthenticated");
-const { uploadImage, getImage, deleteImage } = require('../controller/image');
+const { uploadSingleImage, uploadMultipleImages, getImage, deleteImage } = require('../controller/image');
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
 
@@ -13,7 +13,8 @@ const imgLimiter = rateLimit({
   });
   
 router.get('/:filename', getImage);
-router.post('/',isAuthenticated,requireCompleteProfile,imgLimiter, multer.single('file'), uploadImage);
+router.post('/', isAuthenticated, requireCompleteProfile, imgLimiter, multer.single('file'), uploadSingleImage);
+router.post('/multiple', isAuthenticated, requireCompleteProfile, imgLimiter, multer.array('files', 5), uploadMultipleImages);
 router.delete('/:filename',isAuthenticated,requireCompleteProfile,imgLimiter, deleteImage);
 
 

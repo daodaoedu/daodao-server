@@ -25,30 +25,35 @@ const dbInfoRoutes = require('./routes/dbInfo');
 const User = require("./models/user.model");
 const Activity = require("./models/activity.model");
 const Marathon = require("./models/marathon.model");
-
+const path = require('path');
 const PORT = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
-      'http://localhost:5000',
+      'http://localhost:4000',
       'https://www.daoedu.tw'
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
+    const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
 
-    if (!origin || allowedOrigins.includes(origin) || daodaoTestPattern.test(origin)) {
+    if (!origin || 
+        allowedOrigins.includes(origin) || 
+        daodaoTestPattern.test(origin) ||
+        localhostPattern.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: "GET,POST,PUT,DELETE",
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
   credentials: true,
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
