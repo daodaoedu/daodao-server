@@ -7,7 +7,7 @@ const formatUserData = (user) => {
   if (!user) return null;
   const userJson = typeof user.toJSON === 'function' ? user.toJSON() : user;
   return {
-    externalId: userJson.external_id,
+    userId: userJson.external_id,
     name: userJson.nickname,
     // 利用 alias 轉換，從關聯的 Contact 拿 photo_url 並轉成 photoURL
     photoURL: userJson.Contact ? userJson.Contact.photo_url : null,
