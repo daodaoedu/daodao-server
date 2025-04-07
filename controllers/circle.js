@@ -22,7 +22,6 @@ const formatUserData = (user) => {
 const formatCircleResponse = (circle) => {
   const plainCircle = typeof circle.get === 'function' ? circle.get({ plain: true }) : circle;
   return {
-    id: plainCircle.id,
     _id: plainCircle.external_id,
     title: plainCircle.title,
     photoURL: plainCircle.photo_url,
