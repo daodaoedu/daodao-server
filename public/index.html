@@ -378,19 +378,9 @@
         tryAPI(apiEndpoint); // 自動偵錯目前的端點
       }
     }
-
-    // 手動設置計數（用於測試）
-    function testDirectSetting() {
-      setDirectCounts(165, 14, 46); 
-    }
-
+    
     // 頁面載入時呼叫
     window.onload = function() {
-      // 嘗試直接設置固定值測試 DOM 操作是否正常
-      // 這行讓您可以直接看到總數，即使 API 呼叫失敗
-      setTimeout(function() {
-        testDirectSetting();
-      }, 1000);
       
       // 正常載入資料流程
       loadDashboardData();
