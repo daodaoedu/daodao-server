@@ -8,18 +8,18 @@ const outcomeController = require('../controllers/outcome');
 const reviewController = require('../controllers/review');
 const { isAuthenticated, requireCompleteProfile } = require("../middlewares/isAuthenticated");
 
-// 獲取學習計畫列表
+// 取得學習計畫列表
 router.get('/public', projectController.getPublicProjects);
 router.get('/admin', projectController.getProjects);
 
-// 獲取我的學習計畫
+// 取得我的學習計畫
 router.get('/me', isAuthenticated, projectController.getMyProjects);
 
 router.get('/outcomes/me', isAuthenticated, outcomeController.getMyOutcomes);
 router.get('/notes/me', isAuthenticated, noteController.getMyNotes);
 router.get('/notes/public', noteController.getPublicNotes);
 
-// 獲取單個學習計畫詳情
+// 取得單個學習計畫詳情
 router.get('/:projectId', projectController.getProject);
 
 // 創建學習計畫
