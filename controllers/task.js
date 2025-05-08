@@ -88,7 +88,7 @@ exports.getTasks = async (req, res) => {
   } catch (error) {
     res.status(500).json({ 
       error: true, 
-      message: "獲取任務失敗",
+      message: "取得任務失敗",
       details: error.message 
     });
   }

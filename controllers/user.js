@@ -69,7 +69,7 @@ const calculateScore = (length, config) => {
   return base + (levelIndex > -1 ? levelIndex * 2 : 0);
 };
 
-// 獲取所有用戶
+// 取得所有用戶
 exports.getAllUsers = async (req, res) => {
   try {
     let { page = 1, pageSize = 10, educationStage, roleList, location, search } = req.query;
@@ -209,7 +209,7 @@ exports.getAllUsers = async (req, res) => {
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('獲取用戶列表錯誤:', error);
+    console.error('取得用戶列表錯誤:', error);
     res.status(500).json({
       error: true,
       message: "Internal Server Error",
@@ -464,7 +464,7 @@ exports.createUser = async (req, res) => {
       }
     }
 
-    // 獲取完整的用戶信息
+    // 取得完整的用戶信息
     const createdUser = await User.findOne({
       where: { id: newUser.id },
       include: [
@@ -715,7 +715,7 @@ exports.deleteMe = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const currentUser = req.user;
-    // 1. 獲取完整用戶資料（不包含關聯）
+    // 1. 取得完整用戶資料（不包含關聯）
     const user = await User.findOne({
       where: { external_id: currentUser._id },
       transaction
