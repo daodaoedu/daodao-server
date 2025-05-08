@@ -55,7 +55,7 @@ exports.handleMarathonRequest = async (req, res) => {
       // 如果有 userId，執行基於 userId 和 eventId 的邏輯
       return getMarathonsByUserAndEvent(req, res);
   } else {
-      // 如果沒有 userId，執行獲取所有資料的邏輯
+      // 如果沒有 userId，執行取得所有資料的邏輯
       return getAllMarathons(req, res);
   }
 };

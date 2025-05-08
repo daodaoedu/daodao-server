@@ -136,7 +136,7 @@ exports.getMyOutcomes = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       error: true,
-      message: "獲取用戶成果失敗",
+      message: "取得用戶成果失敗",
       details: error.message
     });
   }
