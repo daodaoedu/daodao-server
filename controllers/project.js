@@ -86,6 +86,7 @@ exports.createProject = async (req, res) => {
 
     console.log("req.user", req.user)
     console.log("req.user.role", req.user.role)
+    console.log("req",req)
 
     const user = await User.findOne({
       where: { external_id: req.user._id },  // 使用external_id查詢
@@ -98,29 +99,30 @@ exports.createProject = async (req, res) => {
         error: true,
         message: "用戶不存在"
       });
-    }    // // 新增角色和數量驗證
-    // if (user.roleId === 2) {
-    //   await transaction.rollback();
-    //   return res.status(403).json({
-    //     error: true,
-    //     message: "此角色無權新增學習計畫"
-    //   });
-    // }
+    }    
+    // 新增角色和數量驗證
+    if (user.roleId === 2) {
+      await transaction.rollback();
+      return res.status(403).json({
+        error: true,
+        message: "此角色無權新增學習計畫"
+      });
+    }
 
-    // if (user.roleId === 3) {
-    //   const projectCount = await Project.count({
-    //     where: { user_id: req.user.id },
-    //     transaction
-    //   });
+    if (user.roleId === 3) {
+      const projectCount = await Project.count({
+        where: { user_id: req.user.id },
+        transaction
+      });
 
-    //   if (projectCount >= 3) {
-    //     await transaction.rollback();
-    //     return res.status(400).json({
-    //       error: true,
-    //       message: "已達最大學習計畫數量限制（3個）"
-    //     });
-    //   }
-    // }
+      if (projectCount >= 3) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: true,
+          message: "已達最大學習計畫數量限制（3個）"
+        });
+      }
+    }
 
     // 驗證必填字段
     if (!title) {
@@ -180,7 +182,7 @@ exports.createProject = async (req, res) => {
       await Milestone.bulkCreate(milestonesData, { transaction });
     }
 
-    // 獲取完整的學習計畫信息
+    // 取得完整的學習計畫信息
     const createdProject = await Project.findOne({
       where: { id: project.id },
       include: [
@@ -209,7 +211,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
-// 獲取學習計畫列表
+// 取得學習計畫列表
 exports.getFilteredProjects = async (req, res) => {
   try {
     const {
@@ -316,15 +318,15 @@ exports.getFilteredProjects = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('獲取學習計畫列表錯誤：', error);
+    console.error('取得學習計畫列表錯誤：', error);
     res.status(500).json({
       error: true,
-      message: "獲取學習計畫列表失敗",
+      message: "取得學習計畫列表失敗",
       details: process.env.NODE_ENV === 'development' ? error.message : null
     });
   }
 };
-// 獲取學習計畫列表
+// 取得學習計畫列表
 exports.getPublicProjects = async (req, res) => {
   try {
     const { page = 1, pageSize = 50 } = req.query;
@@ -389,15 +391,15 @@ exports.getPublicProjects = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('獲取學習計畫列表錯誤：', error);
+    console.error('取得學習計畫列表錯誤：', error);
     res.status(500).json({
       error: true,
-      message: "獲取學習計畫列表失敗",
+      message: "取得學習計畫列表失敗",
       details: process.env.NODE_ENV === 'development' ? error.message : null
     });
   }
 };
-// 獲取學習計畫列表
+// 取得學習計畫列表
 exports.getProjects = async (req, res) => {
   try {
     const { page = 1, pageSize = 50 } = req.query;
@@ -461,22 +463,45 @@ exports.getProjects = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('獲取學習計畫列表錯誤：', error);
+    console.error('取得學習計畫列表錯誤：', error);
     res.status(500).json({
       error: true,
-      message: "獲取學習計畫列表失敗",
+      message: "取得學習計畫列表失敗",
       details: process.env.NODE_ENV === 'development' ? error.message : null
     });
   }
 };
 
 
-// 獲取我的學習計畫
+// 取得我的學習計畫
 exports.getMyProjects = async (req, res) => {
-  console.log("user_id: ", req.user)
   try {
+    // 查詢每個 external_id 的最新版本
+    const latestVersions = await Project.findAll({
+      attributes: [
+        'external_id',
+        [sequelize.fn('MAX', sequelize.col('version')), 'max_version']
+      ],
+      where: { user_id: req.user.id },
+      group: ['external_id'],
+      raw: true
+    });
+    
+    if (latestVersions.length === 0) {
+      return res.status(200).json([]);
+    }
+    
+    // 構建條件
+    const whereConditions = latestVersions.map(item => ({
+      external_id: item.external_id,
+      version: item.max_version
+    }));
+    
+    // 查詢最新版本的完整資料
     const projects = await Project.findAll({
-      where: { user_id: req.user.id, version: 2 },
+      where: {
+        [Op.or]: whereConditions
+      },
       include: [
         {
           model: User,
@@ -508,13 +533,14 @@ exports.getMyProjects = async (req, res) => {
             }
           ]
         }
-      ]
+      ],
+      order: [['updatedAt', 'DESC']] // 按更新時間排序
     });
-    console.log('projects', projects);
+    
     res.status(200).json(projects.map(project => formatProjectResponse(project)));
   } catch (error) {
-    console.error('獲取我的學習計畫錯誤：', error);
-    res.status(500).json({ error: true, message: '獲取我的學習計畫失敗' });
+    console.error('取得我的學習計畫錯誤：', error);
+    res.status(500).json({ error: true, message: '取得我的學習計畫失敗' });
   }
 };
 
@@ -523,8 +549,9 @@ exports.getProject = async (req, res) => {
     const project = await Project.findOne({
       where: {
         external_id: req.params.projectId,
-        version: 2, // 新增 version 條件
       },
+      order: [['version', 'DESC']], // 只取最新版本
+      limit: 1, // 只返回一條記錄
       include: [
         {
           model: User,
@@ -577,10 +604,10 @@ exports.getProject = async (req, res) => {
     res.status(200).json(formatProjectResponse(project));
 
   } catch (error) {
-    console.error('獲取學習計畫詳情錯誤：', error);
+    console.error('取得學習計畫詳情錯誤：', error);
     res.status(500).json({
       error: true,
-      message: "獲取學習計畫詳情失敗",
+      message: "取得學習計畫詳情失敗",
       details: error.message
     });
   }
@@ -667,6 +694,7 @@ exports.updateProject = async (req, res) => {
     if (project.version === 1 && status && status !== 'Not Started') {
       // 複製現有專案資料，再將更新內容寫入新版
       const newProjectData = {
+        external_id: project.external_id,  // 確保 external_id 一致
         user_id: project.user_id,
         img_url: imgUrl || project.img_url,
         title: title || project.title,
@@ -797,12 +825,13 @@ exports.updateProject = async (req, res) => {
 exports.deleteProject = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const project = await Project.findOne({
+    // 找到所有相同 external_id 的版本
+    const projects = await Project.findAll({
       where: { external_id: req.params.projectId },
       transaction
     });
 
-    if (!project) {
+    if (projects.length === 0) {
       await transaction.rollback();
       return res.status(404).json({
         error: true,
@@ -810,8 +839,8 @@ exports.deleteProject = async (req, res) => {
       });
     }
 
-    // 檢查權限
-    if (project.user_id.toString() !== req.user.id.toString()) {
+    // 檢查權限（檢查第一個項目即可，因為所有版本應該有相同的用戶 ID）
+    if (projects[0].user_id.toString() !== req.user.id.toString()) {
       await transaction.rollback();
       return res.status(403).json({
         error: true,
@@ -819,8 +848,11 @@ exports.deleteProject = async (req, res) => {
       });
     }
 
-    // 刪除學習計畫（會級聯刪除相關的里程碑、任務等）
-    await project.destroy({ transaction });
+    // 刪除所有相關版本
+    await Project.destroy({
+      where: { external_id: req.params.projectId },
+      transaction
+    });
 
     await transaction.commit();
     res.status(200).json({

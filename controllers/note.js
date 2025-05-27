@@ -1,8 +1,8 @@
-const { Note, Post, Project } = require('../models');
+const { Note, Post, Project, User, Contact, Position } = require('../models');
 const sequelize = require('../config/db');
 
 // 新增統一格式化方法
-const formatNoteResponse = (note,post) => {
+const formatNoteResponse = (note, post) => {
   return {
     id: note.id,
     week: post.week,
@@ -11,7 +11,16 @@ const formatNoteResponse = (note,post) => {
     date: safeDateFormatter(post.date),
     imgUrls: note?.image_urls,
     videoUrls: note?.video_urls,
-    visibility: post?.visibility
+    visibility: post?.visibility,
+    user: note.User
+      ? {
+          id: note.User.id,
+          name: note.User.nickname,
+          _id: note.User.external_id,
+          roleList: note.User.Positions ? note.User.Positions.map(p => p.name) : [],
+          photoURL: note.User.Contact ? note.User.Contact.photo_url : null,
+        }
+      : null
   };
 }
 
@@ -28,6 +37,22 @@ const safeDateFormatter = (dateValue) => {
   } catch (e) {
     return '日期格式錯誤';
   }
+};
+
+/**
+ * 根據便利貼的 post.user_id 查詢 User 資料並附加
+ */
+const attachUserToNote = async (note, post) => {
+  const user = await User.findOne({
+    where: { id: post.user_id },
+    attributes: ['id', 'nickname', 'external_id'],
+    include: [
+      { model: Contact },
+      { model: Position, through: { attributes: [] } }
+    ]
+  });
+  note.User = user;
+  return note;
 };
 
 exports.createNote = async (req, res) => {
@@ -69,9 +94,16 @@ exports.createNote = async (req, res) => {
     }, { transaction });
 
     await transaction.commit();
+    
+    // 取得 note 和 post 的純文本形式
+    let plainNote = note.get({ plain: true });
+    const plainPost = post.get({ plain: true });
+    
+    // 附加用戶資料
+    plainNote = await attachUserToNote(plainNote, plainPost);
 
     return res.status(201).json(
-      formatNoteResponse(note.get({ plain: true }), post.get({ plain: true }))
+      formatNoteResponse(plainNote, plainPost)
     );
   } catch (error) {
     if (transaction.finished !== 'commit') {
@@ -110,19 +142,24 @@ exports.getNotes = async (req, res) => {
       ]
     });
 
-    const formattedNotes = notes
-      .map(note => {
+    const formattedNotes = await Promise.all(notes
+      .map(async note => {
         const post = note.Post; // 使用解構方式取得關聯
         if (!post) {
           console.error(`發現無效的便利貼關聯，note ID: ${note.id}`);
           return null;
         }
-        return formatNoteResponse(
-          note.get({ plain: true }), 
-          post.get({ plain: true })
-        );
+        
+        // 取得純文本形式
+        let plainNote = note.get({ plain: true });
+        const plainPost = post.get({ plain: true });
+        
+        // 附加用戶資料
+        plainNote = await attachUserToNote(plainNote, plainPost);
+        
+        return formatNoteResponse(plainNote, plainPost);
       })
-      .filter(Boolean);
+    ).then(results => results.filter(Boolean));
 
     return res.json(formattedNotes);
   } catch (error) {
@@ -146,9 +183,19 @@ exports.getMyNotes = async (req, res) => {
       }]
     });
 
-    const formattedNotes = notes
-      .filter(note => note.Post)
-      .map(note => formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true })));
+    const formattedNotes = await Promise.all(
+      notes
+        .filter(note => note.Post)
+        .map(async note => {
+          let plainNote = note.get({ plain: true });
+          const plainPost = note.Post.get({ plain: true });
+          
+          // 附加用戶資料
+          plainNote = await attachUserToNote(plainNote, plainPost);
+          
+          return formatNoteResponse(plainNote, plainPost);
+        })
+    );
 
     return res.status(200).json(formattedNotes);
   } catch (error) {
@@ -198,7 +245,14 @@ exports.getNoteDetail = async (req, res) => {
       });
     }
 
-    return res.json(formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true })));
+    // 取得純文本資料
+    let plainNote = note.get({ plain: true });
+    const plainPost = note.Post.get({ plain: true });
+    
+    // 附加用戶資料
+    plainNote = await attachUserToNote(plainNote, plainPost);
+    
+    return res.json(formatNoteResponse(plainNote, plainPost));
   } catch (error) {
     res.status(500).json({
       error: true,
@@ -267,8 +321,16 @@ exports.updateNote = async (req, res) => {
     }
 
     await transaction.commit();
+    
+    // 取得純文本資料
+    let plainNote = note.get({ plain: true });
+    const plainPost = note.Post.get({ plain: true });
+    
+    // 附加用戶資料
+    plainNote = await attachUserToNote(plainNote, plainPost);
+    
     return res.json(
-      formatNoteResponse(note.get({ plain: true }), note.Post.get({ plain: true }))
+      formatNoteResponse(plainNote, plainPost)
     );
   } catch (error) {
     await transaction.rollback();
@@ -301,19 +363,24 @@ exports.getPublicNotes = async (req, res) => {
       offset: offset
     });
 
-    const formattedData = notes
-      .map(note => {
+    const formattedData = await Promise.all(notes
+      .map(async note => {
         const post = note.Post;
         if (!post) {
           console.error(`發現無效的便利貼關聯，note ID: ${note.id}`);
           return null;
         }
-        return formatNoteResponse(
-          note.get({ plain: true }), 
-          post.get({ plain: true })
-        );
+        
+        // 取得純文本資料
+        let plainNote = note.get({ plain: true });
+        const plainPost = post.get({ plain: true });
+        
+        // 附加用戶資料
+        plainNote = await attachUserToNote(plainNote, plainPost);
+        
+        return formatNoteResponse(plainNote, plainPost);
       })
-      .filter(Boolean);
+    ).then(results => results.filter(Boolean));
 
     const response = {
       data: formattedData,

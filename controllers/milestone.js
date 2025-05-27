@@ -81,7 +81,7 @@ exports.createMilestone = async (req, res) => {
   }
 };
 
-// 獲取里程碑列表
+// 取得里程碑列表
 exports.getMilestones = async (req, res) => {
   try {
     const project = await Project.findOne({ where: { external_id: req.params.projectId } });
@@ -94,7 +94,7 @@ exports.getMilestones = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: true,
-      message: "獲取里程碑失敗",
+      message: "取得里程碑失敗",
       details: error.message
     });
   }

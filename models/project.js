@@ -11,7 +11,7 @@ const Project = sequelize.define('Project', {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     allowNull: false,
-    unique: true
+    // unique: true
   },
   user_id: {
     type: DataTypes.INTEGER,
