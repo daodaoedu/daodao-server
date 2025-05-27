@@ -63,8 +63,8 @@ passport.use(new GoogleStrategy(
                     tempUser = await tempUser.save();
                 } catch (saveError) {
                     if (saveError.code === 11000) {
-                        // 如果是重複鍵錯誤，重新獲取該臨時用戶
-                        console.log("臨時用戶已存在，正在獲取");
+                        // 如果是重複鍵錯誤，重新取得該臨時用戶
+                        console.log("臨時用戶已存在，正在取得");
                         tempUser = await TempUser.findOne({ googleID: profile.id }).exec();
                     } else {
                         throw saveError;
