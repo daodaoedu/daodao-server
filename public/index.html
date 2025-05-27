@@ -1,0 +1,391 @@
+<!-- public/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="R6IUZ5jvDxsBPutcxfJbZBRfMhdJR8d0hIXQIC5s5So" />
+  <title>Dashboard</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+    .debug-box {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .debug-toggle {
+      background: #eee;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .count-number {
+      font-weight: bold;
+      color: #2c6fbb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dashboard</h1>
+  
+  <div style="margin: 20px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+    <h3>測試不同的 API 端點</h3>
+    <div>
+      <button onclick="tryAPI('/dashboard')">測試 /dashboard</button>
+      <button onclick="tryAPI('/')">測試 /</button>
+    </div>
+    <div id="apiTestResult" style="margin-top: 10px; padding: 5px; border: 1px solid #ddd;"></div>
+  </div>
+  
+  <div id="debug-container" style="display: none;" class="debug-box">
+    <h3>Debug Information</h3>
+    <div id="debug-output"></div>
+  </div>
+  <button onclick="toggleDebug()" class="debug-toggle">顯示/隱藏偵錯資訊</button>
+
+  <div id="stats">
+    <p>Environment: <span id="environment"></span></p>
+    <p>PORT: <span id="port"></span></p>
+    <p>FRONTEND_URL: <span id="frontendUrl"></span></p>
+    <p>DATABASE_URL: <span id="databaseUrl"></span></p>
+  </div>
+
+  <h2>Total Counts</h2>
+  <ul>
+    <li>Users: <span id="userCount" class="count-number"></span></li>
+    <li>Circles: <span id="circleCount" class="count-number"></span></li>
+    <li>Projects: <span id="projectCount" class="count-number"></span></li>
+  </ul>
+
+  <h2>Recent Users (50)</h2>
+  <table id="usersTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>User Email</th>
+        <th>User Name</th>
+        <th>Detail URL</th>
+        <th>Created At</th>
+        <th>Updated At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Recent Circles (50)</h2>
+  <table id="circlesTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Circle Title</th>
+        <th>User Email</th>
+        <th>User Name</th>
+        <th>Detail URL</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Recent Projects (50)</h2>
+  <table id="projectsTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Project ID</th>
+        <th>Title</th>
+        <th>User Email</th>
+        <th>User Name</th>
+        <th>Detail URL</th>
+        <th>Created At</th>
+        <th>Updated At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // 調試功能
+    function debugLog(message, data) {
+      console.log(message, data);
+      const debugOutput = document.getElementById('debug-output');
+      if (debugOutput) {
+        const msgElement = document.createElement('div');
+        msgElement.innerHTML = `<p><strong>${message}</strong>: ${JSON.stringify(data, null, 2)}</p>`;
+        debugOutput.appendChild(msgElement);
+      }
+    }
+    
+    function toggleDebug() {
+      const debugContainer = document.getElementById('debug-container');
+      if (debugContainer.style.display === 'none') {
+        debugContainer.style.display = 'block';
+      } else {
+        debugContainer.style.display = 'none';
+      }
+    }
+    
+    // 測試不同的 API 端點
+    async function tryAPI(endpoint) {
+      const resultDiv = document.getElementById('apiTestResult');
+      resultDiv.innerHTML = `<p>正在測試 ${endpoint}...</p>`;
+      
+      try {
+        const response = await fetch(endpoint);
+        const status = response.status;
+        let data;
+        
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = await response.text();
+        }
+        
+        if (status === 200) {
+          resultDiv.innerHTML = `
+            <p style="color:green">成功! 狀態碼: ${status}</p>
+            <p>接口回應:</p>
+            <pre style="background:#f5f5f5; padding:5px; max-height:200px; overflow:auto; font-size:12px;">${JSON.stringify(data, null, 2)}</pre>
+            <button onclick="loadWithEndpoint('${endpoint}')">[使用此端點加載頁面]</button>
+          `;
+        } else {
+          resultDiv.innerHTML = `<p style="color:orange">警告: 狀態碼 ${status}</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<p style="color:red">錯誤: ${error}</p>`;
+      }
+    }
+    
+    // 使用指定端點加載頁面資料
+    function loadWithEndpoint(endpoint) {
+      apiEndpoint = endpoint;
+      loadDashboardData();
+    }
+    
+    // 直接設置計數值的功能（用於測試）
+    function setDirectCounts(userCount, circleCount, projectCount) {
+      document.getElementById('userCount').textContent = userCount;
+      document.getElementById('circleCount').textContent = circleCount;
+      document.getElementById('projectCount').textContent = projectCount;
+      debugLog('直接設置計數值', { userCount, circleCount, projectCount });
+    }
+    
+    // 存儲目前正在使用的 API 端點
+    let apiEndpoint = '/dashboard';
+    async function loadDashboardData() {
+      try {
+        // 清除之前的錯誤訊息
+        const errorDivs = document.querySelectorAll('div[style*="color: red; padding: 20px; border: 1px solid red;"]');
+        errorDivs.forEach(div => div.remove());
+        
+        // 清除偵錯輸出
+        const debugOutput = document.getElementById('debug-output');
+        if (debugOutput) debugOutput.innerHTML = '';
+        
+        debugLog('正在從端點加載資料', apiEndpoint);
+        
+        const response = await fetch(apiEndpoint);
+        const data = await response.json();
+        
+        // 添加調試信息
+        debugLog('收到的資料', data);
+        debugLog('計數值', { 
+          userCount: data.userCount, 
+          circleCount: data.circleCount, 
+          projectCount: data.projectCount 
+        });
+        
+        // 直接操作 DOM 來設置計數
+        const countElements = {
+          userCount: document.getElementById('userCount'),
+          circleCount: document.getElementById('circleCount'),
+          projectCount: document.getElementById('projectCount')
+        };
+
+        if (countElements.userCount) {
+          countElements.userCount.textContent = data.userCount || 0;
+          debugLog('設置 userCount', countElements.userCount.textContent);
+        }
+        
+        if (countElements.circleCount) {
+          countElements.circleCount.textContent = data.circleCount || 0;
+          debugLog('設置 circleCount', countElements.circleCount.textContent);
+        }
+        
+        if (countElements.projectCount) {
+          countElements.projectCount.textContent = data.projectCount || 0;
+          debugLog('設置 projectCount', countElements.projectCount.textContent);
+        }
+
+        // 更新基本統計資訊
+        const basicInfoElements = {
+          environment: document.getElementById('environment'),
+          port: document.getElementById('port'),
+          frontendUrl: document.getElementById('frontendUrl'),
+          databaseUrl: document.getElementById('databaseUrl')
+        };
+        
+        if (basicInfoElements.environment) basicInfoElements.environment.textContent = data.environment || 'N/A';
+        if (basicInfoElements.port) basicInfoElements.port.textContent = data.port || 'N/A';
+        if (basicInfoElements.frontendUrl) basicInfoElements.frontendUrl.textContent = data.frontendUrl || 'N/A';
+        if (basicInfoElements.databaseUrl) basicInfoElements.databaseUrl.textContent = data.databaseUrl || 'N/A';
+
+        // 更新 Recent Users 表格
+        try {
+          const usersTableBody = document.querySelector('#usersTable tbody');
+          if (!usersTableBody) {
+            debugLog('找不到 usersTable tbody 元素', null);
+            return;
+          }
+          
+          usersTableBody.innerHTML = ''; // 清除原有內容
+          
+          if (data.recentUsers && data.recentUsers.length > 0) {
+            debugLog('找到使用者資料', data.recentUsers.length);
+            
+            data.recentUsers.forEach((user, index) => {
+              const email = user.Contact ? user.Contact.email : 'N/A';
+              const detailUrl = data.frontendUrl && user.external_id ? `${data.frontendUrl}/partner/detail?id=${user.external_id}` : 'N/A';
+              const createdAt = user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A';
+              const updatedAt = user.updated_at ? new Date(user.updated_at).toLocaleString() : 'N/A';
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${email}</td>
+                <td>${user.nickname || 'N/A'}</td>
+                <td>${detailUrl.includes('http') ? `<a href="${detailUrl}" target="_blank">${detailUrl}</a>` : detailUrl}</td>
+                <td>${createdAt}</td>
+                <td>${updatedAt}</td>
+              `;
+              usersTableBody.appendChild(tr);
+            });
+          } else {
+            usersTableBody.innerHTML = '<tr><td colspan="6">沒有資料</td></tr>';
+            debugLog('沒有使用者資料', null);
+          }
+        } catch (userError) {
+          debugLog('更新使用者表格時發生錯誤', userError.message);
+        }
+
+        // 更新 Recent Circles 表格
+        try {
+          const circlesTableBody = document.querySelector('#circlesTable tbody');
+          if (!circlesTableBody) {
+            debugLog('找不到 circlesTable tbody 元素', null);
+            return;
+          }
+          
+          circlesTableBody.innerHTML = ''; // 清除原有內容
+          
+          if (data.recentCircles && data.recentCircles.length > 0) {
+            debugLog('找到圈子資料', data.recentCircles.length);
+            
+            data.recentCircles.forEach((circle, index) => {
+              const title = circle.title || 'N/A';
+              const userEmail = circle.User && circle.User.Contact ? circle.User.Contact.email : 'N/A';
+              const userName = circle.User ? circle.User.nickname || 'N/A' : 'N/A';
+              const detailUrl = data.frontendUrl && (circle.external_id || circle.id) ? 
+                `${data.frontendUrl}/group/detail?id=${circle.external_id || circle.id}` : 'N/A';
+              const createdAt = circle.created_date ? new Date(circle.created_date).toLocaleString() : 'N/A';
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${title}</td>
+                <td>${userEmail}</td>
+                <td>${userName}</td>
+                <td>${detailUrl.includes('http') ? `<a href="${detailUrl}" target="_blank">${detailUrl}</a>` : detailUrl}</td>
+                <td>${createdAt}</td>
+              `;
+              circlesTableBody.appendChild(tr);
+            });
+          } else {
+            circlesTableBody.innerHTML = '<tr><td colspan="6">沒有資料</td></tr>';
+            debugLog('沒有圈子資料', null);
+          }
+        } catch (circleError) {
+          debugLog('更新圈子表格時發生錯誤', circleError.message);
+        }
+
+        // 更新 Recent Projects 表格
+        try {
+          const projectsTableBody = document.querySelector('#projectsTable tbody');
+          if (!projectsTableBody) {
+            debugLog('找不到 projectsTable tbody 元素', null);
+            return;
+          }
+          
+          projectsTableBody.innerHTML = ''; // 清除原有內容
+          
+          if (data.recentProjects && data.recentProjects.length > 0) {
+            debugLog('找到專案資料', data.recentProjects.length);
+            
+            data.recentProjects.forEach((project, index) => {
+              const projectId = project.external_id || project.id || 'N/A';
+              const title = project.title || 'N/A';
+              const userEmail = project.User && project.User.Contact ? project.User.Contact.email : 'N/A';
+              const userName = project.User ? project.User.nickname || 'N/A' : 'N/A';
+              const detailUrl = data.frontendUrl && projectId ? 
+                `${data.frontendUrl}/admin/projects/detail?id=${projectId}` : 'N/A';
+              const createdAt = project.created_at ? new Date(project.created_at).toLocaleString() : 'N/A';
+              const updatedAt = project.updated_at ? new Date(project.updated_at).toLocaleString() : 'N/A';
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${projectId}</td>
+                <td>${title}</td>
+                <td>${userEmail}</td>
+                <td>${userName}</td>
+                <td>${detailUrl.includes('http') ? `<a href="${detailUrl}" target="_blank">${detailUrl}</a>` : detailUrl}</td>
+                <td>${createdAt}</td>
+                <td>${updatedAt}</td>
+              `;
+              projectsTableBody.appendChild(tr);
+            });
+          } else {
+            projectsTableBody.innerHTML = '<tr><td colspan="8">沒有資料</td></tr>';
+            debugLog('沒有專案資料', null);
+          }
+        } catch (projectError) {
+          debugLog('更新專案表格時發生錯誤', projectError.message);
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        document.body.innerHTML += `<div style="color: red; padding: 20px; border: 1px solid red; margin-top: 20px;">
+          <h2>載入資料失敗</h2>
+          <p>請確認伺服器是否已啟動，並且 API 端點已正確配置。目前嘗試使用的端點: ${apiEndpoint}</p>
+          <p>錯誤訊息: ${error}</p>
+          <p>您可以嘗試使用上方的測試按鈕嘗試不同的 API 端點。</p>
+        </div>`;
+        
+        // 嘗試使用 fetch 模式偵錯，顯示 API 回應狀態
+        tryAPI(apiEndpoint); // 自動偵錯目前的端點
+      }
+    }
+    
+    // 頁面載入時呼叫
+    window.onload = function() {
+      
+      // 正常載入資料流程
+      loadDashboardData();
+    };
+  </script>
+</body>
+</html>
