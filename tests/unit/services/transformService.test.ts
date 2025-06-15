@@ -1,0 +1,368 @@
+/**
+ * 轉換服務測試
+ */
+
+import { 
+  transformResourceToApi, 
+  transformResourceToDb, 
+  transformReviewToApi, 
+  transformReviewToDb 
+} from '../../../src/services/transformService';
+import { contentFeaturesMappings, resourceUsageMappings } from '../../../src/constants/mappings';
+
+describe('Transform Service Tests', () => {
+  
+  describe('transformResourceToApi', () => {
+    it('應正確轉換資源資料為 API 格式', () => {
+      // 模擬資料庫返回的資源記錄
+      const dbResource = {
+        id: 1,
+        name: '測試資源',
+        url: 'https://example.com',
+        image_url: 'https://example.com/image.jpg',
+        description: '這是一個測試資源',
+        video_url: 'https://example.com/video.mp4',
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        major_category_id: 1,
+        sub_category_id: 2,
+        created_by: 100,
+        status: 'active',
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-02'),
+        // 關聯資料
+        User: {
+          id: 100,
+          username: 'testuser',
+          display_name: '測試用戶',
+          avatar_url: 'https://example.com/avatar.jpg'
+        },
+        MajorCategory: {
+          id: 1,
+          name: '主分類'
+        },
+        SubCategory: {
+          id: 2,
+          name: '子分類'
+        },
+        tags: [
+          { id: 1, name: 'tag1' },
+          { id: 2, name: 'tag2' }
+        ],
+        stats: {
+          view_count: 100,
+          favorite_count: 50,
+          share_count: 20,
+          review_count: 10
+        },
+        avgRating: 4.5
+      };
+
+      // 執行轉換
+      const result = transformResourceToApi(dbResource);
+
+      // 驗證結果
+      expect(result).toMatchObject({
+        id: 1,
+        name: '測試資源',
+        url: 'https://example.com',
+        imageUrl: 'https://example.com/image.jpg',
+        description: '這是一個測試資源',
+        videoUrl: 'https://example.com/video.mp4',
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        majorCategory: '主分類',
+        subCategory: '子分類',
+        status: 'active',
+        avgRating: 4.5,
+        tags: ['tag1', 'tag2'],
+        user: {
+          id: 100,
+          username: 'testuser',
+          displayName: '測試用戶',
+          avatarUrl: 'https://example.com/avatar.jpg'
+        },
+        createdAt: dbResource.created_at.toISOString(),
+        updatedAt: dbResource.updated_at.toISOString(),
+        viewCount: 100,
+        favoriteCount: 50,
+        shareCount: 20,
+        reviewCount: 10
+      });
+    });
+
+    it('應處理缺少關聯資料的情況', () => {
+      // 沒有關聯資料的資源記錄
+      const dbResource = {
+        id: 1,
+        name: '測試資源',
+        url: 'https://example.com',
+        image_url: null,
+        description: '這是一個測試資源',
+        video_url: null,
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        major_category_id: null,
+        sub_category_id: null,
+        created_by: 100,
+        status: 'active',
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-02')
+      };
+
+      // 執行轉換，不包含關聯資料
+      const result = transformResourceToApi(dbResource, false);
+
+      // 驗證結果
+      expect(result).toMatchObject({
+        id: 1,
+        name: '測試資源',
+        url: 'https://example.com',
+        imageUrl: null,
+        description: '這是一個測試資源',
+        videoUrl: null,
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        majorCategory: null,
+        subCategory: null,
+        status: 'active',
+        tags: [],
+        createdAt: dbResource.created_at.toISOString(),
+        updatedAt: dbResource.updated_at.toISOString()
+      });
+    });
+  });
+
+  describe('transformResourceToDb', () => {
+    it('應正確轉換 API 資料為資料庫格式', () => {
+      // 模擬 API 請求資料
+      const apiResource = {
+        name: '測試資源',
+        url: 'https://example.com',
+        imageUrl: 'https://example.com/image.jpg',
+        description: '這是一個測試資源',
+        videoUrl: 'https://example.com/video.mp4',
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        majorCategoryId: 1,
+        subCategoryId: 2,
+        tags: ['tag1', 'tag2']
+      };
+
+      // 執行轉換
+      const result = transformResourceToDb(apiResource, 100);
+
+      // 驗證結果
+      expect(result).toMatchObject({
+        name: '測試資源',
+        url: 'https://example.com',
+        image_url: 'https://example.com/image.jpg',
+        description: '這是一個測試資源',
+        video_url: 'https://example.com/video.mp4',
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        major_category_id: 1,
+        sub_category_id: 2,
+        created_by: 100,
+        status: 'active'
+      });
+    });
+  });
+
+  describe('transformReviewToApi', () => {
+    it('應正確轉換心得評價資料為 API 格式', () => {
+      // 模擬資料庫返回的心得評價記錄
+      const dbReview = {
+        id: 1,
+        user_id: 100,
+        resource_id: 200,
+        content: '這是一個測試心得評價',
+        score_impact: 4.5,
+        score_mindset: 4.0,
+        score_problems: 3.5,
+        score_perspectives: 4.0,
+        score_goals: 5.0,
+        well_structured: true,
+        practice_focused: false,
+        well_rounded_concepts: true,
+        thought_provoking: true,
+        progressive_learning: false,
+        problem_based: true,
+        real_world_examples: true,
+        interactive: false,
+        visually_rich: true,
+        time_usage: '1_2_hours_daily',
+        with_online_courses: true,
+        with_books: false,
+        with_other_tools: true,
+        with_community: false,
+        only_this_resource: false,
+        not_applicable_resource: false,
+        status: 'published',
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-02'),
+        // 關聯資料
+        User: {
+          id: 100,
+          username: 'testuser',
+          display_name: '測試用戶',
+          avatar_url: 'https://example.com/avatar.jpg'
+        },
+        Resource: {
+          id: 200,
+          name: '測試資源'
+        },
+        tags: [
+          { id: 1, name: 'tag1' },
+          { id: 2, name: 'tag2' }
+        ],
+        stats: {
+          likes_count: 30
+        }
+      };
+
+      // 執行轉換
+      const result = transformReviewToApi(dbReview);
+
+      // 驗證結果
+      expect(result).toMatchObject({
+        id: 1,
+        content: '這是一個測試心得評價',
+        overallImpact: 4.5,
+        changeMindset: 4.0,
+        solveProblems: 3.5,
+        gainPerspectives: 4.0,
+        achieveGoals: 5.0,
+        avgRating: 4.2, // (4.5 + 4.0 + 3.5 + 4.0 + 5.0) / 5 = 4.2
+        timeUsage: '1_2_hours_daily',
+        contentFeatures: {
+          wellStructured: true,
+          practiceFocused: false,
+          wellRoundedConcepts: true,
+          thoughtProvoking: true,
+          progressiveLearning: false,
+          problemBased: true,
+          realWorldExamples: true,
+          interactive: false,
+          visuallyRich: true
+        },
+        resourceUsage: {
+          withOnlineCourses: true,
+          withBooks: false,
+          withOtherTools: true,
+          withCommunity: false,
+          onlyThisResource: false,
+          notApplicableResource: false
+        },
+        status: 'published',
+        likesCount: 30,
+        tags: ['tag1', 'tag2'],
+        user: {
+          id: 100,
+          username: 'testuser',
+          displayName: '測試用戶',
+          avatarUrl: 'https://example.com/avatar.jpg'
+        },
+        resourceId: 200,
+        createdAt: dbReview.created_at.toISOString(),
+        updatedAt: dbReview.updated_at.toISOString()
+      });
+    });
+  });
+
+  describe('transformReviewToDb', () => {
+    it('應正確轉換 API 心得評價資料為資料庫格式', () => {
+      // 模擬 API 請求資料
+      const apiReview = {
+        content: '這是一個測試心得評價',
+        overallImpact: 4.5,
+        changeMindset: 4.0,
+        solveProblems: 3.5,
+        gainPerspectives: 4.0,
+        achieveGoals: 5.0,
+        timeUsage: '1_2_hours_daily',
+        contentFeatures: {
+          wellStructured: true,
+          practiceFocused: false,
+          wellRoundedConcepts: true,
+          thoughtProvoking: true,
+          progressiveLearning: false,
+          problemBased: true,
+          realWorldExamples: true,
+          interactive: false,
+          visuallyRich: true
+        },
+        resourceUsage: {
+          withOnlineCourses: true,
+          withBooks: false,
+          withOtherTools: true,
+          withCommunity: false,
+          onlyThisResource: false,
+          notApplicableResource: false
+        },
+        tags: ['tag1', 'tag2']
+      };
+
+      // 執行轉換
+      const result = transformReviewToDb(apiReview, 100, 200);
+
+      // 驗證結果 - 首先檢查基本欄位
+      expect(result).toMatchObject({
+        user_id: 100,
+        resource_id: 200,
+        content: '這是一個測試心得評價',
+        score_impact: 4.5,
+        score_mindset: 4.0,
+        score_problems: 3.5,
+        score_perspectives: 4.0,
+        score_goals: 5.0,
+        time_usage: '1_2_hours_daily',
+        status: 'published'
+      });
+
+      // 檢查 Boolean 欄位
+      // 內容特色
+      Object.entries(contentFeaturesMappings).forEach(([apiField, dbField]) => {
+        expect(result).toHaveProperty(dbField, apiReview.contentFeatures[apiField]);
+      });
+
+      // 資源使用
+      Object.entries(resourceUsageMappings).forEach(([apiField, dbField]) => {
+        expect(result).toHaveProperty(dbField, apiReview.resourceUsage[apiField]);
+      });
+    });
+
+    it('應處理缺少 contentFeatures 和 resourceUsage 的情況', () => {
+      // 沒有 contentFeatures 和 resourceUsage 的 API 請求資料
+      const apiReview = {
+        content: '這是一個測試心得評價',
+        overallImpact: 4.5,
+        changeMindset: 4.0,
+        solveProblems: 3.5,
+        gainPerspectives: 4.0,
+        achieveGoals: 5.0,
+        timeUsage: '1_2_hours_daily'
+      };
+
+      // 執行轉換
+      const result = transformReviewToDb(apiReview, 100, 200);
+
+      // 驗證結果 - 檢查是否設置了默認值
+      // 內容特色
+      Object.values(contentFeaturesMappings).forEach(dbField => {
+        expect(result).toHaveProperty(dbField, false);
+      });
+
+      // 資源使用
+      Object.values(resourceUsageMappings).forEach(dbField => {
+        expect(result).toHaveProperty(dbField, false);
+      });
+    });
+  });
+});

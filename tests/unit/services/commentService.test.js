@@ -46,19 +46,19 @@ jest.mock('../models', () => {
 });
 
 // 5. 接著引入依賴模組
-const sequelize = require('../config/db');
+const sequelize = require('../../../config/db');
 const {
   Comment, User, Contact, BasicInfo, Position,
   Post, Circle, Note, Outcome, Review,
   MentorParticipants
-} = require('../models');
+} = require('../../../models');
 const {
   createComment,
   getComments,
   getCommentDetail,
   updateComment,
   deleteComment
-} = require('../services/commentService');
+} = require('../../../services/commentService');
 
 // 6. 避免測試期間輸出多餘 log
 console.log = jest.fn();
