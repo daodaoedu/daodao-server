@@ -32,6 +32,24 @@ const MentorMarathon = require('./mentorMarathon');
 const Idea = require('./idea');
 const IdeaResource = require('./ideaResource');
 
+// 新增 Resource 相關模型 (條件載入 TypeScript 模型)
+let Resource, ResourceReview, Category, Tag, EntityTag;
+
+try {
+  // 嘗試載入 TypeScript 模型
+  require('ts-node/register');
+  require('tsconfig-paths/register');
+  Resource = require('../src/models/resource').default;
+  ResourceReview = require('../src/models/resourceReview').default;
+  Category = require('../src/models/category').default;
+  Tag = require('../src/models/tag').default;
+  EntityTag = require('../src/models/entityTag').default;
+  console.log('✅ Successfully loaded TypeScript Resource models');
+} catch (error) {
+  console.log('⚠️  TypeScript Resource models not available:', error.message);
+  console.log('💡 Resource-related associations will be skipped');
+}
+
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯
   User.belongsTo(Role, {
@@ -257,6 +275,148 @@ const setupAssociations = () => {
     as : 'IdeaResources'
   });
 
+  // 9. Resource 相關關聯 (僅在模型存在時設定)
+  if (Resource) {
+    // Resource 與 User 的關聯
+    User.hasMany(Resource, {
+      foreignKey: 'created_by',
+      as: 'createdResources'
+    });
+    Resource.belongsTo(User, {
+      foreignKey: 'created_by',
+      as: 'author'
+    });
+  }
+
+  // Resource 與 Category 的關聯
+  if (Resource && Category) {
+    Resource.belongsTo(Category, {
+      foreignKey: 'major_category_id',
+      as: 'majorCategory'
+    });
+    Resource.belongsTo(Category, {
+      foreignKey: 'sub_category_id',
+      as: 'subCategory'
+    });
+    Category.hasMany(Resource, {
+      foreignKey: 'major_category_id',
+      as: 'resourcesAsMajor'
+    });
+    Category.hasMany(Resource, {
+      foreignKey: 'sub_category_id',
+      as: 'resourcesAsSub'
+    });
+  }
+
+  // 10. ResourceReview 相關關聯
+  if (ResourceReview) {
+    // ResourceReview 與 User 的關聯
+    User.hasMany(ResourceReview, {
+      foreignKey: 'user_id',
+      as: 'reviews'
+    });
+    ResourceReview.belongsTo(User, {
+      foreignKey: 'user_id',
+      as: 'author'
+    });
+
+    // ResourceReview 與 Resource 的關聯
+    if (Resource) {
+      Resource.hasMany(ResourceReview, {
+        foreignKey: 'resource_id',
+        as: 'reviews'
+      });
+      ResourceReview.belongsTo(Resource, {
+        foreignKey: 'resource_id',
+        as: 'resource'
+      });
+    }
+  }
+
+  // 11. Category 自關聯（父子分類）
+  if (Category) {
+    Category.belongsTo(Category, {
+      foreignKey: 'parent_id',
+      as: 'parent'
+    });
+    Category.hasMany(Category, {
+      foreignKey: 'parent_id',
+      as: 'children'
+    });
+  }
+
+  // 12. Tag 與 EntityTag 關聯
+  if (Tag && EntityTag) {
+    Tag.hasMany(EntityTag, {
+      foreignKey: 'tag_id',
+      as: 'entityTags'
+    });
+    EntityTag.belongsTo(Tag, {
+      foreignKey: 'tag_id',
+      as: 'tag'
+    });
+  }
+
+  // 13. Resource 與 Tag 的多對多關聯（透過 EntityTag）
+  if (Resource && Tag && EntityTag) {
+    Resource.belongsToMany(Tag, {
+      through: {
+        model: EntityTag,
+        unique: false,
+        scope: {
+          entity_type: 'resource'
+        }
+      },
+      foreignKey: 'entity_id',
+      otherKey: 'tag_id',
+      as: 'tags',
+      constraints: false
+    });
+    Tag.belongsToMany(Resource, {
+      through: {
+        model: EntityTag,
+        unique: false,
+        scope: {
+          entity_type: 'resource'
+        }
+      },
+      foreignKey: 'tag_id',
+      otherKey: 'entity_id',
+      as: 'resources',
+      constraints: false
+    });
+  }
+
+  // 14. ResourceReview 與 Tag 的多對多關聯（透過 EntityTag）
+  if (ResourceReview && Tag && EntityTag) {
+    ResourceReview.belongsToMany(Tag, {
+      through: {
+        model: EntityTag,
+        unique: false,
+        scope: {
+          entity_type: 'resource_review'
+        }
+      },
+      foreignKey: 'entity_id',
+      otherKey: 'tag_id',
+      as: 'tags',
+      constraints: false
+    });
+    Tag.belongsToMany(ResourceReview, {
+      through: {
+        model: EntityTag,
+        unique: false,
+        scope: {
+          entity_type: 'resource_review'
+        }
+      },
+      foreignKey: 'tag_id',
+      otherKey: 'entity_id',
+      as: 'resourceReviews',
+      constraints: false
+    });
+  }
+
 };
 
 // 執行關聯設置
@@ -292,5 +452,11 @@ module.exports = {
   MentorParticipants,
   MentorMarathon,
   Idea,
-  IdeaResource
+  IdeaResource,
+  // Resource 相關模型 (條件導出)
+  ...(Resource ? { Resource } : {}),
+  ...(ResourceReview ? { ResourceReview } : {}),
+  ...(Category ? { Category } : {}),
+  ...(Tag ? { Tag } : {}),
+  ...(EntityTag ? { EntityTag } : {})
 };
