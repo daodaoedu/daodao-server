@@ -1,12 +1,12 @@
 // tests/commentController.test.js
-const commentController = require('../controllers/commentController');
-const commentService = require('../services/commentService');
-const { verifyRequest } = require('../utils/auth');
+const commentController = require('../../../controllers/commentController');
+const commentService = require('../../../services/commentService');
+const { verifyRequest } = require('../../../utils/auth');
 const { z } = require('zod');
 
 // 模擬 service 與 auth 模組
-jest.mock('../services/commentService');
-jest.mock('../utils/auth');
+jest.mock('../../../services/commentService');
+jest.mock('../../../utils/auth');
 
 describe('Comment Controller with Updated Model, Zod Validation and Extended Business Logic', () => {
   let req, res;
