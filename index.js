@@ -108,6 +108,18 @@ app.use('/images',strictLimiter, imageRoutes);
 app.use('/monitor', monitorRoutes);
 app.use('/db-info', dbInfoRoutes);
 
+// TypeScript 路由整合
+try {
+  // 使用 ts-node 和 tsconfig-paths 動態編譯和載入 TypeScript 路由
+  require('ts-node/register');
+  require('tsconfig-paths/register');
+  const { setupTypescriptRoutes } = require('./src/app.ts');
+  setupTypescriptRoutes(app);
+} catch (error) {
+  console.warn('⚠️  TypeScript routes not available:', error.message);
+  console.log('💡 To enable TypeScript routes with path mapping, ensure ts-node and tsconfig-paths are installed');
+}
+
 // app.get('/', (req, res) => {
 //     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 // });
