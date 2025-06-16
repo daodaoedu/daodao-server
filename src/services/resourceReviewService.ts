@@ -150,8 +150,8 @@ export async function getReviews(
 
   // 構建包含關係
   const include: Includeable[] = [
-    { model: User, as: 'User' },
-    { model: Resource, as: 'Resource' }
+    { model: User, as: 'author' },
+    { model: Resource, as: 'resource' }
   ];
 
   // 如果有標籤篩選，添加標籤包含關係

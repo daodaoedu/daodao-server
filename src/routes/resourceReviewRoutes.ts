@@ -6,6 +6,7 @@
 import { Router, RequestHandler } from 'express';
 import resourceReviewController from '@/controllers/resourceReviewController';
 import { validate } from '@/validators/validation.middleware';
+import { authenticate, optionalAuth } from '@/middleware/auth.middleware';
 import { 
   resourceReviewSchema, 
   updateResourceReviewSchema, 
@@ -22,8 +23,10 @@ const router = Router();
  * GET /reviews
  * 獲取心得評價列表
  * 查詢參數：cursor, limit, resourceId, userId, tags, sortField, sortDirection
+ * 支援可選身份驗證（用於個人化內容）
  */
 router.get('/', 
+  optionalAuth,
   validate(paginationSchema, 'query'),
   validate(reviewFilterSchema, 'query'),
   resourceReviewController.getReviewsByResource);
@@ -32,8 +35,11 @@ router.get('/',
  * GET /reviews/:id
  * 獲取心得評價詳情
  * 路徑參數：id - 心得評價 ID
+ * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/:id', resourceReviewController.getReviewById as RequestHandler);
+router.get('/:id', 
+  optionalAuth,
+  resourceReviewController.getReviewById as RequestHandler);
 
 /**
  * POST /reviews
@@ -42,8 +48,7 @@ router.get('/:id', resourceReviewController.getReviewById as RequestHandler);
  * 需要身份驗證
  */
 router.post('/', 
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   validate(resourceReviewSchema, 'body'),
   resourceReviewController.createReview as RequestHandler
 );
@@ -56,8 +61,7 @@ router.post('/',
  * 需要身份驗證和權限檢查
  */
 router.patch('/:id',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   validate(updateResourceReviewSchema, 'body'),
   resourceReviewController.updateReview as RequestHandler
 );
@@ -70,8 +74,7 @@ router.patch('/:id',
  * 需要身份驗證和權限檢查
  */
 router.patch('/:id/status',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   validate(updateReviewStatusSchema, 'body'),
   resourceReviewController.updateReviewStatus as RequestHandler
 );
@@ -83,8 +86,7 @@ router.patch('/:id/status',
  * 需要身份驗證和權限檢查
  */
 router.delete('/:id',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   resourceReviewController.deleteReview as RequestHandler
 );
 
@@ -95,8 +97,7 @@ router.delete('/:id',
  * 需要身份驗證
  */
 router.post('/:id/like',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   resourceReviewController.likeReview as RequestHandler
 );
 
@@ -107,8 +108,7 @@ router.post('/:id/like',
  * 需要身份驗證
  */
 router.delete('/:id/like',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   resourceReviewController.unlikeReview as RequestHandler
 );
 

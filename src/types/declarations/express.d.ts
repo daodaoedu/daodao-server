@@ -9,7 +9,9 @@ declare global {
     export interface Request extends ExpressRequest {
       user?: {
         id: number;
-        username: string;
+        username?: string;
+        email?: string;
+        isTemp?: boolean;
         roles?: string[];
         [key: string]: any;
       };
@@ -27,7 +29,9 @@ declare module 'express' {
   export interface Request {
     user?: {
       id: number;
-      username: string;
+      username?: string;
+      email?: string;
+      isTemp?: boolean;
       roles?: string[];
       [key: string]: any;
     };
