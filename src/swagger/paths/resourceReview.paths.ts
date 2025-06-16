@@ -80,6 +80,33 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
+ * /resources/{resourceId}/reviews/{reviewId}:
+ *   get:
+ *     summary: 獲取特定資源的特定心得評價詳情
+ *     tags: [Resource Reviews]
+ *     parameters:
+ *       - $ref: '#/components/parameters/resourceIdParam'
+ *       - in: path
+ *         name: reviewId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: 心得評價的唯一識別碼
+ *     responses:
+ *       200:
+ *         description: 成功獲取心得評價詳情
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResourceReviewResponse'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ * 
  * /reviews:
  *   get:
  *     summary: 獲取所有評論列表

@@ -254,7 +254,7 @@ export async function getPopularTags(
         where
       }
     ],
-    group: ['Tag.id'],
+    group: ['Tag.id', 'Tag.name'],
     order: [[sequelize.literal('count'), 'DESC']],
     limit
   });

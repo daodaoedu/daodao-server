@@ -22,9 +22,9 @@
  *     
  *     ResourceStatus:
  *       type: string
- *       enum: [draft, published, archived, deleted]
+ *       enum: [draft, active, archived, reported]
  *       description: 資源狀態
- *       example: published
+ *       example: active
  *     
  *     Resource:
  *       allOf:
@@ -78,41 +78,6 @@
  *               $ref: '#/components/schemas/ResourceType'
  *             cost:
  *               $ref: '#/components/schemas/CostType'
- *             overallImpact:
- *               type: number
- *               format: float
- *               minimum: 1.0
- *               maximum: 5.0
- *               description: 整體影響力評分
- *               example: 4.5
- *             changeMindset:
- *               type: number
- *               format: float
- *               minimum: 1.0
- *               maximum: 5.0
- *               description: 改變思維評分
- *               example: 4.0
- *             solveProblems:
- *               type: number
- *               format: float
- *               minimum: 1.0
- *               maximum: 5.0
- *               description: 解決問題評分
- *               example: 4.5
- *             gainPerspectives:
- *               type: number
- *               format: float
- *               minimum: 1.0
- *               maximum: 5.0
- *               description: 獲得洞察評分
- *               example: 4.0
- *             achieveGoals:
- *               type: number
- *               format: float
- *               minimum: 1.0
- *               maximum: 5.0
- *               description: 達成目標評分
- *               example: 4.5
  *             status:
  *               $ref: '#/components/schemas/ResourceStatus'
  *             userId:
@@ -131,14 +96,25 @@
  *               type: integer
  *               description: 瀏覽次數
  *               example: 1500
- *             clickCount:
+ *             favoriteCount:
  *               type: integer
- *               description: 點擊次數
- *               example: 500
+ *               description: 收藏次數
+ *               example: 89
+ *             shareCount:
+ *               type: integer
+ *               description: 分享次數
+ *               example: 23
  *             reviewCount:
  *               type: integer
  *               description: 評論數量
  *               example: 25
+ *             avgRating:
+ *               type: number
+ *               format: float
+ *               minimum: 1.0
+ *               maximum: 5.0
+ *               description: 平均評分
+ *               example: 4.3
  *             tags:
  *               type: array
  *               description: 資源標籤列表

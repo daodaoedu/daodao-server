@@ -43,7 +43,7 @@
  *         description: 標籤篩選 (多個標籤用逗號分隔)
  *         example: "JavaScript,前端開發"
  *       - in: query
- *         name: search
+ *         name: query
  *         schema:
  *           type: string
  *         description: 搜索關鍵詞

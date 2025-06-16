@@ -6,6 +6,7 @@
 import { Router, RequestHandler } from 'express';
 import resourceController from '@/controllers/resourceController';
 import { validate } from '@/validators/validation.middleware';
+import { authenticate, optionalAuth, requireRole } from '@/middleware/auth.middleware';
 import { 
   createResourceSchema, 
   updateResourceSchema, 
@@ -22,8 +23,10 @@ const router = Router();
  * GET /resources
  * 獲取資源列表
  * 查詢參數：cursor, limit, type, cost, level, majorCategoryId, subCategoryId, tags, query, sortField, sortDirection
+ * 支援可選身份驗證（用於個人化內容）
  */
 router.get('/', 
+  optionalAuth,
   validate(paginationSchema, 'query'),
   validate(resourceFilterSchema, 'query'),
   resourceController.getResources);
@@ -32,8 +35,11 @@ router.get('/',
  * GET /resources/:id
  * 獲取資源詳情
  * 路徑參數：id - 資源 ID
+ * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/:id', resourceController.getResourceById as RequestHandler);
+router.get('/:id', 
+  optionalAuth,
+  resourceController.getResourceById as RequestHandler);
 
 /**
  * POST /resources
@@ -42,8 +48,7 @@ router.get('/:id', resourceController.getResourceById as RequestHandler);
  * 需要身份驗證
  */
 router.post('/', 
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   validate(createResourceSchema, 'body'),
   resourceController.createResource as RequestHandler
 );
@@ -56,8 +61,7 @@ router.post('/',
  * 需要身份驗證和權限檢查
  */
 router.patch('/:id',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   validate(updateResourceSchema, 'body'),
   resourceController.updateResource as RequestHandler
 );
@@ -67,11 +71,10 @@ router.patch('/:id',
  * 更新資源狀態
  * 路徑參數：id - 資源 ID
  * 請求體：{ status: string }
- * 需要身份驗證和權限檢查
+ * 需要身份驗證和權限檢查（管理員或資源所有者）
  */
 router.patch('/:id/status',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   validate(updateResourceStatusSchema, 'body'),
   resourceController.updateResourceStatus as RequestHandler
 );
@@ -83,8 +86,7 @@ router.patch('/:id/status',
  * 需要身份驗證和權限檢查
  */
 router.delete('/:id',
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticate,
   resourceController.deleteResource as RequestHandler
 );
 

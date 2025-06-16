@@ -11,8 +11,7 @@
         | --- | --- | --- | --- | --- |
         | cursor | string | 否 | 游標位置，用於分頁 | `eyJpZCI6MTU2LCJjcmVhdGVkX2F0IjoiMjAyNC0wMS0yNVQwOToxNTowMFoifQ==` |
         | limit | integer | 否 | 每頁筆數，預設 20，最大 100 | `20` |
-        | type | string | 否 | 資源類型過濾 | `learning_platform_app, learning_tools, books_articles, video_content,             podcast_content, workshops_courses, professional_certificates, community_organization, 
-        other’` |
+        | type | string | 否 | 資源類型過濾 | `learning_platform_app`, `learning_tools`, `books_articles`, `video_content`, `podcast_content`, `workshops_courses`, `professional_certificates`, `community_organization`, `other` |
         | cost | string | 否 | 費用類型過濾 | `free` |
         | level | string | 否 | 適合過濾 | `beginner` |
         | majorCategory | string | 否 | 主分類key | `nature_environment` |
@@ -36,7 +35,7 @@
                 "imageUrl": "https://react.dev/images/tutorial/react-logo.png",
                 "description": "React 官方提供的入門教學",
                 "videoUrl": null,
-                "type": "online_course",
+                "type": "learning_platform_app",
                 "level": "beginner",
                 "cost": "free",
                 "status": "active",
@@ -45,8 +44,8 @@
                 "shareCount": 23,
                 "reviewCount": 15,
                 "avgRating": 4.3,
-                "majorCategory": "frontend_development",
-                "subCategory": "javascript_frameworks",
+                "majorCategoryId": 1,
+                "subCategoryId": 5,
                 "user": {
                   "id": 2,
                   "name": "小許",
@@ -64,11 +63,11 @@
                 "url": "https://vuejs.org/guide/",
                 "imageUrl": "https://vuejs.org/images/logo.png",
                 "description": "Vue.js 官方完整學習指南",
-                "type": "online_course",
+                "type": "learning_platform_app",
                 "level": "beginner",
                 "cost": "free",
-                "majorCategory": "frontend_development",
-                "subCategory": "javascript_frameworks",
+                "majorCategoryId": 1,
+                "subCategoryId": 5,
                 "user": {
                   "id": 5,
                   "name": "阿明",
@@ -109,7 +108,7 @@
             "imageUrl": "https://react.dev/images/tutorial/react-logo.png",
             "description": "React 官方提供的入門教學",
             "videoUrl": null,
-            "type": "online_course",
+            "type": "learning_platform_app",
             "level": "beginner",
             "cost": "free",
             "status": "active",
@@ -169,11 +168,11 @@
           "imageUrl": "https://vuejs.org/images/logo.png",
           "description": "Vue.js 官方完整學習指南",
           "videoUrl": "https://youtube.com/watch?v=xxx",
-          "type": "online_course",
-          "level": "some_basic",
+          "type": "learning_platform_app",
+          "level": "intermediate",
           "cost": "free",
-          "majorCategory": "frontend_development",
-          "subCategory": "javascript_frameworks",
+          "majorCategoryId": 1,
+          "subCategoryId": 5,
           "tags": ["vue", "javascript", "frontend", "spa"],
           
           // 可選：同時建立心得評價
@@ -222,8 +221,8 @@
               "imageUrl": "https://vuejs.org/images/logo.png",
               "description": "Vue.js 官方完整學習指南",
               "videoUrl": "https://youtube.com/watch?v=xxx",
-              "type": "online_course",
-              "level": "some_basic",
+              "type": "learning_platform_app",
+              "level": "intermediate",
               "cost": "free",
               "status": "active",
               "viewCount": 0,
@@ -407,7 +406,7 @@
         | --- | --- | --- | --- | --- |
         | cursor | string | 否 | 游標位置，用於分頁 | `eyJpZCI6MTU2LCJjcmVhdGVkX2F0IjoiMjAyNC0wMS0yNVQwOToxNTowMFoifQ==` |
         | limit | integer | 否 | 每頁筆數，預設 6，最大 100 | `6` |
-        | sort | string | 否 | 排序方式 | `createdAt`, `updatedAt`, `rating`, `viewCount` |
+        | sort| string | 否 | 排序方式 | `createdAt`, `updatedAt`, `rating`, `viewCount` |
         | order | string | 否 | 排序方向 | `desc`, `asc` |
         - 回傳內容：
         
@@ -425,13 +424,25 @@
                 "gainPerspectives": 4,
                 "achieveGoals": 5,
                 "avgRating": 4.6,
-                "experienceData": {
-                  "contentFeatures": ["practical", "easy_understand"],
-                  "timeUsage": "concentrated",
-                  "suitableFor": ["beginner"],
-                  "timeInvested": "1_week",
-                  "learningMethod": "self_study",
-                  "difficultyLevel": "easy"
+                "timeUsage": "few_intensive_days_week",
+                "contentFeatures": {
+                  "wellStructured": true,
+                  "practiceFocused": true,
+                  "wellRoundedConcepts": false,
+                  "thoughtProvoking": false,
+                  "progressiveLearning": true,
+                  "problemBased": false,
+                  "realWorldExamples": true,
+                  "interactive": false,
+                  "visuallyRich": false
+                },
+                "resourceUsage": {
+                  "withOnlineCourses": false,
+                  "withBooks": false,
+                  "withOtherTools": false,
+                  "withCommunity": false,
+                  "onlyThisResource": true,
+                  "notApplicableResource": false
                 },
                 "status": "published",
                 "likesCount": 12,
@@ -457,6 +468,60 @@
               "prevCursor": null,
               "totalEstimate": 15
             }
+          }
+        }
+        ```
+        
+    - `GET /resources/{id}/reviews/{reviewId}`
+        - 功能：獲取指定資源的單一心得詳細內容。
+        - 回傳內容：
+        
+        ```jsx
+        {
+          "success": true,
+          "data": {
+            "id": 25,
+            "content": "這個教學寫得很清楚，步驟詳細，適合初學者入門...",
+            "overallImpact": 5,
+            "changeMindset": 4,
+            "solveProblems": 5,
+            "gainPerspectives": 4,
+            "achieveGoals": 5,
+            "avgRating": 4.6,
+            "timeUsage": "1_2_hours_daily",
+            "contentFeatures": {
+              "wellStructured": true,
+              "practiceFocused": true,
+              "wellRoundedConcepts": false,
+              "thoughtProvoking": true,
+              "progressiveLearning": false,
+              "problemBased": false,
+              "realWorldExamples": true,
+              "interactive": false,
+              "visuallyRich": true
+            },
+            "resourceUsage": {
+              "withOnlineCourses": true,
+              "withBooks": false,
+              "withOtherTools": true,
+              "withCommunity": false,
+              "onlyThisResource": false,
+              "notApplicableResource": false
+            },
+            "status": "published",
+            "likesCount": 12,
+            "helpfulCount": 8,
+            "user": {
+              "id": 25,
+              "name": "Alice Chen",
+              "_id": "e6903g88-055h-655d-f1g0-186550iij815",
+              "roleList": ["citizen", "learner"],
+              "photoURL": "https://lh3.googleusercontent.com/a/alice-profile=s96-c"
+            },
+            "resourceId": 1,
+            "createdAt": "2024-01-18T16:45:00Z",
+            "updatedAt": "2024-01-19T10:20:00Z",
+            "tags": ["beginner-friendly", "step-by-step", "clear-explanation"]
           }
         }
         ```
