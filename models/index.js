@@ -32,23 +32,18 @@ const MentorMarathon = require('./mentorMarathon');
 const Idea = require('./idea');
 const IdeaResource = require('./ideaResource');
 
-// 新增 Resource 相關模型 (條件載入 TypeScript 模型)
+// 不再嘗試載入 TypeScript 模型，因為會從各自的文件中直接引入
+// 相關模型在各自 service 中直接引入 TypeScript 模型
 let Resource, ResourceReview, Category, Tag, EntityTag;
 
-try {
-  // 嘗試載入 TypeScript 模型
-  require('ts-node/register');
-  require('tsconfig-paths/register');
-  Resource = require('../src/models/resource').default;
-  ResourceReview = require('../src/models/resourceReview').default;
-  Category = require('../src/models/category').default;
-  Tag = require('../src/models/tag').default;
-  EntityTag = require('../src/models/entityTag').default;
-  console.log('✅ Successfully loaded TypeScript Resource models');
-} catch (error) {
-  console.log('⚠️  TypeScript Resource models not available:', error.message);
-  console.log('💡 Resource-related associations will be skipped');
-}
+// 這裡僅設置為 null，讓關聯設置部分的邏輯保持不變
+Resource = null;
+ResourceReview = null;
+Category = null;
+Tag = null;
+EntityTag = null;
+
+console.log('⚠️  TypeScript Resource models skipped in JS models/index.js');
 
 const setupAssociations = () => {
   // 1. 用戶身份相關關聯

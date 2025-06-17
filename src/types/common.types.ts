@@ -8,10 +8,10 @@ export type TimeUsage = '1_2_hours_daily' | 'few_intensive_days_week' | 'spare_m
 // 使用者基本資訊
 export interface UserBasicInfo {
   id: number;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  // 可根據需要擴展其他屬性
+  name: string;
+  _id: string;
+  roleList: string[];
+  photoURL: string | null;
 }
 
 // Resource status enumeration

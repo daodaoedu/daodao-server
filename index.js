@@ -1,4 +1,4 @@
-const express = require('express');
+const swaggerRoutes = require('./routes/swagger');const express = require('express');
 const { mongoConnect } = require('./services/mongo');
 const cors = require("cors");
 const dotenv = require('dotenv');
@@ -92,6 +92,7 @@ app.use(session({
 }))
 app.use(passport.initialize());
 app.use(passport.session());
+
 app.use('/',dashboardRoutes);
 app.use('/list',projectListRoutes);
 app.use('/auth', authRoutes);
@@ -113,11 +114,18 @@ try {
   // 使用 ts-node 和 tsconfig-paths 動態編譯和載入 TypeScript 路由
   require('ts-node/register');
   require('tsconfig-paths/register');
+  
+  // 這裡打印日訊，協助追蹤問題
+  console.log('🔍 正在載入 TypeScript 路由...');
+  
   const { setupTypescriptRoutes } = require('./src/app.ts');
+  console.log('✅ TypeScript 路由模塊已載入，正在設置路由...');
+  
   setupTypescriptRoutes(app);
+  console.log('✅ TypeScript 路由設置完成');
 } catch (error) {
-  console.warn('⚠️  TypeScript routes not available:', error.message);
-  console.log('💡 To enable TypeScript routes with path mapping, ensure ts-node and tsconfig-paths are installed');
+  console.error('❌ TypeScript 路由加載失敗:', error);
+  console.warn('⚠️ 請確保已安裝 ts-node 和 tsconfig-paths 套件');
 }
 
 // app.get('/', (req, res) => {

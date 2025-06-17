@@ -44,12 +44,13 @@ export function transformResourceToApi(
     tags: [],
     user: {
       id: dbResource.created_by,
-      username: '',
-      displayName: null,
-      avatarUrl: null
+      name: '',
+      _id: '',
+      roleList: [],
+      photoURL: null
     },
-    createdAt: dbResource.created_at.toISOString(),
-    updatedAt: dbResource.updated_at.toISOString(),
+    createdAt: dbResource.created_at ? dbResource.created_at.toISOString() : new Date().toISOString(),
+    updatedAt: dbResource.updated_at ? dbResource.updated_at.toISOString() : new Date().toISOString(),
     viewCount: 0,
     favoriteCount: 0,
     shareCount: 0,
@@ -62,9 +63,10 @@ export function transformResourceToApi(
     if (dbResource.User) {
       resource.user = {
         id: dbResource.User.id,
-        username: dbResource.User.username,
-        displayName: dbResource.User.display_name,
-        avatarUrl: dbResource.User.avatar_url
+        name: dbResource.User.display_name || dbResource.User.username || '',
+        _id: dbResource.User._id || '',
+        roleList: dbResource.User.roleList || [],
+        photoURL: dbResource.User.avatar_url
       };
     }
 
@@ -161,14 +163,15 @@ export function transformReviewToApi(
     likesCount: 0,
     user: {
       id: dbReview.user_id,
-      username: '',
-      displayName: null,
-      avatarUrl: null
+      name: '',
+      _id: '',
+      roleList: [],
+      photoURL: null
     },
     resourceId: dbReview.resource_id,
     tags: [],
-    createdAt: dbReview.created_at.toISOString(),
-    updatedAt: dbReview.updated_at.toISOString()
+    createdAt: dbReview.created_at ? dbReview.created_at.toISOString() : new Date().toISOString(),
+    updatedAt: dbReview.updated_at ? dbReview.updated_at.toISOString() : new Date().toISOString()
   };
 
   // 處理關聯資料
@@ -177,9 +180,10 @@ export function transformReviewToApi(
     if (dbReview.User) {
       review.user = {
         id: dbReview.User.id,
-        username: dbReview.User.username,
-        displayName: dbReview.User.display_name,
-        avatarUrl: dbReview.User.avatar_url
+        name: dbReview.User.display_name || dbReview.User.username || '',
+        _id: dbReview.User._id || '',
+        roleList: dbReview.User.roleList || [],
+        photoURL: dbReview.User.avatar_url
       };
     }
 
