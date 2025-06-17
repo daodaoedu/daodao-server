@@ -1,8 +1,4 @@
 // tests/commentController.test.js
-const commentController = require('../../../controllers/commentController');
-const commentService = require('../../../services/commentService');
-const { verifyRequest } = require('../../../utils/auth');
-const { z } = require('zod');
 
 // Mock database config to prevent actual database connections
 jest.mock('../../../config/db', () => ({
@@ -53,6 +49,11 @@ jest.mock('../../../utils/auth', () => ({
   verifyRequest: jest.fn()
 }));
 
+const commentController = require('../../../controllers/commentController');
+const commentService = require('../../../services/commentService');
+const { verifyRequest } = require('../../../utils/auth');
+const { z } = require('zod');
+
 describe('Comment Controller with Updated Model, Zod Validation and Extended Business Logic', () => {
   let req, res;
   beforeEach(() => {
@@ -91,6 +92,41 @@ describe('Comment Controller with Updated Model, Zod Validation and Extended Bus
       },
       userId: 1,
       visibility: "public",
+    }));
+    
+    // 設置其他 service 方法的 mock
+    commentServiceMock.getComments.mockImplementation(() => Promise.resolve([
+      {
+        id: 1,
+        content: "Test comment 1",
+        userId: 1,
+        visibility: "public"
+      },
+      {
+        id: 2,
+        content: "Test comment 2",
+        userId: 2,
+        visibility: "public"
+      }
+    ]));
+    
+    commentServiceMock.getCommentDetail.mockImplementation(() => Promise.resolve({
+      id: 100,
+      content: "Test comment detail",
+      userId: 1,
+      visibility: "public"
+    }));
+    
+    commentServiceMock.updateComment.mockImplementation(() => Promise.resolve({
+      id: 1,
+      content: "Updated comment",
+      userId: 1,
+      visibility: "public"
+    }));
+    
+    commentServiceMock.deleteComment.mockImplementation(() => Promise.resolve({
+      success: true,
+      message: "留言已刪除"
     }));
   });
 
