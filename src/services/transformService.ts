@@ -14,7 +14,11 @@ import {
   objectToBooleanFields 
 } from '@/utils/transformUtils';
 import { ResourceResponse } from '@/types/resource.types';
-import { ResourceReviewResponse } from '@/types/resourceReview.types';
+import { 
+  ResourceReviewResponse,
+  ContentFeatures,
+  ResourceUsage
+} from '@/types/resourceReview.types';
 
 /**
  * 將資料庫 Resource 記錄轉換為 API 回應格式
@@ -155,8 +159,8 @@ export function transformReviewToApi(
     avgRating,
     
     // Boolean 欄位轉物件 - 使用通用函數
-    contentFeatures: booleanFieldsToObject(dbReview, contentFeaturesMappings),
-    resourceUsage: booleanFieldsToObject(dbReview, resourceUsageMappings),
+    contentFeatures: booleanFieldsToObject<ContentFeatures>(dbReview, contentFeaturesMappings),
+    resourceUsage: booleanFieldsToObject<ResourceUsage>(dbReview, resourceUsageMappings),
     
     timeUsage: dbReview.time_usage,
     status: dbReview.status,

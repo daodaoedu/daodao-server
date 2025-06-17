@@ -4,6 +4,36 @@ const commentService = require('../../../services/commentService');
 const { verifyRequest } = require('../../../utils/auth');
 const { z } = require('zod');
 
+// Mock database config to prevent actual database connections
+jest.mock('../../../config/db', () => ({
+  transaction: jest.fn(),
+  authenticate: jest.fn()
+}));
+
+// Mock all models to prevent database connections
+jest.mock('../../../models', () => ({
+  Comment: {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    findAll: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn()
+  },
+  User: { findOne: jest.fn() },
+  Post: { findOne: jest.fn() },
+  Resource: { findOne: jest.fn() },
+  Circle: { findOne: jest.fn() },
+  Idea: { findOne: jest.fn() },
+  Portfolio: { findOne: jest.fn() },
+  Note: { findOne: jest.fn() },
+  Outcome: { findOne: jest.fn() },
+  Review: { findOne: jest.fn() },
+  Contact: { findOne: jest.fn() },
+  BasicInfo: { findOne: jest.fn() },
+  Position: { findOne: jest.fn() },
+  MentorParticipants: { findOne: jest.fn() }
+}));
+
 // 模擬 service 與 auth 模組
 jest.mock('../../../services/commentService', () => {
   const mockService = {

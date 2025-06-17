@@ -31,6 +31,14 @@ export interface ResourceAttributes {
 export interface ResourceCreationAttributes extends Optional<ResourceAttributes, 'id' | 'image_url' | 'video_url' | 'major_category_id' | 'sub_category_id' | 'status' | 'created_at' | 'updated_at' | 'deleted_at'> {}
 
 /**
+ * Resource 模型實例類型
+ */
+export interface ResourceInstance extends Model<ResourceAttributes, ResourceCreationAttributes>, ResourceAttributes {
+  get<K extends keyof ResourceAttributes>(key: K): ResourceAttributes[K];
+  toJSON(): ResourceAttributes;
+}
+
+/**
  * Resource 模型定義
  */
 const Resource = sequelize.define(

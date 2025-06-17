@@ -84,18 +84,15 @@ describe('Resource Validator Tests', () => {
         type: 'workshops_courses',
         cost: 'free',
         level: 'all_levels',
+        status: 'active',
         review: {
-          content: '這個課程非常棒！',
-          overallImpact: 5,
-          changeMindset: 4.5,
-          solveProblems: 4,
-          gainPerspectives: 4.5,
-          achieveGoals: 5,
-          timeUsage: '1_2_hours_daily',
-          contentFeatures: {
-            wellStructured: true,
-            practiceFocused: true
-          }
+          title: '這個課程非常棒！',
+          content: '這個課程內容詳細，非常適合初學者學習',
+          score_impact: 5,
+          score_comprehensiveness: 4.5,
+          score_implementation: 4,
+          recommendation: '強烈推薦給想學習TypeScript的開發者',
+          tags: ['typescript', 'programming', 'beginner']
         }
       };
 

@@ -159,6 +159,7 @@ describe('Resource Service Tests', () => {
         type: 'books_articles' as const,
         cost: 'free' as const,
         level: 'beginner' as const,
+        status: 'active' as const,
         tags: ['tag1', 'tag2']
       };
 
@@ -218,34 +219,15 @@ describe('Resource Service Tests', () => {
         type: 'books_articles' as const,
         cost: 'free' as const,
         level: 'beginner' as const,
+        status: 'active' as const,
         tags: ['tag1', 'tag2'],
         review: {
+          title: '這是一個測試評論標題',
           content: '這是一個測試評論',
-          overallImpact: 4.5,
-          changeMindset: 4.0,
-          solveProblems: 3.5,
-          gainPerspectives: 4.0,
-          achieveGoals: 5.0,
-          timeUsage: '1_2_hours_daily' as const,
-          contentFeatures: {
-            wellStructured: true,
-            practiceFocused: false,
-            wellRoundedConcepts: true,
-            thoughtProvoking: false,
-            progressiveLearning: true,
-            problemBased: false,
-            realWorldExamples: true,
-            interactive: false,
-            visuallyRich: false
-          },
-          resourceUsage: {
-            withOnlineCourses: false,
-            withBooks: true,
-            withOtherTools: false,
-            withCommunity: false,
-            onlyThisResource: false,
-            notApplicableResource: false
-          },
+          score_impact: 4.5,
+          score_comprehensiveness: 4.0,
+          score_implementation: 3.5,
+          recommendation: '推薦給初學者使用',
           tags: ['helpful', 'comprehensive']
         }
       };
@@ -275,7 +257,8 @@ describe('Resource Service Tests', () => {
         description: '這是一個測試資源',
         type: 'books_articles' as const,
         cost: 'free' as const,
-        level: 'beginner' as const
+        level: 'beginner' as const,
+        status: 'active' as const
       };
 
       await expect(resourceService.createResource(resourceData, 100)).rejects.toThrow(mockError);

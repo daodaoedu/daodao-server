@@ -3,6 +3,20 @@
  * 用於處理分頁、游標等功能
  */
 
+import { Model } from 'sequelize';
+
+// 定義數據庫記錄的基本結構
+interface DatabaseRecord {
+  id: number;
+  [key: string]: unknown;
+}
+
+// 定義 Sequelize 模型實例的基本結構
+interface SequelizeInstance extends DatabaseRecord {
+  get(key: string): unknown;
+  toJSON(): Record<string, unknown>;
+}
+
 /**
  * 解碼游標
  * @param cursor - 加密的游標字符串
@@ -25,7 +39,7 @@ export function decodeCursor(cursor: string) {
  * @param timestamp - 時間戳（通常是排序欄位的值）
  * @returns 加密的游標字符串
  */
-export function generateCursor(id: number, timestamp: any) {
+export function generateCursor(id: number, timestamp: string | number | Date) {
   // 創建游標數據對象
   const cursorData = { id, timestamp };
   
@@ -43,7 +57,7 @@ export function generateCursor(id: number, timestamp: any) {
  * @returns 分頁元數據
  */
 export function generatePaginationMetadata(
-  rows: any[],
+  rows: Model[],
   count: number,
   limit: number,
   sortField: string,
@@ -61,8 +75,8 @@ export function generatePaginationMetadata(
   const lastItem = rows[rows.length - 1];
   
   // 取得最後一條記錄的 ID 和排序欄位值
-  const lastId = lastItem.id;
-  const lastTimestamp = lastItem[sortField] || lastItem.get(sortField);
+  const lastId = lastItem.get('id') as number;
+  const lastTimestamp = lastItem.get(sortField) as string | number | Date;
   
   // 生成下一頁游標
   const nextCursor = hasMore ? generateCursor(lastId, lastTimestamp) : null;
@@ -71,4 +85,39 @@ export function generatePaginationMetadata(
     next_cursor: nextCursor,
     has_more: hasMore
   };
+}
+
+/**
+ * 將資料庫的布爾欄位轉換為API的對象結構
+ * @param dbRecord - 資料庫記錄
+ * @param mapping - 欄位映射關係
+ * @returns 轉換後的對象
+ */
+export function booleanFieldsToObject<T extends Record<string, boolean>>(
+  dbRecord: Record<string, unknown>, 
+  mapping: Record<string, string>
+): T {
+  const result: Record<string, boolean> = {};
+  
+  Object.entries(mapping).forEach(([apiField, dbField]) => {
+    result[apiField] = Boolean(dbRecord[dbField]);
+  });
+  
+  return result as T;
+}
+
+/**
+ * 將API的對象結構轉換為資料庫的布爾欄位
+ * @param apiObject - API對象
+ * @param mapping - 欄位映射關係
+ * @returns 轉換後的資料庫欄位對象
+ */
+export function objectToBooleanFields(apiObject: Record<string, boolean>, mapping: Record<string, string>) {
+  const result: Record<string, boolean> = {};
+  
+  Object.entries(mapping).forEach(([apiField, dbField]) => {
+    result[dbField] = Boolean(apiObject?.[apiField] || false);
+  });
+  
+  return result;
 }
