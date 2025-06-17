@@ -1,55 +1,143 @@
 /**
  * 模型索引和關聯設定
- * 本文件將所有模型集中匯出，並設定模型之間的關聯關係
+ * 本文件將所有 TypeScript 模型集中匯出，並設定模型之間的關聯關係
  */
 
 import Resource from './resource';
 import ResourceReview from './resourceReview';
 import Tag from './tag';
 import EntityTag from './entityTag';
+import Category from './category';
 import { Sequelize } from 'sequelize';
+import sequelize from '../config/database';
 
-// 從現有 models/index.js 引入其他模型
-// 注意：由於我們採用漸進式導入策略，這裡假設其他模型仍然是 JavaScript 模型
-// 在實際項目中，需要根據情況調整
-try {
-  // 動態引入，避免 TypeScript 編譯錯誤
-  const existingModels = require('../../models/index.js');
+// 設定 TypeScript 模型之間的關聯關係
+const setupTsModelAssociations = () => {
+  // 此處設置所有 TypeScript 模型之間的關聯
+
+  // Resource 與 Category 的關聯
+  Resource.belongsTo(Category, {
+    foreignKey: 'major_category_id',
+    as: 'majorCategory'
+  });
   
-  // 提取其他模型
-  const { User, Category } = existingModels;
+  Resource.belongsTo(Category, {
+    foreignKey: 'sub_category_id',
+    as: 'subCategory'
+  });
   
-  // 關聯關係已在 models/index.js 中設定，這裡不重複設定以避免衝突
-  console.log('✅ TypeScript models integrated with existing associations');
+  Category.hasMany(Resource, {
+    foreignKey: 'major_category_id',
+    as: 'resourcesAsMajor'
+  });
   
-  // 匯出所有模型
-  module.exports = {
-    ...existingModels,
-    Resource,
-    ResourceReview,
-    Tag,
-    EntityTag
-  };
-} catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  console.warn('無法載入現有模型或設定關聯關係:', errorMessage);
+  Category.hasMany(Resource, {
+    foreignKey: 'sub_category_id',
+    as: 'resourcesAsSub'
+  });
+
+  // Category 自關聯（父子分類）
+  Category.belongsTo(Category, {
+    foreignKey: 'parent_id',
+    as: 'parent'
+  });
   
-  // 如果無法載入現有模型，僅匯出新模型
-  module.exports = {
-    Resource,
-    ResourceReview,
-    Tag,
-    EntityTag
-  };
-}
+  Category.hasMany(Category, {
+    foreignKey: 'parent_id',
+    as: 'children'
+  });
+
+  // Tag 與 EntityTag 關聯
+  Tag.hasMany(EntityTag, {
+    foreignKey: 'tag_id',
+    as: 'entityTags'
+  });
+  
+  EntityTag.belongsTo(Tag, {
+    foreignKey: 'tag_id',
+    as: 'tag'
+  });
+
+  // Resource 與 Tag 的多對多關聯（透過 EntityTag）
+  Resource.belongsToMany(Tag, {
+    through: {
+      model: EntityTag,
+      unique: false,
+      scope: {
+        entity_type: 'resource'
+      }
+    },
+    foreignKey: 'entity_id',
+    otherKey: 'tag_id',
+    as: 'tags',
+    constraints: false
+  });
+  
+  Tag.belongsToMany(Resource, {
+    through: {
+      model: EntityTag,
+      unique: false,
+      scope: {
+        entity_type: 'resource'
+      }
+    },
+    foreignKey: 'tag_id',
+    otherKey: 'entity_id',
+    as: 'resources',
+    constraints: false
+  });
+
+  // ResourceReview 與 Tag 的多對多關聯（透過 EntityTag）
+  ResourceReview.belongsToMany(Tag, {
+    through: {
+      model: EntityTag,
+      unique: false,
+      scope: {
+        entity_type: 'resource_review'
+      }
+    },
+    foreignKey: 'entity_id',
+    otherKey: 'tag_id',
+    as: 'tags',
+    constraints: false
+  });
+  
+  Tag.belongsToMany(ResourceReview, {
+    through: {
+      model: EntityTag,
+      unique: false,
+      scope: {
+        entity_type: 'resource_review'
+      }
+    },
+    foreignKey: 'tag_id',
+    otherKey: 'entity_id',
+    as: 'resourceReviews',
+    constraints: false
+  });
+
+  // ResourceReview 與 Resource 的關聯
+  Resource.hasMany(ResourceReview, {
+    foreignKey: 'resource_id',
+    as: 'reviews'
+  });
+  
+  ResourceReview.belongsTo(Resource, {
+    foreignKey: 'resource_id',
+    as: 'resource'
+  });
+};
+
+// 執行關聯設置
+setupTsModelAssociations();
 
 // 為 TypeScript 使用提供類型安全的匯出
-// 使用方式：import { Resource, ResourceReview, Tag, EntityTag } from '../models';
 export {
   Resource,
   ResourceReview,
   Tag,
-  EntityTag
+  EntityTag,
+  Category
 };
 
 // 提供預設匯出
@@ -57,10 +145,8 @@ const models = {
   Resource,
   ResourceReview,
   Tag,
-  EntityTag
+  EntityTag,
+  Category
 };
 
 export default models;
-
-// 所有關聯已在 models/index.js 中統一設定
-// 避免重複設定造成別名衝突

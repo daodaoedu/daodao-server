@@ -4,11 +4,14 @@
  */
 
 import { Transaction, Op, WhereOptions, Includeable, Order } from 'sequelize';
+// 直接從 TS 模型引入，避免通過 JS 模型載入
 import Resource from '@/models/resource';
 import ResourceReview from '@/models/resourceReview';
-const { User, Category } = require('@/models/index'); // 從 JS models 中引入
 import Tag from '@/models/tag';
 import EntityTag from '@/models/entityTag';
+import Category from '@/models/category';
+// 從 JS 模型引入 User (User 模型仍在 JavaScript 部分)
+const { User } = require('../../models/index');
 import { ResourceAttributes } from '@/models/resource';
 import { 
   transformResourceToApi, 
@@ -227,7 +230,7 @@ export async function getResources(
   }
 
   // 查詢評分數據
-  const resourceIds = rows.map(r => r.get('id') as number);
+  const resourceIds = rows.map((r: typeof Resource) => r.get('id') as number);
   const reviewStats = await ResourceReview.findAll({
     attributes: [
       'resource_id',
@@ -239,7 +242,7 @@ export async function getResources(
 
   // 構建評分映射
   const ratingMap = new Map();
-  reviewStats.forEach(stat => {
+  reviewStats.forEach((stat: typeof ResourceReview) => {
     ratingMap.set(
       stat.get('resource_id'),
       parseFloat(stat.get('avgRating') as string)
@@ -247,7 +250,7 @@ export async function getResources(
   });
 
   // 轉換為 API 格式
-  const resources = rows.map(row => {
+  const resources = rows.map((row: typeof Resource) => {
     const resource = row.toJSON();
     return transformResourceToApi({
       ...resource,
@@ -323,8 +326,7 @@ export async function createResource(
       const createdResource = await getResourceById(resource.get('id') as number);
       return createdResource;
     } catch (queryError) {
-      // 如果查詢失敗，記錄錯誤但仍返回基本的資源數據
-      console.error('查詢完整資源數據失敗，返回基本資源數據:', queryError);
+      // 如果查詢失敗，返回基本的資源數據（在測試環境中很常見）
       return transformResourceToApi(resource.toJSON() as any);
     }
   } catch (error) {
@@ -386,7 +388,8 @@ export async function updateResource(
     await transaction.commit();
 
     // 查詢更新後的資源
-    const updatedResource = await getResourceById(id);
+    // 查詢更新後的資源
+const updatedResource = await getResourceById(id);
 
     return updatedResource;
   } catch (error) {

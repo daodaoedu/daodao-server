@@ -1,90 +1,104 @@
 /**
- * Resource 相關驗證器
+ * 資源驗證器
+ * 使用 Zod 實現資源相關驗證
  */
 
 import { z } from 'zod';
-import { resourceReviewSchema } from './resourceReview.validator';
+import { 
+  RESOURCE_TYPES, 
+  COST_TYPES, 
+  LEVEL_TYPES, 
+  RESOURCE_STATUS 
+} from '@/constants/mappings';
 
-// 資源類型驗證
-export const resourceTypeSchema = z.enum([
-  'learning_platform_app',
-  'learning_tools',
-  'books_articles',
-  'video_content',
-  'podcast_content',
-  'workshops_courses',
-  'professional_certificates',
-  'community_organization',
-  'other'
-]);
+// 將物件值轉換為字串陣列，用於 enum 驗證
+const resourceTypeValues = Object.values(RESOURCE_TYPES);
+const costTypeValues = Object.values(COST_TYPES);
+const levelTypeValues = Object.values(LEVEL_TYPES);
+const statusValues = Object.values(RESOURCE_STATUS);
 
-// 費用類型驗證
-export const costTypeSchema = z.enum([
-  'free',
-  'paid',
-  'partial_free'
-]);
+// 資源評價嵌套 schema (用於創建資源時同時提交評價)
+const reviewSchema = z.object({
+  title: z.string().min(1, { message: "評價標題為必填" }).max(255, { message: "評價標題最多 255 字符" }),
+  content: z.string().min(1, { message: "評價內容為必填" }),
+  score_impact: z.number().min(1, { message: "評分最小為 1" }).max(5, { message: "評分最大為 5" }),
+  score_comprehensiveness: z.number().min(1, { message: "評分最小為 1" }).max(5, { message: "評分最大為 5" }),
+  score_implementation: z.number().min(1, { message: "評分最小為 1" }).max(5, { message: "評分最大為 5" }),
+  recommendation: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional()
+}).nullable().optional();
 
-// 程度類型驗證
-export const levelTypeSchema = z.enum([
-  'beginner',
-  'intermediate',
-  'expert',
-  'all_levels'
-]);
-
-// 狀態類型驗證
-export const resourceStatusSchema = z.enum([
-  'draft',
-  'active',
-  'archived',
-  'reported'
-]);
-
-// URL 驗證 (加強驗證邏輯)
-export const urlSchema = z.string()
-  .url({ message: "必須是有效的URL" })
-  .max(1000, { message: "URL長度不能超過1000個字符" });
-
-// 資源基本驗證 Schema
-export const resourceBaseSchema = z.object({
-  name: z.string()
-    .min(1, { message: "資源名稱不能為空" })
-    .max(255, { message: "資源名稱不能超過255個字符" }),
-  url: urlSchema,
-  imageUrl: urlSchema.optional().nullable(),
-  description: z.string()
-    .min(1, { message: "資源描述不能為空" }),
-  videoUrl: urlSchema.optional().nullable(),
-  type: resourceTypeSchema,
-  cost: costTypeSchema,
-  level: levelTypeSchema.default('all_levels'),
-  majorCategoryId: z.number().int().positive().optional().nullable(),
-  subCategoryId: z.number().int().positive().optional().nullable(),
-  tags: z.array(z.string()).optional()
+// 資源基本 schema
+const resourceBaseSchema = z.object({
+  name: z.string().min(1, { message: "資源名稱為必填" }).max(255, { message: "資源名稱最多 255 字符" }),
+  url: z.string().min(1, { message: "資源 URL 為必填" }).max(1000, { message: "資源 URL 最多 1000 字符" })
+    .url({ message: "URL 格式不正確" }),
+  image_url: z.string().max(1000, { message: "圖片 URL 最多 1000 字符" }).url({ message: "URL 格式不正確" })
+    .nullable().optional(),
+  description: z.string().min(1, { message: "資源描述為必填" }),
+  video_url: z.string().max(1000, { message: "影片 URL 最多 1000 字符" }).url({ message: "URL 格式不正確" })
+    .nullable().optional(),
+  type: z.enum(resourceTypeValues as [string, ...string[]], {
+    errorMap: () => ({ message: "無效的資源類型" })
+  }),
+  cost: z.enum(costTypeValues as [string, ...string[]], {
+    errorMap: () => ({ message: "無效的費用類型" })
+  }),
+  level: z.enum(levelTypeValues as [string, ...string[]], {
+    errorMap: () => ({ message: "無效的難度等級" })
+  }),
+  major_category_id: z.number().int({ message: "主分類 ID 必須為整數" }).nullable().optional(),
+  sub_category_id: z.number().int({ message: "子分類 ID 必須為整數" }).nullable().optional(),
+  tags: z.array(z.string()).nullable().optional()
 });
 
-// 建立資源驗證 Schema (可以包含評論)
+// 創建資源 schema
 export const createResourceSchema = resourceBaseSchema.extend({
-  // 可選的巢狀評論
-  review: resourceReviewSchema.optional()
+  status: z.enum(statusValues as [string, ...string[]], { 
+    errorMap: () => ({ message: "無效的資源狀態" }) 
+  }).default("active"),
+  review: reviewSchema
 });
 
-// 更新資源驗證 Schema
-export const updateResourceSchema = resourceBaseSchema.partial();
+// 更新資源 schema
+export const updateResourceSchema = resourceBaseSchema.extend({
+  status: z.enum(statusValues as [string, ...string[]], { 
+    errorMap: () => ({ message: "無效的資源狀態" }) 
+  }).optional()
+});
 
-// 狀態更新驗證 Schema
+// 更新資源狀態 schema
 export const updateResourceStatusSchema = z.object({
-  status: resourceStatusSchema
+  status: z.enum(statusValues as [string, ...string[]], {
+    errorMap: () => ({ message: "無效的資源狀態" })
+  })
 });
 
 // 使用 zod 推導型別
-export type ResourceSchema = z.infer<typeof resourceBaseSchema>;
 export type CreateResourceSchema = z.infer<typeof createResourceSchema>;
 export type UpdateResourceSchema = z.infer<typeof updateResourceSchema>;
 export type UpdateResourceStatusSchema = z.infer<typeof updateResourceStatusSchema>;
 
-// 匯出驗證中間件
+// 資源 API 響應類型
+export type ResourceSchema = UpdateResourceSchema & {
+  id: number;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  author?: any;
+  majorCategory?: any;
+  subCategory?: any;
+  tags?: any[];
+  stats?: {
+    view_count: number;
+    favorite_count: number;
+    share_count: number;
+    review_count: number;
+  };
+  avgRating?: number | null;
+};
+
+// 導出驗證函數
 export const validateCreateResource = (data: any) => createResourceSchema.parse(data);
 export const validateUpdateResource = (data: any) => updateResourceSchema.parse(data);
 export const validateUpdateResourceStatus = (data: any) => updateResourceStatusSchema.parse(data);

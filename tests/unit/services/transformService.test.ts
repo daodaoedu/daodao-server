@@ -80,9 +80,10 @@ describe('Transform Service Tests', () => {
         tags: ['tag1', 'tag2'],
         user: {
           id: 100,
-          username: 'testuser',
-          displayName: '測試用戶',
-          avatarUrl: 'https://example.com/avatar.jpg'
+          name: '測試用戶',
+          _id: '',
+          roleList: [],
+          photoURL: 'https://example.com/avatar.jpg'
         },
         createdAt: dbResource.created_at.toISOString(),
         updatedAt: dbResource.updated_at.toISOString(),
@@ -265,9 +266,10 @@ describe('Transform Service Tests', () => {
         tags: ['tag1', 'tag2'],
         user: {
           id: 100,
-          username: 'testuser',
-          displayName: '測試用戶',
-          avatarUrl: 'https://example.com/avatar.jpg'
+          name: '測試用戶',
+          _id: '',
+          roleList: [],
+          photoURL: 'https://example.com/avatar.jpg'
         },
         resourceId: 200,
         createdAt: dbReview.created_at.toISOString(),
@@ -329,12 +331,14 @@ describe('Transform Service Tests', () => {
       // 檢查 Boolean 欄位
       // 內容特色
       Object.entries(contentFeaturesMappings).forEach(([apiField, dbField]) => {
-        expect(result).toHaveProperty(dbField, apiReview.contentFeatures[apiField]);
+        const value = apiReview.contentFeatures[apiField as keyof typeof apiReview.contentFeatures];
+        expect(result).toHaveProperty(dbField, value);
       });
 
       // 資源使用
       Object.entries(resourceUsageMappings).forEach(([apiField, dbField]) => {
-        expect(result).toHaveProperty(dbField, apiReview.resourceUsage[apiField]);
+        const value = apiReview.resourceUsage[apiField as keyof typeof apiReview.resourceUsage];
+        expect(result).toHaveProperty(dbField, value);
       });
     });
 

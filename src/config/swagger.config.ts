@@ -22,11 +22,11 @@ const swaggerOptions: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: 'http://localhost:4000/api/v1',
+        url: 'http://localhost:4000',
         description: '開發環境'
       },
       {
-        url: 'https://api.daodao.com/api/v1',
+        url: 'https://api.daodao.com',
         description: '生產環境'
       }
     ],
@@ -162,19 +162,18 @@ const swaggerOptions: swaggerJsdoc.Options = {
     tags: [
       {
         name: 'System',
-        description: '系統狀態和資訊相關操作'
+        description: '系統狀態和資訊相關操作',
+        'x-order': 1
       },
       {
         name: 'Resources',
-        description: '資源管理相關操作'
-      },
-      {
-        name: 'Resource Reviews',
-        description: '資源心得評價相關操作'
+        description: '資源管理和評價相關操作',
+        'x-order': 2
       },
       {
         name: 'Tags',
-        description: '標籤管理相關操作'
+        description: '標籤管理相關操作',
+        'x-order': 3
       }
     ]
   },

@@ -6,7 +6,8 @@
 import { Transaction, Op, WhereOptions, Includeable, Order } from 'sequelize';
 import ResourceReview from '@/models/resourceReview';
 import Resource from '@/models/resource';
-const { User } = require('@/models/index'); // 從 JS models 中引入
+// 從 JS models 中引入 User 模型
+const { User } = require('../../models/index');
 import Tag from '@/models/tag';
 import EntityTag from '@/models/entityTag';
 import { ResourceReviewAttributes } from '@/models/resourceReview';
