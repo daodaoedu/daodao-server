@@ -5,8 +5,8 @@
 
 import { Transaction, Op, WhereOptions, Includeable, Order } from 'sequelize';
 // 直接從 TS 模型引入，避免通過 JS 模型載入
-import Resource from '@/models/resource';
-import ResourceReview from '@/models/resourceReview';
+import Resource, { ResourceInstance } from '@/models/resource';
+import ResourceReview, { ResourceReviewInstance } from '@/models/resourceReview';
 import Tag from '@/models/tag';
 import EntityTag from '@/models/entityTag';
 import Category from '@/models/category';
@@ -230,7 +230,7 @@ export async function getResources(
   }
 
   // 查詢評分數據
-  const resourceIds = rows.map((r: typeof Resource) => r.get('id') as number);
+  const resourceIds = rows.map((r) => r.get('id') as number);
   const reviewStats = await ResourceReview.findAll({
     attributes: [
       'resource_id',
@@ -242,7 +242,7 @@ export async function getResources(
 
   // 構建評分映射
   const ratingMap = new Map();
-  reviewStats.forEach((stat: typeof ResourceReview) => {
+  reviewStats.forEach((stat) => {
     ratingMap.set(
       stat.get('resource_id'),
       parseFloat(stat.get('avgRating') as string)
@@ -250,7 +250,7 @@ export async function getResources(
   });
 
   // 轉換為 API 格式
-  const resources = rows.map((row: typeof Resource) => {
+  const resources = rows.map((row) => {
     const resource = row.toJSON();
     return transformResourceToApi({
       ...resource,

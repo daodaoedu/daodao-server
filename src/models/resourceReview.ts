@@ -58,6 +58,15 @@ export interface ResourceReviewCreationAttributes extends Optional<ResourceRevie
   'not_applicable_resource' | 'status' | 'created_at' | 'updated_at' | 'deleted_at'> {}
 
 /**
+ * ResourceReview 模型實例類型
+ */
+export interface ResourceReviewInstance extends Model<ResourceReviewAttributes, ResourceReviewCreationAttributes>, ResourceReviewAttributes {
+  get<K extends keyof ResourceReviewAttributes>(key: K): ResourceReviewAttributes[K];
+  get(key: string): unknown;
+  toJSON(): ResourceReviewAttributes;
+}
+
+/**
  * ResourceReview 模型定義
  */
 const ResourceReview = sequelize.define(

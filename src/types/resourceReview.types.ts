@@ -48,7 +48,7 @@ export interface ResourceReviewDbModel {
 /**
  * 內容特色
  */
-export interface ContentFeatures {
+export interface ContentFeatures extends Record<string, boolean> {
   wellStructured: boolean;
   practiceFocused: boolean;
   wellRoundedConcepts: boolean;
@@ -63,7 +63,7 @@ export interface ContentFeatures {
 /**
  * 資源使用方式
  */
-export interface ResourceUsage {
+export interface ResourceUsage extends Record<string, boolean> {
   withOnlineCourses: boolean;
   withBooks: boolean;
   withOtherTools: boolean;

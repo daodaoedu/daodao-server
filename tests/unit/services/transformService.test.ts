@@ -332,13 +332,13 @@ describe('Transform Service Tests', () => {
       // 內容特色
       Object.entries(contentFeaturesMappings).forEach(([apiField, dbField]) => {
         const value = apiReview.contentFeatures[apiField as keyof typeof apiReview.contentFeatures];
-        expect(result).toHaveProperty(dbField, value);
+        expect(result).toHaveProperty(dbField as string, value);
       });
 
       // 資源使用
       Object.entries(resourceUsageMappings).forEach(([apiField, dbField]) => {
         const value = apiReview.resourceUsage[apiField as keyof typeof apiReview.resourceUsage];
-        expect(result).toHaveProperty(dbField, value);
+        expect(result).toHaveProperty(dbField as string, value);
       });
     });
 
@@ -360,12 +360,12 @@ describe('Transform Service Tests', () => {
       // 驗證結果 - 檢查是否設置了默認值
       // 內容特色
       Object.values(contentFeaturesMappings).forEach(dbField => {
-        expect(result).toHaveProperty(dbField, false);
+        expect(result).toHaveProperty(dbField as string, false);
       });
 
       // 資源使用
       Object.values(resourceUsageMappings).forEach(dbField => {
-        expect(result).toHaveProperty(dbField, false);
+        expect(result).toHaveProperty(dbField as string, false);
       });
     });
   });

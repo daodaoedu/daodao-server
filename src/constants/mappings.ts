@@ -51,3 +51,26 @@ export const REVIEW_STATUS = {
   ARCHIVED: 'archived',
   REPORTED: 'reported'
 };
+
+// 內容特徵欄位映射 (API格式 -> 資料庫格式)
+export const contentFeaturesMappings = {
+  wellStructured: 'well_structured',
+  practiceFocused: 'practice_focused',
+  wellRoundedConcepts: 'well_rounded_concepts',
+  thoughtProvoking: 'thought_provoking',
+  progressiveLearning: 'progressive_learning',
+  problemBased: 'problem_based',
+  realWorldExamples: 'real_world_examples',
+  interactive: 'interactive',
+  visuallyRich: 'visually_rich'
+};
+
+// 資源使用方式欄位映射 (API格式 -> 資料庫格式)
+export const resourceUsageMappings = {
+  withOnlineCourses: 'with_online_courses',
+  withBooks: 'with_books',
+  withOtherTools: 'with_other_tools',
+  withCommunity: 'with_community',
+  onlyThisResource: 'only_this_resource',
+  notApplicableResource: 'not_applicable_resource'
+};

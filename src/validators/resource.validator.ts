@@ -60,8 +60,8 @@ export const createResourceSchema = resourceBaseSchema.extend({
   review: reviewSchema
 });
 
-// 更新資源 schema
-export const updateResourceSchema = resourceBaseSchema.extend({
+// 更新資源 schema - 所有欄位都是可選的，用於部分更新
+export const updateResourceSchema = resourceBaseSchema.partial().extend({
   status: z.enum(statusValues as [string, ...string[]], { 
     errorMap: () => ({ message: "無效的資源狀態" }) 
   }).optional()
