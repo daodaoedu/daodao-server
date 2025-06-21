@@ -22,11 +22,11 @@ const swaggerOptions: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: 'http://localhost:4000',
+        url: 'https://server.daoedu.tw/',
         description: '開發環境'
       },
       {
-        url: 'https://api.daodao.com',
+        url: 'https://dao-server.daoedu.tw/',
         description: '生產環境'
       }
     ],
