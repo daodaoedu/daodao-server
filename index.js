@@ -34,7 +34,8 @@ const app = express();
 app.use(express.json());
 
 // 設置 trust proxy 以正確處理來自反向代理的請求
-app.set('trust proxy', true);
+// 限制為特定的代理配置，提高安全性
+app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
 const corsOptions = {
   origin: (origin, callback) => {
