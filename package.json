@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "build": "echo 'No build process configured'"
+    "build": "tsc",
+    "postbuild": "echo 'TypeScript compilation completed'"
   },
   "keywords": [],
   "author": "",
