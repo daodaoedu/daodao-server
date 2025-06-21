@@ -9,6 +9,7 @@ import { UserBasicInfo } from './common.types';
  */
 export interface ResourceDbModel {
   id: number;
+  external_id: string;
   name: string;
   url: string;
   image_url: string | null;
@@ -26,9 +27,10 @@ export interface ResourceDbModel {
 
 /**
  * API 回應的 Resource 格式
+ * 注意：使用 external_id 作為前端識別符，不暴露內部 id
  */
 export interface ResourceResponse {
-  id: number;
+  id: string; // 使用 external_id，對前端來說就是 id
   name: string;
   url: string;
   imageUrl: string | null;
@@ -49,6 +51,7 @@ export interface ResourceResponse {
   favoriteCount: number;
   shareCount: number;
   reviewCount: number;
+  likeCount: number;
 }
 
 /**

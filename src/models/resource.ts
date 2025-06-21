@@ -1,13 +1,12 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
-import { ResourceType, CostType, LevelType } from '../types/resource.types';
-import { ResourceStatus } from '../types/common.types';
 
 /**
  * 資源表欄位定義
  */
 export interface ResourceAttributes {
   id: number;
+  external_id: string;
   name: string;
   url: string;
   image_url?: string;
@@ -28,7 +27,7 @@ export interface ResourceAttributes {
 /**
  * 建立資源時的可選屬性
  */
-export interface ResourceCreationAttributes extends Optional<ResourceAttributes, 'id' | 'image_url' | 'video_url' | 'major_category_id' | 'sub_category_id' | 'status' | 'created_at' | 'updated_at' | 'deleted_at'> {}
+export interface ResourceCreationAttributes extends Optional<ResourceAttributes, 'id' | 'external_id' | 'image_url' | 'video_url' | 'major_category_id' | 'sub_category_id' | 'status' | 'created_at' | 'updated_at' | 'deleted_at'> {}
 
 /**
  * Resource 模型實例類型
@@ -48,6 +47,12 @@ const Resource = sequelize.define(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    external_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      unique: true,
+      defaultValue: DataTypes.UUIDV4,
     },
     name: {
       type: DataTypes.STRING(255),
@@ -159,6 +164,7 @@ const Resource = sequelize.define(
     updatedAt: 'updated_at',
     deletedAt: 'deleted_at',
     indexes: [
+      { fields: ['external_id'], unique: true },
       { fields: ['type'] },
       { fields: ['cost'] },
       { fields: ['created_by'] },

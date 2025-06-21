@@ -4,10 +4,9 @@
  */
 
 import { Router } from 'express';
-import resourceRoutes from './resourceRoutes';
-import resourceReviewRoutes from './resourceReviewRoutes';
-import nestedResourceReviewRoutes from './nestedResourceReviewRoutes';
-import tagRoutes from './tagRoutes';
+import resourceRoutes from './resource-routes';
+import resourceReviewRoutes from './resource-review-routes';
+import tagRoutes from './tag-routes';
 
 const router = Router();
 
@@ -28,26 +27,14 @@ router.use('/resources', resourceRoutes);
 
 // 巢狀資源心得評價路由
 // GET    /api/v1/resources/:resourceId/reviews
-// GET    /api/v1/resources/:resourceId/reviews/:id
+// GET    /api/v1/resources/:resourceId/reviews/:reviewId
 // POST   /api/v1/resources/:resourceId/reviews
-// PATCH  /api/v1/resources/:resourceId/reviews/:id
-// PATCH  /api/v1/resources/:resourceId/reviews/:id/status
-// DELETE /api/v1/resources/:resourceId/reviews/:id
-// POST   /api/v1/resources/:resourceId/reviews/:id/like
-// DELETE /api/v1/resources/:resourceId/reviews/:id/like
-router.use('/resources/:resourceId/reviews', nestedResourceReviewRoutes);
-
-// 獨立心得評價路由（用於跨資源查詢）
-// GET    /api/v1/reviews
-// GET    /api/v1/reviews/:id
-// POST   /api/v1/reviews
-// PATCH  /api/v1/reviews/:id
-// PATCH  /api/v1/reviews/:id/status
-// DELETE /api/v1/reviews/:id
-// POST   /api/v1/reviews/:id/like
-// DELETE /api/v1/reviews/:id/like
-// GET    /api/v1/reviews/:id/tags
-router.use('/reviews', resourceReviewRoutes);
+// PATCH  /api/v1/resources/:resourceId/reviews/:reviewId
+// PATCH  /api/v1/resources/:resourceId/reviews/:reviewId/status
+// DELETE /api/v1/resources/:resourceId/reviews/:reviewId
+// POST   /api/v1/resources/:resourceId/reviews/:reviewId/like
+// DELETE /api/v1/resources/:resourceId/reviews/:reviewId/like
+router.use('/resources/:resourceId/reviews', resourceReviewRoutes);
 
 // 標籤路由
 // GET    /api/v1/tags/popular
@@ -84,8 +71,7 @@ router.get('/info', (req, res) => {
       description: '學習資源管理與心得分享 API 系統',
       endpoints: {
         resources: '/api/v1/resources',
-        reviews: '/api/v1/reviews',
-        nestedReviews: '/api/v1/resources/:resourceId/reviews',
+        resourceReviews: '/api/v1/resources/:resourceId/reviews',
         tags: '/api/v1/tags',
         health: '/api/v1/health'
       },

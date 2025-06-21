@@ -12,7 +12,8 @@
 CREATE TABLE resources (
     id SERIAL PRIMARY KEY,
     created_by INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
+    external_id UUID DEFAULT gen_random_uuid() UNIQUE, -- 使用 UUID 作為全局唯一標識符
+
     -- 分類資訊
     major_category_id INT REFERENCES categories(id),
     sub_category_id INT REFERENCES categories(id),

@@ -7,8 +7,17 @@ import {
   transformResourceToDb, 
   transformReviewToApi, 
   transformReviewToDb 
-} from '../../../src/services/transformService';
+} from '../../../src/services/transform-service';
 import { contentFeaturesMappings, resourceUsageMappings } from '../../../src/constants/mappings';
+import Category from '../../../src/models/category';
+
+// Mock Category model
+jest.mock('../../../src/models/category', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn()
+  }
+}));
 
 describe('Transform Service Tests', () => {
   
@@ -38,11 +47,11 @@ describe('Transform Service Tests', () => {
           display_name: '測試用戶',
           avatar_url: 'https://example.com/avatar.jpg'
         },
-        MajorCategory: {
+        majorCategory: {
           id: 1,
           name: '主分類'
         },
-        SubCategory: {
+        subCategory: {
           id: 2,
           name: '子分類'
         },
@@ -54,7 +63,8 @@ describe('Transform Service Tests', () => {
           view_count: 100,
           favorite_count: 50,
           share_count: 20,
-          review_count: 10
+          review_count: 10,
+          like_count: 75
         },
         avgRating: 4.5
       };
@@ -64,7 +74,7 @@ describe('Transform Service Tests', () => {
 
       // 驗證結果
       expect(result).toMatchObject({
-        id: 1,
+        id: '1',
         name: '測試資源',
         url: 'https://example.com',
         imageUrl: 'https://example.com/image.jpg',
@@ -90,7 +100,8 @@ describe('Transform Service Tests', () => {
         viewCount: 100,
         favoriteCount: 50,
         shareCount: 20,
-        reviewCount: 10
+        reviewCount: 10,
+        likeCount: 75
       });
     });
 
@@ -119,7 +130,7 @@ describe('Transform Service Tests', () => {
 
       // 驗證結果
       expect(result).toMatchObject({
-        id: 1,
+        id: '1',
         name: '測試資源',
         url: 'https://example.com',
         imageUrl: null,
@@ -139,7 +150,19 @@ describe('Transform Service Tests', () => {
   });
 
   describe('transformResourceToDb', () => {
-    it('應正確轉換 API 資料為資料庫格式', () => {
+    beforeEach(() => {
+      // Mock Category.findOne to return mock category data
+      (Category.findOne as jest.Mock).mockImplementation(({ where }) => {
+        if (where.name === 'frontend_development') {
+          return Promise.resolve({ get: () => 1 });
+        } else if (where.name === 'javascript_frameworks') {
+          return Promise.resolve({ get: () => 2 });
+        }
+        return Promise.resolve(null);
+      });
+    });
+
+    it('應正確轉換 API 資料為資料庫格式', async () => {
       // 模擬 API 請求資料
       const apiResource = {
         name: '測試資源',
@@ -150,13 +173,13 @@ describe('Transform Service Tests', () => {
         type: 'books_articles',
         cost: 'free',
         level: 'beginner',
-        majorCategoryId: 1,
-        subCategoryId: 2,
+        majorCategory: 'frontend_development',
+        subCategory: 'javascript_frameworks',
         tags: ['tag1', 'tag2']
       };
 
       // 執行轉換
-      const result = transformResourceToDb(apiResource, 100);
+      const result = await transformResourceToDb(apiResource, 100);
 
       // 驗證結果
       expect(result).toMatchObject({
@@ -233,7 +256,7 @@ describe('Transform Service Tests', () => {
 
       // 驗證結果
       expect(result).toMatchObject({
-        id: 1,
+        id: '1',
         content: '這是一個測試心得評價',
         overallImpact: 4.5,
         changeMindset: 4.0,
@@ -262,7 +285,7 @@ describe('Transform Service Tests', () => {
           notApplicableResource: false
         },
         status: 'published',
-        likesCount: 30,
+        likeCount: 30,
         tags: ['tag1', 'tag2'],
         user: {
           id: 100,
@@ -271,7 +294,7 @@ describe('Transform Service Tests', () => {
           roleList: [],
           photoURL: 'https://example.com/avatar.jpg'
         },
-        resourceId: 200,
+        resourceId: '200',
         createdAt: dbReview.created_at.toISOString(),
         updatedAt: dbReview.updated_at.toISOString()
       });

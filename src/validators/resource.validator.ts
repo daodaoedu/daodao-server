@@ -33,10 +33,10 @@ const resourceBaseSchema = z.object({
   name: z.string().min(1, { message: "資源名稱為必填" }).max(255, { message: "資源名稱最多 255 字符" }),
   url: z.string().min(1, { message: "資源 URL 為必填" }).max(1000, { message: "資源 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" }),
-  image_url: z.string().max(1000, { message: "圖片 URL 最多 1000 字符" }).url({ message: "URL 格式不正確" })
+  imageUrl: z.string().max(1000, { message: "圖片 URL 最多 1000 字符" }).url({ message: "URL 格式不正確" })
     .nullable().optional(),
   description: z.string().min(1, { message: "資源描述為必填" }),
-  video_url: z.string().max(1000, { message: "影片 URL 最多 1000 字符" }).url({ message: "URL 格式不正確" })
+  videoUrl: z.string().max(1000, { message: "影片 URL 最多 1000 字符" }).url({ message: "URL 格式不正確" })
     .nullable().optional(),
   type: z.enum(resourceTypeValues as [string, ...string[]], {
     errorMap: () => ({ message: "無效的資源類型" })
@@ -47,8 +47,8 @@ const resourceBaseSchema = z.object({
   level: z.enum(levelTypeValues as [string, ...string[]], {
     errorMap: () => ({ message: "無效的難度等級" })
   }),
-  major_category_id: z.number().int({ message: "主分類 ID 必須為整數" }).nullable().optional(),
-  sub_category_id: z.number().int({ message: "子分類 ID 必須為整數" }).nullable().optional(),
+  majorCategory: z.string().min(1, { message: "主分類名稱為必填" }).nullable().optional(),
+  subCategory: z.string().min(1, { message: "子分類名稱為必填" }).nullable().optional(),
   tags: z.array(z.string()).nullable().optional()
 });
 
@@ -85,10 +85,10 @@ export type ResourceSchema = UpdateResourceSchema & {
   created_by: number;
   created_at: string;
   updated_at: string;
-  author?: any;
-  majorCategory?: any;
-  subCategory?: any;
-  tags?: any[];
+  author?: Record<string, unknown>;
+  majorCategory?: Record<string, unknown>;
+  subCategory?: Record<string, unknown>;
+  tags?: string[];
   stats?: {
     view_count: number;
     favorite_count: number;
@@ -99,6 +99,6 @@ export type ResourceSchema = UpdateResourceSchema & {
 };
 
 // 導出驗證函數
-export const validateCreateResource = (data: any) => createResourceSchema.parse(data);
-export const validateUpdateResource = (data: any) => updateResourceSchema.parse(data);
-export const validateUpdateResourceStatus = (data: any) => updateResourceStatusSchema.parse(data);
+export const validateCreateResource = (data: unknown) => createResourceSchema.parse(data);
+export const validateUpdateResource = (data: unknown) => updateResourceSchema.parse(data);
+export const validateUpdateResourceStatus = (data: unknown) => updateResourceStatusSchema.parse(data);

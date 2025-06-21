@@ -39,13 +39,14 @@
  *             - level
  *             - status
  *             - userId
- *             - majorCategoryId
- *             - subCategoryId
+ *             - majorCategory
+ *             - subCategory
  *           properties:
  *             id:
- *               type: integer
- *               description: 資源唯一識別碼
- *               example: 1
+ *               type: string
+ *               format: uuid
+ *               description: 資源唯一識別碼 (UUID)
+ *               example: "123e4567-e89b-12d3-a456-426614174000"
  *             name:
  *               type: string
  *               description: 資源名稱
@@ -84,14 +85,14 @@
  *               type: integer
  *               description: 創建者 ID
  *               example: 1
- *             majorCategoryId:
- *               type: integer
- *               description: 主分類 ID
- *               example: 1
- *             subCategoryId:
- *               type: integer
- *               description: 子分類 ID
- *               example: 5
+ *             majorCategory:
+ *               type: string
+ *               description: 主分類唯一識別名稱
+ *               example: "nature_environment"
+ *             subCategory:
+ *               type: string
+ *               description: 子分類唯一識別名稱
+ *               example: "earth_science"
  *             viewCount:
  *               type: integer
  *               description: 瀏覽次數
@@ -115,6 +116,10 @@
  *               maximum: 5.0
  *               description: 平均評分
  *               example: 4.3
+ *             likeCount:
+ *               type: integer
+ *               description: 點讚數量
+ *               example: 156
  *             tags:
  *               type: array
  *               description: 資源標籤列表
@@ -130,8 +135,8 @@
  *         - type
  *         - cost
  *         - level
- *         - majorCategoryId
- *         - subCategoryId
+ *         - majorCategory
+ *         - subCategory
  *       properties:
  *         name:
  *           type: string
@@ -168,16 +173,18 @@
  *           $ref: '#/components/schemas/ResourceType'
  *         cost:
  *           $ref: '#/components/schemas/CostType'
- *         majorCategoryId:
- *           type: integer
- *           minimum: 1
- *           description: 主分類 ID
- *           example: 1
- *         subCategoryId:
- *           type: integer
- *           minimum: 1
- *           description: 子分類 ID
- *           example: 5
+ *         majorCategory:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 100
+ *           description: 主分類唯一識別名稱
+ *           example: "nature_environment"
+ *         subCategory:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 100
+ *           description: 子分類唯一識別名稱
+ *           example: "earth_science"
  *         tags:
  *           type: array
  *           description: 資源標籤列表
@@ -222,14 +229,18 @@
  *           $ref: '#/components/schemas/ResourceType'
  *         cost:
  *           $ref: '#/components/schemas/CostType'
- *         majorCategoryId:
- *           type: integer
- *           minimum: 1
- *           description: 主分類 ID
- *         subCategoryId:
- *           type: integer
- *           minimum: 1
- *           description: 子分類 ID
+ *         majorCategory:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 100
+ *           description: 主分類唯一識別名稱
+ *           example: "nature_environment"
+ *         subCategory:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 100
+ *           description: 子分類唯一識別名稱
+ *           example: "earth_science"
  *         tags:
  *           type: array
  *           description: 資源標籤列表
