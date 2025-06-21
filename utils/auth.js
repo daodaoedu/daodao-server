@@ -17,7 +17,10 @@ exports.verifyRequest = (req) => {
     const decoded = jwt.verify(token, process.env.JWT_SECURITY, { algorithms: ['HS256'] }); // 明確指定算法
     return { user: decoded };
   } catch (error) {
-    console.error('JWT Error:', error.message);
+    // 在測試環境中不輸出錯誤信息，避免污染測試輸出
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('JWT Error:', error.message);
+    }
     return { error: 'INVALID_TOKEN' };
   }
 }; 
