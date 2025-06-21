@@ -4,6 +4,8 @@
  */
 
 import { Request, Response } from 'express';
+// 確保載入類型定義
+import '../types/declarations/express';
 
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
