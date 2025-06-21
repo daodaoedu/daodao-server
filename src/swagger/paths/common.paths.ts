@@ -39,7 +39,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /info:
+ * /api/v1/info:
  *   get:
  *     summary: API 版本資訊
  *     tags: [System]
