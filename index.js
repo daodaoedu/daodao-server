@@ -33,6 +33,9 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(express.json());
 
+// 設置 trust proxy 以正確處理來自反向代理的請求
+app.set('trust proxy', true);
+
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
@@ -172,8 +175,7 @@ try {
   if (useCompiled) {
     // 生產環境：使用編譯後的 JavaScript
     console.log('🚀 使用編譯後的 TypeScript 路由...');
-    // 註冊路徑別名解析
-    require('./dist/src/register-paths');
+    // 在 Docker 環境中不需要額外的路徑解析
     setupTypescriptRoutes = require(compiledPath).setupTypescriptRoutes;
   } else {
     // 開發環境：使用 ts-node 動態編譯
