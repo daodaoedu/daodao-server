@@ -2,32 +2,35 @@
  * 資源服務測試
  */
 
-import resourceService from '../../../src/services/resourceService';
+import resourceService from '../../../src/services/resource-service';
 import Resource from '../../../src/models/resource';
-import ResourceReview from '../../../src/models/resourceReview';
+import ResourceReview from '../../../src/models/resource-review';
 import sequelize from '../../../src/config/database';
 import { 
   NotFoundError, 
   ForbiddenError, 
   ConflictError 
-} from '../../../src/utils/errorHandler';
-import tagService from '../../../src/services/tagService';
+} from '../../../src/utils/error-handler';
+import tagService from '../../../src/services/tag-service';
+import { Op } from 'sequelize';
 
 // 模擬 Sequelize 模型
 jest.mock('../../../src/models/resource', () => ({
   __esModule: true,
   default: {
     findByPk: jest.fn(),
+    findOne: jest.fn(),
     create: jest.fn(),
     findAll: jest.fn(),
     findAndCountAll: jest.fn()
   }
 }));
-jest.mock('../../../src/models/resourceReview', () => ({
+jest.mock('../../../src/models/resource-review', () => ({
   __esModule: true,
   default: {
     create: jest.fn(),
-    findOne: jest.fn()
+    findOne: jest.fn(),
+    findAll: jest.fn()
   }
 }));
 jest.mock('../../../src/config/database', () => {
@@ -43,7 +46,7 @@ jest.mock('../../../src/config/database', () => {
     default: mockSequelize
   };
 });
-jest.mock('../../../src/services/tagService', () => ({
+jest.mock('../../../src/services/tag-service', () => ({
   __esModule: true,
   default: {
     setEntityTags: jest.fn()
@@ -68,53 +71,58 @@ describe('Resource Service Tests', () => {
 
   describe('getResourceById', () => {
     it('應成功獲取資源詳情', async () => {
+      const resourceUuid = '550e8400-e29b-41d4-a716-446655440000';
+      
       // 模擬資源數據
-      const mockResource = {
+      const mockResource = createMockSequelizeInstance({
         id: 1,
+        external_id: resourceUuid,
         name: '測試資源',
-        toJSON: jest.fn().mockReturnValue({
-          id: 1,
-          name: '測試資源',
-          url: 'https://example.com',
-          image_url: 'https://example.com/image.jpg',
-          description: '這是一個測試資源',
-          type: 'books_articles',
-          cost: 'free',
-          level: 'beginner',
-          created_by: 100,
-          status: 'active',
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-      };
+        url: 'https://example.com',
+        image_url: 'https://example.com/image.jpg',
+        description: '這是一個測試資源',
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        created_by: 100,
+        status: 'active',
+        created_at: new Date(),
+        updated_at: new Date()
+      });
 
       // 模擬評分統計
       const mockReviewStats = {
         getDataValue: jest.fn().mockReturnValue(4.5)
       };
 
-      // 模擬 Sequelize 查詢結果
-      (Resource.findByPk as jest.Mock).mockResolvedValue(mockResource);
+      // 模擬 Sequelize 查詢結果（使用 findOne 查詢 external_id）
+      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
       (ResourceReview.findOne as jest.Mock).mockResolvedValue(mockReviewStats);
 
       // 執行測試
-      const result = await resourceService.getResourceById(1);
+      const result = await resourceService.getResourceById(resourceUuid);
 
       // 驗證結果
       expect(result).toBeDefined();
-      expect(result.id).toBe(1);
+      expect(result.id).toBe(resourceUuid);
       expect(result.name).toBe('測試資源');
       expect(result.avgRating).toBe(4.5);
-      expect(Resource.findByPk).toHaveBeenCalledWith(1, expect.any(Object));
+      expect(Resource.findOne).toHaveBeenCalledWith(expect.objectContaining({
+        where: { external_id: resourceUuid }
+      }));
     });
 
     it('應在資源不存在時拋出 NotFoundError', async () => {
+      const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
+      
       // 模擬資源不存在
-      (Resource.findByPk as jest.Mock).mockResolvedValue(null);
+      (Resource.findOne as jest.Mock).mockResolvedValue(null);
 
       // 執行測試並驗證結果
-      await expect(resourceService.getResourceById(999)).rejects.toThrow(NotFoundError);
-      expect(Resource.findByPk).toHaveBeenCalledWith(999, expect.any(Object));
+      await expect(resourceService.getResourceById(nonExistentUuid)).rejects.toThrow(NotFoundError);
+      expect(Resource.findOne).toHaveBeenCalledWith(expect.objectContaining({
+        where: { external_id: nonExistentUuid }
+      }));
     });
   });
 
@@ -125,8 +133,10 @@ describe('Resource Service Tests', () => {
       (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
 
       // 模擬創建資源
+      const resourceUuid = '550e8400-e29b-41d4-a716-446655440000';
       const mockResource = createMockSequelizeInstance({
         id: 1,
+        external_id: resourceUuid,
         name: '測試資源',
         url: 'https://example.com',
         image_url: 'https://example.com/image.jpg',
@@ -167,7 +177,7 @@ describe('Resource Service Tests', () => {
 
       // 驗證結果
       expect(result).toBeDefined();
-      expect(result.id).toBe(1);
+      expect(result.id).toBe(resourceUuid);
       expect(result.name).toBe('測試資源');
       expect(sequelize.transaction).toHaveBeenCalled();
       expect(Resource.create).toHaveBeenCalled();
@@ -277,20 +287,22 @@ describe('Resource Service Tests', () => {
       (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
 
       // 模擬查詢資源
+      const resourceUuid = '550e8400-e29b-41d4-a716-446655440002';
       const mockResource = createMockSequelizeInstance({
         id: 1,
+        external_id: resourceUuid,
         name: '舊名稱',
         created_by: 100
       });
       mockResource.update.mockResolvedValue(true);
-      (Resource.findByPk as jest.Mock).mockResolvedValue(mockResource);
+      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
 
       // 模擬標籤處理
       (tagService.setEntityTags as jest.Mock).mockResolvedValue([]);
 
       // 模擬獲取資源詳情的 spy，設置期望的回傳值
       const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById').mockResolvedValue({
-        id: 1,
+        id: resourceUuid,
         name: '新名稱',
         url: 'https://example.com',
         imageUrl: 'https://example.com/image.jpg',
@@ -316,7 +328,8 @@ describe('Resource Service Tests', () => {
         viewCount: 0,
         favoriteCount: 0,
         shareCount: 0,
-        reviewCount: 0
+        reviewCount: 0,
+        likeCount: 0
       });
 
       // 執行測試
@@ -326,11 +339,11 @@ describe('Resource Service Tests', () => {
         tags: ['tag1', 'tag2']
       };
 
-      const result = await resourceService.updateResource(1, updateData, 100);
+      const result = await resourceService.updateResource(resourceUuid, updateData, 100);
 
       // 驗證結果
       expect(result).toBeDefined();
-      expect(result.id).toBe(1);
+      expect(result.id).toBe(resourceUuid);
       expect(mockResource.update).toHaveBeenCalled();
       expect(tagService.setEntityTags).toHaveBeenCalledWith(1, 'resource', ['tag1', 'tag2'], mockTransaction);
       expect(mockTransaction.commit).toHaveBeenCalled();
@@ -342,7 +355,8 @@ describe('Resource Service Tests', () => {
       (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
 
       // 模擬資源不存在
-      (Resource.findByPk as jest.Mock).mockResolvedValue(null);
+      const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
+      (Resource.findOne as jest.Mock).mockResolvedValue(null);
 
       // 執行測試
       const updateData = {
@@ -350,7 +364,7 @@ describe('Resource Service Tests', () => {
         description: '更新後的描述'
       };
 
-      await expect(resourceService.updateResource(999, updateData, 100)).rejects.toThrow(NotFoundError);
+      await expect(resourceService.updateResource(nonExistentUuid, updateData, 100)).rejects.toThrow(NotFoundError);
 
       // 驗證結果
       expect(mockTransaction.rollback).toHaveBeenCalled();
@@ -363,12 +377,14 @@ describe('Resource Service Tests', () => {
       (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
 
       // 模擬資源存在但不是創建者
+      const resourceUuid = '550e8400-e29b-41d4-a716-446655440003';
       const mockResource = createMockSequelizeInstance({
         id: 1,
+        external_id: resourceUuid,
         name: '舊名稱',
         created_by: 200  // 不是當前用戶
       });
-      (Resource.findByPk as jest.Mock).mockResolvedValue(mockResource);
+      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
 
       // 執行測試
       const updateData = {
@@ -376,7 +392,7 @@ describe('Resource Service Tests', () => {
         description: '更新後的描述'
       };
 
-      await expect(resourceService.updateResource(1, updateData, 100)).rejects.toThrow(ForbiddenError);
+      await expect(resourceService.updateResource(resourceUuid, updateData, 100)).rejects.toThrow(ForbiddenError);
 
       // 驗證結果
       expect(mockTransaction.rollback).toHaveBeenCalled();
@@ -387,17 +403,20 @@ describe('Resource Service Tests', () => {
   // 測試刪除資源
   describe('deleteResource', () => {
     it('應成功刪除資源', async () => {
+      const resourceUuid = '550e8400-e29b-41d4-a716-446655440004';
+      
       // 模擬查詢資源
       const mockResource = createMockSequelizeInstance({
         id: 1,
+        external_id: resourceUuid,
         name: '測試資源',
         created_by: 100
       });
       mockResource.destroy.mockResolvedValue(true);
-      (Resource.findByPk as jest.Mock).mockResolvedValue(mockResource);
+      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
 
       // 執行測試
-      const result = await resourceService.deleteResource(1, 100);
+      const result = await resourceService.deleteResource(resourceUuid, 100);
 
       // 驗證結果
       expect(result).toEqual({ success: true });
@@ -405,24 +424,180 @@ describe('Resource Service Tests', () => {
     });
 
     it('應在資源不存在時拋出 NotFoundError', async () => {
+      const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
+      
       // 模擬資源不存在
-      (Resource.findByPk as jest.Mock).mockResolvedValue(null);
+      (Resource.findOne as jest.Mock).mockResolvedValue(null);
 
       // 執行測試
-      await expect(resourceService.deleteResource(999, 100)).rejects.toThrow(NotFoundError);
+      await expect(resourceService.deleteResource(nonExistentUuid, 100)).rejects.toThrow(NotFoundError);
     });
 
     it('應在沒有權限時拋出 ForbiddenError', async () => {
+      const resourceUuid = '550e8400-e29b-41d4-a716-446655440005';
+      
       // 模擬資源存在但不是創建者
       const mockResource = createMockSequelizeInstance({
         id: 1,
+        external_id: resourceUuid,
         name: '測試資源',
         created_by: 200  // 不是當前用戶
       });
-      (Resource.findByPk as jest.Mock).mockResolvedValue(mockResource);
+      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
 
       // 執行測試
-      await expect(resourceService.deleteResource(1, 100)).rejects.toThrow(ForbiddenError);
+      await expect(resourceService.deleteResource(resourceUuid, 100)).rejects.toThrow(ForbiddenError);
+    });
+  });
+
+  describe('getResources', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('應該使用預設分頁參數（每頁5筆）', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [
+          createMockSequelizeInstance({
+            id: 1,
+            name: '測試資源1',
+            url: 'https://example.com/1',
+            external_id: '550e8400-e29b-41d4-a716-446655440000',
+            type: 'books_articles',
+            cost: 'free',
+            level: 'beginner',
+            created_by: 100,
+            status: 'active',
+            created_at: new Date(),
+            updated_at: new Date()
+          })
+        ],
+        count: 10
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+
+      // 模擬評論統計
+      (ResourceReview.findOne as jest.Mock).mockResolvedValue(null);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+
+      // 執行測試，不提供 limit 參數
+      const result = await resourceService.getResources({}, {});
+
+      // 驗證調用參數
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 6, // 應該使用 DEFAULT_RESOURCE_PAGE_LIMIT + 1 (5 + 1)
+          order: [['created_at', 'desc']]
+        })
+      );
+    });
+
+    it('應該限制最大分頁數量為20筆', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [],
+        count: 0
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+
+      // 執行測試，提供超過最大限制的 limit
+      const result = await resourceService.getResources({}, { limit: 50 });
+
+      // 驗證調用參數
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 21, // 應該限制為 MAX_RESOURCE_PAGE_LIMIT + 1 (20 + 1)
+          order: [['created_at', 'desc']]
+        })
+      );
+    });
+
+    it('應該正確處理游標分頁', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [],
+        count: 0
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+
+      // 創建有效的游標
+      const cursor = Buffer.from(JSON.stringify({
+        id: 10,
+        timestamp: '2024-01-01T00:00:00Z'
+      })).toString('base64');
+
+      // 執行測試
+      const result = await resourceService.getResources({}, { 
+        cursor,
+        limit: 5
+      });
+
+      // 驗證調用參數包含游標條件
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 6, // DEFAULT_RESOURCE_PAGE_LIMIT + 1
+          where: expect.objectContaining({
+            status: 'active',
+            [Op.or]: expect.any(Array) // 游標條件 (Op.or)
+          })
+        })
+      );
+    });
+
+    it('應該正確處理排序參數', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [],
+        count: 0
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+
+      // 執行測試
+      const result = await resourceService.getResources({}, { 
+        sort: 'name',
+        order: 'asc'
+      });
+
+      // 驗證調用參數
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          order: [['name', 'asc']]
+        })
+      );
+    });
+
+    it('應該正確處理篩選參數', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [],
+        count: 0
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+
+      // 執行測試
+      const result = await resourceService.getResources({
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        majorCategory: 'frontend_development'
+      }, {});
+
+      // 驗證調用參數
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'books_articles',
+            cost: 'free',
+            level: 'beginner',
+            '$majorCategory.name$': 'frontend_development'
+          })
+        })
+      );
     });
   });
 });

@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 /**
@@ -6,8 +6,7 @@ import sequelize from '../config/database';
  */
 export interface CategoryAttributes {
   id: number;
-  name: string;
-  name_en?: string;
+  name: string;  // 分類唯一 key 值 (如: 'nature_environment', 'earth_science')
   parent_id?: number;
   description?: string;
   created_at: Date;
@@ -17,7 +16,7 @@ export interface CategoryAttributes {
 /**
  * 建立分類時的可選屬性
  */
-export interface CategoryCreationAttributes extends Optional<CategoryAttributes, 'id' | 'name_en' | 'parent_id' | 'description' | 'created_at' | 'updated_at'> {}
+export interface CategoryCreationAttributes extends Optional<CategoryAttributes, 'id' | 'parent_id' | 'description' | 'created_at' | 'updated_at'> {}
 
 /**
  * Category 模型定義
@@ -31,12 +30,9 @@ const Category = sequelize.define(
       primaryKey: true,
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(100),
       allowNull: false,
-    },
-    name_en: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
+      unique: true,
     },
     parent_id: {
       type: DataTypes.INTEGER,
@@ -68,8 +64,7 @@ const Category = sequelize.define(
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     indexes: [
-      { fields: ['name'] },
-      { fields: ['name_en'] },
+      { fields: ['name'], unique: true },
       { fields: ['parent_id'] }
     ]
   }

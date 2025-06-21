@@ -46,20 +46,33 @@ const swaggerOptions: swaggerJsdoc.Options = {
           name: 'id',
           required: true,
           schema: {
-            type: 'integer',
-            minimum: 1
+            type: 'string',
+            format: 'uuid'
           },
-          description: '資源或項目的唯一識別碼'
+          description: '資源的唯一識別碼 (UUID)',
+          example: '123e4567-e89b-12d3-a456-426614174000'
+        },
+        reviewIdParam: {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: {
+            type: 'string',
+            pattern: '^[1-9]\\d*$'
+          },
+          description: '評論的唯一識別碼（字串格式的數字）',
+          example: '1'
         },
         resourceIdParam: {
           in: 'path',
           name: 'resourceId',
           required: true,
           schema: {
-            type: 'integer',
-            minimum: 1
+            type: 'string',
+            format: 'uuid'
           },
-          description: '資源的唯一識別碼'
+          description: '資源的唯一識別碼 (UUID)',
+          example: '123e4567-e89b-12d3-a456-426614174000'
         },
         // 分頁參數
         cursorParam: {
@@ -83,9 +96,33 @@ const swaggerOptions: swaggerJsdoc.Options = {
           },
           description: '每頁返回的記錄數'
         },
-        sortFieldParam: {
+        resourceLimitParam: {
           in: 'query',
-          name: 'sortField',
+          name: 'limit',
+          required: false,
+          schema: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 20,
+            default: 5
+          },
+          description: '每頁返回的資源數'
+        },
+        reviewLimitParam: {
+          in: 'query',
+          name: 'limit',
+          required: false,
+          schema: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 10,
+            default: 2
+          },
+          description: '每頁返回的評論數'
+        },
+        sortParam: {
+          in: 'query',
+          name: 'sort',
           required: false,
           schema: {
             type: 'string',
@@ -93,9 +130,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
           },
           description: '排序欄位'
         },
-        sortDirectionParam: {
+        orderParam: {
           in: 'query',
-          name: 'sortDirection',
+          name: 'order',
           required: false,
           schema: {
             type: 'string',
@@ -167,18 +204,22 @@ const swaggerOptions: swaggerJsdoc.Options = {
       },
       {
         name: 'Resources',
-        description: '資源管理和評價相關操作',
+        description: '資源管理相關操作',
         'x-order': 2
+      },
+      {
+        name: 'Resource Reviews',
+        description: '資源評價和心得相關操作',
+        'x-order': 3
       },
       {
         name: 'Tags',
         description: '標籤管理相關操作',
-        'x-order': 3
+        'x-order': 4
       }
     ]
   },
   apis: [
-    './src/routes/*.ts',
     './src/swagger/schemas/*.ts',
     './src/swagger/paths/*.ts'
   ]

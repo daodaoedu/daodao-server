@@ -21,7 +21,7 @@ src/
 ├── models/          # 資料模型與型別定義
 ├── routes/          # 路由
 ├── services/        # 服務層
-├── middlewares/     # 中間件
+├── middleware/     # 中間件
 ├── utils/           # 工具函數
 ├── types/           # 型別定義
 ├── schemas/         # Swagger Schema 定義

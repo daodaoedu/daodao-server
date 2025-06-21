@@ -4,12 +4,10 @@
  */
 
 import Resource from './resource';
-import ResourceReview from './resourceReview';
+import ResourceReview from './resource-review';
 import Tag from './tag';
-import EntityTag from './entityTag';
+import EntityTag from './entity-tag';
 import Category from './category';
-import { Sequelize } from 'sequelize';
-import sequelize from '../config/database';
 
 // 設定 TypeScript 模型之間的關聯關係
 const setupTsModelAssociations = () => {

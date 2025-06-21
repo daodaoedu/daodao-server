@@ -22,7 +22,7 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
       } else if (source === 'params') {
         Object.assign(req.params, data);
       } else {
-        (req as any)[source] = data;
+        (req as unknown as Record<string, unknown>)[source] = data;
       }
       
       next();

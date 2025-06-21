@@ -3,5 +3,5 @@
  */
 
 export * from './resource.validator';
-export * from './resourceReview.validator';
+export * from './resource-review.validator';
 export { default as validate, validate as validateMiddleware } from './validation.middleware';

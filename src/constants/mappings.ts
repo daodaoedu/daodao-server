@@ -8,6 +8,14 @@ export const DEFAULT_PAGE_LIMIT = 20;
 // 最大分頁限制
 export const MAX_PAGE_LIMIT = 100;
 
+// 資源分頁限制 (查看更多模式)
+export const DEFAULT_RESOURCE_PAGE_LIMIT = 5;  // 資源預設每頁 5 筆
+export const MAX_RESOURCE_PAGE_LIMIT = 20;     // 資源最大每頁 20 筆
+
+// 評論分頁限制 (查看更多模式)
+export const DEFAULT_REVIEW_PAGE_LIMIT = 2;  // 心得預設每頁 2 筆
+export const MAX_REVIEW_PAGE_LIMIT = 10;     // 心得最大每頁 10 筆
+
 // 資源類型
 export const RESOURCE_TYPES = {
   LEARNING_PLATFORM_APP: 'learning_platform_app',
@@ -74,3 +82,16 @@ export const resourceUsageMappings = {
   onlyThisResource: 'only_this_resource',
   notApplicableResource: 'not_applicable_resource'
 };
+
+// 排序欄位
+export const SORT_FIELDS = {
+  CREATED_AT: 'createdAt',
+  UPDATED_AT: 'updatedAt',
+  NAME: 'name'
+} as const;
+
+// 排序方向
+export const SORT_DIRECTIONS = {
+  ASC: 'asc',
+  DESC: 'desc'
+} as const;

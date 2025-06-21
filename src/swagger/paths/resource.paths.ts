@@ -1,14 +1,14 @@
 /**
  * @swagger
- * /resources:
+ * /api/v1/resources:
  *   get:
  *     summary: 獲取資源列表
  *     tags: [Resources]
  *     parameters:
  *       - $ref: '#/components/parameters/cursorParam'
- *       - $ref: '#/components/parameters/limitParam'
- *       - $ref: '#/components/parameters/sortFieldParam'
- *       - $ref: '#/components/parameters/sortDirectionParam'
+ *       - $ref: '#/components/parameters/resourceLimitParam'
+ *       - $ref: '#/components/parameters/sortParam'
+ *       - $ref: '#/components/parameters/orderParam'
  *       - in: query
  *         name: type
  *         schema:
@@ -25,17 +25,15 @@
  *           $ref: '#/components/schemas/CostType'
  *         description: 費用類型篩選
  *       - in: query
- *         name: majorCategoryId
+ *         name: majorCategory
  *         schema:
- *           type: integer
- *           minimum: 1
- *         description: 主分類 ID 篩選
+ *           type: string
+ *         description: 主分類篩選
  *       - in: query
- *         name: subCategoryId
+ *         name: subCategory
  *         schema:
- *           type: integer
- *           minimum: 1
- *         description: 子分類 ID 篩選
+ *           type: string
+ *         description: 子分類篩選
  *       - in: query
  *         name: tags
  *         schema:
@@ -100,7 +98,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /resources/{id}:
+ * /api/v1/resources/{id}:
  *   get:
  *     summary: 獲取單個資源詳情
  *     tags: [Resources]
@@ -174,7 +172,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /resources/{id}/status:
+ * /api/v1/resources/{id}/status:
  *   patch:
  *     summary: 更新資源狀態
  *     tags: [Resources]
@@ -206,7 +204,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /resources/{id}/tags:
+ * /api/v1/resources/{id}/tags:
  *   get:
  *     summary: 獲取資源的標籤列表
  *     tags: [Resources]

@@ -6,7 +6,7 @@ import {
   updateResourceReviewSchema,
   validateCreateResourceReview,
   validateUpdateResourceReview
-} from '../../../src/validators/resourceReview.validator';
+} from '../../../src/validators/resource-review.validator';
 
 describe('ResourceReview Validator Tests', () => {
   describe('resourceReviewSchema', () => {
