@@ -132,8 +132,12 @@ try {
       },
       servers: [
         {
-          url: 'http://localhost:4000',
-          description: 'Development server'
+          url: 'https://server.daoedu.tw/',
+          description: '開發環境'
+        },
+        {
+          url: 'https://dao-server.daoedu.tw/',
+          description: '生產環境'
         }
       ]
     },
