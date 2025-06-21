@@ -162,21 +162,34 @@ console.log('📚 Swagger UI available at http://localhost:4000/api-docs');
 
 // TypeScript 路由整合 - 必須在靜態文件處理之前
 try {
-  // 使用 ts-node 和 tsconfig-paths 動態編譯和載入 TypeScript 路由
-  require('ts-node/register');
-  require('tsconfig-paths/register');
+  let setupTypescriptRoutes;
   
-  // 這裡打印日訊，協助追蹤問題
-  console.log('🔍 正在載入 TypeScript 路由...');
+  // 檢查是否存在編譯後的文件
+  const fs = require('fs');
+  const compiledPath = './dist/src/app.js';
+  const useCompiled = fs.existsSync(compiledPath);
   
-  const { setupTypescriptRoutes } = require('./src/app.ts');
+  if (useCompiled) {
+    // 生產環境：使用編譯後的 JavaScript
+    console.log('🚀 使用編譯後的 TypeScript 路由...');
+    // 註冊路徑別名解析
+    require('./dist/src/register-paths');
+    setupTypescriptRoutes = require(compiledPath).setupTypescriptRoutes;
+  } else {
+    // 開發環境：使用 ts-node 動態編譯
+    console.log('🔧 開發模式：使用 ts-node 動態編譯 TypeScript...');
+    require('ts-node/register');
+    require('tsconfig-paths/register');
+    setupTypescriptRoutes = require('./src/app.ts').setupTypescriptRoutes;
+  }
+  
   console.log('✅ TypeScript 路由模塊已載入，正在設置路由...');
-  
   setupTypescriptRoutes(app);
   console.log('✅ TypeScript 路由設置完成');
 } catch (error) {
   console.error('❌ TypeScript 路由加載失敗:', error);
-  console.warn('⚠️ 請確保已安裝 ts-node 和 tsconfig-paths 套件');
+  console.warn('⚠️ 生產環境請先執行 npm run build 編譯 TypeScript');
+  console.warn('⚠️ 開發環境請確保已安裝 ts-node 和 tsconfig-paths 套件');
 }
 
 // 添加調試中間件來查看所有請求
