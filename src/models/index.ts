@@ -126,8 +126,10 @@ const setupTsModelAssociations = () => {
   });
 };
 
-// 執行關聯設置
-setupTsModelAssociations();
+// 執行關聯設置（跳過測試環境）
+if (process.env.NODE_ENV !== 'test') {
+  setupTsModelAssociations();
+}
 
 // 為 TypeScript 使用提供類型安全的匯出
 export {
