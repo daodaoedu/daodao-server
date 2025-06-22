@@ -140,6 +140,9 @@ export {
   Category
 };
 
+// 重新匯出類型定義
+export type { TagAttributes } from './tag';
+
 // 提供預設匯出
 const models = {
   Resource,

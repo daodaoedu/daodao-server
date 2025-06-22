@@ -21,6 +21,14 @@ import {
   ResourceUsage,
   TimeUsage
 } from '@/types/resource-review.types';
+import { 
+  UserData, 
+  CategoryData, 
+  StatsData,
+  isUserData,
+  isCategoryData,
+  isStatsData
+} from '@/types/transform.types';
 
 /**
  * 將資料庫 Resource 記錄轉換為 API 回應格式
@@ -67,8 +75,8 @@ export function transformResourceToApi(
   // 處理關聯資料
   if (includeAssociations) {
     // 處理使用者資訊
-    if (dbResource.User && typeof dbResource.User === 'object') {
-      const user = dbResource.User as Record<string, unknown>;
+    if (dbResource.User && isUserData(dbResource.User)) {
+      const user = dbResource.User as UserData;
       resource.user = {
         id: Number(user.id || 0),
         name: String(user.display_name || user.username || ''),
@@ -79,14 +87,14 @@ export function transformResourceToApi(
     }
 
     // 處理主分類
-    if (dbResource.majorCategory && typeof dbResource.majorCategory === 'object') {
-      const majorCategory = dbResource.majorCategory as Record<string, unknown>;
+    if (dbResource.majorCategory && isCategoryData(dbResource.majorCategory)) {
+      const majorCategory = dbResource.majorCategory as CategoryData;
       resource.majorCategory = String(majorCategory.name || '');
     }
 
     // 處理子分類
-    if (dbResource.subCategory && typeof dbResource.subCategory === 'object') {
-      const subCategory = dbResource.subCategory as Record<string, unknown>;
+    if (dbResource.subCategory && isCategoryData(dbResource.subCategory)) {
+      const subCategory = dbResource.subCategory as CategoryData;
       resource.subCategory = String(subCategory.name || '');
     }
 
@@ -96,8 +104,8 @@ export function transformResourceToApi(
     }
 
     // 處理統計數據
-    if (dbResource.stats && typeof dbResource.stats === 'object') {
-      const stats = dbResource.stats as Record<string, unknown>;
+    if (dbResource.stats && isStatsData(dbResource.stats)) {
+      const stats = dbResource.stats as StatsData;
       resource.viewCount = Number(stats.view_count || 0);
       resource.favoriteCount = Number(stats.favorite_count || 0);
       resource.shareCount = Number(stats.share_count || 0);
@@ -216,8 +224,8 @@ export function transformReviewToApi(
   // 處理關聯資料
   if (includeAssociations) {
     // 處理使用者資訊
-    if (dbReview.User && typeof dbReview.User === 'object') {
-      const user = dbReview.User as Record<string, unknown>;
+    if (dbReview.User && isUserData(dbReview.User)) {
+      const user = dbReview.User as UserData;
       review.user = {
         id: Number(user.id || 0),
         name: String(user.display_name || user.username || ''),
@@ -233,8 +241,8 @@ export function transformReviewToApi(
     }
 
     // 處理讚數
-    if (dbReview.stats && typeof dbReview.stats === 'object') {
-      const stats = dbReview.stats as Record<string, unknown>;
+    if (dbReview.stats && isStatsData(dbReview.stats)) {
+      const stats = dbReview.stats as StatsData;
       review.likeCount = Number(stats.likes_count || 0);
     }
   }
