@@ -13,11 +13,17 @@
       "@types/*": ["src/types/*"],
       "@services/*": ["src/services/*"]
     },
-    "typeRoots": ["./node_modules/@types", "./src/types", "./src/types/declarations"]
+    "typeRoots": ["./node_modules/@types", "./src/types", "./src/types/declarations"],
+    "types": ["node", "express"]
   },
   "ts-node": {
     "files": true,
-    "transpileOnly": true,
-    "experimentalSpecifierResolution": "node"
-  }
+    "transpileOnly": false,
+    "experimentalSpecifierResolution": "node",
+    "require": ["tsconfig-paths/register"]
+  },
+  "files": [
+    "./src/types/global.d.ts",
+    "./src/types/declarations/express.d.ts"
+  ]
 }

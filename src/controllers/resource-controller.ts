@@ -5,10 +5,22 @@
 
 import { Request, Response } from 'express';
 
+// 擴展 Request 介面以包含 user 屬性
+interface AuthRequest extends Request {
+  user?: {
+    id: number;
+    username?: string;
+    email?: string;
+    isTemp?: boolean;
+    roles?: string[];
+    [key: string]: unknown;
+  };
+}
+
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
  */
-const getUserIdOrTestUser = (req: Request): number => {
+const getUserIdOrTestUser = (req: AuthRequest): number => {
   const userId = req.user?.id;
   
   if (!userId) {
@@ -44,7 +56,7 @@ import {
  * 獲取資源列表
  * GET /resources
  */
-export const getResources = asyncWrapper(async (req: Request, res: Response) => {
+export const getResources = asyncWrapper(async (req: AuthRequest, res: Response) => {
   const { 
     cursor, 
     limit, 
@@ -94,7 +106,7 @@ export const getResources = asyncWrapper(async (req: Request, res: Response) => 
  * 獲取單個資源
  * GET /resources/:id
  */
-export const getResourceById = asyncWrapper(async (req: Request, res: Response) => {
+export const getResourceById = asyncWrapper(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   
   // 查詢資源
@@ -117,7 +129,7 @@ export const getResourceById = asyncWrapper(async (req: Request, res: Response) 
  * 創建資源
  * POST /resources
  */
-export const createResource = asyncWrapper(async (req: Request, res: Response) => {
+export const createResource = asyncWrapper(async (req: AuthRequest, res: Response) => {
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
 
@@ -138,7 +150,7 @@ export const createResource = asyncWrapper(async (req: Request, res: Response) =
  * 更新資源
  * PATCH /resources/:id
  */
-export const updateResource = asyncWrapper(async (req: Request, res: Response) => {
+export const updateResource = asyncWrapper(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
@@ -164,7 +176,7 @@ export const updateResource = asyncWrapper(async (req: Request, res: Response) =
  * 更新資源狀態
  * PATCH /resources/:id/status
  */
-export const updateResourceStatus = asyncWrapper(async (req: Request, res: Response) => {
+export const updateResourceStatus = asyncWrapper(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
@@ -190,7 +202,7 @@ export const updateResourceStatus = asyncWrapper(async (req: Request, res: Respo
  * 刪除資源
  * DELETE /resources/:id
  */
-export const deleteResource = asyncWrapper(async (req: Request, res: Response) => {
+export const deleteResource = asyncWrapper(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
@@ -209,7 +221,7 @@ export const deleteResource = asyncWrapper(async (req: Request, res: Response) =
  * 獲取資源標籤
  * GET /resources/:id/tags
  */
-export const getResourceTags = asyncWrapper(async (req: Request, res: Response) => {
+export const getResourceTags = asyncWrapper(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   
   // 獲取資源標籤

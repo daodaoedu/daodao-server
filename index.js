@@ -174,16 +174,25 @@ try {
   const useCompiled = fs.existsSync(compiledPath);
   
   if (useCompiled) {
-    // 生產環境：使用編譯後的 JavaScript
+    // 使用編譯後的 JavaScript
     console.log('🚀 使用編譯後的 TypeScript 路由...');
-    // 在 Docker 環境中不需要額外的路徑解析
     setupTypescriptRoutes = require(compiledPath).setupTypescriptRoutes;
   } else {
-    // 開發環境：使用 ts-node 動態編譯
-    console.log('🔧 開發模式：使用 ts-node 動態編譯 TypeScript...');
-    require('ts-node/register');
-    require('tsconfig-paths/register');
-    setupTypescriptRoutes = require('./src/app.ts').setupTypescriptRoutes;
+    // 開發環境：嘗試使用 ts-node，如果失敗則提示編譯
+    console.log('🔧 開發模式：嘗試載入 TypeScript...');
+    try {
+      // 設置 ts-node 環境變數以使用開發配置
+      process.env.TS_NODE_PROJECT = './tsconfig.dev.json';
+      process.env.TS_NODE_TRANSPILE_ONLY = 'true';
+      
+      require('ts-node/register');
+      require('tsconfig-paths/register');
+      setupTypescriptRoutes = require('./src/app.ts').setupTypescriptRoutes;
+    } catch (tsError) {
+      console.error('❌ ts-node 載入失敗:', tsError.message);
+      console.warn('💡 提示：請執行 npm run build 編譯 TypeScript 文件');
+      throw tsError;
+    }
   }
   
   console.log('✅ TypeScript 路由模塊已載入，正在設置路由...');

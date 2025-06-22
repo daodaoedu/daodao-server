@@ -1,4 +1,4 @@
-import { Express } from 'express';
+// Express type augmentation
 
 declare global {
   namespace Express {
@@ -9,7 +9,7 @@ declare global {
         email?: string;
         isTemp?: boolean;
         roles?: string[];
-        [key: string]: any;
+        [key: string]: unknown;
       };
     }
   }
