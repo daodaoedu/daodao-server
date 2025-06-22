@@ -13,21 +13,39 @@ alwaysApply: true
 - 提升代碼品質和開發效率
 - 保持專案穩定運作
 
-### 目錄結構規範
+### 混合架構目錄結構
+本專案採用 **雙架構方式**，同時支援舊有 JavaScript 和新的 TypeScript 代碼：
+
+#### 根目錄結構（遺留 JavaScript）
+```
+controllers/     # JavaScript 業務邏輯控制器
+models/         # Sequelize 模型和綱要  
+routes/         # Express 路由定義
+services/       # 資料庫服務（mongo, postgres, redis）
+middlewares/    # 認證和驗證中間件
+utils/          # 工具函數
+```
+
+#### TypeScript 結構（src/ 目錄）
 ```
 src/
-├── config/          # 配置檔案
-├── controllers/     # 控制器
-├── models/          # 資料模型與型別定義
-├── routes/          # 路由
-├── services/        # 服務層
-├── middleware/     # 中間件
-├── utils/           # 工具函數
-├── types/           # 型別定義
-├── schemas/         # Swagger Schema 定義
-├── validators/      # Zod 驗證器
-└── tests/           # 測試檔案
+├── controllers/    # TypeScript 控制器
+├── models/        # TypeScript/Sequelize 模型
+├── routes/        # TypeScript 路由定義
+├── services/      # 業務邏輯服務
+├── types/         # TypeScript 型別定義
+├── validators/    # Zod 驗證綱要
+├── middleware/    # TypeScript 中間件
+├── utils/         # TypeScript 工具程式
+├── swagger/       # API 文件綱要
+├── config/        # TypeScript 配置檔案
+└── tests/         # TypeScript 測試檔案
 ```
+
+#### 關鍵整合點
+- `index.js` - 主要進入點，載入 JS 和 TS 路由
+- `src/app.ts` - TypeScript 路由設定和 Swagger 整合
+- `src/utils/modelBridge.ts` - 橋接 JavaScript 和 TypeScript 模型
 
 ### 型別定義規範
 
@@ -70,10 +88,17 @@ declare global {
 }
 ```
 
-### 遷移優先順序
-1. **第一階段**：核心服務（auth, jwt, database）
-2. **第二階段**：業務邏輯（user, project, idea）
-3. **第三階段**：輔助功能（email, image, monitor）
+### TypeScript 遷移策略
+本專案正積極從 JavaScript 遷移到 TypeScript：
+
+1. **第一階段**：核心服務（auth, database connections）
+2. **第二階段**：業務邏輯（resources, reviews, tags）  
+3. **第三階段**：遺留功能（email, images, monitoring）
+
+#### 路徑別名配置
+- `@/*` 映射到 `src/*`
+- `@types/*` 映射到 `src/types/*`
+- `@services/*` 映射到 `src/services/*`
 
 ### 代碼規範
 
@@ -222,13 +247,15 @@ docs/
 ```
 
 ### 標籤分類
-- `Authentication`: 認證相關 API
+- `Authentication`: 認證相關 API（JWT, Google OAuth）
 - `Users`: 使用者管理 API
+- `Resources`: 資源管理 API
+- `Reviews`: 評論和評分 API
+- `Tags`: 標籤系統 API
 - `Projects`: 專案管理 API
 - `Ideas`: 想法分享 API
 - `Marathons`: 馬拉松活動 API
-- `Comments`: 評論系統 API
-- `Files`: 檔案上傳 API
+- `Files`: 檔案上傳 API（Cloudflare R2, Multer）
 - `Admin`: 管理員功能 API
 - `Monitoring`: 監控相關 API
 
@@ -346,20 +373,39 @@ npm install -D jest @types/jest ts-jest
 
 ## 部署和維護
 
-### 建置腳本
+### 開發命令
+根據 CLAUDE.md 的指引，使用以下命令：
+
+#### 核心命令
 ```json
 {
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "type-check": "tsc --noEmit",
-    "swagger:generate": "ts-node scripts/generate-swagger.ts",
-    "swagger:validate": "ts-node scripts/validate-swagger.ts",
-    "test": "jest",
-    "lint": "tsc --noEmit && echo 'Type checking passed'"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest --config=config/jest.config.js",
+    "test:paths": "NODE_PATH=src npm test"
   }
 }
+```
+
+#### TypeScript 命令
+```json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix"
+  }
+}
+```
+
+#### 直接命令
+```bash
+# TypeScript 類型檢查
+tsc --noEmit
+
+# 直接執行 TypeScript 檔案
+ts-node src/index.ts
 ```
 
 ### 環境變數型別定義
@@ -370,11 +416,34 @@ declare global {
     interface ProcessEnv {
       NODE_ENV: 'development' | 'production' | 'test';
       PORT: string;
-      MONGODB_URI: string;
+      
+      // 資料庫配置
       POSTGRES_HOST: string;
-      JWT_SECURITY: string;
+      POSTGRES_PORT: string;
+      POSTGRES_DB: string;
+      POSTGRES_USER: string;
+      POSTGRES_PASSWORD: string;
+      MONGODB_URI: string;
+      REDIS_HOST: string;
+      REDIS_PORT: string;
+      REDIS_PASSWORD: string;
+      
+      // 認證配置
+      JWT_SECRET: string;
+      SESSION_SECRET: string;
       GOOGLE_CLIENT_ID: string;
       GOOGLE_CLIENT_SECRET: string;
+      
+      // 服務配置
+      CLOUDFLARE_R2_ENDPOINT: string;
+      CLOUDFLARE_R2_ACCESS_KEY_ID: string;
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: string;
+      CLOUDFLARE_R2_BUCKET_NAME: string;
+      EMAIL_HOST: string;
+      EMAIL_PORT: string;
+      EMAIL_USER: string;
+      EMAIL_PASSWORD: string;
+      FRONTEND_URL: string;
     }
   }
 }
@@ -383,13 +452,16 @@ declare global {
 ## 最佳實踐
 
 ### TypeScript 最佳實踐
+根據專案指引：
+- **嚴格禁止使用 `any`**（專案規範）
 - 優先使用 `interface` 而非 `type`
 - 使用 `strict` 模式
-- 避免使用 `any`，優先使用 `unknown`
+- 優先使用 `unknown` 替代 `any`
 - 使用 `const assertions` 提升型別推斷
 - 適當使用泛型增加代碼復用性
-- 使用物件字面量和函數代替類別
-- 使用常量物件代替列舉（enum）
+- **使用工廠函數和物件字面量**代替類別（專案模式）
+- **使用常量物件代替列舉（enum）**（專案偏好）
+- **遵循函數式程式設計原則**
 
 ### 常量代替列舉範例
 ```typescript
@@ -424,6 +496,13 @@ function checkAccess(role: UserRoleType) {
 - 詳細描述錯誤回應
 - 使用 `$ref` 避免重複定義
 - 定期驗證文件完整性
+- **TypeScript 優先的 API 開發**（專案方針）
+- **全面的 Swagger 註解**（專案要求）
+- **標準化回應格式**（含 success/error 狀態）
+
+### API 文件存取點
+- Swagger UI: `/api-docs` 和 `/api/docs`
+- JSON 格式: `/api-docs.json`
 
 ### 安全性考量
 - 敏感資訊不要出現在文件中
@@ -433,15 +512,19 @@ function checkAccess(role: UserRoleType) {
 
 ### 效能考量
 - 合理使用分頁
-- 適當的快取策略
-- 資料庫查詢優化
+- 適當的快取策略（Redis）
+- 資料庫查詢優化（PostgreSQL, MongoDB）
 - API 回應大小控制
+- **速率限制**（全域: 1000 req/min, 嚴格: 60 req/min）
 
 ---
 
 **注意事項**：
-1. 這是一個漸進式遷移計劃，請按階段執行
-2. 每個階段完成後進行測試和驗證
-3. 保持現有功能的正常運作
-4. 定期備份重要資料
-5. 團隊成員需要適當的 TypeScript 和 Swagger 培訓
+1. 本專案採用**混合 JavaScript/TypeScript 架構**
+2. **漸進式遷移策略**，按階段執行不影響現有功能
+3. **嚴格禁止使用 `any` 型別**
+4. 使用**工廠函數模式**而非類別
+5. 遵循**函數式程式設計原則**
+6. 每個階段完成後進行測試和驗證
+7. **TypeScript 優先的 API 開發方針**
+8. 定期備份重要資料和配置
