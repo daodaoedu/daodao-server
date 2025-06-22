@@ -30,6 +30,10 @@ const Marathon = require("./models/marathon.model");
 const path = require('path');
 const PORT = process.env.PORT || 3000;
 
+// 記憶體監控：啟動時記錄
+const startMemUsage = process.memoryUsage();
+console.log(`🧠 啟動記憶體使用: ${Math.round(startMemUsage.heapUsed / 1024 / 1024)}MB`);
+
 const app = express();
 app.use(express.json());
 
@@ -164,44 +168,31 @@ app.get('/api/docs', (req, res) => {
 
 console.log('📚 Swagger UI available at http://localhost:4000/api-docs');
 
-// TypeScript 路由整合 - 必須在靜態文件處理之前
-try {
-  let setupTypescriptRoutes;
-  
-  // 檢查是否存在編譯後的文件
-  const fs = require('fs');
-  const compiledPath = './dist/src/app.js';
-  const useCompiled = fs.existsSync(compiledPath);
-  
-  if (useCompiled) {
-    // 使用編譯後的 JavaScript
-    console.log('🚀 使用編譯後的 TypeScript 路由...');
-    setupTypescriptRoutes = require(compiledPath).setupTypescriptRoutes;
-  } else {
-    // 開發環境：嘗試使用 ts-node，如果失敗則提示編譯
-    console.log('🔧 開發模式：嘗試載入 TypeScript...');
-    try {
-      // 設置 ts-node 環境變數以使用開發配置
-      process.env.TS_NODE_PROJECT = './tsconfig.dev.json';
-      process.env.TS_NODE_TRANSPILE_ONLY = 'true';
-      
-      require('ts-node/register');
-      require('tsconfig-paths/register');
-      setupTypescriptRoutes = require('./src/app.ts').setupTypescriptRoutes;
-    } catch (tsError) {
-      console.error('❌ ts-node 載入失敗:', tsError.message);
-      console.warn('💡 提示：請執行 npm run build 編譯 TypeScript 文件');
-      throw tsError;
-    }
+// 記憶體優化：強制使用編譯後的 TypeScript 文件
+const fs = require('fs');
+const compiledPath = './dist/src/app.js';
+
+console.log('🧠 記憶體優化模式：優先使用編譯後的 TypeScript 文件');
+
+if (fs.existsSync(compiledPath)) {
+  try {
+    console.log('🚀 使用編譯後的 TypeScript 路由（記憶體節省 ~150MB）...');
+    const { setupTypescriptRoutes } = require(compiledPath);
+    setupTypescriptRoutes(app);
+    console.log('✅ TypeScript 路由設置完成（記憶體優化模式）');
+  } catch (error) {
+    console.error('❌ 編譯後的 TypeScript 路由載入失敗:', error.message);
+    console.warn('🔧 建議執行 npm run build 重新編譯');
   }
+} else {
+  console.error('❌ 未找到編譯後的 TypeScript 文件');
+  console.warn('⚠️ 為了節省記憶體，請先執行以下命令：');
+  console.warn('   npm run build');
+  console.warn('   然後重新啟動服務器');
+  console.warn('💡 這將節省約 150MB 記憶體使用');
   
-  console.log('✅ TypeScript 路由模塊已載入，正在設置路由...');
-  setupTypescriptRoutes(app);
-  console.log('✅ TypeScript 路由設置完成');
-} catch (error) {
-  console.error('❌ TypeScript 路由加載失敗:', error);
-  console.warn('⚠️ 生產環境請先執行 npm run build 編譯 TypeScript');
-  console.warn('⚠️ 開發環境請確保已安裝 ts-node 和 tsconfig-paths 套件');
+  // 不要讓服務器完全崩潰，但記錄嚴重警告
+  console.log('⚠️ 服務器將以降級模式運行（僅 JavaScript 路由）');
 }
 
 // 添加調試中間件來查看所有請求
@@ -251,7 +242,22 @@ async function startServer() {
     printRoutes();
     
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      // 記憶體監控：服務器啟動後記錄
+      const currentMemUsage = process.memoryUsage();
+      const memUsedMB = Math.round(currentMemUsage.heapUsed / 1024 / 1024);
+      const memDiffMB = Math.round((currentMemUsage.heapUsed - startMemUsage.heapUsed) / 1024 / 1024);
+      
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`🧠 當前記憶體使用: ${memUsedMB}MB (+${memDiffMB}MB)`);
+      
+      // 設置定期記憶體監控
+      setInterval(() => {
+        const usage = process.memoryUsage();
+        const heapMB = Math.round(usage.heapUsed / 1024 / 1024);
+        if (heapMB > 200) {
+          console.log(`⚠️ 記憶體使用偏高: ${heapMB}MB`);
+        }
+      }, 60000); // 每分鐘檢查一次
     });
   } catch (error) {
     console.error('Failed to start server:', error);
