@@ -3,7 +3,6 @@
  * 處理資源相關的 HTTP 請求
  */
 
-/// <reference path="../types/declarations/express.d.ts" />
 import { Request, Response } from 'express';
 
 /**
@@ -33,7 +32,7 @@ const getUserIdOrTestUser = (req: Request): number => {
 import { asyncWrapper, BadRequestError, NotFoundError } from '@/utils/error-handler';
 import resourceService from '@/services/resource-service';
 import tagService from '@/services/tag-service';
-import Resource from '@/models/resource';
+import { Resource } from '@/models/index';
 import { TagAttributes } from '@/models/tag';
 import { 
   validateCreateResource, 

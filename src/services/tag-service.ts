@@ -4,8 +4,8 @@
  */
 
 import { Transaction, Op } from 'sequelize';
-import Tag, { TagAttributes } from '@/models/tag';
-import EntityTag from '@/models/entity-tag';
+import { Tag, EntityTag } from '@/models/index';
+import { TagAttributes } from '@/models/tag';
 import sequelize from '@/config/database';
 
 /**
