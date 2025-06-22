@@ -26,7 +26,11 @@
     "controllers/**/*",
     "routes/**/*",
     "validators/**/*",
-    "src/types/declarations/**/*.d.ts"
+    "src/types/**/*.d.ts"
+  ],
+  "files": [
+    "src/types/global.d.ts",
+    "src/types/declarations/express.d.ts"
   ],
   "exclude": [
     "node_modules",
