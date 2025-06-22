@@ -4,11 +4,9 @@
  */
 
 import { Op, WhereOptions, Includeable, Order } from 'sequelize';
-import ResourceReview from '@/models/resource-review';
-import Resource from '@/models/resource';
+import { ResourceReview, Resource, Tag } from '@/models/index';
 // 從 JS models 中引入 User 模型
 import { User } from '../../models/index';
-import Tag from '@/models/tag';
 import { 
   transformReviewToApi, 
   transformReviewToDb 

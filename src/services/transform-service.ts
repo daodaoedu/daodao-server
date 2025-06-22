@@ -5,7 +5,7 @@
 
 import { ResourceAttributes } from '@/models/resource';
 import { ResourceReviewAttributes } from '@/models/resource-review';
-import Category from '@/models/category';
+import { Category } from '@/models/index';
 import { 
   contentFeaturesMappings, 
   resourceUsageMappings
@@ -18,7 +18,8 @@ import { ResourceResponse } from '@/types/resource.types';
 import { 
   ResourceReviewResponse,
   ContentFeatures,
-  ResourceUsage
+  ResourceUsage,
+  TimeUsage
 } from '@/types/resource-review.types';
 
 /**
@@ -28,7 +29,7 @@ import {
  * @returns API格式的資源對象
  */
 export function transformResourceToApi(
-  dbResource: Record<string, any>,
+  dbResource: Record<string, unknown>,
   includeAssociations = true
 ): ResourceResponse {
   // 基本資源轉換
@@ -67,7 +68,7 @@ export function transformResourceToApi(
   if (includeAssociations) {
     // 處理使用者資訊
     if (dbResource.User && typeof dbResource.User === 'object') {
-      const user = dbResource.User as any;
+      const user = dbResource.User as Record<string, unknown>;
       resource.user = {
         id: Number(user.id || 0),
         name: String(user.display_name || user.username || ''),
@@ -79,13 +80,13 @@ export function transformResourceToApi(
 
     // 處理主分類
     if (dbResource.majorCategory && typeof dbResource.majorCategory === 'object') {
-      const majorCategory = dbResource.majorCategory as any;
+      const majorCategory = dbResource.majorCategory as Record<string, unknown>;
       resource.majorCategory = String(majorCategory.name || '');
     }
 
     // 處理子分類
     if (dbResource.subCategory && typeof dbResource.subCategory === 'object') {
-      const subCategory = dbResource.subCategory as any;
+      const subCategory = dbResource.subCategory as Record<string, unknown>;
       resource.subCategory = String(subCategory.name || '');
     }
 
@@ -96,7 +97,7 @@ export function transformResourceToApi(
 
     // 處理統計數據
     if (dbResource.stats && typeof dbResource.stats === 'object') {
-      const stats = dbResource.stats as any;
+      const stats = dbResource.stats as Record<string, unknown>;
       resource.viewCount = Number(stats.view_count || 0);
       resource.favoriteCount = Number(stats.favorite_count || 0);
       resource.shareCount = Number(stats.share_count || 0);
@@ -135,7 +136,7 @@ async function getCategoryIdByName(categoryName: string): Promise<number | null>
  * @returns 資料庫格式的資源對象
  */
 export async function transformResourceToDb(
-  apiResource: Record<string, any>,
+  apiResource: Record<string, unknown>,
   userId: number
 ): Promise<Partial<ResourceAttributes>> {
   // 如果提供了分類名稱，查找對應的 ID
@@ -173,7 +174,7 @@ export async function transformResourceToDb(
  * @returns API格式的心得評價對象
  */
 export function transformReviewToApi(
-  dbReview: Record<string, any>,
+  dbReview: Record<string, unknown>,
   includeAssociations = true
 ): ResourceReviewResponse {
   // 計算平均評分
@@ -193,10 +194,10 @@ export function transformReviewToApi(
     avgRating,
     
     // Boolean 欄位轉物件 - 使用通用函數
-    contentFeatures: booleanFieldsToObject<ContentFeatures>(dbReview as Record<string, any>, contentFeaturesMappings),
-    resourceUsage: booleanFieldsToObject<ResourceUsage>(dbReview as Record<string, any>, resourceUsageMappings),
+    contentFeatures: booleanFieldsToObject<ContentFeatures>(dbReview as Record<string, unknown>, contentFeaturesMappings),
+    resourceUsage: booleanFieldsToObject<ResourceUsage>(dbReview as Record<string, unknown>, resourceUsageMappings),
     
-    timeUsage: dbReview.time_usage as any,
+    timeUsage: dbReview.time_usage as TimeUsage | null,
     status: String(dbReview.status || 'published'),
     likeCount: 0,
     user: {
@@ -216,7 +217,7 @@ export function transformReviewToApi(
   if (includeAssociations) {
     // 處理使用者資訊
     if (dbReview.User && typeof dbReview.User === 'object') {
-      const user = dbReview.User as any;
+      const user = dbReview.User as Record<string, unknown>;
       review.user = {
         id: Number(user.id || 0),
         name: String(user.display_name || user.username || ''),
@@ -233,7 +234,7 @@ export function transformReviewToApi(
 
     // 處理讚數
     if (dbReview.stats && typeof dbReview.stats === 'object') {
-      const stats = dbReview.stats as any;
+      const stats = dbReview.stats as Record<string, unknown>;
       review.likeCount = Number(stats.likes_count || 0);
     }
   }
@@ -249,7 +250,7 @@ export function transformReviewToApi(
  * @returns 資料庫格式的心得評價對象
  */
 export function transformReviewToDb(
-  apiReview: Record<string, any>,
+  apiReview: Record<string, unknown>,
   userId: number,
   resourceId: number
 ): Partial<ResourceReviewAttributes> {
@@ -292,7 +293,7 @@ export function transformReviewToDb(
  * @param dbReview - 資料庫心得評價記錄
  * @returns 平均評分
  */
-function calculateAverageRating(dbReview: Record<string, any>): number {
+function calculateAverageRating(dbReview: Record<string, unknown>): number {
   const scores = [
     dbReview.score_impact,
     dbReview.score_mindset,

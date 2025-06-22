@@ -4,8 +4,7 @@
  */
 
 // 從 TypeScript 模型系統引入
-import Resource from '@/models/resource';
-import ResourceReview from '@/models/resource-review';
+import { Resource, ResourceReview } from '@/models/index';
 
 // 從 JavaScript 模型系統引入
 import { User } from '../../models/index';
