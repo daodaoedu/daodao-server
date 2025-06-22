@@ -17,7 +17,8 @@
     "allowJs": true,
     "declaration": false,
     "resolveJsonModule": true,
-    "typeRoots": ["./node_modules/@types", "./src/types/declarations"]
+    "typeRoots": ["./node_modules/@types", "./src/types", "./src/types/declarations"],
+    "types": ["node", "express", "jest"]
   },
   "include": [
     "src/**/*",
@@ -26,7 +27,7 @@
     "controllers/**/*",
     "routes/**/*",
     "validators/**/*",
-    "src/types/declarations/**/*.d.ts"
+    "src/types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
