@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@types/*": ["src/types/*"],
+      "@services/*": ["src/services/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types", "./src/types/declarations"],
+    "types": ["node", "express"]
+  },
+  "ts-node": {
+    "files": true,
+    "transpileOnly": false,
+    "experimentalSpecifierResolution": "node",
+    "require": ["tsconfig-paths/register"]
+  },
+  "files": [
+    "./src/types/global.d.ts",
+    "./src/types/declarations/express.d.ts"
+  ]
+}

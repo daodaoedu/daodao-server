@@ -126,8 +126,10 @@ const setupTsModelAssociations = () => {
   });
 };
 
-// 執行關聯設置
-setupTsModelAssociations();
+// 執行關聯設置（跳過測試環境）
+if (process.env.NODE_ENV !== 'test') {
+  setupTsModelAssociations();
+}
 
 // 為 TypeScript 使用提供類型安全的匯出
 export {
@@ -137,6 +139,9 @@ export {
   EntityTag,
   Category
 };
+
+// 重新匯出類型定義
+export type { TagAttributes } from './tag';
 
 // 提供預設匯出
 const models = {

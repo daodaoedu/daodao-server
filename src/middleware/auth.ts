@@ -16,13 +16,18 @@ interface UserJwtPayload extends JwtPayload {
   roles?: string[];
 }
 
+// 擴展 Request 介面以包含 user 屬性
+interface AuthRequest extends Request {
+  user?: UserJwtPayload;
+}
+
 /**
  * JWT 身份驗證中間件
  * @param req - Express 請求對象
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
   // 從請求頭中獲取 token
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
@@ -62,7 +67,7 @@ export const authenticate = authenticateJWT;
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
+export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
   
@@ -91,7 +96,7 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
  * @returns Express 中間件
  */
 export const authorizeRoles = (roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new UnauthorizedError('未經授權的訪問'));
     }

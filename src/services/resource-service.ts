@@ -4,11 +4,8 @@
  */
 
 import { Op, WhereOptions, Includeable, Order } from 'sequelize';
-// 直接從 TS 模型引入，避免通過 JS 模型載入
-import Resource from '@/models/resource';
-import ResourceReview from '@/models/resource-review';
-import Tag from '@/models/tag';
-import Category from '@/models/category';
+// 從模型索引引入所有模型以確保關聯設定正確載入
+import { Resource, ResourceReview, Tag, Category } from '@/models/index';
 // 從 JS 模型引入 User (User 模型仍在 JavaScript 部分)
 import { User } from '../../models/index';
 import { 
