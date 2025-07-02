@@ -34,10 +34,11 @@ const sequelize = new Sequelize({
     paranoid: true
   },
   pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+    max: 5,         // 降低最大連線數以節省記憶體
+    min: 1,         // 降低最小連線數
+    acquire: 60000, // 增加獲取超時時間以應對慢速 Swap
+    idle: 10000,
+    evict: 5000
   }
 });
 
