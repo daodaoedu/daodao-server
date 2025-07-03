@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from 'express';
+import { Model } from 'sequelize';
 import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
 import resourceReviewService from '@/services/resource-review-service';
 import tagService from '@/services/tag-service';
@@ -309,7 +310,7 @@ export const getReviewTags = asyncWrapper(async (req: AuthRequest, res: Response
   // 返回結果
   res.json({
     success: true,
-    data: tags.map(tag => {
+    data: tags.map((tag: Model<TagAttributes>) => {
       const tagInstance = tag as unknown as TagAttributes;
       return tagInstance.name;
     })

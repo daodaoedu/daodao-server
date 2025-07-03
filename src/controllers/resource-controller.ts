@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from 'express';
+import { Model } from 'sequelize';
 
 // 擴展 Request 介面以包含 user 屬性
 interface AuthRequest extends Request {
@@ -235,7 +236,7 @@ export const getResourceTags = asyncWrapper(async (req: AuthRequest, res: Respon
   // 返回結果
   res.json({
     success: true,
-    data: tags.map(tag => {
+    data: tags.map((tag: Model<TagAttributes>) => {
       const tagInstance = tag as unknown as TagAttributes;
       return tagInstance.name;
     })
