@@ -22,7 +22,8 @@ jest.mock('../../../src/models/resource', () => ({
     findOne: jest.fn(),
     create: jest.fn(),
     findAll: jest.fn(),
-    findAndCountAll: jest.fn()
+    findAndCountAll: jest.fn(),
+    count: jest.fn()
   }
 }));
 jest.mock('../../../src/models/resource-review', () => ({
@@ -593,7 +594,7 @@ describe('Resource Service Tests', () => {
         majorCategory: 'frontend_development'
       }, {});
 
-      // 驗證調用參數
+      // 驗證調用參數 - 現在 majorCategory 是透過 join 處理的
       expect(Resource.findAndCountAll).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
@@ -602,11 +603,97 @@ describe('Resource Service Tests', () => {
                 type: 'books_articles',
                 cost: 'free',
                 level: 'beginner',
-                '$majorCategory.name$': 'frontend_development',
                 status: 'active'
               })
             ])
-          }
+          },
+          include: expect.arrayContaining([
+            expect.objectContaining({
+              as: 'majorCategory',
+              required: true,
+              where: { name: 'frontend_development' }
+            })
+          ])
+        })
+      );
+    });
+
+    it('應該正確處理 subCategory 篩選參數', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [],
+        count: 0
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+      (Resource.count as jest.Mock).mockResolvedValue(0);
+
+      // 執行測試
+      const result = await resourceService.getResources({
+        type: 'books_articles',
+        subCategory: 'javascript_frameworks'
+      }, {});
+
+      // 驗證調用參數 - 現在 subCategory 是透過 join 處理的
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            [Op.and]: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'books_articles',
+                status: 'active'
+              })
+            ])
+          },
+          include: expect.arrayContaining([
+            expect.objectContaining({
+              as: 'subCategory',
+              required: true,
+              where: { name: 'javascript_frameworks' }
+            })
+          ])
+        })
+      );
+    });
+
+    it('應該正確處理 majorCategory 和 subCategory 同時篩選', async () => {
+      // 模擬 findAndCountAll 返回值
+      const mockResult = {
+        rows: [],
+        count: 0
+      };
+      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+      (Resource.count as jest.Mock).mockResolvedValue(0);
+
+      // 執行測試
+      const result = await resourceService.getResources({
+        majorCategory: 'frontend_development',
+        subCategory: 'javascript_frameworks'
+      }, {});
+
+      // 驗證調用參數 - 兩個分類都應該透過 join 處理
+      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            [Op.and]: expect.arrayContaining([
+              expect.objectContaining({
+                status: 'active'
+              })
+            ])
+          },
+          include: expect.arrayContaining([
+            expect.objectContaining({
+              as: 'majorCategory',
+              required: true,
+              where: { name: 'frontend_development' }
+            }),
+            expect.objectContaining({
+              as: 'subCategory',
+              required: true,
+              where: { name: 'javascript_frameworks' }
+            })
+          ])
         })
       );
     });
