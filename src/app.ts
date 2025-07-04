@@ -12,6 +12,12 @@ import models from './models/index';
 import resourceRoutes from './routes/resource-routes';
 // 引入實際的資源評價路由  
 import resourceReviewRoutes from './routes/resource-review-routes';
+// 引入想法路由
+import ideaRoutes from './routes/idea-routes';
+// 引入我的想法路由
+import meRoutes from './routes/me-routes';
+// 引入標籤路由
+import tagRoutes from './routes/tag-routes';
 
 /**
  * 設置 TypeScript 路由和模型
@@ -40,6 +46,18 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 將資源評價路由掛載到資源路由下
   app.use('/api/v1/resources', resourceReviewRoutes);
   console.log('💯 v1 資源和評價路由已註冊 - 可在 /api/v1/resources 訪問');
+  
+  // 註冊想法路由
+  app.use('/api/v1/ideas', ideaRoutes);
+  console.log('💡 v1 想法路由已註冊 - 可在 /api/v1/ideas 訪問');
+  
+  // 註冊我的想法路由
+  app.use('/api/v1/me', meRoutes);
+  console.log('👤 v1 個人路由已註冊 - 可在 /api/v1/me 訪問');
+  
+  // 註冊標籤路由
+  app.use('/api/v1/tags', tagRoutes);
+  console.log('🏷️ v1 標籤路由已註冊 - 可在 /api/v1/tags 訪問');
   
   // v1 健康檢查端點
   app.get('/api/v1/health', (req, res) => {

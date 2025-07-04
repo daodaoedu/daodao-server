@@ -17,7 +17,7 @@ interface UserJwtPayload extends JwtPayload {
 }
 
 // 擴展 Request 介面以包含 user 屬性
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: UserJwtPayload;
 }
 

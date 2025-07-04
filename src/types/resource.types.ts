@@ -94,3 +94,6 @@ export type CostType = 'free' | 'paid' | 'freemium';
 
 // Level type enumeration
 export type LevelType = 'beginner' | 'intermediate' | 'advanced';
+
+// Resource status enumeration
+export type ResourceStatus = 'draft' | 'active' | 'archived';
