@@ -457,26 +457,26 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該使用預設分頁參數（每頁5筆）', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [
-          createMockSequelizeInstance({
-            id: 1,
-            name: '測試資源1',
-            url: 'https://example.com/1',
-            external_id: '550e8400-e29b-41d4-a716-446655440000',
-            type: 'books_articles',
-            cost: 'free',
-            level: 'beginner',
-            created_by: 100,
-            status: 'active',
-            created_at: new Date(),
-            updated_at: new Date()
-          })
-        ],
-        count: 10
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 count 返回值
+      (Resource.count as jest.Mock).mockResolvedValue(10);
+      
+      // 模擬 findAll 返回值
+      const mockRows = [
+        createMockSequelizeInstance({
+          id: 1,
+          name: '測試資源1',
+          url: 'https://example.com/1',
+          external_id: '550e8400-e29b-41d4-a716-446655440000',
+          type: 'books_articles',
+          cost: 'free',
+          level: 'beginner',
+          created_by: 100,
+          status: 'active',
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+      ];
+      (Resource.findAll as jest.Mock).mockResolvedValue(mockRows);
 
       // 模擬評論統計
       (ResourceReview.findOne as jest.Mock).mockResolvedValue(null);
@@ -485,8 +485,15 @@ describe('Resource Service Tests', () => {
       // 執行測試，不提供 limit 參數
       const result = await resourceService.getResources({}, {});
 
-      // 驗證調用參數
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      // 驗證 count 調用參數
+      expect(Resource.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          distinct: true
+        })
+      );
+      
+      // 驗證 findAll 調用參數
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           limit: 6, // 應該使用 DEFAULT_RESOURCE_PAGE_LIMIT + 1 (5 + 1)
           order: [['created_at', 'desc']]
@@ -495,19 +502,18 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該限制最大分頁數量為20筆', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 count 返回值
+      (Resource.count as jest.Mock).mockResolvedValue(0);
+      
+      // 模擬 findAll 返回值
+      (Resource.findAll as jest.Mock).mockResolvedValue([]);
       (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
 
       // 執行測試，提供超過最大限制的 limit
       const result = await resourceService.getResources({}, { limit: 50 });
 
-      // 驗證調用參數
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      // 驗證 findAll 調用參數
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           limit: 21, // 應該限制為 MAX_RESOURCE_PAGE_LIMIT + 1 (20 + 1)
           order: [['created_at', 'desc']]
@@ -516,12 +522,11 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該正確處理游標分頁', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 count 返回值
+      (Resource.count as jest.Mock).mockResolvedValue(0);
+      
+      // 模擬 findAll 返回值
+      (Resource.findAll as jest.Mock).mockResolvedValue([]);
       (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
 
       // 創建有效的游標
@@ -537,7 +542,7 @@ describe('Resource Service Tests', () => {
       });
 
       // 驗證調用參數包含游標條件
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           limit: 6, // DEFAULT_RESOURCE_PAGE_LIMIT + 1
           where: {
@@ -555,12 +560,11 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該正確處理排序參數', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 count 返回值
+      (Resource.count as jest.Mock).mockResolvedValue(0);
+      
+      // 模擬 findAll 返回值
+      (Resource.findAll as jest.Mock).mockResolvedValue([]);
       (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
 
       // 執行測試
@@ -570,7 +574,7 @@ describe('Resource Service Tests', () => {
       });
 
       // 驗證調用參數
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           order: [['name', 'asc']]
         })
@@ -578,12 +582,11 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該正確處理篩選參數', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 count 返回值
+      (Resource.count as jest.Mock).mockResolvedValue(0);
+      
+      // 模擬 findAll 返回值
+      (Resource.findAll as jest.Mock).mockResolvedValue([]);
       (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
 
       // 執行測試
@@ -595,7 +598,7 @@ describe('Resource Service Tests', () => {
       }, {});
 
       // 驗證調用參數 - 現在 majorCategory 是透過 join 處理的
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             [Op.and]: expect.arrayContaining([
@@ -619,14 +622,12 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該正確處理 subCategory 篩選參數', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+      // 模擬 count 返回值
       (Resource.count as jest.Mock).mockResolvedValue(0);
+      
+      // 模擬 findAll 返回值
+      (Resource.findAll as jest.Mock).mockResolvedValue([]);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
 
       // 執行測試
       const result = await resourceService.getResources({
@@ -635,7 +636,7 @@ describe('Resource Service Tests', () => {
       }, {});
 
       // 驗證調用參數 - 現在 subCategory 是透過 join 處理的
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             [Op.and]: expect.arrayContaining([
@@ -657,14 +658,12 @@ describe('Resource Service Tests', () => {
     });
 
     it('應該正確處理 majorCategory 和 subCategory 同時篩選', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (Resource.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+      // 模擬 count 返回值
       (Resource.count as jest.Mock).mockResolvedValue(0);
+      
+      // 模擬 findAll 返回值
+      (Resource.findAll as jest.Mock).mockResolvedValue([]);
+      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
 
       // 執行測試
       const result = await resourceService.getResources({
@@ -673,7 +672,7 @@ describe('Resource Service Tests', () => {
       }, {});
 
       // 驗證調用參數 - 兩個分類都應該透過 join 處理
-      expect(Resource.findAndCountAll).toHaveBeenCalledWith(
+      expect(Resource.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             [Op.and]: expect.arrayContaining([

@@ -146,6 +146,13 @@
  *               multipleOf: 0.5
  *               description: 達成目標評分
  *               example: 4.5
+ *             avgRating:
+ *               type: number
+ *               format: float
+ *               minimum: 1.0
+ *               maximum: 5.0
+ *               description: 平均評分（由五個評分維度計算得出）
+ *               example: 4.2
  *             timeUsage:
  *               allOf:
  *                 - $ref: '#/components/schemas/TimeUsageType'
@@ -187,15 +194,32 @@
  *             user:
  *               type: object
  *               description: 評論者資訊（僅在特定查詢時返回）
+ *               required:
+ *                 - id
+ *                 - name
  *               properties:
  *                 id:
  *                   type: integer
+ *                   description: 使用者 ID
  *                   example: 2
- *                 username:
+ *                 name:
  *                   type: string
- *                   example: "john_doe"
- *                 avatar:
+ *                   description: 使用者名稱
+ *                   example: "李四"
+ *                 _id:
  *                   type: string
+ *                   description: MongoDB _id
+ *                   example: "507f1f77bcf86cd799439011"
+ *                 roleList:
+ *                   type: array
+ *                   description: 角色列表
+ *                   items:
+ *                     type: string
+ *                   example: ["user"]
+ *                 photoURL:
+ *                   type: string
+ *                   nullable: true
+ *                   description: 頭像 URL
  *                   example: "https://example.com/avatar.jpg"
  *     
  *     CreateResourceReviewDto:
