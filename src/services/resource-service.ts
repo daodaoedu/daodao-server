@@ -232,8 +232,7 @@ export async function getResources(
       model: Tag,
       as: 'tags',
       through: {
-        attributes: [],
-        where: { entity_type: 'resource' }
+        attributes: []
       },
       where: {
         name: { [Op.in]: filters.tags }
@@ -245,38 +244,50 @@ export async function getResources(
       model: Tag,
       as: 'tags',
       through: {
-        attributes: [],
-        where: { entity_type: 'resource' }
+        attributes: []
       }
     });
   }
 
-  // 查詢資源列表
-  const { rows, count } = await Resource.findAndCountAll({
+  // 分離 COUNT 和 SELECT 查詢以避免 SQL 錯誤
+  // 先查詢總數，排除可能導致重複計算的標籤關聯
+  const countInclude = include.filter(inc => 
+    !(typeof inc === 'object' && 'as' in inc && inc.as === 'tags')
+  );
+  
+  const count = await Resource.count({
+    where,
+    include: countInclude,
+    distinct: true
+  });
+
+  // 再查詢資源列表數據
+  const rows = await Resource.findAll({
     where,
     include,
     order,
-    limit: limit + 1, // 多查詢一條記錄，用於判斷是否有下一頁
-    distinct: true,   // 確保結果唯一性，避免 JOIN 導致的重複記錄
-    col: 'Resource.id' // 指定用於 distinct 的列
+    limit: limit + 1 // 多查詢一條記錄，用於判斷是否有下一頁
   });
 
+  // 確保 rows 是陣列
+  const resourceRows = rows || [];
+  
   // 判斷是否有更多記錄
-  const hasMore = rows.length > limit;
+  const hasMore = resourceRows.length > limit;
   if (hasMore) {
-    rows.pop(); // 移除多查詢的記錄
+    resourceRows.pop(); // 移除多查詢的記錄
   }
 
   // 查詢評分數據
-  const resourceIds = rows.map((r: Model<ResourceDbModel>) => r.get('id') as number);
-  const reviewStats = await ResourceReview.findAll({
+  const resourceIds = resourceRows.map((r: Model<ResourceDbModel>) => r.get('id') as number);
+  const reviewStats = resourceIds.length > 0 ? await ResourceReview.findAll({
     attributes: [
       'resource_id',
       [sequelize.fn('AVG', sequelize.col('score_impact')), 'avgRating']
     ],
     where: { resource_id: { [Op.in]: resourceIds } },
     group: ['resource_id']
-  });
+  }) : [];
 
   // 構建評分映射
   const ratingMap = new Map();
@@ -288,7 +299,7 @@ export async function getResources(
   });
 
   // 轉換為 API 格式
-  const resources = rows.map((row: Model<ResourceDbModel>) => {
+  const resources = resourceRows.map((row: Model<ResourceDbModel>) => {
     const resource = row.toJSON();
     return transformResourceToApi({
       ...resource,
@@ -348,7 +359,7 @@ export async function getResources(
 
   // 生成分頁元數據
   const pagination_meta = generatePaginationMetadata(
-    rows,
+    resourceRows,
     count,
     limit,
     dbSortField,
