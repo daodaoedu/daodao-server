@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from 'express';
+import { Model } from 'sequelize';
 import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
 import tagService from '@/services/tag-service';
 import { TagAttributes } from '@/models/tag';
@@ -24,7 +25,7 @@ export const getPopularTags = asyncWrapper(async (req: Request, res: Response) =
   // 返回結果
   res.json({
     success: true,
-    data: tags.map(tag => {
+    data: tags.map((tag: Model<TagAttributes>) => {
       const tagInstance = tag as unknown as TagAttributes & { get: (key: string) => unknown };
       return {
         id: tagInstance.id,
@@ -55,7 +56,7 @@ export const searchTags = asyncWrapper(async (req: Request, res: Response) => {
   // 返回結果
   res.json({
     success: true,
-    data: tags.map(tag => {
+    data: tags.map((tag: Model<TagAttributes>) => {
       const tagInstance = tag as unknown as TagAttributes;
       return {
         id: tagInstance.id,
@@ -76,7 +77,7 @@ export const getTagStats = asyncWrapper(async (req: Request, res: Response) => {
   // 返回結果
   res.json({
     success: true,
-    data: stats.map(stat => ({
+    data: stats.map((stat: Model<Record<string, unknown>>) => ({
       entityType: stat.get('entity_type'),
       count: stat.get('count'),
       uniqueTags: stat.get('uniqueTags')
@@ -161,7 +162,7 @@ export const getEntityTags = asyncWrapper(async (req: Request, res: Response) =>
   // 返回結果
   res.json({
     success: true,
-    data: tags.map(tag => {
+    data: tags.map((tag: Model<TagAttributes>) => {
       const tagInstance = tag as unknown as TagAttributes;
       return {
         id: tagInstance.id,

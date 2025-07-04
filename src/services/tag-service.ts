@@ -3,7 +3,7 @@
  * 處理標籤相關的業務邏輯
  */
 
-import { Transaction, Op } from 'sequelize';
+import { Transaction, Op, Model } from 'sequelize';
 import { Tag, EntityTag, TagAttributes } from '@/models/index';
 import sequelize from '@/config/database';
 
@@ -51,7 +51,7 @@ export async function getOrCreateTags(
   });
 
   // 找出需要創建的標籤
-  const existingTagNames = existingTags.map(tag => {
+  const existingTagNames = existingTags.map((tag: Model<TagAttributes>) => {
     const tagInstance = tag as unknown as TagAttributes;
     return tagInstance.name;
   });

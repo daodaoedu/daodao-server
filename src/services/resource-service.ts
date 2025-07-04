@@ -3,7 +3,7 @@
  * 處理資源相關的業務邏輯
  */
 
-import { Op, WhereOptions, Includeable, Order } from 'sequelize';
+import { Op, WhereOptions, Includeable, Order, Model } from 'sequelize';
 // 從模型索引引入所有模型以確保關聯設定正確載入
 import { Resource, ResourceReview, Tag, Category } from '@/models/index';
 // 從 JS 模型引入 User (User 模型仍在 JavaScript 部分)
@@ -13,6 +13,7 @@ import {
   transformResourceToDb, 
   transformReviewToDb 
 } from '@/services/transform-service';
+import { ResourceDbModel } from '@/types/resource.types';
 import { 
   NotFoundError, 
   ForbiddenError 
@@ -222,7 +223,7 @@ export async function getResources(
   }
 
   // 查詢評分數據
-  const resourceIds = rows.map((r) => r.get('id') as number);
+  const resourceIds = rows.map((r: Model<ResourceDbModel>) => r.get('id') as number);
   const reviewStats = await ResourceReview.findAll({
     attributes: [
       'resource_id',
@@ -234,7 +235,7 @@ export async function getResources(
 
   // 構建評分映射
   const ratingMap = new Map();
-  reviewStats.forEach((stat) => {
+  reviewStats.forEach((stat: Model<Record<string, unknown>>) => {
     ratingMap.set(
       stat.get('resource_id'),
       parseFloat(stat.get('avgRating') as string)
@@ -242,7 +243,7 @@ export async function getResources(
   });
 
   // 轉換為 API 格式
-  const resources = rows.map((row) => {
+  const resources = rows.map((row: Model<ResourceDbModel>) => {
     const resource = row.toJSON();
     return transformResourceToApi({
       ...resource,
