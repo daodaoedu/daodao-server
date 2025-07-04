@@ -161,8 +161,6 @@ export async function getResources(
     ...(filters.type && { type: filters.type }),
     ...(filters.cost && { cost: filters.cost }),
     ...(filters.level && { level: filters.level }),
-    ...(filters.majorCategory && { '$majorCategory.name$': filters.majorCategory }),
-    ...(filters.subCategory && { '$subCategory.name$': filters.subCategory }),
     ...(filters.createdBy && { created_by: filters.createdBy }),
     status: filters.status || 'active'
   };
@@ -210,8 +208,22 @@ export async function getResources(
   // 構建包含關係
   const include: Includeable[] = [
     { model: User, as: 'author' },
-    { model: Category, as: 'majorCategory' },
-    { model: Category, as: 'subCategory' }
+    { 
+      model: Category, 
+      as: 'majorCategory',
+      ...(filters.majorCategory && { 
+        where: { name: filters.majorCategory },
+        required: true 
+      })
+    },
+    { 
+      model: Category, 
+      as: 'subCategory',
+      ...(filters.subCategory && { 
+        where: { name: filters.subCategory },
+        required: true 
+      })
+    }
   ];
 
   // 如果有標籤篩選，添加標籤包含關係
@@ -245,7 +257,8 @@ export async function getResources(
     include,
     order,
     limit: limit + 1, // 多查詢一條記錄，用於判斷是否有下一頁
-    distinct: true    // 確保結果唯一性，避免 JOIN 導致的重複記錄
+    distinct: true,   // 確保結果唯一性，避免 JOIN 導致的重複記錄
+    col: 'Resource.id' // 指定用於 distinct 的列
   });
 
   // 判斷是否有更多記錄
