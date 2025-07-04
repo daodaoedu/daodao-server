@@ -133,9 +133,11 @@ export async function getResources(
 
   // 處理游標分頁
   let cursorWhere: WhereOptions = {};
+  let hasCursor = false;
   if (pagination.cursor) {
     const decoded = decodeCursor(pagination.cursor);
     if (decoded) {
+      hasCursor = true;
       cursorWhere = {
         [Op.or]: [
           {
@@ -154,9 +156,8 @@ export async function getResources(
     }
   }
 
-  // 構建篩選條件
-  const where: WhereOptions = {
-    ...cursorWhere,
+  // 構建基本篩選條件
+  const baseWhere: WhereOptions = {
     ...(filters.type && { type: filters.type }),
     ...(filters.cost && { cost: filters.cost }),
     ...(filters.level && { level: filters.level }),
@@ -166,14 +167,44 @@ export async function getResources(
     status: filters.status || 'active'
   };
 
-  // 如果有搜索查詢，添加全文搜索條件
+  // 構建搜索條件
+  const searchWhere: WhereOptions = {};
   if (filters.query) {
-    Object.assign(where, {
+    Object.assign(searchWhere, {
       [Op.or]: [
         { name: { [Op.iLike]: `%${filters.query}%` } },
         { description: { [Op.iLike]: `%${filters.query}%` } }
       ]
     });
+  }
+
+  // 合併所有條件，確保 cursor 條件和搜索條件正確組合
+  const whereConditions = [baseWhere];
+  
+  // 添加搜索條件
+  if (Object.keys(searchWhere).length > 0) {
+    whereConditions.push(searchWhere);
+  }
+  
+  // 添加 cursor 條件
+  if (hasCursor) {
+    whereConditions.push(cursorWhere);
+  }
+  
+  const where: WhereOptions = {
+    [Op.and]: whereConditions
+  };
+
+  // 調試日誌：輸出查詢條件
+  if (process.env.DEBUG_CURSOR === 'true') {
+    console.log('[DEBUG] Resource query conditions:', JSON.stringify({
+      baseWhere,
+      searchWhere,
+      cursorWhere,
+      finalWhere: where,
+      filters,
+      pagination
+    }, null, 2));
   }
 
   // 構建包含關係
@@ -209,11 +240,14 @@ export async function getResources(
   }
 
   // 查詢資源列表
+  // 添加 DISTINCT 確保結果唯一性，避免 JOIN 導致的重複記錄影響 cursor 分頁
   const { rows, count } = await Resource.findAndCountAll({
     where,
     include,
     order,
-    limit: limit + 1 // 多查詢一條記錄，用於判斷是否有下一頁
+    limit: limit + 1, // 多查詢一條記錄，用於判斷是否有下一頁
+    distinct: true,   // 確保結果唯一性
+    col: 'id'        // 指定 DISTINCT 的欄位
   });
 
   // 判斷是否有更多記錄
@@ -258,13 +292,57 @@ export async function getResources(
     });
   });
 
+  // 計算 parentTotalEstimate（只有在有 subCategory 篩選時才計算）
+  let parentTotalEstimate: number | undefined = undefined;
+  if (filters.subCategory) {
+    // 重新構建父分類查詢條件（移除 subCategory 篩選，保留其他篩選條件）
+    const parentBaseWhere: WhereOptions = {
+      ...(filters.type && { type: filters.type }),
+      ...(filters.cost && { cost: filters.cost }),
+      ...(filters.level && { level: filters.level }),
+      ...(filters.majorCategory && { '$majorCategory.name$': filters.majorCategory }),
+      ...(filters.createdBy && { created_by: filters.createdBy }),
+      status: filters.status || 'active'
+    };
+
+    // 構建父分類查詢的 WHERE 條件
+    const parentWhere: WhereOptions = {
+      [Op.and]: [
+        parentBaseWhere,
+        ...(Object.keys(searchWhere).length > 0 ? [searchWhere] : [])
+      ]
+    };
+
+    // 構建父分類查詢的 include（移除 subCategory）
+    const parentInclude = include.filter(inc => 
+      !(typeof inc === 'object' && 'as' in inc && inc.as === 'subCategory')
+    );
+
+    try {
+      // 查詢父分類下的資源總數
+      const parentCount = await Resource.count({
+        where: parentWhere,
+        include: parentInclude,
+        distinct: true,
+        col: 'id'
+      });
+      
+      parentTotalEstimate = parentCount;
+    } catch (error) {
+      // 記錄錯誤，但不影響主要查詢
+      console.error('Failed to calculate parentTotalEstimate:', error);
+      parentTotalEstimate = undefined;
+    }
+  }
+
   // 生成分頁元數據
   const pagination_meta = generatePaginationMetadata(
     rows,
     count,
     limit,
     dbSortField,
-    hasMore
+    hasMore,
+    parentTotalEstimate
   );
 
   return { resources, pagination: pagination_meta };
