@@ -8,6 +8,14 @@ import ResourceReview from './resource-review';
 import Tag from './tag';
 import EntityTag from './entity-tag';
 import Category from './category';
+import { createIdeaModel } from './idea';
+import { createEntityResourceModel } from './entity-resource';
+import sequelize from '@/config/database';
+
+// 創建 Idea 模型實例
+const Idea = createIdeaModel(sequelize);
+// 創建 EntityResource 模型實例
+const EntityResource = createEntityResourceModel(sequelize);
 
 // 設定 TypeScript 模型之間的關聯關係
 const setupTsModelAssociations = () => {
@@ -124,6 +132,75 @@ const setupTsModelAssociations = () => {
     foreignKey: 'resource_id',
     as: 'resource'
   });
+
+  // Idea 與 Tag 的多對多關聯（透過 EntityTag）
+  Idea.belongsToMany(Tag, {
+    through: {
+      model: EntityTag,
+      unique: false,
+      scope: {
+        entity_type: 'idea'
+      }
+    },
+    foreignKey: 'entity_id',
+    otherKey: 'tag_id',
+    as: 'tags',
+    constraints: false
+  });
+  
+  Tag.belongsToMany(Idea, {
+    through: {
+      model: EntityTag,
+      unique: false,
+      scope: {
+        entity_type: 'idea'
+      }
+    },
+    foreignKey: 'tag_id',
+    otherKey: 'entity_id',
+    as: 'ideas',
+    constraints: false
+  });
+
+  // EntityResource 與 Resource 的關聯
+  EntityResource.belongsTo(Resource, {
+    foreignKey: 'resource_id',
+    as: 'resource'
+  });
+  
+  Resource.hasMany(EntityResource, {
+    foreignKey: 'resource_id',
+    as: 'entityResources'
+  });
+
+  // Idea 與 Resource 的多對多關聯（透過 EntityResource）
+  Idea.belongsToMany(Resource, {
+    through: {
+      model: EntityResource,
+      unique: false,
+      scope: {
+        entity_type: 'idea'
+      }
+    },
+    foreignKey: 'entity_id',
+    otherKey: 'resource_id',
+    as: 'resources',
+    constraints: false
+  });
+  
+  Resource.belongsToMany(Idea, {
+    through: {
+      model: EntityResource,
+      unique: false,
+      scope: {
+        entity_type: 'idea'
+      }
+    },
+    foreignKey: 'resource_id',
+    otherKey: 'entity_id',
+    as: 'ideas',
+    constraints: false
+  });
 };
 
 // 執行關聯設置（跳過測試環境）
@@ -137,7 +214,9 @@ export {
   ResourceReview,
   Tag,
   EntityTag,
-  Category
+  Category,
+  Idea,
+  EntityResource
 };
 
 // 重新匯出類型定義
@@ -149,7 +228,9 @@ const models = {
   ResourceReview,
   Tag,
   EntityTag,
-  Category
+  Category,
+  Idea,
+  EntityResource
 };
 
 export default models;
