@@ -3,11 +3,11 @@ const { Sequelize } = require('sequelize');
 
 const sequelize = new Sequelize({
   dialect: 'postgres',
-  host:'localhost',
+  host: process.env.APP_ENV === 'dev' ? 'postgres-dev' : 'postgres-prod',
   username: 'daodao',
   password: 'daodao',
   database: 'daodao',
-  port: 5423,
+  port: 5432,
   pool: {
     max: 5,         // 降低最大連線數以節省記憶體
     min: 1,         // 降低最小連線數
