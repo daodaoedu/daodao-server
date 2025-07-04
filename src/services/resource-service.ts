@@ -6,8 +6,8 @@
 import { Op, WhereOptions, Includeable, Order, Model } from 'sequelize';
 // 從模型索引引入所有模型以確保關聯設定正確載入
 import { Resource, ResourceReview, Tag, Category } from '@/models/index';
-// 從 JS 模型引入 User (User 模型仍在 JavaScript 部分)
-import { User } from '../../models/index';
+// 從 JS 模型引入 User 和 BasicInfo (User 模型仍在 JavaScript 部分)
+import { User, BasicInfo } from '../../models/index';
 import { 
   transformResourceToApi, 
   transformResourceToDb, 
@@ -58,7 +58,13 @@ export async function getResourceById(id: string) {
   const resource = await Resource.findOne({
     where: { external_id: id },
     include: [
-      { model: User, as: 'author' },
+      { 
+        model: User, 
+        as: 'author',
+        include: [
+          { model: BasicInfo }
+        ]
+      },
       { model: Category, as: 'majorCategory' },
       { model: Category, as: 'subCategory' },
       {
@@ -207,7 +213,13 @@ export async function getResources(
 
   // 構建包含關係
   const include: Includeable[] = [
-    { model: User, as: 'author' },
+    { 
+      model: User, 
+      as: 'author',
+      include: [
+        { model: BasicInfo }
+      ]
+    },
     { 
       model: Category, 
       as: 'majorCategory',

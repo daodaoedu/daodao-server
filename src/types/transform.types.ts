@@ -10,6 +10,11 @@ export interface UserData {
   display_name?: string;
   avatar_url?: string;
   roleList?: string[];
+  education_stage?: string | null;
+  tag_list?: string[];
+  BasicInfo?: {
+    self_introduction?: string | null;
+  };
   [key: string]: unknown;
 }
 

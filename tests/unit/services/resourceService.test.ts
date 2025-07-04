@@ -321,7 +321,10 @@ describe('Resource Service Tests', () => {
           name: '測試用戶',
           _id: 'user-uuid-123',
           roleList: ['citizen'],
-          photoURL: 'https://example.com/avatar.jpg'
+          photoURL: 'https://example.com/avatar.jpg',
+          educationStage: 'bachelor',
+          tagList: ['developer', 'student'],
+          selfIntroduction: '測試用戶自我介紹'
         },
         tags: ['tag1', 'tag2'],
         createdAt: '2024-01-01T00:00:00Z',
