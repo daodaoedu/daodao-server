@@ -19,6 +19,9 @@ RUN npm install -g pm2
 # 复制应用程序代码到容器内的工作目录
 COPY . .
 
+# 編譯 TypeScript（新增）
+RUN npm run build
+
 # 暴露应用程序运行的端口
 EXPOSE 3000
 
