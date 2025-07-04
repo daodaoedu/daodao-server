@@ -263,18 +263,34 @@ async function startServer() {
         }
       }, 60000); // 每分鐘檢查一次
       
-      // 優雅關閉處理
-      process.on('SIGTERM', () => {
-        console.log('收到 SIGTERM，停止定期重啟...');
-        stopDbRestart();
-        process.exit(0);
-      });
+      const gracefulShutdown = async (signal) => {
+        console.log(`收到 ${signal} 信號，開始優雅關閉...`);
+        
+        try {
+          // 關閉 HTTP 服務器
+          server.close();
+          
+          // 關閉資料庫連接
+          await sequelize.close();
+          if (mongoose.connection.readyState === 1) {
+            await mongoose.disconnect();
+          }
+          
+          // 關閉 Redis 連接
+          if (redisClient) {
+            await redisClient.quit();
+          }
+          
+          console.log('優雅關閉完成');
+          process.exit(0);
+        } catch (error) {
+          console.error('優雅關閉失敗:', error);
+          process.exit(1);
+        }
+      };
       
-      process.on('SIGINT', () => {
-        console.log('收到 SIGINT，停止定期重啟...');
-        stopDbRestart();
-        process.exit(0);
-      });
+      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+      process.on('SIGINT', () => gracefulShutdown('SIGINT'));
     });
   } catch (error) {
     console.error('Failed to start server:', error);
