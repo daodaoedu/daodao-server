@@ -292,8 +292,10 @@ describe('ResourceReviewService', () => {
         expect.objectContaining({
           reviews: expect.any(Array),
           pagination: expect.objectContaining({
-            has_more: false, // 只有 1 筆記錄，沒有下一頁
-            next_cursor: null
+            hasNext: false, // 只有 1 筆記錄，沒有下一頁
+            nextCursor: null,
+            totalEstimate: 10, // 總記錄數
+            parentTotalEstimate: null // 評論不需要父分類計數
           })
         })
       );
