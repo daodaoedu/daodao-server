@@ -219,13 +219,14 @@ export async function getReviews(
     });
   });
 
-  // 生成分頁元數據
+  // 生成分頁元數據（評論不需要 parentTotalEstimate）
   const pagination_meta = generatePaginationMetadata(
     rows,
     count,
     limit,
     dbSortField,
-    hasMore
+    hasMore,
+    undefined // 評論不需要父分類計數
   );
 
   return { reviews, pagination: pagination_meta };
