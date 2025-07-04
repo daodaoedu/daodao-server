@@ -30,6 +30,9 @@ const Marathon = require("./models/marathon.model");
 const path = require('path');
 const PORT = process.env.PORT || 3000;
 
+// 引入資料庫重啟工具
+const { startPeriodicRestart, checkPoolHealth, manualRestart } = require('./utils/dbRestart');
+
 // 記憶體監控：啟動時記錄
 const startMemUsage = process.memoryUsage();
 console.log(`🧠 啟動記憶體使用: ${Math.round(startMemUsage.heapUsed / 1024 / 1024)}MB`);
@@ -250,6 +253,9 @@ async function startServer() {
       console.log(`✅ Server running on port ${PORT}`);
       console.log(`🧠 當前記憶體使用: ${memUsedMB}MB (+${memDiffMB}MB)`);
       
+      // 啟動定期資料庫連線重啟（每 2 小時）
+      const stopDbRestart = startPeriodicRestart();
+      
       // 設置定期記憶體監控
       setInterval(() => {
         const usage = process.memoryUsage();
@@ -258,6 +264,19 @@ async function startServer() {
           console.log(`⚠️ 記憶體使用偏高: ${heapMB}MB`);
         }
       }, 60000); // 每分鐘檢查一次
+      
+      // 優雅關閉處理
+      process.on('SIGTERM', () => {
+        console.log('收到 SIGTERM，停止定期重啟...');
+        stopDbRestart();
+        process.exit(0);
+      });
+      
+      process.on('SIGINT', () => {
+        console.log('收到 SIGINT，停止定期重啟...');
+        stopDbRestart();
+        process.exit(0);
+      });
     });
   } catch (error) {
     console.error('Failed to start server:', error);

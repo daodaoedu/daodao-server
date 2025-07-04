@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 /**
@@ -33,7 +33,7 @@ export enum EntityType {
 /**
  * EntityTag 模型定義
  */
-const EntityTag = sequelize.define<Model<EntityTagAttributes, EntityTagCreationAttributes>>(
+const EntityTag = sequelize.define(
   'EntityTag',
   {
     id: {

@@ -3,7 +3,7 @@
  * 處理資源心得評價相關的業務邏輯
  */
 
-import { Op, WhereOptions, Includeable, Order } from 'sequelize';
+import { Op, WhereOptions, Includeable, Order, Model } from 'sequelize';
 import { ResourceReview, Resource, Tag } from '@/models/index';
 // 從 JS models 中引入 User 模型
 import { User } from '../../models/index';
@@ -11,6 +11,7 @@ import {
   transformReviewToApi, 
   transformReviewToDb 
 } from '@/services/transform-service';
+import { ResourceReviewDbModel } from '@/types/resource-review.types';
 import { 
   NotFoundError, 
   ConflictError, 
@@ -207,7 +208,7 @@ export async function getReviews(
   }
 
   // 轉換為 API 格式
-  const reviews = rows.map(row => {
+  const reviews = rows.map((row: Model<ResourceReviewDbModel>) => {
     const review = row.toJSON();
     return transformReviewToApi({
       ...review,
