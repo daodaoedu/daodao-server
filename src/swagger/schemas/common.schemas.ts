@@ -66,6 +66,11 @@
  *           type: integer
  *           description: 預估總記錄數
  *           example: 150
+ *         parentTotalEstimate:
+ *           type: integer
+ *           nullable: true
+ *           description: 父分類下的資源總數估計（僅在有子分類篩選時提供）
+ *           example: 45
  *     
  *     SuccessResponse:
  *       type: object
