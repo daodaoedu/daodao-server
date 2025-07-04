@@ -61,7 +61,10 @@ export function transformResourceToApi(
       name: '',
       _id: '',
       roleList: [],
-      photoURL: null
+      photoURL: null,
+      educationStage: null,
+      tagList: [],
+      selfIntroduction: null
     },
     createdAt: (dbResource.created_at instanceof Date) ? dbResource.created_at.toISOString() : new Date().toISOString(),
     updatedAt: (dbResource.updated_at instanceof Date) ? dbResource.updated_at.toISOString() : new Date().toISOString(),
@@ -82,7 +85,10 @@ export function transformResourceToApi(
         name: String(user.display_name || user.username || ''),
         _id: String(user._id || ''),
         roleList: Array.isArray(user.roleList) ? user.roleList : [],
-        photoURL: user.avatar_url ? String(user.avatar_url) : null
+        photoURL: user.avatar_url ? String(user.avatar_url) : null,
+        educationStage: user.education_stage || null,
+        tagList: Array.isArray(user.tag_list) ? user.tag_list : [],
+        selfIntroduction: user.BasicInfo?.self_introduction || null
       };
     }
 
@@ -213,7 +219,10 @@ export function transformReviewToApi(
       name: '',
       _id: '',
       roleList: [],
-      photoURL: null
+      photoURL: null,
+      educationStage: null,
+      tagList: [],
+      selfIntroduction: null
     },
     resourceId: String(dbReview.resource_id || ''),
     tags: [],
@@ -231,7 +240,10 @@ export function transformReviewToApi(
         name: String(user.display_name || user.username || ''),
         _id: String(user._id || ''),
         roleList: Array.isArray(user.roleList) ? user.roleList : [],
-        photoURL: user.avatar_url ? String(user.avatar_url) : null
+        photoURL: user.avatar_url ? String(user.avatar_url) : null,
+        educationStage: user.education_stage || null,
+        tagList: Array.isArray(user.tag_list) ? user.tag_list : [],
+        selfIntroduction: user.BasicInfo?.self_introduction || null
       };
     }
 

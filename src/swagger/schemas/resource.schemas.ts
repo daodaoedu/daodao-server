@@ -122,35 +122,9 @@
  *               description: 點讚數量
  *               example: 156
  *             user:
- *               type: object
- *               description: 創建者資訊
- *               required:
- *                 - id
- *                 - name
- *               properties:
- *                 id:
- *                   type: integer
- *                   description: 使用者 ID
- *                   example: 1
- *                 name:
- *                   type: string
- *                   description: 使用者名稱
- *                   example: "張三"
- *                 _id:
- *                   type: string
- *                   description: 使用者 UUID
- *                   example: "507f1f77bcf86cd799439011"
- *                 roleList:
- *                   type: array
- *                   description: 角色列表
- *                   items:
- *                     type: string
- *                   example: ["user"]
- *                 photoURL:
- *                   type: string
- *                   nullable: true
- *                   description: 頭像 URL
- *                   example: "https://example.com/avatar.jpg"
+ *               allOf:
+ *                 - $ref: '#/components/schemas/UserBasicInfo'
+ *                 - description: 分享者資訊
  *             tags:
  *               type: array
  *               description: 資源標籤列表

@@ -92,11 +92,58 @@
  *         createdAt:
  *           type: string
  *           format: date-time
- *           description: 創建時間
+ *           description: 建立時間
  *           example: "2024-01-15T10:30:00Z"
  *         updatedAt:
  *           type: string
  *           format: date-time
  *           description: 更新時間
  *           example: "2024-01-15T10:30:00Z"
+ *     
+ *     UserBasicInfo:
+ *       type: object
+ *       description: 使用者基本資訊
+ *       required:
+ *         - id
+ *         - name
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: 使用者 ID
+ *           example: 1
+ *         name:
+ *           type: string
+ *           description: 使用者名稱
+ *           example: "張三"
+ *         _id:
+ *           type: string
+ *           description: 使用者 UUID
+ *           example: "507f1f77bcf86cd799439011"
+ *         roleList:
+ *           type: array
+ *           description: 角色列表
+ *           items:
+ *             type: string
+ *           example: ["user"]
+ *         photoURL:
+ *           type: string
+ *           nullable: true
+ *           description: 頭像 URL
+ *           example: "https://example.com/avatar.jpg"
+ *         educationStage:
+ *           type: string
+ *           nullable: true
+ *           description: 教育階段
+ *           example: "bachelor"
+ *         tagList:
+ *           type: array
+ *           description: 使用者標籤列表
+ *           items:
+ *             type: string
+ *           example: ["developer", "student"]
+ *         selfIntroduction:
+ *           type: string
+ *           nullable: true
+ *           description: 自我介紹
+ *           example: "我是一名熱愛學習的軟體開發者"
  */
