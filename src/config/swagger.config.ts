@@ -216,6 +216,16 @@ const swaggerOptions: swaggerJsdoc.Options = {
         name: 'Tags',
         description: '標籤管理相關操作',
         'x-order': 4
+      },
+      {
+        name: 'Ideas',
+        description: '想法分享相關操作',
+        'x-order': 5
+      },
+      {
+        name: 'Me',
+        description: '個人資料相關操作',
+        'x-order': 6
       }
     ]
   },
