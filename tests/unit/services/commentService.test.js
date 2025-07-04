@@ -7,7 +7,7 @@ jest.resetModules();
 process.env.NODE_ENV = 'test';
 
 // 3. 先 mock config/db
-jest.mock('../config/db', () => ({
+jest.mock('../../../config/db', () => ({
   transaction: jest.fn().mockImplementation(() => ({
     commit: jest.fn(),
     rollback: jest.fn(),
@@ -21,7 +21,7 @@ jest.mock('../config/db', () => ({
 }));
 
 // 4. 先 mock models
-jest.mock('../models', () => {
+jest.mock('../../../models', () => {
   const mockModel = (name) => ({
     findOne: jest.fn(),
     findAll: jest.fn(),
@@ -46,19 +46,19 @@ jest.mock('../models', () => {
 });
 
 // 5. 接著引入依賴模組
-const sequelize = require('../config/db');
+const sequelize = require('../../../config/db');
 const {
   Comment, User, Contact, BasicInfo, Position,
   Post, Circle, Note, Outcome, Review,
   MentorParticipants
-} = require('../models');
+} = require('../../../models');
 const {
   createComment,
   getComments,
   getCommentDetail,
   updateComment,
   deleteComment
-} = require('../services/commentService');
+} = require('../../../services/commentService');
 
 // 6. 避免測試期間輸出多餘 log
 console.log = jest.fn();

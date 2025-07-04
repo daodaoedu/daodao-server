@@ -1,0 +1,530 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# DaoDao Server - TypeScript & Swagger 導入規範
+
+## TypeScript 導入規劃
+
+### 專案目標
+- 逐步將 JavaScript 專案遷移到 TypeScript
+- 建立完整的型別安全系統
+- 提升代碼品質和開發效率
+- 保持專案穩定運作
+
+### 混合架構目錄結構
+本專案採用 **雙架構方式**，同時支援舊有 JavaScript 和新的 TypeScript 代碼：
+
+#### 根目錄結構（遺留 JavaScript）
+```
+controllers/     # JavaScript 業務邏輯控制器
+models/         # Sequelize 模型和綱要  
+routes/         # Express 路由定義
+services/       # 資料庫服務（mongo, postgres, redis）
+middlewares/    # 認證和驗證中間件
+utils/          # 工具函數
+```
+
+#### TypeScript 結構（src/ 目錄）
+```
+src/
+├── controllers/    # TypeScript 控制器
+├── models/        # TypeScript/Sequelize 模型
+├── routes/        # TypeScript 路由定義
+├── services/      # 業務邏輯服務
+├── types/         # TypeScript 型別定義
+├── validators/    # Zod 驗證綱要
+├── middleware/    # TypeScript 中間件
+├── utils/         # TypeScript 工具程式
+├── swagger/       # API 文件綱要
+├── config/        # TypeScript 配置檔案
+└── tests/         # TypeScript 測試檔案
+```
+
+#### 關鍵整合點
+- `index.js` - 主要進入點，載入 JS 和 TS 路由
+- `src/app.ts` - TypeScript 路由設定和 Swagger 整合
+- `src/utils/modelBridge.ts` - 橋接 JavaScript 和 TypeScript 模型
+
+### 型別定義規範
+
+#### 檔案命名
+- 型別檔案使用 `.types.ts` 後綴
+- 介面使用 PascalCase：`UserModel`, `ProjectDetails`
+- 請求 DTO：`CreateUserDto`, `UpdateProjectDto`
+- 回應型別：`UserResponse`, `ProjectListResponse`
+
+#### 基礎型別
+```typescript
+// 統一的 API 回應格式
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+  pagination?: PaginationMeta;
+}
+
+// 分頁查詢參數
+interface PaginationQuery {
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: 'asc' | 'desc';
+}
+```
+
+#### Express 型別擴展
+```typescript
+// src/types/express.d.ts
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserPayload;
+      requestId?: string;
+    }
+  }
+}
+```
+
+### TypeScript 遷移策略
+本專案正積極從 JavaScript 遷移到 TypeScript：
+
+1. **第一階段**：核心服務（auth, database connections）
+2. **第二階段**：業務邏輯（resources, reviews, tags）  
+3. **第三階段**：遺留功能（email, images, monitoring）
+
+#### 路徑別名配置
+- `@/*` 映射到 `src/*`
+- `@types/*` 映射到 `src/types/*`
+- `@services/*` 映射到 `src/services/*`
+
+### 代碼規範
+
+#### 服務與功能模組
+```typescript
+// 使用工廠函數和閉包實現單例模式
+import type { DatabaseServiceType } from '@/types/database.types';
+
+export const createDatabaseService = () => {
+  // 使用閉包保存實例
+  let instance: DatabaseServiceType | null = null;
+  
+  return {
+    getInstance: (): DatabaseServiceType => {
+      if (!instance) {
+        instance = {
+          // 服務的各項方法和屬性
+          connect: async () => { /* 實作連接邏輯 */ },
+          disconnect: async () => { /* 實作斷開邏輯 */ },
+          // 其他方法...
+        };
+      }
+      return instance;
+    }
+  };
+};
+
+// 控制器使用物件字面量和高階函數
+import { Request, Response, NextFunction } from 'express';
+import type { UserServiceType } from '@/types/user.types';
+
+export const createUserController = (userService: UserServiceType) => {
+  return {
+    getUsers: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      // 實作邏輯
+    },
+    // 其他方法...
+  };
+};
+```
+
+#### 錯誤處理
+```typescript
+// 使用工廠函數創建錯誤物件
+import type { AppErrorType } from '@/types/error.types';
+import { Request, Response, NextFunction } from 'express';
+
+export const createAppError = (
+  message: string, 
+  statusCode: number = 500, 
+  isOperational: boolean = true
+): AppErrorType => {
+  const error = new Error(message) as AppErrorType;
+  error.statusCode = statusCode;
+  error.isOperational = isOperational;
+  return error;
+};
+
+// 使用高階函數實現異步包裝器
+export const asyncWrapper = (fn: Function) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+```
+
+## Swagger API 文件規範
+
+### 文件目標
+- 建立標準化的 API 文件
+- 提供互動式 API 測試介面
+- 自動化文件生成和驗證
+- 提升前後端協作效率
+
+### 文件結構
+```
+docs/
+├── api/
+│   ├── swagger.json     # JSON 格式
+│   ├── swagger.yaml     # YAML 格式
+│   └── index.html       # 靜態文件
+├── schemas/             # Schema 定義
+└── examples/            # API 使用範例
+```
+
+### Swagger 註解規範
+
+#### 必要元素
+每個 API 端點必須包含：
+- `summary`：簡短描述（50字以內）
+- `description`：詳細說明
+- `tags`：功能分類
+- `security`：認證要求（如需要）
+- `parameters`：參數說明
+- `responses`：回應格式
+
+#### 路由註解範例
+```typescript
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: 取得使用者列表
+ *     description: 取得所有使用者的列表，支援分頁和篩選
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/PageParam'
+ *       - $ref: '#/components/parameters/LimitParam'
+ *     responses:
+ *       200:
+ *         description: 成功取得使用者列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserListResponse'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+```
+
+#### Schema 定義規範
+```typescript
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: 使用者 ID
+ *           example: 1
+ *         nickname:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 50
+ *           description: 暱稱
+ *           example: "小明"
+ *       required:
+ *         - id
+ *         - nickname
+ */
+```
+
+### 標籤分類
+- `Authentication`: 認證相關 API（JWT, Google OAuth）
+- `Users`: 使用者管理 API
+- `Resources`: 資源管理 API
+- `Reviews`: 評論和評分 API
+- `Tags`: 標籤系統 API
+- `Projects`: 專案管理 API
+- `Ideas`: 想法分享 API
+- `Marathons`: 馬拉松活動 API
+- `Files`: 檔案上傳 API（Cloudflare R2, Multer）
+- `Admin`: 管理員功能 API
+- `Monitoring`: 監控相關 API
+
+### 回應格式標準
+```json
+// 成功回應
+{
+  "success": true,
+  "data": {},
+  "message": "操作成功",
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 10,
+    "totalCount": 95,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
+
+// 錯誤回應
+{
+  "success": false,
+  "error": "錯誤訊息"
+}
+
+// 驗證錯誤回應
+{
+  "success": false,
+  "error": "Validation failed",
+  "data": [
+    {
+      "field": "nickname",
+      "message": "暱稱不能為空",
+      "code": "required"
+    }
+  ]
+}
+```
+
+## 開發工作流程
+
+### 新功能開發流程
+1. **設計 API**：先在 Swagger 中定義 API 規格
+2. **定義型別**：建立對應的 TypeScript 型別
+3. **實作驗證**：使用 Zod 建立驗證器
+4. **開發功能**：實作控制器和服務邏輯
+5. **撰寫測試**：建立單元測試和整合測試
+6. **更新文件**：確保 Swagger 註解完整
+
+### 代碼審查檢查項目
+- [ ] TypeScript 型別定義完整
+- [ ] Swagger 註解完整且正確
+- [ ] 錯誤處理適當
+- [ ] 輸入驗證完整
+- [ ] 測試覆蓋率足夠
+- [ ] 符合專案代碼風格
+
+### Git Commit 規範
+```
+feat(auth): 新增 Google OAuth 登入功能
+fix(user): 修正使用者資料更新問題
+docs(swagger): 更新 API 文件
+refactor(ts): 重構服務層為 TypeScript
+test(user): 新增使用者控制器測試
+```
+
+## 工具和配置
+
+### 必要的 NPM 套件
+```bash
+# TypeScript 相關
+npm install -D typescript ts-node @types/node @types/express
+npm install -D @types/cors @types/jsonwebtoken @types/mongoose
+
+# Swagger 相關
+npm install swagger-jsdoc swagger-ui-express
+npm install -D @types/swagger-jsdoc @types/swagger-ui-express
+
+# 驗證相關
+npm install zod
+npm install -D @types/zod
+
+# 測試相關
+npm install -D jest @types/jest ts-jest
+```
+
+### TypeScript 配置 (tsconfig.json)
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@types/*": ["src/types/*"],
+      "@services/*": ["src/services/*"]
+    }
+  }
+}
+```
+
+### 建議的 VSCode 擴展
+- TypeScript Hero
+- Swagger Viewer
+- REST Client
+- YAML
+- OpenAPI (Swagger) Editor
+
+## 部署和維護
+
+### 開發命令
+根據 CLAUDE.md 的指引，使用以下命令：
+
+#### 核心命令
+```json
+{
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest --config=config/jest.config.js",
+    "test:paths": "NODE_PATH=src npm test"
+  }
+}
+```
+
+#### TypeScript 命令
+```json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix"
+  }
+}
+```
+
+#### 直接命令
+```bash
+# TypeScript 類型檢查
+tsc --noEmit
+
+# 直接執行 TypeScript 檔案
+ts-node src/index.ts
+```
+
+### 環境變數型別定義
+```typescript
+// src/types/env.types.ts
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV: 'development' | 'production' | 'test';
+      PORT: string;
+      
+      // 資料庫配置
+      POSTGRES_HOST: string;
+      POSTGRES_PORT: string;
+      POSTGRES_DB: string;
+      POSTGRES_USER: string;
+      POSTGRES_PASSWORD: string;
+      MONGODB_URI: string;
+      REDIS_HOST: string;
+      REDIS_PORT: string;
+      REDIS_PASSWORD: string;
+      
+      // 認證配置
+      JWT_SECRET: string;
+      SESSION_SECRET: string;
+      GOOGLE_CLIENT_ID: string;
+      GOOGLE_CLIENT_SECRET: string;
+      
+      // 服務配置
+      CLOUDFLARE_R2_ENDPOINT: string;
+      CLOUDFLARE_R2_ACCESS_KEY_ID: string;
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: string;
+      CLOUDFLARE_R2_BUCKET_NAME: string;
+      EMAIL_HOST: string;
+      EMAIL_PORT: string;
+      EMAIL_USER: string;
+      EMAIL_PASSWORD: string;
+      FRONTEND_URL: string;
+    }
+  }
+}
+```
+
+## 最佳實踐
+
+### TypeScript 最佳實踐
+根據專案指引：
+- **嚴格禁止使用 `any`**（專案規範）
+- 優先使用 `interface` 而非 `type`
+- 使用 `strict` 模式
+- 優先使用 `unknown` 替代 `any`
+- 使用 `const assertions` 提升型別推斷
+- 適當使用泛型增加代碼復用性
+- **使用工廠函數和物件字面量**代替類別（專案模式）
+- **使用常量物件代替列舉（enum）**（專案偏好）
+- **遵循函數式程式設計原則**
+
+### 常量代替列舉範例
+```typescript
+// 避免使用 enum
+// enum UserRole {
+//   ADMIN = 'admin',
+//   USER = 'user',
+//   GUEST = 'guest'
+// }
+
+// 使用 as const 和物件字面量代替
+export const UserRole = {
+  ADMIN: 'admin',
+  USER: 'user',
+  GUEST: 'guest'
+} as const;
+
+// 從物件值建立型別
+export type UserRoleType = typeof UserRole[keyof typeof UserRole];
+
+// 使用方式
+function checkAccess(role: UserRoleType) {
+  if (role === UserRole.ADMIN) {
+    // 管理員權限邏輯
+  }
+}
+```
+
+### Swagger 最佳實踐
+- 保持文件和實際 API 同步
+- 使用有意義的範例數據
+- 詳細描述錯誤回應
+- 使用 `$ref` 避免重複定義
+- 定期驗證文件完整性
+- **TypeScript 優先的 API 開發**（專案方針）
+- **全面的 Swagger 註解**（專案要求）
+- **標準化回應格式**（含 success/error 狀態）
+
+### API 文件存取點
+- Swagger UI: `/api-docs` 和 `/api/docs`
+- JSON 格式: `/api-docs.json`
+
+### 安全性考量
+- 敏感資訊不要出現在文件中
+- 使用適當的認證機制
+- 輸入驗證必須完整
+- 錯誤訊息不要洩露系統資訊
+
+### 效能考量
+- 合理使用分頁
+- 適當的快取策略（Redis）
+- 資料庫查詢優化（PostgreSQL, MongoDB）
+- API 回應大小控制
+- **速率限制**（全域: 1000 req/min, 嚴格: 60 req/min）
+
+---
+
+**注意事項**：
+1. 本專案採用**混合 JavaScript/TypeScript 架構**
+2. **漸進式遷移策略**，按階段執行不影響現有功能
+3. **嚴格禁止使用 `any` 型別**
+4. 使用**工廠函數模式**而非類別
+5. 遵循**函數式程式設計原則**
+6. 每個階段完成後進行測試和驗證
+7. **TypeScript 優先的 API 開發方針**
+8. 定期備份重要資料和配置
