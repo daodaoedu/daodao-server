@@ -29,8 +29,6 @@ const Circle = require('./circle');
 const Comment = require('./comment');
 const MentorParticipants = require('./mentorParticipants');
 const MentorMarathon = require('./mentorMarathon');
-const Idea = require('./idea');
-const IdeaResource = require('./ideaResource');
 
 // 不再嘗試載入 TypeScript 模型，因為會從各自的文件中直接引入
 // 相關模型在各自 service 中直接引入 TypeScript 模型
@@ -256,20 +254,6 @@ const setupAssociations = () => {
   Marathon.hasMany(MentorMarathon, { foreignKey: 'marathon_id' });
   MentorMarathon.belongsTo(Marathon, { foreignKey: 'marathon_id' });
 
-  // 一個 Idea 可能會有多筆學習資源
-  Idea.hasMany(IdeaResource, {
-    foreignKey: 'idea_id',
-    onDelete: 'CASCADE'
-  });
-  
-  Idea.belongsTo(User, { foreignKey: 'user_id' });
-
-  // 學習資源屬於某個 Idea
-  IdeaResource.belongsTo(Idea, {
-    foreignKey: 'idea_id',
-    as : 'IdeaResources'
-  });
-
   // 9. Resource 相關關聯 (僅在模型存在時設定)
   if (Resource) {
     // Resource 與 User 的關聯
@@ -446,8 +430,6 @@ module.exports = {
   Comment,
   MentorParticipants,
   MentorMarathon,
-  Idea,
-  IdeaResource,
   // Resource 相關模型 (條件導出)
   ...(Resource ? { Resource } : {}),
   ...(ResourceReview ? { ResourceReview } : {}),
