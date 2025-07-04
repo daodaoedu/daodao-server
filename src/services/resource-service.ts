@@ -240,14 +240,12 @@ export async function getResources(
   }
 
   // 查詢資源列表
-  // 添加 DISTINCT 確保結果唯一性，避免 JOIN 導致的重複記錄影響 cursor 分頁
   const { rows, count } = await Resource.findAndCountAll({
     where,
     include,
     order,
     limit: limit + 1, // 多查詢一條記錄，用於判斷是否有下一頁
-    distinct: true,   // 確保結果唯一性
-    col: 'id'        // 指定 DISTINCT 的欄位
+    distinct: true    // 確保結果唯一性，避免 JOIN 導致的重複記錄
   });
 
   // 判斷是否有更多記錄
