@@ -539,10 +539,16 @@ describe('Resource Service Tests', () => {
       expect(Resource.findAndCountAll).toHaveBeenCalledWith(
         expect.objectContaining({
           limit: 6, // DEFAULT_RESOURCE_PAGE_LIMIT + 1
-          where: expect.objectContaining({
-            status: 'active',
-            [Op.or]: expect.any(Array) // 游標條件 (Op.or)
-          })
+          where: {
+            [Op.and]: expect.arrayContaining([
+              expect.objectContaining({
+                status: 'active'
+              }),
+              expect.objectContaining({
+                [Op.or]: expect.any(Array) // 游標條件
+              })
+            ])
+          }
         })
       );
     });
@@ -590,12 +596,17 @@ describe('Resource Service Tests', () => {
       // 驗證調用參數
       expect(Resource.findAndCountAll).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            type: 'books_articles',
-            cost: 'free',
-            level: 'beginner',
-            '$majorCategory.name$': 'frontend_development'
-          })
+          where: {
+            [Op.and]: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'books_articles',
+                cost: 'free',
+                level: 'beginner',
+                '$majorCategory.name$': 'frontend_development',
+                status: 'active'
+              })
+            ])
+          }
         })
       );
     });

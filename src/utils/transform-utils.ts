@@ -16,7 +16,14 @@ export function decodeCursor(cursor: string) {
   try {
     // 游標格式：BASE64(JSON({ id: number, timestamp: string/number }))
     const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
+    const parsed = JSON.parse(decoded);
+    
+    // 確保 timestamp 格式一致，轉換為 Date 對象
+    if (parsed.timestamp) {
+      parsed.timestamp = new Date(parsed.timestamp);
+    }
+    
+    return parsed;
   } catch (error) {
     // 游標解碼失敗
     return null;
@@ -44,6 +51,7 @@ export function generateCursor(id: number, timestamp: string | number | Date) {
  * @param limit - 每頁限制
  * @param sortField - 排序欄位
  * @param hasMore - 是否有更多記錄
+ * @param parentCount - 父分類總記錄數（可選）
  * @returns 分頁元數據
  */
 export function generatePaginationMetadata(
@@ -51,13 +59,19 @@ export function generatePaginationMetadata(
   count: number,
   limit: number,
   sortField: string,
-  hasMore: boolean
+  hasMore: boolean,
+  parentCount?: number
 ) {
   // 如果結果為空，返回空的分頁數據
   if (rows.length === 0) {
     return {
-      next_cursor: null,
-      has_more: false
+      limit,
+      hasNext: false,
+      hasPrev: false,
+      nextCursor: null,
+      prevCursor: null,
+      totalEstimate: count,
+      parentTotalEstimate: parentCount || null
     };
   }
   
@@ -72,8 +86,13 @@ export function generatePaginationMetadata(
   const nextCursor = hasMore ? generateCursor(lastId, lastTimestamp) : null;
   
   return {
-    next_cursor: nextCursor,
-    has_more: hasMore
+    limit,
+    hasNext: hasMore,
+    hasPrev: false, // TODO: 實作 prev 邏輯
+    nextCursor,
+    prevCursor: null, // TODO: 實作 prev 游標
+    totalEstimate: count,
+    parentTotalEstimate: parentCount || null
   };
 }
 
