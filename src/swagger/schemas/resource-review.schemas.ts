@@ -192,35 +192,9 @@
  *               $ref: '#/components/schemas/Resource'
  *               description: 關聯的資源資訊（僅在特定查詢時返回）
  *             user:
- *               type: object
- *               description: 評論者資訊（僅在特定查詢時返回）
- *               required:
- *                 - id
- *                 - name
- *               properties:
- *                 id:
- *                   type: integer
- *                   description: 使用者 ID
- *                   example: 2
- *                 name:
- *                   type: string
- *                   description: 使用者名稱
- *                   example: "李四"
- *                 _id:
- *                   type: string
- *                   description: MongoDB _id
- *                   example: "507f1f77bcf86cd799439011"
- *                 roleList:
- *                   type: array
- *                   description: 角色列表
- *                   items:
- *                     type: string
- *                   example: ["user"]
- *                 photoURL:
- *                   type: string
- *                   nullable: true
- *                   description: 頭像 URL
- *                   example: "https://example.com/avatar.jpg"
+ *               allOf:
+ *                 - $ref: '#/components/schemas/UserBasicInfo'
+ *                 - description: 評論者資訊（僅在特定查詢時返回）
  *     
  *     CreateResourceReviewDto:
  *       type: object
