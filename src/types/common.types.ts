@@ -12,6 +12,9 @@ export interface UserBasicInfo {
   _id: string;
   roleList: string[];
   photoURL: string | null;
+  educationStage: string | null;
+  tagList: string[];
+  selfIntroduction: string | null;
 }
 
 // Resource status enumeration
