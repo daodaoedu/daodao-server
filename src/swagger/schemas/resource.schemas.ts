@@ -39,8 +39,6 @@
  *             - level
  *             - status
  *             - userId
- *             - majorCategory
- *             - subCategory
  *           properties:
  *             id:
  *               type: string
@@ -83,14 +81,16 @@
  *               $ref: '#/components/schemas/ResourceStatus'
  *             userId:
  *               type: integer
- *               description: 創建者 ID
+ *               description: 分享者 ID
  *               example: 1
  *             majorCategory:
  *               type: string
+ *               nullable: true
  *               description: 主分類唯一識別名稱
  *               example: "nature_environment"
  *             subCategory:
  *               type: string
+ *               nullable: true
  *               description: 子分類唯一識別名稱
  *               example: "earth_science"
  *             viewCount:
@@ -114,12 +114,43 @@
  *               format: float
  *               minimum: 1.0
  *               maximum: 5.0
+ *               nullable: true
  *               description: 平均評分
  *               example: 4.3
  *             likeCount:
  *               type: integer
  *               description: 點讚數量
  *               example: 156
+ *             user:
+ *               type: object
+ *               description: 創建者資訊
+ *               required:
+ *                 - id
+ *                 - name
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   description: 使用者 ID
+ *                   example: 1
+ *                 name:
+ *                   type: string
+ *                   description: 使用者名稱
+ *                   example: "張三"
+ *                 _id:
+ *                   type: string
+ *                   description: 使用者 UUID
+ *                   example: "507f1f77bcf86cd799439011"
+ *                 roleList:
+ *                   type: array
+ *                   description: 角色列表
+ *                   items:
+ *                     type: string
+ *                   example: ["user"]
+ *                 photoURL:
+ *                   type: string
+ *                   nullable: true
+ *                   description: 頭像 URL
+ *                   example: "https://example.com/avatar.jpg"
  *             tags:
  *               type: array
  *               description: 資源標籤列表
