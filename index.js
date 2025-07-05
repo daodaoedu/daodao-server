@@ -250,9 +250,7 @@ async function startServer() {
       
       console.log(`✅ Server running on port ${PORT}`);
       console.log(`🧠 當前記憶體使用: ${memUsedMB}MB (+${memDiffMB}MB)`);
-      
-      // 啟動定期資料庫連線重啟（每 2 小時）
-      const stopDbRestart = startPeriodicRestart();
+    
       
       // 設置定期記憶體監控
       setInterval(() => {
@@ -261,36 +259,8 @@ async function startServer() {
         if (heapMB > 200) {
           console.log(`⚠️ 記憶體使用偏高: ${heapMB}MB`);
         }
-      }, 60000); // 每分鐘檢查一次
+      }, 600000); // 每分鐘檢查一次
       
-      const gracefulShutdown = async (signal) => {
-        console.log(`收到 ${signal} 信號，開始優雅關閉...`);
-        
-        try {
-          // 關閉 HTTP 服務器
-          server.close();
-          
-          // 關閉資料庫連接
-          await sequelize.close();
-          if (mongoose.connection.readyState === 1) {
-            await mongoose.disconnect();
-          }
-          
-          // 關閉 Redis 連接
-          if (redisClient) {
-            await redisClient.quit();
-          }
-          
-          console.log('優雅關閉完成');
-          process.exit(0);
-        } catch (error) {
-          console.error('優雅關閉失敗:', error);
-          process.exit(1);
-        }
-      };
-      
-      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-      process.on('SIGINT', () => gracefulShutdown('SIGINT'));
     });
   } catch (error) {
     console.error('Failed to start server:', error);
