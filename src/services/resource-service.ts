@@ -73,7 +73,8 @@ export async function getResourceById(id: string) {
         through: {
           attributes: [],
           where: { entity_type: 'resource' }
-        }
+        },
+        required: false // 改為非必需，避免 INNER JOIN
       }
     ]
   });
@@ -246,6 +247,7 @@ export async function getResources(
       through: {
         attributes: []
       },
+      required: false ,// 改為非必需，避免 INNER JOIN
       where: {
         name: { [Op.in]: filters.tags }
       }
@@ -257,7 +259,8 @@ export async function getResources(
       as: 'tags',
       through: {
         attributes: []
-      }
+      },
+      required: false // 改為非必需，避免 INNER JOIN
     });
   }
 
