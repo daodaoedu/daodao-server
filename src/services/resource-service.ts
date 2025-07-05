@@ -5,7 +5,7 @@
 
 import { Op, WhereOptions, Includeable, Order, Model } from 'sequelize';
 // 從模型索引引入所有模型以確保關聯設定正確載入
-import { Resource, ResourceReview, Tag, Category } from '@/models/index';
+import { Resource, ResourceReview, Tag, Category, EntityTag } from '@/models/index';
 // 從 JS 模型引入 User 和 BasicInfo (User 模型仍在 JavaScript 部分)
 import { User, BasicInfo } from '../../models/index';
 import { 
@@ -14,6 +14,8 @@ import {
   transformReviewToDb 
 } from '@/services/transform-service';
 import { ResourceDbModel } from '@/types/resource.types';
+import { TagAttributes } from '@/models/tag';
+import { EntityTagAttributes } from '@/models/entity-tag';
 import { 
   NotFoundError, 
   ForbiddenError 
@@ -66,22 +68,30 @@ export async function getResourceById(id: string) {
         ]
       },
       { model: Category, as: 'majorCategory' },
-      { model: Category, as: 'subCategory' },
-      {
-        model: Tag,
-        as: 'tags',
-        through: {
-          attributes: [],
-          where: { entity_type: 'resource' }
-        },
-        required: false // 改為非必需，避免 INNER JOIN
-      }
+      { model: Category, as: 'subCategory' }
     ]
   });
 
   if (!resource) {
     throw new NotFoundError(`找不到 ID 為 ${id} 的資源`);
   }
+
+  // 分離查詢標籤
+  const resourceId = resource.get('id') as number;
+  const entityTags = await EntityTag.findAll({
+    where: {
+      entity_type: 'resource',
+      entity_id: resourceId
+    },
+    include: [{
+      model: Tag,
+      as: 'tag'
+    }]
+  });
+
+  // 將標籤數據附加到資源上
+  const resourceData = resource.toJSON();
+  resourceData.tags = entityTags.map(et => et.get('tag')).filter(Boolean);
 
   // 查詢統計資料 (可以在實際項目中從 Redis 或其他快取系統中獲取)
   const stats = {
@@ -101,7 +111,7 @@ export async function getResourceById(id: string) {
 
   // 將資源資料轉換為 API 格式
   const result = transformResourceToApi({
-    ...resource.toJSON(),
+    ...resourceData,
     stats,
     avgRating: reviewStats ? parseFloat(reviewStats.getDataValue('avgRating')) : null
   });
@@ -239,40 +249,13 @@ export async function getResources(
     }
   ];
 
-  // 如果有標籤篩選，添加標籤包含關係
-  if (filters.tags && filters.tags.length > 0) {
-    include.push({
-      model: Tag,
-      as: 'tags',
-      through: {
-        attributes: []
-      },
-      required: false ,// 改為非必需，避免 INNER JOIN
-      where: {
-        name: { [Op.in]: filters.tags }
-      }
-    });
-  } else {
-    // 沒有標籤篩選時，也包含標籤但不添加篩選條件
-    include.push({
-      model: Tag,
-      as: 'tags',
-      through: {
-        attributes: []
-      },
-      required: false // 改為非必需，避免 INNER JOIN
-    });
-  }
+  // 標籤篩選將在後續分離查詢中處理
 
   // 分離 COUNT 和 SELECT 查詢以避免 SQL 錯誤
-  // 先查詢總數，排除可能導致重複計算的標籤關聯
-  const countInclude = include.filter(inc => 
-    !(typeof inc === 'object' && 'as' in inc && inc.as === 'tags')
-  );
-  
+  // 先查詢總數
   const count = await Resource.count({
     where,
-    include: countInclude,
+    include,
     distinct: true
   });
 
@@ -304,6 +287,31 @@ export async function getResources(
     group: ['resource_id']
   }) : [];
 
+  // 分離查詢標籤
+  const entityTags = resourceIds.length > 0 ? await EntityTag.findAll({
+    where: {
+      entity_type: 'resource',
+      entity_id: { [Op.in]: resourceIds }
+    },
+    include: [{
+      model: Tag,
+      as: 'tag'
+    }]
+  }) : [];
+
+  // 構建資源ID到標籤的映射
+  const tagsMap = new Map<number, Model<TagAttributes>[]>();
+  entityTags.forEach((et: Model<EntityTagAttributes>) => {
+    const entityId = et.get('entity_id') as number;
+    const tag = et.get('tag') as Model<TagAttributes>;
+    if (tag) {
+      if (!tagsMap.has(entityId)) {
+        tagsMap.set(entityId, []);
+      }
+      tagsMap.get(entityId)!.push(tag);
+    }
+  });
+
   // 構建評分映射
   const ratingMap = new Map();
   reviewStats.forEach((stat: Model<Record<string, unknown>>) => {
@@ -313,11 +321,16 @@ export async function getResources(
     );
   });
 
-  // 轉換為 API 格式
-  const resources = resourceRows.map((row: Model<ResourceDbModel>) => {
+  // 轉換為 API 格式並進行標籤篩選
+  let resources = resourceRows.map((row: Model<ResourceDbModel>) => {
     const resource = row.toJSON();
-    return transformResourceToApi({
+    // 添加標籤數據
+    const resourceWithTags = {
       ...resource,
+      tags: tagsMap.get(resource.id) || []
+    };
+    return transformResourceToApi({
+      ...resourceWithTags,
       avgRating: ratingMap.get(resource.id) || null,
       // 統計數據可以在實際項目中從 Redis 或其他快取系統中獲取
       stats: {
@@ -328,6 +341,14 @@ export async function getResources(
       }
     });
   });
+
+  // 如果有標籤篩選，過濾資源
+  if (filters.tags && filters.tags.length > 0) {
+    resources = resources.filter(resource => {
+      const resourceTags = resource.tags || [];
+      return filters.tags!.some(filterTag => resourceTags.includes(filterTag));
+    });
+  }
 
   // 計算 parentTotalEstimate（只有在有 subCategory 篩選時才計算）
   let parentTotalEstimate: number | undefined = undefined;
@@ -373,9 +394,11 @@ export async function getResources(
   }
 
   // 生成分頁元數據
+  // 如果有標籤篩選，使用篩選後的資源數量
+  const filteredCount = filters.tags && filters.tags.length > 0 ? resources.length : count;
   const pagination_meta = generatePaginationMetadata(
     resourceRows,
-    count,
+    filteredCount,
     limit,
     dbSortField,
     hasMore,
