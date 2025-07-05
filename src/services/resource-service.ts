@@ -91,7 +91,10 @@ export async function getResourceById(id: string) {
 
   // 將標籤數據附加到資源上
   const resourceData = resource.toJSON();
-  resourceData.tags = entityTags.map(et => et.get('tag')).filter(Boolean);
+  resourceData.tags = entityTags.map(et => {
+    const tag = et.get('tag') as Model<TagAttributes> | null;
+    return tag?.toJSON();
+  }).filter(Boolean);
 
   // 查詢統計資料 (可以在實際項目中從 Redis 或其他快取系統中獲取)
   const stats = {
@@ -181,6 +184,19 @@ export async function getResources(
     ...(filters.createdBy && { created_by: filters.createdBy }),
     status: filters.status || 'active'
   };
+
+  // 如果有標籤篩選，需要添加子查詢
+  if (filters.tags && filters.tags.length > 0) {
+    baseWhere.id = {
+      [Op.in]: sequelize.literal(`
+        (SELECT DISTINCT et.entity_id 
+         FROM entity_tags et 
+         INNER JOIN tags t ON et.tag_id = t.id 
+         WHERE et.entity_type = 'resource' 
+         AND t.name IN (${filters.tags.map(tag => `'${tag.replace(/'/g, "''")}'`).join(', ')}))
+      `)
+    };
+  }
 
   // 構建搜索條件
   const searchWhere: WhereOptions = {};
@@ -300,7 +316,7 @@ export async function getResources(
   }) : [];
 
   // 構建資源ID到標籤的映射
-  const tagsMap = new Map<number, Model<TagAttributes>[]>();
+  const tagsMap = new Map<number, TagAttributes[]>();
   entityTags.forEach((et: Model<EntityTagAttributes>) => {
     const entityId = et.get('entity_id') as number;
     const tag = et.get('tag') as Model<TagAttributes>;
@@ -308,7 +324,7 @@ export async function getResources(
       if (!tagsMap.has(entityId)) {
         tagsMap.set(entityId, []);
       }
-      tagsMap.get(entityId)!.push(tag);
+      tagsMap.get(entityId)!.push(tag.toJSON());
     }
   });
 
@@ -321,8 +337,8 @@ export async function getResources(
     );
   });
 
-  // 轉換為 API 格式並進行標籤篩選
-  let resources = resourceRows.map((row: Model<ResourceDbModel>) => {
+  // 轉換為 API 格式
+  const resources = resourceRows.map((row: Model<ResourceDbModel>) => {
     const resource = row.toJSON();
     // 添加標籤數據
     const resourceWithTags = {
@@ -341,14 +357,6 @@ export async function getResources(
       }
     });
   });
-
-  // 如果有標籤篩選，過濾資源
-  if (filters.tags && filters.tags.length > 0) {
-    resources = resources.filter(resource => {
-      const resourceTags = resource.tags || [];
-      return filters.tags!.some(filterTag => resourceTags.includes(filterTag));
-    });
-  }
 
   // 計算 parentTotalEstimate（只有在有 subCategory 篩選時才計算）
   let parentTotalEstimate: number | undefined = undefined;
@@ -394,11 +402,9 @@ export async function getResources(
   }
 
   // 生成分頁元數據
-  // 如果有標籤篩選，使用篩選後的資源數量
-  const filteredCount = filters.tags && filters.tags.length > 0 ? resources.length : count;
   const pagination_meta = generatePaginationMetadata(
     resourceRows,
-    filteredCount,
+    count,
     limit,
     dbSortField,
     hasMore,
