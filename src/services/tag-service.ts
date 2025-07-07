@@ -229,7 +229,7 @@ export async function removeEntityTag(
  */
 export async function getPopularTags(
   entityType?: string,
-  limit: number = 10
+  limit = 10
 ) {
   const where = entityType ? { entity_type: entityType } : {};
 
@@ -264,7 +264,7 @@ export async function getPopularTags(
  */
 export async function searchTags(
   query: string,
-  limit: number = 10
+  limit = 10
 ) {
   const tags = await Tag.findAll({
     where: {

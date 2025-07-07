@@ -12,7 +12,11 @@
     "paths": {
       "@/*": ["src/*"],
       "@types/*": ["src/types/*"],
-      "@services/*": ["src/services/*"]
+      "@services/*": ["src/services/*"],
+      "@middleware/*": ["src/middleware/*"],
+      "@utils/*": ["src/utils/*"],
+      "@models/*": ["src/models/*"],
+      "@controllers/*": ["src/controllers/*"]
     },
     "allowJs": true,
     "declaration": false,
@@ -31,7 +35,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "tests"
+    "dist"
   ]
 }

@@ -1,12 +1,22 @@
 // jest.config.js
+const path = require('path');
+
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: "node",
     collectCoverage: true,
     coverageDirectory: "coverage",
-    globalTeardown: "<rootDir>/../tests/teardown.js",
+    coverageReporters: ['text', 'lcov', 'html'],
+    collectCoverageFrom: [
+      'src/**/*.{ts,js}',
+      '!src/**/*.d.ts',
+      '!src/types/**/*',
+      '!src/swagger/**/*'
+    ],
+    globalSetup: "<rootDir>/../src/tests/globalSetup.js",
+    globalTeardown: "<rootDir>/../src/tests/globalTeardown.js",
     setupFiles: ["<rootDir>/../jest.setup.js"],
-    setupFilesAfterEnv: ["<rootDir>/../tests/setup.js"],
+    setupFilesAfterEnv: ["<rootDir>/../src/tests/setup.js"],
     transform: {
       '^.+\\.ts$': 'ts-jest'
     },
@@ -14,13 +24,19 @@ module.exports = {
     moduleNameMapper: {
       "^@/(.*)$": "<rootDir>/../src/$1",
       "^@types/(.*)$": "<rootDir>/../src/types/$1",
-      "^@services/(.*)$": "<rootDir>/../src/services/$1"
+      "^@services/(.*)$": "<rootDir>/../src/services/$1",
+      "^@middleware/(.*)$": "<rootDir>/../src/middleware/$1",
+      "^@utils/(.*)$": "<rootDir>/../src/utils/$1",
+      "^@models/(.*)$": "<rootDir>/../src/models/$1",
+      "^@controllers/(.*)$": "<rootDir>/../src/controllers/$1"
     },
     moduleDirectories: ["node_modules", "src"],
     testPathIgnorePatterns: ["/node_modules/", "/dist/"],
     testMatch: ['**/*.test.ts', '**/*.test.js'],
-    roots: ["<rootDir>/../tests", "<rootDir>/../src"],
+    roots: ["<rootDir>/../src/tests", "<rootDir>/../src"],
+    testTimeout: 30000,
     forceExit: true,
-    detectOpenHandles: true
+    detectOpenHandles: true,
+    verbose: true
   };
   
