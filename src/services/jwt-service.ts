@@ -89,6 +89,7 @@ export const refreshToken = (token: string): string | null => {
   const payload = { ...decoded };
   delete payload.iat;
   delete payload.exp;
+  delete payload.error;
   
   return generateToken(payload as JwtPayload);
 };

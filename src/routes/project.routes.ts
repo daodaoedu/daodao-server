@@ -1,0 +1,113 @@
+/**
+ * 專案路由
+ * 處理專案相關的路由定義
+ */
+
+import { Router, RequestHandler } from 'express';
+import { projectController } from '../controllers/project.controller';
+import { validate } from '../validators/validation.middleware';
+import { authenticate, optionalAuth } from '../middleware/auth';
+import { 
+  createProjectSchema, 
+  updateProjectSchema,
+  projectParamsSchema,
+  projectQuerySchema,
+  duplicateProjectSchema,
+  projectStatsQuerySchema
+} from '../validators/project.validators';
+
+const router = Router();
+
+/**
+ * GET /projects
+ * 獲取專案列表
+ * 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order
+ * 支援可選身份驗證（用於個人化內容）
+ */
+router.get('/', 
+  optionalAuth,
+  validate(projectQuerySchema, 'query'),
+  projectController.getProjects as RequestHandler);
+
+/**
+ * GET /projects/my
+ * 獲取我的專案列表
+ * 查詢參數：page, limit, status, search, sort_by, sort_order
+ * 需要身份驗證
+ */
+router.get('/my', 
+  authenticate,
+  validate(projectQuerySchema, 'query'),
+  projectController.getMyProjects as RequestHandler);
+
+/**
+ * GET /projects/stats
+ * 獲取專案統計資訊
+ * 查詢參數：user_id（可選）
+ * 支援可選身份驗證
+ */
+router.get('/stats', 
+  optionalAuth,
+  validate(projectStatsQuerySchema, 'query'),
+  projectController.getProjectStats as RequestHandler);
+
+/**
+ * GET /projects/:id
+ * 獲取專案詳情
+ * 路徑參數：id - 專案 ID
+ * 支援可選身份驗證（用於個人化內容）
+ */
+router.get('/:id', 
+  optionalAuth,
+  validate(projectParamsSchema, 'params'),
+  projectController.getProject as RequestHandler);
+
+/**
+ * POST /projects
+ * 創建新專案
+ * 請求體：CreateProjectRequest
+ * 需要身份驗證
+ */
+router.post('/', 
+  authenticate,
+  validate(createProjectSchema, 'body'),
+  projectController.createProject as RequestHandler);
+
+/**
+ * PUT /projects/:id
+ * 更新專案
+ * 路徑參數：id - 專案 ID
+ * 請求體：UpdateProjectRequest
+ * 需要身份驗證
+ */
+router.put('/:id', 
+  authenticate,
+  validate(projectParamsSchema, 'params'),
+  validate(updateProjectSchema, 'body'),
+  projectController.updateProject as RequestHandler);
+
+/**
+ * DELETE /projects/:id
+ * 刪除專案
+ * 路徑參數：id - 專案 ID
+ * 需要身份驗證
+ */
+router.delete('/:id', 
+  authenticate,
+  validate(projectParamsSchema, 'params'),
+  projectController.deleteProject as RequestHandler);
+
+/**
+ * POST /projects/:id/duplicate
+ * 複製專案
+ * 路徑參數：id - 要複製的專案 ID
+ * 請求體：DuplicateProjectRequest（可選）
+ * 需要身份驗證
+ */
+router.post('/:id/duplicate', 
+  authenticate,
+  validate(projectParamsSchema, 'params'),
+  validate(duplicateProjectSchema, 'body'),
+  projectController.duplicateProject as RequestHandler);
+
+export default router;

@@ -1,23 +1,33 @@
 /**
- * 資源評論控制器測試
+ * 資源評論控制器完整測試
+ * 包含原有的集成測試和新增的單元測試
  */
 
 import request from 'supertest';
 import express from 'express';
-import resourceReviewController from '../../../controllers/resource-review-controller';
+import { Request, Response } from 'express';
+import resourceReviewController, {
+  getReviewsByResource,
+  getReviewsByUser,
+  getReviewById,
+  createReview,
+  updateReview,
+  updateReviewStatus,
+  deleteReview,
+  likeReview,
+  unlikeReview,
+  getReviewTags,
+  getReviews
+} from '../../../controllers/resource-review-controller';
 import resourceReviewService from '../../../services/resource-review-service';
+import tagService from '../../../services/tag-service';
+import { BadRequestError } from '../../../utils/error-handler';
+import { AuthRequest } from '../../../types/auth.types';
 
-// 模擬服務
-jest.mock('../../../src/services/resource-review-service', () => ({
-  __esModule: true,
-  default: {
-    getReviews: jest.fn(),
-    getReviewById: jest.fn(),
-    createReview: jest.fn(),
-    updateReview: jest.fn(),
-    deleteReview: jest.fn()
-  }
-}));
+// Mock dependencies
+jest.mock('../../../services/resource-review-service');
+jest.mock('../../../services/tag-service');
+jest.mock('../../../validators/resource-review.validator');
 
 // 創建測試用的 Express 應用
 const createTestApp = () => {
@@ -31,15 +41,80 @@ const createTestApp = () => {
   return app;
 };
 
-describe('ResourceReviewController', () => {
+describe('Resource Review Controller Tests', () => {
   let app: express.Application;
+  let req: Partial<AuthRequest>;
+  let res: Partial<Response>;
+  let mockResourceReviewService: jest.Mocked<typeof resourceReviewService>;
+  let mockTagService: jest.Mocked<typeof tagService>;
+
+  const mockUser = {
+    id: 1,
+    username: 'testuser',
+    email: 'test@example.com'
+  };
+
+  const mockReview = {
+    id: 1,
+    resourceId: 'resource-123',
+    userId: 1,
+    content: '很棒的資源',
+    score: {
+      overall_impact: 5,
+      thinking_change: 4,
+      life_change: 3,
+      behavior_change: 4,
+      skill_development: 5
+    },
+    tags: ['JavaScript', '前端開發'],
+    status: 'published',
+    created_at: new Date(),
+    updated_at: new Date(),
+    stats: {
+      likes_count: 10
+    }
+  };
+
+  const mockReviewList = {
+    reviews: [mockReview],
+    pagination: {
+      current_cursor: null,
+      next_cursor: 'next-cursor',
+      has_more: false,
+      total_estimate: 1
+    }
+  };
 
   beforeEach(() => {
     app = createTestApp();
     jest.clearAllMocks();
+
+    // Setup unit test mocks
+    req = {
+      user: mockUser,
+      params: {},
+      query: {},
+      body: {}
+    };
+
+    res = {
+      json: jest.fn().mockReturnThis(),
+      status: jest.fn().mockReturnThis()
+    };
+
+    // Mock services
+    mockResourceReviewService = resourceReviewService as jest.Mocked<typeof resourceReviewService>;
+    mockTagService = tagService as jest.Mocked<typeof tagService>;
+
+    // Mock validators
+    const validators = require('../../../validators/resource-review.validator');
+    validators.validateCreateResourceReview = jest.fn().mockReturnValue(mockReview);
+    validators.validateUpdateResourceReview = jest.fn().mockReturnValue(mockReview);
+    validators.validateUpdateReviewStatus = jest.fn().mockReturnValue({ status: 'published' });
   });
 
-  describe('GET /resources/:resourceId/reviews', () => {
+  // ===== 集成測試（原有的測試保留） =====
+  describe('Integration Tests - GET /resources/:resourceId/reviews', () => {
     it('應該使用預設分頁參數（每頁2筆）', async () => {
       // 模擬服務返回
       const mockResponse = {
@@ -294,6 +369,328 @@ describe('ResourceReviewController', () => {
       // 確保沒有舊的字段名稱
       expect(review).not.toHaveProperty('likesCount');
       expect(review).not.toHaveProperty('helpfulCount');
+    });
+  });
+
+  // ===== 單元測試（新增的測試） =====
+  describe('Unit Tests - getReviewsByResource', () => {
+    beforeEach(() => {
+      req.params = { resourceId: 'resource-123' };
+    });
+
+    it('should successfully get reviews for a resource', async () => {
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviewsByResource(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
+        {
+          resourceId: 'resource-123',
+          status: 'published'
+        },
+        {}
+      );
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockReviewList
+      });
+    });
+
+    it('should handle query parameters', async () => {
+      req.query = {
+        cursor: 'test-cursor',
+        limit: '10',
+        tags: 'JavaScript,React',
+        sort: 'createdAt',
+        order: 'asc',
+        minScore: '3',
+        maxScore: '5'
+      };
+
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviewsByResource(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
+        {
+          resourceId: 'resource-123',
+          status: 'published',
+          tags: ['JavaScript', 'React'],
+          minScore: 3,
+          maxScore: 5
+        },
+        {
+          cursor: 'test-cursor',
+          limit: 10,
+          sort: 'createdAt',
+          order: 'asc'
+        }
+      );
+    });
+  });
+
+  describe('Unit Tests - getReviewsByUser', () => {
+    beforeEach(() => {
+      req.params = { userId: '1' };
+    });
+
+    it('should get reviews for current user (all statuses)', async () => {
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviewsByUser(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
+        {
+          userId: 1
+        },
+        {}
+      );
+    });
+
+    it('should get reviews for different user (published only)', async () => {
+      req.params = { userId: '2' };
+
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviewsByUser(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
+        {
+          userId: 2,
+          status: 'published'
+        },
+        {}
+      );
+    });
+  });
+
+  describe('Unit Tests - createReview', () => {
+    const createReviewData = {
+      content: '很棒的資源',
+      score: {
+        overall_impact: 5,
+        thinking_change: 4,
+        life_change: 3,
+        behavior_change: 4,
+        skill_development: 5
+      },
+      tags: ['JavaScript', '前端開發']
+    };
+
+    beforeEach(() => {
+      req.params = { resourceId: '123' };
+      req.body = createReviewData;
+    });
+
+    it('should successfully create a review', async () => {
+      mockResourceReviewService.createReview.mockResolvedValue(mockReview);
+
+      await createReview(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.createReview).toHaveBeenCalledWith(
+        123,
+        mockReview,
+        1
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockReview
+      });
+    });
+
+    it('should handle unauthenticated user', async () => {
+      req.user = undefined;
+
+      await expect(createReview(req as AuthRequest, res as Response))
+        .rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('Unit Tests - updateReview', () => {
+    const updateData = {
+      content: '更新後的評價',
+      score: { overall_impact: 4 }
+    };
+
+    beforeEach(() => {
+      req.params = { id: '1' };
+      req.body = updateData;
+    });
+
+    it('should successfully update a review', async () => {
+      const updatedReview = { ...mockReview, ...updateData };
+      mockResourceReviewService.updateReview.mockResolvedValue(updatedReview);
+
+      await updateReview(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.updateReview).toHaveBeenCalledWith(
+        1,
+        mockReview,
+        1
+      );
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: updatedReview
+      });
+    });
+
+    it('should handle unauthenticated user', async () => {
+      req.user = undefined;
+
+      await expect(updateReview(req as AuthRequest, res as Response))
+        .rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('Unit Tests - deleteReview', () => {
+    beforeEach(() => {
+      req.params = { id: '1' };
+    });
+
+    it('should successfully delete a review', async () => {
+      mockResourceReviewService.deleteReview.mockResolvedValue({ success: true });
+
+      await deleteReview(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.deleteReview).toHaveBeenCalledWith(1, 1);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: '心得評價已成功刪除'
+      });
+    });
+
+    it('should handle unauthenticated user', async () => {
+      req.user = undefined;
+
+      await expect(deleteReview(req as AuthRequest, res as Response))
+        .rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('Unit Tests - likeReview', () => {
+    beforeEach(() => {
+      req.params = { id: '1' };
+    });
+
+    it('should successfully like a review', async () => {
+      mockResourceReviewService.toggleLikeReview.mockResolvedValue({ success: true });
+
+      await likeReview(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.toggleLikeReview).toHaveBeenCalledWith(1);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: '已成功點讚心得評價'
+      });
+    });
+
+    it('should handle unauthenticated user', async () => {
+      req.user = undefined;
+
+      await expect(likeReview(req as AuthRequest, res as Response))
+        .rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('Unit Tests - getReviewTags', () => {
+    beforeEach(() => {
+      req.params = { id: '1' };
+    });
+
+    it('should successfully get review tags', async () => {
+      const mockTags = [
+        { name: 'JavaScript' },
+        { name: 'React' }
+      ] as any;
+
+      mockTagService.getEntityTags.mockResolvedValue(mockTags);
+
+      await getReviewTags(req as AuthRequest, res as Response);
+
+      expect(mockTagService.getEntityTags).toHaveBeenCalledWith(1, 'resource_review');
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: ['JavaScript', 'React']
+      });
+    });
+  });
+
+  describe('Unit Tests - getReviews (general)', () => {
+    it('should successfully get all reviews', async () => {
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviews(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith({}, {});
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockReviewList
+      });
+    });
+
+    it('should handle all query parameters', async () => {
+      req.query = {
+        cursor: 'all-cursor',
+        limit: '15',
+        tags: 'Backend,Database',
+        sort: 'score',
+        order: 'desc',
+        status: 'published',
+        minScore: '2',
+        maxScore: '5'
+      };
+
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviews(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
+        {
+          status: 'published',
+          minScore: 2,
+          maxScore: 5,
+          tags: ['Backend', 'Database']
+        },
+        {
+          cursor: 'all-cursor',
+          limit: 15,
+          sort: 'score',
+          order: 'desc'
+        }
+      );
+    });
+  });
+
+  describe('Unit Tests - Error Handling', () => {
+    it('should handle service errors', async () => {
+      req.params = { resourceId: 'resource-123' };
+      mockResourceReviewService.getReviews.mockRejectedValue(new Error('Service error'));
+
+      await expect(getReviewsByResource(req as AuthRequest, res as Response))
+        .rejects.toThrow('Service error');
+    });
+
+    it('should handle malformed query parameters', async () => {
+      req.query = {
+        limit: 'not-a-number',
+        minScore: 'invalid',
+        maxScore: 'also-invalid'
+      };
+
+      mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+
+      await getReviews(req as AuthRequest, res as Response);
+
+      expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
+        {
+          minScore: NaN,
+          maxScore: NaN
+        },
+        {
+          limit: NaN
+        }
+      );
     });
   });
 });

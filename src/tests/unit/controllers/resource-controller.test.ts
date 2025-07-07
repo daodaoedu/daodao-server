@@ -8,7 +8,7 @@ import resourceController from '../../../controllers/resource-controller';
 import resourceService from '../../../services/resource-service';
 
 // 模擬服務
-jest.mock('../../../src/services/resource-service', () => ({
+jest.mock('../../../services/resource-service', () => ({
   __esModule: true,
   default: {
     getResources: jest.fn(),

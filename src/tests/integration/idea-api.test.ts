@@ -7,7 +7,7 @@ import express from 'express';
 import { setupTypescriptRoutes } from '../../app';
 
 // 模擬資料庫配置
-jest.mock('../../src/config/database', () => ({
+jest.mock('../../config/database', () => ({
   __esModule: true,
   default: {
     authenticate: jest.fn(),
@@ -26,7 +26,7 @@ jest.mock('../../models/index', () => ({
 }));
 
 // 模擬 TypeScript 模型
-jest.mock('../../src/models/index', () => ({
+jest.mock('../../models/index', () => ({
   Idea: {
     findAndCountAll: jest.fn(),
     findOne: jest.fn(),
@@ -49,21 +49,17 @@ jest.mock('../../src/models/index', () => ({
 }));
 
 // 模擬 tag service
-jest.mock('../../src/services/tag-service', () => ({
+jest.mock('../../services/tag-service', () => ({
   __esModule: true,
   default: {
     setEntityTags: jest.fn().mockResolvedValue(undefined)
   }
 }));
 
-// 模擬 model bridge
-jest.mock('../../src/utils/model-bridge', () => ({
-  __esModule: true,
-  default: jest.fn()
-}));
+// model-bridge 已被移除，不需要模擬
 
 // 模擬 error handler
-jest.mock('../../src/utils/error-handler', () => ({
+jest.mock('../../utils/error-handler', () => ({
   asyncWrapper: (fn: (...args: unknown[]) => unknown) => fn,
   NotFoundError: class extends Error {
     statusCode = 404;
@@ -87,7 +83,7 @@ import sequelize from '../../config/database';
 import { Idea, Resource, EntityResource, Tag, EntityTag } from '../../models/index';
 
 // 模擬認證中間件
-jest.mock('../../src/middleware/auth', () => ({
+jest.mock('../../middleware/auth', () => ({
   authenticate: (req: unknown, res: unknown, next: () => void) => {
     (req as { user?: { id: number; username: string } }).user = { id: 1, username: 'testuser' };
     next();
@@ -101,12 +97,12 @@ jest.mock('../../src/middleware/auth', () => ({
 }));
 
 // 模擬驗證中間件
-jest.mock('../../src/validators/validation.middleware', () => ({
+jest.mock('../../validators/validation.middleware', () => ({
   validate: () => (_req: unknown, _res: unknown, next: () => void) => next()
 }));
 
 // 模擬驗證器 schemas
-jest.mock('../../src/validators/idea.validators', () => ({
+jest.mock('../../validators/idea.validators', () => ({
   createIdeaSchema: {
     parse: jest.fn().mockImplementation((body) => body)
   },
@@ -128,7 +124,7 @@ jest.mock('../../src/validators/idea.validators', () => ({
 }));
 
 // 模擬資料庫事務
-jest.mock('../../src/config/database', () => ({
+jest.mock('../../config/database', () => ({
   __esModule: true,
   default: {
     transaction: jest.fn(() => Promise.resolve({

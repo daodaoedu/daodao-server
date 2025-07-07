@@ -7,6 +7,8 @@ import { Router } from 'express';
 import resourceRoutes from './resource-routes';
 import resourceReviewRoutes from './resource-review-routes';
 import tagRoutes from './tag-routes';
+import authRoutes from './auth.routes';
+import projectRoutes from './project.routes';
 
 const router = Router();
 
@@ -14,6 +16,20 @@ const router = Router();
  * API 版本前綴
  * 所有路由都會有 /api/v1 前綴
  */
+
+// 認證路由
+// POST   /api/v1/auth/login
+// POST   /api/v1/auth/register
+// POST   /api/v1/auth/logout
+// POST   /api/v1/auth/refresh
+// GET    /api/v1/auth/me
+// POST   /api/v1/auth/forgot-password
+// POST   /api/v1/auth/reset-password
+// POST   /api/v1/auth/verify-email
+// GET    /api/v1/auth/google
+// GET    /api/v1/auth/google/callback
+// GET    /api/v1/auth/google/failure
+router.use('/auth', authRoutes);
 
 // 資源路由
 // GET    /api/v1/resources
@@ -45,6 +61,17 @@ router.use('/resources/:resourceId/reviews', resourceReviewRoutes);
 // GET    /api/v1/tags/entities
 router.use('/tags', tagRoutes);
 
+// 專案路由
+// GET    /api/v1/projects
+// GET    /api/v1/projects/my
+// GET    /api/v1/projects/stats
+// GET    /api/v1/projects/:id
+// POST   /api/v1/projects
+// PUT    /api/v1/projects/:id
+// DELETE /api/v1/projects/:id
+// POST   /api/v1/projects/:id/duplicate
+router.use('/projects', projectRoutes);
+
 /**
  * API 健康檢查端點
  * GET /api/v1/health
@@ -70,15 +97,21 @@ router.get('/info', (req, res) => {
       version: '1.0.0',
       description: '學習資源管理與心得分享 API 系統',
       endpoints: {
+        auth: '/api/v1/auth',
         resources: '/api/v1/resources',
         resourceReviews: '/api/v1/resources/:resourceId/reviews',
         tags: '/api/v1/tags',
+        projects: '/api/v1/projects',
         health: '/api/v1/health'
       },
       features: [
+        '用戶認證系統',
+        'JWT 令牌管理',
+        'Google OAuth 整合',
         '資源 CRUD 操作',
         '心得評價管理',
         '標籤系統',
+        '專案管理系統',
         '巢狀路由支援',
         '分頁查詢',
         '複雜過濾條件',

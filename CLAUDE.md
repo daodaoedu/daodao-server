@@ -115,3 +115,4 @@ Key environment variables:
 
 ## TypeScript Best Practices
 - `ts` 不能使用 `any`
+- 使用 `unknown` 替代 `any`

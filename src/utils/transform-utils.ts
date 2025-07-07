@@ -75,22 +75,26 @@ export function generatePaginationMetadata(
     };
   }
   
-  // 獲取最後一條記錄
+  // 獲取第一條和最後一條記錄
+  const firstItem = rows[0];
   const lastItem = rows[rows.length - 1];
   
-  // 取得最後一條記錄的 ID 和排序欄位值
+  // 取得記錄的 ID 和排序欄位值
+  const firstId = firstItem.get('id') as number;
+  const firstTimestamp = firstItem.get(sortField) as string | number | Date;
   const lastId = lastItem.get('id') as number;
   const lastTimestamp = lastItem.get(sortField) as string | number | Date;
   
-  // 生成下一頁游標
+  // 生成游標
   const nextCursor = hasMore ? generateCursor(lastId, lastTimestamp) : null;
+  const prevCursor = generateCursor(firstId, firstTimestamp);
   
   return {
     limit,
     hasNext: hasMore,
-    hasPrev: false, // TODO: 實作 prev 邏輯
+    hasPrev: true, // 如果有數據，表示可能有上一頁
     nextCursor,
-    prevCursor: null, // TODO: 實作 prev 游標
+    prevCursor,
     totalEstimate: count,
     parentTotalEstimate: parentCount || null
   };
