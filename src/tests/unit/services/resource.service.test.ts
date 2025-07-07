@@ -2,20 +2,20 @@
  * 資源服務測試
  */
 
-import resourceService from '../../../services/resource-service';
-import Resource from '../../../models/resource';
-import ResourceReview from '../../../models/resource-review';
+import resourceService from '@services/resource-service';
+import Resource from '@models/resource';
+import ResourceReview from '@models/resource-review';
 import sequelize from '../../../config/database';
 import { 
   NotFoundError, 
   ForbiddenError, 
   ConflictError 
 } from '../../../utils/error-handler';
-import tagService from '../../../services/tag-service';
+import tagService from '@services/tag-service';
 import { Op } from 'sequelize';
 
 // 模擬 Sequelize 模型
-jest.mock('../../../src/models/resource', () => ({
+jest.mock('@models/resource', () => ({
   __esModule: true,
   default: {
     findByPk: jest.fn(),
@@ -32,6 +32,21 @@ jest.mock('../../../src/models/resource-review', () => ({
     create: jest.fn(),
     findOne: jest.fn(),
     findAll: jest.fn()
+  }
+}));
+jest.mock('../../../src/models/entity-tag', () => ({
+  __esModule: true,
+  default: {
+    findAll: jest.fn(),
+    create: jest.fn(),
+    destroy: jest.fn()
+  }
+}));
+jest.mock('../../../src/models/tag', () => ({
+  __esModule: true,
+  default: {
+    findAll: jest.fn(),
+    findByPk: jest.fn()
   }
 }));
 jest.mock('../../../src/config/database', () => {
@@ -99,6 +114,19 @@ describe('Resource Service Tests', () => {
       // 模擬 Sequelize 查詢結果（使用 findOne 查詢 external_id）
       (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
       (ResourceReview.findOne as jest.Mock).mockResolvedValue(mockReviewStats);
+      
+      // 模擬 EntityTag 查詢結果
+      (EntityTag.findAll as jest.Mock).mockResolvedValue([
+        {
+          get: jest.fn((field) => {
+            if (field === 'entity_id') return 1;
+            if (field === 'tag') return { 
+              get: jest.fn().mockReturnValue({ id: 1, name: 'JavaScript' }),
+              toJSON: jest.fn().mockReturnValue({ id: 1, name: 'JavaScript' })
+            };
+          })
+        }
+      ]);
 
       // 執行測試
       const result = await resourceService.getResourceById(resourceUuid);
@@ -484,6 +512,9 @@ describe('Resource Service Tests', () => {
       // 模擬評論統計
       (ResourceReview.findOne as jest.Mock).mockResolvedValue(null);
       (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+      
+      // 模擬 EntityTag 查詢結果
+      (EntityTag.findAll as jest.Mock).mockResolvedValue([]);
 
       // 執行測試，不提供 limit 參數
       const result = await resourceService.getResources({}, {});

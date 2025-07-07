@@ -266,10 +266,7 @@ const setupTsModelAssociations = () => {
   Resource.belongsToMany(Tag, {
     through: {
       model: EntityTag,
-      unique: false,
-      scope: {
-        entity_type: 'resource'
-      }
+      unique: false
     },
     foreignKey: 'entity_id',
     otherKey: 'tag_id',
@@ -280,10 +277,7 @@ const setupTsModelAssociations = () => {
   Tag.belongsToMany(Resource, {
     through: {
       model: EntityTag,
-      unique: false,
-      scope: {
-        entity_type: 'resource'
-      }
+      unique: false
     },
     foreignKey: 'tag_id',
     otherKey: 'entity_id',
@@ -295,10 +289,7 @@ const setupTsModelAssociations = () => {
   ResourceReview.belongsToMany(Tag, {
     through: {
       model: EntityTag,
-      unique: false,
-      scope: {
-        entity_type: 'resource_review'
-      }
+      unique: false
     },
     foreignKey: 'entity_id',
     otherKey: 'tag_id',
@@ -309,10 +300,7 @@ const setupTsModelAssociations = () => {
   Tag.belongsToMany(ResourceReview, {
     through: {
       model: EntityTag,
-      unique: false,
-      scope: {
-        entity_type: 'resource_review'
-      }
+      unique: false
     },
     foreignKey: 'tag_id',
     otherKey: 'entity_id',
@@ -335,10 +323,7 @@ const setupTsModelAssociations = () => {
   Idea.belongsToMany(Tag, {
     through: {
       model: EntityTag,
-      unique: false,
-      scope: {
-        entity_type: 'idea'
-      }
+      unique: false
     },
     foreignKey: 'entity_id',
     otherKey: 'tag_id',
@@ -349,10 +334,7 @@ const setupTsModelAssociations = () => {
   Tag.belongsToMany(Idea, {
     through: {
       model: EntityTag,
-      unique: false,
-      scope: {
-        entity_type: 'idea'
-      }
+      unique: false
     },
     foreignKey: 'tag_id',
     otherKey: 'entity_id',
@@ -375,10 +357,7 @@ const setupTsModelAssociations = () => {
   Idea.belongsToMany(Resource, {
     through: {
       model: EntityResource,
-      unique: false,
-      scope: {
-        entity_type: 'idea'
-      }
+      unique: false
     },
     foreignKey: 'entity_id',
     otherKey: 'resource_id',
@@ -389,10 +368,7 @@ const setupTsModelAssociations = () => {
   Resource.belongsToMany(Idea, {
     through: {
       model: EntityResource,
-      unique: false,
-      scope: {
-        entity_type: 'idea'
-      }
+      unique: false
     },
     foreignKey: 'resource_id',
     otherKey: 'entity_id',
