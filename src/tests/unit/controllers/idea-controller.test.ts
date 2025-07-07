@@ -10,7 +10,7 @@ import { AuthRequest } from '../../../middleware/auth';
 import { IdeaStatus, ResourceStatus } from '../../../types/idea.types';
 
 // 模擬服務
-jest.mock('../../../src/services/idea-service', () => ({
+jest.mock('../../../services/idea-service', () => ({
   __esModule: true,
   default: {
     getIdeas: jest.fn(),
@@ -22,12 +22,12 @@ jest.mock('../../../src/services/idea-service', () => ({
 }));
 
 // 模擬驗證中間件
-jest.mock('../../../src/validators/validation.middleware', () => ({
+jest.mock('../../../validators/validation.middleware', () => ({
   validate: () => (_req: unknown, _res: unknown, next: () => void) => next()
 }));
 
 // 模擬驗證 schemas
-jest.mock('../../../src/validators/idea.validators', () => ({
+jest.mock('../../../validators/idea.validators', () => ({
   ideaParamsSchema: {
     parse: jest.fn().mockImplementation((params) => params)
   },

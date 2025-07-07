@@ -3,24 +3,13 @@
  * 處理心得評價相關的 HTTP 請求
  */
 
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Model } from 'sequelize';
 import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
 import resourceReviewService from '@/services/resource-review-service';
 import tagService from '@/services/tag-service';
 import { TagAttributes } from '@/models/tag';
-
-// 擴展 Request 介面以包含 user 屬性
-interface AuthRequest extends Request {
-  user?: {
-    id: number;
-    username?: string;
-    email?: string;
-    isTemp?: boolean;
-    roles?: string[];
-    [key: string]: unknown;
-  };
-}
+import { AuthRequest } from '@/types/auth.types';
 import { 
   validateCreateResourceReview, 
   validateUpdateResourceReview, 

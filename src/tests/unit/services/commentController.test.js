@@ -1,7 +1,7 @@
 // tests/commentController.test.js
 
 // Mock database config to prevent actual database connections
-jest.mock('../../../config/db', () => ({
+jest.mock('../../../../config/db', () => ({
   transaction: jest.fn(),
   authenticate: jest.fn()
 }));

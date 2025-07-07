@@ -4,8 +4,6 @@
  */
 
 import express from 'express';
-// 引入模型橋接工具
-import setupModelBridge from './utils/model-bridge';
 // 引入所有 TypeScript 模型，同時會執行模型之間的關聯設定
 import models from './models/index';
 // 引入實際的資源路由
@@ -18,6 +16,10 @@ import ideaRoutes from './routes/idea-routes';
 import meRoutes from './routes/me-routes';
 // 引入標籤路由
 import tagRoutes from './routes/tag-routes';
+// 引入認證路由
+import authRoutes from './routes/auth.routes';
+// 引入 OAuth 服務初始化
+import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 
 /**
  * 設置 TypeScript 路由和模型
@@ -26,8 +28,10 @@ import tagRoutes from './routes/tag-routes';
 export function setupTypescriptRoutes(app: express.Application) {
   console.log('🚀 初始化 TypeScript 模型和相關設定...');
   
-  // 設定 JavaScript 與 TypeScript 模型之間的關聯
-  setupModelBridge();
+  // 初始化 Passport 認證
+  app.use(initializePassport());
+  app.use(initializePassportSession());
+  console.log('🔐 Passport 認證系統已初始化');
   
   // Swagger 配置已移至 index.js
   console.log('📖 Swagger 文檔已在 index.js 中配置');
@@ -40,6 +44,10 @@ export function setupTypescriptRoutes(app: express.Application) {
     });
   });
   console.log('🧪 TypeScript 測試路由已註冊 - 可在 /api/ts-test 訪問');
+  
+  // 註冊認證路由
+  app.use('/api/v1/auth', authRoutes);
+  console.log('🔑 v1 認證路由已註冊 - 可在 /api/v1/auth 訪問');
   
   // 註冊 v1 API 路由
   app.use('/api/v1/resources', resourceRoutes);

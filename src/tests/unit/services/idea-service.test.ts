@@ -9,23 +9,23 @@ const mockResource = { create: jest.fn() };
 const mockEntityResource = { create: jest.fn() };
 
 // Mock the models before importing the service
-jest.mock('../../../src/models/index', () => ({
+jest.mock('@models/index', () => ({
   Idea: mockIdea,
   Tag: mockTag,
   Resource: mockResource,
   EntityResource: mockEntityResource
 }));
 
-const { Idea, Tag, Resource, EntityResource } = require('../../../src/models/index');
-import ideaService from '../../../services/idea-service';
-import tagService from '../../../services/tag-service';
-import { NotFoundError, ForbiddenError } from '../../../utils/error-handler';
+const { Idea, Tag, Resource, EntityResource } = require('@models/index');
+import ideaService from '@services/idea-service';
+import tagService from '@services/tag-service';
+import { NotFoundError, ForbiddenError } from '@utils/error-handler';
 import sequelize from '../../../config/database';
 
 // 模擬依賴
-jest.mock('../../../src/models/index');
-jest.mock('../../../src/services/tag-service');
-jest.mock('../../../src/config/database', () => ({
+jest.mock('@models/index');
+jest.mock('@services/tag-service');
+jest.mock('@config/database', () => ({
   __esModule: true,
   default: {
     transaction: jest.fn()
@@ -33,7 +33,7 @@ jest.mock('../../../src/config/database', () => ({
 }));
 
 // 模擬 User 和 BasicInfo
-jest.mock('../../../models/index', () => ({
+jest.mock('@models/index', () => ({
   User: {
     belongsTo: jest.fn(),
     hasMany: jest.fn()

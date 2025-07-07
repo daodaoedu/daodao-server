@@ -3,20 +3,14 @@
  * 處理資源相關的 HTTP 請求
  */
 
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Model } from 'sequelize';
-
-// 擴展 Request 介面以包含 user 屬性
-interface AuthRequest extends Request {
-  user?: {
-    id: number;
-    username?: string;
-    email?: string;
-    isTemp?: boolean;
-    roles?: string[];
-    [key: string]: unknown;
-  };
-}
+import { AuthRequest } from '@/types/auth.types';
+import { asyncWrapper, BadRequestError, NotFoundError } from '@/utils/error-handler';
+import resourceService from '@/services/resource-service';
+import tagService from '@/services/tag-service';
+import { Resource } from '@/models/index';
+import { TagAttributes } from '@/models/tag';
 
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
@@ -42,11 +36,6 @@ const getUserIdOrTestUser = (req: AuthRequest): number => {
   
   return userId;
 };
-import { asyncWrapper, BadRequestError, NotFoundError } from '@/utils/error-handler';
-import resourceService from '@/services/resource-service';
-import tagService from '@/services/tag-service';
-import { Resource } from '@/models/index';
-import { TagAttributes } from '@/models/tag';
 import { 
   validateCreateResource, 
   validateUpdateResource, 
@@ -114,10 +103,9 @@ export const getResourceById = asyncWrapper(async (req: AuthRequest, res: Respon
   const resource = await resourceService.getResourceById(id); // 直接傳遞字串 ID
 
   // 記錄查看次數（非阻塞）
-  // TODO: incrementViewCount 需要更新來支援 UUID
-  // resourceService.incrementViewCount(id).catch(err => {
-  //   console.error('Failed to increment view count:', err);
-  // });
+  resourceService.incrementViewCount(parseInt(id)).catch(err => {
+    console.error('Failed to increment view count:', err);
+  });
 
   // 返回結果
   res.json({

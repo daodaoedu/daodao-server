@@ -6,6 +6,7 @@
 import { Router, RequestHandler } from 'express';
 import tagController from '@/controllers/tag-controller';
 import { validate } from '@/validators/validation.middleware';
+import { authenticateAny } from '@/middleware/auth';
 import { 
   tagQuerySchema, 
   tagEntitySchema 
@@ -49,8 +50,7 @@ router.get('/stats',
  * 需要身份驗證
  */
 router.post('/entities', 
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticateAny,
   validate(tagEntitySchema, 'body'),
   tagController.addEntityTag as RequestHandler
 );
@@ -62,8 +62,7 @@ router.post('/entities',
  * 需要身份驗證和權限檢查
  */
 router.delete('/entities', 
-  // TODO: 添加身份驗證中間件
-  // authenticate,
+  authenticateAny,
   validate(tagEntitySchema, 'body'),
   tagController.removeEntityTag as RequestHandler
 );

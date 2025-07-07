@@ -7,7 +7,7 @@ jest.resetModules();
 process.env.NODE_ENV = 'test';
 
 // 3. 先 mock config/db
-jest.mock('../../../config/db', () => ({
+jest.mock('../../../../config/db', () => ({
   transaction: jest.fn().mockImplementation(() => ({
     commit: jest.fn(),
     rollback: jest.fn(),

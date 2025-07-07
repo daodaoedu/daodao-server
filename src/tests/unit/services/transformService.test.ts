@@ -7,12 +7,12 @@ import {
   transformResourceToDb, 
   transformReviewToApi, 
   transformReviewToDb 
-} from '../../../services/transform-service';
+} from '@services/transform-service';
 import { contentFeaturesMappings, resourceUsageMappings } from '../../../constants/mappings';
-import Category from '../../../models/category';
+import Category from '@models/category';
 
 // Mock Category model
-jest.mock('../../../src/models/category', () => ({
+jest.mock('@models/category', () => ({
   __esModule: true,
   default: {
     findOne: jest.fn()
