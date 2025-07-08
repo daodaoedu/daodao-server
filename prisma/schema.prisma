@@ -1,0 +1,1323 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model basic_info {
+  id                Int                 @id @default(autoincrement())
+  self_introduction String?
+  share_list        String?
+  want_to_do_list   want_to_do_list_t[]
+  users             users[]
+}
+
+model categories {
+  id                                                Int          @id @default(autoincrement())
+  name                                              String       @unique @db.VarChar(100)
+  parent_id                                         Int?
+  description                                       String?
+  created_at                                        DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at                                        DateTime?    @db.Timestamptz(6)
+  categories                                        categories?  @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_categories                                  categories[] @relation("categoriesTocategories")
+  resources_resources_major_category_idTocategories resources[]  @relation("resources_major_category_idTocategories")
+  resources_resources_sub_category_idTocategories   resources[]  @relation("resources_sub_category_idTocategories")
+
+  @@index([name], map: "idx_categories_name")
+  @@index([parent_id], map: "idx_categories_parent_id")
+}
+
+model city {
+  id       Int        @id @default(autoincrement())
+  name     city_t?
+  groups   groups[]
+  location location[]
+
+  @@index([name], map: "idx_city_name")
+}
+
+model click {
+  id               Int           @id @default(autoincrement())
+  user_id          Int?
+  session_id       String?       @db.Uuid
+  view_id          Int?
+  target_type      String        @db.VarChar(50)
+  target_id        String        @db.VarChar(36)
+  click_type       String?       @db.VarChar(50)
+  element_type     String?       @db.VarChar(100)
+  element_id       String?       @db.VarChar(255)
+  element_class    String?
+  element_text     String?       @db.VarChar(500)
+  element_selector String?
+  page_x           Int?
+  page_y           Int?
+  viewport_x       Int?
+  viewport_y       Int?
+  is_dead_click    Boolean?      @default(false)
+  time_to_click    Int?
+  created_at       DateTime?     @default(now()) @db.Timestamptz(6)
+  user_session     user_session? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users            users?        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  view             view?         @relation(fields: [view_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([page_x, page_y], map: "idx_click_coordinates")
+  @@index([element_type, element_selector], map: "idx_click_element")
+  @@index([user_id, session_id], map: "idx_click_user_session")
+  @@index([view_id], map: "idx_click_view")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model comments {
+  id             Int        @id @default(autoincrement())
+  target_id      String     @db.VarChar(36)
+  user_id        Int
+  content        String
+  visibility     String?    @default("private") @db.VarChar(10)
+  parent_id      Int?
+  created_at     DateTime?  @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?  @default(now()) @db.Timestamp(6)
+  target_type    String     @default("post") @db.VarChar(20)
+  comments       comments?  @relation("commentsTocomments", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_comments comments[] @relation("commentsTocomments")
+  users          users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([target_type, target_id], map: "idx_comments_target")
+  @@index([user_id], map: "idx_comments_user")
+  @@index([visibility], map: "idx_comments_visibility")
+}
+
+model contacts {
+  id                 Int      @id @default(autoincrement())
+  google_id          String?  @db.VarChar(255)
+  photo_url          String?
+  is_subscribe_email Boolean?
+  email              String?  @db.VarChar(255)
+  ig                 String?  @db.VarChar(255)
+  discord            String?  @db.VarChar(255)
+  line               String?  @db.VarChar(255)
+  fb                 String?  @db.VarChar(255)
+  users              users[]
+}
+
+model country {
+  id       Int        @id @default(autoincrement())
+  alpha2   String?    @unique(map: "idx_country_alpha2") @db.Char(2)
+  alpha3   String?    @unique(map: "idx_country_alpha3") @db.Char(3)
+  name     String     @db.VarChar(100)
+  location location[]
+}
+
+model eligibility {
+  id                  Int                @id @default(autoincrement())
+  reference_file_path String?
+  partner_emails      String[]
+  fee_plans_id        Int?
+  created_at          DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?          @default(now()) @db.Timestamp(6)
+  fee_plans           fee_plans?         @relation(fields: [fee_plans_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project_marathon    project_marathon[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model entity_resources {
+  id          Int       @id @default(autoincrement())
+  external_id String?   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  resource_id Int
+  entity_type String    @db.VarChar(20)
+  entity_id   String    @db.VarChar(36)
+  created_by  Int
+  note        String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  users       users     @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  resources   resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([resource_id, entity_type, entity_id])
+  @@index([created_at], map: "idx_entity_resources_created_at")
+  @@index([created_by], map: "idx_entity_resources_created_by")
+  @@index([entity_type, entity_id], map: "idx_entity_resources_entity")
+  @@index([resource_id], map: "idx_entity_resources_resource_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model entity_tags {
+  id          Int       @id @default(autoincrement())
+  entity_type String    @db.VarChar(50)
+  entity_id   String    @db.VarChar(36)
+  tag_id      Int
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  created_by  Int?
+  users       users?    @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  tags        tags      @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([entity_type, entity_id, tag_id])
+  @@index([created_at], map: "idx_entity_tags_created_at")
+  @@index([tag_id], map: "idx_entity_tags_tag_id")
+  @@index([entity_type, entity_id], map: "idx_entity_tags_type_entity")
+}
+
+model favorite {
+  id              Int           @id @default(autoincrement())
+  user_id         Int
+  session_id      String?       @db.Uuid
+  target_type     String        @db.VarChar(50)
+  target_id       String        @db.VarChar(36)
+  collection_name String?       @db.VarChar(100)
+  is_public       Boolean?      @default(false)
+  tags            Json?
+  notes           String?
+  created_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  user_session    user_session? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           users         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, target_type, target_id])
+  @@index([user_id, collection_name], map: "idx_favorite_collection")
+  @@index([target_type, target_id], map: "idx_favorite_target")
+  @@index([user_id], map: "idx_favorite_user")
+  @@index([user_id, target_type], map: "idx_favorite_user_target")
+}
+
+model fee_plans {
+  id            Int               @id @default(autoincrement())
+  fee_plan_type qualifications_t?
+  name          String?           @db.VarChar(255)
+  discount      Decimal?          @db.Decimal(8, 2)
+  created_at    DateTime?         @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?         @default(now()) @db.Timestamp(6)
+  eligibility   eligibility[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model groups {
+  id                     Int                        @id @default(autoincrement())
+  external_id            String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title                  String?
+  photo_url              String?                    @db.VarChar(255)
+  photo_alt              String?                    @db.VarChar(255)
+  category               group_category_t[]
+  group_type             group_type_t[]
+  partner_education_step partner_education_step_t[]
+  description            String?                    @db.VarChar(255)
+  city_id                Int?
+  is_grouping            Boolean?
+  created_date           DateTime?                  @db.Timestamptz(6)
+  updated_date           DateTime?                  @db.Timestamptz(6)
+  time                   String?
+  partner_style          String?
+  created_at             DateTime?                  @db.Timestamptz(6)
+  created_by             Int?
+  updated_at             DateTime?                  @db.Timestamptz(6)
+  updated_by             String?                    @db.VarChar(255)
+  motivation             String?
+  contents               String?
+  expectation_result     String?
+  notice                 String?
+  tag_list               String[]
+  group_deadline         DateTime?                  @db.Timestamptz(6)
+  is_need_deadline       Boolean?
+  participator           Int?
+  hold_time              DateTime?                  @db.Time(6)
+  is_online              Boolean?
+  TBD                    Boolean?
+  city                   city?                      @relation(fields: [city_id], references: [id])
+  users                  users?                     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_join_group        user_join_group[]
+
+  @@index([TBD], map: "idx_group_TBD")
+  @@index([city_id], map: "idx_group_city_id")
+  @@index([group_type], map: "idx_group_group_type")
+  @@index([is_grouping], map: "idx_group_is_grouping")
+  @@index([is_online], map: "idx_group_is_online")
+  @@index([partner_education_step], map: "idx_group_partner_education_step")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ideas {
+  id            Int       @id @default(autoincrement())
+  external_id   String?   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       Int
+  content       String
+  status        String?   @default("active") @db.VarChar(20)
+  has_resources Boolean?  @default(false)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @db.Timestamptz(6)
+  deleted_at    DateTime? @db.Timestamptz(6)
+  version       Int?      @default(1)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_ideas_created_at")
+  @@index([status], map: "idx_ideas_status")
+  @@index([user_id], map: "idx_ideas_user_id")
+}
+
+model likes {
+  id         Int       @id @default(autoincrement())
+  post_id    Int?
+  user_id    Int?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  post       post?     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([post_id, user_id], map: "idx_likes_post_user")
+}
+
+model location {
+  id         Int      @id @default(autoincrement())
+  city_id    Int?
+  country_id Int?
+  isTaiwan   Boolean?
+  city       city?    @relation(fields: [city_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  country    country? @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users      users[]
+
+  @@index([city_id], map: "idx_location_city_id")
+  @@index([country_id], map: "idx_location_country_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model marathon {
+  id                      Int                @id @default(autoincrement())
+  external_id             String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_id                String             @unique @db.VarChar(50)
+  title                   String             @db.VarChar(255)
+  description             String?
+  start_date              DateTime           @db.Date
+  end_date                DateTime           @db.Date
+  registration_status     String?            @db.VarChar(50)
+  people_number           Int?
+  registration_start_date DateTime?          @db.Date
+  registration_end_date   DateTime?          @db.Date
+  is_public               Boolean?           @default(false)
+  created_by              Int?
+  created_at              DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?          @default(now()) @db.Timestamp(6)
+  users                   users?             @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project_marathon        project_marathon[]
+
+  @@index([start_date], map: "idx_marathon_start_date")
+}
+
+model mentor_participants {
+  mentor_id                                       Int
+  participant_id                                  Int
+  users_mentor_participants_mentor_idTousers      users @relation("mentor_participants_mentor_idTousers", fields: [mentor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_mentor_participants_participant_idTousers users @relation("mentor_participants_participant_idTousers", fields: [participant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([mentor_id, participant_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model milestone {
+  id           Int       @id @default(autoincrement())
+  project_id   Int
+  position     Int?
+  name         String    @db.VarChar(255)
+  description  String?
+  start_date   DateTime  @db.Date
+  end_date     DateTime  @db.Date
+  is_completed Boolean?  @default(false)
+  is_deleted   Boolean?  @default(false)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  project      project   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  task         task[]
+
+  @@index([project_id], map: "idx_milestone_project_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model note {
+  id         Int       @id @default(autoincrement())
+  post_id    Int?
+  content    String?
+  image_urls String[]
+  video_urls String[]
+  visibility String?   @default("private") @db.VarChar(10)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  post       post?     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([post_id], map: "idx_note_post_id")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model old_activities {
+  mongo_id             String?
+  userId               String?
+  title                String?
+  photoURL             String?
+  photoAlt             String?
+  category             String?
+  area                 String?
+  time                 String?
+  partnerStyle         String?
+  partnerEducationStep String?
+  description          String?
+  tagList              String?
+  isGrouping           Boolean?
+  createdDate          String?
+  updatedDate          String?
+  v                    BigInt?   @map("__v")
+  activityCategory     String?
+  content              String?
+  deadline             String?
+  isNeedDeadline       Boolean?
+  motivation           String?
+  notice               String?
+  outcome              String?
+  participator         String?
+  views                Float?
+  created_at           DateTime? @db.Timestamp(6)
+  created_by           String?
+  updated_at           DateTime? @db.Timestamp(6)
+  updated_by           String?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model old_marathons_v1 {
+  mongo_id           String?
+  title              String?
+  eventId            String?
+  userId             String?
+  description        String?
+  motivation         String?
+  content            String?
+  goals              String?
+  strategies         String?
+  milestones         String?
+  outcomes           String?
+  status             String?
+  registrationStatus String?
+  registrationDate   String?
+  pricing            String?
+  isPublic           Boolean?
+  isSendEmail        Boolean?
+  createdDate        String?
+  updatedDate        String?
+  v                  BigInt?   @map("__v")
+  resources          String?
+  created_at         DateTime? @db.Timestamp(6)
+  created_by         String?
+  updated_at         DateTime? @db.Timestamp(6)
+  updated_by         String?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model old_marathons_v2 {
+  mongo_id           String?
+  title              String?
+  eventId            String?
+  userId             String?
+  description        String?
+  motivation         String?
+  content            String?
+  goals              String?
+  strategies         String?
+  milestones         String?
+  outcomes           String?
+  status             String?
+  registrationStatus String?
+  registrationDate   String?
+  pricing            String?
+  isPublic           Boolean?
+  isSendEmail        Boolean?
+  createdDate        String?
+  updatedDate        String?
+  v                  BigInt?   @map("__v")
+  resources          String?
+  created_at         DateTime? @db.Timestamp(6)
+  created_by         String?
+  updated_at         DateTime? @db.Timestamp(6)
+  updated_by         String?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model old_resource {
+
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 資源類型 String? @map("資源類型")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 創建者 String? @map("創建者")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 縮圖 String? @map("縮圖")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 領域名稱 String? @map("領域名稱")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 補充資源 String? @map("補充資源")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 連結 String? @map("連結")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 費用 String? @map("費用")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 影片 String? @map("影片")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 介紹 String? @map("介紹")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 標籤 String? @map("標籤")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 地區 String? @map("地區")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 年齡層 String? @map("年齡層")
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 資源名稱 String? @map("資源名稱")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model old_store {
+  AI___        String? @map("AI 摘要")
+  Description  String?
+  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
+  // 作者 String? @map("作者")
+  Social_Image String? @map("Social Image")
+  Tags         String?
+  Created      String?
+  Name         String?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model old_user {
+  mongo_id         String?
+  birthDay         String?
+  educationStage   String?
+  email            String?
+  gender           String?
+  googleID         String?
+  name             String?
+  photoURL         String?
+  interestList     String?
+  isOpenLocation   Boolean?
+  isOpenProfile    Boolean?
+  location         String?
+  roleList         String?
+  selfIntroduction String?
+  share            String?
+  tagList          String?
+  wantToDoList     String?
+  createdDate      String?
+  updatedDate      String?
+  v                BigInt?   @map("__v")
+  contactList      String?
+  isSubscribeEmail Boolean?
+  created_at       DateTime? @db.Timestamp(6)
+  created_by       String?
+  updated_at       DateTime? @db.Timestamp(6)
+  updated_by       String?
+
+  @@ignore
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model outcome {
+  id         Int       @id @default(autoincrement())
+  post_id    Int
+  content    String?
+  image_urls String[]
+  video_urls String[]
+  visibility String?   @default("private") @db.VarChar(10)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  post       post      @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([post_id], map: "idx_outcome_post_id")
+}
+
+model permissions {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique @db.VarChar(255)
+  description      String?
+  role_permissions role_permissions[]
+  user_permissions user_permissions[]
+}
+
+model position {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique @db.VarChar(100)
+  user_positions user_positions[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model post {
+  id         Int       @id @default(autoincrement())
+  project_id Int
+  user_id    Int
+  type       String    @db.VarChar(20)
+  week       Int?
+  title      String    @db.VarChar(255)
+  date       DateTime? @db.Date
+  visibility String?   @default("private") @db.VarChar(10)
+  status     String?   @default("draft") @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  likes      likes[]
+  note       note[]
+  outcome    outcome[]
+  project    project   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  review     review[]
+
+  @@index([project_id, status], map: "idx_posts_project_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model practice_checkins {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  practice_id         String    @db.Uuid
+  user_id             Int
+  checkin_date        DateTime  @db.Date
+  progress_amount     Decimal   @db.Decimal(10, 2)
+  note                String?
+  mood                String?   @db.VarChar(20)
+  reflection_text     String?
+  related_resource_id String?   @db.Uuid
+  streak_day          Int?      @default(1)
+  cumulative_progress Decimal   @db.Decimal(10, 2)
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @db.Timestamptz(6)
+  practices           practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([practice_id, checkin_date])
+  @@index([checkin_date], map: "idx_practice_checkins_date")
+  @@index([mood], map: "idx_practice_checkins_mood")
+  @@index([practice_id], map: "idx_practice_checkins_practice_id")
+  @@index([user_id], map: "idx_practice_checkins_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model practices {
+  id                      String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  external_id             String?             @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                 Int
+  title                   String              @db.VarChar(100)
+  content_type            String              @db.VarChar(20)
+  custom_content_type     String?             @db.VarChar(50)
+  total_amount            Int
+  current_progress        Decimal?            @default(0) @db.Decimal(10, 2)
+  start_date              DateTime?           @db.Date
+  daily_goal_type         String              @db.VarChar(20)
+  daily_goal_time_minutes Int?
+  daily_goal_amount       Int?
+  daily_goal_unit         String?             @db.VarChar(10)
+  practice_action         String?
+  status                  String?             @default("active") @db.VarChar(20)
+  has_resources           Boolean?            @default(false)
+  streak                  Int?                @default(0)
+  max_streak              Int?                @default(0)
+  last_checkin_date       DateTime?           @db.Date
+  created_at              DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime?           @db.Timestamptz(6)
+  deleted_at              DateTime?           @db.Timestamptz(6)
+  practice_checkins       practice_checkins[]
+  users                   users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([content_type], map: "idx_practices_content_type")
+  @@index([created_at], map: "idx_practices_created_at")
+  @@index([status], map: "idx_practices_status")
+  @@index([user_id], map: "idx_practices_user_id")
+}
+
+model preference_options {
+  id                 Int                @id @default(autoincrement())
+  preference_type_id Int
+  name               String             @db.VarChar(200)
+  value              String             @db.VarChar(50)
+  description        String?
+  preference_types   preference_types   @relation(fields: [preference_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_preferences   user_preferences[]
+
+  @@unique([preference_type_id, value])
+}
+
+model preference_types {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(50)
+  value              String               @unique @db.VarChar(30)
+  description        String?
+  max_selections     Int?                 @default(3)
+  preference_options preference_options[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model project {
+  id                     Int                @id @default(autoincrement())
+  external_id            String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                Int
+  img_url                String?            @db.VarChar(255)
+  title                  String             @db.VarChar(255)
+  description            String?
+  motivation             motivation_t[]
+  motivation_description String?
+  goal                   String?            @db.VarChar(255)
+  content                String?
+  strategy               strategy_t[]
+  strategy_description   String?
+  resource               String?
+  outcome                outcome_t[]
+  outcome_description    String?
+  is_public              Boolean?           @default(false)
+  status                 String?            @default("Not Started") @db.VarChar(50)
+  start_date             DateTime?          @db.Date
+  end_date               DateTime?          @db.Date
+  interval               Int?
+  created_at             DateTime?          @default(now()) @db.Timestamp(6)
+  created_by             Int?
+  updated_at             DateTime?          @default(now()) @db.Timestamp(6)
+  updated_by             Int?
+  version                Int?
+  milestone              milestone[]
+  post                   post[]
+  users                  users              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project_marathon       project_marathon[]
+  user_project           user_project[]
+
+  @@unique([user_id, title, version])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model project_marathon {
+  id                        Int          @id @default(autoincrement())
+  project_id                Int?
+  marathon_id               Int?
+  eligibility_id            Int?
+  project_registration_date DateTime?    @default(now()) @db.Timestamp(6)
+  status                    String?      @db.VarChar(50)
+  feedback                  String?
+  created_at                DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at                DateTime?    @default(now()) @db.Timestamp(6)
+  eligibility               eligibility? @relation(fields: [eligibility_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  marathon                  marathon?    @relation(fields: [marathon_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  project                   project?     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([project_id, marathon_id])
+  @@index([status], map: "idx_project_marathon_status")
+}
+
+model reaction {
+  id            Int           @id @default(autoincrement())
+  user_id       Int
+  session_id    String?       @db.Uuid
+  target_type   String        @db.VarChar(50)
+  target_id     String        @db.VarChar(36)
+  reaction_type String        @db.VarChar(20)
+  weight        Decimal?      @default(1.0) @db.Decimal(3, 2)
+  created_at    DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?     @default(now()) @db.Timestamptz(6)
+  user_session  user_session? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users         users         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, target_type, target_id])
+  @@index([target_type, target_id], map: "idx_reaction_target")
+  @@index([reaction_type], map: "idx_reaction_type")
+  @@index([user_id], map: "idx_reaction_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model resource_review {
+  id                      Int       @id @default(autoincrement())
+  user_id                 Int
+  resource_id             Int
+  score_impact            Decimal   @db.Decimal(2, 1)
+  score_mindset           Decimal   @db.Decimal(2, 1)
+  score_problems          Decimal   @db.Decimal(2, 1)
+  score_perspectives      Decimal   @db.Decimal(2, 1)
+  score_goals             Decimal   @db.Decimal(2, 1)
+  content                 String
+  well_structured         Boolean?  @default(false)
+  practice_focused        Boolean?  @default(false)
+  well_rounded_concepts   Boolean?  @default(false)
+  thought_provoking       Boolean?  @default(false)
+  progressive_learning    Boolean?  @default(false)
+  problem_based           Boolean?  @default(false)
+  real_world_examples     Boolean?  @default(false)
+  interactive             Boolean?  @default(false)
+  visually_rich           Boolean?  @default(false)
+  time_usage              String?   @db.VarChar(30)
+  with_online_courses     Boolean?  @default(false)
+  with_books              Boolean?  @default(false)
+  with_other_tools        Boolean?  @default(false)
+  with_community          Boolean?  @default(false)
+  only_this_resource      Boolean?  @default(false)
+  not_applicable_resource Boolean?  @default(false)
+  status                  String?   @default("published") @db.VarChar(20)
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime? @db.Timestamptz(6)
+  deleted_at              DateTime? @db.Timestamptz(6)
+  resources               resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                   users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, resource_id])
+  @@index([resource_id], map: "idx_review_resource_id")
+  @@index([user_id], map: "idx_review_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model resources {
+  id                                                 Int                @id @default(autoincrement())
+  external_id                                        String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by                                         Int
+  major_category_id                                  Int?
+  sub_category_id                                    Int?
+  name                                               String             @db.VarChar(255)
+  url                                                String             @db.VarChar(1000)
+  image_url                                          String?            @db.VarChar(1000)
+  description                                        String
+  video_url                                          String?            @db.VarChar(1000)
+  type                                               String             @db.VarChar(100)
+  cost                                               String             @db.VarChar(50)
+  level                                              String             @default("all_levels") @db.VarChar(50)
+  status                                             String?            @default("active") @db.VarChar(20)
+  created_at                                         DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at                                         DateTime?          @db.Timestamptz(6)
+  deleted_at                                         DateTime?          @db.Timestamptz(6)
+  entity_resources                                   entity_resources[]
+  resource_review                                    resource_review[]
+  users                                              users              @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories_resources_major_category_idTocategories categories?        @relation("resources_major_category_idTocategories", fields: [major_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  categories_resources_sub_category_idTocategories   categories?        @relation("resources_sub_category_idTocategories", fields: [sub_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([cost], map: "idx_resource_cost")
+  @@index([created_at], map: "idx_resource_created_at")
+  @@index([created_by], map: "idx_resource_created_by")
+  @@index([level], map: "idx_resource_level")
+  @@index([type], map: "idx_resource_type")
+  @@index([type, cost, level], map: "idx_resource_type_cost_level")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model review {
+  id                Int       @id @default(autoincrement())
+  post_id           Int
+  mood              String    @db.VarChar(20)
+  mood_description  String?
+  stress_level      Int       @db.SmallInt
+  learning_review   Int       @db.SmallInt
+  learning_feedback String?
+  adjustment_plan   String?
+  visibility        String?   @default("private") @db.VarChar(10)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+  post              post      @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([post_id], map: "idx_review_post_id")
+}
+
+model role_permissions {
+  role_id       Int
+  permission_id Int
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([role_id, permission_id])
+}
+
+model roles {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique @db.VarChar(255)
+  description      String?
+  role_permissions role_permissions[]
+  users            users[]
+}
+
+model share {
+  id                   Int           @id @default(autoincrement())
+  user_id              Int?
+  session_id           String?       @db.Uuid
+  target_type          String        @db.VarChar(50)
+  target_id            String        @db.VarChar(36)
+  channel              String?       @db.VarChar(50)
+  share_method         String?       @db.VarChar(50)
+  success              Boolean?      @default(true)
+  referral_visits      Int?          @default(0)
+  referral_conversions Int?          @default(0)
+  created_at           DateTime?     @default(now()) @db.Timestamptz(6)
+  user_session         user_session? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users?        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([channel], map: "idx_share_channel")
+  @@index([target_type, target_id], map: "idx_share_target")
+  @@index([user_id, session_id], map: "idx_share_user_session")
+}
+
+model store {
+  id          Int       @id @default(autoincrement())
+  external_id String?   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     Int?      @unique
+  image_url   String?   @db.VarChar(255)
+  author_list String?
+  tags        String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  ai_summary  String?
+  description String?
+  content     String?
+  name        String?   @db.VarChar(255)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subscription_plan {
+  id                Int                 @id @default(autoincrement())
+  name              String              @db.VarChar(100)
+  description       String?
+  features          Json?
+  price             Decimal?            @db.Decimal(10, 2)
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  user_subscription user_subscription[]
+}
+
+model tags {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique @db.VarChar(100)
+  created_at  DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?     @db.Timestamptz(6)
+  entity_tags entity_tags[]
+}
+
+model task {
+  id           Int        @id @default(autoincrement())
+  milestone_id Int
+  name         String?    @db.VarChar(255)
+  description  String?
+  days_of_week day_enum[]
+  is_completed Boolean?   @default(false)
+  is_deleted   Boolean?   @default(false)
+  created_at   DateTime?  @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?  @default(now()) @db.Timestamp(6)
+  position     Int        @default(0)
+  milestone    milestone  @relation(fields: [milestone_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([milestone_id], map: "idx_task_milestone_id")
+}
+
+model temp_users {
+  id           Int      @id @default(autoincrement())
+  google_id    String   @unique @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
+  name         String   @db.VarChar(255)
+  photo_url    String?  @db.VarChar(255)
+  created_date DateTime @default(now()) @db.Timestamptz(6)
+  updated_date DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model user_join_group {
+  id                         Int                         @id @default(autoincrement())
+  user_id                    Int?
+  group_id                   Int?
+  group_participation_role_t group_participation_role_t? @default(Initiator)
+  participated_at            DateTime?                   @db.Timestamptz(6)
+  groups                     groups?                     @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                      users?                      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id, group_id], map: "idx_user_group")
+}
+
+model user_permissions {
+  user_id       Int
+  permission_id Int
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users         users       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([user_id, permission_id])
+}
+
+model user_positions {
+  user_id     Int
+  position_id Int
+  position    position @relation(fields: [position_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users       users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([user_id, position_id])
+}
+
+model user_preferences {
+  id                   Int                @id @default(autoincrement())
+  user_id              Int
+  preference_option_id Int
+  is_selected          Boolean?           @default(false)
+  created_at           DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at           DateTime?          @default(now()) @db.Timestamp(6)
+  preference_options   preference_options @relation(fields: [preference_option_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, preference_option_id])
+}
+
+model user_profiles {
+  id             Int       @id @default(autoincrement())
+  user_id        Int?
+  nickname       String?   @db.VarChar(100)
+  bio            String?
+  skills         String[]
+  interests      String[]
+  learning_needs String[]
+  contact_info   Json?
+  is_public      Boolean?  @default(true)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  users          users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([is_public], map: "idx_user_profiles_is_public")
+}
+
+model user_project {
+  id         Int     @id @default(autoincrement())
+  user_id    Int
+  project_id Int
+  project    project @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, project_id])
+}
+
+model user_session {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           Int?
+  session_token     String     @unique @db.VarChar(255)
+  ip_address        String?    @db.Inet
+  user_agent        String?
+  device_type       String?    @db.VarChar(50)
+  browser           String?    @db.VarChar(50)
+  browser_version   String?    @db.VarChar(20)
+  os                String?    @db.VarChar(50)
+  os_version        String?    @db.VarChar(20)
+  screen_resolution String?    @db.VarChar(20)
+  viewport_size     String?    @db.VarChar(20)
+  language          String?    @db.VarChar(10)
+  timezone          String?    @db.VarChar(50)
+  referrer          String?
+  utm_source        String?    @db.VarChar(100)
+  utm_medium        String?    @db.VarChar(100)
+  utm_campaign      String?    @db.VarChar(100)
+  utm_term          String?    @db.VarChar(100)
+  utm_content       String?    @db.VarChar(100)
+  entry_page        String?
+  start_time        DateTime?  @default(now()) @db.Timestamptz(6)
+  end_time          DateTime?  @db.Timestamptz(6)
+  duration          Int?
+  page_views        Int?       @default(0)
+  events_count      Int?       @default(0)
+  is_bounce         Boolean?   @default(false)
+  created_at        DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?  @default(now()) @db.Timestamptz(6)
+  click             click[]
+  favorite          favorite[]
+  reaction          reaction[]
+  share             share[]
+  users             users?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  view              view[]
+
+  @@index([device_type, browser], map: "idx_user_session_device")
+  @@index([start_time], map: "idx_user_session_start_time")
+  @@index([user_id], map: "idx_user_session_user_id")
+}
+
+model user_subscription {
+  id                Int                 @id @default(autoincrement())
+  user_id           Int?
+  plan_id           Int?
+  status            subscription_status
+  start_date        DateTime            @db.Date
+  end_date          DateTime            @db.Date
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  subscription_plan subscription_plan?  @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
+  users             users?              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, status], map: "idx_user_subscription_user_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id                                                            Int                   @id @default(autoincrement())
+  external_id                                                   String?               @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mongo_id                                                      String                @unique
+  gender                                                        gender_t?
+  language                                                      String?               @db.VarChar(255)
+  education_stage                                               education_stage_t?    @default(other)
+  tag_list                                                      String[]
+  contact_id                                                    Int?
+  is_open_location                                              Boolean?
+  location_id                                                   Int?
+  nickname                                                      String?               @db.VarChar(255)
+  role_id                                                       Int
+  is_open_profile                                               Boolean?
+  birth_date                                                    DateTime?             @db.Date
+  basic_info_id                                                 Int?
+  createdDate                                                   DateTime?             @db.Timestamptz(6)
+  updatedDate                                                   DateTime?             @db.Timestamptz(6)
+  created_by                                                    String?               @db.VarChar(255)
+  created_at                                                    DateTime?             @db.Timestamptz(6)
+  updated_by                                                    String?               @db.VarChar(255)
+  updated_at                                                    DateTime?             @db.Timestamptz(6)
+  click                                                         click[]
+  comments                                                      comments[]
+  entity_resources                                              entity_resources[]
+  entity_tags                                                   entity_tags[]
+  favorite                                                      favorite[]
+  groups                                                        groups[]
+  ideas                                                         ideas[]
+  likes                                                         likes[]
+  marathon                                                      marathon[]
+  mentor_participants_mentor_participants_mentor_idTousers      mentor_participants[] @relation("mentor_participants_mentor_idTousers")
+  mentor_participants_mentor_participants_participant_idTousers mentor_participants[] @relation("mentor_participants_participant_idTousers")
+  post                                                          post[]
+  practice_checkins                                             practice_checkins[]
+  practices                                                     practices[]
+  project                                                       project[]
+  reaction                                                      reaction[]
+  resource_review                                               resource_review[]
+  resources                                                     resources[]
+  share                                                         share[]
+  store                                                         store?
+  user_join_group                                               user_join_group[]
+  user_permissions                                              user_permissions[]
+  user_positions                                                user_positions[]
+  user_preferences                                              user_preferences[]
+  user_profiles                                                 user_profiles[]
+  user_project                                                  user_project[]
+  user_session                                                  user_session[]
+  user_subscription                                             user_subscription[]
+  basic_info                                                    basic_info?           @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts                                                      contacts?             @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location                                                      location?             @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                                                         roles                 @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  view                                                          view[]
+
+  @@index([education_stage], map: "idx_users_education_stage")
+  @@index([location_id], map: "idx_users_location_id")
+}
+
+model view {
+  id                  Int           @id @default(autoincrement())
+  user_id             Int?
+  session_id          String?       @db.Uuid
+  target_type         String        @db.VarChar(50)
+  target_id           String        @db.VarChar(36)
+  page_url            String?
+  page_title          String?       @db.VarChar(255)
+  duration            Int?          @default(0)
+  scroll_depth        Decimal?      @db.Decimal(5, 2)
+  max_scroll_position Int?
+  exit_type           String?       @db.VarChar(50)
+  interaction_score   Decimal?      @db.Decimal(5, 2)
+  device_type         String?       @db.VarChar(50)
+  browser             String?       @db.VarChar(50)
+  viewport_width      Int?
+  viewport_height     Int?
+  screen_width        Int?
+  screen_height       Int?
+  referrer            String?
+  is_first_view       Boolean?      @default(false)
+  created_at          DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?     @default(now()) @db.Timestamptz(6)
+  click               click[]
+  user_session        user_session? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users               users?        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_view_created_at")
+  @@index([duration], map: "idx_view_duration")
+  @@index([target_type, target_id], map: "idx_view_target")
+  @@index([user_id, session_id], map: "idx_view_user_session")
+}
+
+enum age_t {
+  preschool
+  elementary
+  high
+  university
+}
+
+enum city_t {
+  taipei_city
+  keelung_city
+  new_taipei_city
+  lianjiang_county
+  taoyuan_city
+  hsinchu_city
+  hsinchu_county
+  miaoli_county
+  taichung_city
+  changhua_county
+  yunlin_county
+  chiayi_county
+  chiayi_city
+  tainan_city
+  nantou_county
+  kaohsiung_city
+  pingtung_county
+  hainan_island
+  penghu_county
+  kinmen_county
+  yilan_county
+  hualien_county
+  taitung_county
+  other
+  tbd
+  online
+}
+
+enum cost_t {
+  free
+  part
+  payment
+}
+
+enum day_enum {
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
+  Sunday
+}
+
+enum education_stage_t {
+  university
+  high
+  other
+}
+
+enum freqency_t {
+  two
+  one
+  three
+  month
+}
+
+enum gender_t {
+  male
+  female
+  other
+}
+
+enum group_category_t {
+  language
+  math
+  computer_science @map("computer-science")
+  humanity
+  nature_science   @map("nature-science")
+  art
+  education
+  life
+  health
+  business
+  diversity
+  learningtools
+}
+
+enum group_participation_role_t {
+  Initiator
+  Participant
+}
+
+enum group_type_t {
+  study_group
+  workshop
+  project
+  competition
+  event
+  club
+  course
+  internship
+  other
+}
+
+enum motivation_t {
+  driven_by_curiosity
+  interest_and_passion
+  self_challenge
+  personal_growth
+  career_development
+  pursuing_education_or_qualifications
+  social_recognition
+  exploring_possibilities
+  preparing_for_the_future
+  innovation_and_development
+  practical_needs
+  inspired_by_events
+  interpersonal_connections
+  life_changes
+  impact_on_society
+  influenced_by_a_group
+  others
+}
+
+enum outcome_t {
+  building_websites
+  managing_social_media
+  writing_research_reports
+  artistic_creation
+  initiating_projects_or_organizations
+  making_videos
+  organizing_events
+  teaching_courses
+  participating_in_competitions
+  others
+}
+
+enum partner_education_step_t {
+  high
+  other
+  university
+}
+
+enum qualifications_t {
+  low_income
+  discount
+  personal
+  double
+  three
+  four
+}
+
+enum strategy_t {
+  data_collection_research_analysis
+  book_reading
+  watching_videos
+  listening_to_podcasts
+  examinations
+  participating_in_competitions
+  finding_study_partners
+  joining_communities
+  consulting_experts_and_scholars
+  doing_projects
+  initiating_actions
+  field_internship
+  organizing_events_or_courses
+  attending_events_or_courses
+  field_research
+  conducting_interviews
+  conducting_surveys
+  others
+}
+
+enum subscription_status {
+  active
+  inactive
+  canceled
+}
+
+enum want_to_do_list_t {
+  interaction
+  do_project       @map("do-project")
+  make_group_class @map("make-group-class")
+  find_student     @map("find-student")
+  find_teacher     @map("find-teacher")
+  find_group       @map("find-group")
+}
