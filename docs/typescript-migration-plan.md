@@ -10,6 +10,21 @@
 - 改善開發體驗和 IDE 支援
 - 建立可維護的模組化架構
 - 保持 API 向後相容性
+- **採用 Prisma 替代 Sequelize 以提升 ORM 體驗**
+- **使用 openapi-typescript 自動生成前端型別定義**
+
+## 🔧 新技術堆疊
+
+### 資料庫 ORM 遷移：Sequelize → Prisma
+- **Prisma Client**: 型別安全的資料庫查詢
+- **Prisma Schema**: 從現有資料庫自動生成模型定義
+- **Prisma Introspection**: 從現有資料庫結構生成 schema
+- **Prisma Studio**: 資料庫視覺化工具
+
+### 前端型別自動生成：openapi-typescript
+- **自動型別生成**: 從 OpenAPI 規格自動生成 TypeScript 型別
+- **前後端型別同步**: 確保 API 介面的型別一致性
+- **開發體驗提升**: 前端開發時有完整的型別提示
 
 ## 🔄 現有混合架構（目前狀態）
 
@@ -266,19 +281,20 @@ daodao-server/
 │   │   ├── transform.service.ts      # 轉換服務 (已完成)
 │   │   └── index.ts                  # 服務導出
 │   │
-│   ├── models/                       # 資料模型層
-│   │   ├── user.model.ts             # 使用者模型
-│   │   ├── project.model.ts          # 專案模型
-│   │   ├── circle.model.ts           # 圈子模型
-│   │   ├── comment.model.ts          # 評論模型
-│   │   ├── resource.model.ts         # 資源模型 (已完成)
-│   │   ├── resource-review.model.ts  # 資源評審模型 (已完成)
-│   │   ├── tag.model.ts              # 標籤模型 (已完成)
-│   │   ├── idea.model.ts             # 想法模型 (已完成)
-│   │   ├── category.model.ts         # 分類模型 (已完成)
-│   │   ├── entity-tag.model.ts       # 實體標籤模型 (已完成)
-│   │   ├── entity-resource.model.ts  # 實體資源模型 (已完成)
-│   │   ├── associations.ts           # 模型關聯定義
+│   ├── models/                       # 資料模型層 (Prisma)
+│   │   ├── generated/                # Prisma 自動生成的型別
+│   │   │   └── client.ts             # Prisma Client 型別
+│   │   ├── user.model.ts             # 使用者模型擴展
+│   │   ├── project.model.ts          # 專案模型擴展
+│   │   ├── circle.model.ts           # 圈子模型擴展
+│   │   ├── comment.model.ts          # 評論模型擴展
+│   │   ├── resource.model.ts         # 資源模型擴展 (已完成)
+│   │   ├── resource-review.model.ts  # 資源評審模型擴展 (已完成)
+│   │   ├── tag.model.ts              # 標籤模型擴展 (已完成)
+│   │   ├── idea.model.ts             # 想法模型擴展 (已完成)
+│   │   ├── category.model.ts         # 分類模型擴展 (已完成)
+│   │   ├── entity-tag.model.ts       # 實體標籤模型擴展 (已完成)
+│   │   ├── entity-resource.model.ts  # 實體資源模型擴展 (已完成)
 │   │   └── index.ts                  # 模型導出
 │   │
 │   ├── routes/                       # 路由層
@@ -356,6 +372,7 @@ daodao-server/
 │   │   ├── app.config.ts             # 應用程式配置
 │   │   ├── auth.config.ts            # 認證配置
 │   │   ├── storage.config.ts         # 存儲配置
+│   │   ├── prisma.config.ts          # Prisma 配置
 │   │   └── index.ts                  # 配置導出
 │   │
 │   ├── constants/                    # 常數定義
@@ -413,6 +430,13 @@ daodao-server/
 ├── .github/workflows/                # CI/CD 工作流程
 ├── config/                           # 專案設定檔案 (根目錄)
 ├── node_modules/                     # 依賴套件
+├── prisma/                           # Prisma 配置
+│   ├── schema.prisma                 # Prisma 資料庫 schema (從現有DB生成)
+│   └── seed.ts                       # 資料庫種子資料 (可選)
+├── generated/                        # 自動生成的型別
+│   ├── openapi-types.ts              # OpenAPI 自動生成的型別
+│   └── prisma-client/                # Prisma Client 生成檔案
+├── openapi.yaml                      # OpenAPI 規格文件
 ├── tsconfig.json                     # TypeScript 設定
 ├── package.json                      # 專案依賴
 ├── .env.example                      # 環境變數範例
@@ -522,7 +546,15 @@ daodao-server/
     "start": "node dist/index.js",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prisma:generate": "prisma generate",
+    "prisma:introspect": "prisma db pull",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "openapi:generate": "openapi-typescript openapi.yaml -o generated/openapi-types.ts",
+    "types:generate": "npm run prisma:generate && npm run openapi:generate",
+    "db:introspect": "prisma db pull",
+    "db:seed": "prisma db seed"
   }
 }
 ```
@@ -566,19 +598,24 @@ daodao-server/
 
 ### 重新設計的階段劃分
 
-#### 階段 1: 基礎設施 (2-3 週)
-**目標**: 建立穩固的 TypeScript 基礎
+#### 階段 1: 基礎設施 (3-4 週)
+**目標**: 建立穩固的 TypeScript 基礎和新技術堆疊
 
 **包含模組**:
 - ✅ 資料庫連接服務 (PostgreSQL, MongoDB, Redis)
 - ✅ 核心中間件 (驗證、錯誤處理)
 - ✅ 工具類和常數定義
 - ✅ 基礎型別定義
+- 🔄 **Prisma 設定和資料庫 introspection**
+- 🔄 **OpenAPI 規格文件建立**
+- 🔄 **openapi-typescript 自動生成設定**
 
 **完成標準**:
 - 所有基礎服務通過單元測試
 - 資料庫連接穩定
 - 中間件功能正常
+- **Prisma Client 正常運作**
+- **OpenAPI 型別自動生成流程建立**
 
 #### 階段 2: 認證系統 (2-3 週)
 **目標**: 確保安全性和使用者管理
@@ -594,8 +631,8 @@ daodao-server/
 - 權限控制正確運作
 - 安全性檢查通過
 
-#### 階段 3: 核心業務 (4-5 週)
-**目標**: 遷移主要業務邏輯
+#### 階段 3: 核心業務 (5-6 週)
+**目標**: 遷移主要業務邏輯並完成 ORM 轉換
 
 **包含模組**:
 - ✅ 使用者管理系統
@@ -605,11 +642,15 @@ daodao-server/
 - ✅ 想法系統 (已完成)
 - 🔄 專案管理系統 (Project, Milestone, Task, Note, Outcome)
 - 🔄 評審系統
+- 🔄 **Sequelize 模型轉換到 Prisma**
+- 🔄 **業務邏輯從 Sequelize 遷移到 Prisma Client**
 
 **完成標準**:
 - 核心 API 功能完整
 - 業務邏輯測試覆蓋率 ≥ 80%
 - 效能基準測試通過
+- **所有資料庫操作使用 Prisma**
+- **從 Sequelize 到 Prisma 轉換完成**
 
 #### 階段 4: 進階功能 (3-4 週)
 **目標**: 完成進階功能和整合
@@ -646,6 +687,68 @@ daodao-server/
    - 明確的責任分工
    - 定期進度檢查
    - 技術決策文檔化
+
+## 🔄 Prisma 遷移實施指南
+
+### 1. Prisma 初始化設定
+```bash
+# 安裝 Prisma
+npm install prisma @prisma/client
+npm install -D prisma
+
+# 初始化 Prisma
+npx prisma init
+
+# 從現有資料庫生成 schema
+npx prisma db pull
+
+# 生成 Prisma Client
+npx prisma generate
+```
+
+### 2. 從 Sequelize 到 Prisma 的轉換步驟
+
+#### 步驟 1: 設定 Prisma 環境
+1. 設定 `DATABASE_URL` 環境變數
+2. 使用 `prisma db pull` 從現有資料庫生成 schema
+3. 檢查生成的 `schema.prisma` 檔案
+
+#### 步驟 2: 逐步替換 Sequelize 模型
+1. 保留現有 Sequelize 模型作為備份
+2. 逐一替換服務層的資料庫查詢
+3. 測試每個替換的功能
+
+#### 步驟 3: 更新業務邏輯
+```typescript
+// 舊的 Sequelize 查詢
+const user = await User.findByPk(id);
+
+// 新的 Prisma 查詢
+const user = await prisma.user.findUnique({ where: { id } });
+```
+
+### 3. OpenAPI TypeScript 整合
+
+#### 步驟 1: 設定 OpenAPI 規格
+1. 建立 `openapi.yaml` 檔案
+2. 定義所有 API 端點和資料結構
+3. 確保與現有 Swagger 文件同步
+
+#### 步驟 2: 自動生成前端型別
+```bash
+# 安裝 openapi-typescript
+npm install -D openapi-typescript
+
+# 生成型別檔案
+npm run openapi:generate
+```
+
+#### 步驟 3: 在程式碼中使用生成的型別
+```typescript
+import type { paths } from '../generated/openapi-types';
+
+type UserResponse = paths['/api/users/{id}']['get']['responses']['200']['content']['application/json'];
+```
 
 ## 📋 具體實施指南
 
