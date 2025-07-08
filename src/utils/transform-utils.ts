@@ -5,6 +5,21 @@
 
 import { Model } from 'sequelize';
 
+// 定義支持 Prisma 和 Sequelize 結果的聯合類型
+type DatabaseRecord = Model | Record<string, unknown>;
+
+// 輔助函數：從資料庫記錄中獲取欄位值
+function getFieldValue(record: DatabaseRecord, fieldName: string): unknown {
+  if (record && typeof record === 'object' && 'get' in record && typeof record.get === 'function') {
+    // Sequelize Model
+    return record.get(fieldName);
+  } else if (record && typeof record === 'object') {
+    // Prisma 結果或普通對象
+    return (record as Record<string, unknown>)[fieldName];
+  }
+  return undefined;
+}
+
 
 
 /**
@@ -55,7 +70,7 @@ export function generateCursor(id: number, timestamp: string | number | Date) {
  * @returns 分頁元數據
  */
 export function generatePaginationMetadata(
-  rows: Model[],
+  rows: DatabaseRecord[],
   count: number,
   limit: number,
   sortField: string,
@@ -80,10 +95,10 @@ export function generatePaginationMetadata(
   const lastItem = rows[rows.length - 1];
   
   // 取得記錄的 ID 和排序欄位值
-  const firstId = firstItem.get('id') as number;
-  const firstTimestamp = firstItem.get(sortField) as string | number | Date;
-  const lastId = lastItem.get('id') as number;
-  const lastTimestamp = lastItem.get(sortField) as string | number | Date;
+  const firstId = getFieldValue(firstItem, 'id') as number;
+  const firstTimestamp = getFieldValue(firstItem, sortField) as string | number | Date;
+  const lastId = getFieldValue(lastItem, 'id') as number;
+  const lastTimestamp = getFieldValue(lastItem, sortField) as string | number | Date;
   
   // 生成游標
   const nextCursor = hasMore ? generateCursor(lastId, lastTimestamp) : null;

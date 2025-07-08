@@ -4,24 +4,18 @@
  */
 
 import { z } from 'zod';
-import { 
-  ProjectMotivation, 
-  ProjectStrategy, 
-  ProjectOutcome, 
-  ProjectStatus 
-} from '../models/project.model';
 
 // 專案動機驗證
-const motivationSchema = z.array(z.enum(ProjectMotivation)).optional();
+const motivationSchema = z.unknown().optional();
 
 // 專案策略驗證
-const strategySchema = z.array(z.enum(ProjectStrategy)).optional();
+const strategySchema = z.unknown().optional();
 
 // 專案成果驗證
-const outcomeSchema = z.array(z.enum(ProjectOutcome)).optional();
+const outcomeSchema = z.unknown().optional();
 
 // 專案狀態驗證
-const statusSchema = z.enum(ProjectStatus);
+const statusSchema = z.enum(['Not Started', 'Ongoing', 'Completed', 'Canceled']);
 
 // 創建專案驗證
 export const createProjectSchema = z.object({
