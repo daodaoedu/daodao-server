@@ -3,10 +3,10 @@
  * 統一導出所有服務
  */
 
-import transformService from '@/services/transform-service';
-import resourceService from '@/services/resource-service';
-import resourceReviewService from '@/services/resource-review-service';
-import tagService from '@/services/tag-service';
+import transformService from '@/services/transform.service';
+import resourceService from '@/services/resource.service';
+import resourceReviewService from '@/services/resource-review.service';
+import tagService from '@/services/tag.service';
 
 export {
   transformService,

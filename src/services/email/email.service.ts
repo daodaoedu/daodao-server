@@ -1,0 +1,383 @@
+/**
+ * 增強的郵件服務類
+ * 基於原本的 JavaScript 邏輯實現 TypeScript 版本
+ */
+
+import nodemailer from 'nodemailer';
+import { emailConfig } from '../../config/email.config';
+import { EmailTemplateService, EmailTemplate } from './template.service';
+// 簡單的 Logger 介面
+interface Logger {
+  info(message: string): void;
+  error(message: string): void;
+  warn(message: string): void;
+}
+
+export interface EmailSendOptions {
+  to: string | string[];
+  subject: string;
+  html: string;
+  from?: string;
+  replyTo?: string;
+  cc?: string[];
+  bcc?: string[];
+  attachments?: any[];
+}
+
+export interface EmailSendResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  accepted?: string[];
+  rejected?: string[];
+}
+
+export interface EmailServiceStats {
+  totalSent: number;
+  totalFailed: number;
+  lastSentAt?: Date;
+  lastFailedAt?: Date;
+  isHealthy: boolean;
+}
+
+export interface EmailServiceHealthCheck {
+  status: 'healthy' | 'unhealthy';
+  lastCheck: Date;
+  transporterConnected: boolean;
+  error?: string;
+}
+
+/**
+ * 郵件服務類
+ * 處理所有郵件發送相關的邏輯
+ */
+export class EmailService {
+  private transporter: nodemailer.Transporter;
+  private templateService: EmailTemplateService;
+  private logger?: Logger;
+  private stats: EmailServiceStats;
+
+  constructor(templateService: EmailTemplateService, logger?: Logger) {
+    this.templateService = templateService;
+    this.logger = logger;
+    this.stats = {
+      totalSent: 0,
+      totalFailed: 0,
+      isHealthy: true
+    };
+    
+    // 創建 nodemailer 傳輸器
+    this.transporter = nodemailer.createTransport({
+      service: emailConfig.smtp.service,
+      auth: {
+        user: emailConfig.smtp.auth.user,
+        pass: emailConfig.smtp.auth.pass
+      }
+    });
+  }
+
+  /**
+   * 發送郵件的核心方法
+   */
+  async sendEmail(options: EmailSendOptions): Promise<EmailSendResult> {
+    try {
+      const mailOptions = {
+        from: options.from || `${emailConfig.sender.name} <${emailConfig.sender.email}>`,
+        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+        subject: options.subject,
+        html: options.html,
+        replyTo: options.replyTo,
+        cc: options.cc?.join(', '),
+        bcc: options.bcc?.join(', '),
+        attachments: options.attachments
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      
+      // 更新統計
+      this.stats.totalSent++;
+      this.stats.lastSentAt = new Date();
+      this.stats.isHealthy = true;
+
+      this.logger?.info(`郵件發送成功 - 收件人: ${options.to}, 主旨: ${options.subject}`);
+
+      return {
+        success: true,
+        messageId: result.messageId,
+        accepted: result.accepted as string[],
+        rejected: result.rejected as string[]
+      };
+    } catch (error) {
+      // 更新統計
+      this.stats.totalFailed++;
+      this.stats.lastFailedAt = new Date();
+      
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      this.logger?.error(`郵件發送失敗 - 收件人: ${options.to}, 錯誤: ${errorMessage}`);
+
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * 發送歡迎郵件
+   */
+  async sendWelcomeEmail(to: string, name: string): Promise<EmailSendResult> {
+    const template = this.templateService.generateWelcomeEmail({ name });
+    
+    return this.sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html
+    });
+  }
+
+  /**
+   * 發送驗證郵件
+   */
+  async sendVerificationEmail(to: string, verifyLink: string, name?: string): Promise<EmailSendResult> {
+    const template = this.templateService.generateVerificationEmail({ verifyLink, name });
+    
+    return this.sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html
+    });
+  }
+
+  /**
+   * 發送聯絡郵件
+   */
+  async sendContactEmail(
+    to: string, 
+    fromName: string, 
+    message: string, 
+    userInfo?: string | string[], 
+    activityTitle?: string
+  ): Promise<EmailSendResult> {
+    const template = this.templateService.generateContactEmail({
+      name: fromName,
+      message,
+      userInfo,
+      activityTitle
+    });
+    
+    return this.sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html
+    });
+  }
+
+  /**
+   * 發送馬拉松郵件
+   */
+  async sendMarathonEmail(
+    to: string, 
+    name: string, 
+    marathonTitle: string, 
+    marathonDate?: string, 
+    marathonDescription?: string
+  ): Promise<EmailSendResult> {
+    const template = this.templateService.generateMarathonEmail({
+      name,
+      marathonTitle,
+      marathonDate,
+      marathonDescription
+    });
+    
+    return this.sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html
+    });
+  }
+
+  /**
+   * 發送密碼重設郵件
+   */
+  async sendPasswordResetEmail(to: string, resetLink: string, name?: string): Promise<EmailSendResult> {
+    const template = this.templateService.generatePasswordResetEmail({ resetLink, name });
+    
+    return this.sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html
+    });
+  }
+
+  /**
+   * 發送自定義郵件
+   */
+  async sendCustomEmail(
+    to: string | string[], 
+    subject: string, 
+    html: string, 
+    options?: {
+      from?: string;
+      replyTo?: string;
+      cc?: string[];
+      bcc?: string[];
+      attachments?: any[];
+    }
+  ): Promise<EmailSendResult> {
+    return this.sendEmail({
+      to,
+      subject,
+      html,
+      ...options
+    });
+  }
+
+  /**
+   * 批量發送郵件
+   */
+  async sendBulkEmail(
+    recipients: { email: string; data: any }[],
+    templateType: 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom',
+    customTemplate?: { subject: string; html: string }
+  ): Promise<{ success: number; failed: number; results: EmailSendResult[] }> {
+    const results: EmailSendResult[] = [];
+    let success = 0;
+    let failed = 0;
+
+    for (const recipient of recipients) {
+      let template: EmailTemplate;
+      
+      if (templateType === 'custom' && customTemplate) {
+        template = customTemplate;
+      } else {
+        // 根據類型生成模板
+        switch (templateType) {
+          case 'welcome':
+            template = this.templateService.generateWelcomeEmail(recipient.data);
+            break;
+          case 'verification':
+            template = this.templateService.generateVerificationEmail(recipient.data);
+            break;
+          case 'contact':
+            template = this.templateService.generateContactEmail(recipient.data);
+            break;
+          case 'marathon':
+            template = this.templateService.generateMarathonEmail(recipient.data);
+            break;
+          default:
+            template = { subject: '無效模板', html: '無效模板' };
+        }
+      }
+
+      const result = await this.sendEmail({
+        to: recipient.email,
+        subject: template.subject,
+        html: template.html
+      });
+
+      results.push(result);
+      
+      if (result.success) {
+        success++;
+      } else {
+        failed++;
+      }
+
+      // 為了避免被郵件服務商限制，在批量發送時添加延遲
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    return { success, failed, results };
+  }
+
+  /**
+   * 帶重試機制的郵件發送
+   */
+  async sendEmailWithRetry(options: EmailSendOptions): Promise<EmailSendResult> {
+    let lastError: string = '';
+    
+    for (let attempt = 1; attempt <= emailConfig.retry.maxAttempts; attempt++) {
+      const result = await this.sendEmail(options);
+      
+      if (result.success) {
+        if (attempt > 1) {
+          this.logger?.info(`郵件在第 ${attempt} 次嘗試後發送成功`);
+        }
+        return result;
+      }
+      
+      lastError = result.error || '未知錯誤';
+      
+      if (attempt < emailConfig.retry.maxAttempts) {
+        this.logger?.warn(`郵件發送失敗，將在 ${emailConfig.retry.backoffMs}ms 後重試 (嘗試 ${attempt}/${emailConfig.retry.maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, emailConfig.retry.backoffMs * attempt));
+      }
+    }
+    
+    this.logger?.error(`郵件發送在 ${emailConfig.retry.maxAttempts} 次嘗試後仍然失敗: ${lastError}`);
+    return { success: false, error: `重試失敗: ${lastError}` };
+  }
+
+  /**
+   * 驗證郵件地址格式
+   */
+  validateEmailAddress(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  /**
+   * 檢查郵件服務健康狀態
+   */
+  async checkHealth(): Promise<EmailServiceHealthCheck> {
+    try {
+      await this.transporter.verify();
+      
+      return {
+        status: 'healthy',
+        lastCheck: new Date(),
+        transporterConnected: true
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      
+      return {
+        status: 'unhealthy',
+        lastCheck: new Date(),
+        transporterConnected: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * 獲取服務統計
+   */
+  getStats(): EmailServiceStats {
+    return { ...this.stats };
+  }
+
+  /**
+   * 重置統計
+   */
+  resetStats(): void {
+    this.stats = {
+      totalSent: 0,
+      totalFailed: 0,
+      isHealthy: true
+    };
+  }
+
+  /**
+   * 關閉郵件服務（清理資源）
+   */
+  async close(): Promise<void> {
+    this.transporter.close();
+    this.logger?.info('郵件服務已關閉');
+  }
+}
+
+// 創建並導出郵件服務實例
+const templateService = new EmailTemplateService();
+export const emailService = new EmailService(templateService);
+export default emailService;

@@ -1,56 +1,78 @@
-import { Sequelize, QueryTypes } from 'sequelize';
+/**
+ * PostgreSQL 資料庫服務 (使用 Prisma)
+ * 提供統一的資料庫連接和健康檢查功能
+ */
+
 import dotenv from 'dotenv';
+import { prismaService } from './prisma.service';
 
 // 載入環境變數
 dotenv.config();
 
-// 從環境變數中獲取資料庫配置
+// 資料庫配置
 const {
-  POSTGRES_HOST = process.env.APP_ENV === 'dev' ? 'postgres-dev' : 'postgres-prod',
-  POSTGRES_PORT = '5432',
-  POSTGRES_USER = 'daodao',
-  POSTGRES_PASSWORD = 'daodao',
-  POSTGRES_DB = 'daodao',
   NODE_ENV = 'dev'
 } = process.env;
-
-// 建立 Sequelize 實例
-const sequelize = new Sequelize({
-  dialect: 'postgres',
-  host: POSTGRES_HOST,
-  port: parseInt(POSTGRES_PORT, 10),
-  username: POSTGRES_USER,
-  password: POSTGRES_PASSWORD,
-  database: POSTGRES_DB,
-  logging: NODE_ENV === 'development' ? console.log : false,
-  define: {
-    underscored: true,
-    timestamps: true,
-    paranoid: true
-  },
-  pool: {
-    max: 5,         // 降低最大連線數以節省記憶體
-    min: 1,         // 降低最小連線數
-    acquire: 60000, // 增加獲取超時時間以應對慢速 Swap
-    idle: 10000,
-    evict: 5000
-  }
-});
 
 // 測試資料庫連接
 const testConnection = async (): Promise<void> => {
   try {
-    await sequelize.authenticate();
-    console.log('PostgreSQL 資料庫連接成功');
+    await prismaService.connect();
+    console.log('✅ PostgreSQL (Prisma) 資料庫連接成功');
   } catch (error) {
-    console.error('無法連接到 PostgreSQL 資料庫:', error);
+    console.error('❌ 無法連接到 PostgreSQL 資料庫:', error);
+    throw error;
+  }
+};
+
+// 資料庫健康檢查
+const healthCheck = async (): Promise<{
+  postgresql: boolean;
+  prisma: boolean;
+}> => {
+  const results = {
+    postgresql: false,
+    prisma: false
+  };
+
+  try {
+    const isHealthy = await prismaService.healthCheck();
+    results.prisma = isHealthy;
+    results.postgresql = isHealthy; // Prisma 健康就代表 PostgreSQL 健康
+  } catch (error) {
+    console.error('❌ 資料庫健康檢查失敗:', error);
+  }
+
+  return results;
+};
+
+// 優雅關閉資料庫連接
+const gracefulShutdown = async (): Promise<void> => {
+  try {
+    await prismaService.disconnect();
+    console.log('✅ 資料庫連接已優雅關閉');
+  } catch (error) {
+    console.error('❌ 資料庫關閉過程中發生錯誤:', error);
   }
 };
 
 // 僅在非測試環境中執行連接測試
 if (NODE_ENV !== 'test') {
   testConnection();
+  
+  // 註冊優雅關閉處理器
+  process.on('SIGINT', gracefulShutdown);
+  process.on('SIGTERM', gracefulShutdown);
 }
 
-export { sequelize as postgresClient, QueryTypes };
-export default sequelize;
+// 導出 Prisma 服務作為主要資料庫客戶端
+export { 
+  prismaService as postgresClient,
+  prismaService,
+  healthCheck, 
+  gracefulShutdown,
+  testConnection
+};
+
+// 預設導出 Prisma 服務
+export default prismaService;

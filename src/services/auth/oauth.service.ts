@@ -5,7 +5,8 @@
 
 import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
-import { User, Contact, TempUser } from '../../models/index';
+import { authService } from './auth.service';
+import { prisma } from '../database/prisma.service';
 
 interface AuthOptions {
   clientID: string;
@@ -51,7 +52,7 @@ passport.serializeUser((user: any, done) => {
 
 /**
  * 反序列化用戶
- * 根據存儲的標識符恢復用戶物件
+ * 根據存儲的標識符恢復用戶物件 - 使用 Prisma
  */
 passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user' }, done) => {
   try {
@@ -61,10 +62,12 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
     
     if (sessionData.type === 'user') {
       // 查找正式用戶
-      foundUser = await User.findByPk(sessionData.id);
+      foundUser = await authService.findUserByExternalId(sessionData.id);
     } else if (sessionData.type === 'temp') {
       // 查找臨時用戶
-      foundUser = await TempUser.findByPk(sessionData.id);
+      foundUser = await prisma.temp_users.findUnique({
+        where: { id: parseInt(sessionData.id) }
+      });
     }
     
     console.log('DeserializeUser result:', foundUser);
@@ -77,7 +80,7 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
 
 /**
  * Google OAuth 策略
- * 處理 Google 認證回調
+ * 處理 Google 認證回調 - 使用 Prisma
  */
 passport.use(new GoogleStrategy(
   AUTH_OPTIONS,
@@ -90,70 +93,29 @@ passport.use(new GoogleStrategy(
       }
       
       const email = profile.emails[0].value;
+      const photoUrl = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined;
       
       // 首先檢查是否存在正式用戶
-      const foundContact = await Contact.findOne({
-        where: { email },
-        include: [{
-          model: User,
-          as: 'user',
-          required: false
-        }]
-      });
+      const userResult = await authService.findUserByEmail(email);
       
-      console.log('Found contact:', foundContact);
+      console.log('Found user result:', userResult);
       
-      if (foundContact && foundContact.user) {
+      if (userResult) {
         console.log('用戶已註冊，返回正式用戶');
-        return done(null, foundContact.user as Express.User);
+        return done(null, userResult.user as unknown as Express.User);
       }
 
-      // 如果沒有正式用戶，則檢查或創建 PostgreSQL 臨時用戶
-      let tempUser = await TempUser.findOne({ 
-        where: { google_id: profile.id }
+      // 如果沒有正式用戶，則檢查或創建臨時用戶
+      const tempUser = await authService.findOrCreateTempUser({
+        googleId: profile.id,
+        email,
+        name: profile.displayName,
+        photoUrl
       });
       
-      if (!tempUser) {
-        console.log('新用戶，創建臨時資料');
-        
-        const tempUserData = {
-          google_id: profile.id,
-          email,
-          name: profile.displayName,
-          photo_url: profile.photos?.[0]?.value || '',
-          created_at: new Date(),
-          updated_at: new Date()
-        };
-        
-        try {
-          tempUser = await TempUser.create(tempUserData);
-        } catch (saveError: any) {
-          if (saveError.name === 'SequelizeUniqueConstraintError') {
-            // 如果是唯一約束錯誤，重新取得該臨時用戶
-            console.log('臨時用戶已存在，正在重新取得');
-            tempUser = await TempUser.findOne({ 
-              where: { google_id: profile.id }
-            });
-          } else {
-            throw saveError;
-          }
-        }
-      } else {
-        console.log('找到現有的臨時用戶');
-        
-        // 更新臨時用戶資訊
-        await tempUser.update({
-          name: profile.displayName,
-          photo_url: profile.photos?.[0]?.value || '',
-          updated_at: new Date()
-        });
-      }
-
-      if (!tempUser) {
-        return done(new Error('無法創建或找到用戶'), false);
-      }
+      console.log('臨時用戶:', tempUser);
       
-      return done(null, tempUser as any);
+      return done(null, tempUser as unknown as Express.User);
     } catch (error) {
       console.error('Google OAuth 策略錯誤:', error);
       return done(error, false);

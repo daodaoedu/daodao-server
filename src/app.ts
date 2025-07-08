@@ -4,20 +4,25 @@
  */
 
 import express from 'express';
-// 引入所有 TypeScript 模型，同時會執行模型之間的關聯設定
-import models from './models/index';
+// Prisma 不需要手動引入模型，在服務層中直接使用
 // 引入實際的資源路由
-import resourceRoutes from './routes/resource-routes';
+import resourceRoutes from './routes/resource.routes';
 // 引入實際的資源評價路由  
-import resourceReviewRoutes from './routes/resource-review-routes';
+import resourceReviewRoutes from './routes/resource-review.routes';
 // 引入想法路由
-import ideaRoutes from './routes/idea-routes';
+import ideaRoutes from './routes/idea.routes';
 // 引入我的想法路由
-import meRoutes from './routes/me-routes';
+import meRoutes from './routes/me.routes';
 // 引入標籤路由
-import tagRoutes from './routes/tag-routes';
+import tagRoutes from './routes/tag.routes';
 // 引入認證路由
 import authRoutes from './routes/auth.routes';
+// 引入專案路由
+import projectRoutes from './routes/project.routes';
+// 引入用戶路由
+import userRoutes from './routes/user.routes';
+// 引入郵件路由
+import emailRoutes from './routes/email.routes';
 // 引入 OAuth 服務初始化
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 
@@ -67,6 +72,18 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/tags', tagRoutes);
   console.log('🏷️ v1 標籤路由已註冊 - 可在 /api/v1/tags 訪問');
   
+  // 註冊專案路由
+  app.use('/api/v1/projects', projectRoutes);
+  console.log('📁 v1 專案路由已註冊 - 可在 /api/v1/projects 訪問');
+  
+  // 註冊用戶路由
+  app.use('/api/v1/users', userRoutes);
+  console.log('👥 v1 用戶路由已註冊 - 可在 /api/v1/users 訪問');
+  
+  // 註冊郵件路由
+  app.use('/api/v1/email', emailRoutes);
+  console.log('📧 v1 郵件路由已註冊 - 可在 /api/v1/email 訪問');
+  
   // v1 健康檢查端點
   app.get('/api/v1/health', (req, res) => {
     res.json({
@@ -77,8 +94,8 @@ export function setupTypescriptRoutes(app: express.Application) {
   });
   console.log('✅ v1 健康檢查端點已註冊 - 可在 /api/v1/health 訪問');
   
-  // 打印已加載的 TypeScript 模型
-  console.log('✅ 已載入的 TypeScript 模型：', Object.keys(models).join(', '));
+  // 使用 Prisma 架構，不需要手動加載模型
+  console.log('✅ 已啟用 Prisma 資料庫架構');
   
   return app;
 }

@@ -8,6 +8,12 @@ import { projectController } from '../controllers/project.controller';
 import { validate } from '../validators/validation.middleware';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { 
+  canCreateProject,
+  canUpdateProject,
+  canDeleteProject,
+  requireOwnership
+} from '../middleware/permission.middleware';
+import { 
   createProjectSchema, 
   updateProjectSchema,
   projectParamsSchema,
@@ -66,10 +72,11 @@ router.get('/:id',
  * POST /projects
  * 創建新專案
  * 請求體：CreateProjectRequest
- * 需要身份驗證
+ * 需要身份驗證和創建專案權限
  */
 router.post('/', 
   authenticate,
+  canCreateProject(),
   validate(createProjectSchema, 'body'),
   projectController.createProject as RequestHandler);
 
@@ -78,10 +85,11 @@ router.post('/',
  * 更新專案
  * 路徑參數：id - 專案 ID
  * 請求體：UpdateProjectRequest
- * 需要身份驗證
+ * 需要身份驗證和更新專案權限或擁有權
  */
 router.put('/:id', 
   authenticate,
+  canUpdateProject(),
   validate(projectParamsSchema, 'params'),
   validate(updateProjectSchema, 'body'),
   projectController.updateProject as RequestHandler);
@@ -90,10 +98,11 @@ router.put('/:id',
  * DELETE /projects/:id
  * 刪除專案
  * 路徑參數：id - 專案 ID
- * 需要身份驗證
+ * 需要身份驗證和刪除專案權限或擁有權
  */
 router.delete('/:id', 
   authenticate,
+  canDeleteProject(),
   validate(projectParamsSchema, 'params'),
   projectController.deleteProject as RequestHandler);
 
@@ -102,10 +111,11 @@ router.delete('/:id',
  * 複製專案
  * 路徑參數：id - 要複製的專案 ID
  * 請求體：DuplicateProjectRequest（可選）
- * 需要身份驗證
+ * 需要身份驗證和創建專案權限
  */
 router.post('/:id/duplicate', 
   authenticate,
+  canCreateProject(),
   validate(projectParamsSchema, 'params'),
   validate(duplicateProjectSchema, 'body'),
   projectController.duplicateProject as RequestHandler);

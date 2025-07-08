@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/error-handler';
+import { ErrorResponse } from '../types/common.types';
 
 /**
  * 全域錯誤處理中間件
@@ -117,16 +118,69 @@ export const globalErrorHandler = (
     });
   }
 
-  // 返回錯誤響應
-  res.status(statusCode).json({
+  // 獲取錯誤代碼
+  const getErrorCode = (error: Error): string => {
+    switch (error.name) {
+      case 'JsonWebTokenError':
+        return 'INVALID_TOKEN';
+      case 'TokenExpiredError':
+        return 'TOKEN_EXPIRED';
+      case 'ZodError':
+        return 'VALIDATION_ERROR';
+      case 'SequelizeValidationError':
+        return 'DATABASE_VALIDATION_ERROR';
+      case 'SequelizeUniqueConstraintError':
+        return 'DUPLICATE_RESOURCE';
+      case 'SequelizeForeignKeyConstraintError':
+        return 'INVALID_REFERENCE';
+      case 'MongoServerError':
+        return 'DATABASE_ERROR';
+      case 'MulterError':
+        return 'FILE_UPLOAD_ERROR';
+      default:
+        return error instanceof AppError ? 'APP_ERROR' : 'INTERNAL_SERVER_ERROR';
+    }
+  };
+
+  // 獲取錯誤類型
+  const getErrorType = (statusCode: number): string => {
+    switch (statusCode) {
+      case 400:
+        return 'bad_request';
+      case 401:
+        return 'unauthorized';
+      case 403:
+        return 'forbidden';
+      case 404:
+        return 'not_found';
+      case 409:
+        return 'conflict';
+      case 500:
+        return 'internal_server_error';
+      default:
+        return 'error';
+    }
+  };
+
+  // 返回標準化錯誤響應
+  const response: ErrorResponse = {
     success: false,
-    message,
-    ...(errors && { errors }),
+    error: {
+      code: getErrorCode(error),
+      message: message,
+      type: getErrorType(statusCode) as ErrorResponse['error']['type'],
+      ...(errors && { details: errors }),
+    },
+    timestamp: new Date().toISOString(),
     ...(process.env.NODE_ENV === 'development' && { 
-      stack: error.stack,
-      name: error.name 
-    }),
-  });
+      debug: {
+        stack: error.stack,
+        name: error.name 
+      }
+    })
+  };
+
+  res.status(statusCode).json(response);
 };
 
 /**

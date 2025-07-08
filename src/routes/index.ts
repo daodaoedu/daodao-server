@@ -4,11 +4,12 @@
  */
 
 import { Router } from 'express';
-import resourceRoutes from './resource-routes';
-import resourceReviewRoutes from './resource-review-routes';
-import tagRoutes from './tag-routes';
+import resourceRoutes from './resource.routes';
+import resourceReviewRoutes from './resource-review.routes';
+import tagRoutes from './tag.routes';
 import authRoutes from './auth.routes';
 import projectRoutes from './project.routes';
+import userRoutes from './user.routes';
 
 const router = Router();
 
@@ -72,6 +73,16 @@ router.use('/tags', tagRoutes);
 // POST   /api/v1/projects/:id/duplicate
 router.use('/projects', projectRoutes);
 
+// 用戶路由
+// GET    /api/v1/users
+// GET    /api/v1/users/me
+// GET    /api/v1/users/:id
+// POST   /api/v1/users
+// PUT    /api/v1/users/:id
+// DELETE /api/v1/users/me
+// DELETE /api/v1/users/:id
+router.use('/users', userRoutes);
+
 /**
  * API 健康檢查端點
  * GET /api/v1/health
@@ -102,6 +113,7 @@ router.get('/info', (req, res) => {
         resourceReviews: '/api/v1/resources/:resourceId/reviews',
         tags: '/api/v1/tags',
         projects: '/api/v1/projects',
+        users: '/api/v1/users',
         health: '/api/v1/health'
       },
       features: [
@@ -112,10 +124,12 @@ router.get('/info', (req, res) => {
         '心得評價管理',
         '標籤系統',
         '專案管理系統',
+        '用戶管理系統',
         '巢狀路由支援',
         '分頁查詢',
         '複雜過濾條件',
-        'TypeScript 類型安全'
+        'TypeScript 類型安全',
+        'Prisma ORM 整合'
       ]
     }
   });

@@ -1,22 +1,32 @@
 /**
- * 郵件控制器
- * 處理郵件發送相關的 API 請求
+ * 郵件控制器（v1 版本）
+ * 處理郵件發送相關的 API 請求，使用增強的郵件服務
  */
 
 import { Request, Response } from 'express';
-import { emailService } from '../services/auth/email.service';
-import { jwtService } from '../services/jwt-service';
-import { User } from '../models/user.model';
-import { Contact } from '../models/contact.model';
+import { emailService } from '../services/email/email.service';
 import { asyncWrapper } from '../utils/error-handler';
 import { BadRequestError, NotFoundError } from '../utils/error-handler';
 import type { 
-  ContactEmailOptions 
+  ContactEmailOptions,
+  MarathonEmailOptions,
+  BulkEmailOptions,
+  EmailTemplate
 } from '../types/email.types';
 
 /**
+ * 統一的響應格式
+ */
+interface EmailResponse {
+  success: boolean;
+  message: string;
+  messageId?: string;
+  data?: unknown;
+}
+
+/**
  * 發送聯絡郵件
- * POST /api/email/contact
+ * POST /api/v1/email/contact
  */
 export const sendContactEmail = asyncWrapper(async (req: Request, res: Response) => {
   const { 
@@ -32,7 +42,7 @@ export const sendContactEmail = asyncWrapper(async (req: Request, res: Response)
 
   // 驗證必填欄位
   if (!from || !to || !subject || !text || !name) {
-    throw new BadRequestError('缺少必要的郵件資訊');
+    throw new BadRequestError('缺少必要的郵件資訊：from, to, subject, text, name');
   }
 
   // 構建聯絡郵件選項
@@ -53,255 +63,376 @@ export const sendContactEmail = asyncWrapper(async (req: Request, res: Response)
   };
 
   // 發送郵件
-  const result = await emailService.sendContactEmail(contactOptions);
+  const result = await emailService.sendContactEmail(to, name, text, information, activityTitle);
 
-  if (result) {
-    res.json({
-      success: true,
-      message: '郵件發送成功'
-    });
+  const response: EmailResponse = {
+    success: result.success,
+    message: result.success ? '聯絡郵件發送成功' : `郵件發送失敗: ${result.error}`,
+    messageId: result.messageId
+  };
+
+  if (result.success) {
+    res.json(response);
   } else {
-    res.status(500).json({
-      success: false,
-      message: '郵件發送失敗'
-    });
+    res.status(500).json(response);
   }
 });
 
 /**
  * 發送驗證郵件
- * POST /api/email/verification
+ * POST /api/v1/email/verification
  */
 export const sendVerificationEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { email, userId } = req.body;
+  const { email, verifyLink, name } = req.body;
 
   if (!email) {
     throw new BadRequestError('電子郵件為必填項');
   }
 
-  // 查找用戶
-  const user = await User.findByPk(userId);
-  if (!user) {
-    throw new NotFoundError('找不到用戶');
+  if (!verifyLink) {
+    throw new BadRequestError('驗證連結為必填項');
   }
 
-  // 生成驗證令牌
-  const verificationToken = jwtService.generateToken({
-    id: user.id,
-    email,
-    type: 'email_verification'
-  });
-
   // 發送驗證郵件
-  const result = await emailService.sendVerificationEmail(email, verificationToken);
+  const result = await emailService.sendVerificationEmail(email, verifyLink, name);
 
-  if (result) {
-    res.json({
-      success: true,
-      message: '驗證郵件發送成功'
-    });
+  const response: EmailResponse = {
+    success: result.success,
+    message: result.success ? '驗證郵件發送成功' : `驗證郵件發送失敗: ${result.error}`,
+    messageId: result.messageId
+  };
+
+  if (result.success) {
+    res.json(response);
   } else {
-    res.status(500).json({
-      success: false,
-      message: '驗證郵件發送失敗'
-    });
+    res.status(500).json(response);
   }
 });
 
 /**
  * 發送歡迎郵件
- * POST /api/email/welcome
+ * POST /api/v1/email/welcome
  */
 export const sendWelcomeEmail = asyncWrapper(async (req: Request, res: Response) => {
   const { email, name } = req.body;
 
   if (!email || !name) {
-    throw new BadRequestError('電子郵件和姓名為必填項');
+    throw new BadRequestError('email 和 name 為必填項');
   }
 
   // 發送歡迎郵件
   const result = await emailService.sendWelcomeEmail(email, name);
 
-  if (result) {
-    res.json({
-      success: true,
-      message: '歡迎郵件發送成功'
-    });
+  const response: EmailResponse = {
+    success: result.success,
+    message: result.success ? '歡迎郵件發送成功' : `歡迎郵件發送失敗: ${result.error}`,
+    messageId: result.messageId
+  };
+
+  if (result.success) {
+    res.json(response);
   } else {
-    res.status(500).json({
-      success: false,
-      message: '歡迎郵件發送失敗'
-    });
+    res.status(500).json(response);
   }
 });
 
 /**
  * 發送密碼重設郵件
- * POST /api/email/password-reset
+ * POST /api/v1/email/password-reset
  */
 export const sendPasswordResetEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, resetLink, name } = req.body;
 
   if (!email) {
-    throw new BadRequestError('電子郵件為必填項');
+    throw new BadRequestError('email 為必填項');
   }
 
-  // 查找用戶
-  const contact = await Contact.findOne({
-    where: { email },
-    include: [{
-      model: User,
-      as: 'user',
-      required: true
-    }]
-  });
-
-  if (!contact?.user) {
-    // 為安全起見，即使用戶不存在也返回成功訊息
-    res.json({
-      success: true,
-      message: '如果該電子郵件已註冊，您將收到密碼重設郵件'
-    });
-    return;
+  if (!resetLink) {
+    throw new BadRequestError('resetLink 為必填項');
   }
-
-  // 生成重設令牌
-  const resetToken = jwtService.generateToken({
-    id: (contact.user as { id: number }).id,
-    email,
-    type: 'password_reset'
-  });
 
   // 發送密碼重設郵件
-  const result = await emailService.sendPasswordResetEmail(email, resetToken);
+  const result = await emailService.sendPasswordResetEmail(email, resetLink, name);
 
-  if (result) {
-    res.json({
-      success: true,
-      message: '密碼重設郵件發送成功'
-    });
+  const response: EmailResponse = {
+    success: result.success,
+    message: result.success ? '密碼重設郵件發送成功' : `密碼重設郵件發送失敗: ${result.error}`,
+    messageId: result.messageId
+  };
+
+  if (result.success) {
+    res.json(response);
   } else {
-    res.status(500).json({
-      success: false,
-      message: '密碼重設郵件發送失敗'
-    });
+    res.status(500).json(response);
+  }
+});
+
+/**
+ * 發送馬拉松郵件
+ * POST /api/v1/email/marathon
+ */
+export const sendMarathonEmail = asyncWrapper(async (req: Request, res: Response) => {
+  const { email, name, marathonTitle, marathonDate, marathonDescription } = req.body;
+
+  if (!email || !name || !marathonTitle) {
+    throw new BadRequestError('email, name, marathonTitle 為必填項');
+  }
+
+  const marathonData: MarathonEmailOptions['data'] = {
+    name,
+    marathonTitle,
+    marathonDate,
+    marathonDescription
+  };
+
+  // 發送馬拉松郵件
+  const result = await emailService.sendMarathonEmail(email, name, marathonTitle, marathonDate, marathonDescription);
+
+  const response: EmailResponse = {
+    success: result.success,
+    message: result.success ? '馬拉松郵件發送成功' : `馬拉松郵件發送失敗: ${result.error}`,
+    messageId: result.messageId
+  };
+
+  if (result.success) {
+    res.json(response);
+  } else {
+    res.status(500).json(response);
   }
 });
 
 /**
  * 發送自定義郵件
- * POST /api/email/custom
+ * POST /api/v1/email/custom
  */
 export const sendCustomEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { to, subject, htmlContent } = req.body;
+  const { to, subject, htmlContent, template, data } = req.body;
 
-  if (!to || !subject || !htmlContent) {
-    throw new BadRequestError('收件人、主旨和內容為必填項');
+  if (!to || !subject) {
+    throw new BadRequestError('to 和 subject 為必填項');
   }
 
-  // 發送自定義郵件
-  const result = await emailService.sendCustomEmail(to, subject, htmlContent);
+  let result;
 
-  if (result) {
-    res.json({
-      success: true,
-      message: '自定義郵件發送成功'
+  if (template && data) {
+    // 使用模板發送
+    const { EmailTemplateService } = await import('../services/email/template.service');
+    const templateService = new EmailTemplateService();
+    
+    let emailTemplate;
+    switch (template) {
+      case 'welcome':
+        emailTemplate = templateService.generateWelcomeEmail(data);
+        break;
+      case 'verification':
+        emailTemplate = templateService.generateVerificationEmail(data);
+        break;
+      case 'contact':
+        emailTemplate = templateService.generateContactEmail(data);
+        break;
+      case 'marathon':
+        emailTemplate = templateService.generateMarathonEmail(data);
+        break;
+      case 'passwordReset':
+        emailTemplate = templateService.generatePasswordResetEmail(data);
+        break;
+      default:
+        throw new BadRequestError('不支援的模板類型');
+    }
+    
+    result = await emailService.sendEmail({
+      to,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html
+    });
+  } else if (htmlContent) {
+    // 發送自定義 HTML 內容
+    result = await emailService.sendEmail({
+      to,
+      subject,
+      html: htmlContent
     });
   } else {
-    res.status(500).json({
-      success: false,
-      message: '自定義郵件發送失敗'
-    });
+    throw new BadRequestError('必須提供 htmlContent 或 (template + data)');
+  }
+
+  const response: EmailResponse = {
+    success: result.success,
+    message: result.success ? '自定義郵件發送成功' : `自定義郵件發送失敗: ${result.error}`,
+    messageId: result.messageId
+  };
+
+  if (result.success) {
+    res.json(response);
+  } else {
+    res.status(500).json(response);
   }
 });
 
 /**
- * 驗證電子郵件 (兼容原始邏輯)
- * GET /api/email/verify (從URL參數獲取token)
+ * 批量發送郵件
+ * POST /api/v1/email/bulk
  */
-export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
-  // 支持從URL參數或請求體獲取token (兼容原始邏輯)
-  const decodedQuery = decodeURIComponent(req.url);
-  const tokenMatch = decodedQuery.match(/token=([^&]*)/);
-  const urlToken = tokenMatch ? tokenMatch[1] : null;
-  
-  const token = urlToken || req.body.token;
+export const sendBulkEmail = asyncWrapper(async (req: Request, res: Response) => {
+  const { template, subject, recipients, from, scheduledAt } = req.body;
 
-  if (!token) {
-    throw new BadRequestError('驗證令牌為必填項');
+  if (!template || !subject || !recipients || !Array.isArray(recipients)) {
+    throw new BadRequestError('template, subject, recipients (array) 為必填項');
   }
 
-  // 清理token (移除Bearer前綴，兼容原始邏輯)
-  const cleanedToken = token.replace('Bearer', '').trim();
-  
-  // 驗證令牌
-  const decoded = jwtService.verifyToken(cleanedToken);
-  
-  if (decoded.error) {
-    throw new BadRequestError('無效或已過期的驗證令牌');
+  if (recipients.length === 0) {
+    throw new BadRequestError('recipients 不能為空陣列');
   }
 
-  // 查找並更新用戶 (兼容原始_id邏輯)
-  const userId = decoded._id || decoded.id;
-  const user = await User.findOne({ where: { id: userId } });
-
-  if (!user) {
-    throw new NotFoundError('找不到對應的用戶');
+  if (recipients.length > 100) {
+    throw new BadRequestError('單次批量發送不能超過 100 個收件人');
   }
 
-  // 更新用戶驗證狀態
-  await user.update({
-    email_verified: true,
-    email_verified_at: new Date()
+  const bulkOptions: BulkEmailOptions = {
+    template: template as EmailTemplate,
+    subject,
+    recipients,
+    from,
+    scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined
+  };
+
+  // 發送批量郵件
+  const results = await emailService.sendBulkEmail(recipients, template as 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom');
+
+  const successCount = results.success;
+  const failureCount = results.failed;
+
+  const response: EmailResponse = {
+    success: failureCount === 0,
+    message: `批量郵件發送完成：成功 ${successCount} 件，失敗 ${failureCount} 件`,
+    data: {
+      total: results.results.length,
+      success: successCount,
+      failed: failureCount,
+      results: results.results
+    }
+  };
+
+  res.json(response);
+});
+
+/**
+ * 驗證郵件地址
+ * POST /api/v1/email/validate
+ */
+export const validateEmail = asyncWrapper(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new BadRequestError('email 為必填項');
+  }
+
+  const isValid = emailService.validateEmailAddress(email);
+
+  res.json({
+    success: true,
+    message: isValid ? '郵件地址有效' : '郵件地址無效',
+    data: { email, isValid }
   });
+});
 
-  // 發送歡迎郵件
-  if ((user as any).name) {
-    const contact = await Contact.findOne({ where: { user_id: user.id } });
-    if (contact) {
-      await emailService.sendWelcomeEmail(contact.email, (user as any).name);
+/**
+ * 預覽郵件模板
+ * POST /api/v1/email/preview
+ */
+export const previewEmailTemplate = asyncWrapper(async (req: Request, res: Response) => {
+  const { template, data } = req.body;
+
+  if (!template || !data) {
+    throw new BadRequestError('template 和 data 為必填項');
+  }
+
+  try {
+    const { EmailTemplateService } = await import('../services/email/template.service');
+    const templateService = new EmailTemplateService();
+    
+    let preview;
+    
+    switch (template) {
+      case 'welcome':
+        preview = templateService.generateWelcomeEmail(data);
+        break;
+      case 'verification':
+        preview = templateService.generateVerificationEmail(data);
+        break;
+      case 'contact':
+        preview = templateService.generateContactEmail(data);
+        break;
+      case 'marathon':
+        preview = templateService.generateMarathonEmail(data);
+        break;
+      case 'passwordReset':
+        preview = templateService.generatePasswordResetEmail(data);
+        break;
+      default:
+        throw new Error('不支援的模板類型');
+    }
+    
+    res.json({
+      success: true,
+      message: '模板預覽生成成功',
+      data: preview
+    });
+  } catch (error) {
+    throw new BadRequestError(`模板預覽失敗: ${error instanceof Error ? error.message : String(error)}`);
+  }
+});
+
+/**
+ * 獲取郵件統計
+ * GET /api/v1/email/stats
+ */
+export const getEmailStats = asyncWrapper(async (req: Request, res: Response) => {
+  const { startDate, endDate } = req.query;
+
+  let start: Date | undefined;
+  let end: Date | undefined;
+
+  if (startDate) {
+    start = new Date(startDate as string);
+    if (isNaN(start.getTime())) {
+      throw new BadRequestError('startDate 格式無效');
     }
   }
 
-  // 重定向到前端 (兼容原始邏輯)
-  const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&isVerified=true`;
-  res.redirect(redirectUrl);
+  if (endDate) {
+    end = new Date(endDate as string);
+    if (isNaN(end.getTime())) {
+      throw new BadRequestError('endDate 格式無效');
+    }
+  }
+
+  const stats = emailService.getStats();
+
+  res.json({
+    success: true,
+    message: '郵件統計獲取成功',
+    data: stats
+  });
 });
 
 /**
- * 測試郵件發送
- * POST /api/email/test
+ * 檢查郵件服務健康狀態
+ * GET /api/v1/email/health
  */
-export const testEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { to } = req.body;
+export const checkEmailHealth = asyncWrapper(async (req: Request, res: Response) => {
+  const healthStatus = await emailService.checkHealth();
 
-  if (!to) {
-    throw new BadRequestError('收件人為必填項');
-  }
-
-  const testHtml = `
-    <h1>測試郵件</h1>
-    <p>這是一封測試郵件，用來驗證郵件服務是否正常運作。</p>
-    <p>發送時間：${new Date().toLocaleString('zh-TW')}</p>
-  `;
-
-  const result = await emailService.sendCustomEmail(
-    to,
-    '【島島阿學】郵件服務測試',
-    testHtml
-  );
-
-  if (result) {
-    res.json({
-      success: true,
-      message: '測試郵件發送成功'
-    });
-  } else {
-    res.status(500).json({
-      success: false,
-      message: '測試郵件發送失敗'
-    });
-  }
+  res.status(healthStatus.status === 'healthy' ? 200 : 503).json({
+    success: healthStatus.status === 'healthy',
+    message: healthStatus.status === 'healthy' ? '郵件服務健康狀態正常' : '郵件服務健康狀態異常',
+    data: {
+      status: healthStatus.status,
+      lastCheck: healthStatus.lastCheck,
+      transporterConnected: healthStatus.transporterConnected,
+      error: healthStatus.error
+    }
+  });
 });
 
 // 導出所有控制器方法
@@ -310,9 +441,13 @@ export const emailController = {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
+  sendMarathonEmail,
   sendCustomEmail,
-  verifyEmail,
-  testEmail
+  sendBulkEmail,
+  validateEmail,
+  previewEmailTemplate,
+  getEmailStats,
+  checkEmailHealth
 };
 
 export default emailController;

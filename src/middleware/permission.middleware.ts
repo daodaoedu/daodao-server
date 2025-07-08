@@ -186,7 +186,7 @@ export const requireSuperAdmin = async (req: Request, res: Response, next: NextF
  */
 export const requireOwnership = (
   resourceType: string,
-  resourceParam: string = 'id'
+  resourceParam = 'id'
 ) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -290,6 +290,31 @@ export const canCreateResource = () => requirePermission(parsePermission(PERMISS
 
 export const canAccessAdminPanel = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.DASHBOARD));
 export const canConfigSystem = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.SETTINGS));
+export const canModerateContent = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.MODERATE));
+export const canViewAnalytics = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.ANALYTICS));
+
+// 審核相關權限
+export const canApproveContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.APPROVE));
+export const canRejectContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.REJECT));
+export const canSuspendUser = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.SUSPEND));
+export const canFlagContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.FLAG));
+export const canReviewContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.REVIEW));
+
+// 心得評價權限
+export const canCreateReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.CREATE), { allowTemp: true });
+export const canUpdateReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.UPDATE), { allowSelf: true, resourceType: 'review', resourceParam: 'id' });
+export const canDeleteReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.DELETE), { allowSelf: true, resourceType: 'review', resourceParam: 'id' });
+export const canModerateReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.MODERATE));
+
+// 想法管理權限
+export const canCreateIdea = () => requirePermission(parsePermission(PERMISSIONS.IDEA.CREATE), { allowTemp: true });
+export const canUpdateIdea = () => requirePermission(parsePermission(PERMISSIONS.IDEA.UPDATE), { allowSelf: true, resourceType: 'idea', resourceParam: 'id' });
+export const canDeleteIdea = () => requirePermission(parsePermission(PERMISSIONS.IDEA.DELETE), { allowSelf: true, resourceType: 'idea', resourceParam: 'id' });
+
+// 標籤管理權限
+export const canCreateTag = () => requirePermission(parsePermission(PERMISSIONS.TAG.CREATE));
+export const canUpdateTag = () => requirePermission(parsePermission(PERMISSIONS.TAG.UPDATE));
+export const canDeleteTag = () => requirePermission(parsePermission(PERMISSIONS.TAG.DELETE));
 
 // 角色中間件
 export const requireUserRole = requireRole(ROLES.USER, { allowTemp: true });
@@ -354,21 +379,45 @@ export default {
   requireOwnership,
   requireAnyOf,
   checkPermission,
-  // 常用權限
+  // 用戶權限
   canReadUser,
   canUpdateUser,
   canDeleteUser,
   canCreateUser,
+  // 專案權限
   canReadProject,
   canUpdateProject,
   canDeleteProject,
   canCreateProject,
+  // 資源權限
   canReadResource,
   canUpdateResource,
   canDeleteResource,
   canCreateResource,
+  // 心得評價權限
+  canCreateReview,
+  canUpdateReview,
+  canDeleteReview,
+  canModerateReview,
+  // 想法權限
+  canCreateIdea,
+  canUpdateIdea,
+  canDeleteIdea,
+  // 標籤權限
+  canCreateTag,
+  canUpdateTag,
+  canDeleteTag,
+  // 管理權限
   canAccessAdminPanel,
   canConfigSystem,
+  canModerateContent,
+  canViewAnalytics,
+  // 審核權限
+  canApproveContent,
+  canRejectContent,
+  canSuspendUser,
+  canFlagContent,
+  canReviewContent,
   // 角色權限
   requireUserRole,
   requireModeratorRole,
