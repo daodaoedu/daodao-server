@@ -111,6 +111,7 @@ export interface UserRole {
 // JWT Payload 用戶介面 - 與 User 接口兼容
 export interface UserJwtPayload extends Partial<User> {
   id: number;
+  _id?: string;
   username?: string;
   email?: string;
   isTemp?: boolean;
@@ -178,7 +179,10 @@ export interface AuthResponse {
   success: boolean;
   message: string;
   token?: string;
-  user?: Partial<User | TempUser>;
+  user?: Partial<User | TempUser> & {
+    roles?: string[];
+    permissions?: string[];
+  };
   isTemporary?: boolean;
   redirectUrl?: string;
 }

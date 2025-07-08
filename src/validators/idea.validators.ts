@@ -24,6 +24,7 @@ export const createIdeaSchema = z.object({
 export const updateIdeaSchema = z.object({
   content: z.string().min(1, '請輸入內容').max(5000, '內容不能超過5000字').optional(),
   tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
+  resources: z.array(ideaResourceSchema).max(5, '資源最多5個').optional(),
   status: ideaStatusSchema.optional(),
 });
 

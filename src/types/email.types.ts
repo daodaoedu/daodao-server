@@ -3,7 +3,7 @@
  */
 
 // 郵件模板類型
-export type EmailTemplate = 'welcome' | 'verification' | 'password-reset' | 'contact';
+export type EmailTemplate = 'welcome' | 'verification' | 'password-reset' | 'contact' | 'marathon' | 'custom';
 
 // 基本郵件選項
 export interface EmailOptions {
@@ -61,32 +61,75 @@ export interface ContactEmailOptions {
   };
 }
 
+// 馬拉松郵件選項
+export interface MarathonEmailOptions {
+  to: string;
+  subject: string;
+  template: 'marathon';
+  data: {
+    name: string;
+    marathonTitle: string;
+    marathonDate?: string;
+    marathonDescription?: string;
+  };
+}
+
 // 郵件服務介面
 export interface EmailService {
   /**
    * 發送歡迎郵件
    */
-  sendWelcomeEmail(email: string, name: string): Promise<boolean>;
+  sendWelcomeEmail(email: string, name: string): Promise<EmailResult>;
 
   /**
    * 發送驗證郵件
    */
-  sendVerificationEmail(email: string, token: string): Promise<boolean>;
+  sendVerificationEmail(email: string, token: string): Promise<EmailResult>;
 
   /**
    * 發送密碼重設郵件
    */
-  sendPasswordResetEmail(email: string, token: string): Promise<boolean>;
+  sendPasswordResetEmail(email: string, token: string): Promise<EmailResult>;
 
   /**
    * 發送聯絡郵件
    */
-  sendContactEmail(options: ContactEmailOptions): Promise<boolean>;
+  sendContactEmail(to: string, name: string, message: string, userInfo?: string | string[], activityTitle?: string): Promise<EmailResult>;
+
+  /**
+   * 發送馬拉松郵件
+   */
+  sendMarathonEmail(email: string, name: string, marathonTitle: string, marathonDate?: string, marathonDescription?: string): Promise<EmailResult>;
 
   /**
    * 發送自定義郵件
    */
-  sendCustomEmail(to: string, subject: string, htmlContent: string): Promise<boolean>;
+  sendCustomEmail(to: string, subject: string, htmlContent: string): Promise<EmailResult>;
+
+  /**
+   * 批量發送郵件
+   */
+  sendBulkEmail(recipients: { email: string; data: any }[], template: string): Promise<{ success: number; failed: number; results: EmailResult[] }>;
+
+  /**
+   * 驗證郵件地址
+   */
+  validateEmailAddress(email: string): boolean;
+
+  /**
+   * 獲取郵件統計
+   */
+  getStats(): EmailStats;
+
+  /**
+   * 檢查郵件服務健康狀態
+   */
+  checkHealth(): Promise<{ status: 'healthy' | 'unhealthy'; lastCheck: Date; transporterConnected: boolean; error?: string }>;
+
+  /**
+   * 發送帶模板的郵件
+   */
+  sendTemplatedEmail(to: string, template: EmailTemplate, data: Record<string, unknown>): Promise<EmailResult>;
 }
 
 // 郵件配置
