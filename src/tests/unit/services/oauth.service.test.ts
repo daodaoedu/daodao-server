@@ -12,17 +12,20 @@ import {
   oauthService
 } from '../../../services/auth/oauth.service';
 
-// Mock models
-jest.mock('../../../models/index', () => ({
-  User: {
-    findByPk: jest.fn()
-  },
-  Contact: {
-    findOne: jest.fn()
-  },
-  TempUser: {
-    findOne: jest.fn(),
-    create: jest.fn()
+// Mock Prisma client
+jest.mock('../../../services/database/prisma.service', () => ({
+  prisma: {
+    users: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn()
+    },
+    contacts: {
+      findFirst: jest.fn()
+    },
+    temp_users: {
+      findFirst: jest.fn(),
+      create: jest.fn()
+    }
   }
 }));
 
@@ -38,7 +41,7 @@ jest.mock('passport', () => ({
 
 describe('OAuth Service', () => {
   let originalEnv: NodeJS.ProcessEnv;
-  const { User, Contact, TempUser } = require('../../../models/index');
+  const { prisma } = require('../../../services/database/prisma.service');
 
   beforeAll(() => {
     originalEnv = process.env;
@@ -159,33 +162,33 @@ describe('OAuth Service', () => {
   describe('User Deserialization', () => {
     it('should deserialize formal user', async () => {
       const mockUser = { id: 1, username: 'test' };
-      User.findByPk.mockResolvedValue(mockUser);
+      prisma.users.findUnique.mockResolvedValue(mockUser);
 
       const mockDone = jest.fn();
       const deserializeFunction = (passport.deserializeUser as jest.Mock).mock.calls[0][0];
       
       await deserializeFunction({ id: '1', type: 'user' }, mockDone);
 
-      expect(User.findByPk).toHaveBeenCalledWith('1');
+      expect(prisma.users.findUnique).toHaveBeenCalledWith({ where: { id: '1' } });
       expect(mockDone).toHaveBeenCalledWith(null, mockUser);
     });
 
     it('should deserialize temp user', async () => {
       const mockTempUser = { id: 1, email: 'temp@test.com' };
-      TempUser.findByPk.mockResolvedValue(mockTempUser);
+      prisma.temp_users.findUnique.mockResolvedValue(mockTempUser);
 
       const mockDone = jest.fn();
       const deserializeFunction = (passport.deserializeUser as jest.Mock).mock.calls[0][0];
       
       await deserializeFunction({ id: '1', type: 'temp' }, mockDone);
 
-      expect(TempUser.findByPk).toHaveBeenCalledWith('1');
+      expect(prisma.temp_users.findUnique).toHaveBeenCalledWith({ where: { id: '1' } });
       expect(mockDone).toHaveBeenCalledWith(null, mockTempUser);
     });
 
     it('should handle deserialization error', async () => {
       const error = new Error('Database error');
-      User.findByPk.mockRejectedValue(error);
+      prisma.users.findUnique.mockRejectedValue(error);
 
       const mockDone = jest.fn();
       const deserializeFunction = (passport.deserializeUser as jest.Mock).mock.calls[0][0];
@@ -222,18 +225,16 @@ describe('OAuth Service', () => {
         user: { id: 1, username: 'test' }
       };
 
-      Contact.findOne.mockResolvedValue(mockContact);
+      prisma.contacts.findFirst.mockResolvedValue(mockContact);
 
       const mockDone = jest.fn();
       await strategyCallback('access-token', 'refresh-token', mockProfile, mockDone);
 
-      expect(Contact.findOne).toHaveBeenCalledWith({
+      expect(prisma.contacts.findFirst).toHaveBeenCalledWith({
         where: { email: 'test@example.com' },
-        include: [{
-          model: User,
-          as: 'user',
-          required: false
-        }]
+        include: {
+          user: true
+        }
       });
       expect(mockDone).toHaveBeenCalledWith(null, mockContact.user);
     });
@@ -246,22 +247,24 @@ describe('OAuth Service', () => {
         photos: [{ value: 'http://photo.url' }]
       };
 
-      Contact.findOne.mockResolvedValue(null);
-      TempUser.findOne.mockResolvedValue(null);
+      prisma.contacts.findFirst.mockResolvedValue(null);
+      prisma.temp_users.findFirst.mockResolvedValue(null);
       
       const mockNewTempUser = { id: 1, google_id: 'google-123' };
-      TempUser.create.mockResolvedValue(mockNewTempUser);
+      prisma.temp_users.create.mockResolvedValue(mockNewTempUser);
 
       const mockDone = jest.fn();
       await strategyCallback('access-token', 'refresh-token', mockProfile, mockDone);
 
-      expect(TempUser.create).toHaveBeenCalledWith({
-        google_id: 'google-123',
-        email: 'new@example.com',
-        name: 'New User',
-        photo_url: 'http://photo.url',
-        created_at: expect.any(Date),
-        updated_at: expect.any(Date)
+      expect(prisma.temp_users.create).toHaveBeenCalledWith({
+        data: {
+          google_id: 'google-123',
+          email: 'new@example.com',
+          name: 'New User',
+          photo_url: 'http://photo.url',
+          created_at: expect.any(Date),
+          updated_at: expect.any(Date)
+        }
       });
       expect(mockDone).toHaveBeenCalledWith(null, mockNewTempUser);
     });

@@ -4,8 +4,8 @@
 
 import request from 'supertest';
 import express from 'express';
-import ideaController from '../../../controllers/idea-controller';
-import ideaService from '../../../services/idea-service';
+import ideaController from '../../../controllers/idea.controller';
+import ideaService from '../../../services/idea.service';
 import { AuthRequest } from '../../../middleware/auth';
 import { IdeaStatus, ResourceStatus } from '../../../types/idea.types';
 

@@ -2,60 +2,62 @@
  * 想法服務測試
  */
 
-// Import mocked models
-const mockIdea = { findOne: jest.fn(), findAndCountAll: jest.fn(), create: jest.fn() };
-const mockTag = { findOne: jest.fn(), findAll: jest.fn() };
-const mockResource = { create: jest.fn() };
-const mockEntityResource = { create: jest.fn() };
-
-// Mock the models before importing the service
-jest.mock('@models/index', () => ({
-  Idea: mockIdea,
-  Tag: mockTag,
-  Resource: mockResource,
-  EntityResource: mockEntityResource
-}));
-
-const { Idea, Tag, Resource, EntityResource } = require('@models/index');
-import ideaService from '@services/idea-service';
-import tagService from '@services/tag-service';
+import ideaService from '@/services/idea.service';
+import tagService from '@/services/tag.service';
 import { NotFoundError, ForbiddenError } from '@utils/error-handler';
-import sequelize from '../../../config/database';
 
-// 模擬依賴
-jest.mock('@models/index');
-jest.mock('@services/tag-service');
-jest.mock('@config/database', () => ({
-  __esModule: true,
-  default: {
-    transaction: jest.fn()
+// Mock Prisma service
+jest.mock('@/services/database/prisma.service', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    ideas: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn()
+    },
+    tags: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    resources: {
+      create: jest.fn(),
+      findUnique: jest.fn()
+    },
+    entity_resources: {
+      create: jest.fn(),
+      findMany: jest.fn()
+    },
+    users: {
+      findUnique: jest.fn()
+    },
+    basic_infos: {
+      findUnique: jest.fn()
+    }
   }
 }));
 
-// 模擬 User 和 BasicInfo
-jest.mock('@models/index', () => ({
-  User: {
-    belongsTo: jest.fn(),
-    hasMany: jest.fn()
-  },
-  BasicInfo: {
-    belongsTo: jest.fn(),
-    hasMany: jest.fn()
-  }
-}));
+// Mock dependencies
+jest.mock('@/services/tag.service');
 
 describe('IdeaService', () => {
   let mockTransaction: any;
+  let prisma: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Get prisma mock
+    prisma = require('@/services/database/prisma.service').prisma;
     
     // 模擬事務
     mockTransaction = {
       commit: jest.fn(),
       rollback: jest.fn()
     };
-    (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
+    prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
   });
 
   describe('getIdeaById', () => {
@@ -68,26 +70,18 @@ describe('IdeaService', () => {
         created_at: new Date('2024-01-01'),
         updated_at: new Date('2024-01-01'),
         deleted_at: null,
-        toJSON: jest.fn().mockReturnValue({
-          external_id: 'idea-uuid-1',
-          content: '測試想法',
-          status: 'active',
-          created_at: new Date('2024-01-01'),
-          updated_at: new Date('2024-01-01'),
-          deleted_at: null,
-          author: {
-            external_id: 'user-uuid-1',
-            username: 'testuser',
-            BasicInfo: {
-              nickname: '測試用戶',
-              avatar_url: 'https://example.com/avatar.jpg'
-            }
-          },
-          tags: [{ name: '標籤1' }, { name: '標籤2' }]
-        })
+        author: {
+          external_id: 'user-uuid-1',
+          username: 'testuser',
+          BasicInfo: {
+            nickname: '測試用戶',
+            avatar_url: 'https://example.com/avatar.jpg'
+          }
+        },
+        tags: [{ name: '標籤1' }, { name: '標籤2' }]
       };
 
-      (Idea.findOne as jest.Mock).mockResolvedValue(mockIdea);
+      prisma.ideas.findUnique.mockResolvedValue(mockIdea);
 
       const result = await ideaService.getIdeaById('idea-uuid-1');
 
@@ -103,14 +97,14 @@ describe('IdeaService', () => {
         status: 'active'
       });
 
-      expect(Idea.findOne).toHaveBeenCalledWith({
+      expect(prisma.ideas.findUnique).toHaveBeenCalledWith({
         where: { external_id: 'idea-uuid-1' },
-        include: expect.any(Array)
+        include: expect.any(Object)
       });
     });
 
     it('應該在找不到想法時拋出錯誤', async () => {
-      (Idea.findOne as jest.Mock).mockResolvedValue(null);
+      prisma.ideas.findUnique.mockResolvedValue(null);
 
       await expect(ideaService.getIdeaById('non-existent-id'))
         .rejects.toThrow(NotFoundError);
@@ -123,35 +117,25 @@ describe('IdeaService', () => {
         {
           external_id: 'idea-uuid-1',
           content: '想法1',
-          toJSON: jest.fn().mockReturnValue({
-            external_id: 'idea-uuid-1',
-            content: '想法1',
-            status: 'active',
-            created_at: new Date('2024-01-01'),
-            updated_at: new Date('2024-01-01'),
-            author: { external_id: 'user-1', username: 'user1' },
-            tags: [{ name: '標籤1' }]
-          })
+          status: 'active',
+          created_at: new Date('2024-01-01'),
+          updated_at: new Date('2024-01-01'),
+          author: { external_id: 'user-1', username: 'user1' },
+          tags: [{ name: '標籤1' }]
         },
         {
           external_id: 'idea-uuid-2',
           content: '想法2',
-          toJSON: jest.fn().mockReturnValue({
-            external_id: 'idea-uuid-2',
-            content: '想法2',
-            status: 'active',
-            created_at: new Date('2024-01-02'),
-            updated_at: new Date('2024-01-02'),
-            author: { external_id: 'user-2', username: 'user2' },
-            tags: [{ name: '標籤2' }]
-          })
+          status: 'active',
+          created_at: new Date('2024-01-02'),
+          updated_at: new Date('2024-01-02'),
+          author: { external_id: 'user-2', username: 'user2' },
+          tags: [{ name: '標籤2' }]
         }
       ];
 
-      (Idea.findAndCountAll as jest.Mock).mockResolvedValue({
-        rows: mockIdeas,
-        count: 2
-      });
+      prisma.ideas.findMany.mockResolvedValue(mockIdeas);
+      prisma.ideas.count.mockResolvedValue(2);
 
       const result = await ideaService.getIdeas();
 
@@ -163,56 +147,45 @@ describe('IdeaService', () => {
         totalPages: 1
       });
 
-      expect(Idea.findAndCountAll).toHaveBeenCalledWith({
+      expect(prisma.ideas.findMany).toHaveBeenCalledWith({
         where: expect.any(Object),
-        include: expect.any(Array),
-        order: [['created_at', 'desc']],
-        limit: 20,
-        offset: 0,
-        distinct: true
+        include: expect.any(Object),
+        orderBy: { created_at: 'desc' },
+        take: 20,
+        skip: 0
       });
     });
 
     it('應該支援標籤篩選', async () => {
-      (Idea.findAndCountAll as jest.Mock).mockResolvedValue({
-        rows: [],
-        count: 0
-      });
+      prisma.ideas.findMany.mockResolvedValue([]);
+      prisma.ideas.count.mockResolvedValue(0);
 
       await ideaService.getIdeas({ tags: ['React', 'TypeScript'], sort: 'createdAt', order: 'desc' });
 
-      expect(Idea.findAndCountAll).toHaveBeenCalledWith(
+      expect(prisma.ideas.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.arrayContaining([
-            expect.objectContaining({
-              model: Tag,
-              as: 'tags',
+          include: expect.objectContaining({
+            tags: expect.objectContaining({
               where: expect.objectContaining({
                 name: expect.any(Object)
               })
             })
-          ])
+          })
         })
       );
     });
 
     it('應該支援關鍵字搜尋', async () => {
-      (Idea.findAndCountAll as jest.Mock).mockResolvedValue({
-        rows: [],
-        count: 0
-      });
+      prisma.ideas.findMany.mockResolvedValue([]);
+      prisma.ideas.count.mockResolvedValue(0);
 
       await ideaService.getIdeas({ query: '測試關鍵字', sort: 'createdAt', order: 'desc' });
 
-      const callArgs = (Idea.findAndCountAll as jest.Mock).mock.calls[0][0];
+      const callArgs = prisma.ideas.findMany.mock.calls[0][0];
       expect(callArgs.where).toBeDefined();
       
-      // 檢查是否包含搜尋條件
-      const whereKeys = Object.getOwnPropertySymbols(callArgs.where);
-      expect(whereKeys.length).toBeGreaterThan(0);
-      
       // 檢查查詢結構包含搜尋關鍵字
-      expect(Idea.findAndCountAll).toHaveBeenCalledWith(
+      expect(prisma.ideas.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({})
         })

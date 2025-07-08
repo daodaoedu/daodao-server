@@ -1,4 +1,6 @@
-// tests/unit/services/commentService.test.js
+/**
+ * 評論服務測試
+ */
 
 // 1. 重置模組快取
 jest.resetModules();
@@ -6,47 +8,59 @@ jest.resetModules();
 // 2. 設定環境變數，必須在任何 require 之前設定
 process.env.NODE_ENV = 'test';
 
-// 3. 先 mock config/db
-jest.mock('../../../../config/db', () => ({
-  transaction: jest.fn().mockImplementation(() => ({
-    commit: jest.fn(),
-    rollback: jest.fn(),
-    finished: false
-  })),
-  authenticate: jest.fn().mockResolvedValue(),
-  close: jest.fn().mockResolvedValue(), // Add this line
-  options: {
-    logging: false
+// 3. Mock Prisma service
+jest.mock('../../../services/database/prisma.service', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    comments: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    },
+    users: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    posts: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    circles: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    notes: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    outcomes: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    reviews: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    mentor_participants: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    contacts: {
+      findFirst: jest.fn(),
+      findMany: jest.fn()
+    },
+    basic_infos: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    positions: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    }
   }
 }));
-
-// 4. 先 mock models
-jest.mock('../../../models', () => {
-  const mockModel = (name) => ({
-    findOne: jest.fn(),
-    findAll: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    destroy: jest.fn()
-  });
-  
-  return {
-    Comment: mockModel('Comment'),
-    User: mockModel('User'),
-    Post: mockModel('Post'),
-    Circle: mockModel('Circle'),
-    Note: mockModel('Note'),
-    Outcome: mockModel('Outcome'),
-    Review: mockModel('Review'),
-    MentorParticipants: mockModel('MentorParticipants'),
-    Contact: mockModel('Contact'),
-    BasicInfo: mockModel('BasicInfo'),
-    Position: mockModel('Position')
-  };
-});
-
-// 5. 接著引入依賴模組
-const sequelize = require('../../../../config/db');
 const {
   Comment, User, Contact, BasicInfo, Position,
   Post, Circle, Note, Outcome, Review,

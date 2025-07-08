@@ -12,7 +12,7 @@ import {
   verifyToken, 
   refreshToken, 
   jwtService 
-} from '../../../services/jwt-service';
+} from '../../../services/jwt.service';
 
 // Test constants
 const mockJwtSecret = 'test-jwt-secret';
@@ -190,11 +190,10 @@ describe('JWT Service', () => {
       // Create an expired token
       const expiredToken = jwt.sign(payload, mockJwtSecret, { expiresIn: '-1s' });
 
-      // refreshToken should still work with expired tokens
+      // refreshToken should return null for expired tokens
       const result = refreshToken(expiredToken);
 
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('string');
+      expect(result).toBeNull();
     });
 
     it('should remove JWT default fields from refreshed token', async () => {

@@ -17,10 +17,9 @@ import {
   resetPassword, 
   verifyEmail 
 } from '@controllers/auth.controller';
-import { jwtService } from '../../../services/jwt-service';
+import { jwtService } from '../../../services/jwt.service';
 import { emailService } from '../../../services/auth/email.service';
 import { permissionService } from '../../../services/auth/permission.service';
-import { User, Contact, TempUser } from '../../../models/index';
 import { 
   UnauthorizedError, 
   NotFoundError, 
@@ -29,23 +28,48 @@ import {
 } from '../../../utils/error-handler';
 
 // Mock dependencies
-jest.mock('../../../services/jwt-service');
+jest.mock('../../../services/jwt.service');
 jest.mock('../../../services/auth/email.service');
 jest.mock('../../../services/auth/permission.service');
-jest.mock('../../../models/index');
+jest.mock('../../../services/database/prisma.service', () => ({
+  prisma: {
+    users: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn()
+    },
+    contacts: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn()
+    },
+    temp_users: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn()
+    },
+    $transaction: jest.fn()
+  }
+}));
 jest.mock('bcrypt');
 
 describe('Auth Controller', () => {
   let req: Partial<Request>;
   let res: Partial<Response>;
+  let next: jest.MockedFunction<NextFunction>;
   let mockUser: any;
   let mockContact: any;
   let mockTempUser: any;
   let mockTransaction: any;
+  let prisma: any;
 
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
+
+    // Get prisma mock
+    prisma = require('../../../services/database/prisma.service').prisma;
 
     // Mock request and response
     req = {
@@ -60,6 +84,8 @@ describe('Auth Controller', () => {
       redirect: jest.fn()
     };
 
+    next = jest.fn();
+
     // Mock database models
     mockUser = {
       id: 1,
@@ -68,11 +94,7 @@ describe('Auth Controller', () => {
       name: 'Test User',
       photo_url: 'https://example.com/photo.jpg',
       is_active: true,
-      email_verified: false,
-      update: jest.fn(),
-      sequelize: {
-        transaction: jest.fn()
-      }
+      email_verified: false
     };
 
     mockContact = {
@@ -95,14 +117,14 @@ describe('Auth Controller', () => {
       rollback: jest.fn()
     };
 
-    // Mock Sequelize models
-    (User.findOne as jest.Mock).mockResolvedValue(null);
-    (User.findByPk as jest.Mock).mockResolvedValue(null);
-    (User.create as jest.Mock).mockResolvedValue(mockUser);
-    (Contact.findOne as jest.Mock).mockResolvedValue(null);
-    (Contact.create as jest.Mock).mockResolvedValue(mockContact);
-    (TempUser.findByPk as jest.Mock).mockResolvedValue(null);
-    (User.sequelize as any) = { transaction: jest.fn().mockResolvedValue(mockTransaction) };
+    // Mock Prisma models
+    prisma.users.findUnique.mockResolvedValue(null);
+    prisma.users.findFirst.mockResolvedValue(null);
+    prisma.users.create.mockResolvedValue(mockUser);
+    prisma.contacts.findFirst.mockResolvedValue(null);
+    prisma.contacts.create.mockResolvedValue(mockContact);
+    prisma.temp_users.findUnique.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
 
     // Mock bcrypt
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -138,20 +160,24 @@ describe('Auth Controller', () => {
     });
 
     it('should successfully login with valid credentials', async () => {
-      (Contact.findOne as jest.Mock).mockResolvedValue(mockContact);
+      prisma.contacts.findFirst.mockResolvedValue(mockContact);
+      prisma.users.update.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      await login(req as Request, res as Response);
+      await login(req as Request, res as Response, next);
 
-      expect(Contact.findOne).toHaveBeenCalledWith({
+      expect(prisma.contacts.findFirst).toHaveBeenCalledWith({
         where: { email: 'test@example.com' },
-        include: [{ model: User, required: true }]
+        include: { user: true }
       });
       expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashedpassword');
       expect(permissionService.getUserRoles).toHaveBeenCalledWith(1);
       expect(permissionService.getUserPermissions).toHaveBeenCalledWith(1);
       expect(jwtService.generateToken).toHaveBeenCalled();
-      expect(mockUser.update).toHaveBeenCalledWith({ last_login_at: expect.any(Date) });
+      expect(prisma.users.update).toHaveBeenCalledWith({ 
+        where: { id: 1 },
+        data: { last_login_at: expect.any(Date) }
+      });
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         message: '登入成功',
@@ -169,14 +195,14 @@ describe('Auth Controller', () => {
     });
 
     it('should reject login with invalid email', async () => {
-      (Contact.findOne as jest.Mock).mockResolvedValue(null);
+      prisma.contacts.findFirst.mockResolvedValue(null);
 
       await expect(login(req as Request, res as Response))
         .rejects.toThrow(UnauthorizedError);
     });
 
     it('should reject login with invalid password', async () => {
-      (Contact.findOne as jest.Mock).mockResolvedValue(mockContact);
+      prisma.contacts.findFirst.mockResolvedValue(mockContact);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(login(req as Request, res as Response))
@@ -186,7 +212,7 @@ describe('Auth Controller', () => {
     it('should reject login for inactive user', async () => {
       const inactiveUser = { ...mockUser, is_active: false };
       const inactiveContact = { ...mockContact, User: inactiveUser };
-      (Contact.findOne as jest.Mock).mockResolvedValue(inactiveContact);
+      prisma.contacts.findFirst.mockResolvedValue(inactiveContact);
 
       await expect(login(req as Request, res as Response))
         .rejects.toThrow(UnauthorizedError);

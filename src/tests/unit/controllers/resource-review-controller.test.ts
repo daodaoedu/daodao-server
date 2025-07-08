@@ -18,9 +18,9 @@ import resourceReviewController, {
   unlikeReview,
   getReviewTags,
   getReviews
-} from '../../../controllers/resource-review-controller';
-import resourceReviewService from '../../../services/resource-review-service';
-import tagService from '../../../services/tag-service';
+} from '../../../controllers/resource-review.controller';
+import resourceReviewService from '../../../services/resource-review.service';
+import tagService from '../../../services/tag.service';
 import { BadRequestError } from '../../../utils/error-handler';
 import { AuthRequest } from '../../../types/auth.types';
 
