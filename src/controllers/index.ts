@@ -3,9 +3,9 @@
  * 統一導出所有控制器
  */
 
-import resourceController from './resource-controller';
-import resourceReviewController from './resource-review-controller';
-import tagController from './tag-controller';
+import resourceController from './resource.controller';
+import resourceReviewController from './resource-review.controller';
+import tagController from './tag.controller';
 
 export {
   resourceController,

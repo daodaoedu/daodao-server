@@ -3,18 +3,12 @@
  * 專案服務層 - 處理專案相關的業務邏輯
  */
 
-import { Op } from 'sequelize';
-import { 
-  Project, 
-  Milestone, 
-  Task, 
-  Post, 
-  Note, 
-  Outcome, 
-  Review, 
-  User, 
-  Contact 
-} from '../models';
+import { prisma } from './database/prisma.service';
+import {
+  NotFoundError,
+  ConflictError,
+  BadRequestError
+} from '../utils/error-handler';
 import type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
@@ -24,6 +18,119 @@ import type {
   ProjectStats
 } from '../types/project.types';
 
+/**
+ * 專案資料型別定義（包含關聯資料）
+ */
+interface ProjectWithIncludes {
+  id: number;
+  external_id: string | null;
+  user_id: number;
+  img_url: string | null;
+  title: string;
+  description: string | null;
+  motivation: unknown;
+  motivation_description: string | null;
+  goal: string | null;
+  content: string | null;
+  strategy: unknown;
+  strategy_description: string | null;
+  resource: string | null;
+  outcome: unknown;
+  outcome_description: string | null;
+  is_public: boolean | null;
+  status: string | null;
+  start_date: Date | null;
+  end_date: Date | null;
+  interval: number | null;
+  created_at: Date | null;
+  updated_at: Date | null;
+  version: number;
+  users?: {
+    id: number;
+    nickname: string | null;
+    external_id: string | null;
+    contacts?: {
+      photo_url: string | null;
+    } | null;
+    user_positions?: Array<{
+      position: {
+        name: string;
+      };
+    }>;
+  } | null;
+  milestone?: Array<{
+    id: number;
+    position: number;
+    name: string;
+    description: string | null;
+    start_date: Date | null;
+    end_date: Date | null;
+    is_completed: boolean;
+    task?: Array<{
+      id: number;
+      name: string;
+      position: number;
+      description: string | null;
+      days_of_week: unknown;
+      is_completed: boolean;
+    }>;
+  }>;
+}
+
+/**
+ * 格式化專案回應資料
+ */
+const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse => {
+  return {
+    id: project.external_id || '',
+    userId: project.user_id,
+    imgUrl: project.img_url,
+    title: project.title,
+    description: project.description || "",
+    motivation: project.motivation,
+    motivationDescription: project.motivation_description,
+    goal: project.goal,
+    content: project.content,
+    strategy: project.strategy,
+    strategyDescription: project.strategy_description,
+    resourceName: project.resource,
+    outcome: project.outcome,
+    outcomeDescription: project.outcome_description,
+    isPublic: project.is_public ?? true,
+    status: project.status || 'Not Started',
+    startDate: project.start_date,
+    endDate: project.end_date,
+    interval: project.interval,
+    createdAt: project.created_at,
+    updatedAt: project.updated_at,
+    version: project.version,
+    user: project.users ? {
+      id: project.users.id,
+      name: project.users.nickname,
+      _id: project.users.external_id,
+      roleList: project.users.user_positions?.map(up => up.position?.name) || [],
+      photoURL: project.users.contacts?.photo_url,
+    } : null,
+    milestones: project.milestone?.map(m => ({
+      id: m.id,
+      position: m.position,
+      name: m.name,
+      description: m.description || "",
+      startDate: m.start_date,
+      endDate: m.end_date,
+      isCompleted: m.is_completed,
+      tasks: m.task?.map(t => ({
+        id: t.id,
+        name: t.name,
+        position: t.position,
+        description: t.description || "",
+        daysOfWeek: t.days_of_week,
+        isCompleted: t.is_completed
+      })) || []
+    })) || []
+  };
+};
+
 export class ProjectService {
   /**
    * 創建專案
@@ -32,31 +139,138 @@ export class ProjectService {
     userId: number, 
     projectData: ProjectCreateRequest
   ): Promise<ProjectServiceResult<ProjectResponse>> {
-    try {
-      const createData = {
-        ...projectData,
-        user_id: userId,
-        created_by: userId,
-        updated_by: userId,
-        start_date: projectData.start_date ? new Date(projectData.start_date) : undefined,
-        end_date: projectData.end_date ? new Date(projectData.end_date) : undefined
-      };
-      
-      const project = await Project.create(createData);
+    return await prisma.$transaction(async (tx) => {
+      try {
+        // 檢查用戶是否存在
+        const user = await tx.users.findUnique({
+          where: { id: userId },
+          include: { roles: true }
+        });
 
-      const createdProject = await this.getProjectById(project.external_id, userId);
-      
-      return {
-        success: true,
-        data: createdProject.data,
-        message: '專案創建成功'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '創建專案失敗'
-      };
-    }
+        if (!user) {
+          return {
+            success: false,
+            error: '用戶不存在'
+          };
+        }
+
+        // 角色和數量驗證（參考原有邏輯）
+        if (user.role_id === 2) {
+          return {
+            success: false,
+            error: '此角色無權新增學習計畫'
+          };
+        }
+
+        if (user.role_id === 3) {
+          const projectCount = await tx.project.count({
+            where: { user_id: userId }
+          });
+
+          if (projectCount >= 3) {
+            return {
+              success: false,
+              error: '已達最大學習計畫數量限制（3個）'
+            };
+          }
+        }
+
+        // 驗證必填字段
+        if (!projectData.title) {
+          return {
+            success: false,
+            error: '缺少必要欄位'
+          };
+        }
+
+        // 驗證日期
+        if (projectData.start_date && projectData.end_date && 
+            new Date(projectData.start_date) >= new Date(projectData.end_date)) {
+          return {
+            success: false,
+            error: '結束日期必須晚於開始日期'
+          };
+        }
+
+        // 創建專案
+        const project = await tx.project.create({
+          data: {
+            user_id: userId,
+            img_url: projectData.imgUrl,
+            title: projectData.title,
+            description: projectData.description,
+            motivation: projectData.motivation ? { set: projectData.motivation as any[] } : undefined,
+            motivation_description: projectData.motivationDescription,
+            goal: projectData.goal,
+            content: projectData.content,
+            strategy: projectData.strategy ? { set: projectData.strategy as any[] } : undefined,
+            strategy_description: projectData.strategyDescription,
+            resource: projectData.resourceName,
+            outcome: projectData.outcome ? { set: projectData.outcome as any[] } : undefined,
+            outcome_description: projectData.outcomeDescription,
+            is_public: projectData.isPublic ?? true,
+            status: projectData.status || 'Not Started',
+            start_date: projectData.start_date ? new Date(projectData.start_date) : null,
+            end_date: projectData.end_date ? new Date(projectData.end_date) : null,
+            interval: projectData.interval,
+            created_by: userId,
+            updated_by: userId
+          }
+        });
+
+        // 創建里程碑（如果有的話）
+        if (projectData.milestones && projectData.milestones.length > 0) {
+          for (const milestoneData of projectData.milestones) {
+            const milestone = await tx.milestone.create({
+              data: {
+                project_id: project.id,
+                position: milestoneData.position,
+                name: milestoneData.name,
+                description: milestoneData.description,
+                start_date: milestoneData.startDate ? new Date(milestoneData.startDate) : new Date(),
+                end_date: milestoneData.endDate ? new Date(milestoneData.endDate) : new Date(),
+                is_completed: milestoneData.isCompleted || false
+              }
+            });
+
+            // 創建任務（如果有的話）
+            if (milestoneData.tasks && milestoneData.tasks.length > 0) {
+              await tx.task.createMany({
+                data: milestoneData.tasks.map(taskData => ({
+                  milestone_id: milestone.id,
+                  position: taskData.position,
+                  name: taskData.name,
+                  description: taskData.description,
+                  days_of_week: taskData.daysOfWeek ? { set: taskData.daysOfWeek as any[] } : undefined,
+                  is_completed: taskData.isCompleted || false
+                }))
+              });
+            }
+          }
+        }
+
+        // 獲取完整的專案資料
+        const createdProject = await this.getProjectById(project.external_id!, userId);
+        
+        if (!createdProject.success || !createdProject.data) {
+          return {
+            success: false,
+            error: '創建後無法獲取專案資料'
+          };
+        }
+        
+        return {
+          success: true,
+          data: createdProject.data,
+          message: '專案創建成功'
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '創建專案失敗'
+        };
+      }
+    });
   }
 
   /**
@@ -67,11 +281,12 @@ export class ProjectService {
     userId?: number
   ): Promise<ProjectServiceResult<ProjectResponse>> {
     try {
+      // 構建查詢條件
       const whereClause: Record<string, unknown> = { external_id: projectId };
       
       // 如果不是專案擁有者，只能查看公開專案
       if (userId) {
-        whereClause[Op.or] = [
+        whereClause.OR = [
           { user_id: userId },
           { is_public: true }
         ];
@@ -79,59 +294,30 @@ export class ProjectService {
         whereClause.is_public = true;
       }
 
-      const project = await Project.findOne({
+      const project = await prisma.project.findFirst({
         where: whereClause,
-        include: [
-          {
-            model: User,
-            as: 'user',
-            include: [
-              {
-                model: Contact,
-                as: 'contact'
+        include: {
+          users: {
+            include: {
+              contacts: true,
+              user_positions: {
+                include: {
+                  position: true
+                }
               }
-            ]
+            }
           },
-          {
-            model: Milestone,
-            as: 'milestones',
+          milestone: {
             where: { is_deleted: false },
-            required: false,
-            order: [['position', 'ASC']],
-            include: [
-              {
-                model: Task,
-                as: 'tasks',
+            orderBy: { position: 'asc' },
+            include: {
+              task: {
                 where: { is_deleted: false },
-                required: false,
-                order: [['position', 'ASC']]
+                orderBy: { position: 'asc' }
               }
-            ]
-          },
-          {
-            model: Post,
-            as: 'posts',
-            required: false,
-            order: [['created_at', 'DESC']],
-            include: [
-              {
-                model: Note,
-                as: 'note',
-                required: false
-              },
-              {
-                model: Outcome,
-                as: 'outcome',
-                required: false
-              },
-              {
-                model: Review,
-                as: 'review',
-                required: false
-              }
-            ]
+            }
           }
-        ]
+        }
       });
 
       if (!project) {
@@ -141,7 +327,7 @@ export class ProjectService {
         };
       }
 
-      const formattedProject = this.formatProjectResponse(project);
+      const formattedProject = formatProjectResponse(project);
 
       return {
         success: true,
@@ -174,7 +360,7 @@ export class ProjectService {
         sort_order = 'DESC'
       } = queryParams;
 
-      const offset = (page - 1) * limit;
+      const skip = (page - 1) * limit;
       const whereClause: Record<string, unknown> = {};
 
       // 狀態篩選
@@ -199,39 +385,52 @@ export class ProjectService {
 
       // 搜尋功能
       if (search) {
-        whereClause[Op.or] = [
-          { title: { [Op.iLike]: `%${search}%` } },
-          { description: { [Op.iLike]: `%${search}%` } },
-          { goal: { [Op.iLike]: `%${search}%` } }
+        whereClause.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { goal: { contains: search, mode: 'insensitive' } }
         ];
       }
 
-      const { count, rows } = await Project.findAndCountAll({
-        where: whereClause,
-        include: [
-          {
-            model: User,
-            as: 'user',
-            include: [
-              {
-                model: Contact,
-                as: 'contact'
+      const [projects, total] = await Promise.all([
+        prisma.project.findMany({
+          where: whereClause,
+          include: {
+            users: {
+              include: {
+                contacts: true,
+                user_positions: {
+                  include: {
+                    position: true
+                  }
+                }
               }
-            ]
-          }
-        ],
-        order: [[sort_by, sort_order]],
-        limit,
-        offset
-      });
+            },
+            milestone: {
+              where: { is_deleted: false },
+              orderBy: { position: 'asc' },
+              include: {
+                task: {
+                  where: { is_deleted: false },
+                  orderBy: { position: 'asc' }
+                }
+              }
+            }
+          },
+          orderBy: { [sort_by]: sort_order.toLowerCase() as 'asc' | 'desc' },
+          take: limit,
+          skip
+        }),
+        prisma.project.count({ where: whereClause })
+      ]);
 
-      const formattedProjects = rows.map(project => this.formatProjectResponse(project));
+      const formattedProjects = projects.map(project => formatProjectResponse(project));
 
       return {
         success: true,
         data: {
           projects: formattedProjects,
-          total: count,
+          total,
           page,
           limit
         }
@@ -253,7 +452,7 @@ export class ProjectService {
     updateData: ProjectUpdateRequest
   ): Promise<ProjectServiceResult<ProjectResponse>> {
     try {
-      const project = await Project.findOne({
+      const project = await prisma.project.findFirst({
         where: { 
           external_id: projectId,
           user_id: userId
@@ -271,10 +470,16 @@ export class ProjectService {
         ...updateData,
         updated_by: userId,
         start_date: updateData.start_date ? new Date(updateData.start_date) : undefined,
-        end_date: updateData.end_date ? new Date(updateData.end_date) : undefined
+        end_date: updateData.end_date ? new Date(updateData.end_date) : undefined,
+        motivation: updateData.motivation ? { set: updateData.motivation as any[] } : undefined,
+        strategy: updateData.strategy ? { set: updateData.strategy as any[] } : undefined,
+        outcome: updateData.outcome ? { set: updateData.outcome as any[] } : undefined
       };
       
-      await project.update(updateDataWithDates);
+      await prisma.project.update({
+        where: { id: project.id },
+        data: updateDataWithDates
+      });
 
       const updatedProject = await this.getProjectById(projectId, userId);
 
@@ -299,7 +504,7 @@ export class ProjectService {
     userId: number
   ): Promise<ProjectServiceResult<void>> {
     try {
-      const project = await Project.findOne({
+      const project = await prisma.project.findFirst({
         where: { 
           external_id: projectId,
           user_id: userId
@@ -313,7 +518,9 @@ export class ProjectService {
         };
       }
 
-      await project.destroy();
+      await prisma.project.delete({
+        where: { id: project.id }
+      });
 
       return {
         success: true,
@@ -346,11 +553,11 @@ export class ProjectService {
         not_started_projects,
         canceled_projects
       ] = await Promise.all([
-        Project.count({ where: whereClause }),
-        Project.count({ where: { ...whereClause, status: 'Ongoing' } }),
-        Project.count({ where: { ...whereClause, status: 'Completed' } }),
-        Project.count({ where: { ...whereClause, status: 'Not Started' } }),
-        Project.count({ where: { ...whereClause, status: 'Canceled' } })
+        prisma.project.count({ where: whereClause }),
+        prisma.project.count({ where: { ...whereClause, status: 'Ongoing' } }),
+        prisma.project.count({ where: { ...whereClause, status: 'Completed' } }),
+        prisma.project.count({ where: { ...whereClause, status: 'Not Started' } }),
+        prisma.project.count({ where: { ...whereClause, status: 'Canceled' } })
       ]);
 
       return {
@@ -369,90 +576,6 @@ export class ProjectService {
         error: error instanceof Error ? error.message : '獲取統計資訊失敗'
       };
     }
-  }
-
-  /**
-   * 格式化專案回應資料
-   */
-  private formatProjectResponse(project: Project): ProjectResponse {
-    const projectJson = project.toJSON();
-
-    return {
-      id: projectJson.id,
-      external_id: projectJson.external_id,
-      user_id: projectJson.user_id,
-      img_url: projectJson.img_url,
-      title: projectJson.title,
-      description: projectJson.description || '',
-      motivation: projectJson.motivation,
-      motivation_description: projectJson.motivation_description,
-      goal: projectJson.goal,
-      content: projectJson.content,
-      strategy: projectJson.strategy,
-      strategy_description: projectJson.strategy_description,
-      resource: projectJson.resource,
-      outcome: projectJson.outcome,
-      outcome_description: projectJson.outcome_description,
-      is_public: projectJson.is_public,
-      status: projectJson.status,
-      start_date: projectJson.start_date,
-      end_date: projectJson.end_date,
-      interval: projectJson.interval,
-      created_at: projectJson.created_at,
-      created_by: projectJson.created_by,
-      updated_at: projectJson.updated_at,
-      updated_by: projectJson.updated_by,
-      version: projectJson.version,
-      milestones: projectJson.milestones?.map((m: unknown) => {
-        const milestone = m as Record<string, unknown>;
-        return {
-        id: milestone.id,
-        project_id: milestone.project_id,
-        position: milestone.position,
-        name: milestone.name,
-        description: milestone.description || '',
-        start_date: milestone.start_date,
-        end_date: milestone.end_date,
-        is_completed: milestone.is_completed,
-        is_deleted: milestone.is_deleted,
-        created_at: milestone.created_at,
-        updated_at: milestone.updated_at,
-        tasks: (milestone.tasks as unknown[])?.map((t: unknown) => {
-          const task = t as Record<string, unknown>;
-          return {
-          id: task.id,
-          milestone_id: task.milestone_id,
-          position: task.position,
-          name: task.name,
-          description: task.description || '',
-          days_of_week: task.days_of_week,
-          is_completed: task.is_completed,
-          is_deleted: task.is_deleted,
-          created_at: task.created_at,
-          updated_at: task.updated_at
-        }}) || []
-        };
-      }) || [],
-      posts: (projectJson.posts as unknown[])?.map((p: unknown) => {
-        const post = p as Record<string, unknown>;
-        return {
-        id: post.id,
-        project_id: post.project_id,
-        user_id: post.user_id,
-        type: post.type,
-        week: post.week,
-        title: post.title,
-        date: post.date,
-        visibility: post.visibility,
-        status: post.status,
-        created_at: post.created_at,
-        updated_at: post.updated_at,
-        note: post.note,
-        outcome: post.outcome,
-        review: post.review
-        };
-      }) || []
-    };
   }
 }
 

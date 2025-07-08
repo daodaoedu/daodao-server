@@ -4,84 +4,61 @@
  */
 
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
-import { jwtService } from '../services/jwt-service';
+import { jwtService } from '../services/jwt.service';
 import { emailService } from '../services/auth/email.service';
-import { permissionService } from '../services/auth/permission.service';
-import { User, Contact, TempUser } from '../models/index';
-import { Op } from 'sequelize';
+import { authService } from '../services/auth/auth.service';
+import { prisma } from '../services/database/prisma.service';
 import { 
   LoginRequest,
-  RegisterRequest,
-  PasswordResetRequest,
-  PasswordResetConfirm,
-  EmailVerification,
   AuthResponse
 } from '../types/auth.types';
 import { 
   BadRequestError, 
   UnauthorizedError, 
-  NotFoundError,
-  ConflictError 
+  NotFoundError
 } from '../utils/error-handler';
 import { asyncWrapper } from '../utils/error-handler';
 
 /**
  * 用戶登入
  * POST /api/auth/login
+ * 注意：當前版本僅支援 OAuth 登入，密碼登入需要 schema 更新
  */
 export const login = asyncWrapper(async (req: Request, res: Response) => {
-  const { email, password } = req.body as LoginRequest;
+  const { email } = req.body as LoginRequest;
 
   // 查找用戶
-  const contact = await Contact.findOne({
-    where: { email },
-    include: [{
-      model: User,
-      required: true
-    }]
-  });
-
-  if (!contact) {
-    throw new UnauthorizedError('電子郵件或密碼錯誤');
+  const userResult = await authService.findUserByEmail(email);
+  
+  if (!userResult) {
+    throw new UnauthorizedError('用戶不存在');
   }
 
-  // 使用類型斷言來訪問關聯的用戶
-  const user = (contact as Contact & { User: User }).User;
-  if (!user) {
-    throw new UnauthorizedError('電子郵件或密碼錯誤');
-  }
+  const { contact, user } = userResult;
 
-  // 驗證密碼
-  const isPasswordValid = await bcrypt.compare(password, user.password_hash || '');
-  if (!isPasswordValid) {
-    throw new UnauthorizedError('電子郵件或密碼錯誤');
-  }
-
-  // 檢查帳號是否啟用
-  if (!user.is_active) {
-    throw new UnauthorizedError('帳號已被停用');
-  }
+  // 目前 Prisma schema 不包含密碼字段，暫時只支援 OAuth
+  // TODO: 更新 schema 以支援密碼認證
+  throw new UnauthorizedError('請使用 Google 登入');
 
   // 獲取用戶角色和權限
-  const userRoles = await permissionService.getUserRoles(user.id);
-  const userPermissions = await permissionService.getUserPermissions(user.id);
+  const userRoles = await authService.getUserRoles(user.id);
+  const userPermissions = await authService.getUserPermissions(user.id);
 
   // 生成 JWT token
   const tokenPayload = {
     id: user.id,
-    email: contact.email,
-    username: user.username,
+    _id: user.external_id || '',
+    email: contact.email || '',
+    username: user.nickname || '',
     isTemp: false,
     roles: userRoles.map(role => role.name),
-    permissions: userPermissions.map(permission => `${permission.resource}:${permission.action}`)
+    permissions: userPermissions.map(permission => permission.name)
   };
 
-  const token = jwtService.generateToken(tokenPayload);
+  const token = authService.generateAuthToken(tokenPayload);
 
   // 更新最後登入時間
-  await user.update({ last_login_at: new Date() });
+  await authService.updateLastLogin(user.id);
 
   const response: AuthResponse = {
     success: true,
@@ -89,11 +66,11 @@ export const login = asyncWrapper(async (req: Request, res: Response) => {
     token,
     user: {
       id: user.id,
-      username: user.username,
-      email: contact.email,
-      name: user.name,
-      photo_url: user.photo_url,
-      is_active: user.is_active
+      username: user.nickname || '',
+      email: contact.email || '',
+      name: user.nickname || '',
+      photo_url: contact.photo_url || '',
+      is_active: true // Prisma schema 沒有 is_active 字段，假設都是 active
     },
     isTemporary: false
   };
@@ -104,88 +81,12 @@ export const login = asyncWrapper(async (req: Request, res: Response) => {
 /**
  * 用戶註冊
  * POST /api/auth/register
+ * 注意：當前版本暫不支援註冊，需要 schema 更新
  */
 export const register = asyncWrapper(async (req: Request, res: Response) => {
-  const { username, email, password, confirmPassword, name } = req.body as RegisterRequest;
-
-  // 確認密碼
-  if (password !== confirmPassword) {
-    throw new BadRequestError('密碼確認不符');
-  }
-
-  // 檢查電子郵件是否已存在
-  const existingContact = await Contact.findOne({ where: { email } });
-  if (existingContact) {
-    throw new ConflictError('此電子郵件已被註冊');
-  }
-
-  // 檢查用戶名是否已存在
-  const existingUser = await User.findOne({ where: { username } });
-  if (existingUser) {
-    throw new ConflictError('此用戶名已被使用');
-  }
-
-  // 密碼加密
-  const saltRounds = 12;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-  // 生成外部 ID
-  const externalId = uuidv4();
-
-  // 開始資料庫交易
-  const transaction = await User.sequelize?.transaction();
-  
-  try {
-    // 建立用戶
-    const user = await User.create({
-      external_id: externalId,
-      username,
-      password_hash: hashedPassword,
-      name: name || username,
-      is_active: true,
-      email_verified: false,
-      created_at: new Date(),
-      updated_at: new Date()
-    }, { transaction });
-
-    // 建立聯絡資訊
-    await Contact.create({
-      user_id: user.id,
-      email,
-      created_at: new Date(),
-      updated_at: new Date()
-    }, { transaction });
-
-    await transaction?.commit();
-
-    // 生成驗證令牌並發送驗證郵件
-    const verificationToken = jwtService.generateToken({
-      id: user.id,
-      email,
-      type: 'email_verification'
-    });
-
-    // 發送驗證郵件
-    await emailService.sendVerificationEmail(email, verificationToken);
-
-    const response: AuthResponse = {
-      success: true,
-      message: '註冊成功，請檢查您的電子郵件進行驗證',
-      user: {
-        id: user.id,
-        username: user.username,
-        email,
-        name: user.name,
-        is_active: user.is_active
-      },
-      isTemporary: false
-    };
-
-    res.status(201).json(response);
-  } catch (error) {
-    await transaction?.rollback();
-    throw error;
-  }
+  // 目前 Prisma schema 不包含密碼字段，暫時禁用註冊功能
+  // TODO: 更新 schema 以支援完整的用戶註冊
+  throw new BadRequestError('註冊功能暫時不可用，請使用 Google 登入');
 });
 
 /**
@@ -193,50 +94,58 @@ export const register = asyncWrapper(async (req: Request, res: Response) => {
  * GET /api/auth/google/callback
  */
 export const googleCallback = asyncWrapper(async (req: Request, res: Response) => {
-  const user = req.user;
+  const user = req.user as { googleID?: string; _id?: string; id?: number; external_id?: string; roleId?: number; name?: string };
   
   if (!user) {
     throw new UnauthorizedError('Google 認證失敗');
   }
 
-  // 判斷是正式用戶還是臨時用戶
-  // 檢查是否有 dataValues 屬性 (Sequelize 模型才有)
-  const isTemporary = !(user as { dataValues?: unknown }).dataValues;
+  console.log('google/callback_req.user', user);
   
-  let tokenPayload;
-  let redirectUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // 參考 JavaScript 版本的邏輯
+  let { googleID, _id, id, external_id, roleId, name } = user;
+  let isUserExit = false;
 
-  if (isTemporary) {
-    // 臨時用戶
-    const tempUser = user as { id: number; email: string; name: string };
-    tokenPayload = {
-      id: tempUser.id,
-      email: tempUser.email,
-      name: tempUser.name,
-      isTemp: true,
-      roles: [],
-      permissions: []
-    };
-    redirectUrl += '/onboarding'; // 導向到註冊完成頁面
-  } else {
-    // 正式用戶
-    const formalUser = user as { id: number; email?: string; username?: string };
-    const contact = await Contact.findOne({ where: { user_id: formalUser.id } });
-    tokenPayload = {
-      id: formalUser.id,
-      email: contact?.email || formalUser.email,
-      username: formalUser.username,
-      isTemp: false,
-      roles: [], // TODO: 從資料庫獲取角色
-      permissions: [] // TODO: 從資料庫獲取權限
-    };
-    redirectUrl += '/dashboard';
+  if (external_id) {
+    _id = external_id;
+    isUserExit = true;
+  }
+  
+  console.log('google/callback_isUserExit', isUserExit);
+  const time = Date.now();
+  const isTemp = !isUserExit;
+
+  // 獲取用戶角色和權限（如果是正式用戶）
+  let userRoles: any[] = [];
+  let userPermissions: any[] = [];
+  
+  if (!isTemp && id) {
+    try {
+      userRoles = await authService.getUserRoles(id);
+      userPermissions = await authService.getUserPermissions(id);
+    } catch (error) {
+      console.error('Failed to fetch user roles/permissions:', error);
+      // 繼續執行，但不會有權限
+    }
   }
 
-  const token = jwtService.generateToken(tokenPayload);
+  const payload = { 
+    id: id || 0, 
+    _id: _id || '', 
+    username: name || '', 
+    isTemp,
+    roles: userRoles.map(role => role.name),
+    permissions: userPermissions.map(permission => permission.name)
+  };
+  console.log('google/callback_payload', payload);
+  
+  const token = jwtService.generateToken(payload);
+  console.log('google/callback_token', token);
+  
+  const url = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+  console.log('google/callback_url', url);
 
-  // 重定向到前端，並帶上 token
-  res.redirect(`${redirectUrl}?token=${token}&temporary=${isTemporary}`);
+  return res.redirect(url);
 });
 
 /**
@@ -310,19 +219,33 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
   let user;
   let contact;
 
+  // 獲取用戶角色和權限
+  let userRoles: any[] = [];
+  let userPermissions: any[] = [];
+
   if (isTemporary) {
     // 臨時用戶
-    user = await TempUser.findByPk(userId);
+    user = await prisma.temp_users.findUnique({
+      where: { id: userId }
+    });
     if (!user) {
       throw new NotFoundError('臨時用戶不存在');
     }
   } else {
     // 正式用戶
-    user = await User.findByPk(userId);
-    contact = await Contact.findOne({ where: { user_id: userId } });
-    
+    user = await authService.findUserByExternalId(decoded._id || '');
     if (!user) {
       throw new NotFoundError('用戶不存在');
+    }
+    contact = user.contacts;
+    
+    // 獲取用戶角色和權限
+    try {
+      userRoles = await authService.getUserRoles(user.id);
+      userPermissions = await authService.getUserPermissions(user.id);
+    } catch (error) {
+      console.error('Failed to fetch user roles/permissions:', error);
+      // 繼續執行，但不會有權限
     }
   }
 
@@ -331,11 +254,13 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
     message: '獲取用戶資訊成功',
     user: {
       id: user.id,
-      username: isTemporary ? undefined : (user as User).username,
-      email: contact?.email || user.email,
-      name: user.name,
-      photo_url: user.photo_url,
-      is_active: isTemporary ? true : (user as User).is_active
+      username: isTemporary ? undefined : (user as { nickname?: string }).nickname,
+      email: contact?.email || (user as { email?: string }).email,
+      name: (user as { name?: string; nickname?: string }).name || (user as { nickname?: string }).nickname,
+      photo_url: (user as { photo_url?: string }).photo_url || contact?.photo_url || '',
+      is_active: true, // Prisma schema 沒有 is_active 字段
+      roles: userRoles.map(role => role.name),
+      permissions: userPermissions.map(permission => permission.name)
     },
     isTemporary
   };
@@ -347,87 +272,18 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
  * 請求密碼重設
  * POST /api/auth/forgot-password
  */
-export const forgotPassword = asyncWrapper(async (req: Request, res: Response) => {
-  const { email } = req.body as PasswordResetRequest;
-
-  const contact = await Contact.findOne({
-    where: { email },
-    include: [{ model: User, as: 'user', required: true }]
-  });
-
-  if (!contact || !contact.user) {
-    // 為了安全性，即使用戶不存在也返回成功訊息
-    const response: AuthResponse = {
-      success: true,
-      message: '如果該電子郵件已註冊，您將收到密碼重設連結'
-    };
-    res.json(response);
-    return;
-  }
-
-  // 生成重設令牌
-  const resetToken = uuidv4();
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1小時後過期
-
-  // 儲存重設令牌
-  await (contact.user as { update: (data: { password_reset_token: string; password_reset_expires: Date }) => Promise<unknown> }).update({
-    password_reset_token: resetToken,
-    password_reset_expires: expiresAt
-  });
-
-  // 發送密碼重設郵件
-  await emailService.sendPasswordResetEmail(contact.email, resetToken);
-
-  const response: AuthResponse = {
-    success: true,
-    message: '密碼重設連結已發送到您的電子郵箱'
-  };
-
-  res.json(response);
+export const forgotPassword = asyncWrapper(async (_req: Request, _res: Response) => {
+  // 目前不支援密碼重設功能
+  throw new BadRequestError('密碼重設功能暫時不可用');
 });
 
 /**
  * 確認密碼重設
  * POST /api/auth/reset-password
  */
-export const resetPassword = asyncWrapper(async (req: Request, res: Response) => {
-  const { token, newPassword, confirmPassword } = req.body as PasswordResetConfirm;
-
-  if (newPassword !== confirmPassword) {
-    throw new BadRequestError('密碼確認不符');
-  }
-
-  const user = await User.findOne({
-    where: {
-      password_reset_token: token,
-      password_reset_expires: {
-        [Op.gt]: new Date()
-      }
-    }
-  });
-
-  if (!user) {
-    throw new BadRequestError('無效或已過期的重設令牌');
-  }
-
-  // 加密新密碼
-  const saltRounds = 12;
-  const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-  // 更新密碼並清除重設令牌
-  await user.update({
-    password_hash: hashedPassword,
-    password_reset_token: undefined,
-    password_reset_expires: undefined,
-    updated_at: new Date()
-  });
-
-  const response: AuthResponse = {
-    success: true,
-    message: '密碼重設成功'
-  };
-
-  res.json(response);
+export const resetPassword = asyncWrapper(async (_req: Request, _res: Response) => {
+  // 目前不支援密碼重設功能
+  throw new BadRequestError('密碼重設功能暫時不可用');
 });
 
 /**
@@ -435,59 +291,53 @@ export const resetPassword = asyncWrapper(async (req: Request, res: Response) =>
  * POST /api/auth/verify-email
  */
 export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { token, email } = req.body as EmailVerification;
+  // 參考原有 JavaScript 版本的邏輯
+  const decodedQuery = decodeURIComponent(req.url);
+  console.log("Decoded query:", decodedQuery);
+  const tokenMatch = decodedQuery.match(/token=([^&]*)/);
+  const token = tokenMatch ? tokenMatch[1] : null;
 
-  if (!token) {
-    throw new BadRequestError('驗證令牌為必填項');
-  }
-
-  // 驗證令牌
-  const decoded = jwtService.verifyToken(token);
+  console.log("token", token);
   
-  if (decoded.error) {
-    throw new BadRequestError('無效或已過期的驗證令牌');
+  if (!token) {
+    throw new BadRequestError('No token provided');
   }
 
-  // 檢查令牌類型
-  if (decoded.type !== 'email_verification') {
-    throw new BadRequestError('無效的驗證令牌類型');
+  try {
+    const cleanedToken = token.replace('Bearer', '').trim();
+    
+    const decoded = jwtService.verifyToken(cleanedToken);
+    console.log("decoded", decoded);
+
+    if (decoded.error) {
+      throw new UnauthorizedError(decoded.error);
+    }
+
+    // 使用 external_id 查找用戶
+    const user = await authService.findUserByExternalId(decoded._id || '');
+    console.log("user", user);
+
+    if (user) {
+      // 在當前 Prisma schema 中，沒有 isVerified 字段
+      // 可以考慮添加或使用其他方式標記驗證狀態
+      console.log("user_verification", user);
+
+      const url = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&isVerified=true`;
+      
+      // 發送歡迎郵件
+      const contact = user.contacts;
+      if (contact?.email) {
+        await emailService.sendWelcomeEmail(contact.email, user.nickname || 'User');
+      }
+
+      return res.redirect(url);
+    }
+
+    throw new NotFoundError('User not found');
+  } catch (err) {
+    console.error("verifyEmail error:", err);
+    throw err;
   }
-
-  // 查找用戶
-  const contact = await Contact.findOne({
-    where: { email: email || decoded.email },
-    include: [{ model: User, as: 'user', required: true }]
-  });
-
-  if (!contact || !contact.user) {
-    throw new NotFoundError('找不到對應的用戶');
-  }
-
-  // 檢查用戶ID是否匹配
-  if ((contact.user as { id: number }).id !== decoded.id) {
-    throw new UnauthorizedError('驗證令牌與用戶不匹配');
-  }
-
-  // 檢查是否已經驗證過
-  if ((contact.user as { email_verified: boolean }).email_verified) {
-    throw new BadRequestError('電子郵件已經驗證過了');
-  }
-
-  // 更新用戶驗證狀態
-  await (contact.user as { update: (data: { email_verified: boolean; email_verified_at: Date }) => Promise<unknown> }).update({
-    email_verified: true,
-    email_verified_at: new Date()
-  });
-
-  // 發送歡迎郵件
-  await emailService.sendWelcomeEmail(contact.email, (contact.user as { name?: string }).name || 'User');
-
-  const response: AuthResponse = {
-    success: true,
-    message: '電子郵件驗證成功，歡迎加入島島阿學！'
-  };
-
-  res.json(response);
 });
 
 export const authController = {

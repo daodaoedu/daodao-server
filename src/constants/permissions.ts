@@ -98,7 +98,26 @@ export const PERMISSIONS = {
     DASHBOARD: 'admin:dashboard',
     SETTINGS: 'admin:settings',
     LOGS: 'admin:logs',
-    BACKUP: 'admin:backup'
+    BACKUP: 'admin:backup',
+    MODERATE: 'admin:moderate',
+    ANALYTICS: 'admin:analytics'
+  },
+
+  // 內容審核權限
+  MODERATION: {
+    APPROVE: 'moderation:approve',
+    REJECT: 'moderation:reject',
+    SUSPEND: 'moderation:suspend',
+    FLAG: 'moderation:flag',
+    REVIEW: 'moderation:review'
+  },
+
+  // 系統操作權限
+  SYSTEM: {
+    BACKUP: 'system:backup',
+    RESTORE: 'system:restore',
+    MAINTENANCE: 'system:maintenance',
+    CONFIG: 'system:config'
   }
 } as const;
 

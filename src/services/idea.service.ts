@@ -1,0 +1,510 @@
+/**
+ * 想法服務 - Prisma 架構
+ * 處理想法相關的業務邏輯
+ */
+
+import { prisma } from '@/services/database/prisma.service';
+import type { ideas, users, tags, Prisma } from '../../generated/prisma';
+import { 
+  IdeaEntity, 
+  IdeaQueryResult, 
+  IdeaFilters, 
+  CreateIdeaResponse,
+  IdeaStats,
+  InteractionStatus,
+  PaginationInfo,
+  IdeaResource,
+  IdeaStatus
+} from '@/types/idea.types';
+import { 
+  CreateIdeaRequest, 
+  UpdateIdeaRequest
+} from '@/validators/idea.validators';
+import { 
+  NotFoundError, 
+  ForbiddenError
+} from '@/utils/error-handler';
+import tagService from '@/services/tag.service';
+
+// 定義分頁參數介面
+interface PaginationParams {
+  page: number;
+  limit: number;
+  sort: string;
+  order: 'asc' | 'desc';
+}
+
+/**
+ * 根據 external_id 獲取想法
+ * @param externalId - 想法的 external_id (UUID)
+ * @param userId - 當前使用者 ID（用於查詢互動狀態）
+ * @returns 想法詳情
+ */
+export async function getIdeaById(externalId: string, userId?: number): Promise<IdeaEntity> {
+  // 查詢想法，使用 external_id
+  const idea = await prisma.ideas.findUnique({
+    where: { external_id: externalId },
+    include: {
+      users: {
+        select: {
+          id: true,
+          nickname: true,
+          contacts: {
+            select: {
+              photo_url: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!idea) {
+    throw new NotFoundError('想法不存在');
+  }
+
+  // 查詢標籤
+  const tags = await prisma.entity_tags.findMany({
+    where: {
+      entity_type: 'idea',
+      entity_id: idea.external_id || ''
+    },
+    include: {
+      tags: true
+    }
+  });
+
+  // 查詢資源
+  const resources = await prisma.entity_resources.findMany({
+    where: {
+      entity_type: 'idea',
+      entity_id: idea.external_id || ''
+    },
+    include: {
+      resources: {
+        include: {
+          users: {
+            select: {
+              id: true,
+              nickname: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 構建返回的想法實體
+  const ideaEntity: IdeaEntity = {
+    id: idea.external_id || '',
+    content: idea.content,
+    status: (idea.status || 'active') as IdeaStatus,
+    hasResources: idea.has_resources || false,
+    user: {
+      id: idea.users.id.toString(),
+      name: idea.users.nickname || '',
+      photoUrl: idea.users.contacts?.photo_url || undefined
+    },
+    tags: tags.map(tag => tag.tags.name),
+    likeCount: 0, // 可以後續實現
+    commentCount: 0, // 可以後續實現
+    viewCount: 0, // 可以後續實現
+    shareCount: 0, // 可以後續實現
+    resourceCount: resources.length,
+    isLiked: false, // 可以後續實現
+    isFavorited: false, // 可以後續實現
+    createdAt: idea.created_at?.toISOString() || new Date().toISOString(),
+    updatedAt: idea.updated_at?.toISOString() || new Date().toISOString()
+  };
+
+  return ideaEntity;
+}
+
+/**
+ * 獲取想法列表
+ * @param filters - 篩選條件
+ * @param pagination - 分頁參數
+ * @param userId - 當前使用者 ID（用於查詢互動狀態）
+ * @returns 想法列表和分頁資訊
+ */
+export async function getIdeas(
+  filters: IdeaFilters,
+  pagination: PaginationParams,
+  userId?: number
+): Promise<IdeaQueryResult> {
+  const { page, limit, sort, order } = pagination;
+  const skip = (page - 1) * limit;
+
+  // 預先處理標籤篩選
+  let ideaExternalIds: string[] | undefined;
+  if (filters.tags && filters.tags.length > 0) {
+    const taggedIdeaIds = await prisma.entity_tags.findMany({
+      where: {
+        entity_type: 'idea',
+        tags: {
+          name: {
+            in: filters.tags
+          }
+        }
+      },
+      select: {
+        entity_id: true
+      }
+    });
+    
+    ideaExternalIds = taggedIdeaIds.map(tag => tag.entity_id);
+    if (ideaExternalIds.length === 0) {
+      // 如果沒有找到任何標籤匹配的想法，返回空結果
+      return {
+        ideas: [],
+        pagination: {
+          page,
+          currentPage: page,
+          totalPages: 0,
+          total: 0,
+          limit
+        }
+      };
+    }
+  }
+
+  // 構建查詢條件
+  const where: Prisma.ideasWhereInput = {
+    deleted_at: null
+  };
+
+  // 添加狀態篩選
+  if (filters.status) {
+    where.status = filters.status;
+  }
+
+  // 添加作者篩選
+  if (filters.authorId) {
+    where.user_id = parseInt(filters.authorId);
+  }
+
+  // 添加內容搜尋
+  if (filters.search) {
+    where.content = {
+      contains: filters.search,
+      mode: 'insensitive'
+    };
+  }
+
+  // 添加標籤篩選結果
+  if (ideaExternalIds) {
+    where.external_id = {
+      in: ideaExternalIds
+    };
+  }
+
+  // 構建排序條件
+  const orderBy: Prisma.ideasOrderByWithRelationInput = {};
+  if (sort === 'created_at') {
+    orderBy.created_at = order;
+  } else if (sort === 'updated_at') {
+    orderBy.updated_at = order;
+  }
+
+  // 查詢想法列表
+  const [ideas, totalCount] = await Promise.all([
+    prisma.ideas.findMany({
+      where,
+      include: {
+        users: {
+          select: {
+            id: true,
+            nickname: true,
+            contacts: {
+              select: {
+                photo_url: true
+              }
+            }
+          }
+        }
+      },
+      orderBy,
+      skip,
+      take: limit
+    }),
+    prisma.ideas.count({ where })
+  ]);
+
+  // 批量查詢標籤
+  const ideaIds = ideas.map(idea => idea.external_id || '');
+  const allTags = await prisma.entity_tags.findMany({
+    where: {
+      entity_type: 'idea',
+      entity_id: { in: ideaIds }
+    },
+    include: {
+      tags: true
+    }
+  });
+
+  // 將標籤按想法 ID 分組
+  const tagsByIdeaId = allTags.reduce((acc, tag) => {
+    if (!acc[tag.entity_id]) {
+      acc[tag.entity_id] = [];
+    }
+    acc[tag.entity_id].push({
+      id: tag.tags.id,
+      name: tag.tags.name
+    });
+    return acc;
+  }, {} as Record<string, Array<{ id: number; name: string }>>);
+
+  // 構建想法實體列表
+  const ideaEntities: IdeaEntity[] = ideas.map(idea => ({
+    id: idea.external_id || '',
+    content: idea.content,
+    status: (idea.status || 'active') as IdeaStatus,
+    hasResources: idea.has_resources || false,
+    user: {
+      id: idea.users.id.toString(),
+      name: idea.users.nickname || '',
+      photoUrl: idea.users.contacts?.photo_url || undefined
+    },
+    tags: tagsByIdeaId[idea.external_id || '']?.map(tag => tag.name) || [],
+    likeCount: 0,
+    commentCount: 0,
+    viewCount: 0,
+    shareCount: 0,
+    resourceCount: 0,
+    isLiked: false,
+    isFavorited: false,
+    createdAt: (idea.created_at || new Date()).toISOString(),
+    updatedAt: (idea.updated_at || new Date()).toISOString()
+  }));
+
+  // 構建分頁資訊
+  const totalPages = Math.ceil(totalCount / limit);
+  const paginationInfo: PaginationInfo = {
+    page,
+    currentPage: page,
+    totalPages,
+    total: totalCount,
+    limit
+  };
+
+  return {
+    ideas: ideaEntities,
+    pagination: paginationInfo
+  };
+}
+
+/**
+ * 創建想法
+ * @param data - 想法數據
+ * @param userId - 創建者 ID
+ * @returns 創建結果
+ */
+export async function createIdea(data: CreateIdeaRequest, userId: number): Promise<CreateIdeaResponse> {
+  return await prisma.$transaction(async (tx) => {
+    // 創建想法
+    const idea = await tx.ideas.create({
+      data: {
+        user_id: userId,
+        content: data.content,
+        status: 'active',
+        has_resources: data.resources ? data.resources.length > 0 : false
+      }
+    });
+
+    // 處理標籤
+    if (data.tags && data.tags.length > 0) {
+      await tagService.setEntityTags('idea', idea.external_id || '', data.tags, userId, tx);
+    }
+
+    // 處理資源 - 創建新資源並關聯到想法
+    if (data.resources && data.resources.length > 0) {
+      for (const resourceData of data.resources) {
+        // 先創建資源
+        const resource = await tx.resources.create({
+          data: {
+            name: resourceData.name,
+            url: resourceData.url,
+            description: resourceData.description || '',
+            type: 'link', // 預設類型
+            cost: 'free', // 預設成本
+            level: 'all_levels', // 預設難度
+            created_by: userId,
+            status: 'active'
+          }
+        });
+
+        // 再關聯到想法
+        await tx.entity_resources.create({
+          data: {
+            entity_type: 'idea',
+            entity_id: idea.external_id || '',
+            resource_id: resource.id,
+            created_by: userId
+          }
+        });
+      }
+    }
+
+    // 獲取完整的想法詳情
+    const fullIdea = await getIdeaById(idea.external_id || '', userId);
+    
+    return {
+      idea: fullIdea
+    };
+  });
+}
+
+/**
+ * 更新想法
+ * @param ideaId - 想法 ID
+ * @param data - 更新數據
+ * @param userId - 當前使用者 ID
+ * @returns 更新後的想法
+ */
+export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId: number): Promise<IdeaEntity> {
+  return await prisma.$transaction(async (tx) => {
+    // 檢查想法是否存在
+    const existingIdea = await tx.ideas.findUnique({
+      where: { external_id: ideaId }
+    });
+
+    if (!existingIdea) {
+      throw new NotFoundError('想法不存在');
+    }
+
+    // 檢查權限
+    if (existingIdea.user_id !== userId) {
+      throw new ForbiddenError('無權限修改此想法');
+    }
+
+    // 更新想法
+    const updatedIdea = await tx.ideas.update({
+      where: { external_id: ideaId },
+      data: {
+        content: data.content,
+        has_resources: data.resources ? data.resources.length > 0 : false
+      }
+    });
+
+    // 更新標籤
+    if (data.tags !== undefined) {
+      await tagService.setEntityTags('idea', ideaId, data.tags, userId, tx);
+    }
+
+    // 更新資源
+    if (data.resources !== undefined) {
+      // 刪除現有資源關聯
+      await tx.entity_resources.deleteMany({
+        where: {
+          entity_type: 'idea',
+          entity_id: ideaId
+        }
+      });
+
+      // 添加新的資源關聯
+      for (const resourceData of data.resources) {
+        // 先創建資源
+        const resource = await tx.resources.create({
+          data: {
+            name: resourceData.name,
+            url: resourceData.url,
+            description: resourceData.description || '',
+            type: 'link', // 預設類型
+            cost: 'free', // 預設成本
+            level: 'all_levels', // 預設難度
+            created_by: userId,
+            status: 'active'
+          }
+        });
+
+        // 再關聯到想法
+        await tx.entity_resources.create({
+          data: {
+            entity_type: 'idea',
+            entity_id: ideaId,
+            resource_id: resource.id,
+            created_by: userId
+          }
+        });
+      }
+    }
+
+    // 返回更新後的想法
+    return await getIdeaById(ideaId, userId);
+  });
+}
+
+/**
+ * 刪除想法
+ * @param ideaId - 想法 ID
+ * @param userId - 當前使用者 ID
+ */
+export async function deleteIdea(ideaId: string, userId: number): Promise<void> {
+  return await prisma.$transaction(async (tx) => {
+    // 檢查想法是否存在
+    const existingIdea = await tx.ideas.findUnique({
+      where: { external_id: ideaId }
+    });
+
+    if (!existingIdea) {
+      throw new NotFoundError('想法不存在');
+    }
+
+    // 檢查權限
+    if (existingIdea.user_id !== userId) {
+      throw new ForbiddenError('無權限刪除此想法');
+    }
+
+    // 軟刪除想法
+    await tx.ideas.update({
+      where: { external_id: ideaId },
+      data: {
+        deleted_at: new Date()
+      }
+    });
+  });
+}
+
+/**
+ * 獲取想法統計資訊
+ * @param userId - 使用者 ID（可選）
+ * @returns 統計資訊
+ */
+export async function getIdeaStats(userId?: number): Promise<IdeaStats> {
+  const where: Prisma.ideasWhereInput = {
+    deleted_at: null
+  };
+
+  if (userId) {
+    where.user_id = userId;
+  }
+
+  const [totalCount, activeCount, withResourcesCount] = await Promise.all([
+    prisma.ideas.count({ where }),
+    prisma.ideas.count({ 
+      where: { ...where, status: 'active' } 
+    }),
+    prisma.ideas.count({ 
+      where: { ...where, has_resources: true } 
+    })
+  ]);
+
+  return {
+    likeCount: 0,
+    commentCount: 0,
+    viewCount: 0,
+    shareCount: 0,
+    resourceCount: withResourcesCount,
+    hasResources: withResourcesCount > 0
+  };
+}
+
+// 匯出所有函數
+export default {
+  getIdeaById,
+  getIdeas,
+  createIdea,
+  updateIdea,
+  deleteIdea,
+  getIdeaStats
+};

@@ -93,7 +93,9 @@ export class ProjectController {
         is_public: req.query.is_public ? req.query.is_public === 'true' : undefined,
         user_id: req.query.user_id ? parseInt(req.query.user_id as string) : undefined,
         search: req.query.search as string,
-        sort_by: (req.query.sort_by as string) || 'created_at',
+        sort_by: (['created_at', 'updated_at', 'title', 'start_date', 'end_date'].includes(req.query.sort_by as string)) 
+          ? (req.query.sort_by as 'created_at' | 'updated_at' | 'title' | 'start_date' | 'end_date') 
+          : 'created_at',
         sort_order: (req.query.sort_order as 'ASC' | 'DESC') || 'DESC'
       };
 
@@ -241,7 +243,9 @@ export class ProjectController {
         limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
         status: req.query.status as 'Ongoing' | 'Completed' | 'Not Started' | 'Canceled' | undefined,
         search: req.query.search as string,
-        sort_by: (req.query.sort_by as string) || 'updated_at',
+        sort_by: (['created_at', 'updated_at', 'title', 'start_date', 'end_date'].includes(req.query.sort_by as string)) 
+          ? (req.query.sort_by as 'created_at' | 'updated_at' | 'title' | 'start_date' | 'end_date') 
+          : 'updated_at',
         sort_order: (req.query.sort_order as 'ASC' | 'DESC') || 'DESC',
         user_id: req.user.id
       };
@@ -299,17 +303,17 @@ export class ProjectController {
         title: `${originalResult.data.title} (副本)`,
         description: originalResult.data.description,
         motivation: originalResult.data.motivation,
-        motivation_description: originalResult.data.motivation_description,
-        goal: originalResult.data.goal,
-        content: originalResult.data.content,
+        motivationDescription: originalResult.data.motivationDescription || undefined,
+        goal: originalResult.data.goal || undefined,
+        content: originalResult.data.content || undefined,
         strategy: originalResult.data.strategy,
-        strategy_description: originalResult.data.strategy_description,
-        resource: originalResult.data.resource,
+        strategyDescription: originalResult.data.strategyDescription || undefined,
+        resourceName: originalResult.data.resourceName || undefined,
         outcome: originalResult.data.outcome,
-        outcome_description: originalResult.data.outcome_description,
-        is_public: false, // 副本預設為私人
+        outcomeDescription: originalResult.data.outcomeDescription || undefined,
+        isPublic: false, // 副本預設為私人
         status: 'Not Started',
-        interval: originalResult.data.interval
+        interval: originalResult.data.interval || undefined
       };
 
       const result = await projectService.createProject(req.user.id, duplicateData);
