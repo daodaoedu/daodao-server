@@ -2,50 +2,44 @@
  * 權限管理服務單元測試
  */
 
-import { Op } from 'sequelize';
 import { PermissionService, permissionService } from '../../../services/auth/permission.service';
 
-// Mock models
-jest.mock('../../../models/index', () => ({
-  Permission: {
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn()
-  },
-  Role: {
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn()
-  },
-  User: {
-    findByPk: jest.fn()
-  },
-  UserRole: {
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn()
-  },
-  RolePermission: {
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn()
-  },
-  Resource: {
-    findOne: jest.fn()
+// Mock Prisma service
+jest.mock('../../../services/database/prisma.service', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    permissions: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn()
+    },
+    roles: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn()
+    },
+    users: {
+      findUnique: jest.fn()
+    },
+    user_roles: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn()
+    },
+    role_permissions: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn()
+    },
+    resources: {
+      findUnique: jest.fn()
+    }
   }
 }));
 
 describe('Permission Service', () => {
-  const {
-    Permission,
-    Role,
-    User,
-    UserRole,
-    RolePermission,
-    Resource
-  } = require('../../../models/index');
-
   let service: PermissionService;
+  let prisma: any;
 
   beforeEach(() => {
     jest.clearAllMocks();

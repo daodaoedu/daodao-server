@@ -12,49 +12,47 @@ import resourceReviewService, {
   updateReviewStatus,
   deleteReview,
   toggleLikeReview
-} from '../../../services/resource-review-service';
-import { ResourceReview, Resource, Tag, User } from '../../../models/index';
-import ResourceReviewLegacy from '../../../models/resource-review';
-import tagService from '../../../services/tag-service';
-import { transformReviewToApi, transformReviewToDb } from '../../../services/transform-service';
+} from '../../../services/resource-review.service';
+import tagService from '../../../services/tag.service';
+import { transformReviewToApi, transformReviewToDb } from '../../../services/transform.service';
 import { 
   NotFoundError, 
   ConflictError, 
   ForbiddenError 
 } from '../../../utils/error-handler';
 import { decodeCursor, generatePaginationMetadata } from '../../../utils/transform-utils';
-import sequelize from '../../../config/database';
 
-// Mock dependencies for legacy tests
-jest.mock('../../../src/models/resource-review', () => ({
-  __esModule: true,
-  default: {
-    findByPk: jest.fn(),
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findAndCountAll: jest.fn(),
-    findOne: jest.fn()
+// Mock Prisma service
+jest.mock('../../../services/database/prisma.service', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    resource_review: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn()
+    },
+    resources: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    users: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    tags: {
+      findMany: jest.fn(),
+      findUnique: jest.fn()
+    }
   }
 }));
 
-jest.mock('../../../src/config/database', () => {
-  const mockSequelize = {
-    transaction: jest.fn(),
-    define: jest.fn(),
-    col: jest.fn((name: string) => `col:${name}`),
-    fn: jest.fn((fn: string, ...args: any[]) => ({ fn, args })),
-    literal: jest.fn((sql: string) => ({ literal: sql }))
-  };
-  return {
-    __esModule: true,
-    default: mockSequelize
-  };
-});
-
 // Mock dependencies for comprehensive tests
-jest.mock('../../../models/index');
-jest.mock('../../../services/tag-service');
-jest.mock('../../../services/transform-service');
+jest.mock('../../../services/tag.service');
+jest.mock('../../../services/transform.service');
 jest.mock('../../../utils/transform-utils');
 
 describe('Resource Review Service Tests', () => {
@@ -62,9 +60,13 @@ describe('Resource Review Service Tests', () => {
   let mockResource: any;
   let mockUser: any;
   let mockTransaction: any;
+  let prisma: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Get prisma mock
+    prisma = require('../../../services/database/prisma.service').prisma;
 
     // Setup mocks for comprehensive tests
     mockReview = {
@@ -75,30 +77,7 @@ describe('Resource Review Service Tests', () => {
       score_impact: 5,
       status: 'published',
       created_at: new Date(),
-      updated_at: new Date(),
-      toJSON: jest.fn().mockReturnValue({
-        id: 1,
-        user_id: 1,
-        resource_id: 1,
-        content: '很棒的資源',
-        score_impact: 5,
-        status: 'published',
-        created_at: new Date(),
-        updated_at: new Date()
-      }),
-      get: jest.fn().mockImplementation((key: string) => {
-        const data: Record<string, any> = {
-          id: 1,
-          user_id: 1,
-          resource_id: 1,
-          content: '很棒的資源',
-          score_impact: 5,
-          status: 'published'
-        };
-        return data[key];
-      }),
-      update: jest.fn(),
-      destroy: jest.fn()
+      updated_at: new Date()
     };
 
     mockResource = {
@@ -119,15 +98,13 @@ describe('Resource Review Service Tests', () => {
     };
 
     // Setup default mock implementations for comprehensive tests
-    (ResourceReview.findByPk as jest.Mock).mockResolvedValue(mockReview);
-    (ResourceReview.findOne as jest.Mock).mockResolvedValue(null);
-    (ResourceReview.findAndCountAll as jest.Mock).mockResolvedValue({
-      count: 1,
-      rows: [mockReview]
-    });
-    (ResourceReview.create as jest.Mock).mockResolvedValue(mockReview);
-    (Resource.findByPk as jest.Mock).mockResolvedValue(mockResource);
-    (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
+    prisma.resource_review.findUnique.mockResolvedValue(mockReview);
+    prisma.resource_review.findFirst.mockResolvedValue(null);
+    prisma.resource_review.findMany.mockResolvedValue([mockReview]);
+    prisma.resource_review.count.mockResolvedValue(1);
+    prisma.resource_review.create.mockResolvedValue(mockReview);
+    prisma.resources.findUnique.mockResolvedValue(mockResource);
+    prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
 
     // Mock transform functions
     (transformReviewToApi as jest.Mock).mockImplementation((data) => ({
@@ -181,52 +158,51 @@ describe('Resource Review Service Tests', () => {
     });
 
     it('應該使用預設分頁參數（每頁2筆）', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [
-          createMockSequelizeInstance({
-            id: 1,
-            content: '很棒的資源',
-            score_impact: 5,
-            score_mindset: 4,
-            score_problems: 5,
-            score_perspectives: 4,
-            score_goals: 5,
-            time_usage: '1_2_hours_daily',
-            user_id: 100,
-            resource_id: 1,
-            status: 'published',
-            created_at: new Date(),
-            updated_at: new Date(),
-            well_structured: true,
-            practice_focused: true,
-            well_rounded_concepts: false,
-            thought_provoking: true,
-            progressive_learning: false,
-            problem_based: false,
-            real_world_examples: true,
-            interactive: false,
-            visually_rich: true,
-            with_online_courses: true,
-            with_books: false,
-            with_other_tools: true,
-            with_community: false,
-            only_this_resource: false,
-            not_applicable_resource: false
-          })
-        ],
-        count: 5
-      };
-      (ResourceReview.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 Prisma 查詢返回值
+      const mockReviews = [
+        {
+          id: 1,
+          content: '很棒的資源',
+          score_impact: 5,
+          score_mindset: 4,
+          score_problems: 5,
+          score_perspectives: 4,
+          score_goals: 5,
+          time_usage: '1_2_hours_daily',
+          user_id: 100,
+          resource_id: 1,
+          status: 'published',
+          created_at: new Date(),
+          updated_at: new Date(),
+          well_structured: true,
+          practice_focused: true,
+          well_rounded_concepts: false,
+          thought_provoking: true,
+          progressive_learning: false,
+          problem_based: false,
+          real_world_examples: true,
+          interactive: false,
+          visually_rich: true,
+          with_online_courses: true,
+          with_books: false,
+          with_other_tools: true,
+          with_community: false,
+          only_this_resource: false,
+          not_applicable_resource: false
+        }
+      ];
+      
+      prisma.resource_review.findMany.mockResolvedValue(mockReviews);
+      prisma.resource_review.count.mockResolvedValue(5);
 
       // 執行測試，不提供 limit 參數
       const result = await resourceReviewService.getReviews({}, {});
 
       // 驗證調用參數 - 實際使用 cursor-based pagination
-      expect(ResourceReview.findAndCountAll).toHaveBeenCalledWith(
+      expect(prisma.resource_review.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          limit: 3, // DEFAULT_REVIEW_PAGE_LIMIT + 1 (2 + 1)
-          order: [['created_at', 'desc']],
+          take: 3, // DEFAULT_REVIEW_PAGE_LIMIT + 1 (2 + 1)
+          orderBy: { created_at: 'desc' },
           where: expect.objectContaining({
             status: 'published'
           })
@@ -235,21 +211,18 @@ describe('Resource Review Service Tests', () => {
     });
 
     it('應該限制最大分頁數量為10筆', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (ResourceReview.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 Prisma 查詢返回值
+      prisma.resource_review.findMany.mockResolvedValue([]);
+      prisma.resource_review.count.mockResolvedValue(0);
 
       // 執行測試，提供超過最大限制的 limit
       const result = await resourceReviewService.getReviews({}, { limit: 25 });
 
       // 驗證調用參數
-      expect(ResourceReview.findAndCountAll).toHaveBeenCalledWith(
+      expect(prisma.resource_review.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          limit: 11, // MAX_REVIEW_PAGE_LIMIT + 1 (10 + 1)
-          order: [['created_at', 'desc']],
+          take: 11, // MAX_REVIEW_PAGE_LIMIT + 1 (10 + 1)
+          orderBy: { created_at: 'desc' },
           where: expect.objectContaining({
             status: 'published'
           })
@@ -258,12 +231,9 @@ describe('Resource Review Service Tests', () => {
     });
 
     it('應該正確處理游標分頁', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (ResourceReview.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 Prisma 查詢返回值
+      prisma.resource_review.findMany.mockResolvedValue([]);
+      prisma.resource_review.count.mockResolvedValue(0);
 
       // 創建有效的游標
       const cursor = Buffer.from(JSON.stringify({
@@ -278,24 +248,21 @@ describe('Resource Review Service Tests', () => {
       });
 
       // 驗證調用參數包含游標條件
-      expect(ResourceReview.findAndCountAll).toHaveBeenCalledWith(
+      expect(prisma.resource_review.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             status: 'published',
-            [Op.or]: expect.any(Array) // 游標條件 (Op.or)
+            OR: expect.any(Array) // 游標條件 (OR)
           }),
-          limit: 3 // limit + 1 (2 + 1)
+          take: 3 // limit + 1 (2 + 1)
         })
       );
     });
 
     it('應該正確處理排序參數', async () => {
-      // 模擬 findAndCountAll 返回值
-      const mockResult = {
-        rows: [],
-        count: 0
-      };
-      (ResourceReview.findAndCountAll as jest.Mock).mockResolvedValue(mockResult);
+      // 模擬 Prisma 查詢返回值
+      prisma.resource_review.findMany.mockResolvedValue([]);
+      prisma.resource_review.count.mockResolvedValue(0);
 
       // 執行測試
       const result = await resourceReviewService.getReviews({}, { 
@@ -304,9 +271,9 @@ describe('Resource Review Service Tests', () => {
       });
 
       // 驗證調用參數
-      expect(ResourceReview.findAndCountAll).toHaveBeenCalledWith(
+      expect(prisma.resource_review.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          order: [['created_at', 'asc']]
+          orderBy: { created_at: 'asc' }
         })
       );
     });
@@ -423,29 +390,25 @@ describe('Resource Review Service Tests', () => {
     it('should successfully get review by ID', async () => {
       const result = await getReviewById(1);
 
-      expect(ResourceReview.findByPk).toHaveBeenCalledWith(1, {
-        include: [
-          { model: User, as: 'User' },
-          { model: Resource, as: 'Resource' },
-          {
-            model: Tag,
-            as: 'tags',
-            through: {
-              attributes: [],
-              where: { entity_type: 'resource_review' }
-            }
+      expect(prisma.resource_review.findUnique).toHaveBeenCalledWith({
+        where: { id: 1 },
+        include: {
+          User: true,
+          Resource: true,
+          tags: {
+            where: { entity_type: 'resource_review' }
           }
-        ]
+        }
       });
       expect(transformReviewToApi).toHaveBeenCalledWith({
-        ...mockReview.toJSON(),
+        ...mockReview,
         stats: { likes_count: 0 }
       });
       expect(result).toBeDefined();
     });
 
     it('should throw NotFoundError when review not found', async () => {
-      (ResourceReview.findByPk as jest.Mock).mockResolvedValue(null);
+      prisma.resource_review.findUnique.mockResolvedValue(null);
 
       await expect(getReviewById(999)).rejects.toThrow(NotFoundError);
       await expect(getReviewById(999)).rejects.toThrow('找不到 ID 為 999 的心得評價');
@@ -462,43 +425,39 @@ describe('Resource Review Service Tests', () => {
     it('should successfully create a review', async () => {
       const result = await createReview(1, reviewData, 1);
 
-      expect(Resource.findByPk).toHaveBeenCalledWith(1);
-      expect(ResourceReview.findOne).toHaveBeenCalledWith({
+      expect(prisma.resources.findUnique).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(prisma.resource_review.findFirst).toHaveBeenCalledWith({
         where: {
           user_id: 1,
           resource_id: 1
         }
       });
       expect(transformReviewToDb).toHaveBeenCalledWith(reviewData, 1, 1);
-      expect(ResourceReview.create).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(prisma.resource_review.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
           user_id: 1,
           resource_id: 1
-        }),
-        { transaction: mockTransaction }
-      );
+        })
+      });
       expect(tagService.setEntityTags).toHaveBeenCalledWith(
         1,
         'resource_review',
         ['JavaScript', 'React'],
-        mockTransaction
+        prisma
       );
-      expect(mockTransaction.commit).toHaveBeenCalled();
       expect(result).toBeDefined();
     });
 
     it('should throw NotFoundError when resource not found', async () => {
-      (Resource.findByPk as jest.Mock).mockResolvedValue(null);
+      prisma.resources.findUnique.mockResolvedValue(null);
 
       await expect(createReview(999, reviewData, 1)).rejects.toThrow(NotFoundError);
-      expect(mockTransaction.rollback).toHaveBeenCalled();
     });
 
     it('should throw ConflictError when user already reviewed resource', async () => {
-      (ResourceReview.findOne as jest.Mock).mockResolvedValue(mockReview);
+      prisma.resource_review.findFirst.mockResolvedValue(mockReview);
 
       await expect(createReview(1, reviewData, 1)).rejects.toThrow(ConflictError);
-      expect(mockTransaction.rollback).toHaveBeenCalled();
     });
   });
 

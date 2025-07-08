@@ -7,15 +7,16 @@ import {
   transformResourceToDb, 
   transformReviewToApi, 
   transformReviewToDb 
-} from '@services/transform-service';
+} from '@/services/transform.service';
 import { contentFeaturesMappings, resourceUsageMappings } from '../../../constants/mappings';
-import Category from '@models/category';
+import type { categories } from '../../../../generated/prisma';
 
-// Mock Category model
-jest.mock('@models/category', () => ({
-  __esModule: true,
-  default: {
-    findOne: jest.fn()
+// Mock Prisma category model
+jest.mock('@/services/database/prisma.service', () => ({
+  prisma: {
+    categories: {
+      findFirst: jest.fn()
+    }
   }
 }));
 

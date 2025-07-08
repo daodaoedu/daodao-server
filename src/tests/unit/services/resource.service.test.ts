@@ -2,82 +2,61 @@
  * 資源服務測試
  */
 
-import resourceService from '@services/resource-service';
-import Resource from '@models/resource';
-import ResourceReview from '@models/resource-review';
-import sequelize from '../../../config/database';
+import resourceService from '@/services/resource.service';
+import type { resources, resource_review } from '../../../../generated/prisma';
 import { 
   NotFoundError, 
   ForbiddenError, 
   ConflictError 
 } from '../../../utils/error-handler';
-import tagService from '@services/tag-service';
-import { Op } from 'sequelize';
+import tagService from '@/services/tag.service';
 
-// 模擬 Sequelize 模型
-jest.mock('@models/resource', () => ({
-  __esModule: true,
-  default: {
-    findByPk: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findAndCountAll: jest.fn(),
-    count: jest.fn()
+// Mock Prisma service
+jest.mock('@/services/database/prisma.service', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    resources: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn()
+    },
+    resource_review: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn()
+    },
+    categories: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    entity_tags: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn()
+    },
+    tags: {
+      findMany: jest.fn(),
+      findUnique: jest.fn()
+    }
   }
 }));
-jest.mock('../../../src/models/resource-review', () => ({
-  __esModule: true,
-  default: {
-    create: jest.fn(),
-    findOne: jest.fn(),
-    findAll: jest.fn()
-  }
-}));
-jest.mock('../../../src/models/entity-tag', () => ({
-  __esModule: true,
-  default: {
-    findAll: jest.fn(),
-    create: jest.fn(),
-    destroy: jest.fn()
-  }
-}));
-jest.mock('../../../src/models/tag', () => ({
-  __esModule: true,
-  default: {
-    findAll: jest.fn(),
-    findByPk: jest.fn()
-  }
-}));
-jest.mock('../../../src/config/database', () => {
-  const mockSequelize = {
-    transaction: jest.fn(),
-    define: jest.fn(),
-    col: jest.fn((name: string) => `col:${name}`),
-    fn: jest.fn((fn: string, ...args: any[]) => ({ fn, args })),
-    literal: jest.fn((sql: string) => ({ literal: sql }))
-  };
-  return {
-    __esModule: true,
-    default: mockSequelize
-  };
-});
-jest.mock('../../../src/services/tag-service', () => ({
+
+jest.mock('@/services/tag.service', () => ({
   __esModule: true,
   default: {
     setEntityTags: jest.fn()
   }
 }));
 
-// Helper function to create mock Sequelize instances
-const createMockSequelizeInstance = (data: any) => ({
-  ...data,
-  get: jest.fn((key: string) => data[key]),
-  set: jest.fn(),
-  save: jest.fn(),
-  update: jest.fn(),
-  destroy: jest.fn(),
-  toJSON: jest.fn(() => data)
+// Helper function to create mock Prisma instances
+const createMockPrismaInstance = (data: any) => ({
+  ...data
 });
 
 describe('Resource Service Tests', () => {
@@ -90,7 +69,7 @@ describe('Resource Service Tests', () => {
       const resourceUuid = '550e8400-e29b-41d4-a716-446655440000';
       
       // 模擬資源數據
-      const mockResource = createMockSequelizeInstance({
+      const mockResource = createMockPrismaInstance({
         id: 1,
         external_id: resourceUuid,
         name: '測試資源',
@@ -106,25 +85,16 @@ describe('Resource Service Tests', () => {
         updated_at: new Date()
       });
 
-      // 模擬評分統計
-      const mockReviewStats = {
-        getDataValue: jest.fn().mockReturnValue(4.5)
-      };
-
-      // 模擬 Sequelize 查詢結果（使用 findOne 查詢 external_id）
-      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
-      (ResourceReview.findOne as jest.Mock).mockResolvedValue(mockReviewStats);
+      // 模擬 Prisma 查詢結果
+      const { prisma } = require('@/services/database/prisma.service');
+      prisma.resources.findUnique.mockResolvedValue(mockResource);
+      prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
       
-      // 模擬 EntityTag 查詢結果
-      (EntityTag.findAll as jest.Mock).mockResolvedValue([
+      // 模擬 entity_tags 查詢結果
+      prisma.entity_tags.findMany.mockResolvedValue([
         {
-          get: jest.fn((field) => {
-            if (field === 'entity_id') return 1;
-            if (field === 'tag') return { 
-              get: jest.fn().mockReturnValue({ id: 1, name: 'JavaScript' }),
-              toJSON: jest.fn().mockReturnValue({ id: 1, name: 'JavaScript' })
-            };
-          })
+          entity_id: 1,
+          tag: { id: 1, name: 'JavaScript' }
         }
       ]);
 
@@ -136,7 +106,7 @@ describe('Resource Service Tests', () => {
       expect(result.id).toBe(resourceUuid);
       expect(result.name).toBe('測試資源');
       expect(result.avgRating).toBe(4.5);
-      expect(Resource.findOne).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.resources.findUnique).toHaveBeenCalledWith(expect.objectContaining({
         where: { external_id: resourceUuid }
       }));
     });
@@ -145,11 +115,12 @@ describe('Resource Service Tests', () => {
       const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
       
       // 模擬資源不存在
-      (Resource.findOne as jest.Mock).mockResolvedValue(null);
+      const { prisma } = require('@/services/database/prisma.service');
+      prisma.resources.findUnique.mockResolvedValue(null);
 
       // 執行測試並驗證結果
       await expect(resourceService.getResourceById(nonExistentUuid)).rejects.toThrow(NotFoundError);
-      expect(Resource.findOne).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.resources.findUnique).toHaveBeenCalledWith(expect.objectContaining({
         where: { external_id: nonExistentUuid }
       }));
     });
@@ -159,11 +130,12 @@ describe('Resource Service Tests', () => {
     it('應成功創建資源', async () => {
       // 模擬事務
       const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
+      const { prisma } = require('@/services/database/prisma.service');
+      prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
 
       // 模擬創建資源
       const resourceUuid = '550e8400-e29b-41d4-a716-446655440000';
-      const mockResource = createMockSequelizeInstance({
+      const mockResource = createMockPrismaInstance({
         id: 1,
         external_id: resourceUuid,
         name: '測試資源',
@@ -181,7 +153,7 @@ describe('Resource Service Tests', () => {
         created_at: new Date(),
         updated_at: new Date()
       });
-      (Resource.create as jest.Mock).mockResolvedValue(mockResource);
+      prisma.resources.create.mockResolvedValue(mockResource);
 
       // 模擬標籤處理
       (tagService.setEntityTags as jest.Mock).mockResolvedValue([]);
@@ -208,20 +180,19 @@ describe('Resource Service Tests', () => {
       expect(result).toBeDefined();
       expect(result.id).toBe(resourceUuid);
       expect(result.name).toBe('測試資源');
-      expect(sequelize.transaction).toHaveBeenCalled();
-      expect(Resource.create).toHaveBeenCalled();
-      expect(tagService.setEntityTags).toHaveBeenCalledWith(1, 'resource', ['tag1', 'tag2'], mockTransaction);
-      expect(mockTransaction.commit).toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.resources.create).toHaveBeenCalled();
+      expect(tagService.setEntityTags).toHaveBeenCalledWith(1, 'resource', ['tag1', 'tag2'], prisma);
       // 移除對 getResourceById 的驗證，因為在錯誤情況下可能不會被調用
     });
 
     it('應在創建資源時處理評論', async () => {
       // 模擬事務
-      const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
+      const { prisma } = require('@/services/database/prisma.service');
+      prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
 
       // 模擬創建資源
-      const mockResource = createMockSequelizeInstance({
+      const mockResource = createMockPrismaInstance({
         id: 1,
         name: '測試資源',
         url: 'https://example.com',
@@ -238,13 +209,13 @@ describe('Resource Service Tests', () => {
         created_at: new Date(),
         updated_at: new Date()
       });
-      (Resource.create as jest.Mock).mockResolvedValue(mockResource);
+      prisma.resources.create.mockResolvedValue(mockResource);
 
       // 模擬標籤處理
       (tagService.setEntityTags as jest.Mock).mockResolvedValue([]);
 
       // 模擬創建評論
-      (ResourceReview.create as jest.Mock).mockResolvedValue({ id: 1 });
+      prisma.resource_review.create.mockResolvedValue({ id: 1 });
 
       // 模擬獲取資源詳情的 spy，但先不設置 mock 值
       const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById');
@@ -275,18 +246,19 @@ describe('Resource Service Tests', () => {
 
       // 驗證結果
       expect(result).toBeDefined();
-      expect(ResourceReview.create).toHaveBeenCalled();
-      expect(mockTransaction.commit).toHaveBeenCalled();
+      expect(prisma.resource_review.create).toHaveBeenCalled();
     });
 
     it('應在發生錯誤時回滾事務', async () => {
       // 模擬事務
-      const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
+      const { prisma } = require('@/services/database/prisma.service');
+      prisma.$transaction.mockImplementation(async (fn) => {
+        throw new Error('模擬錯誤');
+      });
 
       // 模擬創建資源失敗
       const mockError = new Error('模擬錯誤');
-      (Resource.create as jest.Mock).mockRejectedValue(mockError);
+      prisma.resources.create.mockRejectedValue(mockError);
 
       // 執行測試
       const resourceData = {
@@ -301,10 +273,6 @@ describe('Resource Service Tests', () => {
       };
 
       await expect(resourceService.createResource(resourceData, 100)).rejects.toThrow(mockError);
-
-      // 驗證結果
-      expect(mockTransaction.rollback).toHaveBeenCalled();
-      expect(mockTransaction.commit).not.toHaveBeenCalled();
     });
   });
 

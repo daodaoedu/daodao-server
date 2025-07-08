@@ -3,19 +3,7 @@
  * 測試專案業務邏輯、資料庫操作、權限控制等功能
  */
 
-import { Op } from 'sequelize';
 import { ProjectService, projectService } from '../../../services/project.service';
-import { 
-  Project, 
-  Milestone, 
-  Task, 
-  Post, 
-  Note, 
-  Outcome, 
-  Review, 
-  User, 
-  Contact 
-} from '../../../models';
 import type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
@@ -23,8 +11,56 @@ import type {
   ProjectResponse
 } from '../../../types/project.types';
 
-// Mock dependencies
-jest.mock('../../../models');
+// Mock Prisma service
+jest.mock('../../../services/database/prisma.service', () => ({
+  prisma: {
+    $transaction: jest.fn(),
+    projects: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn()
+    },
+    milestones: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    },
+    tasks: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    },
+    posts: {
+      findMany: jest.fn(),
+      create: jest.fn()
+    },
+    notes: {
+      findMany: jest.fn(),
+      create: jest.fn()
+    },
+    outcomes: {
+      findMany: jest.fn(),
+      create: jest.fn()
+    },
+    reviews: {
+      findMany: jest.fn(),
+      create: jest.fn()
+    },
+    users: {
+      findUnique: jest.fn(),
+      findMany: jest.fn()
+    },
+    contacts: {
+      findFirst: jest.fn(),
+      findMany: jest.fn()
+    }
+  }
+}));
 
 describe('Project Service', () => {
   let mockProject: any;

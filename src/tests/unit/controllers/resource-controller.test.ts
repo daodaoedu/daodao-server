@@ -4,8 +4,8 @@
 
 import request from 'supertest';
 import express from 'express';
-import resourceController from '../../../controllers/resource-controller';
-import resourceService from '../../../services/resource-service';
+import resourceController from '../../../controllers/resource.controller';
+import resourceService from '../../../services/resource.service';
 
 // 模擬服務
 jest.mock('../../../services/resource-service', () => ({
