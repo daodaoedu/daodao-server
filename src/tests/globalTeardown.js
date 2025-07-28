@@ -1,10 +1,10 @@
 // Global teardown for Jest tests
 module.exports = async function globalTeardown() {
   try {
-    // Close database connections if they exist
-    const sequelize = require('../../config/db');
-    if (sequelize) {
-      await sequelize.close();
+    // Close Prisma database connections if they exist
+    const { prismaService } = require('../services/database/prisma.service');
+    if (prismaService) {
+      await prismaService.disconnect();
     }
     
     // Close mongoose connections

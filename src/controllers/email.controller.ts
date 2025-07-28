@@ -6,13 +6,13 @@
 import { Request, Response } from 'express';
 import { emailService } from '../services/email/email.service';
 import { asyncWrapper } from '../utils/error-handler';
-import { BadRequestError, NotFoundError } from '../utils/error-handler';
-import type { 
-  ContactEmailOptions,
-  MarathonEmailOptions,
-  BulkEmailOptions,
-  EmailTemplate
-} from '../types/email.types';
+import { BadRequestError } from '../utils/error-handler';
+// import type { 
+//   ContactEmailOptions,
+//   MarathonEmailOptions,
+//   BulkEmailOptions,
+//   EmailTemplate
+// } from '../types/email.types';
 
 /**
  * 統一的響應格式
@@ -36,7 +36,7 @@ export const sendContactEmail = asyncWrapper(async (req: Request, res: Response)
     text, 
     information, 
     name, 
-    title, 
+    // title, // 暫時未使用
     activityTitle 
   } = req.body;
 
@@ -45,22 +45,6 @@ export const sendContactEmail = asyncWrapper(async (req: Request, res: Response)
     throw new BadRequestError('缺少必要的郵件資訊：from, to, subject, text, name');
   }
 
-  // 構建聯絡郵件選項
-  const contactOptions: ContactEmailOptions = {
-    from,
-    to,
-    subject: title || subject,
-    name,
-    message: text,
-    userInfo: information,
-    activityTitle,
-    data: {
-      name,
-      message: text,
-      userInfo: information,
-      activityTitle
-    }
-  };
 
   // 發送郵件
   const result = await emailService.sendContactEmail(to, name, text, information, activityTitle);
@@ -178,12 +162,6 @@ export const sendMarathonEmail = asyncWrapper(async (req: Request, res: Response
     throw new BadRequestError('email, name, marathonTitle 為必填項');
   }
 
-  const marathonData: MarathonEmailOptions['data'] = {
-    name,
-    marathonTitle,
-    marathonDate,
-    marathonDescription
-  };
 
   // 發送馬拉松郵件
   const result = await emailService.sendMarathonEmail(email, name, marathonTitle, marathonDate, marathonDescription);
@@ -274,7 +252,7 @@ export const sendCustomEmail = asyncWrapper(async (req: Request, res: Response) 
  * POST /api/v1/email/bulk
  */
 export const sendBulkEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { template, subject, recipients, from, scheduledAt } = req.body;
+  const { template, subject, recipients /* from, scheduledAt */ } = req.body;
 
   if (!template || !subject || !recipients || !Array.isArray(recipients)) {
     throw new BadRequestError('template, subject, recipients (array) 為必填項');
@@ -288,13 +266,6 @@ export const sendBulkEmail = asyncWrapper(async (req: Request, res: Response) =>
     throw new BadRequestError('單次批量發送不能超過 100 個收件人');
   }
 
-  const bulkOptions: BulkEmailOptions = {
-    template: template as EmailTemplate,
-    subject,
-    recipients,
-    from,
-    scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined
-  };
 
   // 發送批量郵件
   const results = await emailService.sendBulkEmail(recipients, template as 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom');

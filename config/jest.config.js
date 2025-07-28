@@ -4,19 +4,24 @@ const path = require('path');
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: "node",
-    collectCoverage: true,
+    collectCoverage: false,
     coverageDirectory: "coverage",
     coverageReporters: ['text', 'lcov', 'html'],
     collectCoverageFrom: [
-      'src/**/*.{ts,js}',
-      '!src/**/*.d.ts',
-      '!src/types/**/*',
-      '!src/swagger/**/*'
+      '<rootDir>/../src/**/*.{ts,js}',
+      '!<rootDir>/../src/**/*.d.ts',
+      '!<rootDir>/../src/types/**/*',
+      '!<rootDir>/../src/swagger/**/*',
+      '!<rootDir>/../src/tests/**/*'
     ],
     globalSetup: "<rootDir>/../src/tests/globalSetup.js",
     globalTeardown: "<rootDir>/../src/tests/globalTeardown.js",
     setupFiles: ["<rootDir>/../jest.setup.js"],
     setupFilesAfterEnv: ["<rootDir>/../src/tests/setup.js"],
+    testEnvironment: "node",
+    testEnvironmentOptions: {
+      NODE_ENV: "test"
+    },
     transform: {
       '^.+\\.ts$': 'ts-jest'
     },

@@ -13,7 +13,7 @@ import type { tags } from '../../generated/prisma';
  * GET /tags/popular
  */
 export const getPopularTags = asyncWrapper(async (req: Request, res: Response) => {
-  const { entityType, limit } = req.query;
+  const { limit } = req.query;
   
   // 獲取熱門標籤
   const tags = await tagService.getPopularTags(

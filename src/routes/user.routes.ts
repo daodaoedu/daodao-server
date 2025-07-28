@@ -9,7 +9,7 @@ import { authenticate, optionalAuth } from '../middleware/auth';
 import { 
   canCreateUser,
   canUpdateUser,
-  canDeleteUser,
+  // canDeleteUser,
   requireAdmin
 } from '../middleware/permission.middleware';
 import { validate } from '../validators/validation.middleware';

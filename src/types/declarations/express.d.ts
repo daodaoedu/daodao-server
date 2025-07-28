@@ -11,7 +11,7 @@ declare global {
     interface User extends AuthUser {}
     
     interface Request {
-      // 一般情況下是 JWT payload，OAuth 回調時是 Sequelize model
+      // 一般情況下是 JWT payload，OAuth 回調時是 Prisma plain object
       user?: UserJwtPayload | AuthUser | TempUser;
       isTemporary?: boolean;
     }

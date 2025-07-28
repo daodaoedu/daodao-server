@@ -6,7 +6,7 @@
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.JWT_SECURITY = 'test-jwt-security';
 
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { 
   generateToken, 
   verifyToken, 
@@ -34,6 +34,9 @@ describe('JWT Service', () => {
   beforeEach(() => {
     // Clear any console mocks
     jest.clearAllMocks();
+    // Ensure environment variables are set
+    process.env.JWT_SECRET = 'test-jwt-secret';
+    process.env.JWT_SECURITY = 'test-jwt-security';
   });
 
   describe('generateToken', () => {
@@ -80,19 +83,20 @@ describe('JWT Service', () => {
       expect(decoded.exp).toBeGreaterThan(decoded.iat);
     });
 
-    it('should handle token generation errors', () => {
-      // Mock jwt.sign to throw error
-      const originalSign = jwt.sign;
-      jwt.sign = jest.fn().mockImplementation(() => {
-        throw new Error('Token generation failed');
-      });
+    it('should handle missing JWT secret', () => {
+      // Test error handling when JWT_SECRET is missing
+      const originalSecret = process.env.JWT_SECRET;
+      const originalSecurity = process.env.JWT_SECURITY;
+      delete process.env.JWT_SECRET;
+      delete process.env.JWT_SECURITY;
 
       const payload = { id: 1, username: 'testuser' };
 
-      expect(() => generateToken(payload)).toThrow('Token generation failed');
+      expect(() => generateToken(payload)).toThrow('JWT_SECRET environment variable is required');
 
-      // Restore original function
-      jwt.sign = originalSign;
+      // Restore environment
+      if (originalSecret) process.env.JWT_SECRET = originalSecret;
+      if (originalSecurity) process.env.JWT_SECURITY = originalSecurity;
     });
   });
 

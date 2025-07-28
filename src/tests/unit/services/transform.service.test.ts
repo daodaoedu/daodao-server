@@ -11,6 +11,11 @@ import {
 import { contentFeaturesMappings, resourceUsageMappings } from '../../../constants/mappings';
 import type { categories } from '../../../../generated/prisma';
 
+// Add missing Category mock for legacy tests
+const Category = {
+  findOne: jest.fn()
+};
+
 // Mock Prisma category model
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: {
@@ -19,6 +24,8 @@ jest.mock('@/services/database/prisma.service', () => ({
     }
   }
 }));
+
+import { prisma } from '@/services/database/prisma.service';
 
 describe('Transform Service Tests', () => {
   
@@ -152,12 +159,12 @@ describe('Transform Service Tests', () => {
 
   describe('transformResourceToDb', () => {
     beforeEach(() => {
-      // Mock Category.findOne to return mock category data
-      (Category.findOne as jest.Mock).mockImplementation(({ where }) => {
+      // Mock prisma.categories.findFirst to return mock category data
+      (prisma.categories.findFirst as jest.Mock).mockImplementation(({ where }) => {
         if (where.name === 'frontend_development') {
-          return Promise.resolve({ get: () => 1 });
+          return Promise.resolve({ id: 1, name: 'frontend_development' });
         } else if (where.name === 'javascript_frameworks') {
-          return Promise.resolve({ get: () => 2 });
+          return Promise.resolve({ id: 2, name: 'javascript_frameworks' });
         }
         return Promise.resolve(null);
       });
@@ -343,14 +350,16 @@ describe('Transform Service Tests', () => {
         user_id: 100,
         resource_id: 200,
         content: '這是一個測試心得評價',
-        score_impact: 4.5,
-        score_mindset: 4.0,
-        score_problems: 3.5,
-        score_perspectives: 4.0,
-        score_goals: 5.0,
         time_usage: '1_2_hours_daily',
         status: 'published'
       });
+
+      // 驗證評分欄位 - 檢查 Prisma.Decimal 對象
+      expect(result.score_impact?.toNumber()).toBe(4.5);
+      expect(result.score_mindset?.toNumber()).toBe(4.0);
+      expect(result.score_problems?.toNumber()).toBe(3.5);
+      expect(result.score_perspectives?.toNumber()).toBe(4.0);
+      expect(result.score_goals?.toNumber()).toBe(5.0);
 
       // 檢查 Boolean 欄位
       // 內容特色

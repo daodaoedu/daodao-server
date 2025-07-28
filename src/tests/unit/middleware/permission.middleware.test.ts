@@ -45,7 +45,32 @@ describe('Permission Middleware', () => {
 
   beforeEach(() => {
     req = {
-      user: { id: 1, name: 'testuser', email: 'test@example.com', external_id: '123', is_active: true, created_at: new Date(), updated_at: new Date() },
+      user: { 
+        id: 1, 
+        external_id: 'test-external-id',
+        mongo_id: 'test-mongo-id',
+        gender: null,
+        language: null,
+        education_stage: null,
+        tag_list: [],
+        contact_id: 1,
+        is_open_location: null,
+        location_id: null,
+        nickname: 'testuser',
+        role_id: 1,
+        is_open_profile: null,
+        birth_date: null,
+        basic_info_id: null,
+        createdDate: null,
+        updatedDate: null,
+        created_by: null,
+        created_at: new Date(),
+        updated_by: null,
+        updated_at: new Date(),
+        email_verified: true,
+        email_verified_at: new Date(),
+        is_active: true
+      },
       params: {},
       query: {},
       body: {}
@@ -90,7 +115,9 @@ describe('Permission Middleware', () => {
     });
 
     it('should deny access for temporary user when not allowed', async () => {
-      req.user = { id: 1, name: 'tempuser', isTemp: true, external_id: '123', is_active: true, created_at: new Date(), updated_at: new Date() };
+      // For temporary user tests, we would typically use a different user object
+      // But since the middleware logic uses user.id to check permissions, we'll modify the existing one
+      (req.user as any).isTemp = true;
       const middleware = requirePermission({ resource: 'user', action: 'read' });
 
       await middleware(req as Request, res as Response, next);
@@ -99,7 +126,9 @@ describe('Permission Middleware', () => {
     });
 
     it('should allow access for temporary user when allowed', async () => {
-      req.user = { id: 1, name: 'tempuser', isTemp: true, external_id: '123', is_active: true, created_at: new Date(), updated_at: new Date() };
+      // For temporary user tests, we would typically use a different user object
+      // But since the middleware logic uses user.id to check permissions, we'll modify the existing one
+      (req.user as any).isTemp = true;
       mockPermissionService.hasPermission.mockResolvedValue(true);
       const middleware = requirePermission({ resource: 'user', action: 'read' }, { allowTemp: true });
 
@@ -237,7 +266,9 @@ describe('Permission Middleware', () => {
     });
 
     it('should deny access for temporary user', async () => {
-      req.user = { id: 1, name: 'tempuser', isTemp: true, external_id: '123', is_active: true, created_at: new Date(), updated_at: new Date() };
+      // For temporary user tests, we would typically use a different user object
+      // But since the middleware logic uses user.id to check permissions, we'll modify the existing one
+      (req.user as any).isTemp = true;
 
       await requireAdmin(req as Request, res as Response, next);
 

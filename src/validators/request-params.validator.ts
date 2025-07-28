@@ -74,8 +74,8 @@ export type TagQueryParams = z.infer<typeof tagQuerySchema>;
 export type TagEntityParams = z.infer<typeof tagEntitySchema>;
 
 // 導出驗證函數
-export const validatePagination = (data: unknown) => paginationSchema.parse(data);
-export const validateResourceFilter = (data: unknown) => resourceFilterSchema.parse(data);
-export const validateReviewFilter = (data: unknown) => reviewFilterSchema.parse(data);
-export const validateTagQuery = (data: unknown) => tagQuerySchema.parse(data);
-export const validateTagEntity = (data: unknown) => tagEntitySchema.parse(data);
+export const validatePagination = (data: unknown): PaginationParams => paginationSchema.parse(data);
+export const validateResourceFilter = (data: unknown): ResourceFilterParams => resourceFilterSchema.parse(data);
+export const validateReviewFilter = (data: unknown): ReviewFilterParams => reviewFilterSchema.parse(data);
+export const validateTagQuery = (data: unknown): TagQueryParams => tagQuerySchema.parse(data);
+export const validateTagEntity = (data: unknown): TagEntityParams => tagEntitySchema.parse(data);

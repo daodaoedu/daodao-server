@@ -4,12 +4,14 @@
  */
 
 import { prisma } from '@/services/database/prisma.service';
-import type { resource_review, resources, users, tags, Prisma } from '../../generated/prisma';
+import type { Prisma, tags } from '../../generated/prisma';
 import { 
   transformReviewToApi, 
   transformReviewToDb 
 } from '@/services/transform.service';
-import { ResourceReviewDbModel } from '@/types/resource-review.types';
+import { 
+  ResourceReviewResponse
+} from '@/types/resource-review.types';
 import { 
   NotFoundError, 
   ConflictError, 
@@ -49,7 +51,7 @@ interface PaginationParams {
  * @param id - 心得評價 ID
  * @returns 心得評價詳情
  */
-export async function getReviewById(id: number) {
+export async function getReviewById(id: number): Promise<ResourceReviewResponse | null> {
   // 查詢心得評價，包含關聯資料
   const review = await prisma.resource_review.findUnique({
     where: { 
@@ -118,7 +120,15 @@ export async function getReviewById(id: number) {
 export async function getReviews(
   filters: ReviewFilterParams = {},
   pagination: PaginationParams = {}
-) {
+): Promise<{
+  reviews: ResourceReviewResponse[];
+  pagination: {
+    cursors: { start: string | null; end: string | null };
+    hasMore: boolean;
+    count: number;
+    parentCount?: number;
+  };
+}> {
   // 處理分頁參數
   const limit = Math.min(
     pagination.limit || DEFAULT_REVIEW_PAGE_LIMIT,
@@ -171,8 +181,8 @@ export async function getReviews(
     if (decoded) {
       if (sortField === 'createdAt') {
         where.created_at = sortDirection === 'desc' ? 
-          { lt: decoded } : 
-          { gt: decoded };
+          { lt: decoded.timestamp } : 
+          { gt: decoded.timestamp };
       }
     }
   }
@@ -297,24 +307,24 @@ export async function getReviews(
  * @returns 創建的心得評價
  */
 export async function createReview(
-  resourceId: number,
+  resourceExternalId: string,
   data: ResourceReviewSchema,
   userId: number
-) {
+): Promise<ResourceReviewResponse | null> {
   return await prisma.$transaction(async (tx) => {
-    // 檢查資源是否存在
+    // 檢查資源是否存在（使用 external_id）
     const resource = await tx.resources.findUnique({
-      where: { id: resourceId }
+      where: { external_id: resourceExternalId }
     });
     if (!resource) {
-      throw new NotFoundError(`找不到 ID 為 ${resourceId} 的資源`);
+      throw new NotFoundError(`找不到 ID 為 ${resourceExternalId} 的資源`);
     }
 
     // 檢查用戶是否已經評價過該資源
     const existingReview = await tx.resource_review.findFirst({
       where: {
         user_id: userId,
-        resource_id: resourceId,
+        resource_id: resource.id,
         deleted_at: null
       }
     });
@@ -324,13 +334,13 @@ export async function createReview(
     }
 
     // 轉換心得評價數據為數據庫格式
-    const reviewData = transformReviewToDb(data, userId, resourceId);
+    const reviewData = transformReviewToDb(data, userId, resource.id);
 
     // 創建心得評價
     const review = await tx.resource_review.create({
       data: {
         user_id: userId,
-        resource_id: resourceId,
+        resource_id: resource.id,
         content: reviewData.content || '',
         score_impact: reviewData.score_impact ?? 0,
         score_mindset: reviewData.score_mindset ?? 0,
@@ -368,7 +378,7 @@ export async function updateReview(
   id: number,
   data: UpdateResourceReviewSchema,
   userId: number
-) {
+): Promise<ResourceReviewResponse | null> {
   return await prisma.$transaction(async (tx) => {
     // 查詢心得評價
     const review = await tx.resource_review.findUnique({
@@ -434,7 +444,7 @@ export async function updateReviewStatus(
   id: number,
   status: string,
   userId: number
-) {
+): Promise<ResourceReviewResponse | null> {
   // 查詢心得評價
   const review = await prisma.resource_review.findUnique({
     where: { 

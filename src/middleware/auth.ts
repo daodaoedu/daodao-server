@@ -3,15 +3,17 @@
  * 負責驗證使用者身份
  */
 
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import * as jwt from 'jsonwebtoken';
 import { UnauthorizedError, ForbiddenError } from '../utils/error-handler';
 import { 
   AuthRequest,
   UserJwtPayload,
   AuthMiddlewareOptions, 
-  PermissionOptions
+  PermissionOptions,
+  AnyUser
 } from '../types/auth.types';
+import { isTemporaryUser } from '../utils/user-type-detection';
 
 // Re-export AuthRequest for convenience
 export type { AuthRequest } from '../types/auth.types';
@@ -24,7 +26,7 @@ export type { AuthRequest } from '../types/auth.types';
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction): void => {
   // 從請求頭中獲取 token
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
@@ -75,7 +77,7 @@ export const authenticate = authenticateJWT;
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
   
@@ -103,8 +105,8 @@ export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction
  * @param roles - 允許的角色列表
  * @returns Express 中間件
  */
-export const authorizeRoles = (roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authorizeRoles = (roles: string[]): RequestHandler => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       return next(new UnauthorizedError('未經授權的訪問'));
     }
@@ -133,8 +135,8 @@ export const requireRole = authorizeRoles;
  * @param options - 認證選項
  * @returns Express 中間件
  */
-export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): RequestHandler => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     const {
       required = true,
       allowTemp = true,
@@ -216,8 +218,8 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}) => 
  * @param permissions - 需要的權限列表
  * @returns Express 中間件
  */
-export const requirePermissions = (permissions: PermissionOptions[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+export const requirePermissions = (permissions: PermissionOptions[]): RequestHandler => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       return next(new UnauthorizedError('未經授權的訪問'));
     }
@@ -243,7 +245,7 @@ export const requirePermissions = (permissions: PermissionOptions[]) => {
  * 僅限正式用戶中間件
  * 禁止臨時用戶訪問
  */
-export const requireFormalUser = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const requireFormalUser = (req: AuthRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
     return next(new UnauthorizedError('未經授權的訪問'));
   }
@@ -256,16 +258,52 @@ export const requireFormalUser = (req: AuthRequest, res: Response, next: NextFun
 };
 
 /**
+ * 需要已驗證郵件的用戶中間件
+ * 檢查用戶是否已驗證郵件
+ */
+export const requireEmailVerified = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    return next(new UnauthorizedError('未經授權的訪問'));
+  }
+
+  if (req.isTemporary) {
+    return next(new ForbiddenError('此操作需要正式用戶身份'));
+  }
+
+  if (!req.user.email_verified) {
+    return next(new ForbiddenError('此操作需要驗證電子郵件'));
+  }
+
+  next();
+};
+
+/**
+ * 需要活躍用戶中間件
+ * 檢查用戶是否處於活躍狀態
+ */
+export const requireActiveUser = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    return next(new UnauthorizedError('未經授權的訪問'));
+  }
+
+  if (req.user.is_active === false) {
+    return next(new ForbiddenError('帳戶已被停用'));
+  }
+
+  next();
+};
+
+/**
  * Session 認證中間件
  * 檢查 Passport session 認證
  */
-export const authenticateSession = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateSession = (req: Request, res: Response, next: NextFunction): void => {
   if (req.isAuthenticated && req.isAuthenticated()) {
     const authReq = req as AuthRequest;
     
-    // 檢查是否為臨時用戶
-    const user = req.user as { dataValues?: unknown };
-    authReq.isTemporary = !user.dataValues; // Sequelize models have dataValues
+    // 檢查是否為臨時用戶 - 使用新的類型檢測邏輯
+    const user = req.user as AnyUser;
+    authReq.isTemporary = isTemporaryUser(user);
     
     next();
   } else {
@@ -277,7 +315,7 @@ export const authenticateSession = (req: Request, res: Response, next: NextFunct
  * 組合認證中間件
  * 支援 JWT 和 Session 兩種認證方式
  */
-export const authenticateAny = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateAny = (req: Request, res: Response, next: NextFunction): void => {
   // 首先嘗試 JWT 認證
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];

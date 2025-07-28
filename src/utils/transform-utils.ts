@@ -3,21 +3,12 @@
  * 用於處理分頁、游標等功能
  */
 
-import { Model } from 'sequelize';
-
-// 定義支持 Prisma 和 Sequelize 結果的聯合類型
-type DatabaseRecord = Model | Record<string, unknown>;
+// 定義支持 Prisma 結果的類型
+type DatabaseRecord = Record<string, unknown>;
 
 // 輔助函數：從資料庫記錄中獲取欄位值
 function getFieldValue(record: DatabaseRecord, fieldName: string): unknown {
-  if (record && typeof record === 'object' && 'get' in record && typeof record.get === 'function') {
-    // Sequelize Model
-    return record.get(fieldName);
-  } else if (record && typeof record === 'object') {
-    // Prisma 結果或普通對象
-    return (record as Record<string, unknown>)[fieldName];
-  }
-  return undefined;
+  return record?.[fieldName];
 }
 
 
@@ -27,7 +18,7 @@ function getFieldValue(record: DatabaseRecord, fieldName: string): unknown {
  * @param cursor - 加密的游標字符串
  * @returns 解碼後的游標數據
  */
-export function decodeCursor(cursor: string) {
+export function decodeCursor(cursor: string): { id: number; timestamp: Date } | null {
   try {
     // 游標格式：BASE64(JSON({ id: number, timestamp: string/number }))
     const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
@@ -51,7 +42,7 @@ export function decodeCursor(cursor: string) {
  * @param timestamp - 時間戳（通常是排序欄位的值）
  * @returns 加密的游標字符串
  */
-export function generateCursor(id: number, timestamp: string | number | Date) {
+export function generateCursor(id: number, timestamp: string | number | Date): string {
   // 創建游標數據對象
   const cursorData = { id, timestamp };
   
@@ -76,10 +67,26 @@ export function generatePaginationMetadata(
   sortField: string,
   hasMore: boolean,
   parentCount?: number
-) {
+): {
+  cursors: { start: string | null; end: string | null };
+  hasMore: boolean;
+  count: number;
+  parentCount?: number;
+  limit: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+  nextCursor: string | null;
+  prevCursor: string | null;
+  totalEstimate: number;
+  parentTotalEstimate: number | null;
+} {
   // 如果結果為空，返回空的分頁數據
   if (rows.length === 0) {
     return {
+      cursors: { start: null, end: null },
+      hasMore: false,
+      count,
+      parentCount,
       limit,
       hasNext: false,
       hasPrev: false,
@@ -105,6 +112,10 @@ export function generatePaginationMetadata(
   const prevCursor = generateCursor(firstId, firstTimestamp);
   
   return {
+    cursors: { start: prevCursor, end: nextCursor },
+    hasMore,
+    count,
+    parentCount,
     limit,
     hasNext: hasMore,
     hasPrev: true, // 如果有數據，表示可能有上一頁
@@ -140,7 +151,7 @@ export function booleanFieldsToObject<T extends Record<string, boolean>>(
  * @param mapping - 欄位映射關係
  * @returns 轉換後的資料庫欄位對象
  */
-export function objectToBooleanFields(apiObject: Record<string, boolean>, mapping: Record<string, string>) {
+export function objectToBooleanFields(apiObject: Record<string, boolean>, mapping: Record<string, string>): Record<string, boolean> {
   const result: Record<string, boolean> = {};
   
   Object.entries(mapping).forEach(([apiField, dbField]) => {

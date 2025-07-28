@@ -13,6 +13,7 @@ import type {
   ProjectQueryParams,
   ProjectResponse 
 } from '../../../types/project.types';  
+import { education_stage_t, gender_t } from 'generated/prisma';
 
 // Mock dependencies
 jest.mock('../../../services/project.service');
@@ -25,37 +26,37 @@ describe('Project Controller', () => {
   const mockUser = {
     id: 1,
     username: 'testuser',
-    email: 'test@example.com'
+    email: 'test@example.com',
+    external_id: 'test-user-123',
+    is_active: true,
+    created_at: new Date(),
+    updated_at: new Date()
   };
 
   const mockProject: ProjectResponse = {
-    id: 1,
-    external_id: 'project-123',
-    user_id: 1,
-    img_url: 'https://example.com/project.jpg',
+    id: 'project-123',
+    userId: 1,
+    imgUrl: 'https://example.com/project.jpg',
     title: '測試專案',
     description: '這是一個測試專案',
     motivation: '學習',
-    motivation_description: '想要學習新技能',
+    motivationDescription: '想要學習新技能',
     goal: '完成專案開發',
     content: '專案內容描述',
     strategy: '計畫性執行',
-    strategy_description: '按照計畫逐步執行',
-    resource: '線上資源',
+    strategyDescription: '按照計畫逐步執行',
+    resources: '線上資源',
     outcome: '成功完成',
-    outcome_description: '達成預期目標',
-    is_public: true,
+    outcomeDescription: '達成預期目標',
+    isPublic: true,
     status: 'Ongoing',
-    start_date: new Date('2024-01-01'),
-    end_date: new Date('2024-12-31'),
-    interval: 'Weekly',
-    created_at: new Date(),
-    created_by: 1,
-    updated_at: new Date(),
-    updated_by: 1,
+    startDate: new Date('2024-01-01'),
+    endDate: new Date('2024-12-31'),
+    interval: 7,
+    createdAt: new Date(),
+    updatedAt: new Date(),
     version: 1,
-    milestones: [],
-    posts: []
+    milestones: []
   };
 
   beforeEach(() => {
@@ -64,7 +65,32 @@ describe('Project Controller', () => {
 
     // Mock request and response
     req = {
-      user: mockUser,
+      user: {
+        id: 1,
+        external_id: 'test-external-123',
+        mongo_id: 'test-user-123',
+        gender: 'male' as gender_t,
+        language: 'en',
+        education_stage: 'primary' as education_stage_t,
+        tag_list: [],
+        contact_id: null,
+        is_open_location: null,
+        location_id: null,
+        nickname: null,
+        role_id: 1,
+        is_open_profile: null,
+        birth_date: null,
+        basic_info_id: null,
+        createdDate: null,
+        updatedDate: null,
+        created_by: null,
+        created_at: new Date(),
+        updated_by: null,
+        updated_at: new Date(),
+        email_verified: null,
+        email_verified_at: null,
+        is_active: true,
+      },
       body: {},
       params: {},
       query: {}
@@ -87,11 +113,11 @@ describe('Project Controller', () => {
       goal: '達成目標',
       content: '專案內容',
       strategy: '執行策略',
-      resource: '所需資源',
+      resources: '所需資源',
       outcome: '預期成果',
-      is_public: true,
+      isPublic: true,
       status: 'Not Started',
-      interval: 'Daily'
+      interval: 1
     };
 
     beforeEach(() => {
@@ -129,7 +155,32 @@ describe('Project Controller', () => {
     });
 
     it('should handle invalid user ID', async () => {
-      req.user = { id: 'invalid' as any };
+      req.user = { 
+        id: 'invalid' as any, // 設置為無效的 id（非數字類型）
+        external_id: 'invalid-user',
+        mongo_id: 'test-mongo-123',
+        gender: null,
+        language: null,
+        education_stage: null,
+        tag_list: [],
+        contact_id: null,
+        is_open_location: null,
+        location_id: null,
+        nickname: null,
+        role_id: 1,
+        is_open_profile: null,
+        birth_date: null,
+        basic_info_id: null,
+        createdDate: null,
+        updatedDate: null,
+        created_by: null,
+        created_at: new Date(),
+        updated_by: null,
+        updated_at: new Date(),
+        email_verified: null,
+        email_verified_at: null,
+        is_active: true
+      };
 
       await projectController.createProject(req as Request, res as Response);
 
@@ -320,8 +371,8 @@ describe('Project Controller', () => {
       await projectController.getProjects(req as Request, res as Response);
 
       expect(mockProjectService.getProjects).toHaveBeenCalledWith({
-        page: 1, // fallback to default
-        limit: 20, // fallback to default
+        page: NaN, // parseInt('invalid') 返回 NaN
+        limit: NaN, // parseInt('invalid') 返回 NaN
         status: undefined,
         is_public: undefined,
         user_id: undefined,
@@ -376,7 +427,15 @@ describe('Project Controller', () => {
     });
 
     it('should successfully update a project', async () => {
-      const updatedProject = { ...mockProject, ...updateData };
+      const updatedProject = { 
+        ...mockProject, 
+        ...updateData,
+        milestones: mockProject.milestones.map(m => ({
+          ...m,
+          id: 1,
+          tasks: m.tasks.map(t => ({ ...t, id: 1 }))
+        }))
+      };
       mockProjectService.updateProject.mockResolvedValue({
         success: true,
         data: updatedProject,
@@ -604,10 +663,10 @@ describe('Project Controller', () => {
     it('should successfully duplicate a project', async () => {
       const duplicatedProject = {
         ...mockProject,
-        id: 2,
+        id: '2',
         external_id: 'project-456',
         title: '測試專案 (副本)',
-        is_public: false,
+        isPublic: false,
         status: 'Not Started' as const
       };
 
@@ -631,15 +690,15 @@ describe('Project Controller', () => {
         title: '測試專案 (副本)',
         description: mockProject.description,
         motivation: mockProject.motivation,
-        motivation_description: mockProject.motivation_description,
+        motivationDescription: mockProject.motivationDescription,
         goal: mockProject.goal,
         content: mockProject.content,
         strategy: mockProject.strategy,
-        strategy_description: mockProject.strategy_description,
-        resource: mockProject.resource,
+        strategyDescription: mockProject.strategyDescription,
+        resources: mockProject.resources,
         outcome: mockProject.outcome,
-        outcome_description: mockProject.outcome_description,
-        is_public: false,
+        outcomeDescription: mockProject.outcomeDescription,
+        isPublic: false,
         status: 'Not Started',
         interval: mockProject.interval
       });

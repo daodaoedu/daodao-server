@@ -9,7 +9,6 @@ import { emailService } from '../services/auth/email.service';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
 import { 
-  LoginRequest,
   AuthResponse
 } from '../types/auth.types';
 import { 
@@ -24,58 +23,10 @@ import { asyncWrapper } from '../utils/error-handler';
  * POST /api/auth/login
  * 注意：當前版本僅支援 OAuth 登入，密碼登入需要 schema 更新
  */
-export const login = asyncWrapper(async (req: Request, res: Response) => {
-  const { email } = req.body as LoginRequest;
-
-  // 查找用戶
-  const userResult = await authService.findUserByEmail(email);
-  
-  if (!userResult) {
-    throw new UnauthorizedError('用戶不存在');
-  }
-
-  const { contact, user } = userResult;
-
+export const login = asyncWrapper(async (_req: Request, _res: Response) => {
   // 目前 Prisma schema 不包含密碼字段，暫時只支援 OAuth
   // TODO: 更新 schema 以支援密碼認證
   throw new UnauthorizedError('請使用 Google 登入');
-
-  // 獲取用戶角色和權限
-  const userRoles = await authService.getUserRoles(user.id);
-  const userPermissions = await authService.getUserPermissions(user.id);
-
-  // 生成 JWT token
-  const tokenPayload = {
-    id: user.id,
-    _id: user.external_id || '',
-    email: contact.email || '',
-    username: user.nickname || '',
-    isTemp: false,
-    roles: userRoles.map(role => role.name),
-    permissions: userPermissions.map(permission => permission.name)
-  };
-
-  const token = authService.generateAuthToken(tokenPayload);
-
-  // 更新最後登入時間
-  await authService.updateLastLogin(user.id);
-
-  const response: AuthResponse = {
-    success: true,
-    message: '登入成功',
-    token,
-    user: {
-      id: user.id,
-      username: user.nickname || '',
-      email: contact.email || '',
-      name: user.nickname || '',
-      photo_url: contact.photo_url || '',
-      is_active: true // Prisma schema 沒有 is_active 字段，假設都是 active
-    },
-    isTemporary: false
-  };
-
-  res.json(response);
 });
 
 /**
@@ -83,7 +34,7 @@ export const login = asyncWrapper(async (req: Request, res: Response) => {
  * POST /api/auth/register
  * 注意：當前版本暫不支援註冊，需要 schema 更新
  */
-export const register = asyncWrapper(async (req: Request, res: Response) => {
+export const register = asyncWrapper(async (_req: Request, _res: Response) => {
   // 目前 Prisma schema 不包含密碼字段，暫時禁用註冊功能
   // TODO: 更新 schema 以支援完整的用戶註冊
   throw new BadRequestError('註冊功能暫時不可用，請使用 Google 登入');
@@ -103,7 +54,8 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
   console.log('google/callback_req.user', user);
   
   // 參考 JavaScript 版本的邏輯
-  let { googleID, _id, id, external_id, roleId, name } = user;
+  const { id, external_id, name } = user;
+  let _id: string | number = id || 0; // Use let instead of const for reassignment
   let isUserExit = false;
 
   if (external_id) {
@@ -112,12 +64,11 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
   }
   
   console.log('google/callback_isUserExit', isUserExit);
-  const time = Date.now();
   const isTemp = !isUserExit;
 
   // 獲取用戶角色和權限（如果是正式用戶）
-  let userRoles: any[] = [];
-  let userPermissions: any[] = [];
+  let userRoles: Array<{ name: string }> = [];
+  let userPermissions: Array<{ name: string }> = [];
   
   if (!isTemp && id) {
     try {
@@ -131,7 +82,7 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
 
   const payload = { 
     id: id || 0, 
-    _id: _id || '', 
+    _id: typeof _id === 'string' ? _id : undefined, 
     username: name || '', 
     isTemp,
     roles: userRoles.map(role => role.name),
@@ -220,8 +171,8 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
   let contact;
 
   // 獲取用戶角色和權限
-  let userRoles: any[] = [];
-  let userPermissions: any[] = [];
+  let userRoles: Array<{ name: string }> = [];
+  let userPermissions: Array<{ name: string }> = [];
 
   if (isTemporary) {
     // 臨時用戶
@@ -254,11 +205,13 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
     message: '獲取用戶資訊成功',
     user: {
       id: user.id,
-      username: isTemporary ? undefined : (user as { nickname?: string }).nickname,
+      nickname: isTemporary ? undefined : (user as { nickname?: string }).nickname,
       email: contact?.email || (user as { email?: string }).email,
       name: (user as { name?: string; nickname?: string }).name || (user as { nickname?: string }).nickname,
       photo_url: (user as { photo_url?: string }).photo_url || contact?.photo_url || '',
-      is_active: true, // Prisma schema 沒有 is_active 字段
+      is_active: isTemporary ? true : ((user as { is_active?: boolean }).is_active || true),
+      email_verified: isTemporary ? false : ((user as { email_verified?: boolean }).email_verified || false),
+      email_verified_at: isTemporary ? null : ((user as { email_verified_at?: Date | null }).email_verified_at || null),
       roles: userRoles.map(role => role.name),
       permissions: userPermissions.map(permission => permission.name)
     },
@@ -291,16 +244,14 @@ export const resetPassword = asyncWrapper(async (_req: Request, _res: Response) 
  * POST /api/auth/verify-email
  */
 export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
-  // 參考原有 JavaScript 版本的邏輯
-  const decodedQuery = decodeURIComponent(req.url);
-  console.log("Decoded query:", decodedQuery);
-  const tokenMatch = decodedQuery.match(/token=([^&]*)/);
-  const token = tokenMatch ? tokenMatch[1] : null;
-
-  console.log("token", token);
+  const { token, email } = req.body;
   
   if (!token) {
-    throw new BadRequestError('No token provided');
+    throw new BadRequestError('驗證令牌為必填欄位');
+  }
+
+  if (!email) {
+    throw new BadRequestError('電子郵件為必填欄位');
   }
 
   try {
@@ -310,30 +261,36 @@ export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
     console.log("decoded", decoded);
 
     if (decoded.error) {
-      throw new UnauthorizedError(decoded.error);
+      throw new BadRequestError('無效的驗證令牌');
     }
 
     // 使用 external_id 查找用戶
     const user = await authService.findUserByExternalId(decoded._id || '');
     console.log("user", user);
 
-    if (user) {
-      // 在當前 Prisma schema 中，沒有 isVerified 字段
-      // 可以考慮添加或使用其他方式標記驗證狀態
-      console.log("user_verification", user);
-
-      const url = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&isVerified=true`;
-      
-      // 發送歡迎郵件
-      const contact = user.contacts;
-      if (contact?.email) {
-        await emailService.sendWelcomeEmail(contact.email, user.nickname || 'User');
-      }
-
-      return res.redirect(url);
+    if (!user) {
+      throw new NotFoundError('用戶不存在');
     }
 
-    throw new NotFoundError('User not found');
+    // 檢查是否已驗證
+    if (user.email_verified) {
+      throw new BadRequestError('郵件已驗證');
+    }
+
+    // 更新用戶郵件驗證狀態
+    await authService.verifyUserEmail(user.id);
+    console.log("user_verification_updated", user.id);
+    
+    // 發送歡迎郵件
+    const contact = user.contacts;
+    if (contact?.email) {
+      await emailService.sendWelcomeEmail(contact.email, user.nickname || 'User');
+    }
+
+    res.json({
+      success: true,
+      message: '郵件驗證成功'
+    });
   } catch (err) {
     console.error("verifyEmail error:", err);
     throw err;

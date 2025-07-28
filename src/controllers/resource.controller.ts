@@ -5,7 +5,7 @@
 
 import { Response } from 'express';
 import { AuthRequest } from '@/types/auth.types';
-import { asyncWrapper, BadRequestError, NotFoundError } from '@/utils/error-handler';
+import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
 import resourceService from '@/services/resource.service';
 import tagService from '@/services/tag.service';
 import type { tags } from '../../generated/prisma';

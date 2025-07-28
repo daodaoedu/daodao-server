@@ -10,8 +10,11 @@ import tagRoutes from './tag.routes';
 import authRoutes from './auth.routes';
 import projectRoutes from './project.routes';
 import userRoutes from './user.routes';
+import ideaRoutes from './idea.routes';
+import meRoutes from './me.routes';
+import commentRoutes from './comment.routes';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 /**
  * API 版本前綴
@@ -41,8 +44,7 @@ router.use('/auth', authRoutes);
 // DELETE /api/v1/resources/:id
 // GET    /api/v1/resources/:id/tags
 router.use('/resources', resourceRoutes);
-
-// 巢狀資源心得評價路由
+// 巢狀資源心得評價路由 (注意：resourceReviewRoutes 使用 mergeParams: true)
 // GET    /api/v1/resources/:resourceId/reviews
 // GET    /api/v1/resources/:resourceId/reviews/:reviewId
 // POST   /api/v1/resources/:resourceId/reviews
@@ -52,6 +54,7 @@ router.use('/resources', resourceRoutes);
 // POST   /api/v1/resources/:resourceId/reviews/:reviewId/like
 // DELETE /api/v1/resources/:resourceId/reviews/:reviewId/like
 router.use('/resources/:resourceId/reviews', resourceReviewRoutes);
+
 
 // 標籤路由
 // GET    /api/v1/tags/popular
@@ -82,6 +85,26 @@ router.use('/projects', projectRoutes);
 // DELETE /api/v1/users/me
 // DELETE /api/v1/users/:id
 router.use('/users', userRoutes);
+
+// 想法路由
+// GET    /api/v1/ideas
+// GET    /api/v1/ideas/:id
+// POST   /api/v1/ideas
+// PATCH  /api/v1/ideas/:id
+// DELETE /api/v1/ideas/:id
+router.use('/ideas', ideaRoutes);
+
+// 個人 API 路由
+// GET    /api/v1/me/ideas
+router.use('/me', meRoutes);
+
+// 留言路由
+// POST   /api/v1/comments
+// GET    /api/v1/comments
+// GET    /api/v1/comments/:commentId
+// PUT    /api/v1/comments/:commentId
+// DELETE /api/v1/comments/:commentId
+router.use('/comments', commentRoutes);
 
 /**
  * API 健康檢查端點
@@ -114,6 +137,9 @@ router.get('/info', (req, res) => {
         tags: '/api/v1/tags',
         projects: '/api/v1/projects',
         users: '/api/v1/users',
+        ideas: '/api/v1/ideas',
+        me: '/api/v1/me',
+        comments: '/api/v1/comments',
         health: '/api/v1/health'
       },
       features: [
@@ -125,6 +151,9 @@ router.get('/info', (req, res) => {
         '標籤系統',
         '專案管理系統',
         '用戶管理系統',
+        '想法管理系統',
+        '留言系統',
+        '個人 API 端點',
         '巢狀路由支援',
         '分頁查詢',
         '複雜過濾條件',

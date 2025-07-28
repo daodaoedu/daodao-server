@@ -75,8 +75,7 @@ export const forgotPasswordValidator = z.object({
 export const resetPasswordValidator = z.object({
   token: z
     .string({ required_error: '重設令牌為必填欄位' })
-    .min(1, '重設令牌不能為空')
-    .uuid('無效的重設令牌格式'),
+    .min(1, '重設令牌不能為空'),
   newPassword: z
     .string({ required_error: '新密碼為必填欄位' })
     .min(8, '密碼至少需要 8 個字符')
@@ -95,8 +94,7 @@ export const resetPasswordValidator = z.object({
 export const verifyEmailValidator = z.object({
   token: z
     .string({ required_error: '驗證令牌為必填欄位' })
-    .min(1, '驗證令牌不能為空')
-    .uuid('無效的驗證令牌格式'),
+    .min(1, '驗證令牌不能為空'),
   email: z
     .string({ required_error: '電子郵件為必填欄位' })
     .email('請輸入有效的電子郵件格式')

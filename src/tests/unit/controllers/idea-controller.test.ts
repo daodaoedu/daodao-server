@@ -4,13 +4,13 @@
 
 import request from 'supertest';
 import express from 'express';
-import ideaController from '../../../controllers/idea.controller';
-import ideaService from '../../../services/idea.service';
-import { AuthRequest } from '../../../middleware/auth';
-import { IdeaStatus, ResourceStatus } from '../../../types/idea.types';
+import ideaController from '@/controllers/idea.controller';
+import ideaService from '@/services/idea.service';
+import { AuthRequest } from '@/middleware/auth';
+import { IdeaStatus, ResourceStatus } from '@/types/idea.types';
 
 // 模擬服務
-jest.mock('../../../services/idea-service', () => ({
+jest.mock('@/services/idea.service', () => ({
   __esModule: true,
   default: {
     getIdeas: jest.fn(),
@@ -22,12 +22,12 @@ jest.mock('../../../services/idea-service', () => ({
 }));
 
 // 模擬驗證中間件
-jest.mock('../../../validators/validation.middleware', () => ({
+jest.mock('@/validators/validation.middleware', () => ({
   validate: () => (_req: unknown, _res: unknown, next: () => void) => next()
 }));
 
 // 模擬驗證 schemas
-jest.mock('../../../validators/idea.validators', () => ({
+jest.mock('@/validators/idea.validators', () => ({
   ideaParamsSchema: {
     parse: jest.fn().mockImplementation((params) => params)
   },
@@ -245,7 +245,7 @@ describe('IdeaController', () => {
         data: mockCreatedIdea,
         message: '想法已成功建立'
       });
-      expect(mockIdeaService.createIdea).toHaveBeenCalledWith(1, createData);
+      expect(mockIdeaService.createIdea).toHaveBeenCalledWith(createData, 1);
     });
 
     it('應該支援創建帶有資源的想法', async () => {
@@ -338,7 +338,7 @@ describe('IdeaController', () => {
         data: mockUpdatedIdea,
         message: '想法已更新'
       });
-      expect(mockIdeaService.updateIdea).toHaveBeenCalledWith('idea-uuid-1', 1, updateData);
+      expect(mockIdeaService.updateIdea).toHaveBeenCalledWith('idea-uuid-1', updateData, 1);
     });
 
     it('應該處理權限不足的情況', async () => {

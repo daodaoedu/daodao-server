@@ -54,18 +54,18 @@ export function createEmailConfig(): EmailConfig {
     smtp: {
       service: 'gmail',
       auth: {
-        user: process.env.EMAIL_ADDRESS!,
-        pass: process.env.EMAIL_PASSWORD!
+        user: process.env.EMAIL_ADDRESS || '',
+        pass: process.env.EMAIL_PASSWORD || ''
       }
     },
     
     sender: {
       name: '島島阿學',
-      email: process.env.EMAIL_ADDRESS!
+      email: process.env.EMAIL_ADDRESS || ''
     },
     
     urls: {
-      frontend: process.env.FRONTEND_URL!,
+      frontend: process.env.FRONTEND_URL || '',
       backend: process.env.BACKEND_URL || 'http://localhost:3000'
     },
     
@@ -76,5 +76,7 @@ export function createEmailConfig(): EmailConfig {
   };
 }
 
-// 導出默認配置實例
-export const emailConfig = createEmailConfig();
+// 使用 getter 函數而不是立即初始化
+export function getEmailConfig(): EmailConfig {
+  return createEmailConfig();
+}

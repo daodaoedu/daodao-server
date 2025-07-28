@@ -5,6 +5,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/error-handler';
 import { ErrorResponse } from '../types/common.types';
+import { 
+  isPrismaError, 
+  categorizePrismaError, 
+} from '../utils/prisma-error-handler';
 
 /**
  * 全域錯誤處理中間件
@@ -27,29 +31,19 @@ export const globalErrorHandler = (
     message = error.message;
     errors = error.errors;
   }
-  // 處理 Sequelize 驗證錯誤
-  else if (error.name === 'SequelizeValidationError') {
-    statusCode = 400;
-    message = '資料驗證失敗';
-    errors = {};
-    // 提取驗證錯誤詳情
-    if ('errors' in error && Array.isArray(error.errors)) {
-      error.errors.forEach((err: { path?: string; message?: string }) => {
-        if (errors && err.path && err.message) {
-          errors[err.path] = err.message;
-        }
-      });
+  // 處理 null 或 undefined 錯誤
+  else if (!error || error === null || error === undefined) {
+    statusCode = 500;
+    message = '伺服器內部錯誤';
+  }
+  // 處理 Prisma 錯誤
+  else if (isPrismaError(error)) {
+    const prismaErrorInfo = categorizePrismaError(error);
+    statusCode = prismaErrorInfo.statusCode;
+    message = prismaErrorInfo.message;
+    if (prismaErrorInfo.details) {
+      errors = prismaErrorInfo.details;
     }
-  }
-  // 處理 Sequelize 唯一約束錯誤
-  else if (error.name === 'SequelizeUniqueConstraintError') {
-    statusCode = 409;
-    message = '資料衝突，資源已存在';
-  }
-  // 處理 Sequelize 外鍵約束錯誤
-  else if (error.name === 'SequelizeForeignKeyConstraintError') {
-    statusCode = 400;
-    message = '關聯資料不存在';
   }
   // 處理 MongoDB 重複鍵錯誤
   else if (error.name === 'MongoServerError' && 'code' in error && error.code === 11000) {
@@ -100,26 +94,52 @@ export const globalErrorHandler = (
 
   // 開發環境下記錄完整錯誤
   if (process.env.NODE_ENV === 'development') {
-    console.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      statusCode,
-    });
+    try {
+      console.error('Error details:', {
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace available',
+        statusCode,
+      });
+    } catch (loggingError) {
+      // 如果記錄失敗，繼續處理錯誤響應
+      try {
+        console.error('Logging failed, but continuing with error response');
+      } catch {
+        // 如果連這個也失敗，就完全靜默
+      }
+    }
   } else {
     // 生產環境只記錄必要資訊
-    console.error('Error:', {
-      name: error.name,
-      message: error.message,
-      statusCode,
-      timestamp: new Date().toISOString(),
-      url: req.url,
-      method: req.method,
-    });
+    try {
+      console.error('Error:', {
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        statusCode,
+        timestamp: new Date().toISOString(),
+        url: req.url,
+        method: req.method,
+      });
+    } catch (loggingError) {
+      // 如果記錄失敗，繼續處理錯誤響應
+      try {
+        console.error('Logging failed, but continuing with error response');
+      } catch {
+        // 如果連這個也失敗，就完全靜默
+      }
+    }
   }
 
   // 獲取錯誤代碼
   const getErrorCode = (error: Error): string => {
+    if (!error) return 'INTERNAL_SERVER_ERROR';
+    
+    // 處理 Prisma 錯誤
+    if (isPrismaError(error)) {
+      const prismaErrorInfo = categorizePrismaError(error);
+      return prismaErrorInfo.errorCode;
+    }
+    
     switch (error.name) {
       case 'JsonWebTokenError':
         return 'INVALID_TOKEN';
@@ -127,12 +147,6 @@ export const globalErrorHandler = (
         return 'TOKEN_EXPIRED';
       case 'ZodError':
         return 'VALIDATION_ERROR';
-      case 'SequelizeValidationError':
-        return 'DATABASE_VALIDATION_ERROR';
-      case 'SequelizeUniqueConstraintError':
-        return 'DUPLICATE_RESOURCE';
-      case 'SequelizeForeignKeyConstraintError':
-        return 'INVALID_REFERENCE';
       case 'MongoServerError':
         return 'DATABASE_ERROR';
       case 'MulterError':
@@ -174,8 +188,8 @@ export const globalErrorHandler = (
     timestamp: new Date().toISOString(),
     ...(process.env.NODE_ENV === 'development' && { 
       debug: {
-        stack: error.stack,
-        name: error.name 
+        stack: error?.stack || 'No stack trace available',
+        name: error?.name || 'Unknown' 
       }
     })
   };

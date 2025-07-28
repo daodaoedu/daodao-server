@@ -4,11 +4,7 @@
  */
 
 import { prisma } from './database/prisma.service';
-import {
-  NotFoundError,
-  ConflictError,
-  BadRequestError
-} from '../utils/error-handler';
+import '../utils/error-handler';
 import type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
@@ -17,6 +13,7 @@ import type {
   ProjectServiceResult,
   ProjectStats
 } from '../types/project.types';
+import type { motivation_t, strategy_t, outcome_t, day_enum } from '../../generated/prisma';
 
 /**
  * 專案資料型別定義（包含關聯資料）
@@ -44,7 +41,7 @@ interface ProjectWithIncludes {
   interval: number | null;
   created_at: Date | null;
   updated_at: Date | null;
-  version: number;
+  version: number | null;
   users?: {
     id: number;
     nickname: string | null;
@@ -60,19 +57,19 @@ interface ProjectWithIncludes {
   } | null;
   milestone?: Array<{
     id: number;
-    position: number;
-    name: string;
+    position: number | null;
+    name: string | null;
     description: string | null;
     start_date: Date | null;
     end_date: Date | null;
-    is_completed: boolean;
+    is_completed: boolean | null;
     task?: Array<{
       id: number;
-      name: string;
+      name: string | null;
       position: number;
       description: string | null;
       days_of_week: unknown;
-      is_completed: boolean;
+      is_completed: boolean | null;
     }>;
   }>;
 }
@@ -93,7 +90,7 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
     content: project.content,
     strategy: project.strategy,
     strategyDescription: project.strategy_description,
-    resourceName: project.resource,
+    resources: project.resource,
     outcome: project.outcome,
     outcomeDescription: project.outcome_description,
     isPublic: project.is_public ?? true,
@@ -101,9 +98,9 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
     startDate: project.start_date,
     endDate: project.end_date,
     interval: project.interval,
-    createdAt: project.created_at,
-    updatedAt: project.updated_at,
-    version: project.version,
+    createdAt: project.created_at || new Date(),
+    updatedAt: project.updated_at || new Date(),
+    version: project.version || 1,
     user: project.users ? {
       id: project.users.id,
       name: project.users.nickname,
@@ -113,19 +110,19 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
     } : null,
     milestones: project.milestone?.map(m => ({
       id: m.id,
-      position: m.position,
-      name: m.name,
+      position: m.position || 0,
+      name: m.name || '',
       description: m.description || "",
       startDate: m.start_date,
       endDate: m.end_date,
-      isCompleted: m.is_completed,
+      isCompleted: m.is_completed || false,
       tasks: m.task?.map(t => ({
         id: t.id,
-        name: t.name,
+        name: t.name || '',
         position: t.position,
         description: t.description || "",
         daysOfWeek: t.days_of_week,
-        isCompleted: t.is_completed
+        isCompleted: t.is_completed || false
       })) || []
     })) || []
   };
@@ -199,14 +196,14 @@ export class ProjectService {
             img_url: projectData.imgUrl,
             title: projectData.title,
             description: projectData.description,
-            motivation: projectData.motivation ? { set: projectData.motivation as any[] } : undefined,
+            motivation: projectData.motivation ? { set: projectData.motivation as motivation_t[] } : undefined,
             motivation_description: projectData.motivationDescription,
             goal: projectData.goal,
             content: projectData.content,
-            strategy: projectData.strategy ? { set: projectData.strategy as any[] } : undefined,
+            strategy: projectData.strategy ? { set: projectData.strategy as strategy_t[] } : undefined,
             strategy_description: projectData.strategyDescription,
-            resource: projectData.resourceName,
-            outcome: projectData.outcome ? { set: projectData.outcome as any[] } : undefined,
+            resource: projectData.resources,
+            outcome: projectData.outcome ? { set: projectData.outcome as outcome_t[] } : undefined,
             outcome_description: projectData.outcomeDescription,
             is_public: projectData.isPublic ?? true,
             status: projectData.status || 'Not Started',
@@ -241,7 +238,7 @@ export class ProjectService {
                   position: taskData.position,
                   name: taskData.name,
                   description: taskData.description,
-                  days_of_week: taskData.daysOfWeek ? { set: taskData.daysOfWeek as any[] } : undefined,
+                  days_of_week: taskData.daysOfWeek ? { set: taskData.daysOfWeek as day_enum[] } : undefined,
                   is_completed: taskData.isCompleted || false
                 }))
               });
@@ -250,7 +247,7 @@ export class ProjectService {
         }
 
         // 獲取完整的專案資料
-        const createdProject = await this.getProjectById(project.external_id!, userId);
+        const createdProject = await this.getProjectById(project.external_id || '', userId);
         
         if (!createdProject.success || !createdProject.data) {
           return {
@@ -471,9 +468,9 @@ export class ProjectService {
         updated_by: userId,
         start_date: updateData.start_date ? new Date(updateData.start_date) : undefined,
         end_date: updateData.end_date ? new Date(updateData.end_date) : undefined,
-        motivation: updateData.motivation ? { set: updateData.motivation as any[] } : undefined,
-        strategy: updateData.strategy ? { set: updateData.strategy as any[] } : undefined,
-        outcome: updateData.outcome ? { set: updateData.outcome as any[] } : undefined
+        motivation: updateData.motivation ? { set: updateData.motivation as motivation_t[] } : undefined,
+        strategy: updateData.strategy ? { set: updateData.strategy as strategy_t[] } : undefined,
+        outcome: updateData.outcome ? { set: updateData.outcome as outcome_t[] } : undefined
       };
       
       await prisma.project.update({

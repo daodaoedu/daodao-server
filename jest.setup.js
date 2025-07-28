@@ -1,3 +1,6 @@
+// Load test environment variables
+require('dotenv').config({ path: '.env.test' });
+
 global.console.log = () => {};
 
 // 設置模組別名解析

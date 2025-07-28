@@ -1,6 +1,6 @@
 /**
- * 資源評論控制器完整測試
- * 包含原有的集成測試和新增的單元測試
+ * 資源心得評價控制器測試
+ * 基於 Prisma 架構的現代化 TypeScript 測試
  */
 
 import request from 'supertest';
@@ -21,12 +21,13 @@ import resourceReviewController, {
 } from '../../../controllers/resource-review.controller';
 import resourceReviewService from '../../../services/resource-review.service';
 import tagService from '../../../services/tag.service';
-import { BadRequestError } from '../../../utils/error-handler';
+import { BadRequestError, NotFoundError, ForbiddenError } from '../../../utils/error-handler';
 import { AuthRequest } from '../../../types/auth.types';
+import type { ResourceReviewResponse } from '../../../types/resource-review.types';
 
 // Mock dependencies
-jest.mock('../../../services/resource-review-service');
-jest.mock('../../../services/tag-service');
+jest.mock('../../../services/resource-review.service');
+jest.mock('../../../services/tag.service');
 jest.mock('../../../validators/resource-review.validator');
 
 // 創建測試用的 Express 應用
@@ -45,6 +46,7 @@ describe('Resource Review Controller Tests', () => {
   let app: express.Application;
   let req: Partial<AuthRequest>;
   let res: Partial<Response>;
+  let next: jest.Mock;
   let mockResourceReviewService: jest.Mocked<typeof resourceReviewService>;
   let mockTagService: jest.Mocked<typeof tagService>;
 
@@ -55,33 +57,63 @@ describe('Resource Review Controller Tests', () => {
   };
 
   const mockReview = {
-    id: 1,
-    resourceId: 'resource-123',
-    userId: 1,
+    id: '1',
     content: '很棒的資源',
-    score: {
-      overall_impact: 5,
-      thinking_change: 4,
-      life_change: 3,
-      behavior_change: 4,
-      skill_development: 5
+    overallImpact: 5,
+    changeMindset: 4,
+    solveProblems: 3,
+    gainPerspectives: 4,
+    achieveGoals: 5,
+    avgRating: 4.2,
+    timeUsage: null,
+    contentFeatures: {
+      wellStructured: true,
+      practiceFocused: true,
+      wellRoundedConcepts: false,
+      thoughtProvoking: true,
+      progressiveLearning: false,
+      problemBased: true,
+      realWorldExamples: true,
+      interactive: false,
+      visuallyRich: false
+    },
+    resourceUsage: {
+      withOnlineCourses: false,
+      withBooks: true,
+      withOtherTools: false,
+      withCommunity: false,
+      onlyThisResource: true,
+      notApplicableResource: false
+    },
+    status: 'published',
+    likeCount: 0,
+    user: {
+      id: 1,
+      name: 'Test User',
+      _id: 'user-test-id',
+      roleList: ['user'],
+      photoURL: null,
+      educationStage: null,
+      tagList: [],
+      selfIntroduction: null
+    },
+    resourceId: 'resource-123',
+    resource: {
+      id: 'resource-123',
+      name: '測試資源',
+      url: 'https://example.com'
     },
     tags: ['JavaScript', '前端開發'],
-    status: 'published',
-    created_at: new Date(),
-    updated_at: new Date(),
-    stats: {
-      likes_count: 10
-    }
-  };
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  } as ResourceReviewResponse;
 
   const mockReviewList = {
     reviews: [mockReview],
     pagination: {
-      current_cursor: null,
-      next_cursor: 'next-cursor',
-      has_more: false,
-      total_estimate: 1
+      cursors: { start: null, end: null },
+      hasMore: false,
+      count: 1
     }
   };
 
@@ -102,20 +134,42 @@ describe('Resource Review Controller Tests', () => {
       status: jest.fn().mockReturnThis()
     };
 
+    next = jest.fn();
+
     // Mock services
     mockResourceReviewService = resourceReviewService as jest.Mocked<typeof resourceReviewService>;
     mockTagService = tagService as jest.Mocked<typeof tagService>;
+    
+    // Setup default mock responses
+    mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
+    mockResourceReviewService.getReviewById.mockResolvedValue(mockReview);
+    mockResourceReviewService.createReview.mockResolvedValue(mockReview);
+    mockResourceReviewService.updateReview.mockResolvedValue(mockReview);
+    mockResourceReviewService.updateReviewStatus.mockResolvedValue(mockReview);
+    mockResourceReviewService.deleteReview.mockResolvedValue({ success: true });
+    mockResourceReviewService.toggleLikeReview.mockResolvedValue({ success: true });
 
     // Mock validators
     const validators = require('../../../validators/resource-review.validator');
-    validators.validateCreateResourceReview = jest.fn().mockReturnValue(mockReview);
-    validators.validateUpdateResourceReview = jest.fn().mockReturnValue(mockReview);
+    validators.validateCreateResourceReview = jest.fn().mockReturnValue({
+      content: '很棒的資源',
+      score_impact: 5,
+      score_mindset: 4,
+      score_problems: 3,
+      score_perspectives: 4,
+      score_goals: 5,
+      tags: ['JavaScript', '前端開發']
+    });
+    validators.validateUpdateResourceReview = jest.fn().mockReturnValue({
+      content: '更新後的評價',
+      score_impact: 4
+    });
     validators.validateUpdateReviewStatus = jest.fn().mockReturnValue({ status: 'published' });
   });
 
-  // ===== 集成測試（原有的測試保留） =====
+  // ===== 集成測試（更新為符合當前實作） =====
   describe('Integration Tests - GET /resources/:resourceId/reviews', () => {
-    it('應該使用預設分頁參數（每頁2筆）', async () => {
+    it('應該成功獲取特定資源的心得評價列表', async () => {
       // 模擬服務返回
       const mockResponse = {
         reviews: [
@@ -128,48 +182,53 @@ describe('Resource Review Controller Tests', () => {
             gainPerspectives: 4,
             achieveGoals: 5,
             avgRating: 4.6,
-            timeUsage: '1_2_hours_daily',
+            timeUsage: null,
             contentFeatures: {
               wellStructured: true,
               practiceFocused: true,
-              wellRoundedConcepts: false,
-              thoughtProvoking: true,
+              wellRoundedConcepts: true,
+              thoughtProvoking: false,
               progressiveLearning: false,
               problemBased: false,
               realWorldExamples: true,
               interactive: false,
-              visuallyRich: true
+              visuallyRich: false
             },
             resourceUsage: {
-              withOnlineCourses: true,
+              withOnlineCourses: false,
               withBooks: false,
-              withOtherTools: true,
+              withOtherTools: false,
               withCommunity: false,
-              onlyThisResource: false,
+              onlyThisResource: true,
               notApplicableResource: false
             },
             status: 'published',
-            likeCount: 12,
+            likeCount: 5,
             user: {
               id: 100,
               name: 'Alice Chen',
-              _id: 'user-uuid',
-              roleList: ['citizen'],
-              photoURL: 'https://example.com/avatar.jpg'
+              _id: 'user-alice-id',
+              roleList: ['user'],
+              photoURL: 'https://example.com/avatar.jpg',
+              educationStage: null,
+              tagList: [],
+              selfIntroduction: null
             },
             resourceId: '550e8400-e29b-41d4-a716-446655440000',
+            resource: {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              name: '測試資源',
+              url: 'https://example.com'
+            },
             tags: ['實用', '清晰易懂'],
             createdAt: '2024-01-18T16:45:00Z',
             updatedAt: '2024-01-19T10:20:00Z'
           }
         ],
         pagination: {
-          limit: 2,
-          hasNext: false,
-          hasPrev: false,
-          nextCursor: null,
-          prevCursor: null,
-          totalEstimate: 1
+          cursors: { start: null, end: null },
+          hasMore: false,
+          count: 1
         }
       };
       (resourceReviewService.getReviews as jest.Mock).mockResolvedValue(mockResponse);
@@ -182,7 +241,8 @@ describe('Resource Review Controller Tests', () => {
       // 驗證服務調用
       expect(resourceReviewService.getReviews).toHaveBeenCalledWith(
         expect.objectContaining({
-          resourceId: '550e8400-e29b-41d4-a716-446655440000'
+          resourceId: '550e8400-e29b-41d4-a716-446655440000',
+          status: 'published'
         }),
         {} // 沒有分頁參數時傳遞空物件
       );
@@ -199,29 +259,27 @@ describe('Resource Review Controller Tests', () => {
       const mockResponse = {
         reviews: [],
         pagination: {
-          limit: 1,
-          hasNext: false,
-          hasPrev: false,
-          nextCursor: null,
-          prevCursor: null,
-          totalEstimate: 0
+          cursors: { start: null, end: null },
+          hasMore: false,
+          count: 0
         }
       };
       (resourceReviewService.getReviews as jest.Mock).mockResolvedValue(mockResponse);
 
       // 發送請求
       const response = await request(app)
-        .get('/resources/550e8400-e29b-41d4-a716-446655440000/reviews?limit=1&sort=created_at&order=asc')
+        .get('/resources/550e8400-e29b-41d4-a716-446655440000/reviews?limit=1&sort=createdAt&order=asc')
         .expect(200);
 
       // 驗證服務調用
       expect(resourceReviewService.getReviews).toHaveBeenCalledWith(
         expect.objectContaining({
-          resourceId: '550e8400-e29b-41d4-a716-446655440000'
+          resourceId: '550e8400-e29b-41d4-a716-446655440000',
+          status: 'published'
         }),
         expect.objectContaining({
           limit: 1,
-          sort: 'created_at',
+          sort: 'createdAt',
           order: 'asc'
         })
       );
@@ -232,19 +290,16 @@ describe('Resource Review Controller Tests', () => {
       const mockResponse = {
         reviews: [],
         pagination: {
-          limit: 2,
-          hasNext: false,
-          hasPrev: false,
-          nextCursor: null,
-          prevCursor: null,
-          totalEstimate: 0
+          cursors: { start: null, end: null },
+          hasMore: false,
+          count: 0
         }
       };
       (resourceReviewService.getReviews as jest.Mock).mockResolvedValue(mockResponse);
 
       // 發送請求
       const response = await request(app)
-        .get('/resources/550e8400-e29b-41d4-a716-446655440000/reviews?status=published&minScore=4.0&maxScore=5.0&tags=實用,清晰')
+        .get('/resources/550e8400-e29b-41d4-a716-446655440000/reviews?minScore=4.0&maxScore=5.0&tags=實用,清晰')
         .expect(200);
 
       // 驗證服務調用
@@ -265,12 +320,9 @@ describe('Resource Review Controller Tests', () => {
       const mockResponse = {
         reviews: [],
         pagination: {
-          limit: 2,
-          hasNext: false,
-          hasPrev: false,
-          nextCursor: null,
-          prevCursor: null,
-          totalEstimate: 0
+          cursors: { start: null, end: null },
+          hasMore: false,
+          count: 0
         }
       };
       (resourceReviewService.getReviews as jest.Mock).mockResolvedValue(mockResponse);
@@ -285,7 +337,8 @@ describe('Resource Review Controller Tests', () => {
       // 驗證服務調用
       expect(resourceReviewService.getReviews).toHaveBeenCalledWith(
         expect.objectContaining({
-          resourceId: '550e8400-e29b-41d4-a716-446655440000'
+          resourceId: '550e8400-e29b-41d4-a716-446655440000',
+          status: 'published'
         }),
         expect.objectContaining({
           cursor: cursor
@@ -306,37 +359,53 @@ describe('Resource Review Controller Tests', () => {
             gainPerspectives: 4,
             achieveGoals: 5,
             avgRating: 4.6,
-            timeUsage: '1_2_hours_daily',
+            timeUsage: null,
             contentFeatures: {
               wellStructured: true,
-              practiceFocused: true
+              practiceFocused: false,
+              wellRoundedConcepts: true,
+              thoughtProvoking: true,
+              progressiveLearning: false,
+              problemBased: false,
+              realWorldExamples: false,
+              interactive: false,
+              visuallyRich: false
             },
             resourceUsage: {
-              withOnlineCourses: true,
-              withBooks: false
+              withOnlineCourses: false,
+              withBooks: false,
+              withOtherTools: false,
+              withCommunity: false,
+              onlyThisResource: true,
+              notApplicableResource: false
             },
             status: 'published',
-            likeCount: 5, // 確保使用 likeCount 而不是 likesCount
+            likeCount: 2,
             user: {
               id: 100,
               name: 'Test User',
-              _id: 'user-uuid',
-              roleList: ['citizen'],
-              photoURL: 'https://example.com/avatar.jpg'
+              _id: 'user-test-id',
+              roleList: ['user'],
+              photoURL: 'https://example.com/avatar.jpg',
+              educationStage: null,
+              tagList: [],
+              selfIntroduction: null
             },
             resourceId: '550e8400-e29b-41d4-a716-446655440000',
+            resource: {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              name: '測試資源',
+              url: 'https://example.com'
+            },
             tags: ['測試'],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z'
           }
         ],
         pagination: {
-          limit: 2,
-          hasNext: false,
-          hasPrev: false,
-          nextCursor: null,
-          prevCursor: null,
-          totalEstimate: 1
+          cursors: { start: null, end: null },
+          hasMore: false,
+          count: 1
         }
       };
       (resourceReviewService.getReviews as jest.Mock).mockResolvedValue(mockResponse);
@@ -352,23 +421,24 @@ describe('Resource Review Controller Tests', () => {
       // 驗證必要字段
       expect(review).toHaveProperty('id');
       expect(review).toHaveProperty('content');
-      expect(review).toHaveProperty('likeCount'); // 確保是 likeCount
+      expect(review).toHaveProperty('overallImpact');
+      expect(review).toHaveProperty('changeMindset');
+      expect(review).toHaveProperty('solveProblems');
+      expect(review).toHaveProperty('gainPerspectives');
+      expect(review).toHaveProperty('achieveGoals');
+      expect(review).toHaveProperty('status');
       expect(review).toHaveProperty('user');
-      expect(review).toHaveProperty('resourceId');
-      expect(review).toHaveProperty('avgRating');
-      expect(review).toHaveProperty('contentFeatures');
-      expect(review).toHaveProperty('resourceUsage');
+      expect(review).toHaveProperty('resource');
+      expect(review).toHaveProperty('tags');
       
       // 驗證用戶物件結構
       expect(review.user).toHaveProperty('id');
       expect(review.user).toHaveProperty('name');
-      expect(review.user).toHaveProperty('_id');
-      expect(review.user).toHaveProperty('roleList');
       expect(review.user).toHaveProperty('photoURL');
       
-      // 確保沒有舊的字段名稱
-      expect(review).not.toHaveProperty('likesCount');
-      expect(review).not.toHaveProperty('helpfulCount');
+      // 驗證資源 ID
+      expect(review).toHaveProperty('resourceId');
+      expect(review.resourceId).toBe('550e8400-e29b-41d4-a716-446655440000');
     });
   });
 
@@ -381,7 +451,7 @@ describe('Resource Review Controller Tests', () => {
     it('should successfully get reviews for a resource', async () => {
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviewsByResource(req as AuthRequest, res as Response);
+      await getReviewsByResource(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
         {
@@ -409,7 +479,7 @@ describe('Resource Review Controller Tests', () => {
 
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviewsByResource(req as AuthRequest, res as Response);
+      await getReviewsByResource(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
         {
@@ -437,7 +507,7 @@ describe('Resource Review Controller Tests', () => {
     it('should get reviews for current user (all statuses)', async () => {
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviewsByUser(req as AuthRequest, res as Response);
+      await getReviewsByUser(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
         {
@@ -452,7 +522,7 @@ describe('Resource Review Controller Tests', () => {
 
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviewsByUser(req as AuthRequest, res as Response);
+      await getReviewsByUser(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
         {
@@ -467,29 +537,35 @@ describe('Resource Review Controller Tests', () => {
   describe('Unit Tests - createReview', () => {
     const createReviewData = {
       content: '很棒的資源',
-      score: {
-        overall_impact: 5,
-        thinking_change: 4,
-        life_change: 3,
-        behavior_change: 4,
-        skill_development: 5
-      },
+      score_impact: 5,
+      score_mindset: 4,
+      score_problems: 3,
+      score_perspectives: 4,
+      score_goals: 5,
       tags: ['JavaScript', '前端開發']
     };
 
     beforeEach(() => {
-      req.params = { resourceId: '123' };
+      req.params = { resourceId: 'resource-123' };
       req.body = createReviewData;
     });
 
     it('should successfully create a review', async () => {
       mockResourceReviewService.createReview.mockResolvedValue(mockReview);
 
-      await createReview(req as AuthRequest, res as Response);
+      await createReview(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.createReview).toHaveBeenCalledWith(
-        123,
-        mockReview,
+        'resource-123',
+        expect.objectContaining({
+          content: '很棒的資源',
+          score_impact: 5,
+          score_mindset: 4,
+          score_problems: 3,
+          score_perspectives: 4,
+          score_goals: 5,
+          tags: ['JavaScript', '前端開發']
+        }),
         1
       );
       expect(res.status).toHaveBeenCalledWith(201);
@@ -502,31 +578,40 @@ describe('Resource Review Controller Tests', () => {
     it('should handle unauthenticated user', async () => {
       req.user = undefined;
 
-      await expect(createReview(req as AuthRequest, res as Response))
-        .rejects.toThrow(BadRequestError);
+      await createReview(req as Request, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '必須登入才能創建心得評價',
+          statusCode: 400
+        })
+      );
     });
   });
 
   describe('Unit Tests - updateReview', () => {
     const updateData = {
       content: '更新後的評價',
-      score: { overall_impact: 4 }
+      score_impact: 4
     };
 
     beforeEach(() => {
-      req.params = { id: '1' };
+      req.params = { reviewId: '1' };
       req.body = updateData;
     });
 
     it('should successfully update a review', async () => {
-      const updatedReview = { ...mockReview, ...updateData };
+      const updatedReview = { ...mockReview, content: '更新後的評價', overallImpact: 4 };
       mockResourceReviewService.updateReview.mockResolvedValue(updatedReview);
 
-      await updateReview(req as AuthRequest, res as Response);
+      await updateReview(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.updateReview).toHaveBeenCalledWith(
         1,
-        mockReview,
+        expect.objectContaining({
+          content: '更新後的評價',
+          score_impact: 4
+        }),
         1
       );
       expect(res.json).toHaveBeenCalledWith({
@@ -538,20 +623,26 @@ describe('Resource Review Controller Tests', () => {
     it('should handle unauthenticated user', async () => {
       req.user = undefined;
 
-      await expect(updateReview(req as AuthRequest, res as Response))
-        .rejects.toThrow(BadRequestError);
+      await updateReview(req as Request, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '必須登入才能更新心得評價',
+          statusCode: 400
+        })
+      );
     });
   });
 
   describe('Unit Tests - deleteReview', () => {
     beforeEach(() => {
-      req.params = { id: '1' };
+      req.params = { reviewId: '1' };
     });
 
     it('should successfully delete a review', async () => {
       mockResourceReviewService.deleteReview.mockResolvedValue({ success: true });
 
-      await deleteReview(req as AuthRequest, res as Response);
+      await deleteReview(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.deleteReview).toHaveBeenCalledWith(1, 1);
       expect(res.json).toHaveBeenCalledWith({
@@ -563,20 +654,26 @@ describe('Resource Review Controller Tests', () => {
     it('should handle unauthenticated user', async () => {
       req.user = undefined;
 
-      await expect(deleteReview(req as AuthRequest, res as Response))
-        .rejects.toThrow(BadRequestError);
+      await deleteReview(req as Request, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '必須登入才能刪除心得評價',
+          statusCode: 400
+        })
+      );
     });
   });
 
   describe('Unit Tests - likeReview', () => {
     beforeEach(() => {
-      req.params = { id: '1' };
+      req.params = { reviewId: '1' };
     });
 
     it('should successfully like a review', async () => {
       mockResourceReviewService.toggleLikeReview.mockResolvedValue({ success: true });
 
-      await likeReview(req as AuthRequest, res as Response);
+      await likeReview(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.toggleLikeReview).toHaveBeenCalledWith(1);
       expect(res.json).toHaveBeenCalledWith({
@@ -588,27 +685,33 @@ describe('Resource Review Controller Tests', () => {
     it('should handle unauthenticated user', async () => {
       req.user = undefined;
 
-      await expect(likeReview(req as AuthRequest, res as Response))
-        .rejects.toThrow(BadRequestError);
+      await likeReview(req as Request, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '必須登入才能點讚心得評價',
+          statusCode: 400
+        })
+      );
     });
   });
 
   describe('Unit Tests - getReviewTags', () => {
     beforeEach(() => {
-      req.params = { id: '1' };
+      req.params = { reviewId: '1' };
     });
 
     it('should successfully get review tags', async () => {
       const mockTags = [
-        { name: 'JavaScript' },
-        { name: 'React' }
+        { id: 1, name: 'JavaScript' },
+        { id: 2, name: 'React' }
       ] as any;
 
       mockTagService.getEntityTags.mockResolvedValue(mockTags);
 
-      await getReviewTags(req as AuthRequest, res as Response);
+      await getReviewTags(req as Request, res as Response, next);
 
-      expect(mockTagService.getEntityTags).toHaveBeenCalledWith(1, 'resource_review');
+      expect(mockTagService.getEntityTags).toHaveBeenCalledWith('resource_review', '1');
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: ['JavaScript', 'React']
@@ -620,7 +723,7 @@ describe('Resource Review Controller Tests', () => {
     it('should successfully get all reviews', async () => {
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviews(req as AuthRequest, res as Response);
+      await getReviews(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith({}, {});
       expect(res.json).toHaveBeenCalledWith({
@@ -643,7 +746,7 @@ describe('Resource Review Controller Tests', () => {
 
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviews(req as AuthRequest, res as Response);
+      await getReviews(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
         {
@@ -665,10 +768,14 @@ describe('Resource Review Controller Tests', () => {
   describe('Unit Tests - Error Handling', () => {
     it('should handle service errors', async () => {
       req.params = { resourceId: 'resource-123' };
-      mockResourceReviewService.getReviews.mockRejectedValue(new Error('Service error'));
+      const serviceError = new Error('Service error');
+      mockResourceReviewService.getReviews.mockRejectedValue(serviceError);
 
-      await expect(getReviewsByResource(req as AuthRequest, res as Response))
-        .rejects.toThrow('Service error');
+      // 由於 asyncWrapper 會捕獲異步錯誤，我們需要等待 Promise 解決
+      const result = getReviewsByResource(req as Request, res as Response, next);
+      await new Promise(resolve => setTimeout(resolve, 0)); // 等待下一個事件循環
+
+      expect(next).toHaveBeenCalledWith(serviceError);
     });
 
     it('should handle malformed query parameters', async () => {
@@ -680,7 +787,7 @@ describe('Resource Review Controller Tests', () => {
 
       mockResourceReviewService.getReviews.mockResolvedValue(mockReviewList);
 
-      await getReviews(req as AuthRequest, res as Response);
+      await getReviews(req as Request, res as Response, next);
 
       expect(mockResourceReviewService.getReviews).toHaveBeenCalledWith(
         {

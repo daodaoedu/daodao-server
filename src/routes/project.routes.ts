@@ -10,8 +10,8 @@ import { authenticate, optionalAuth } from '../middleware/auth';
 import { 
   canCreateProject,
   canUpdateProject,
-  canDeleteProject,
-  requireOwnership
+  canDeleteProject
+  // requireOwnership
 } from '../middleware/permission.middleware';
 import { 
   createProjectSchema, 

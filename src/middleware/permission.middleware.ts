@@ -3,19 +3,14 @@
  * 提供基於角色和權限的存取控制
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { permissionService } from '../services/auth/permission.service';
 import { PERMISSIONS, ROLES } from '../constants';
 import { UnauthorizedError, ForbiddenError } from '../utils/error-handler';
-import type { PermissionOptions } from '../types/auth.types';
+import type { PermissionOptions, UserJwtPayload } from '../types/auth.types';
 
-interface AuthUser {
-  id: number;
-  name: string;
-  email?: string;
-  isTemp?: boolean;
-  roleId?: number;
-}
+// Use UserJwtPayload type alias for consistency
+type AuthUser = UserJwtPayload;
 
 /**
  * 權限檢查中間件選項
@@ -36,10 +31,10 @@ interface PermissionMiddlewareOptions {
 export const requirePermission = (
   permissions: PermissionOptions | PermissionOptions[],
   options: Omit<PermissionMiddlewareOptions, 'permissions'> = {}
-) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = req.user as AuthUser;
+      const user = req.user as UserJwtPayload;
       
       if (!user) {
         throw new UnauthorizedError('請先登入');
@@ -99,10 +94,10 @@ export const requirePermission = (
 export const requireRole = (
   roles: string | string[],
   options: Pick<PermissionMiddlewareOptions, 'allowTemp'> = {}
-) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = req.user as AuthUser;
+      const user = req.user as UserJwtPayload;
       
       if (!user) {
         throw new UnauthorizedError('請先登入');
@@ -130,9 +125,9 @@ export const requireRole = (
 /**
  * 管理員權限中間件
  */
-export const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
+export const requireAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user as AuthUser;
+    const user = req.user as UserJwtPayload;
     
     if (!user) {
       throw new UnauthorizedError('請先登入');
@@ -157,9 +152,9 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
 /**
  * 超級管理員權限中間件
  */
-export const requireSuperAdmin = async (req: Request, res: Response, next: NextFunction) => {
+export const requireSuperAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user as AuthUser;
+    const user = req.user as UserJwtPayload;
     
     if (!user) {
       throw new UnauthorizedError('請先登入');
@@ -187,10 +182,10 @@ export const requireSuperAdmin = async (req: Request, res: Response, next: NextF
 export const requireOwnership = (
   resourceType: string,
   resourceParam = 'id'
-) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = req.user as AuthUser;
+      const user = req.user as UserJwtPayload;
       
       if (!user) {
         throw new UnauthorizedError('請先登入');
@@ -228,8 +223,8 @@ export const requireOwnership = (
  * 組合權限中間件
  * 允許設定複雜的權限組合邏輯
  */
-export const requireAnyOf = (...middlewares: Array<(req: Request, res: Response, next: NextFunction) => void>) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+export const requireAnyOf = (...middlewares: Array<(req: Request, res: Response, next: NextFunction) => void>): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     let lastError: Error | null = null;
     
     for (const middleware of middlewares) {
@@ -273,53 +268,53 @@ const parsePermission = (permission: string): PermissionOptions => {
 };
 
 // 延遲初始化權限中間件，確保常數已正確加載
-export const canReadUser = () => requirePermission(parsePermission(PERMISSIONS.USER.READ), { allowSelf: true, resourceType: 'user', resourceParam: 'id' });
-export const canUpdateUser = () => requirePermission(parsePermission(PERMISSIONS.USER.UPDATE), { allowSelf: true, resourceType: 'user', resourceParam: 'id' });
-export const canDeleteUser = () => requirePermission(parsePermission(PERMISSIONS.USER.DELETE));
-export const canCreateUser = () => requirePermission(parsePermission(PERMISSIONS.USER.CREATE));
+export const canReadUser = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.USER.READ), { allowSelf: true, resourceType: 'user', resourceParam: 'id' });
+export const canUpdateUser = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.USER.UPDATE), { allowSelf: true, resourceType: 'user', resourceParam: 'id' });
+export const canDeleteUser = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.USER.DELETE));
+export const canCreateUser = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.USER.CREATE));
 
-export const canReadProject = () => requirePermission(parsePermission(PERMISSIONS.PROJECT.READ), { allowSelf: true, resourceType: 'project', resourceParam: 'id' });
-export const canUpdateProject = () => requirePermission(parsePermission(PERMISSIONS.PROJECT.UPDATE), { allowSelf: true, resourceType: 'project', resourceParam: 'id' });
-export const canDeleteProject = () => requirePermission(parsePermission(PERMISSIONS.PROJECT.DELETE), { allowSelf: true, resourceType: 'project', resourceParam: 'id' });
-export const canCreateProject = () => requirePermission(parsePermission(PERMISSIONS.PROJECT.CREATE), { allowTemp: true });
+export const canReadProject = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.PROJECT.READ), { allowSelf: true, resourceType: 'project', resourceParam: 'id' });
+export const canUpdateProject = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.PROJECT.UPDATE), { allowSelf: true, resourceType: 'project', resourceParam: 'id' });
+export const canDeleteProject = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.PROJECT.DELETE), { allowSelf: true, resourceType: 'project', resourceParam: 'id' });
+export const canCreateProject = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.PROJECT.CREATE), { allowTemp: true });
 
-export const canReadResource = () => requirePermission(parsePermission(PERMISSIONS.RESOURCE.READ));
-export const canUpdateResource = () => requirePermission(parsePermission(PERMISSIONS.RESOURCE.UPDATE));
-export const canDeleteResource = () => requirePermission(parsePermission(PERMISSIONS.RESOURCE.DELETE));
-export const canCreateResource = () => requirePermission(parsePermission(PERMISSIONS.RESOURCE.CREATE), { allowTemp: true });
+export const canReadResource = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.RESOURCE.READ));
+export const canUpdateResource = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.RESOURCE.UPDATE));
+export const canDeleteResource = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.RESOURCE.DELETE));
+export const canCreateResource = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.RESOURCE.CREATE), { allowTemp: true });
 
-export const canAccessAdminPanel = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.DASHBOARD));
-export const canConfigSystem = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.SETTINGS));
-export const canModerateContent = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.MODERATE));
-export const canViewAnalytics = () => requirePermission(parsePermission(PERMISSIONS.ADMIN.ANALYTICS));
+export const canAccessAdminPanel = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.ADMIN.DASHBOARD));
+export const canConfigSystem = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.ADMIN.SETTINGS));
+export const canModerateContent = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.ADMIN.MODERATE));
+export const canViewAnalytics = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.ADMIN.ANALYTICS));
 
 // 審核相關權限
-export const canApproveContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.APPROVE));
-export const canRejectContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.REJECT));
-export const canSuspendUser = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.SUSPEND));
-export const canFlagContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.FLAG));
-export const canReviewContent = () => requirePermission(parsePermission(PERMISSIONS.MODERATION.REVIEW));
+export const canApproveContent = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.MODERATION.APPROVE));
+export const canRejectContent = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.MODERATION.REJECT));
+export const canSuspendUser = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.MODERATION.SUSPEND));
+export const canFlagContent = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.MODERATION.FLAG));
+export const canReviewContent = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.MODERATION.REVIEW));
 
 // 心得評價權限
-export const canCreateReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.CREATE), { allowTemp: true });
-export const canUpdateReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.UPDATE), { allowSelf: true, resourceType: 'review', resourceParam: 'id' });
-export const canDeleteReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.DELETE), { allowSelf: true, resourceType: 'review', resourceParam: 'id' });
-export const canModerateReview = () => requirePermission(parsePermission(PERMISSIONS.REVIEW.MODERATE));
+export const canCreateReview = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.REVIEW.CREATE), { allowTemp: true });
+export const canUpdateReview = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.REVIEW.UPDATE), { allowSelf: true, resourceType: 'review', resourceParam: 'id' });
+export const canDeleteReview = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.REVIEW.DELETE), { allowSelf: true, resourceType: 'review', resourceParam: 'id' });
+export const canModerateReview = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.REVIEW.MODERATE));
 
 // 想法管理權限
-export const canCreateIdea = () => requirePermission(parsePermission(PERMISSIONS.IDEA.CREATE), { allowTemp: true });
-export const canUpdateIdea = () => requirePermission(parsePermission(PERMISSIONS.IDEA.UPDATE), { allowSelf: true, resourceType: 'idea', resourceParam: 'id' });
-export const canDeleteIdea = () => requirePermission(parsePermission(PERMISSIONS.IDEA.DELETE), { allowSelf: true, resourceType: 'idea', resourceParam: 'id' });
+export const canCreateIdea = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.IDEA.CREATE), { allowTemp: true });
+export const canUpdateIdea = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.IDEA.UPDATE), { allowSelf: true, resourceType: 'idea', resourceParam: 'id' });
+export const canDeleteIdea = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.IDEA.DELETE), { allowSelf: true, resourceType: 'idea', resourceParam: 'id' });
 
 // 標籤管理權限
-export const canCreateTag = () => requirePermission(parsePermission(PERMISSIONS.TAG.CREATE));
-export const canUpdateTag = () => requirePermission(parsePermission(PERMISSIONS.TAG.UPDATE));
-export const canDeleteTag = () => requirePermission(parsePermission(PERMISSIONS.TAG.DELETE));
+export const canCreateTag = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.TAG.CREATE));
+export const canUpdateTag = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.TAG.UPDATE));
+export const canDeleteTag = (): RequestHandler => requirePermission(parsePermission(PERMISSIONS.TAG.DELETE));
 
 // 角色中間件
-export const requireUserRole = requireRole(ROLES.USER, { allowTemp: true });
-export const requireModeratorRole = requireRole(ROLES.MODERATOR);
-export const requireAdminRole = requireRole([ROLES.ADMIN, ROLES.SUPER_ADMIN]);
+export const requireUserRole: RequestHandler = requireRole(ROLES.USER, { allowTemp: true });
+export const requireModeratorRole: RequestHandler = requireRole(ROLES.MODERATOR);
+export const requireAdminRole: RequestHandler = requireRole([ROLES.ADMIN, ROLES.SUPER_ADMIN]);
 
 /**
  * 權限檢查輔助函數

@@ -40,11 +40,11 @@ export interface ErrorResponse {
 }
 
 // 成功響應類型定義
-export interface SuccessResponse<T = any> {
+export interface SuccessResponse<T = unknown> {
   success: true;
   data: T;
   timestamp: string;
 }
 
 // 統一響應類型
-export type ApiResponse<T = any> = SuccessResponse<T> | ErrorResponse;
+export type ApiResponse<T = unknown> = SuccessResponse<T> | ErrorResponse;

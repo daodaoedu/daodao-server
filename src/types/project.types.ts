@@ -22,7 +22,7 @@ export interface ProjectCreateRequest {
   content?: string;
   strategy?: unknown;
   strategyDescription?: string;
-  resourceName?: string;
+  resources?: string;
   outcome?: unknown;
   outcomeDescription?: string;
   isPublic?: boolean;
@@ -66,7 +66,7 @@ export interface ProjectResponse {
   content?: string | null;
   strategy?: unknown;
   strategyDescription?: string | null;
-  resourceName?: string | null;
+  resources?: string | null;
   outcome?: unknown;
   outcomeDescription?: string | null;
   isPublic: boolean;

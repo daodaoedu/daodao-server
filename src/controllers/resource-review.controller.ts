@@ -114,10 +114,10 @@ export const getReviewsByUser = asyncWrapper(async (req: AuthRequest, res: Respo
  * GET /reviews/:id
  */
 export const getReviewById = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   
   // 查詢心得評價
-  const review = await resourceReviewService.getReviewById(parseInt(id, 10));
+  const review = await resourceReviewService.getReviewById(parseInt(reviewId, 10));
 
   // 返回結果
   res.json({
@@ -144,7 +144,7 @@ export const createReview = asyncWrapper(async (req: AuthRequest, res: Response)
 
   // 創建心得評價
   const review = await resourceReviewService.createReview(
-    parseInt(resourceId, 10),
+    resourceId,
     validatedData,
     userId
   );
@@ -161,7 +161,7 @@ export const createReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * PATCH /reviews/:id
  */
 export const updateReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
   
@@ -174,7 +174,7 @@ export const updateReview = asyncWrapper(async (req: AuthRequest, res: Response)
 
   // 更新心得評價
   const review = await resourceReviewService.updateReview(
-    parseInt(id, 10),
+    parseInt(reviewId, 10),
     validatedData,
     userId
   );
@@ -191,7 +191,7 @@ export const updateReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * PATCH /reviews/:id/status
  */
 export const updateReviewStatus = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
   
@@ -204,7 +204,7 @@ export const updateReviewStatus = asyncWrapper(async (req: AuthRequest, res: Res
 
   // 更新心得評價狀態
   const review = await resourceReviewService.updateReviewStatus(
-    parseInt(id, 10),
+    parseInt(reviewId, 10),
     status,
     userId
   );
@@ -221,7 +221,7 @@ export const updateReviewStatus = asyncWrapper(async (req: AuthRequest, res: Res
  * DELETE /reviews/:id
  */
 export const deleteReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
   
@@ -230,7 +230,7 @@ export const deleteReview = asyncWrapper(async (req: AuthRequest, res: Response)
   }
 
   // 刪除心得評價
-  await resourceReviewService.deleteReview(parseInt(id, 10), userId);
+  await resourceReviewService.deleteReview(parseInt(reviewId, 10), userId);
 
   // 返回結果
   res.json({
@@ -244,7 +244,7 @@ export const deleteReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * POST /reviews/:id/like
  */
 export const likeReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
   
@@ -253,7 +253,7 @@ export const likeReview = asyncWrapper(async (req: AuthRequest, res: Response) =
   }
 
   // 點讚心得評價
-  await resourceReviewService.toggleLikeReview(parseInt(id, 10));
+  await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
 
   // 返回結果
   res.json({
@@ -267,7 +267,7 @@ export const likeReview = asyncWrapper(async (req: AuthRequest, res: Response) =
  * DELETE /reviews/:id/like
  */
 export const unlikeReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
   
@@ -276,7 +276,7 @@ export const unlikeReview = asyncWrapper(async (req: AuthRequest, res: Response)
   }
 
   // 取消點讚心得評價
-  await resourceReviewService.toggleLikeReview(parseInt(id, 10));
+  await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
 
   // 返回結果
   res.json({
@@ -290,10 +290,10 @@ export const unlikeReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * GET /reviews/:id/tags
  */
 export const getReviewTags = asyncWrapper(async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+  const { reviewId } = req.params;
   
   // 獲取心得評價標籤
-  const tags = await tagService.getEntityTags('resource_review', id);
+  const tags = await tagService.getEntityTags('resource_review', reviewId);
 
   // 返回結果
   res.json({

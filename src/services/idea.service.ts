@@ -4,16 +4,14 @@
  */
 
 import { prisma } from '@/services/database/prisma.service';
-import type { ideas, users, tags, Prisma } from '../../generated/prisma';
+import type { Prisma } from '../../generated/prisma';
 import { 
   IdeaEntity, 
   IdeaQueryResult, 
   IdeaFilters, 
   CreateIdeaResponse,
   IdeaStats,
-  InteractionStatus,
   PaginationInfo,
-  IdeaResource,
   IdeaStatus
 } from '@/types/idea.types';
 import { 
@@ -40,7 +38,7 @@ interface PaginationParams {
  * @param userId - 當前使用者 ID（用於查詢互動狀態）
  * @returns 想法詳情
  */
-export async function getIdeaById(externalId: string, userId?: number): Promise<IdeaEntity> {
+export async function getIdeaById(externalId: string, _userId?: number): Promise<IdeaEntity> {
   // 查詢想法，使用 external_id
   const idea = await prisma.ideas.findUnique({
     where: { external_id: externalId },
@@ -130,7 +128,7 @@ export async function getIdeaById(externalId: string, userId?: number): Promise<
 export async function getIdeas(
   filters: IdeaFilters,
   pagination: PaginationParams,
-  userId?: number
+  _userId?: number
 ): Promise<IdeaQueryResult> {
   const { page, limit, sort, order } = pagination;
   const skip = (page - 1) * limit;
@@ -378,7 +376,7 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
     }
 
     // 更新想法
-    const updatedIdea = await tx.ideas.update({
+    await tx.ideas.update({
       where: { external_id: ideaId },
       data: {
         content: data.content,
@@ -479,7 +477,7 @@ export async function getIdeaStats(userId?: number): Promise<IdeaStats> {
     where.user_id = userId;
   }
 
-  const [totalCount, activeCount, withResourcesCount] = await Promise.all([
+  const [/* totalCount */, /* activeCount */, withResourcesCount] = await Promise.all([
     prisma.ideas.count({ where }),
     prisma.ideas.count({ 
       where: { ...where, status: 'active' } 
