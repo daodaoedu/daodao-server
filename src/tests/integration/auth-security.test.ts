@@ -94,6 +94,9 @@ jest.mock('../../services/email/enhanced-email.service');
 
 describe('Authentication Security Integration Tests', () => {
   let app: Express;
+  let server: any;
+  let agent: any;
+  let connections: Set<any> = new Set();
   let mockEmailService: jest.Mocked<typeof emailService>;
   let mockPermissionService: jest.Mocked<typeof permissionService>;
   const JWT_SECRET = 'test-jwt-secret';
@@ -148,6 +151,19 @@ describe('Authentication Security Integration Tests', () => {
 
     // Add error handling middleware
     app.use(globalErrorHandler);
+    
+    // Start the server properly to avoid open handle issues
+    server = app.listen(0); // Use port 0 for dynamic port allocation
+    
+    // Track connections to close them later
+    server.on('connection', (connection: any) => {
+      connections.add(connection);
+      connection.on('close', () => {
+        connections.delete(connection);
+      });
+    });
+    
+    agent = request(server);
   });
 
   beforeEach(() => {
@@ -156,7 +172,7 @@ describe('Authentication Security Integration Tests', () => {
 
   describe('JWT Token Security', () => {
     it('should reject requests with no token', async () => {
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .expect(401);
 
@@ -170,7 +186,7 @@ describe('Authentication Security Integration Tests', () => {
     });
 
     it('should reject requests with invalid token', async () => {
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
@@ -185,7 +201,7 @@ describe('Authentication Security Integration Tests', () => {
     });
 
     it('should reject requests with malformed token', async () => {
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', 'Bearer not.a.valid.jwt')
         .expect(401);
@@ -201,7 +217,7 @@ describe('Authentication Security Integration Tests', () => {
         { expiresIn: '-1s' }
       );
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${expiredToken}`)
         .expect(401);
@@ -216,7 +232,7 @@ describe('Authentication Security Integration Tests', () => {
         'wrong-secret'
       );
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${wrongToken}`)
         .expect(401);
@@ -228,7 +244,7 @@ describe('Authentication Security Integration Tests', () => {
     it('should accept valid tokens', async () => {
       const validToken = jwtService.generateToken({ id: 1, username: 'testuser' });
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${validToken}`)
         .expect(200);
@@ -240,7 +256,7 @@ describe('Authentication Security Integration Tests', () => {
     it('should handle token without Bearer prefix', async () => {
       const validToken = jwtService.generateToken({ id: 1, username: 'testuser' });
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', validToken) // No "Bearer " prefix
         .expect(401);
@@ -250,7 +266,7 @@ describe('Authentication Security Integration Tests', () => {
     });
 
     it('should handle empty Authorization header', async () => {
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', '')
         .expect(401);
@@ -270,7 +286,7 @@ describe('Authentication Security Integration Tests', () => {
 
       mockPermissionService.hasPermission.mockResolvedValue(false);
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/admin')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
@@ -289,7 +305,7 @@ describe('Authentication Security Integration Tests', () => {
       // Mock permission check to return true
       mockPermissionService.hasPermission.mockResolvedValue(true);
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/admin')
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
@@ -305,7 +321,7 @@ describe('Authentication Security Integration Tests', () => {
 
       mockPermissionService.hasPermission.mockRejectedValue(new Error('Permission service error'));
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/admin')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
@@ -318,7 +334,7 @@ describe('Authentication Security Integration Tests', () => {
   describe('Authentication Flow Security', () => {
     it('should prevent brute force attacks with rate limiting', async () => {
       const attempts = Array(10).fill(0).map(() =>
-        request(app)
+        agent
           .post('/auth/login')
           .send({ email: 'test@example.com', password: 'wrongpassword' })
       );
@@ -340,7 +356,7 @@ describe('Authentication Security Integration Tests', () => {
       ];
 
       for (const input of maliciousInputs) {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send({ email: input, password: input });
 
@@ -359,7 +375,7 @@ describe('Authentication Security Integration Tests', () => {
       ];
 
       for (const payload of xssPayloads) {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send({ email: payload, password: 'password' });
 
@@ -381,7 +397,7 @@ describe('Authentication Security Integration Tests', () => {
       ];
 
       for (const email of invalidEmails) {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send({ email, password: 'password' });
 
@@ -400,7 +416,7 @@ describe('Authentication Security Integration Tests', () => {
       ];
 
       for (const testCase of testCases) {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send(testCase);
 
@@ -421,7 +437,7 @@ describe('Authentication Security Integration Tests', () => {
       
       const modifiedToken = parts.join('.');
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${modifiedToken}`)
         .expect(401);
@@ -437,7 +453,7 @@ describe('Authentication Security Integration Tests', () => {
       
       const modifiedToken = parts.join('.');
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${modifiedToken}`)
         .expect(401);
@@ -455,7 +471,7 @@ describe('Authentication Security Integration Tests', () => {
       const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64');
       const noneToken = `${encodedHeader}.${encodedPayload}.`;
 
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${noneToken}`)
         .expect(401);
@@ -469,7 +485,7 @@ describe('Authentication Security Integration Tests', () => {
     it('should generate secure reset tokens', async () => {
       mockEmailService.sendPasswordResetEmail.mockResolvedValue({ success: true });
 
-      const response = await request(app)
+      const response = await agent
         .post('/auth/password-reset')
         .send({ email: 'test@example.com' })
         .expect(200);
@@ -486,7 +502,7 @@ describe('Authentication Security Integration Tests', () => {
     });
 
     it('should handle invalid email in password reset', async () => {
-      const response = await request(app)
+      const response = await agent
         .post('/auth/password-reset')
         .send({ email: 'invalid-email' });
 
@@ -496,8 +512,8 @@ describe('Authentication Security Integration Tests', () => {
 
     it('should prevent email enumeration attacks', async () => {
       const responses = await Promise.all([
-        request(app).post('/auth/password-reset').send({ email: 'existing@example.com' }),
-        request(app).post('/auth/password-reset').send({ email: 'nonexistent@example.com' })
+        agent.post('/auth/password-reset').send({ email: 'existing@example.com' }),
+        agent.post('/auth/password-reset').send({ email: 'nonexistent@example.com' })
       ]);
 
       // Both should return the same response to prevent enumeration
@@ -508,7 +524,7 @@ describe('Authentication Security Integration Tests', () => {
 
   describe('Header Security', () => {
     it('should handle missing Authorization header', async () => {
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected');
 
       expect(response.status).toBe(401);
@@ -525,7 +541,7 @@ describe('Authentication Security Integration Tests', () => {
       ];
 
       for (const header of malformedHeaders) {
-        const response = await request(app)
+        const response = await agent
           .get('/auth/protected')
           .set('Authorization', header);
 
@@ -536,7 +552,7 @@ describe('Authentication Security Integration Tests', () => {
     it('should handle extremely long tokens', async () => {
       const longToken = 'a'.repeat(10000);
       
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', `Bearer ${longToken}`)
         .expect(401);
@@ -554,7 +570,7 @@ describe('Authentication Security Integration Tests', () => {
 
       for (const token of specialTokens) {
         try {
-          const response = await request(app)
+          const response = await agent
             .get('/auth/protected')
             .set('Authorization', `Bearer ${token}`);
 
@@ -573,7 +589,7 @@ describe('Authentication Security Integration Tests', () => {
       const validToken = jwtService.generateToken({ id: 1, username: 'testuser' });
       
       const requests = Array(20).fill(0).map(() =>
-        request(app)
+        agent
           .get('/auth/protected')
           .set('Authorization', `Bearer ${validToken}`)
       );
@@ -588,7 +604,7 @@ describe('Authentication Security Integration Tests', () => {
 
     it('should handle concurrent invalid requests', async () => {
       const requests = Array(20).fill(0).map(() =>
-        request(app)
+        agent
           .get('/auth/protected')
           .set('Authorization', 'Bearer invalid-token')
       );
@@ -603,7 +619,7 @@ describe('Authentication Security Integration Tests', () => {
 
   describe('Memory and Performance Security', () => {
     it('should not leak sensitive information in error messages', async () => {
-      const response = await request(app)
+      const response = await agent
         .get('/auth/protected')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
@@ -622,7 +638,7 @@ describe('Authentication Security Integration Tests', () => {
         extraData: 'x'.repeat(100000)
       };
 
-      const response = await request(app)
+      const response = await agent
         .post('/auth/login')
         .send(largePayload);
 
@@ -633,7 +649,7 @@ describe('Authentication Security Integration Tests', () => {
   describe('Advanced Security Tests', () => {
     describe('CSRF Protection', () => {
       it('should handle requests with suspicious origin headers', async () => {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .set('Origin', 'https://malicious-site.com')
           .send({ email: 'test@example.com', password: 'password' });
@@ -642,7 +658,7 @@ describe('Authentication Security Integration Tests', () => {
       });
 
       it('should handle requests with suspicious referer headers', async () => {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .set('Referer', 'https://attacker.com')
           .send({ email: 'test@example.com', password: 'password' });
@@ -656,7 +672,7 @@ describe('Authentication Security Integration Tests', () => {
         const requests = [];
         for (let i = 0; i < 50; i++) {
           requests.push(
-            request(app)
+            agent
               .post('/auth/login')
               .set('X-Forwarded-For', `192.168.1.${i}`)
               .send({ email: 'test@example.com', password: 'wrongpassword' })
@@ -676,7 +692,7 @@ describe('Authentication Security Integration Tests', () => {
           slowField: 'a'.repeat(1000)
         };
 
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send(slowData)
           .timeout(5000);
@@ -687,7 +703,7 @@ describe('Authentication Security Integration Tests', () => {
 
     describe('Input Validation Security', () => {
       it('should handle null bytes in input', async () => {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send({ 
             email: 'test@example.com\x00admin', 
@@ -701,7 +717,7 @@ describe('Authentication Security Integration Tests', () => {
         const normalizedEmail = 'test@example.com';
         const attackEmail = 'tëst@example.com'; // Different unicode representation
         
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send({ email: attackEmail, password: 'password' });
 
@@ -714,7 +730,7 @@ describe('Authentication Security Integration Tests', () => {
         payload.email = 'test@example.com';
         payload.password = 'password';
 
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send(payload);
 
@@ -737,7 +753,7 @@ describe('Authentication Security Integration Tests', () => {
         const signature = 'fake-signature';
         const maliciousToken = `${encodedHeader}.${encodedPayload}.${signature}`;
 
-        const response = await request(app)
+        const response = await agent
           .get('/auth/protected')
           .set('Authorization', `Bearer ${maliciousToken}`)
           .expect(401);
@@ -758,7 +774,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
           { algorithm: 'HS256' }
         );
 
-        const response = await request(app)
+        const response = await agent
           .get('/auth/protected')
           .set('Authorization', `Bearer ${maliciousToken}`)
           .expect(401);
@@ -785,7 +801,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
         }
 
         try {
-          const response = await request(app)
+          const response = await agent
             .get('/auth/protected')
             .set('Authorization', `Bearer ${token}`)
             .timeout(5000); // Add timeout
@@ -812,7 +828,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
       it('should handle session fixation attempts', async () => {
         const fixedSessionId = 'fixed-session-12345';
         
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .set('Cookie', `sessionid=${fixedSessionId}`)
           .send({ email: 'test@example.com', password: 'password' });
@@ -827,7 +843,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
         const token = jwtService.generateToken({ id: 1, username: 'testuser' });
         
         const requests = Array(20).fill(0).map(() =>
-          request(app)
+          agent
             .get('/auth/protected')
             .set('Authorization', `Bearer ${token}`)
         );
@@ -845,7 +861,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
       it('should have consistent response times for invalid users', async () => {
         const startTime = Date.now();
         
-        await request(app)
+        await agent
           .post('/auth/login')
           .send({ email: 'nonexistent@example.com', password: 'password' });
         
@@ -853,7 +869,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
         
         const startTime2 = Date.now();
         
-        await request(app)
+        await agent
           .post('/auth/login')
           .send({ email: 'test@example.com', password: 'wrongpassword' });
         
@@ -867,7 +883,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
 
     describe('Content Security', () => {
       it('should not expose sensitive headers in responses', async () => {
-        const response = await request(app)
+        const response = await agent
           .get('/auth/protected')
           .set('Authorization', 'Bearer invalid-token');
 
@@ -880,7 +896,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
       });
 
       it('should sanitize error messages', async () => {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/login')
           .send({ email: '<script>alert(1)</script>', password: 'password' });
 
@@ -891,7 +907,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
 
     describe('Authentication Bypass Attempts', () => {
       it('should reject requests with manipulated user agent', async () => {
-        const response = await request(app)
+        const response = await agent
           .get('/auth/protected')
           .set('User-Agent', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)')
           .expect(401);
@@ -901,7 +917,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
       });
 
       it('should handle requests with HTTP method override', async () => {
-        const response = await request(app)
+        const response = await agent
           .post('/auth/protected')
           .set('X-HTTP-Method-Override', 'GET')
           .expect(404); // Should not find POST /auth/protected
@@ -912,24 +928,50 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
   });
 
   afterAll(async () => {
-    // Close email service connections
-    const enhancedEmailService = require('../../services/email/enhanced-email.service');
-    if (enhancedEmailService.close) {
-      await enhancedEmailService.close();
-    }
-    
-    // Force close any remaining handles
-    if (app && app.listen) {
-      const server = app.listen();
-      if (server && server.close) {
-        await new Promise<void>((resolve) => {
-          server.close(() => resolve());
-        });
+    // Force close all tracked connections first
+    for (const connection of connections) {
+      try {
+        connection.destroy();
+      } catch (error) {
+        // Ignore errors when destroying connections
       }
     }
+    connections.clear();
     
-    // Close any other open connections if needed
+    // Close the server with a more robust approach
+    if (server) {
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          // Force resolve after timeout
+          resolve();
+        }, 1000);
+        
+        try {
+          server.close((error: any) => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          
+          // Also try calling server.closeAllConnections if available (Node.js 18+)
+          if (typeof server.closeAllConnections === 'function') {
+            server.closeAllConnections();
+          }
+        } catch (error) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      
+      // Set server to null to prevent further operations
+      server = null;
+    }
+    
+    // Clear all mocks and timers
     jest.clearAllMocks();
     jest.restoreAllMocks();
-  });
+    jest.clearAllTimers();
+    
+    // Give a moment for all async operations to complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000); // Increased timeout for cleanup
 });

@@ -4,15 +4,17 @@ const path = require('path');
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: "node",
-    collectCoverage: false,
+    collectCoverage: true,
+    coverageProvider: 'babel',
     coverageDirectory: "coverage",
     coverageReporters: ['text', 'lcov', 'html'],
     collectCoverageFrom: [
-      '<rootDir>/../src/**/*.{ts,js}',
-      '!<rootDir>/../src/**/*.d.ts',
-      '!<rootDir>/../src/types/**/*',
-      '!<rootDir>/../src/swagger/**/*',
-      '!<rootDir>/../src/tests/**/*'
+      'src/**/*.{ts,js}',
+      '!src/**/*.d.ts',
+      '!src/types/**/*',
+      '!src/swagger/**/*',
+      '!src/tests/**/*',
+      '!src/server.ts'
     ],
     globalSetup: "<rootDir>/../src/tests/globalSetup.js",
     globalTeardown: "<rootDir>/../src/tests/globalTeardown.js",
