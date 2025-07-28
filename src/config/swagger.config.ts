@@ -22,6 +22,10 @@ const swaggerOptions: swaggerJsdoc.Options = {
     },
     servers: [
       {
+        url: 'http://localhost:4000',
+        description: '本機開發'
+      },
+      {
         url: 'https://server.daoedu.tw/',
         description: '開發環境'
       },
@@ -223,9 +227,14 @@ const swaggerOptions: swaggerJsdoc.Options = {
         'x-order': 5
       },
       {
+        name: 'Comments',
+        description: '評論系統相關操作',
+        'x-order': 6
+      },
+      {
         name: 'Me',
         description: '個人資料相關操作',
-        'x-order': 6
+        'x-order': 7
       }
     ]
   },

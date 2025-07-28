@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('../middlewares/multer');
 const {isAuthenticated,requireCompleteProfile} = require("../middlewares/isAuthenticated");
-const { uploadSingleImage, uploadMultipleImages, getImage, deleteImage } = require('../controller/image');
+const { uploadSingleImage, uploadMultipleImages, getImage, deleteImage } = require('../controllers/image');
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
 

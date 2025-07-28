@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const sendEmail = require('../controller/sendEmail');
-const sendVerifiedEmail = require("../controller/sendVerifiedEmail");
+const sendEmail = require('../controllers/sendEmail');
+const sendVerifiedEmail = require("../controllers/sendVerifiedEmail");
 const {isAuthenticated,requireCompleteProfile} = require('../middlewares/isAuthenticated');
-const verifyEmail = require('../controller/verifyEmail');
+const verifyEmail = require('../controllers/verifyEmail');
 
 router.post('',isAuthenticated,requireCompleteProfile, sendEmail);
 router.post('/project',isAuthenticated, sendVerifiedEmail);
