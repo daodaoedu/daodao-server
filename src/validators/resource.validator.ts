@@ -99,6 +99,6 @@ export type ResourceSchema = UpdateResourceSchema & {
 };
 
 // 導出驗證函數
-export const validateCreateResource = (data: unknown) => createResourceSchema.parse(data);
-export const validateUpdateResource = (data: unknown) => updateResourceSchema.parse(data);
-export const validateUpdateResourceStatus = (data: unknown) => updateResourceStatusSchema.parse(data);
+export const validateCreateResource = (data: unknown): CreateResourceSchema => createResourceSchema.parse(data);
+export const validateUpdateResource = (data: unknown): UpdateResourceSchema => updateResourceSchema.parse(data);
+export const validateUpdateResourceStatus = (data: unknown): UpdateResourceStatusSchema => updateResourceStatusSchema.parse(data);

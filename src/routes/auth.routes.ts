@@ -131,7 +131,10 @@ router.get('/google/callback',
 router.get('/google/failure', (req, res) => {
   res.status(401).json({
     success: false,
-    message: 'Google 認證失敗'
+    error: {
+      type: 'unauthorized',
+      message: 'Google 認證失敗'
+    }
   });
 });
 

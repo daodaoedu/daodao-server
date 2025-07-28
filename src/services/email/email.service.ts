@@ -4,8 +4,9 @@
  */
 
 import nodemailer from 'nodemailer';
-import { emailConfig } from '../../config/email.config';
-import { EmailTemplateService, EmailTemplate } from './template.service';
+import { emailConfig } from './enhanced-email.service';
+import { EmailTemplateService } from './template.service';
+import type { EmailTemplate } from './types';
 // 簡單的 Logger 介面
 interface Logger {
   info(message: string): void;
@@ -67,6 +68,9 @@ export class EmailService {
     };
     
     // 創建 nodemailer 傳輸器
+    if (!emailConfig) {
+      throw new Error('Email configuration is not available');
+    }
     this.transporter = nodemailer.createTransport({
       service: emailConfig.smtp.service,
       auth: {
@@ -82,7 +86,7 @@ export class EmailService {
   async sendEmail(options: EmailSendOptions): Promise<EmailSendResult> {
     try {
       const mailOptions = {
-        from: options.from || `${emailConfig.sender.name} <${emailConfig.sender.email}>`,
+        from: options.from || `${emailConfig?.sender.name} <${emailConfig?.sender.email}>`,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
         html: options.html,
@@ -296,7 +300,7 @@ export class EmailService {
   async sendEmailWithRetry(options: EmailSendOptions): Promise<EmailSendResult> {
     let lastError: string = '';
     
-    for (let attempt = 1; attempt <= emailConfig.retry.maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= (emailConfig?.retry.maxAttempts || 3); attempt++) {
       const result = await this.sendEmail(options);
       
       if (result.success) {
@@ -308,13 +312,13 @@ export class EmailService {
       
       lastError = result.error || '未知錯誤';
       
-      if (attempt < emailConfig.retry.maxAttempts) {
-        this.logger?.warn(`郵件發送失敗，將在 ${emailConfig.retry.backoffMs}ms 後重試 (嘗試 ${attempt}/${emailConfig.retry.maxAttempts})`);
-        await new Promise(resolve => setTimeout(resolve, emailConfig.retry.backoffMs * attempt));
+      if (attempt < (emailConfig?.retry.maxAttempts || 3)) {
+        this.logger?.warn(`郵件發送失敗，將在 ${emailConfig?.retry.backoffMs || 1000}ms 後重試 (嘗試 ${attempt}/${emailConfig?.retry.maxAttempts || 3})`);
+        await new Promise(resolve => setTimeout(resolve, (emailConfig?.retry.backoffMs || 1000) * attempt));
       }
     }
     
-    this.logger?.error(`郵件發送在 ${emailConfig.retry.maxAttempts} 次嘗試後仍然失敗: ${lastError}`);
+    this.logger?.error(`郵件發送在 ${emailConfig?.retry.maxAttempts || 3} 次嘗試後仍然失敗: ${lastError}`);
     return { success: false, error: `重試失敗: ${lastError}` };
   }
 

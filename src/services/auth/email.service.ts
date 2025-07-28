@@ -90,7 +90,13 @@ class EmailServiceImpl implements EmailService {
           activityTitle
         }
       };
-      return await enhancedEmailService.sendContactEmail(options);
+      return await enhancedEmailService.sendContactEmail(
+        to,
+        name,
+        message,
+        userInfo,
+        activityTitle
+      );
     } catch (error) {
       console.error('Send contact email error:', error);
       return { 
@@ -111,7 +117,13 @@ class EmailServiceImpl implements EmailService {
         marathonDate,
         marathonDescription
       };
-      return await enhancedEmailService.sendMarathonEmail(email, data);
+      return await enhancedEmailService.sendMarathonEmail(
+        email,
+        name,
+        marathonTitle,
+        marathonDate,
+        marathonDescription
+      );
     } catch (error) {
       console.error('Send marathon email error:', error);
       return { 
@@ -145,16 +157,27 @@ class EmailServiceImpl implements EmailService {
    */
   async sendBulkEmail(recipients: { email: string; data: any }[], template: string): Promise<{ success: number; failed: number; results: EmailResult[] }> {
     try {
-      const options: BulkEmailOptions = {
-        template: template as EmailTemplate,
-        subject: '批量郵件',
-        recipients: recipients.map(r => ({ email: r.email, data: r.data })),
-        from: 'system@daodao.com'
+      // Convert data to proper type
+      const typedRecipients = recipients.map((r: { email: string; data: any }) => ({ 
+        email: r.email, 
+        data: r.data as Record<string, unknown>
+      }));
+      
+      const results = await enhancedEmailService.sendBulkEmail(
+        typedRecipients,
+        'custom' as 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom',
+        { subject: '批量郵件', html: `<p>使用模板：${template}</p>` }
+      );
+      
+      return { 
+        success: results.success, 
+        failed: results.failed, 
+        results: results.results.map(r => ({
+          success: r.success,
+          error: r.error,
+          messageId: r.messageId
+        }))
       };
-      const results = await enhancedEmailService.sendBulkEmail(options);
-      const success = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
-      return { success, failed, results };
     } catch (error) {
       console.error('Send bulk email error:', error);
       return { 

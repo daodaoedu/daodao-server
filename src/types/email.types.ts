@@ -109,7 +109,7 @@ export interface EmailService {
   /**
    * 批量發送郵件
    */
-  sendBulkEmail(recipients: { email: string; data: any }[], template: string): Promise<{ success: number; failed: number; results: EmailResult[] }>;
+  sendBulkEmail(recipients: { email: string; data: unknown }[], template: string): Promise<{ success: number; failed: number; results: EmailResult[] }>;
 
   /**
    * 驗證郵件地址

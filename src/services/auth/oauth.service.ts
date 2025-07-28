@@ -7,6 +7,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
+import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
 
 interface AuthOptions {
   clientID: string;
@@ -19,17 +20,20 @@ interface GoogleProfile extends Profile {
   photos: Array<{ value: string }>;
 }
 
+// 驗證必要的環境變數
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CALLBACK_URL) {
+  throw new Error('Missing required OAuth environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL');
+}
+
 // OAuth 配置選項
 const AUTH_OPTIONS: AuthOptions = {
-  clientID: process.env.GOOGLE_CLIENT_ID || '',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-  callbackURL: process.env.GOOGLE_CALLBACK_URL || ''
+  clientID: process.env.GOOGLE_CLIENT_ID!,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  callbackURL: process.env.GOOGLE_CALLBACK_URL!
 };
 
-// 驗證必要的環境變數
-if (!AUTH_OPTIONS.clientID || !AUTH_OPTIONS.clientSecret || !AUTH_OPTIONS.callbackURL) {
-  throw new Error('Missing required OAuth environment variables');
-}
+// 檢查 OAuth 是否已配置
+const isOAuthConfigured = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL;
 
 /**
  * 序列化用戶
@@ -38,10 +42,15 @@ if (!AUTH_OPTIONS.clientID || !AUTH_OPTIONS.clientSecret || !AUTH_OPTIONS.callba
 passport.serializeUser((user: any, done) => {
   console.log('SerializeUser:', user);
   
-  if (user.id) {
-    // PostgreSQL 用戶（正式用戶或臨時用戶）
-    const userType = user.dataValues ? 'user' : 'temp';
-    done(null, { id: user.id, type: userType });
+  const userId = getUserId(user as AnyUser);
+  if (userId) {
+    // 使用新的用戶類型檢測邏輯
+    const userType = getUserType(user as AnyUser);
+    if (userType !== 'unknown') {
+      done(null, { id: userId, type: userType });
+    } else {
+      done(new Error('Unknown user type'), null);
+    }
   } else if (user.external_id) {
     // PostgreSQL 正式用戶（備用識別）
     done(null, { id: user.external_id, type: 'user' });
@@ -82,9 +91,10 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
  * Google OAuth 策略
  * 處理 Google 認證回調 - 使用 Prisma
  */
-passport.use(new GoogleStrategy(
-  AUTH_OPTIONS,
-  async (accessToken: string, refreshToken: string, profile: Profile, done) => {
+if (isOAuthConfigured) {
+  passport.use('google', new GoogleStrategy(
+    AUTH_OPTIONS,
+    async (accessToken: string, refreshToken: string, profile: Profile, done) => {
     try {
       console.log('Google OAuth profile:', profile);
       
@@ -121,7 +131,10 @@ passport.use(new GoogleStrategy(
       return done(error, false);
     }
   }
-));
+  ));
+} else {
+  console.warn('⚠️ 跳過 Google OAuth 策略設定');
+}
 
 /**
  * 初始化 Passport
@@ -143,17 +156,25 @@ export const initializePassportSession = () => {
  * Google 認證中間件
  * 開始 Google OAuth 流程
  */
-export const authenticateGoogle = passport.authenticate('google', {
-  scope: ['profile', 'email']
-});
+export const authenticateGoogle = isOAuthConfigured 
+  ? passport.authenticate('google', {
+      scope: ['profile', 'email']
+    })
+  : (req: any, res: any, next: any) => {
+      res.status(500).json({ error: 'OAuth not configured' });
+    };
 
 /**
  * Google 認證回調中間件
  * 處理 Google OAuth 回調
  */
-export const authenticateGoogleCallback = passport.authenticate('google', {
-  failureRedirect: process.env.FRONTEND_URL + '/auth/failure'
-});
+export const authenticateGoogleCallback = isOAuthConfigured
+  ? passport.authenticate('google', {
+      failureRedirect: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/auth/failure'
+    })
+  : (req: any, res: any, next: any) => {
+      res.status(500).json({ error: 'OAuth not configured' });
+    };
 
 /**
  * OAuth 服務導出

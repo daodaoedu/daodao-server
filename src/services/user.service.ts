@@ -18,8 +18,79 @@ import {
   NotFoundError,
   ConflictError 
 } from '../utils/error-handler';
+import { city_t, want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
+
+/**
+ * 城市名稱映射表
+ * 支持中文名稱和英文枚舉值的映射
+ */
+const cityNameMapping: Record<string, city_t> = {
+  // 中文名稱映射
+  '台北市': city_t.taipei_city,
+  '基隆市': city_t.keelung_city,
+  '新北市': city_t.new_taipei_city,
+  '連江縣': city_t.lianjiang_county,
+  '桃園市': city_t.taoyuan_city,
+  '新竹市': city_t.hsinchu_city,
+  '新竹縣': city_t.hsinchu_county,
+  '苗栗縣': city_t.miaoli_county,
+  '台中市': city_t.taichung_city,
+  '彰化縣': city_t.changhua_county,
+  '雲林縣': city_t.yunlin_county,
+  '嘉義縣': city_t.chiayi_county,
+  '嘉義市': city_t.chiayi_city,
+  '台南市': city_t.tainan_city,
+  '南投縣': city_t.nantou_county,
+  '高雄市': city_t.kaohsiung_city,
+  '屏東縣': city_t.pingtung_county,
+  '海南島': city_t.hainan_island,
+  '澎湖縣': city_t.penghu_county,
+  '金門縣': city_t.kinmen_county,
+  // 英文枚舉值直接映射
+  'taipei_city': city_t.taipei_city,
+  'keelung_city': city_t.keelung_city,
+  'new_taipei_city': city_t.new_taipei_city,
+  'lianjiang_county': city_t.lianjiang_county,
+  'taoyuan_city': city_t.taoyuan_city,
+  'hsinchu_city': city_t.hsinchu_city,
+  'hsinchu_county': city_t.hsinchu_county,
+  'miaoli_county': city_t.miaoli_county,
+  'taichung_city': city_t.taichung_city,
+  'changhua_county': city_t.changhua_county,
+  'yunlin_county': city_t.yunlin_county,
+  'chiayi_county': city_t.chiayi_county,
+  'chiayi_city': city_t.chiayi_city,
+  'tainan_city': city_t.tainan_city,
+  'nantou_county': city_t.nantou_county,
+  'kaohsiung_city': city_t.kaohsiung_city,
+  'pingtung_county': city_t.pingtung_county,
+  'hainan_island': city_t.hainan_island,
+  'penghu_county': city_t.penghu_county,
+  'kinmen_county': city_t.kinmen_county,
+};
+
+/**
+ * 驗證是否為有效的 want_to_do_list_t 值
+ */
+const isValidWantToDoItem = (value: unknown): value is want_to_do_list_t => {
+  return typeof value === 'string' && Object.values(want_to_do_list_t).includes(value as want_to_do_list_t);
+};
+
+/**
+ * 安全地轉換和驗證 want_to_do_list
+ */
+const validateWantToDoList = (items: unknown[]): want_to_do_list_t[] => {
+  return items
+    .filter((item): item is want_to_do_list_t => {
+      const isValid = isValidWantToDoItem(item);
+      if (!isValid && item !== null && item !== undefined) {
+        console.warn(`Invalid want_to_do_list item: ${item}`);
+      }
+      return isValid;
+    });
+};
 
 /**
  * 格式化為台北時間
@@ -65,7 +136,7 @@ interface PrismaUserWithRelations {
   basic_info?: {
     self_introduction?: string | null;
     share_list?: string | null;
-    want_to_do_list?: unknown[];
+    want_to_do_list?: want_to_do_list_t[];
   } | null;
   roles?: {
     id: number;
@@ -87,36 +158,36 @@ const formatUserResponse = (user: PrismaUserWithRelations): FormattedUserRespons
     id: user.id,
     _id: user.external_id || '',
     name: user.nickname || undefined,
-    gender: user.gender,
-    email: user.contacts?.email,
-    photoURL: user.contacts?.photo_url,
-    birthDay: user.birth_date,
-    isOpenLocation: user.is_open_location,
-    isOpenProfile: user.is_open_profile,
+    gender: user.gender || undefined,
+    email: user.contacts?.email || undefined,
+    photoURL: user.contacts?.photo_url || undefined,
+    birthDay: user.birth_date || undefined,
+    isOpenLocation: user.is_open_location || undefined,
+    isOpenProfile: user.is_open_profile || undefined,
     role: user.roles?.id,
     location: user.location?.city?.name || '',
     tagList: user.tag_list || [],
-    wantToDoList: user.basic_info?.want_to_do_list || [],
-    educationStage: user.education_stage,
-    selfIntroduction: user.basic_info?.self_introduction,
-    share: user.basic_info?.share_list,
+    wantToDoList: (user.basic_info?.want_to_do_list || []).map(item => String(item)),
+    educationStage: user.education_stage || undefined,
+    selfIntroduction: user.basic_info?.self_introduction || undefined,
+    share: user.basic_info?.share_list || undefined,
     contactList: {
-      email: user.contacts?.email,
-      photoUrl: user.contacts?.photo_url,
-      isSubscribeEmail: user.contacts?.is_subscribe_email,
-      instagram: user.contacts?.ig,
-      discord: user.contacts?.discord,
-      line: user.contacts?.line,
-      facebook: user.contacts?.fb
+      email: user.contacts?.email || undefined,
+      photoUrl: user.contacts?.photo_url || undefined,
+      isSubscribeEmail: user.contacts?.is_subscribe_email || undefined,
+      instagram: user.contacts?.ig || undefined,
+      discord: user.contacts?.discord || undefined,
+      line: user.contacts?.line || undefined,
+      facebook: user.contacts?.fb || undefined
     },
     basicInfo: {
-      selfIntroduction: user.basic_info?.self_introduction,
-      shareList: user.basic_info?.share_list,
-      wantToDoList: user.basic_info?.want_to_do_list || []
+      selfIntroduction: user.basic_info?.self_introduction || undefined,
+      shareList: user.basic_info?.share_list || undefined,
+      wantToDoList: (user.basic_info?.want_to_do_list || []).map(item => String(item))
     },
     roleList: user.user_positions?.map((up) => up.position.name) || [],
-    createdDate: formatToTaipeiTime(user.created_at),
-    updatedDate: formatToTaipeiTime(user.updated_at)
+    createdDate: formatToTaipeiTime(user.created_at) || '',
+    updatedDate: formatToTaipeiTime(user.updated_at) || ''
   };
 };
 
@@ -386,20 +457,24 @@ export class UserService {
       // 處理地區
       let locationId: number | null = null;
       if (areaCode) {
-        // 根據城市名稱查找對應的 location
+        // 根據城市名稱映射獲取對應的枚舉值
+        const cityEnum = cityNameMapping[areaCode];
+        
+        if (!cityEnum) {
+          throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
+        }
+        
+        // 查找對應的 location
         const location = await tx.location.findFirst({
           where: {
             city: {
-              name: {
-                contains: areaCode,
-                mode: 'insensitive'
-              }
+              name: cityEnum
             }
           }
         });
         
         if (!location) {
-          throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
+          throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
         }
         locationId = location.id;
       }
@@ -408,8 +483,8 @@ export class UserService {
       const basicInfo = await tx.basic_info.create({
         data: {
           self_introduction: selfIntroduction,
-          share_list: share,
-          want_to_do_list: wantToDoList || []
+          share_list: Array.isArray(share) ? share.join(',') : share,
+          want_to_do_list: validateWantToDoList(wantToDoList || [])
         }
       });
 
@@ -430,7 +505,6 @@ export class UserService {
       // 創建用戶
       const newUser = await tx.users.create({
         data: {
-          mongo_id: tempUser.id.toString(),
           nickname: tempUser.name,
           gender: gender as 'male' | 'female' | 'other' | undefined,
           education_stage: (educationStage as 'university' | 'high' | 'other') || 'other',
@@ -566,8 +640,8 @@ export class UserService {
           where: { id: user.basic_info.id },
           data: {
             self_introduction: selfIntroduction,
-            share_list: share,
-            want_to_do_list: wantToDoList
+            share_list: Array.isArray(share) ? share.join(',') : share,
+            want_to_do_list: wantToDoList ? validateWantToDoList(wantToDoList) : undefined
           }
         });
       }

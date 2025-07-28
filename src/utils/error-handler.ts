@@ -79,7 +79,7 @@ export class InternalServerError extends AppError {
  * 自動捕獲異步路由處理器中的錯誤並傳遞給 Express 錯誤中間件
  */
 export const asyncWrapper = (fn: (req: Request, res: Response, next?: NextFunction) => Promise<void>) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };

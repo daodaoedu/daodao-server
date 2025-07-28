@@ -4,7 +4,8 @@
  */
 
 import { prisma } from '@/services/database/prisma.service';
-import type { resources, resource_review, categories } from '../../generated/prisma';
+import type { resources, resource_review } from '../../generated/prisma';
+import { Prisma } from '../../generated/prisma';
 import { 
   contentFeaturesMappings, 
   resourceUsageMappings
@@ -153,15 +154,17 @@ export async function transformResourceToDb(
   userId: number
 ): Promise<Partial<resources>> {
   // 如果提供了分類名稱，查找對應的 ID
-  let majorCategoryId = null;
-  let subCategoryId = null;
+  let majorCategoryId: number | undefined = undefined;
+  let subCategoryId: number | undefined = undefined;
   
   if (apiResource.majorCategory && typeof apiResource.majorCategory === 'string') {
-    majorCategoryId = await getCategoryIdByName(String(apiResource.majorCategory));
+    const categoryId = await getCategoryIdByName(String(apiResource.majorCategory));
+    majorCategoryId = categoryId ?? undefined;
   }
   
   if (apiResource.subCategory && typeof apiResource.subCategory === 'string') {
-    subCategoryId = await getCategoryIdByName(String(apiResource.subCategory));
+    const categoryId = await getCategoryIdByName(String(apiResource.subCategory));
+    subCategoryId = categoryId ?? undefined;
   }
   
   return {
@@ -173,8 +176,8 @@ export async function transformResourceToDb(
     type: apiResource.type ? String(apiResource.type) : undefined,
     cost: apiResource.cost ? String(apiResource.cost) : undefined,
     level: apiResource.level ? String(apiResource.level) : undefined,
-    major_category_id: majorCategoryId ?? undefined,
-    sub_category_id: subCategoryId ?? undefined,
+    major_category_id: majorCategoryId,
+    sub_category_id: subCategoryId,
     created_by: userId,
     status: apiResource.status ? String(apiResource.status) : 'active'
   };
@@ -284,17 +287,24 @@ export function transformReviewToDb(
     resourceUsageMappings
   );
   
+  // Helper function to convert score values to Prisma.Decimal
+  const convertScore = (value: unknown): Prisma.Decimal | undefined => {
+    if (value === null || value === undefined) return undefined;
+    const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return isNaN(numValue) ? undefined : new Prisma.Decimal(numValue);
+  };
+  
   return {
     user_id: userId,
     resource_id: resourceId,
     content: apiReview.content ? String(apiReview.content) : undefined,
     
-    // 評分欄位轉換
-    score_impact: apiReview.overallImpact ? Number(apiReview.overallImpact) : undefined,
-    score_mindset: apiReview.changeMindset ? Number(apiReview.changeMindset) : undefined,
-    score_problems: apiReview.solveProblems ? Number(apiReview.solveProblems) : undefined,
-    score_perspectives: apiReview.gainPerspectives ? Number(apiReview.gainPerspectives) : undefined,
-    score_goals: apiReview.achieveGoals ? Number(apiReview.achieveGoals) : undefined,
+    // 評分欄位轉換 - 確保轉換為 Prisma.Decimal
+    score_impact: convertScore(apiReview.overallImpact),
+    score_mindset: convertScore(apiReview.changeMindset),
+    score_problems: convertScore(apiReview.solveProblems),
+    score_perspectives: convertScore(apiReview.gainPerspectives),
+    score_goals: convertScore(apiReview.achieveGoals),
     
     // 時間使用
     time_usage: apiReview.timeUsage ? String(apiReview.timeUsage) : undefined,

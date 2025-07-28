@@ -12,7 +12,7 @@ import { BadRequestError } from '../utils/error-handler';
  * @param error - Zod 錯誤
  * @returns 格式化後的錯誤對象
  */
-function formatZodErrors(error: ZodError) {
+function formatZodErrors(error: ZodError): Record<string, string> {
   const errors: Record<string, string> = {};
   
   for (const issue of error.errors) {
@@ -71,7 +71,7 @@ export const combineValidators = (...validators: Array<(req: Request, res: Respo
       
       try {
         const nextCalled = { value: false };
-        const nextProxy = () => {
+        const nextProxy = (): void => {
           nextCalled.value = true;
           runValidators(index + 1);
         };

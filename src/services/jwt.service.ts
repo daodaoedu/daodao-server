@@ -3,7 +3,7 @@
  * 處理 JWT Token 的生成和驗證
  */
 
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 
 interface JwtPayload {
   id: number;
@@ -26,12 +26,16 @@ interface JwtVerifyResult {
   [key: string]: unknown;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECURITY;
 const JWT_EXPIRATION = '7d';
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
+// 移除立即檢查，改為在函數中檢查
+const getJwtSecret = (): string => {
+  const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECURITY;
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  return JWT_SECRET;
+};
 
 /**
  * 生成 JWT Token
@@ -40,11 +44,16 @@ if (!JWT_SECRET) {
  */
 export const generateToken = (payload: JwtPayload): string => {
   try {
-    return jwt.sign(payload, JWT_SECRET as string, { 
+    const secret = getJwtSecret();
+    return jwt.sign(payload, secret, { 
       expiresIn: JWT_EXPIRATION
     });
   } catch (error) {
     console.error('Token generation failed:', error instanceof Error ? error.message : error);
+    // Re-throw the original error message if it's from getJwtSecret
+    if (error instanceof Error && error.message === 'JWT_SECRET environment variable is required') {
+      throw error;
+    }
     throw new Error('Token generation failed');
   }
 };
@@ -58,7 +67,8 @@ export const verifyToken = (token: string): JwtVerifyResult => {
   try {
     console.log('verifyToken_token', token);
     
-    const decoded = jwt.verify(token, JWT_SECRET as string) as JwtPayload;
+    const secret = getJwtSecret();
+    const decoded = jwt.verify(token, secret) as JwtPayload;
     console.log('verifyToken', decoded);
   
     return decoded;
@@ -71,6 +81,10 @@ export const verifyToken = (token: string): JwtVerifyResult => {
       return { error: "Token is invalid" };
     } else {
       console.error('Token verification failed:', error instanceof Error ? error.message : error);
+      // Re-throw the original error if it's from getJwtSecret
+      if (error instanceof Error && error.message === 'JWT_SECRET environment variable is required') {
+        throw error;
+      }
       return { error: "Token verification failed" };
     }
   }
@@ -93,7 +107,13 @@ export const refreshToken = (token: string): string | null => {
   delete payload.exp;
   delete payload.error;
   
-  return generateToken(payload as JwtPayload);
+  // 添加一個隨機值以確保新 token 與原 token 不同
+  const refreshPayload = {
+    ...payload,
+    refreshedAt: Date.now()
+  };
+  
+  return generateToken(refreshPayload as JwtPayload);
 };
 
 export const jwtService = {

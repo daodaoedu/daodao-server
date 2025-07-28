@@ -3,6 +3,7 @@
  */
 
 import { Request } from 'express';
+import { users, temp_users } from '../../generated/prisma';
 
 // JWT Payload 介面
 export interface JwtPayload {
@@ -27,35 +28,14 @@ export interface JwtVerifyResult {
   [key: string]: unknown;
 }
 
-// 用戶介面（正式用戶）
-export interface User {
-  id: number;
-  external_id: string;
-  username?: string;
-  email?: string;
-  name?: string;
-  photo_url?: string;
-  is_active: boolean;
-  created_at: Date;
-  updated_at: Date;
-  deleted_at?: Date;
-  [key: string]: unknown;
-}
+// 用戶介面（正式用戶） - Using Prisma generated types
+export type User = users;
 
-// 臨時用戶介面
-export interface TempUser {
-  id: number;
-  google_id: string;
-  email: string;
-  name: string;
-  photo_url?: string;
-  is_verified: boolean;
-  verification_token?: string;
-  expires_at?: Date;
-  created_at: Date;
-  updated_at: Date;
-  [key: string]: unknown;
-}
+// 臨時用戶介面 - Using Prisma generated types
+export type TempUser = temp_users;
+
+// Union type for any user
+export type AnyUser = User | TempUser;
 
 // 聯絡資訊介面
 export interface Contact {
@@ -117,11 +97,14 @@ export interface UserJwtPayload extends Partial<User> {
   isTemp?: boolean;
   roles?: string[];
   permissions?: string[];
+  email_verified?: boolean | null;
+  email_verified_at?: Date | null;
+  is_active?: boolean | null;
   [key: string]: unknown;
 }
 
 // 認證請求介面 - 統一使用 UserJwtPayload
-export interface AuthRequest extends Omit<Request, 'isAuthenticated' | 'user'> {
+export interface AuthRequest extends Omit<Request, 'user'> {
   user?: UserJwtPayload;
   isTemporary?: boolean;
 }
@@ -182,6 +165,9 @@ export interface AuthResponse {
   user?: Partial<User | TempUser> & {
     roles?: string[];
     permissions?: string[];
+    email_verified?: boolean | null;
+    email_verified_at?: Date | null;
+    is_active?: boolean | null;
   };
   isTemporary?: boolean;
   redirectUrl?: string;

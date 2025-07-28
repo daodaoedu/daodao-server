@@ -308,7 +308,7 @@ export class ProjectController {
         content: originalResult.data.content || undefined,
         strategy: originalResult.data.strategy,
         strategyDescription: originalResult.data.strategyDescription || undefined,
-        resourceName: originalResult.data.resourceName || undefined,
+        resources: originalResult.data.resources || undefined,
         outcome: originalResult.data.outcome,
         outcomeDescription: originalResult.data.outcomeDescription || undefined,
         isPublic: false, // 副本預設為私人

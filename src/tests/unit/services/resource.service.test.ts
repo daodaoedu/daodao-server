@@ -1,63 +1,51 @@
 /**
  * 資源服務測試
+ * 完整測試資源相關業務邏輯
  */
 
-import resourceService from '@/services/resource.service';
-import type { resources, resource_review } from '../../../../generated/prisma';
-import { 
-  NotFoundError, 
-  ForbiddenError, 
-  ConflictError 
-} from '../../../utils/error-handler';
-import tagService from '@/services/tag.service';
+import { mockPrisma } from '../../utils/prisma-mock';
 
-// Mock Prisma service
 jest.mock('@/services/database/prisma.service', () => ({
-  prisma: {
-    $transaction: jest.fn(),
-    resources: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn()
-    },
-    resource_review: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn()
-    },
-    categories: {
-      findUnique: jest.fn(),
-      findMany: jest.fn()
-    },
-    entity_tags: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-      deleteMany: jest.fn()
-    },
-    tags: {
-      findMany: jest.fn(),
-      findUnique: jest.fn()
-    }
-  }
+  prisma: mockPrisma
+}));
+
+jest.mock('@/services/transform.service', () => ({
+  transformResourceToApi: jest.fn().mockImplementation((data) => data),
+  transformResourceToDb: jest.fn().mockImplementation(async (data, userId) => ({
+    name: data.name,
+    url: data.url,
+    image_url: data.imageUrl || null,
+    description: data.description,
+    video_url: data.videoUrl || null,
+    type: data.type,
+    cost: data.cost,
+    level: data.level,
+    major_category_id: data.majorCategory ? 1 : null,
+    sub_category_id: data.subCategory ? 2 : null
+  }))
 }));
 
 jest.mock('@/services/tag.service', () => ({
   __esModule: true,
   default: {
-    setEntityTags: jest.fn()
+    setEntityTags: jest.fn().mockResolvedValue([]),
+    getEntityTags: jest.fn().mockResolvedValue([])
   }
 }));
 
-// Helper function to create mock Prisma instances
-const createMockPrismaInstance = (data: any) => ({
-  ...data
-});
+jest.mock('@/utils/transform-utils', () => ({
+  decodeCursor: jest.fn().mockReturnValue({ id: 10, timestamp: '2024-01-01T00:00:00Z' }),
+  generatePaginationMetadata: jest.fn().mockImplementation((data, count, limit, sort, hasMore) => ({
+    cursors: { start: null, end: null },
+    hasMore: hasMore || false,
+    count: count
+  }))
+}));
+
+import resourceService from '@/services/resource.service';
+import tagService from '@/services/tag.service';
+import { NotFoundError, ForbiddenError } from '@/utils/error-handler';
+import { TestDataGenerator } from '../../utils/test-helpers';
 
 describe('Resource Service Tests', () => {
   beforeEach(() => {
@@ -65,264 +53,458 @@ describe('Resource Service Tests', () => {
   });
 
   describe('getResourceById', () => {
-    it('應成功獲取資源詳情', async () => {
-      const resourceUuid = '550e8400-e29b-41d4-a716-446655440000';
-      
-      // 模擬資源數據
-      const mockResource = createMockPrismaInstance({
+    const resourceId = '550e8400-e29b-41d4-a716-446655440000';
+
+    it('應該成功獲取資源詳情', async () => {
+      const mockResource = {
         id: 1,
-        external_id: resourceUuid,
+        external_id: resourceId,
         name: '測試資源',
         url: 'https://example.com',
         image_url: 'https://example.com/image.jpg',
         description: '這是一個測試資源',
+        video_url: null,
         type: 'books_articles',
         cost: 'free',
         level: 'beginner',
-        created_by: 100,
         status: 'active',
-        created_at: new Date(),
-        updated_at: new Date()
+        created_by: 1,
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-01'),
+        users: {
+          id: 1,
+          nickname: 'TestUser',
+          contacts: {
+            photo_url: null
+          }
+        },
+        categories_resources_major_category_idTocategories: {
+          id: 1,
+          name: 'Programming'
+        },
+        categories_resources_sub_category_idTocategories: {
+          id: 2,
+          name: 'JavaScript'
+        }
+      };
+
+      const mockTags = [
+        {
+          entity_id: resourceId,
+          tags: { id: 1, name: 'javascript' }
+        },
+        {
+          entity_id: resourceId,
+          tags: { id: 2, name: 'react' }
+        }
+      ];
+
+      const mockReviewStats = {
+        _avg: {
+          score_impact: 4.5,
+          score_mindset: 4.0,
+          score_problems: 4.2,
+          score_perspectives: 4.1,
+          score_goals: 4.3
+        },
+        _count: { id: 10 }
+      };
+
+      mockPrisma.resources.findUnique.mockResolvedValue(mockResource);
+      mockPrisma.entity_tags.findMany.mockResolvedValue(mockTags);
+      mockPrisma.resource_review.aggregate.mockResolvedValue(mockReviewStats);
+
+      const result = await resourceService.getResourceById(resourceId);
+
+      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+        where: { 
+          external_id: resourceId,
+          deleted_at: null 
+        },
+        include: expect.objectContaining({
+          users: expect.any(Object),
+          categories_resources_major_category_idTocategories: expect.any(Object),
+          categories_resources_sub_category_idTocategories: expect.any(Object)
+        })
       });
 
-      // 模擬 Prisma 查詢結果
-      const { prisma } = require('@/services/database/prisma.service');
-      prisma.resources.findUnique.mockResolvedValue(mockResource);
-      prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
-      
-      // 模擬 entity_tags 查詢結果
-      prisma.entity_tags.findMany.mockResolvedValue([
-        {
-          entity_id: 1,
-          tag: { id: 1, name: 'JavaScript' }
+      expect(mockPrisma.entity_tags.findMany).toHaveBeenCalledWith({
+        where: {
+          entity_type: 'resource',
+          entity_id: resourceId
+        },
+        include: {
+          tags: true
         }
-      ]);
+      });
 
-      // 執行測試
-      const result = await resourceService.getResourceById(resourceUuid);
+      expect(mockPrisma.resource_review.aggregate).toHaveBeenCalledWith({
+        where: {
+          resource_id: 1,
+          deleted_at: null
+        },
+        _avg: expect.any(Object),
+        _count: expect.any(Object)
+      });
 
-      // 驗證結果
       expect(result).toBeDefined();
-      expect(result.id).toBe(resourceUuid);
-      expect(result.name).toBe('測試資源');
-      expect(result.avgRating).toBe(4.5);
-      expect(prisma.resources.findUnique).toHaveBeenCalledWith(expect.objectContaining({
-        where: { external_id: resourceUuid }
-      }));
     });
 
-    it('應在資源不存在時拋出 NotFoundError', async () => {
-      const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
-      
-      // 模擬資源不存在
-      const { prisma } = require('@/services/database/prisma.service');
-      prisma.resources.findUnique.mockResolvedValue(null);
+    it('應該在資源不存在時拋出 NotFoundError', async () => {
+      mockPrisma.resources.findUnique.mockResolvedValue(null);
 
-      // 執行測試並驗證結果
-      await expect(resourceService.getResourceById(nonExistentUuid)).rejects.toThrow(NotFoundError);
-      expect(prisma.resources.findUnique).toHaveBeenCalledWith(expect.objectContaining({
-        where: { external_id: nonExistentUuid }
+      await expect(resourceService.getResourceById(resourceId))
+        .rejects
+        .toThrow(NotFoundError);
+
+      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+        where: { 
+          external_id: resourceId,
+          deleted_at: null 
+        },
+        include: expect.any(Object)
+      });
+    });
+
+    it('應該處理資源沒有分類的情況', async () => {
+      const mockResource = {
+        id: 1,
+        external_id: resourceId,
+        name: '測試資源',
+        url: 'https://example.com',
+        image_url: null,
+        description: '這是一個測試資源',
+        video_url: null,
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        status: 'active',
+        created_by: 1,
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-01'),
+        users: {
+          id: 1,
+          nickname: 'TestUser',
+          contacts: {
+            photo_url: null
+          }
+        },
+        categories_resources_major_category_idTocategories: null,
+        categories_resources_sub_category_idTocategories: null
+      };
+
+      mockPrisma.resources.findUnique.mockResolvedValue(mockResource);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+      mockPrisma.resource_review.aggregate.mockResolvedValue({
+        _avg: {
+          score_impact: null,
+          score_mindset: null,
+          score_problems: null,
+          score_perspectives: null,
+          score_goals: null
+        },
+        _count: { id: 0 }
+      });
+
+      const result = await resourceService.getResourceById(resourceId);
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('getResources', () => {
+    it('應該使用預設分頁參數獲取資源列表', async () => {
+      const mockResources = [
+        {
+          id: 1,
+          external_id: '550e8400-e29b-41d4-a716-446655440000',
+          name: '測試資源1',
+          url: 'https://example.com/1',
+          image_url: null,
+          description: '描述1',
+          video_url: null,
+          type: 'books_articles',
+          cost: 'free',
+          level: 'beginner',
+          status: 'active',
+          created_by: 1,
+          created_at: new Date('2024-01-01'),
+          updated_at: new Date('2024-01-01'),
+          users: {
+            id: 1,
+            nickname: 'TestUser'
+          },
+          categories_resources_major_category_idTocategories: {
+            id: 1,
+            name: 'Programming'
+          },
+          categories_resources_sub_category_idTocategories: {
+            id: 2,
+            name: 'JavaScript'
+          }
+        }
+      ];
+
+      mockPrisma.resources.findMany.mockResolvedValue(mockResources);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      const result = await resourceService.getResources({}, {});
+
+      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
+        where: {
+          deleted_at: null
+        },
+        include: expect.any(Object),
+        orderBy: {
+          created_at: 'desc'
+        },
+        take: 6 // DEFAULT_RESOURCE_PAGE_LIMIT + 1
+      });
+
+      expect(result).toEqual({
+        resources: expect.any(Array),
+        pagination: expect.any(Object)
+      });
+    });
+
+    it('應該正確處理分頁參數', async () => {
+      mockPrisma.resources.findMany.mockResolvedValue([]);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      const paginationParams = {
+        cursor: 'test-cursor',
+        limit: 10,
+        sort: 'updated_at',
+        order: 'asc' as const
+      };
+
+      await resourceService.getResources({}, paginationParams);
+
+      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
+        where: {
+          deleted_at: null
+          // 注意：當 sort 是 'updated_at' 時，不會有 created_at 條件
+        },
+        include: expect.any(Object),
+        orderBy: {
+          updated_at: 'asc'
+        },
+        take: 11 // limit + 1
+      });
+    });
+
+    it('應該正確處理篩選參數', async () => {
+      mockPrisma.resources.findMany.mockResolvedValue([]);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      const filters = {
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        majorCategory: 'Programming',
+        subCategory: 'JavaScript',
+        query: 'test query',
+        createdBy: 1
+      };
+
+      await resourceService.getResources(filters, {});
+
+      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
+        where: {
+          deleted_at: null,
+          type: 'books_articles',
+          cost: 'free',
+          level: 'beginner',
+          created_by: 1,
+          categories_resources_major_category_idTocategories: {
+            name: 'Programming'
+          },
+          categories_resources_sub_category_idTocategories: {
+            name: 'JavaScript'
+          },
+          OR: [
+            {
+              name: {
+                contains: 'test query',
+                mode: 'insensitive'
+              }
+            },
+            {
+              description: {
+                contains: 'test query',
+                mode: 'insensitive'
+              }
+            }
+          ]
+        },
+        include: expect.any(Object),
+        orderBy: expect.any(Object),
+        take: expect.any(Number)
+      });
+    });
+
+    it('應該正確處理標籤篩選', async () => {
+      const mockTaggedResources = [
+        { entity_id: '550e8400-e29b-41d4-a716-446655440000' },
+        { entity_id: '550e8400-e29b-41d4-a716-446655440001' }
+      ];
+
+      mockPrisma.entity_tags.findMany
+        .mockResolvedValueOnce(mockTaggedResources) // 第一次調用用於標籤篩選
+        .mockResolvedValueOnce([]); // 第二次調用用於獲取資源標籤
+
+      mockPrisma.resources.findMany.mockResolvedValue([]);
+
+      const filters = {
+        tags: ['javascript', 'react']
+      };
+
+      await resourceService.getResources(filters, {});
+
+      expect(mockPrisma.entity_tags.findMany).toHaveBeenCalledWith({
+        where: {
+          entity_type: 'resource',
+          tags: {
+            name: {
+              in: ['javascript', 'react']
+            }
+          }
+        },
+        select: {
+          entity_id: true
+        }
+      });
+
+      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
+        where: {
+          deleted_at: null,
+          external_id: {
+            in: ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001']
+          }
+        },
+        include: expect.any(Object),
+        orderBy: expect.any(Object),
+        take: expect.any(Number)
+      });
+    });
+
+    it('應該在沒有標籤匹配的資源時返回空結果', async () => {
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      const filters = {
+        tags: ['non-existent-tag']
+      };
+
+      const result = await resourceService.getResources(filters, {});
+
+      expect(result).toEqual({
+        resources: [],
+        pagination: {
+          cursors: { start: null, end: null },
+          hasMore: false,
+          count: 0
+        }
+      });
+
+      expect(mockPrisma.resources.findMany).not.toHaveBeenCalled();
+    });
+
+    it('應該正確處理分頁（有下一頁）', async () => {
+      const mockResources = Array(6).fill(null).map((_, index) => ({
+        id: index + 1,
+        external_id: `550e8400-e29b-41d4-a716-44665544000${index}`,
+        name: `測試資源${index + 1}`,
+        url: `https://example.com/${index + 1}`,
+        image_url: null,
+        description: `描述${index + 1}`,
+        video_url: null,
+        type: 'books_articles',
+        cost: 'free',
+        level: 'beginner',
+        status: 'active',
+        created_by: 1,
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-01'),
+        deleted_at: null,
+        major_category_id: 1,
+        sub_category_id: 2,
+        users: {
+          id: 1,
+          nickname: 'TestUser'
+        },
+        categories_resources_major_category_idTocategories: {
+          id: 1,
+          name: 'Programming'
+        },
+        categories_resources_sub_category_idTocategories: {
+          id: 2,
+          name: 'JavaScript'
+        }
       }));
+
+      mockPrisma.resources.findMany.mockResolvedValue(mockResources);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      const result = await resourceService.getResources({}, { limit: 5 });
+
+      expect(result.resources).toHaveLength(5); // 應該只返回5個，因為第6個用於判斷是否有下一頁
+      expect(result.pagination.hasMore).toBe(true); // 應該有更多數據
     });
   });
 
   describe('createResource', () => {
-    it('應成功創建資源', async () => {
-      // 模擬事務
-      const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      const { prisma } = require('@/services/database/prisma.service');
-      prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
+    const userId = 1;
+    const resourceData = {
+      name: '新測試資源',
+      url: 'https://example.com/new',
+      description: '新資源描述',
+      type: 'books_articles' as const,
+      cost: 'free' as const,
+      level: 'beginner' as const,
+      tags: ['javascript', 'react']
+    };
 
-      // 模擬創建資源
-      const resourceUuid = '550e8400-e29b-41d4-a716-446655440000';
-      const mockResource = createMockPrismaInstance({
+    it('應該成功創建資源', async () => {
+      const mockCreatedResource = {
         id: 1,
-        external_id: resourceUuid,
-        name: '測試資源',
-        url: 'https://example.com',
-        image_url: 'https://example.com/image.jpg',
-        description: '這是一個測試資源',
-        video_url: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
-        major_category_id: 1,
-        sub_category_id: 2,
-        created_by: 100,
+        external_id: '550e8400-e29b-41d4-a716-446655440000',
+        name: resourceData.name,
+        url: resourceData.url,
+        description: resourceData.description,
+        type: resourceData.type,
+        cost: resourceData.cost,
+        level: resourceData.level,
         status: 'active',
+        created_by: userId,
         created_at: new Date(),
         updated_at: new Date()
-      });
-      prisma.resources.create.mockResolvedValue(mockResource);
-
-      // 模擬標籤處理
-      (tagService.setEntityTags as jest.Mock).mockResolvedValue([]);
-
-      // 模擬獲取資源詳情的 spy，但先不設置 mock 值
-      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById');
-
-      // 執行測試
-      const resourceData = {
-        name: '測試資源',
-        url: 'https://example.com',
-        imageUrl: 'https://example.com/image.jpg',
-        description: '這是一個測試資源',
-        type: 'books_articles' as const,
-        cost: 'free' as const,
-        level: 'beginner' as const,
-        status: 'active' as const,
-        tags: ['tag1', 'tag2']
       };
 
-      const result = await resourceService.createResource(resourceData, 100);
-
-      // 驗證結果
-      expect(result).toBeDefined();
-      expect(result.id).toBe(resourceUuid);
-      expect(result.name).toBe('測試資源');
-      expect(prisma.$transaction).toHaveBeenCalled();
-      expect(prisma.resources.create).toHaveBeenCalled();
-      expect(tagService.setEntityTags).toHaveBeenCalledWith(1, 'resource', ['tag1', 'tag2'], prisma);
-      // 移除對 getResourceById 的驗證，因為在錯誤情況下可能不會被調用
-    });
-
-    it('應在創建資源時處理評論', async () => {
-      // 模擬事務
-      const { prisma } = require('@/services/database/prisma.service');
-      prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
-
-      // 模擬創建資源
-      const mockResource = createMockPrismaInstance({
-        id: 1,
-        name: '測試資源',
-        url: 'https://example.com',
-        image_url: 'https://example.com/image.jpg',
-        description: '這是一個測試資源',
-        video_url: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
-        major_category_id: 1,
-        sub_category_id: 2,
-        created_by: 100,
-        status: 'active',
-        created_at: new Date(),
-        updated_at: new Date()
-      });
-      prisma.resources.create.mockResolvedValue(mockResource);
-
-      // 模擬標籤處理
-      (tagService.setEntityTags as jest.Mock).mockResolvedValue([]);
-
-      // 模擬創建評論
-      prisma.resource_review.create.mockResolvedValue({ id: 1 });
-
-      // 模擬獲取資源詳情的 spy，但先不設置 mock 值
-      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById');
-
-      // 執行測試
-      const resourceData = {
-        name: '測試資源',
-        url: 'https://example.com',
-        imageUrl: 'https://example.com/image.jpg',
-        description: '這是一個測試資源',
-        type: 'books_articles' as const,
-        cost: 'free' as const,
-        level: 'beginner' as const,
-        status: 'active' as const,
-        tags: ['tag1', 'tag2'],
-        review: {
-          title: '這是一個測試評論標題',
-          content: '這是一個測試評論',
-          score_impact: 4.5,
-          score_comprehensiveness: 4.0,
-          score_implementation: 3.5,
-          recommendation: '推薦給初學者使用',
-          tags: ['helpful', 'comprehensive']
-        }
-      };
-
-      const result = await resourceService.createResource(resourceData, 100);
-
-      // 驗證結果
-      expect(result).toBeDefined();
-      expect(prisma.resource_review.create).toHaveBeenCalled();
-    });
-
-    it('應在發生錯誤時回滾事務', async () => {
-      // 模擬事務
-      const { prisma } = require('@/services/database/prisma.service');
-      prisma.$transaction.mockImplementation(async (fn) => {
-        throw new Error('模擬錯誤');
-      });
-
-      // 模擬創建資源失敗
-      const mockError = new Error('模擬錯誤');
-      prisma.resources.create.mockRejectedValue(mockError);
-
-      // 執行測試
-      const resourceData = {
-        name: '測試資源',
-        url: 'https://example.com',
-        imageUrl: 'https://example.com/image.jpg',
-        description: '這是一個測試資源',
-        type: 'books_articles' as const,
-        cost: 'free' as const,
-        level: 'beginner' as const,
-        status: 'active' as const
-      };
-
-      await expect(resourceService.createResource(resourceData, 100)).rejects.toThrow(mockError);
-    });
-  });
-
-  // 測試更新資源
-  describe('updateResource', () => {
-    it('應成功更新資源', async () => {
-      // 模擬事務
-      const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
-
-      // 模擬查詢資源
-      const resourceUuid = '550e8400-e29b-41d4-a716-446655440002';
-      const mockResource = createMockSequelizeInstance({
-        id: 1,
-        external_id: resourceUuid,
-        name: '舊名稱',
-        created_by: 100
-      });
-      mockResource.update.mockResolvedValue(true);
-      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
-
-      // 模擬標籤處理
-      (tagService.setEntityTags as jest.Mock).mockResolvedValue([]);
-
-      // 模擬獲取資源詳情的 spy，設置期望的回傳值
-      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById').mockResolvedValue({
-        id: resourceUuid,
-        name: '新名稱',
-        url: 'https://example.com',
-        imageUrl: 'https://example.com/image.jpg',
-        description: '更新後的描述',
+      const mockGetResourceResult = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: resourceData.name,
+        url: resourceData.url,
+        imageUrl: null,
+        description: resourceData.description,
         videoUrl: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
+        type: resourceData.type,
+        cost: resourceData.cost,
+        level: resourceData.level,
         status: 'active',
-        avgRating: 4.5,
-        majorCategory: 'technology',
-        subCategory: 'programming',
+        avgRating: null,
+        majorCategory: null,
+        subCategory: null,
         user: {
-          id: 100,
-          name: '測試用戶',
-          _id: 'user-uuid-123',
-          roleList: ['citizen'],
-          photoURL: 'https://example.com/avatar.jpg',
-          educationStage: 'bachelor',
-          tagList: ['developer', 'student'],
-          selfIntroduction: '測試用戶自我介紹'
+          id: 1,
+          name: 'TestUser',
+          _id: 'user-uuid',
+          roleList: ['user'],
+          photoURL: null,
+          educationStage: null,
+          tagList: [],
+          selfIntroduction: null
         },
-        tags: ['tag1', 'tag2'],
+        tags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         viewCount: 0,
@@ -330,371 +512,561 @@ describe('Resource Service Tests', () => {
         shareCount: 0,
         reviewCount: 0,
         likeCount: 0
-      });
-
-      // 執行測試
-      const updateData = {
-        name: '新名稱',
-        description: '更新後的描述',
-        tags: ['tag1', 'tag2']
       };
 
-      const result = await resourceService.updateResource(resourceUuid, updateData, 100);
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.create.mockResolvedValue(mockCreatedResource);
 
-      // 驗證結果
+      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById')
+        .mockResolvedValue(mockGetResourceResult);
+
+      const result = await resourceService.createResource(resourceData, userId);
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(mockPrisma.resources.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: resourceData.name,
+          url: resourceData.url,
+          description: resourceData.description,
+          type: resourceData.type,
+          cost: resourceData.cost,
+          level: resourceData.level,
+          created_by: userId,
+          status: 'active'
+        })
+      });
+
+      expect(tagService.setEntityTags).toHaveBeenCalledWith(
+        'resource',
+        '550e8400-e29b-41d4-a716-446655440000',
+        ['javascript', 'react'],
+        userId,
+        mockPrisma
+      );
+
       expect(result).toBeDefined();
-      expect(result.id).toBe(resourceUuid);
-      expect(mockResource.update).toHaveBeenCalled();
-      expect(tagService.setEntityTags).toHaveBeenCalledWith(1, 'resource', ['tag1', 'tag2'], mockTransaction);
-      expect(mockTransaction.commit).toHaveBeenCalled();
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(result.id).toBe('550e8400-e29b-41d4-a716-446655440000');
+      }
+
+      getResourceByIdSpy.mockRestore();
     });
 
-    it('應在資源不存在時拋出 NotFoundError', async () => {
-      // 模擬事務
-      const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
-
-      // 模擬資源不存在
-      const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
-      (Resource.findOne as jest.Mock).mockResolvedValue(null);
-
-      // 執行測試
-      const updateData = {
-        name: '新名稱',
-        description: '更新後的描述'
+    it('應該在沒有標籤時成功創建資源', async () => {
+      const resourceDataWithoutTags = {
+        ...resourceData,
+        tags: undefined
       };
 
-      await expect(resourceService.updateResource(nonExistentUuid, updateData, 100)).rejects.toThrow(NotFoundError);
-
-      // 驗證結果
-      expect(mockTransaction.rollback).toHaveBeenCalled();
-      expect(mockTransaction.commit).not.toHaveBeenCalled();
-    });
-
-    it('應在沒有權限時拋出 ForbiddenError', async () => {
-      // 模擬事務
-      const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
-      (sequelize.transaction as jest.Mock).mockResolvedValue(mockTransaction);
-
-      // 模擬資源存在但不是創建者
-      const resourceUuid = '550e8400-e29b-41d4-a716-446655440003';
-      const mockResource = createMockSequelizeInstance({
+      const mockCreatedResource = {
         id: 1,
-        external_id: resourceUuid,
-        name: '舊名稱',
-        created_by: 200  // 不是當前用戶
-      });
-      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
-
-      // 執行測試
-      const updateData = {
-        name: '新名稱',
-        description: '更新後的描述'
+        external_id: '550e8400-e29b-41d4-a716-446655440000',
+        name: resourceDataWithoutTags.name,
+        url: resourceDataWithoutTags.url,
+        description: resourceDataWithoutTags.description,
+        type: resourceDataWithoutTags.type,
+        cost: resourceDataWithoutTags.cost,
+        level: resourceDataWithoutTags.level,
+        status: 'active',
+        created_by: userId,
+        created_at: new Date(),
+        updated_at: new Date()
       };
 
-      await expect(resourceService.updateResource(resourceUuid, updateData, 100)).rejects.toThrow(ForbiddenError);
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.create.mockResolvedValue(mockCreatedResource);
 
-      // 驗證結果
-      expect(mockTransaction.rollback).toHaveBeenCalled();
-      expect(mockTransaction.commit).not.toHaveBeenCalled();
+      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById')
+        .mockResolvedValue({
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          name: resourceDataWithoutTags.name,
+          url: resourceDataWithoutTags.url,
+          imageUrl: null,
+          description: resourceDataWithoutTags.description,
+          videoUrl: null,
+          type: resourceDataWithoutTags.type,
+          cost: resourceDataWithoutTags.cost,
+          level: resourceDataWithoutTags.level,
+          status: 'active',
+          avgRating: null,
+          majorCategory: null,
+          subCategory: null,
+          user: {
+            id: 1,
+            name: 'TestUser',
+            _id: 'user-uuid',
+            roleList: ['user'],
+            photoURL: null,
+            educationStage: null,
+            tagList: [],
+            selfIntroduction: null
+          },
+          tags: [],
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          viewCount: 0,
+          favoriteCount: 0,
+          shareCount: 0,
+          reviewCount: 0,
+          likeCount: 0
+        });
+
+      await resourceService.createResource(resourceDataWithoutTags, userId);
+
+      expect(tagService.setEntityTags).not.toHaveBeenCalled();
+
+      getResourceByIdSpy.mockRestore();
+    });
+
+    it('應該驗證主分類是否存在', async () => {
+      const resourceDataWithCategory = {
+        ...resourceData,
+        majorCategory: 'Programming'
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.categories.findUnique.mockResolvedValue(null);
+
+      await expect(resourceService.createResource(resourceDataWithCategory, userId))
+        .rejects
+        .toThrow(NotFoundError);
+
+      expect(mockPrisma.categories.findUnique).toHaveBeenCalledWith({
+        where: { name: 'Programming' }
+      });
+    });
+
+    it('應該驗證子分類是否存在', async () => {
+      const resourceDataWithSubCategory = {
+        ...resourceData,
+        subCategory: 'JavaScript'
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.categories.findUnique.mockResolvedValue(null);
+
+      await expect(resourceService.createResource(resourceDataWithSubCategory, userId))
+        .rejects
+        .toThrow(NotFoundError);
+
+      expect(mockPrisma.categories.findUnique).toHaveBeenCalledWith({
+        where: { name: 'JavaScript' }
+      });
+    });
+
+    it('應該在事務失敗時回滾', async () => {
+      const error = new Error('Database error');
+      mockPrisma.$transaction.mockRejectedValue(error);
+
+      await expect(resourceService.createResource(resourceData, userId))
+        .rejects
+        .toThrow(error);
     });
   });
 
-  // 測試刪除資源
-  describe('deleteResource', () => {
-    it('應成功刪除資源', async () => {
-      const resourceUuid = '550e8400-e29b-41d4-a716-446655440004';
-      
-      // 模擬查詢資源
-      const mockResource = createMockSequelizeInstance({
-        id: 1,
-        external_id: resourceUuid,
-        name: '測試資源',
-        created_by: 100
-      });
-      mockResource.destroy.mockResolvedValue(true);
-      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
+  describe('updateResource', () => {
+    const resourceId = '550e8400-e29b-41d4-a716-446655440000';
+    const userId = 1;
+    const updateData = {
+      name: '更新後的資源名稱',
+      description: '更新後的描述',
+      tags: ['updated-tag']
+    };
 
-      // 執行測試
-      const result = await resourceService.deleteResource(resourceUuid, 100);
+    let getResourceByIdSpy: jest.SpyInstance;
 
-      // 驗證結果
-      expect(result).toEqual({ success: true });
-      expect(mockResource.destroy).toHaveBeenCalled();
-    });
-
-    it('應在資源不存在時拋出 NotFoundError', async () => {
-      const nonExistentUuid = '999e8400-e29b-41d4-a716-446655440999';
-      
-      // 模擬資源不存在
-      (Resource.findOne as jest.Mock).mockResolvedValue(null);
-
-      // 執行測試
-      await expect(resourceService.deleteResource(nonExistentUuid, 100)).rejects.toThrow(NotFoundError);
-    });
-
-    it('應在沒有權限時拋出 ForbiddenError', async () => {
-      const resourceUuid = '550e8400-e29b-41d4-a716-446655440005';
-      
-      // 模擬資源存在但不是創建者
-      const mockResource = createMockSequelizeInstance({
-        id: 1,
-        external_id: resourceUuid,
-        name: '測試資源',
-        created_by: 200  // 不是當前用戶
-      });
-      (Resource.findOne as jest.Mock).mockResolvedValue(mockResource);
-
-      // 執行測試
-      await expect(resourceService.deleteResource(resourceUuid, 100)).rejects.toThrow(ForbiddenError);
-    });
-  });
-
-  describe('getResources', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
-    });
-
-    it('應該使用預設分頁參數（每頁5筆）', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(10);
-      
-      // 模擬 findAll 返回值
-      const mockRows = [
-        createMockSequelizeInstance({
-          id: 1,
-          name: '測試資源1',
-          url: 'https://example.com/1',
-          external_id: '550e8400-e29b-41d4-a716-446655440000',
+      getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById')
+        .mockResolvedValue({
+          id: resourceId,
+          name: updateData.name,
+          url: 'https://example.com',
+          imageUrl: null,
+          description: updateData.description,
+          videoUrl: null,
           type: 'books_articles',
           cost: 'free',
           level: 'beginner',
-          created_by: 100,
           status: 'active',
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-      ];
-      (Resource.findAll as jest.Mock).mockResolvedValue(mockRows);
-
-      // 模擬評論統計
-      (ResourceReview.findOne as jest.Mock).mockResolvedValue(null);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
-      
-      // 模擬 EntityTag 查詢結果
-      (EntityTag.findAll as jest.Mock).mockResolvedValue([]);
-
-      // 執行測試，不提供 limit 參數
-      const result = await resourceService.getResources({}, {});
-
-      // 驗證 count 調用參數
-      expect(Resource.count).toHaveBeenCalledWith(
-        expect.objectContaining({
-          distinct: true
-        })
-      );
-      
-      // 驗證 findAll 調用參數
-      expect(Resource.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          limit: 6, // 應該使用 DEFAULT_RESOURCE_PAGE_LIMIT + 1 (5 + 1)
-          order: [['created_at', 'desc']]
-        })
-      );
+          avgRating: null,
+          majorCategory: null,
+          subCategory: null,
+          user: {
+            id: 1,
+            name: 'TestUser',
+            _id: 'user-uuid',
+            roleList: ['user'],
+            photoURL: null,
+            educationStage: null,
+            tagList: [],
+            selfIntroduction: null
+          },
+          tags: [],
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          viewCount: 0,
+          favoriteCount: 0,
+          shareCount: 0,
+          reviewCount: 0,
+          likeCount: 0
+        });
     });
 
-    it('應該限制最大分頁數量為20筆', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(0);
-      
-      // 模擬 findAll 返回值
-      (Resource.findAll as jest.Mock).mockResolvedValue([]);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
-
-      // 執行測試，提供超過最大限制的 limit
-      const result = await resourceService.getResources({}, { limit: 50 });
-
-      // 驗證 findAll 調用參數
-      expect(Resource.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          limit: 21, // 應該限制為 MAX_RESOURCE_PAGE_LIMIT + 1 (20 + 1)
-          order: [['created_at', 'desc']]
-        })
-      );
+    afterEach(() => {
+      getResourceByIdSpy.mockRestore();
     });
 
-    it('應該正確處理游標分頁', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(0);
-      
-      // 模擬 findAll 返回值
-      (Resource.findAll as jest.Mock).mockResolvedValue([]);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+    it('應該成功更新資源', async () => {
+      const mockExistingResource = {
+        id: 1,
+        external_id: resourceId,
+        name: '舊名稱',
+        created_by: userId,
+        deleted_at: null
+      };
 
-      // 創建有效的游標
-      const cursor = Buffer.from(JSON.stringify({
-        id: 10,
-        timestamp: '2024-01-01T00:00:00Z'
-      })).toString('base64');
+      const mockUpdatedResource = {
+        ...mockExistingResource,
+        name: updateData.name,
+        description: updateData.description
+      };
 
-      // 執行測試
-      const result = await resourceService.getResources({}, { 
-        cursor,
-        limit: 5
-      });
-
-      // 驗證調用參數包含游標條件
-      expect(Resource.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          limit: 6, // DEFAULT_RESOURCE_PAGE_LIMIT + 1
-          where: {
-            [Op.and]: expect.arrayContaining([
-              expect.objectContaining({
-                status: 'active'
-              }),
-              expect.objectContaining({
-                [Op.or]: expect.any(Array) // 游標條件
-              })
-            ])
-          }
-        })
-      );
-    });
-
-    it('應該正確處理排序參數', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(0);
-      
-      // 模擬 findAll 返回值
-      (Resource.findAll as jest.Mock).mockResolvedValue([]);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
-
-      // 執行測試
-      const result = await resourceService.getResources({}, { 
-        sort: 'name',
-        order: 'asc'
-      });
-
-      // 驗證調用參數
-      expect(Resource.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          order: [['name', 'asc']]
-        })
-      );
-    });
-
-    it('應該正確處理篩選參數', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(0);
-      
-      // 模擬 findAll 返回值
-      (Resource.findAll as jest.Mock).mockResolvedValue([]);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
-
-      // 執行測試
-      const result = await resourceService.getResources({
+      const expectedResult = {
+        id: resourceId,
+        name: updateData.name,
+        url: 'https://example.com',
+        imageUrl: null,
+        description: updateData.description,
+        videoUrl: null,
         type: 'books_articles',
         cost: 'free',
         level: 'beginner',
-        majorCategory: 'frontend_development'
-      }, {});
+        status: 'active',
+        avgRating: null,
+        majorCategory: null,
+        subCategory: null,
+        user: {
+          id: 1,
+          name: 'TestUser',
+          _id: 'user-uuid',
+          roleList: ['user'],
+          photoURL: null,
+          educationStage: null,
+          tagList: [],
+          selfIntroduction: null
+        },
+        tags: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        viewCount: 0,
+        favoriteCount: 0,
+        shareCount: 0,
+        reviewCount: 0,
+        likeCount: 0
+      };
 
-      // 驗證調用參數 - 現在 majorCategory 是透過 join 處理的
-      expect(Resource.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            [Op.and]: expect.arrayContaining([
-              expect.objectContaining({
-                type: 'books_articles',
-                cost: 'free',
-                level: 'beginner',
-                status: 'active'
-              })
-            ])
-          },
-          include: expect.arrayContaining([
-            expect.objectContaining({
-              as: 'majorCategory',
-              required: true,
-              where: { name: 'frontend_development' }
-            })
-          ])
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
+      mockPrisma.resources.update.mockResolvedValue(mockUpdatedResource);
+
+      const result = await resourceService.updateResource(resourceId, updateData, userId);
+
+      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+        where: { 
+          external_id: resourceId,
+          deleted_at: null 
+        }
+      });
+
+      expect(mockPrisma.resources.update).toHaveBeenCalledWith({
+        where: { external_id: resourceId },
+        data: expect.objectContaining({
+          name: updateData.name,
+          description: updateData.description
         })
+      });
+
+      expect(tagService.setEntityTags).toHaveBeenCalledWith(
+        'resource',
+        resourceId,
+        ['updated-tag'],
+        userId,
+        mockPrisma
       );
+
+      expect(result).toBeDefined();
     });
 
-    it('應該正確處理 subCategory 篩選參數', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(0);
-      
-      // 模擬 findAll 返回值
-      (Resource.findAll as jest.Mock).mockResolvedValue([]);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+    it('應該在資源不存在時拋出 NotFoundError', async () => {
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(null);
 
-      // 執行測試
-      const result = await resourceService.getResources({
+      await expect(resourceService.updateResource(resourceId, updateData, userId))
+        .rejects
+        .toThrow(NotFoundError);
+    });
+
+    it('應該在無權限時拋出 ForbiddenError', async () => {
+      const mockExistingResource = {
+        id: 1,
+        external_id: resourceId,
+        name: '舊名稱',
+        created_by: 999, // 不同的用戶ID
+        deleted_at: null
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
+
+      await expect(resourceService.updateResource(resourceId, updateData, userId))
+        .rejects
+        .toThrow(ForbiddenError);
+    });
+
+    it('應該處理未提供標籤的更新', async () => {
+      const updateDataWithoutTags = {
+        name: '更新後的資源名稱',
+        description: '更新後的描述'
+      };
+
+      const mockExistingResource = {
+        id: 1,
+        external_id: resourceId,
+        name: '舊名稱',
+        created_by: userId,
+        deleted_at: null
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
+      mockPrisma.resources.update.mockResolvedValue(mockExistingResource);
+
+
+      await resourceService.updateResource(resourceId, updateDataWithoutTags, userId);
+
+      expect(tagService.setEntityTags).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteResource', () => {
+    const resourceId = '550e8400-e29b-41d4-a716-446655440000';
+    const userId = 1;
+
+    it('應該成功軟刪除資源', async () => {
+      const mockExistingResource = {
+        id: 1,
+        external_id: resourceId,
+        name: '測試資源',
+        created_by: userId,
+        deleted_at: null
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
+      mockPrisma.resources.update.mockResolvedValue(mockExistingResource);
+
+      await resourceService.deleteResource(resourceId, userId);
+
+      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+        where: { 
+          external_id: resourceId,
+          deleted_at: null 
+        }
+      });
+
+      expect(mockPrisma.resources.update).toHaveBeenCalledWith({
+        where: { external_id: resourceId },
+        data: {
+          deleted_at: expect.any(Date)
+        }
+      });
+    });
+
+    it('應該在資源不存在時拋出 NotFoundError', async () => {
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(null);
+
+      await expect(resourceService.deleteResource(resourceId, userId))
+        .rejects
+        .toThrow(NotFoundError);
+    });
+
+    it('應該在無權限時拋出 ForbiddenError', async () => {
+      const mockExistingResource = {
+        id: 1,
+        external_id: resourceId,
+        name: '測試資源',
+        created_by: 999, // 不同的用戶ID
+        deleted_at: null
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
+      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
+
+      await expect(resourceService.deleteResource(resourceId, userId))
+        .rejects
+        .toThrow(ForbiddenError);
+    });
+  });
+
+  describe('getResourceStats', () => {
+    it('應該返回全部資源統計', async () => {
+      const mockTypeStats = [
+        { type: 'books_articles', _count: { type: 5 } },
+        { type: 'video_content', _count: { type: 3 } },
+        { type: 'workshops_courses', _count: { type: 2 } }
+      ];
+
+      mockPrisma.resources.count
+        .mockResolvedValueOnce(10) // totalCount
+        .mockResolvedValueOnce(8); // activeCount
+
+      mockPrisma.resources.groupBy.mockResolvedValue(mockTypeStats);
+
+      const result = await resourceService.getResourceStats();
+
+      expect(mockPrisma.resources.count).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(1, {
+        where: { deleted_at: null }
+      });
+      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(2, {
+        where: { deleted_at: null, status: 'active' }
+      });
+
+      expect(mockPrisma.resources.groupBy).toHaveBeenCalledWith({
+        by: ['type'],
+        where: { deleted_at: null },
+        _count: { type: true }
+      });
+
+      expect(result).toEqual({
+        totalCount: 10,
+        activeCount: 8,
+        typeStats: {
+          'books_articles': 5,
+          'video_content': 3,
+          'workshops_courses': 2
+        }
+      });
+    });
+
+    it('應該返回特定用戶的資源統計', async () => {
+      const userId = 1;
+
+      mockPrisma.resources.count
+        .mockResolvedValueOnce(5) // totalCount
+        .mockResolvedValueOnce(4); // activeCount
+
+      mockPrisma.resources.groupBy.mockResolvedValue([
+        { type: 'books_articles', _count: { type: 3 } },
+        { type: 'video_content', _count: { type: 2 } }
+      ]);
+
+      const result = await resourceService.getResourceStats(userId);
+
+      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(1, {
+        where: { deleted_at: null, created_by: userId }
+      });
+      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(2, {
+        where: { deleted_at: null, created_by: userId, status: 'active' }
+      });
+
+      expect(mockPrisma.resources.groupBy).toHaveBeenCalledWith({
+        by: ['type'],
+        where: { deleted_at: null, created_by: userId },
+        _count: { type: true }
+      });
+
+      expect(result).toEqual({
+        totalCount: 5,
+        activeCount: 4,
+        typeStats: {
+          'books_articles': 3,
+          'video_content': 2
+        }
+      });
+    });
+  });
+
+  describe('錯誤處理', () => {
+    it('應該正確處理 Prisma 連接錯誤', async () => {
+      const error = new Error('Connection failed');
+      mockPrisma.resources.findUnique.mockRejectedValue(error);
+      
+      // 確保沒有其他 spy 干擾
+      jest.restoreAllMocks();
+
+      await expect(resourceService.getResourceById('test-id'))
+        .rejects
+        .toThrow(error);
+    });
+
+    it('應該正確處理事務回滾', async () => {
+      const error = new Error('Transaction failed');
+      mockPrisma.$transaction.mockRejectedValue(error);
+
+      await expect(resourceService.createResource({
+        name: 'Test',
+        url: 'https://example.com',
+        description: 'Test',
         type: 'books_articles',
-        subCategory: 'javascript_frameworks'
-      }, {});
+        cost: 'free',
+        level: 'beginner'
+      }, 1)).rejects.toThrow(error);
+    });
+  });
 
-      // 驗證調用參數 - 現在 subCategory 是透過 join 處理的
-      expect(Resource.findAll).toHaveBeenCalledWith(
+  describe('邊界情況測試', () => {
+    it('應該處理空的資源列表', async () => {
+      mockPrisma.resources.findMany.mockResolvedValue([]);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      const result = await resourceService.getResources({}, {});
+
+      expect(result.resources).toEqual([]);
+      expect(result.pagination.count).toBe(0);
+    });
+
+    it('應該處理極大的分頁限制', async () => {
+      mockPrisma.resources.findMany.mockResolvedValue([]);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+
+      await resourceService.getResources({}, { limit: 1000 });
+
+      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
-            [Op.and]: expect.arrayContaining([
-              expect.objectContaining({
-                type: 'books_articles',
-                status: 'active'
-              })
-            ])
-          },
-          include: expect.arrayContaining([
-            expect.objectContaining({
-              as: 'subCategory',
-              required: true,
-              where: { name: 'javascript_frameworks' }
-            })
-          ])
+          take: 21 // 應該被限制為 MAX_RESOURCE_PAGE_LIMIT + 1
         })
       );
     });
 
-    it('應該正確處理 majorCategory 和 subCategory 同時篩選', async () => {
-      // 模擬 count 返回值
-      (Resource.count as jest.Mock).mockResolvedValue(0);
-      
-      // 模擬 findAll 返回值
-      (Resource.findAll as jest.Mock).mockResolvedValue([]);
-      (ResourceReview.findAll as jest.Mock).mockResolvedValue([]);
+    it('應該處理特殊字符的搜尋查詢', async () => {
+      mockPrisma.resources.findMany.mockResolvedValue([]);
+      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
 
-      // 執行測試
-      const result = await resourceService.getResources({
-        majorCategory: 'frontend_development',
-        subCategory: 'javascript_frameworks'
-      }, {});
+      const specialQuery = "test'query\"with<special>chars&symbols";
 
-      // 驗證調用參數 - 兩個分類都應該透過 join 處理
-      expect(Resource.findAll).toHaveBeenCalledWith(
+      await resourceService.getResources({ query: specialQuery }, {});
+
+      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
-            [Op.and]: expect.arrayContaining([
-              expect.objectContaining({
-                status: 'active'
-              })
-            ])
-          },
-          include: expect.arrayContaining([
-            expect.objectContaining({
-              as: 'majorCategory',
-              required: true,
-              where: { name: 'frontend_development' }
-            }),
-            expect.objectContaining({
-              as: 'subCategory',
-              required: true,
-              where: { name: 'javascript_frameworks' }
-            })
-          ])
+          where: expect.objectContaining({
+            OR: [
+              {
+                name: {
+                  contains: specialQuery,
+                  mode: 'insensitive'
+                }
+              },
+              {
+                description: {
+                  contains: specialQuery,
+                  mode: 'insensitive'
+                }
+              }
+            ]
+          })
         })
       );
     });

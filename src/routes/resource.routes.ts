@@ -3,8 +3,8 @@
  * 處理資源相關的路由定義
  */
 
-import { Router, RequestHandler } from 'express';
-import resourceController from '@/controllers/resource.controller';
+import { Router } from 'express';
+import * as resourceController from '@/controllers/resource.controller';
 import { validate } from '@/validators/validation.middleware';
 import { authenticate, optionalAuth, requireRole } from '@/middleware/auth';
 import { 
@@ -29,17 +29,17 @@ router.get('/',
   optionalAuth,
   validate(paginationSchema, 'query'),
   validate(resourceFilterSchema, 'query'),
-  resourceController.getResources);
+  resourceController.default.getResources);
 
 /**
- * GET /resources/:id
+ * GET /resources/:resourceId
  * 獲取資源詳情
- * 路徑參數：id - 資源 ID
+ * 路徑參數：resourceId - 資源 ID
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/:id', 
+router.get('/:resourceId', 
   optionalAuth,
-  resourceController.getResourceById as RequestHandler);
+  resourceController.default.getResourceById);
 
 /**
  * POST /resources
@@ -50,52 +50,52 @@ router.get('/:id',
 router.post('/', 
   authenticate,
   validate(createResourceSchema, 'body'),
-  resourceController.createResource as RequestHandler
+  resourceController.default.createResource
 );
 
 /**
- * PATCH /resources/:id
+ * PATCH /resources/:resourceId
  * 更新資源
- * 路徑參數：id - 資源 ID
+ * 路徑參數：resourceId - 資源 ID
  * 請求體：UpdateResourceDto
  * 需要身份驗證和權限檢查（資源所有者或管理員）
  */
-router.patch('/:id',
+router.patch('/:resourceId',
   authenticate,
   validate(updateResourceSchema, 'body'),
-  resourceController.updateResource as RequestHandler
+  resourceController.default.updateResource
 );
 
 /**
- * PATCH /resources/:id/status
+ * PATCH /resources/:resourceId/status
  * 更新資源狀態
- * 路徑參數：id - 資源 ID
+ * 路徑參數：resourceId - 資源 ID
  * 請求體：{ status: string }
  * 需要身份驗證和權限檢查（管理員或資源所有者）
  */
-router.patch('/:id/status',
+router.patch('/:resourceId/status',
   authenticate,
   requireRole(['admin']), // 只有管理員可以更改狀態
   validate(updateResourceStatusSchema, 'body'),
-  resourceController.updateResourceStatus as RequestHandler
+  resourceController.default.updateResourceStatus
 );
 
 /**
- * DELETE /resources/:id
+ * DELETE /resources/:resourceId
  * 刪除資源（軟刪除）
- * 路徑參數：id - 資源 ID
+ * 路徑參數：resourceId - 資源 ID
  * 需要身份驗證和權限檢查（資源所有者或管理員）
  */
-router.delete('/:id',
+router.delete('/:resourceId',
   authenticate,
-  resourceController.deleteResource as RequestHandler
+  resourceController.default.deleteResource
 );
 
 /**
- * GET /resources/:id/tags
+ * GET /resources/:resourceId/tags
  * 獲取資源標籤
- * 路徑參數：id - 資源 ID
+ * 路徑參數：resourceId - 資源 ID
  */
-router.get('/:id/tags', resourceController.getResourceTags as RequestHandler);
+router.get('/:resourceId/tags', resourceController.default.getResourceTags);
 
 export default router;

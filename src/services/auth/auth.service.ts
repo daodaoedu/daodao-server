@@ -201,6 +201,57 @@ export const updateLastLogin = async (userId: number) => {
   });
 };
 
+/**
+ * 驗證用戶郵件
+ */
+export const verifyUserEmail = async (userId: number) => {
+  await prisma.users.update({
+    where: { id: userId },
+    data: {
+      email_verified: true,
+      email_verified_at: new Date(),
+      updated_at: new Date()
+    }
+  });
+};
+
+/**
+ * 啟用/停用用戶
+ */
+export const setUserActiveStatus = async (userId: number, isActive: boolean) => {
+  await prisma.users.update({
+    where: { id: userId },
+    data: {
+      is_active: isActive,
+      updated_at: new Date()
+    }
+  });
+};
+
+/**
+ * 檢查用戶是否已驗證郵件
+ */
+export const isUserEmailVerified = async (userId: number): Promise<boolean> => {
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    select: { email_verified: true }
+  });
+  
+  return user?.email_verified || false;
+};
+
+/**
+ * 檢查用戶是否處於活躍狀態
+ */
+export const isUserActive = async (userId: number): Promise<boolean> => {
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    select: { is_active: true }
+  });
+  
+  return user?.is_active || false;
+};
+
 export const authService = {
   findUserByEmail,
   findOrCreateTempUser,
@@ -209,7 +260,11 @@ export const authService = {
   getUserPermissions,
   verifyPassword,
   generateAuthToken,
-  updateLastLogin
+  updateLastLogin,
+  verifyUserEmail,
+  setUserActiveStatus,
+  isUserEmailVerified,
+  isUserActive
 };
 
 export default authService;

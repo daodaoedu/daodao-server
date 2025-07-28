@@ -3,7 +3,7 @@
  * 處理 /resources/:resourceId/reviews 相關的路由定義
  */
 
-import { Router, RequestHandler } from 'express';
+import { Router } from 'express';
 import resourceReviewController from '@/controllers/resource-review.controller';
 import { validate } from '@/validators/validation.middleware';
 import { authenticate, optionalAuth, requireRole } from '@/middleware/auth';
@@ -42,7 +42,7 @@ router.get('/',
  */
 router.get('/:reviewId', 
   optionalAuth,
-  resourceReviewController.getReviewById as RequestHandler);
+  resourceReviewController.getReviewById);
 
 /**
  * POST /resources/:resourceId/reviews
@@ -54,7 +54,7 @@ router.get('/:reviewId',
 router.post('/', 
   authenticate,
   validate(resourceReviewSchema, 'body'),
-  resourceReviewController.createReview as RequestHandler
+  resourceReviewController.createReview
 );
 
 /**
@@ -69,7 +69,7 @@ router.post('/',
 router.patch('/:reviewId',
   authenticate,
   validate(updateResourceReviewSchema, 'body'),
-  resourceReviewController.updateReview as RequestHandler
+  resourceReviewController.updateReview
 );
 
 /**
@@ -85,7 +85,7 @@ router.patch('/:reviewId/status',
   authenticate,
   requireRole(['admin']), // 只有管理員可以更改評論狀態
   validate(updateReviewStatusSchema, 'body'),
-  resourceReviewController.updateReviewStatus as RequestHandler
+  resourceReviewController.updateReviewStatus
 );
 
 /**
@@ -98,7 +98,7 @@ router.patch('/:reviewId/status',
  */
 router.delete('/:reviewId',
   authenticate,
-  resourceReviewController.deleteReview as RequestHandler
+  resourceReviewController.deleteReview
 );
 
 /**
@@ -111,7 +111,7 @@ router.delete('/:reviewId',
  */
 router.post('/:reviewId/like',
   authenticate,
-  resourceReviewController.likeReview as RequestHandler
+  resourceReviewController.likeReview
 );
 
 /**
@@ -124,7 +124,7 @@ router.post('/:reviewId/like',
  */
 router.delete('/:reviewId/like',
   authenticate,
-  resourceReviewController.unlikeReview as RequestHandler
+  resourceReviewController.unlikeReview
 );
 
 export default router;

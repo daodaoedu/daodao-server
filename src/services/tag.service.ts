@@ -4,7 +4,10 @@
  */
 
 import { prisma } from '@/services/database/prisma.service';
-import type { tags, entity_tags, Prisma } from '../../generated/prisma';
+import type { tags } from '../../generated/prisma';
+
+// 定義事務類型
+type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 /**
  * 創建標籤
@@ -14,7 +17,7 @@ import type { tags, entity_tags, Prisma } from '../../generated/prisma';
  */
 export async function createTag(
   name: string,
-  transaction?: any
+  transaction?: TransactionClient | typeof prisma
 ): Promise<tags> {
   const tx = transaction || prisma;
 
@@ -101,7 +104,7 @@ export async function setEntityTags(
   entityId: string,
   tagNames: string[],
   userId: number,
-  transaction?: any
+  transaction?: TransactionClient | typeof prisma
 ): Promise<void> {
   const tx = transaction || prisma;
 
@@ -169,7 +172,7 @@ export async function removeEntityTag(
   entityType: string,
   entityId: string,
   tagId: number,
-  transaction?: any
+  transaction?: TransactionClient | typeof prisma
 ): Promise<void> {
   const tx = transaction || prisma;
 
@@ -246,7 +249,7 @@ export async function getPopularTags(limit = 20): Promise<Array<{
       });
       
       return {
-        tag: tag!,
+        tag: tag as tags,
         usageCount: usage._count.tag_id
       };
     })

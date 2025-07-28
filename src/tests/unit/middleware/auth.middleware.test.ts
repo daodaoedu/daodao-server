@@ -20,13 +20,42 @@ import {
   UnauthorizedError, 
   ForbiddenError 
 } from '../../../utils/error-handler';
-import { AuthRequest } from '../../../types/auth.types';
+import { AuthRequest, UserJwtPayload } from '../../../types/auth.types';
+
+// Helper function to create mock user objects
+const createMockUser = (overrides: Partial<UserJwtPayload> = {}): any => ({
+  id: 1,
+  username: 'testuser',
+  email: 'test@example.com',
+  external_id: 'test-external-id',
+  mongo_id: 'mongo-123',
+  gender: null,
+  language: null,
+  education_stage: null,
+  nickname: 'testuser',
+  avatar: null,
+  phone: null,
+  birthday: null,
+  location: null,
+  bio: null,
+  website: null,
+  social_links: null,
+  preferences: null,
+  privacy_settings: null,
+  is_active: true,
+  last_login_at: null,
+  email_verified: true,
+  email_verified_at: new Date(),
+  created_at: new Date(),
+  updated_at: new Date(),
+  ...overrides
+} as UserJwtPayload);
 
 // Mock JWT secret
 const mockJwtSecret = 'test-jwt-secret';
 
 describe('Auth Middleware', () => {
-  let req: Partial<AuthRequest>;
+  let req: Partial<Request> & { user?: UserJwtPayload; isTemporary?: boolean };
   let res: Partial<Response>;
   let next: jest.MockedFunction<NextFunction>;
   let originalEnv: NodeJS.ProcessEnv;
@@ -44,7 +73,41 @@ describe('Auth Middleware', () => {
     req = {
       headers: {},
       user: undefined,
-      isTemporary: false
+      isTemporary: false,
+      // Add required Request properties
+      method: 'GET',
+      url: '/',
+      params: {},
+      query: {},
+      body: {},
+      cookies: {},
+      get: jest.fn(),
+      header: jest.fn(),
+      accepts: jest.fn(),
+      acceptsCharsets: jest.fn(),
+      acceptsEncodings: jest.fn(),
+      acceptsLanguages: jest.fn(),
+      range: jest.fn(),
+      param: jest.fn(),
+      is: jest.fn(),
+      protocol: 'http',
+      secure: false,
+      ip: '127.0.0.1',
+      ips: [],
+      subdomains: [],
+      path: '/',
+      hostname: 'localhost',
+      host: 'localhost',
+      fresh: false,
+      stale: true,
+      xhr: false,
+      route: undefined,
+      signedCookies: {},
+      originalUrl: '/',
+      baseUrl: '',
+      app: {} as any,
+      res: {} as any,
+      next: {} as any
     };
     res = {
       status: jest.fn().mockReturnThis(),
@@ -204,37 +267,37 @@ describe('Auth Middleware', () => {
 
   describe('authorizeRoles', () => {
     it('should allow user with required role', () => {
-      req.user = { id: 1, username: 'testuser', roles: ['admin', 'user'] };
+      req.user = createMockUser({ roles: ['admin', 'user'] });
       const middleware = authorizeRoles(['admin']);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
     });
 
     it('should allow user with any of required roles', () => {
-      req.user = { id: 1, username: 'testuser', roles: ['user'] };
+      req.user = createMockUser({ roles: ['user'] });
       const middleware = authorizeRoles(['admin', 'user']);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
     });
 
     it('should reject user without required role', () => {
-      req.user = { id: 1, username: 'testuser', roles: ['user'] };
+      req.user = createMockUser({ roles: ['user'] });
       const middleware = authorizeRoles(['admin']);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
 
     it('should reject user without any roles', () => {
-      req.user = { id: 1, username: 'testuser', roles: [] };
+      req.user = createMockUser({ roles: [] });
       const middleware = authorizeRoles(['admin']);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
@@ -243,16 +306,16 @@ describe('Auth Middleware', () => {
       req.user = undefined;
       const middleware = authorizeRoles(['admin']);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
 
     it('should handle user without roles property', () => {
-      req.user = { id: 1, username: 'testuser' };
+      req.user = createMockUser(); // No roles property
       const middleware = authorizeRoles(['admin']);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
@@ -272,7 +335,7 @@ describe('Auth Middleware', () => {
       req.headers = { authorization: `Bearer ${token}` };
       const middleware = authenticateWithOptions();
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
       expect(req.user).toBeDefined();
@@ -282,7 +345,7 @@ describe('Auth Middleware', () => {
       req.headers = {};
       const middleware = authenticateWithOptions({ required: false });
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
       expect(req.user).toBeUndefined();
@@ -295,7 +358,7 @@ describe('Auth Middleware', () => {
       req.headers = { authorization: `Bearer ${token}` };
       const middleware = authenticateWithOptions({ allowTemp: false });
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
@@ -307,7 +370,7 @@ describe('Auth Middleware', () => {
       req.headers = { authorization: `Bearer ${token}` };
       const middleware = authenticateWithOptions({ roles: ['admin'] });
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
@@ -325,7 +388,7 @@ describe('Auth Middleware', () => {
         permissions: [{ resource: 'admin', action: 'write' }] 
       });
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
@@ -343,7 +406,7 @@ describe('Auth Middleware', () => {
         permissions: [{ resource: 'user', action: 'read' }] 
       });
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
     });
@@ -352,7 +415,7 @@ describe('Auth Middleware', () => {
       req.headers = { authorization: 'Bearer invalid-token' };
       const middleware = authenticateWithOptions({ required: false });
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
       expect(req.user).toBeUndefined();
@@ -361,63 +424,47 @@ describe('Auth Middleware', () => {
 
   describe('requirePermissions', () => {
     it('should allow user with required permissions', () => {
-      req.user = { 
-        id: 1, 
-        username: 'testuser', 
-        permissions: ['user:read', 'user:write'] 
-      };
+      req.user = createMockUser({ permissions: ['user:read', 'user:write'] });
       const middleware = requirePermissions([
         { resource: 'user', action: 'read' }
       ]);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
     });
 
     it('should reject user without required permissions', () => {
-      req.user = { 
-        id: 1, 
-        username: 'testuser', 
-        permissions: ['user:read'] 
-      };
+      req.user = createMockUser({ permissions: ['user:read'] });
       const middleware = requirePermissions([
         { resource: 'user', action: 'write' }
       ]);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
 
     it('should reject temporary user when not allowed', () => {
-      req.user = { 
-        id: 1, 
-        username: 'testuser', 
-        permissions: ['user:read'] 
-      };
+      req.user = createMockUser({ permissions: ['user:read'] });
       req.isTemporary = true;
       const middleware = requirePermissions([
         { resource: 'user', action: 'read', allowTemp: false }
       ]);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
 
     it('should allow temporary user when allowed', () => {
-      req.user = { 
-        id: 1, 
-        username: 'testuser', 
-        permissions: ['user:read'] 
-      };
+      req.user = createMockUser({ permissions: ['user:read'] });
       req.isTemporary = true;
       const middleware = requirePermissions([
         { resource: 'user', action: 'read', allowTemp: true }
       ]);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith();
     });
@@ -428,7 +475,7 @@ describe('Auth Middleware', () => {
         { resource: 'user', action: 'read' }
       ]);
 
-      middleware(req as AuthRequest, res as Response, next);
+      middleware(req as Request, res as Response, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
@@ -436,7 +483,7 @@ describe('Auth Middleware', () => {
 
   describe('requireFormalUser', () => {
     it('should allow formal user', () => {
-      req.user = { id: 1, username: 'testuser' };
+      req.user = createMockUser();
       req.isTemporary = false;
 
       requireFormalUser(req as AuthRequest, res as Response, next);
@@ -445,7 +492,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should reject temporary user', () => {
-      req.user = { id: 1, username: 'testuser' };
+      req.user = createMockUser();
       req.isTemporary = true;
 
       requireFormalUser(req as AuthRequest, res as Response, next);
@@ -465,7 +512,31 @@ describe('Auth Middleware', () => {
   describe('authenticateSession', () => {
     it('should authenticate valid session', () => {
       (req as any).isAuthenticated = jest.fn().mockReturnValue(true);
-      (req as any).user = { dataValues: { id: 1 } };
+      (req as any).user = { 
+        id: 1, 
+        external_id: 'test-external-id', 
+        email: 'test@example.com',
+        mongo_id: 'mongo-123',
+        gender: null,
+        language: null,
+        education_stage: null,
+        nickname: 'testuser',
+        avatar: null,
+        phone: null,
+        birthday: null,
+        location: null,
+        bio: null,
+        website: null,
+        social_links: null,
+        preferences: null,
+        privacy_settings: null,
+        is_active: true,
+        last_login_at: null,
+        email_verified: true,
+        email_verified_at: new Date(),
+        created_at: new Date(),
+        updated_at: new Date()
+      }; // Formal user
 
       authenticateSession(req as Request, res as Response, next);
 
@@ -475,7 +546,15 @@ describe('Auth Middleware', () => {
 
     it('should identify temporary user', () => {
       (req as any).isAuthenticated = jest.fn().mockReturnValue(true);
-      (req as any).user = { id: 1 }; // No dataValues = temporary user
+      (req as any).user = { 
+        id: 1, 
+        google_id: 'google-123', 
+        email: 'temp@example.com', 
+        name: 'Temp User',
+        avatar: null,
+        created_at: new Date(),
+        updated_at: new Date()
+      }; // Temporary user
 
       authenticateSession(req as Request, res as Response, next);
 
@@ -514,7 +593,31 @@ describe('Auth Middleware', () => {
     it('should authenticate with session', () => {
       req.headers = {};
       (req as any).isAuthenticated = jest.fn().mockReturnValue(true);
-      (req as any).user = { dataValues: { id: 1 } };
+      (req as any).user = { 
+        id: 1, 
+        external_id: 'test-external-id', 
+        email: 'test@example.com',
+        mongo_id: 'mongo-123',
+        gender: null,
+        language: null,
+        education_stage: null,
+        nickname: 'testuser',
+        avatar: null,
+        phone: null,
+        birthday: null,
+        location: null,
+        bio: null,
+        website: null,
+        social_links: null,
+        preferences: null,
+        privacy_settings: null,
+        is_active: true,
+        last_login_at: null,
+        email_verified: true,
+        email_verified_at: new Date(),
+        created_at: new Date(),
+        updated_at: new Date()
+      }; // Formal user
 
       authenticateAny(req as Request, res as Response, next);
 
@@ -537,7 +640,31 @@ describe('Auth Middleware', () => {
       
       req.headers = { authorization: `Bearer ${token}` };
       (req as any).isAuthenticated = jest.fn().mockReturnValue(true);
-      (req as any).user = { dataValues: { id: 2 } };
+      (req as any).user = { 
+        id: 2, 
+        external_id: 'test-external-id-2', 
+        email: 'test2@example.com',
+        mongo_id: 'mongo-456',
+        gender: null,
+        language: null,
+        education_stage: null,
+        nickname: 'testuser2',
+        avatar: null,
+        phone: null,
+        birthday: null,
+        location: null,
+        bio: null,
+        website: null,
+        social_links: null,
+        preferences: null,
+        privacy_settings: null,
+        is_active: true,
+        last_login_at: null,
+        email_verified: true,
+        email_verified_at: new Date(),
+        created_at: new Date(),
+        updated_at: new Date()
+      }; // Formal user
 
       authenticateAny(req as Request, res as Response, next);
 
@@ -567,7 +694,7 @@ describe('Auth Middleware', () => {
       // Then check roles
       next.mockClear();
       const roleMiddleware = authorizeRoles(['admin']);
-      roleMiddleware(req as AuthRequest, res as Response, next);
+      roleMiddleware(req as Request, res as Response, next);
       expect(next).toHaveBeenLastCalledWith();
 
       // Then check permissions
@@ -575,7 +702,7 @@ describe('Auth Middleware', () => {
       const permissionMiddleware = requirePermissions([
         { resource: 'user', action: 'read' }
       ]);
-      permissionMiddleware(req as AuthRequest, res as Response, next);
+      permissionMiddleware(req as Request, res as Response, next);
       expect(next).toHaveBeenLastCalledWith();
     });
 
@@ -590,7 +717,7 @@ describe('Auth Middleware', () => {
       // Role check should fail for unauthenticated user
       next.mockClear();
       const roleMiddleware = authorizeRoles(['admin']);
-      roleMiddleware(req as AuthRequest, res as Response, next);
+      roleMiddleware(req as Request, res as Response, next);
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
   });
