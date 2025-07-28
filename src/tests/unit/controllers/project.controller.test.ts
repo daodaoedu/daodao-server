@@ -13,7 +13,7 @@ import type {
   ProjectQueryParams,
   ProjectResponse 
 } from '../../../types/project.types';  
-import { education_stage_t, gender_t } from 'generated/prisma';
+import { education_stage_t, gender_t } from '../../../../generated/prisma';
 
 // Mock dependencies
 jest.mock('../../../services/project.service');

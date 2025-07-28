@@ -3,12 +3,11 @@
  * 處理心得評價相關的 HTTP 請求
  */
 
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
 import resourceReviewService from '@/services/resource-review.service';
 import tagService from '@/services/tag.service';
 import type { tags } from '../../generated/prisma';
-import { AuthRequest } from '@/types/auth.types';
 import { 
   validateCreateResourceReview, 
   validateUpdateResourceReview, 
@@ -19,7 +18,7 @@ import {
  * 獲取特定資源的心得評價列表
  * GET /resources/:resourceId/reviews
  */
-export const getReviewsByResource = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getReviewsByResource = asyncWrapper(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   const { 
     cursor, 
@@ -67,7 +66,7 @@ export const getReviewsByResource = asyncWrapper(async (req: AuthRequest, res: R
  * 獲取使用者的心得評價列表
  * GET /users/:userId/reviews
  */
-export const getReviewsByUser = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getReviewsByUser = asyncWrapper(async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { 
     cursor, 
@@ -113,7 +112,7 @@ export const getReviewsByUser = asyncWrapper(async (req: AuthRequest, res: Respo
  * 獲取單個心得評價
  * GET /reviews/:id
  */
-export const getReviewById = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getReviewById = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   
   // 查詢心得評價
@@ -130,7 +129,7 @@ export const getReviewById = asyncWrapper(async (req: AuthRequest, res: Response
  * 創建心得評價
  * POST /resources/:resourceId/reviews
  */
-export const createReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const createReview = asyncWrapper(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -160,7 +159,7 @@ export const createReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * 更新心得評價
  * PATCH /reviews/:id
  */
-export const updateReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const updateReview = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -190,7 +189,7 @@ export const updateReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * 更新心得評價狀態
  * PATCH /reviews/:id/status
  */
-export const updateReviewStatus = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const updateReviewStatus = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -220,7 +219,7 @@ export const updateReviewStatus = asyncWrapper(async (req: AuthRequest, res: Res
  * 刪除心得評價
  * DELETE /reviews/:id
  */
-export const deleteReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const deleteReview = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -243,7 +242,7 @@ export const deleteReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * 點讚心得評價
  * POST /reviews/:id/like
  */
-export const likeReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const likeReview = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -266,7 +265,7 @@ export const likeReview = asyncWrapper(async (req: AuthRequest, res: Response) =
  * 取消點讚心得評價
  * DELETE /reviews/:id/like
  */
-export const unlikeReview = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const unlikeReview = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -289,7 +288,7 @@ export const unlikeReview = asyncWrapper(async (req: AuthRequest, res: Response)
  * 獲取心得評價標籤
  * GET /reviews/:id/tags
  */
-export const getReviewTags = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getReviewTags = asyncWrapper(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   
   // 獲取心得評價標籤
@@ -306,7 +305,7 @@ export const getReviewTags = asyncWrapper(async (req: AuthRequest, res: Response
  * 獲取心得評價列表（通用）
  * GET /reviews
  */
-export const getReviews = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getReviews = asyncWrapper(async (req: Request, res: Response) => {
   const { 
     cursor, 
     limit, 

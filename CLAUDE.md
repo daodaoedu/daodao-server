@@ -14,6 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run typecheck` - Run TypeScript type checking without emitting files
 - `npm run lint` - Run ESLint to check code quality and TypeScript issues
 - `npm run lint:fix` - Run ESLint and automatically fix issues
+- `npm run build` - Compile TypeScript and generate dist/ directory
+- `npm run prisma:generate` - Generate Prisma client types at generated/prisma
+- `npm run types:generate` - Generate both Prisma and OpenAPI types
 - `tsc --noEmit` - Type checking without emitting files (direct command)
 - `ts-node src/index.ts` - Run TypeScript files directly
 
@@ -28,6 +31,7 @@ This is a Node.js backend server for the DaoDao learning platform with a **hybri
 - **File Storage**: Cloudflare R2, Multer for uploads
 - **Testing**: Jest with TypeScript support
 - **Documentation**: Swagger/OpenAPI
+- **Type Generation**: Prisma client, OpenAPI types
 
 ### Project Structure
 The codebase uses a **dual architecture approach**:
@@ -60,6 +64,8 @@ src/
 - `index.js` - Main entry point that loads both JS and TS routes
 - `src/app.ts` - TypeScript route setup and Swagger integration
 - `src/utils/modelBridge.ts` - Bridges JavaScript and TypeScript models
+- `src/types/express.d.ts` - Express Request interface augmentation for auth
+- `generated/prisma/` - Auto-generated Prisma client types
 - Path aliases: `@/*` maps to `src/*`, `@types/*` to `src/types/*`, `@services/*` to `src/services/*`
 
 ### Database Architecture
@@ -85,6 +91,7 @@ The project is actively migrating from JavaScript to TypeScript:
 - Prefer **const objects with `as const`** over enums
 - Use **Zod schemas** for validation and type inference
 - Follow **functional programming principles** where possible
+- Express Request interface is augmented in `src/types/express.d.ts` - use standard `Request` type, not custom `AuthRequest`
 
 #### Testing
 - Jest configuration in `config/jest.config.js`
@@ -108,11 +115,42 @@ Key environment variables:
 - Strict limiter: 60 requests/minute (applied to emails/images)
 
 ### Important File Patterns
-- TypeScript models use Prisma-generated types and client
+- TypeScript models use Prisma-generated types and client from `generated/prisma`
 - Routes use comprehensive Swagger documentation
 - Validators use Zod with TypeScript inference
 - Services follow dependency injection patterns
+- Authentication middleware populates `req.user` with `UserJwtPayload` type
+- PM2 serves compiled TypeScript from `dist/src/server.js`
 
-## TypeScript Best Practices
-- `ts` 不能使用 `any`
-- 使用 `unknown` 替代 `any`
+## Critical Development Notes
+
+### Prisma Integration
+- **ALWAYS run `npm run prisma:generate` after schema changes** - Required for TypeScript compilation
+- Prisma client types are located at `generated/prisma` (NOT `node_modules/@prisma/client`)
+- Docker builds include automatic Prisma generation step
+- Import Prisma types with: `import { users, resources } from '../../generated/prisma'`
+
+### Authentication & Request Types
+- Express Request interface is augmented with `user?: UserJwtPayload` property
+- **Never create custom `AuthRequest` interfaces** - use standard Express `Request` type
+- Authentication middleware automatically populates `req.user` with proper typing
+- User authentication state accessible via `req.user` in all controllers and middleware
+
+### TypeScript Compilation
+- Production build process: `npm run build` → `dist/` directory → PM2 serves `dist/src/server.js`
+- Always run type checking before deployment: `npm run typecheck`
+- TypeScript errors will prevent Docker builds from completing
+
+### Code Patterns (from Cursor rules)
+- **Strictly avoid `any` types** - use `unknown` instead
+- Use factory functions and object literals instead of classes
+- Prefer `const objects with as const` over enums  
+- Follow functional programming principles
+- Use Zod schemas for validation and type inference
+- Write JSDoc for all functions, methods, and types
+
+### Development Workflow
+- Use `npm run dev` for development with auto-reload
+- Test TypeScript changes with `npm run typecheck` before committing
+- Run `npm run lint` to check code quality
+- Use path aliases: `@/*` for `src/*`, `@types/*` for `src/types/*`

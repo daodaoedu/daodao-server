@@ -10,7 +10,6 @@ import {
   CreateUserRequest,
   UpdateUserRequest
 } from '../types/user.types';
-import { AuthRequest } from '../types/auth.types';
 import {
   NotFoundError
 } from '../utils/error-handler';
@@ -33,7 +32,7 @@ export const getAllUsers = asyncWrapper(async (req: Request, res: Response) => {
  * 獲取當前用戶
  * GET /api/users/me
  */
-export const getMe = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getMe = asyncWrapper(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
   if (!currentUser || !currentUser._id) {
@@ -91,7 +90,7 @@ export const getOneUser = asyncWrapper(async (req: Request, res: Response) => {
  * 創建用戶
  * POST /api/users
  */
-export const createUser = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const createUser = asyncWrapper(async (req: Request, res: Response) => {
   const requestData = req.body as CreateUserRequest;
   const currentUser = req.user;
 
@@ -133,7 +132,7 @@ export const updateUser = asyncWrapper(async (req: Request, res: Response) => {
  * 刪除當前用戶
  * DELETE /api/users/me
  */
-export const deleteMe = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const deleteMe = asyncWrapper(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
   if (!currentUser || !currentUser._id) {

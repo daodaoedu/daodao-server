@@ -7,7 +7,6 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { UnauthorizedError, ForbiddenError } from '../utils/error-handler';
 import { 
-  AuthRequest,
   UserJwtPayload,
   AuthMiddlewareOptions, 
   PermissionOptions,
@@ -15,8 +14,7 @@ import {
 } from '../types/auth.types';
 import { isTemporaryUser } from '../utils/user-type-detection';
 
-// Re-export AuthRequest for convenience
-export type { AuthRequest } from '../types/auth.types';
+// AuthRequest has been deprecated in favor of the augmented Express Request type
 
 // 使用統一的 UserJwtPayload 介面
 
@@ -26,7 +24,7 @@ export type { AuthRequest } from '../types/auth.types';
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authenticateJWT: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
   // 從請求頭中獲取 token
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
@@ -77,7 +75,7 @@ export const authenticate = authenticateJWT;
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const optionalAuth: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
   
@@ -106,7 +104,7 @@ export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction
  * @returns Express 中間件
  */
 export const authorizeRoles = (roles: string[]): RequestHandler => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       return next(new UnauthorizedError('未經授權的訪問'));
     }
@@ -136,7 +134,7 @@ export const requireRole = authorizeRoles;
  * @returns Express 中間件
  */
 export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): RequestHandler => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const {
       required = true,
       allowTemp = true,
@@ -219,7 +217,7 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
  * @returns Express 中間件
  */
 export const requirePermissions = (permissions: PermissionOptions[]): RequestHandler => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       return next(new UnauthorizedError('未經授權的訪問'));
     }
@@ -245,7 +243,7 @@ export const requirePermissions = (permissions: PermissionOptions[]): RequestHan
  * 僅限正式用戶中間件
  * 禁止臨時用戶訪問
  */
-export const requireFormalUser = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const requireFormalUser = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
     return next(new UnauthorizedError('未經授權的訪問'));
   }
@@ -261,7 +259,7 @@ export const requireFormalUser = (req: AuthRequest, res: Response, next: NextFun
  * 需要已驗證郵件的用戶中間件
  * 檢查用戶是否已驗證郵件
  */
-export const requireEmailVerified = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const requireEmailVerified = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
     return next(new UnauthorizedError('未經授權的訪問'));
   }
@@ -281,7 +279,7 @@ export const requireEmailVerified = (req: AuthRequest, res: Response, next: Next
  * 需要活躍用戶中間件
  * 檢查用戶是否處於活躍狀態
  */
-export const requireActiveUser = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const requireActiveUser = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
     return next(new UnauthorizedError('未經授權的訪問'));
   }
@@ -299,11 +297,9 @@ export const requireActiveUser = (req: AuthRequest, res: Response, next: NextFun
  */
 export const authenticateSession = (req: Request, res: Response, next: NextFunction): void => {
   if (req.isAuthenticated && req.isAuthenticated()) {
-    const authReq = req as AuthRequest;
-    
     // 檢查是否為臨時用戶 - 使用新的類型檢測邏輯
     const user = req.user as AnyUser;
-    authReq.isTemporary = isTemporaryUser(user);
+    req.isTemporary = isTemporaryUser(user);
     
     next();
   } else {
@@ -321,7 +317,7 @@ export const authenticateAny = (req: Request, res: Response, next: NextFunction)
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token) {
-    return authenticateJWT(req as AuthRequest, res, next);
+    return authenticateJWT(req, res, next);
   }
 
   // 如果沒有 JWT，嘗試 Session 認證
