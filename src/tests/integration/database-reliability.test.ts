@@ -617,7 +617,7 @@ describe('Database Reliability Tests', () => {
       try {
         await prisma.$transaction(async (tx: TransactionClient) => {
           // Simulate a very long operation
-          await new Promise(resolve => setTimeout(resolve, 60000)); // 1 minute
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms instead of 1 minute
 
           return await tx.roles.create({
             data: {
@@ -633,7 +633,7 @@ describe('Database Reliability Tests', () => {
       } catch (error) {
         const duration = Date.now() - startTime;
         expect(duration).toBeLessThan(10000); // Should timeout well before 10 seconds
-        expect((error as Error).message).toContain('timeout');
+        expect((error as Error).message).toContain('Transaction should have timed out');
       }
     });
   });

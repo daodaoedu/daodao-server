@@ -302,78 +302,67 @@ describe('Project Service', () => {
 
     it('should format project response correctly', async () => {
       const projectWithRelations = {
-        ...mockProject,
-        toJSON: jest.fn().mockReturnValue({
+        id: 1,
+        external_id: 'project-123',
+        user_id: 1,
+        img_url: null,
+        title: '測試專案',
+        description: '測試專案描述',
+        motivation: '學習',
+        motivation_description: null,
+        goal: '完成目標',
+        content: '專案內容',
+        strategy: '執行策略',
+        strategy_description: null,
+        resource: '所需資源',
+        outcome: '預期成果',
+        outcome_description: null,
+        is_public: true,
+        status: 'Ongoing',
+        start_date: null,
+        end_date: null,
+        interval: 1,
+        created_at: new Date(),
+        updated_at: new Date(),
+        version: 1,
+        users: {
           id: 1,
-          external_id: 'project-123',
-          user_id: 1,
-          title: '測試專案',
-          description: '測試專案描述',
-          motivation: '學習',
-          goal: '完成目標',
-          content: '專案內容',
-          strategy: '執行策略',
-          resource: '所需資源',
-          outcome: '預期成果',
-          is_public: true,
-          status: 'Ongoing',
-          interval: 'Weekly',
-          created_at: new Date(),
-          created_by: 1,
-          updated_at: new Date(),
-          updated_by: 1,
-          version: 1,
-          milestones: [{
-            id: 1,
-            project_id: 1,
-            position: 1,
-            name: '里程碑1',
-            description: '描述',
-            start_date: new Date(),
-            end_date: new Date(),
-            is_completed: false,
-            is_deleted: false,
-            created_at: new Date(),
-            updated_at: new Date(),
-            tasks: [{
-              id: 1,
-              milestone_id: 1,
-              position: 1,
-              name: '任務1',
-              description: '任務描述',
-              days_of_week: ['Monday'],
-              is_completed: false,
-              is_deleted: false,
-              created_at: new Date(),
-              updated_at: new Date()
-            }]
-          }],
-          posts: [{
-            id: 1,
-            project_id: 1,
-            user_id: 1,
-            type: 'note',
-            week: 1,
-            title: '貼文標題',
-            date: new Date(),
-            visibility: 'public',
-            status: 'published',
-            created_at: new Date(),
-            updated_at: new Date(),
-            note: {},
-            outcome: {},
-            review: {}
+          nickname: '測試用戶',
+          external_id: 'user-123',
+          contacts: {
+            photo_url: null
+          },
+          user_positions: [{
+            position: {
+              name: '學習者'
+            }
           }]
-        })
+        },
+        milestone: [{
+          id: 1,
+          position: 1,
+          name: '里程碑1',
+          description: '描述',
+          start_date: new Date(),
+          end_date: new Date(),
+          is_completed: false,
+          task: [{
+            id: 1,
+            name: '任務1',
+            position: 1,
+            description: '任務描述',
+            days_of_week: ['Monday'],
+            is_completed: false
+          }]
+        }]
       };
 
-      (Project.findOne as jest.Mock).mockResolvedValue(projectWithRelations);
+      (prisma.project.findFirst as jest.Mock).mockResolvedValue(projectWithRelations);
 
       const result = await projectService.getProjectById('project-123', 1);
 
       expect(result.success).toBe(true);
       expect(result.data?.milestones).toHaveLength(1);
-      // Note: posts property doesn't exist in ProjectResponse type
       expect(result.data?.milestones?.[0].tasks).toHaveLength(1);
     });
   });
@@ -457,9 +446,9 @@ describe('Project Service', () => {
       expect(mockPrisma.project.findMany).toHaveBeenCalledWith({
         where: {
           OR: [
-            { title: { contains: '測試' } },
-            { description: { contains: '測試' } },
-            { goal: { contains: '測試' } }
+            { title: { contains: '測試', mode: 'insensitive' } },
+            { description: { contains: '測試', mode: 'insensitive' } },
+            { goal: { contains: '測試', mode: 'insensitive' } }
           ]
         },
         include: expect.any(Object),
@@ -470,9 +459,9 @@ describe('Project Service', () => {
       expect(mockPrisma.project.count).toHaveBeenCalledWith({
         where: {
           OR: [
-            { title: { contains: '測試' } },
-            { description: { contains: '測試' } },
-            { goal: { contains: '測試' } }
+            { title: { contains: '測試', mode: 'insensitive' } },
+            { description: { contains: '測試', mode: 'insensitive' } },
+            { goal: { contains: '測試', mode: 'insensitive' } }
           ]
         }
       });
@@ -639,7 +628,7 @@ describe('Project Service', () => {
 
   describe('getProjectStats', () => {
     it('should get stats for specific user', async () => {
-      (Project.count as jest.Mock)
+      mockPrisma.project.count
         .mockResolvedValueOnce(10) // total
         .mockResolvedValueOnce(3)  // ongoing
         .mockResolvedValueOnce(5)  // completed
@@ -727,14 +716,21 @@ describe('Project Service', () => {
     it('should format milestones and tasks correctly', async () => {
       const projectWithMilestones = {
         ...mockProject,
-        milestones: [{
+        milestone: [{
           id: 1,
+          position: 1,
           name: '里程碑1',
           description: null,
-          tasks: [{
+          start_date: new Date(),
+          end_date: new Date(),
+          is_completed: false,
+          task: [{
             id: 1,
             name: '任務1',
-            description: null
+            position: 1,
+            description: null,
+            days_of_week: ['Monday'],
+            is_completed: false
           }]
         }]
       };
@@ -771,7 +767,7 @@ describe('Project Service', () => {
     it('should handle undefined milestones and posts', async () => {
       const projectWithUndefinedRelations = {
         ...mockProject,
-        milestones: undefined
+        milestone: undefined
       };
       mockPrisma.project.findFirst.mockResolvedValue(projectWithUndefinedRelations);
 
@@ -784,11 +780,15 @@ describe('Project Service', () => {
     it('should handle empty task arrays', async () => {
       const projectWithEmptyTasks = {
         ...mockProject,
-        milestones: [{
+        milestone: [{
           id: 1,
+          position: 1,
           name: '里程碑1',
           description: '描述',
-          tasks: undefined
+          start_date: new Date(),
+          end_date: new Date(),
+          is_completed: false,
+          task: undefined
         }]
       };
       mockPrisma.project.findFirst.mockResolvedValue(projectWithEmptyTasks);

@@ -50,12 +50,10 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
   if (!user) {
     throw new UnauthorizedError('Google 認證失敗');
   }
-
-  console.log('google/callback_req.user', user);
   
   // 參考 JavaScript 版本的邏輯
   const { id, external_id, name } = user;
-  let _id: string | number = id || 0; // Use let instead of const for reassignment
+  let _id: string | number = id || 0;
   let isUserExit = false;
 
   if (external_id) {
@@ -63,7 +61,6 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
     isUserExit = true;
   }
   
-  console.log('google/callback_isUserExit', isUserExit);
   const isTemp = !isUserExit;
 
   // 獲取用戶角色和權限（如果是正式用戶）
@@ -88,15 +85,11 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
     roles: userRoles.map(role => role.name),
     permissions: userPermissions.map(permission => permission.name)
   };
-  console.log('google/callback_payload', payload);
   
   const token = jwtService.generateToken(payload);
-  console.log('google/callback_token', token);
-  
   const url = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
-  console.log('google/callback_url', url);
 
-  return res.redirect(url);
+  res.redirect(url);
 });
 
 /**
