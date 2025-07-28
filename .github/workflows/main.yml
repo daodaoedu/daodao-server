@@ -27,8 +27,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: Generate OpenAPI types
+        run: npm run openapi:generate
+
       - name: TypeScript type check
         run: npm run typecheck
+
+      - name: Lint check
+        run: npm run lint
 
       - name: Run tests
         run: npm test  

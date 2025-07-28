@@ -49,6 +49,7 @@ export type ResourceStatus = 'draft' | 'active' | 'archived';
 // API 回應型別
 export interface PaginationInfo {
   page: number;
+  currentPage?: number;
   limit: number;
   total: number;
   totalPages: number;
@@ -124,8 +125,10 @@ export interface CreateIdeaResponse {
 // 查詢過濾器型別
 export interface IdeaFilters {
   query?: string;
+  search?: string;
   tags?: string[];
   userId?: string;
+  authorId?: string;
   status?: IdeaStatus | 'all';
   sort: 'createdAt' | 'updatedAt' | 'likeCount';
   order: 'asc' | 'desc';

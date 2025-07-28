@@ -23,7 +23,7 @@ This is a Node.js backend server for the DaoDao learning platform with a **hybri
 
 ### Technology Stack
 - **Runtime**: Node.js with Express.js
-- **Databases**: PostgreSQL (Sequelize ORM), MongoDB (Mongoose), Redis (ioredis)
+- **Databases**: PostgreSQL (Prisma ORM), MongoDB (Mongoose), Redis (ioredis)
 - **Authentication**: JWT, Passport.js with Google OAuth
 - **File Storage**: Cloudflare R2, Multer for uploads
 - **Testing**: Jest with TypeScript support
@@ -35,7 +35,7 @@ The codebase uses a **dual architecture approach**:
 #### Legacy JavaScript Structure (root level)
 ```
 controllers/     # Business logic controllers
-models/         # Sequelize models and schemas  
+models/         # Legacy Sequelize models (being migrated to Prisma)  
 routes/         # Express route definitions
 services/       # Database services (mongo, postgres, redis)
 middlewares/    # Authentication and validation middleware
@@ -46,7 +46,7 @@ utils/          # Utility functions
 ```
 src/
 ├── controllers/    # TypeScript controllers
-├── models/        # TypeScript/Sequelize models
+├── models/        # TypeScript models with Prisma integration
 ├── routes/        # TypeScript route definitions
 ├── services/      # Business logic services
 ├── types/         # TypeScript type definitions
@@ -108,10 +108,11 @@ Key environment variables:
 - Strict limiter: 60 requests/minute (applied to emails/images)
 
 ### Important File Patterns
-- TypeScript models export both Sequelize models and type definitions
+- TypeScript models use Prisma-generated types and client
 - Routes use comprehensive Swagger documentation
 - Validators use Zod with TypeScript inference
 - Services follow dependency injection patterns
 
 ## TypeScript Best Practices
 - `ts` 不能使用 `any`
+- 使用 `unknown` 替代 `any`

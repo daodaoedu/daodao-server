@@ -146,4 +146,42 @@
  *           nullable: true
  *           description: 自我介紹
  *           example: "我是一名熱愛學習的軟體開發者"
+ *   
+ * 
+ *   responses:
+ *     BadRequestError:
+ *       description: 請求參數錯誤
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   message:
+ *                     example: "請求參數錯誤"
+ *     
+ *     NotFoundError:
+ *       description: 資源不存在
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   message:
+ *                     example: "資源不存在"
+ *     
+ *     InternalServerError:
+ *       description: 伺服器內部錯誤
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   message:
+ *                     example: "伺服器內部錯誤"
  */

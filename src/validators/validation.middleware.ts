@@ -30,8 +30,11 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
       if (error instanceof ZodError) {
         res.status(400).json({
           success: false,
-          message: '驗證失敗',
-          errors: formatZodErrors(error)
+          error: {
+            type: 'bad_request',
+            message: '驗證失敗',
+            details: formatZodErrors(error)
+          }
         });
         return;
       }
@@ -45,7 +48,7 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
  * @param error Zod 錯誤
  * @returns 格式化的錯誤信息
  */
-function formatZodErrors(error: ZodError) {
+function formatZodErrors(error: ZodError): Array<{ path: string; message: string }> {
   return error.errors.map(err => ({
     path: err.path.join('.'),
     message: err.message

@@ -24,7 +24,7 @@ export class AppError extends Error {
  * 400 錯誤 - 錯誤的請求
  */
 export class BadRequestError extends AppError {
-  constructor(message: string = '無效的請求', errors?: Record<string, string>) {
+  constructor(message = '無效的請求', errors?: Record<string, string>) {
     super(message, 400, errors);
   }
 }
@@ -33,7 +33,7 @@ export class BadRequestError extends AppError {
  * 401 錯誤 - 未授權
  */
 export class UnauthorizedError extends AppError {
-  constructor(message: string = '未經授權的訪問') {
+  constructor(message = '未經授權的訪問') {
     super(message, 401);
   }
 }
@@ -42,7 +42,7 @@ export class UnauthorizedError extends AppError {
  * 403 錯誤 - 禁止訪問
  */
 export class ForbiddenError extends AppError {
-  constructor(message: string = '無權限執行此操作') {
+  constructor(message = '無權限執行此操作') {
     super(message, 403);
   }
 }
@@ -51,7 +51,7 @@ export class ForbiddenError extends AppError {
  * 404 錯誤 - 資源不存在
  */
 export class NotFoundError extends AppError {
-  constructor(message: string = '找不到請求的資源') {
+  constructor(message = '找不到請求的資源') {
     super(message, 404);
   }
 }
@@ -60,7 +60,7 @@ export class NotFoundError extends AppError {
  * 409 錯誤 - 資源衝突
  */
 export class ConflictError extends AppError {
-  constructor(message: string = '資源衝突') {
+  constructor(message = '資源衝突') {
     super(message, 409);
   }
 }
@@ -69,7 +69,7 @@ export class ConflictError extends AppError {
  * 500 錯誤 - 伺服器內部錯誤
  */
 export class InternalServerError extends AppError {
-  constructor(message: string = '伺服器內部錯誤') {
+  constructor(message = '伺服器內部錯誤') {
     super(message, 500);
   }
 }
@@ -79,7 +79,7 @@ export class InternalServerError extends AppError {
  * 自動捕獲異步路由處理器中的錯誤並傳遞給 Express 錯誤中間件
  */
 export const asyncWrapper = (fn: (req: Request, res: Response, next?: NextFunction) => Promise<void>) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };

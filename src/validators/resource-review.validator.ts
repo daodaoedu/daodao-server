@@ -87,6 +87,6 @@ export type ContentFeaturesSchema = z.infer<typeof contentFeaturesSchema>;
 export type ResourceUsageSchema = z.infer<typeof resourceUsageSchema>;
 
 // 匯出驗證中間件
-export const validateCreateResourceReview = (data: unknown) => resourceReviewSchema.parse(data);
-export const validateUpdateResourceReview = (data: unknown) => updateResourceReviewSchema.parse(data);
-export const validateUpdateReviewStatus = (data: unknown) => updateReviewStatusSchema.parse(data);
+export const validateCreateResourceReview = (data: unknown): ResourceReviewSchema => resourceReviewSchema.parse(data);
+export const validateUpdateResourceReview = (data: unknown): UpdateResourceReviewSchema => updateResourceReviewSchema.parse(data);
+export const validateUpdateReviewStatus = (data: unknown): UpdateReviewStatusSchema => updateReviewStatusSchema.parse(data);
