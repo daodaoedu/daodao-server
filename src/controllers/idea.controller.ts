@@ -3,8 +3,7 @@
  * 處理想法相關的 HTTP 請求
  */
 
-import { Response } from 'express';
-import { AuthRequest } from '@/middleware/auth';
+import { Request, Response } from 'express';
 import { asyncWrapper } from '@/utils/error-handler';
 import { 
   createIdeaSchema, 
@@ -18,7 +17,7 @@ import { ApiErrorResponse } from '@/types/idea.types';
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
  */
-const getUserIdOrTestUser = (user?: AuthRequest['user']): number | undefined => {
+const getUserIdOrTestUser = (user?: Request['user']): number | undefined => {
   const userId = user?.id;
   
   if (!userId) {
@@ -36,7 +35,7 @@ const getUserIdOrTestUser = (user?: AuthRequest['user']): number | undefined => 
 /**
  * 獲取想法列表
  */
-export const getIdeas = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getIdeas = asyncWrapper(async (req: Request, res: Response) => {
   // 驗證和解析查詢參數
   const queryParams = ideaQuerySchema.parse(req.query);
   
@@ -77,7 +76,7 @@ export const getIdeas = asyncWrapper(async (req: AuthRequest, res: Response) => 
 /**
  * 根據 ID 獲取想法詳情
  */
-export const getIdeaById = asyncWrapper(async (req: AuthRequest, res: Response) => {
+export const getIdeaById = asyncWrapper(async (req: Request, res: Response) => {
   // 驗證路徑參數
   const { id } = ideaParamsSchema.parse(req.params);
   
@@ -96,7 +95,7 @@ export const getIdeaById = asyncWrapper(async (req: AuthRequest, res: Response) 
 /**
  * 創建想法
  */
-export const createIdea = asyncWrapper(async (req: AuthRequest, res: Response): Promise<void> => {
+export const createIdea = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
   // 驗證請求資料
   const data = createIdeaSchema.parse(req.body);
   
@@ -126,7 +125,7 @@ export const createIdea = asyncWrapper(async (req: AuthRequest, res: Response): 
 /**
  * 更新想法
  */
-export const updateIdea = asyncWrapper(async (req: AuthRequest, res: Response): Promise<void> => {
+export const updateIdea = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
   // 驗證路徑參數和請求資料
   const { id } = ideaParamsSchema.parse(req.params);
   const data = updateIdeaSchema.parse(req.body);
@@ -157,7 +156,7 @@ export const updateIdea = asyncWrapper(async (req: AuthRequest, res: Response): 
 /**
  * 刪除想法
  */
-export const deleteIdea = asyncWrapper(async (req: AuthRequest, res: Response): Promise<void> => {
+export const deleteIdea = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
   // 驗證路徑參數
   const { id } = ideaParamsSchema.parse(req.params);
   
@@ -186,7 +185,7 @@ export const deleteIdea = asyncWrapper(async (req: AuthRequest, res: Response): 
 /**
  * 獲取我的想法
  */
-export const getMyIdeas = asyncWrapper(async (req: AuthRequest, res: Response): Promise<void> => {
+export const getMyIdeas = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
   // 驗證和解析查詢參數
   const queryParams = ideaQuerySchema.parse(req.query);
   

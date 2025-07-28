@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient } from '../../../generated/prisma';
+import { loggerService } from '../logging/logger.service';
 
 export class PrismaService {
   private static instance: PrismaService;
@@ -11,8 +12,62 @@ export class PrismaService {
 
   private constructor() {
     this.prismaClient = new PrismaClient({
-      log: ['query', 'error', 'warn', 'info'],
+      // 只在開發環境啟用內建日志，生產環境使用 Winston
+      log: process.env.NODE_ENV === 'development' 
+        ? ['query', 'error', 'warn', 'info']
+        : [],
       errorFormat: 'pretty',
+    });
+
+    // 整合 Prisma 日志到 Winston 系統
+    this.setupCustomLogging();
+  }
+
+  /**
+   * 設置自定義日志處理
+   */
+  private setupCustomLogging(): void {
+    // 監聽 Prisma 查詢事件
+    this.prismaClient.$on('query', (event) => {
+      loggerService.logDatabaseOperation(
+        'QUERY',
+        'prisma',
+        event.duration,
+        true
+      );
+      
+      // 開發環境顯示詳細查詢
+      if (process.env.NODE_ENV === 'development') {
+        loggerService.debug('Prisma Query', {
+          query: event.query,
+          params: event.params,
+          duration: `${event.duration}ms`,
+        });
+      }
+    });
+
+    // 監聽錯誤事件
+    this.prismaClient.$on('error', (event) => {
+      loggerService.error('Prisma Error', {
+        target: event.target,
+        message: event.message,
+      });
+    });
+
+    // 監聽警告事件
+    this.prismaClient.$on('warn', (event) => {
+      loggerService.warn('Prisma Warning', {
+        target: event.target,
+        message: event.message,
+      });
+    });
+
+    // 監聽信息事件
+    this.prismaClient.$on('info', (event) => {
+      loggerService.info('Prisma Info', {
+        target: event.target,
+        message: event.message,
+      });
     });
   }
 

@@ -6,7 +6,7 @@ import request from 'supertest';
 import express from 'express';
 import ideaController from '@/controllers/idea.controller';
 import ideaService from '@/services/idea.service';
-import { AuthRequest } from '@/middleware/auth';
+import { Request } from 'express';
 import { IdeaStatus, ResourceStatus } from '@/types/idea.types';
 
 // 模擬服務

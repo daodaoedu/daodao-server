@@ -14,7 +14,6 @@
 
 import { Request, Response } from 'express';
 import { commentService } from '../services/comment.service';
-import { AuthRequest } from '../types/auth.types';
 import {
   CommentControllerInterface
 } from '../types/comment.types';
@@ -42,7 +41,7 @@ export class CommentController implements CommentControllerInterface {
    * @param req - Authenticated request with comment data
    * @param res - Response object
    */
-  async createComment(req: AuthRequest, res: Response): Promise<void> {
+  async createComment(req: Request, res: Response): Promise<void> {
     // Validate authentication
     if (!req.user || !req.user.id) {
       throw new UnauthorizedError('Authentication required to create comments');
@@ -83,10 +82,9 @@ export class CommentController implements CommentControllerInterface {
     const validatedQuery = validateGetCommentsQuery(req.query);
     
     // Extract current user from request (may be null for anonymous users)
-    const authReq = req as AuthRequest;
-    const currentUser = authReq.user ? {
-      id: authReq.user.id || 0,
-      role: authReq.user.roles?.[0] || ''
+    const currentUser = req.user ? {
+      id: req.user.id || 0,
+      role: req.user.roles?.[0] || ''
     } : null;
 
     const getParams = {
@@ -117,10 +115,9 @@ export class CommentController implements CommentControllerInterface {
     const validatedParams = validateCommentParams(req.params);
     
     // Extract current user from request (may be null for anonymous users)
-    const authReq = req as AuthRequest;
-    const currentUser = authReq.user ? {
-      id: authReq.user.id || 0,
-      role: authReq.user.roles?.[0] || ''
+    const currentUser = req.user ? {
+      id: req.user.id || 0,
+      role: req.user.roles?.[0] || ''
     } : null;
 
     // Get comment detail through service
@@ -143,7 +140,7 @@ export class CommentController implements CommentControllerInterface {
    * @param req - Authenticated request with comment ID and update data
    * @param res - Response object
    */
-  async updateComment(req: AuthRequest, res: Response): Promise<void> {
+  async updateComment(req: Request, res: Response): Promise<void> {
     // Validate authentication
     if (!req.user || !req.user.id) {
       throw new UnauthorizedError('Authentication required to update comments');
@@ -179,7 +176,7 @@ export class CommentController implements CommentControllerInterface {
    * @param req - Authenticated request with comment ID
    * @param res - Response object
    */
-  async deleteComment(req: AuthRequest, res: Response): Promise<void> {
+  async deleteComment(req: Request, res: Response): Promise<void> {
     // Validate authentication
     if (!req.user || !req.user.id) {
       throw new UnauthorizedError('Authentication required to delete comments');

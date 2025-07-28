@@ -19,6 +19,9 @@ RUN npm install -g pm2
 # 复制应用程序代码到容器内的工作目录
 COPY . .
 
+# 生成 Prisma 客户端
+RUN npx prisma generate
+
 # 編譯 TypeScript（新增）
 RUN npm run build
 

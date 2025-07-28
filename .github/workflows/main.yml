@@ -27,8 +27,30 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Sync schema from database
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: |
+          # 從實際資料庫同步 schema
+          npx prisma db pull
+          
+          # 檢查是否有 schema 變更
+          if ! git diff --exit-code prisma/schema.prisma; then
+            echo "⚠️ Database schema has changed! Please review and commit schema.prisma"
+            git diff prisma/schema.prisma
+            # 在 CI 環境中可選擇自動提交或失敗
+            exit 1
+          fi
+
       - name: Generate Prisma Client
         run: npm run prisma:generate
+
+      - name: Validate Prisma client generation
+        run: |
+          npm run prisma:generate
+          # 確保生成的檔案存在且正確
+          ls -la generated/prisma/
+          node -e "console.log('Prisma client loaded successfully:', !!require('./generated/prisma'))"
 
       - name: Generate OpenAPI types
         run: npm run openapi:generate
@@ -112,6 +134,11 @@ jobs:
   
               set -o allexport && source .env.\${APP_ENV} && set +o allexport
               echo 'Environment variables loaded:'
+              
+              # 創建部署前資料庫備份
+              echo 'Creating database backup...'
+              docker-compose exec -T postgres-\${APP_ENV} pg_dump -U daodao daodao > backup_$(date +%Y%m%d_%H%M%S).sql
+              echo 'Backup completed'
   
               if [ \"\$DEPLOYMENT_TYPE\" = 'initial' ]; then
                 echo \"Performing initial deployment...\"
@@ -130,9 +157,15 @@ jobs:
                 docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE
 
                 docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
-
-                
               fi
+              
+              # 確保 Schema 同步
+              echo \"Ensuring schema synchronization...\"
+              docker-compose exec -T \$APP_SERVICE npx prisma db pull
+              docker-compose exec -T \$APP_SERVICE npx prisma generate
+              
+              # 重啟應用以載入最新的 Prisma Client
+              docker-compose restart \$APP_SERVICE
             "
   
   # Step 3: 驗證部署狀態
