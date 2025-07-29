@@ -16,35 +16,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Generate Prisma Client
-        run: npm run prisma:generate
+      - name: Generate Prisma Client and OpenAPI types
+        run: npm run types:generate
 
       - name: Validate Prisma client generation
         run: |
-          npm run prisma:generate
           # 確保生成的檔案存在且正確
           ls -la generated/prisma/
           node -e "console.log('Prisma client loaded successfully:', !!require('./generated/prisma'))"
 
-      - name: Generate OpenAPI types
-        run: npm run openapi:generate
-
-      - name: TypeScript type check
-        run: npm run typecheck
-
-      - name: Lint check
-        run: npm run lint
+      - name: Run TypeScript check and Lint in parallel
+        run: |
+          npm run typecheck &
+          npm run lint &
+          wait
 
       - name: Run tests
         run: npm test  
@@ -55,13 +51,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -77,7 +73,7 @@ jobs:
           fi
       
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
@@ -94,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
           
       - name: Set up SSH
         env:
@@ -153,16 +149,32 @@ jobs:
   
               # 檢查並創建 .env 文件（如果不存在）
               if [ ! -f .env.\${APP_ENV} ]; then
-                cp .env.\${APP_ENV}_temp .env.\${APP_ENV}
+                if [ -f .env.\${APP_ENV}_temp ]; then
+                  cp .env.\${APP_ENV}_temp .env.\${APP_ENV}
+                  echo \"Created .env.\${APP_ENV} from template\"
+                else
+                  echo \"Error: .env.\${APP_ENV}_temp template not found\"
+                  exit 1
+                fi
+              fi
+              
+              # 驗證關鍵環境變數
+              if [ -z \"\$DOCKER_HUB_USERNAME\" ]; then
+                echo \"Error: DOCKER_HUB_USERNAME not set in environment\"
+                exit 1
               fi
   
               set -o allexport && source .env.\${APP_ENV} && set +o allexport
               echo 'Environment variables loaded:'
               
-              # 創建部署前資料庫備份
+              # 創建部署前資料庫備份和健康檢查
               echo 'Creating database backup...'
-              docker-compose exec -T postgres-\${APP_ENV} pg_dump -U daodao daodao > backup_$(date +%Y%m%d_%H%M%S).sql
-              echo 'Backup completed'
+              if docker-compose exec -T postgres-\${APP_ENV} pg_isready -U daodao -d daodao; then
+                docker-compose exec -T postgres-\${APP_ENV} pg_dump -U daodao daodao > backup_$(date +%Y%m%d_%H%M%S).sql
+                echo 'Backup completed'
+              else
+                echo 'Warning: Database not ready, skipping backup'
+              fi
   
               if [ \"\$DEPLOYMENT_TYPE\" = 'initial' ]; then
                 echo \"Performing initial deployment...\"
@@ -177,10 +189,25 @@ jobs:
                 docker network prune -f
                 
                 echo \"Pulling latest image for \${APP_ENV} environment...\"
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE pull \$APP_SERVICE
-
-                echo \"Starting updated service...\"
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
+                if docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE pull \$APP_SERVICE; then
+                  echo \"Starting updated service...\"
+                  docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
+                  
+                  # 等待服務啟動並檢查健康狀態
+                  echo \"Waiting for service to be healthy...\"
+                  for i in {1..30}; do
+                    if docker-compose exec -T \$APP_SERVICE wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health; then
+                      echo \"Service is healthy\"
+                      break
+                    fi
+                    echo \"Waiting for service... (\$i/30)\"
+                    sleep 10
+                  done
+                else
+                  echo \"Failed to pull image, rolling back...\"
+                  docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
+                  exit 1
+                fi
               fi
               
               # 確保 Schema 同步

@@ -1,39 +1,69 @@
-# 使用官方的 Node.js 镜像作为基础镜像
-FROM node:20
-
+# 階段一：建構階段
+FROM node:20-alpine AS builder
 
 ARG NODE_ENV
 ENV NODE_ENV=$NODE_ENV
-# 设置工作目录
+
+# 設置工作目錄
 WORKDIR /app
 
-# 复制 package.json 和 package-lock.json 到工作目录
+# 複製 package.json 和 package-lock.json
 COPY package*.json ./
 
-# 安装项目依赖
-RUN npm install
+# 安裝所有依賴（包含開發依賴）
+RUN npm ci && \
+    npm cache clean --force
 
-# 安装 PM2
-RUN npm install -g pm2
-
-# 复制应用程序代码到容器内的工作目录
+# 複製原始碼
 COPY . .
 
-# 生成 Prisma 客户端
-RUN npx prisma generate
+# 生成 Prisma 客戶端和編譯 TypeScript
+RUN npx prisma generate && \
+    npm run build
 
-# 編譯 TypeScript（新增）
-RUN npm run build
+# 階段二：運行階段
+FROM node:20-alpine AS runtime
 
-# 暴露应用程序运行的端口
+ARG NODE_ENV
+ENV NODE_ENV=$NODE_ENV
+
+# 設置工作目錄
+WORKDIR /app
+
+# 複製 package.json 和 package-lock.json
+COPY package*.json ./
+
+# 只安裝生產依賴
+RUN npm ci --only=production && \
+    npm install -g pm2 && \
+    npm cache clean --force
+
+# 從建構階段複製編譯後的檔案
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/generated ./generated
+COPY --from=builder /app/ecosystem.config.js ./
+
+# 確保 generated 目錄在正確位置以供編譯後的 JS 檔案使用
+RUN ln -sf /app/generated /app/dist/generated
+
+# 複製其他必要檔案
+COPY prisma/ ./prisma/
+
+# 建立非 root 使用者
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# 變更檔案擁有者
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# 暴露應用程式運行的端口
 EXPOSE 3000
 
-# 調試步驟以驗證安裝
-RUN node -v
-RUN npm -v
-RUN pm2 -v
-RUN ls -al /app
+# 健康檢查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-# 使用 PM2 启动应用程序
+# 使用 PM2 啟動應用程式
 CMD ["pm2-runtime", "start", "ecosystem.config.js"]
 
