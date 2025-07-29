@@ -53,10 +53,11 @@ export interface EmailServiceHealthCheck {
  * 處理所有郵件發送相關的邏輯
  */
 export class EmailService {
-  private transporter: nodemailer.Transporter;
+  private transporter?: nodemailer.Transporter;
   private templateService: EmailTemplateService;
   private logger?: Logger;
   private stats: EmailServiceStats;
+  private isConfigured: boolean = false;
 
   constructor(templateService: EmailTemplateService, logger?: Logger) {
     this.templateService = templateService;
@@ -67,10 +68,13 @@ export class EmailService {
       isHealthy: true
     };
     
-    // 創建 nodemailer 傳輸器
+    // 創建 nodemailer 傳輸器（如果配置可用）
     if (!emailConfig) {
-      throw new Error('Email configuration is not available');
+      console.warn('郵件配置初始化失敗，將在實際使用時重試: 缺少必要的郵件環境變數: EMAIL_ADDRESS, EMAIL_PASSWORD, FRONTEND_URL');
+      return;
     }
+    
+    this.isConfigured = true;
     this.transporter = nodemailer.createTransport({
       service: emailConfig.smtp.service,
       auth: {
@@ -85,6 +89,14 @@ export class EmailService {
    */
   async sendEmail(options: EmailSendOptions): Promise<EmailSendResult> {
     try {
+      // 檢查是否已配置
+      if (!this.isConfigured || !this.transporter) {
+        return {
+          success: false,
+          error: 'Email service is not configured'
+        };
+      }
+
       const mailOptions = {
         from: options.from || `${emailConfig?.sender.name} <${emailConfig?.sender.email}>`,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -335,6 +347,15 @@ export class EmailService {
    */
   async checkHealth(): Promise<EmailServiceHealthCheck> {
     try {
+      if (!this.isConfigured || !this.transporter) {
+        return {
+          status: 'unhealthy',
+          lastCheck: new Date(),
+          transporterConnected: false,
+          error: 'Email service is not configured'
+        };
+      }
+
       await this.transporter.verify();
       
       return {
@@ -376,7 +397,9 @@ export class EmailService {
    * 關閉郵件服務（清理資源）
    */
   async close(): Promise<void> {
-    this.transporter.close();
+    if (this.transporter) {
+      this.transporter.close();
+    }
     this.logger?.info('郵件服務已關閉');
   }
 }
