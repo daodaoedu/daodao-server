@@ -3,11 +3,6 @@ services:
   prod_app:
     image: ${DOCKER_HUB_USERNAME}/app:prod
     container_name: prod_app
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=prod
     env_file:
       - .env.prod
     # 禁用 Docker 日誌捕獲
@@ -29,11 +24,6 @@ services:
   dev_app:
     image: ${DOCKER_HUB_USERNAME}/app:dev
     container_name: dev_app
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=dev
     env_file:
       - .env.dev
     volumes:
