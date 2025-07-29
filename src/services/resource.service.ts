@@ -85,7 +85,7 @@ export async function getResourceById(id: string): Promise<import('@/types/resou
     throw new NotFoundError('資源不存在');
   }
 
-  // 查詢標籤
+  // 查詢標籤 - 使用 external_id
   const tags = await prisma.entity_tags.findMany({
     where: {
       entity_type: 'resource',
@@ -195,7 +195,7 @@ export async function getResources(
   const actualLimit = Math.min(limit, MAX_RESOURCE_PAGE_LIMIT);
 
   // 預先處理標籤篩選
-  let resourceExternalIds: string[] | undefined;
+  let tagFilteredExternalIds: string[] | undefined;
   if (filters.tags && filters.tags.length > 0) {
     const taggedResourceIds = await prisma.entity_tags.findMany({
       where: {
@@ -211,8 +211,8 @@ export async function getResources(
       }
     });
     
-    resourceExternalIds = taggedResourceIds.map(tag => tag.entity_id);
-    if (resourceExternalIds.length === 0) {
+    tagFilteredExternalIds = taggedResourceIds.map(tag => tag.entity_id);
+    if (tagFilteredExternalIds.length === 0) {
       // 如果沒有找到任何標籤匹配的資源，返回空結果
       return {
         resources: [],
@@ -281,9 +281,9 @@ export async function getResources(
   }
 
   // 添加標籤篩選結果
-  if (resourceExternalIds) {
+  if (tagFilteredExternalIds) {
     where.external_id = {
-      in: resourceExternalIds
+      in: tagFilteredExternalIds
     };
   }
 
@@ -339,26 +339,15 @@ export async function getResources(
   const hasMore = resources.length > actualLimit;
   const resourcesData = hasMore ? resources.slice(0, actualLimit) : resources;
 
-  // 批量查詢標籤 - 使用 external_id，確保轉換為字符串
-  const resourceIds = resourcesData
+  // 批量查詢標籤 - 使用 external_id 字符串 (修正型別錯誤)
+  const resourceExternalIds = resourcesData
     .map(resource => resource.external_id)
-    .filter((id): id is string => id !== null && id !== undefined)
-    .map(id => {
-      // 確保是字符串格式，處理可能的 Buffer 對象
-      return String(id);
-    });
+    .filter((id): id is string => id !== null && id !== undefined);
   
-  console.log('Resource external_ids for tags query:', resourceIds);
-  console.log('Sample resource external_id types:', resourcesData.slice(0, 2).map(r => ({ 
-    external_id: r.external_id, 
-    type: typeof r.external_id,
-    isBuffer: Buffer.isBuffer(r.external_id)
-  })));
-  
-  const allTags = resourceIds.length > 0 ? await prisma.entity_tags.findMany({
+  const allTags = resourceExternalIds.length > 0 ? await prisma.entity_tags.findMany({
     where: {
       entity_type: 'resource',
-      entity_id: { in: resourceIds.map(id => String(id)) }
+      entity_id: { in: resourceExternalIds }
     },
     include: {
       tags: true
