@@ -250,7 +250,8 @@ jobs:
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
         run: |
-          ssh root@$LINODE_INSTANCE_IP "
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 root@$LINODE_INSTANCE_IP "
+            set -e
             echo '=== Checking Docker Containers ==='
             docker ps
 
@@ -263,10 +264,13 @@ jobs:
             docker network ls
 
             echo '=== Checking Nginx Logs ==='
-            cd ${{ env.APP_DIR }} && docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 nginx | tail -n 10
+            cd ${{ env.APP_DIR }}
+            timeout 10 docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 nginx || echo 'Nginx logs check completed'
 
             echo '=== Checking Application Logs ==='
-            cd ${{ env.APP_DIR }} && docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
+            timeout 10 docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 ${{ env.APP_SERVICE }} || echo 'Application logs check completed'
+            
+            echo '=== Deployment Verification Complete ==='
           " 
   # Step 5: Discord 通知
   notify:
