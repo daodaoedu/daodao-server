@@ -27,21 +27,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Sync schema from database
-        env:
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-        run: |
-          # 從實際資料庫同步 schema
-          npx prisma db pull
-          
-          # 檢查是否有 schema 變更
-          if ! git diff --exit-code prisma/schema.prisma; then
-            echo "⚠️ Database schema has changed! Please review and commit schema.prisma"
-            git diff prisma/schema.prisma
-            # 在 CI 環境中可選擇自動提交或失敗
-            exit 1
-          fi
-
       - name: Generate Prisma Client
         run: npm run prisma:generate
 

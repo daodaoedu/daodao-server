@@ -3,12 +3,17 @@
  * 提供 Prisma Client 的初始化和管理
  */
 
-import { PrismaClient } from '../../../generated/prisma';
+import { PrismaClient, Prisma } from '../../../generated/prisma';
 import { loggerService } from '../logging/logger.service';
 
 export class PrismaService {
   private static instance: PrismaService;
-  private prismaClient: PrismaClient;
+  private prismaClient: PrismaClient & {
+    $on(eventType: 'query', callback: (event: Prisma.QueryEvent) => void): void;
+    $on(eventType: 'error', callback: (event: Prisma.LogEvent) => void): void;
+    $on(eventType: 'warn', callback: (event: Prisma.LogEvent) => void): void;
+    $on(eventType: 'info', callback: (event: Prisma.LogEvent) => void): void;
+  };
 
   private constructor() {
     this.prismaClient = new PrismaClient({
@@ -17,7 +22,12 @@ export class PrismaService {
         ? ['query', 'error', 'warn', 'info']
         : [],
       errorFormat: 'pretty',
-    });
+    }) as PrismaClient & {
+      $on(eventType: 'query', callback: (event: Prisma.QueryEvent) => void): void;
+      $on(eventType: 'error', callback: (event: Prisma.LogEvent) => void): void;
+      $on(eventType: 'warn', callback: (event: Prisma.LogEvent) => void): void;
+      $on(eventType: 'info', callback: (event: Prisma.LogEvent) => void): void;
+    };
 
     // 整合 Prisma 日志到 Winston 系統
     this.setupCustomLogging();
