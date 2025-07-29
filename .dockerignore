@@ -62,7 +62,7 @@ docs/
 # 開發工具配置
 .eslintrc*
 .prettierrc*
-tsconfig*.json
+tsconfig.dev.json
 jest.config.js
 
 # 備份檔案

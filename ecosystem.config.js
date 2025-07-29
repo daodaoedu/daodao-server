@@ -15,10 +15,10 @@ module.exports = {
     
     // 環境配置
     env: {
-      NODE_ENV: "production"
+      NODE_ENV: "prod"
     },
     env_development: {
-      NODE_ENV: "development"
+      NODE_ENV: "dev"
     }
   }]
 };

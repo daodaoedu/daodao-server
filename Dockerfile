@@ -19,7 +19,8 @@ COPY . .
 
 # 生成 Prisma 客戶端和編譯 TypeScript
 RUN npx prisma generate && \
-    npm run build
+    npx tsc --project tsconfig.build.json && \
+    npx tsc-alias --project tsconfig.build.json
 
 # 階段二：運行階段
 FROM node:20-alpine AS runtime
