@@ -14,6 +14,7 @@ export class PrismaService {
     $on(eventType: 'warn', callback: (event: Prisma.LogEvent) => void): void;
     $on(eventType: 'info', callback: (event: Prisma.LogEvent) => void): void;
   };
+  private isConnected: boolean = false;
 
   private constructor() {
     this.prismaClient = new PrismaClient({
@@ -99,15 +100,25 @@ export class PrismaService {
   }
 
   /**
+   * 檢查是否已連接到資料庫
+   */
+  public isDbConnected(): boolean {
+    return this.isConnected;
+  }
+
+  /**
    * 連接到資料庫
    */
   public async connect(): Promise<void> {
     try {
       await this.prismaClient.$connect();
+      this.isConnected = true;
       console.log('✅ Prisma 資料庫連接成功');
     } catch (error) {
       console.error('❌ Prisma 資料庫連接失敗:', error);
-      throw new Error('Prisma 資料庫連接失敗');
+      console.warn('⚠️  應用程式將在無資料庫模式下運行');
+      this.isConnected = false;
+      // 不拋出錯誤，讓應用程式繼續運行
     }
   }
 

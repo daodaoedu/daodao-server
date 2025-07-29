@@ -20,20 +20,24 @@ interface GoogleProfile extends Profile {
   photos: Array<{ value: string }>;
 }
 
-// 驗證必要的環境變數
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CALLBACK_URL) {
-  throw new Error('Missing required OAuth environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL');
-}
-
-// OAuth 配置選項
-const AUTH_OPTIONS: AuthOptions = {
-  clientID: process.env.GOOGLE_CLIENT_ID!,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL!
+// 檢查 OAuth 環境變數是否可用
+const isOAuthConfigured = () => {
+  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
 };
 
-// 檢查 OAuth 是否已配置
-const isOAuthConfigured = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL;
+// OAuth 配置選項（只在配置可用時創建）
+const getAuthOptions = (): AuthOptions | null => {
+  if (!isOAuthConfigured()) {
+    console.warn('OAuth 配置初始化失敗，將在實際使用時重試: 缺少必要的 OAuth 環境變數: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL');
+    return null;
+  }
+
+  return {
+    clientID: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL!
+  };
+};
 
 /**
  * 序列化用戶
@@ -91,9 +95,10 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
  * Google OAuth 策略
  * 處理 Google 認證回調 - 使用 Prisma
  */
-if (isOAuthConfigured) {
+const authOptions = getAuthOptions();
+if (authOptions) {
   passport.use('google', new GoogleStrategy(
-    AUTH_OPTIONS,
+    authOptions,
     async (accessToken: string, refreshToken: string, profile: Profile, done) => {
     try {
       console.log('Google OAuth profile:', profile);
@@ -156,7 +161,7 @@ export const initializePassportSession = () => {
  * Google 認證中間件
  * 開始 Google OAuth 流程
  */
-export const authenticateGoogle = isOAuthConfigured 
+export const authenticateGoogle = isOAuthConfigured() 
   ? passport.authenticate('google', {
       scope: ['profile', 'email']
     })
@@ -168,7 +173,7 @@ export const authenticateGoogle = isOAuthConfigured
  * Google 認證回調中間件
  * 處理 Google OAuth 回調
  */
-export const authenticateGoogleCallback = isOAuthConfigured
+export const authenticateGoogleCallback = isOAuthConfigured()
   ? passport.authenticate('google', {
       failureRedirect: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/auth/failure'
     })
