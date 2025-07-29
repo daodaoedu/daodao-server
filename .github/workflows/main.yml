@@ -49,9 +49,48 @@ jobs:
       - name: Run tests
         run: npm test  
 
-  # Step 2: 部署階段
-  build-and-deploy:
+  # Step 2: 建構並推送Image
+  build-and-push:
     needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      
+      - name: Set Environment Variables
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+            echo "NODE_ENV=prod" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+            echo "NODE_ENV=dev" >> $GITHUB_ENV
+          fi
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
+          build-args: |
+            NODE_ENV=${{ env.NODE_ENV }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Step 3: 部署階段
+  deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -137,10 +176,10 @@ jobs:
                 docker image prune -f
                 docker network prune -f
                 
-                echo \"Updating specific services for \${APP_ENV} environment...\"
+                echo \"Pulling latest image for \${APP_ENV} environment...\"
+                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE pull \$APP_SERVICE
 
-                docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE build --no-cache \$APP_SERVICE
-
+                echo \"Starting updated service...\"
                 docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE up -d --no-deps \$APP_SERVICE
               fi
               
@@ -153,9 +192,9 @@ jobs:
               docker-compose restart \$APP_SERVICE
             "
   
-  # Step 3: 驗證部署狀態
+  # Step 4: 驗證部署狀態
   verify:
-    needs: build-and-deploy
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - name: Set up SSH
@@ -201,9 +240,9 @@ jobs:
             echo '=== Checking Application Logs ==='
             cd ${{ env.APP_DIR }} && docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=20 ${{ env.APP_SERVICE }} | tail -n 10
           " 
-  # Step 4: Discord 通知
+  # Step 5: Discord 通知
   notify:
-    needs: [test, verify]
+    needs: [test, build-and-push, verify]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -212,6 +251,10 @@ jobs:
           if [ "${{ needs.test.result }}" == "failure" ]; then
             curl -X POST -H "Content-Type: application/json" \
               -d '{"content": "🚨 測試階段失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Test Failure", "description": "Tests failed during execution", "color": 16711680}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          elif [ "${{ needs.build-and-push.result }}" == "failure" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "🚨 Image建構失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Build Failed", "description": "Error in the image build process", "color": 16711680}]}' \
               ${{ secrets.DISCORD_WEBHOOK_URL }}
           elif [ "${{ needs.verify.result }}" == "failure" ]; then
             curl -X POST -H "Content-Type: application/json" \
