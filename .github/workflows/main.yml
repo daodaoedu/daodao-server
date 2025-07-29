@@ -125,6 +125,7 @@ jobs:
               export APP_DIR=${{ env.APP_DIR }}
               export COMPOSE_FILE=${{ env.COMPOSE_FILE }}
               export APP_ENV=${{ env.APP_ENV }}
+              export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
 
               # 確保目標目錄存在
               mkdir -p \$APP_DIR
