@@ -54,8 +54,10 @@ COPY prisma/ ./prisma/
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# 變更檔案擁有者
-RUN chown -R nodejs:nodejs /app
+# 創建並設置 logs 目錄權限
+RUN mkdir -p /app/logs && \
+    chown -R nodejs:nodejs /app
+
 USER nodejs
 
 # 暴露應用程式運行的端口
