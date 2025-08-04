@@ -1,31 +1,152 @@
-name: CD - Deploy to Production
+name: CI - Test and Build
 
 on:
-  workflow_dispatch:
-    inputs:
-      image-tag:
-        description: 'Docker image tag (prod/dev)'
-        required: true
-        type: string
-      commit-sha:
-        description: 'Commit SHA'
-        required: true
-        type: string
-      branch:  
-        description: 'Branch name'
-        required: true
-        type: string
-      triggered-by:
-        description: 'Workflow trigger source'
-        required: false
-        type: string
-        default: 'manual'
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+env:
+  NODE_VERSION: 20
+  DOCKER_BUILDKIT: 1
 
 jobs:
+  # 測試階段
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (shallow)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.cache-npm.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Cache Prisma Client
+        uses: actions/cache@v4
+        with:
+          path: |
+            generated/prisma
+            node_modules/.prisma
+          key: ${{ runner.os }}-prisma-${{ hashFiles('**/schema.prisma') }}
+          restore-keys: |
+            ${{ runner.os }}-prisma-
+
+      - name: Generate Prisma Client and OpenAPI types
+        run: npm run types:generate
+
+      - name: Run checks in parallel
+        run: |
+          npm run typecheck &
+          npm run lint &
+          npm test &
+          wait
+
+      # 上傳 artifacts 供 CD workflow 使用
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-files-${{ github.sha }}
+          path: |
+            generated/
+            openapi.yaml
+          retention-days: 1
+
+  # 構建並推送 Docker image
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    # 在 push 或 PR merge 時構建
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code (shallow)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download generated files
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-files-${{ github.sha }}
+
+      - name: Set Environment Variables
+        id: meta
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+            echo "NODE_ENV=prod" >> $GITHUB_ENV
+            echo "CACHE_TAG=prod" >> $GITHUB_ENV
+            echo "image-tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+            echo "NODE_ENV=dev" >> $GITHUB_ENV
+            echo "CACHE_TAG=dev" >> $GITHUB_ENV
+            echo "image-tag=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
+          build-args: |
+            NODE_ENV=${{ env.NODE_ENV }}
+          cache-from: |
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }}
+            type=gha
+          cache-to: |
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
+            type=gha,mode=max
+          platforms: linux/amd64
+
   # 部署階段
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.image-tag == 'prod' && 'production' || 'development' }}
+    needs: [test, build]
+    if: needs.build.result == 'success'
+    environment: ${{ needs.build.outputs.image-tag == 'prod' && 'production' || 'development' }}
+    timeout-minutes: 15
     steps:
       - name: Set up SSH
         run: |
@@ -37,12 +158,11 @@ jobs:
       - name: Deploy to Linode
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
-          BRANCH_NAME: ${{ inputs.branch }}
-          IMAGE_TAG: ${{ inputs.image-tag }}
-          APP_ENV: ${{ inputs.image-tag }}
-          APP_SERVICE: ${{ inputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}
-          COMMIT_SHA: ${{ inputs.commit-sha }}
-        timeout-minutes: 15
+          BRANCH_NAME: ${{ github.ref_name }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          APP_ENV: ${{ needs.build.outputs.image-tag }}
+          APP_SERVICE: ${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
           ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=10 root@$LINODE_INSTANCE_IP << 'ENDSSH'
             set -e
@@ -163,6 +283,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     needs: deploy
+    timeout-minutes: 10
     steps:
       - name: Set up SSH
         run: |
@@ -175,13 +296,12 @@ jobs:
         run: |
           echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
           echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
-          echo "APP_ENV=${{ inputs.image-tag }}" >> $GITHUB_ENV
-          echo "APP_SERVICE=${{ inputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}" >> $GITHUB_ENV
+          echo "APP_ENV=${{ needs.build.outputs.image-tag }}" >> $GITHUB_ENV
+          echo "APP_SERVICE=${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}" >> $GITHUB_ENV
 
       - name: Comprehensive Deployment Verification
         env:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
-        timeout-minutes: 10
         run: |
           ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 root@$LINODE_INSTANCE_IP "
             set -e
@@ -229,10 +349,10 @@ jobs:
           # 獲取部署資訊
           AUTHOR="${{ github.actor }}"
           REPO="${{ github.repository }}"
-          BRANCH="${{ inputs.branch }}"
-          COMMIT_SHA="${{ inputs.commit-sha }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA="${COMMIT_SHA:0:7}"
-          IMAGE_TAG="${{ inputs.image-tag }}"
+          IMAGE_TAG="${{ needs.build.outputs.image-tag }}"
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           # 判斷部署狀態
