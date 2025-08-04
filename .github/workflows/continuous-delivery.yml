@@ -100,7 +100,6 @@ jobs:
           cache-to: |
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
             type=gha,mode=max
-            type=inline
           platforms: linux/amd64
 
   # 部署階段
