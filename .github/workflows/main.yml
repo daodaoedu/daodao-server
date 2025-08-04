@@ -279,7 +279,11 @@ jobs:
     steps:
       - name: Notify Discord
         run: |
-          if [ "${{ needs.test.result }}" == "failure" ]; then
+          if [ "${{ needs.test.result }}" == "cancelled" ] || [ "${{ needs.build-and-push.result }}" == "cancelled" ] || [ "${{ needs.verify.result }}" == "cancelled" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "⏹️ 工作流程已取消。", "embeds": [{"title": "Workflow Cancelled", "description": "The workflow was cancelled by user", "color": 8421504}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          elif [ "${{ needs.test.result }}" == "failure" ]; then
             curl -X POST -H "Content-Type: application/json" \
               -d '{"content": "🚨 測試階段失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Test Failure", "description": "Tests failed during execution", "color": 16711680}]}' \
               ${{ secrets.DISCORD_WEBHOOK_URL }}
