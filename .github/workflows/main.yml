@@ -168,14 +168,6 @@ jobs:
               set -o allexport && source .env.\${APP_ENV} && set +o allexport
               echo 'Environment variables loaded:'
               
-              # 創建部署前資料庫備份和健康檢查
-              echo 'Creating database backup...'
-              if docker-compose exec -T postgres-\${APP_ENV} pg_isready -U daodao -d daodao; then
-                docker-compose exec -T postgres-\${APP_ENV} pg_dump -U daodao daodao > backup_$(date +%Y%m%d_%H%M%S).sql
-                echo 'Backup completed'
-              else
-                echo 'Warning: Database not ready, skipping backup'
-              fi
   
               if [ \"\$DEPLOYMENT_TYPE\" = 'initial' ]; then
                 echo \"Performing initial deployment...\"

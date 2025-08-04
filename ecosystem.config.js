@@ -13,12 +13,9 @@ module.exports = {
     // 禁用日誌合併
     merge_logs: false,
     
-    // 環境配置
+    // 環境配置 - 使用環境變數，如果沒有則預設為 prod
     env: {
-      NODE_ENV: "prod"
-    },
-    env_development: {
-      NODE_ENV: "dev"
+      NODE_ENV: process.env.NODE_ENV || "prod"
     }
   }]
 };
