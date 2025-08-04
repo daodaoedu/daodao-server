@@ -15,7 +15,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "build": "tsc --skipLibCheck && tsc-alias",
-    "postbuild": "echo 'TypeScript compilation completed'",
+    "postbuild": "echo 'TypeScript compilation completed' && cp -r generated dist/",
     "prisma:generate": "prisma generate",
     "prisma:introspect": "prisma db pull",
     "prisma:studio": "prisma studio",
