@@ -50,15 +50,16 @@ RUN ln -sf /app/generated /app/dist/generated
 # 複製其他必要檔案
 COPY prisma/ ./prisma/
 
-# 建立 logs 目錄
-RUN mkdir -p /app/logs
+# 建立 logs 目錄並設定權限
+RUN mkdir -p /app/logs && chmod 777 /app/logs
 
 # 建立非 root 使用者
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# 變更檔案擁有者（包含 logs 目錄）
-RUN chown -R nodejs:nodejs /app
+# 變更檔案擁有者（但保留 logs 的寬鬆權限）
+RUN chown -R nodejs:nodejs /app && \
+    chmod 777 /app/logs
 USER nodejs
 
 # 暴露應用程式運行的端口
