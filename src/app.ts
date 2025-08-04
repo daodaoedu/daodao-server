@@ -31,6 +31,9 @@ import commentRoutes from './routes/comment.routes';
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
 import { requestLogger, errorLogger, logApplicationEvent } from './middleware/logging.middleware';
+// 引入資料庫資訊和監控路由
+import dbInfoRoutes from './routes/db-info.routes';
+import monitorRoutes from './routes/monitor.routes';
 
 /**
  * 設置 TypeScript 路由和模型
@@ -115,6 +118,14 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊郵件路由
   app.use('/api/v1/email', emailRoutes);
   console.log('📧 v1 郵件路由已註冊 - 可在 /api/v1/email 訪問');
+  
+  // 註冊資料庫資訊路由
+  app.use('/api/v1/db-info', dbInfoRoutes);
+  console.log('🗃️ v1 資料庫資訊路由已註冊 - 可在 /api/v1/db-info 訪問');
+  
+  // 註冊系統監控路由
+  app.use('/api/v1/monitor', monitorRoutes);
+  console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
   
   // v1 健康檢查端點
   app.get('/api/v1/health', (req, res) => {
