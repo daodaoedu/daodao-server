@@ -8,10 +8,41 @@ const router = Router();
 interface DatabaseColumn {
   column_name: string;
   data_type: string;
+  udt_name: string;
+  character_maximum_length: number | null;
+  numeric_precision: number | null;
+  numeric_scale: number | null;
+  is_nullable: string;
+  column_default: string | null;
+  is_identity: string;
+  identity_generation: string | null;
+  is_updatable: string;
+  ordinal_position: number;
+  comment: string | null;
+}
+
+interface TableConstraint {
+  constraint_name: string;
+  constraint_type: string;
+  column_name: string;
+  foreign_table_name: string | null;
+  foreign_column_name: string | null;
+}
+
+interface TableIndex {
+  index_name: string;
+  index_type: string;
+  is_unique: boolean;
+  is_primary: boolean;
+  column_names: string[];
 }
 
 interface PostgresTableInfo {
   columns: DatabaseColumn[];
+  constraints: TableConstraint[];
+  indexes: TableIndex[];
+  comment: string | null;
+  row_count: number;
 }
 
 interface MongoCollectionInfo {
@@ -64,18 +95,102 @@ router.get('/', async (req: Request, res: Response) => {
         WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
       `;
       
-      // 對每個表格取得欄位資訊
+      // 對每個表格取得詳細資訊
       const postgresData: Record<string, PostgresTableInfo> = {};
       for (const table of tableResult) {
+        // 取得完整的欄位資訊
         const columnResult = await prisma.$queryRaw<DatabaseColumn[]>`
-          SELECT column_name, data_type 
-          FROM information_schema.columns 
-          WHERE table_name = ${table.tablename}
-          ORDER BY ordinal_position
+          SELECT 
+            c.column_name,
+            c.data_type,
+            c.udt_name,
+            c.character_maximum_length,
+            c.numeric_precision,
+            c.numeric_scale,
+            c.is_nullable,
+            c.column_default,
+            c.is_identity,
+            c.identity_generation,
+            c.is_updatable,
+            c.ordinal_position,
+            pgd.description as comment
+          FROM information_schema.columns c
+          LEFT JOIN pg_catalog.pg_class pc ON pc.relname = c.table_name
+          LEFT JOIN pg_catalog.pg_description pgd ON pgd.objoid = pc.oid AND pgd.objsubid = c.ordinal_position
+          WHERE c.table_name = ${table.tablename}
+          AND c.table_schema = 'public'
+          ORDER BY c.ordinal_position
         `;
         
+        // 取得約束資訊（主鍵、外鍵、唯一約束）
+        const constraintResult = await prisma.$queryRaw<TableConstraint[]>`
+          SELECT DISTINCT
+            tc.constraint_name,
+            tc.constraint_type,
+            kcu.column_name,
+            ccu.table_name AS foreign_table_name,
+            ccu.column_name AS foreign_column_name
+          FROM information_schema.table_constraints tc
+          JOIN information_schema.key_column_usage kcu 
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+          LEFT JOIN information_schema.constraint_column_usage ccu
+            ON ccu.constraint_name = tc.constraint_name
+            AND ccu.table_schema = tc.table_schema
+          WHERE tc.table_name = ${table.tablename}
+          AND tc.table_schema = 'public'
+          ORDER BY tc.constraint_type, tc.constraint_name
+        `;
+        
+        // 取得索引資訊
+        const indexResult = await prisma.$queryRaw<Array<{
+          indexname: string;
+          indexdef: string;
+          tablename: string;
+        }>>`
+          SELECT indexname, indexdef, tablename
+          FROM pg_indexes
+          WHERE tablename = ${table.tablename}
+          AND schemaname = 'public'
+        `;
+        
+        // 解析索引資訊
+        const indexes: TableIndex[] = indexResult.map(idx => {
+          const isPrimary = idx.indexname.includes('_pkey');
+          const isUnique = idx.indexdef.includes('UNIQUE') || isPrimary;
+          const columnMatch = idx.indexdef.match(/\(([^)]+)\)/);
+          const columnNames = columnMatch 
+            ? columnMatch[1].split(',').map(c => c.trim().replace(/"/g, ''))
+            : [];
+          
+          return {
+            index_name: idx.indexname,
+            index_type: idx.indexdef.includes('btree') ? 'btree' : 'other',
+            is_unique: isUnique,
+            is_primary: isPrimary,
+            column_names: columnNames
+          };
+        });
+        
+        // 取得表格註解
+        const tableCommentResult = await prisma.$queryRaw<Array<{ description: string | null }>>`
+          SELECT obj_description(pc.oid) as description
+          FROM pg_catalog.pg_class pc
+          WHERE pc.relname = ${table.tablename}
+          AND pc.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+        `;
+        
+        // 取得表格行數
+        const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+          `SELECT COUNT(*) as count FROM "${table.tablename}"`
+        );
+        
         postgresData[table.tablename] = {
-          columns: columnResult
+          columns: columnResult,
+          constraints: constraintResult,
+          indexes: indexes,
+          comment: tableCommentResult[0]?.description || null,
+          row_count: Number(countResult[0]?.count || 0)
         };
       }
       response.postgres = postgresData;
