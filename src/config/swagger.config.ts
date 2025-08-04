@@ -235,6 +235,16 @@ const swaggerOptions: swaggerJsdoc.Options = {
         name: 'Me',
         description: '個人資料相關操作',
         'x-order': 7
+      },
+      {
+        name: 'Database Info',
+        description: '資料庫資訊查詢相關操作',
+        'x-order': 8
+      },
+      {
+        name: 'System Monitor',
+        description: '系統監控相關操作',
+        'x-order': 9
       }
     ]
   },
