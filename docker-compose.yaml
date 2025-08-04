@@ -9,7 +9,7 @@ services:
     logging:
       driver: "none"
     networks:
-      - prod_network
+      - prod-daodao-network
     # 掛載日誌目錄到宿主機
     volumes:
       - ./logs:/app/logs
@@ -17,8 +17,6 @@ services:
       mongo_prod:
         condition: service_healthy
       redis_prod:
-        condition: service_healthy
-      postgres-prod:
         condition: service_healthy
 
   dev_app:
@@ -36,58 +34,20 @@ services:
         max-size: "1m"
         max-file: "1"
     networks:
-      - dev_network
+      - dev-daodao-network
     depends_on:
       mongo_dev:
         condition: service_healthy
       redis_dev:
         condition: service_healthy
-      postgres-dev:
-        condition: service_healthy
 
-  postgres-dev:
-    image: postgres:14
-    container_name: postgres-dev
-    environment:
-      POSTGRES_USER: daodao
-      POSTGRES_PASSWORD: daodao
-      POSTGRES_DB: daodao
-    networks:
-      - dev_network
-    volumes:
-      - postgres-dev-data:/var/lib/postgresql/data
-
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U daodao -d daodao" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  postgres-prod:
-    image: postgres:14
-    container_name: postgres-prod
-    environment:
-      POSTGRES_USER: daodao
-      POSTGRES_PASSWORD: daodao
-      POSTGRES_DB: daodao
-    networks:
-      - prod_network
-    volumes:
-      - postgres-prod-data:/var/lib/postgresql/data
-
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U daodao -d daodao" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-  
   mongo_prod:
     image: mongo:4.4
     container_name: mongo_prod
     volumes:
       - mongo_prod_data:/data/db
     networks:
-      - prod_network
+      - prod-daodao-network
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -100,7 +60,7 @@ services:
     volumes:
       - mongo_dev_data:/data/db
     networks:
-      - dev_network
+      - dev-daodao-network
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -113,7 +73,7 @@ services:
     volumes:
       - redis_prod_data:/data
     networks:
-      - prod_network
+      - prod-daodao-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -126,7 +86,7 @@ services:
     volumes:
       - redis_dev_data:/data
     networks:
-      - dev_network
+      - dev-daodao-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -147,19 +107,17 @@ services:
       - prod_app
       - dev_app
     networks:
-      - prod_network
-      - dev_network
+      - prod-daodao-network
+      - dev-daodao-network
 
 volumes:
   mongo_prod_data:
   mongo_dev_data:
   redis_prod_data:
   redis_dev_data:
-  postgres-dev-data:
-  postgres-prod-data:
 
 networks:
-  prod_network:
-    driver: bridge
-  dev_network:
-    driver: bridge
+  prod-daodao-network:
+    external: true
+  dev-daodao-network:
+    external: true
