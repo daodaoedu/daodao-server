@@ -1,0 +1,151 @@
+name: Continuous Integration
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_call:
+    outputs:
+      generated-files-artifact:
+        description: "Name of the generated files artifact"
+        value: ${{ jobs.test.outputs.artifact-name }}
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 20
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  # 測試階段
+  test:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: generated-files-${{ github.sha }}
+    steps:
+      - name: Checkout code (shallow)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.cache-npm.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Cache Prisma Client
+        uses: actions/cache@v4
+        with:
+          path: |
+            generated/prisma
+            node_modules/.prisma
+          key: ${{ runner.os }}-prisma-${{ hashFiles('**/schema.prisma') }}
+          restore-keys: |
+            ${{ runner.os }}-prisma-
+
+      - name: Generate Prisma Client and OpenAPI types
+        run: npm run types:generate
+
+      - name: Run checks in parallel
+        run: |
+          npm run typecheck &
+          npm run lint &
+          npm test &
+          wait
+
+      # 上傳 artifacts 供 CD workflow 使用
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-files-${{ github.sha }}
+          path: |
+            generated/
+            openapi.yaml
+          retention-days: 1
+
+  # CI 成功通知
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: test
+    if: success()
+    steps:
+      - name: Send CI Success Notification
+        run: |
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          curl -X POST -H "Content-Type: application/json" -d "{
+            \"content\": \"✅ **CI 檢查通過！**\",
+            \"embeds\": [{
+              \"title\": \"🧪 CI Tests Passed\",
+              \"description\": \"所有檢查項目都通過了，程式碼品質良好\",
+              \"color\": 3066993,
+              \"fields\": [
+                {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+              ],
+              \"timestamp\": \"$CURRENT_TIME\"
+            }]
+          }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  # CI 失敗通知
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: test
+    if: failure()
+    steps:
+      - name: Send CI Failure Notification
+        run: |
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          curl -X POST -H "Content-Type: application/json" -d "{
+            \"content\": \"❌ **CI 檢查失敗！**\",
+            \"embeds\": [{
+              \"title\": \"💥 CI Tests Failed\",
+              \"description\": \"程式碼檢查過程中發現問題，請修復後重新提交\",
+              \"color\": 16711680,
+              \"fields\": [
+                {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+              ],
+              \"timestamp\": \"$CURRENT_TIME\"
+            }]
+          }" ${{ secrets.DISCORD_WEBHOOK_URL }}
