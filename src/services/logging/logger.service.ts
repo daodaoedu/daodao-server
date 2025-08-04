@@ -5,6 +5,7 @@
 
 import winston, { Logger, LoggerOptions } from 'winston';
 import path from 'path';
+import fs from 'fs';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
 // 日誌級別配置
@@ -58,11 +59,25 @@ class LoggerService {
     this.logger = this.createLogger();
   }
 
+  private ensureLogDirectory(logDir: string): void {
+    try {
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true, mode: 0o755 });
+      }
+    } catch (error) {
+      // 如果無法創建目錄，記錄錯誤但不讓應用崩潰
+      console.warn(`Warning: Could not create log directory ${logDir}:`, error);
+    }
+  }
+
   private createLogger(): Logger {
     const transports: winston.transport[] = [];
     
     // 根據環境決定日誌目錄
-    const logDir = this.isDevelopment ? path.join(process.cwd(), 'logs', 'dev') : path.join(process.cwd(), 'logs', 'prod');
+    const logDir = this.isDevelopment ? '/app/logs/dev' : '/app/logs/prod';
+    
+    // 確保日誌目錄存在
+    this.ensureLogDirectory(logDir);
 
     if (this.isDevelopment) {
       // 開發環境：控制台輸出 + 日期分割文件
