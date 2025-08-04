@@ -55,7 +55,7 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # 創建並設置 logs 目錄權限
-RUN mkdir -p /app/logs && \
+RUN mkdir -p /app/logs/dev /app/logs/prod && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
