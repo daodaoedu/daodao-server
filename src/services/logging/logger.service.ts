@@ -4,6 +4,7 @@
  */
 
 import winston, { Logger, LoggerOptions } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 
 // 日誌級別配置
@@ -59,30 +60,58 @@ class LoggerService {
 
   private createLogger(): Logger {
     const transports: winston.transport[] = [];
+    
+    // 根據環境決定日誌目錄
+    const logDir = this.isDevelopment ? path.join(process.cwd(), 'logs', 'dev') : path.join(process.cwd(), 'logs', 'prod');
 
     if (this.isDevelopment) {
-      // 開發環境：僅控制台輸出
+      // 開發環境：控制台輸出 + 日期分割文件
       transports.push(
         new winston.transports.Console({
           level: 'debug',
           format: devFormat,
+        }),
+        // 開發環境錯誤日誌（按日期分割）
+        new DailyRotateFile({
+          filename: path.join(logDir, 'error-%DATE%.log'),
+          datePattern: 'YYYY-MM-DD',
+          level: 'error',
+          format: logFormat,
+          maxSize: '20m',
+          maxFiles: '30d',
+          zippedArchive: true,
+        }),
+        // 開發環境合併日誌（按日期分割）
+        new DailyRotateFile({
+          filename: path.join(logDir, 'combined-%DATE%.log'),
+          datePattern: 'YYYY-MM-DD',
+          format: logFormat,
+          maxSize: '20m',
+          maxFiles: '30d',
+          zippedArchive: true,
         })
       );
     } else {
-      // 生產環境：僅文件輸出 (不輸出到控制台，避免被 PM2/Docker 捕獲)
+      // 生產環境：僅文件輸出，按日期分割
       transports.push(
-        new winston.transports.File({
-          filename: path.join(process.cwd(), 'logs', 'error.log'),
+        // 生產環境錯誤日誌（按日期分割）
+        new DailyRotateFile({
+          filename: path.join(logDir, 'error-%DATE%.log'),
+          datePattern: 'YYYY-MM-DD',
           level: 'error',
           format: logFormat,
-          maxsize: 10485760, // 10MB
-          maxFiles: 10,
+          maxSize: '20m',
+          maxFiles: '30d',
+          zippedArchive: true,
         }),
-        new winston.transports.File({
-          filename: path.join(process.cwd(), 'logs', 'combined.log'),
+        // 生產環境合併日誌（按日期分割）
+        new DailyRotateFile({
+          filename: path.join(logDir, 'combined-%DATE%.log'),
+          datePattern: 'YYYY-MM-DD',
           format: logFormat,
-          maxsize: 10485760, // 10MB
-          maxFiles: 10,
+          maxSize: '20m',
+          maxFiles: '30d',
+          zippedArchive: true,
         })
       );
     }
