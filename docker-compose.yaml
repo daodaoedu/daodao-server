@@ -10,7 +10,7 @@ services:
       driver: "none"
     networks:
       - prod-daodao-network
-    # 掛載日誌目錄到宿主機
+    # 掛載日誌目錄到宿主機（Winston 會自動創建 prod 子資料夾）
     volumes:
       - ./logs:/app/logs
     depends_on:
@@ -26,7 +26,7 @@ services:
       - .env.dev
     volumes:
       - ./src:/app/src
-      - ./logs:/app/logs  # 掛載日誌目錄
+      - ./logs:/app/logs  # 掛載日誌目錄（Winston 會自動創建 dev 子資料夾）
     # 開發環境可保留最小日誌用於調試
     logging:
       driver: "json-file"
