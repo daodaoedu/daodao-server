@@ -187,7 +187,6 @@ jobs:
                 docker ps -a
                 docker container prune -f
                 docker image prune -f
-                docker network prune -f
                 
                 echo \"Pulling latest image for \${APP_ENV} environment...\"
                 if docker-compose --env-file .env.\${APP_ENV} -f \$COMPOSE_FILE pull \$APP_SERVICE; then
