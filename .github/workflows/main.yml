@@ -279,7 +279,12 @@ jobs:
     steps:
       - name: Notify Discord
         run: |
-          if [ "${{ needs.test.result }}" == "failure" ]; then
+          # 檢查是否有任何工作被取消
+          if [ "${{ needs.test.result }}" == "cancelled" ] || [ "${{ needs.build-and-push.result }}" == "cancelled" ] || [ "${{ needs.verify.result }}" == "cancelled" ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              -d '{"content": "⏹️ 部署已取消", "embeds": [{"title": "Deployment Cancelled", "description": "工作流程在執行過程中被取消", "color": 10027008, "fields": [{"name": "Branch", "value": "${{ github.ref_name }}", "inline": true}, {"name": "Commit", "value": "${{ github.sha }}", "inline": true}]}]}' \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+          elif [ "${{ needs.test.result }}" == "failure" ]; then
             curl -X POST -H "Content-Type: application/json" \
               -d '{"content": "🚨 測試階段失敗！請檢查 GitHub Actions 記錄。", "embeds": [{"title": "Test Failure", "description": "Tests failed during execution", "color": 16711680}]}' \
               ${{ secrets.DISCORD_WEBHOOK_URL }}
