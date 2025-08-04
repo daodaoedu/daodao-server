@@ -19,7 +19,7 @@ export class PrismaService {
   private constructor() {
     this.prismaClient = new PrismaClient({
       // 只在開發環境啟用內建日志，生產環境使用 Winston
-      log: process.env.NODE_ENV === 'development' 
+      log: process.env.NODE_ENV === 'dev' 
         ? ['query', 'error', 'warn', 'info']
         : [],
       errorFormat: 'pretty',
@@ -48,7 +48,7 @@ export class PrismaService {
       );
       
       // 開發環境顯示詳細查詢
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === 'dev') {
         loggerService.debug('Prisma Query', {
           query: event.query,
           params: event.params,

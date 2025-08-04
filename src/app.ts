@@ -46,7 +46,7 @@ export function setupTypescriptRoutes(app: express.Application) {
   logApplicationEvent('startup', {
     nodeVersion: process.version,
     platform: process.platform,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'dev'
   });
   
   // 註冊日誌中間件（必須在路由之前）
