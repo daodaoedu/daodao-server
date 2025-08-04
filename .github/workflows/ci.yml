@@ -153,7 +153,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: '.github/workflows/deploy.yml',
+              workflow_id: 'deploy.yml',
               ref: context.ref,
               inputs: {
                 'image-tag': '${{ needs.build.outputs.image-tag }}',
