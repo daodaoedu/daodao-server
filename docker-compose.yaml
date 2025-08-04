@@ -10,6 +10,7 @@ services:
       driver: "none"
     networks:
       - prod-daodao-network
+      - prod_network
     # 掛載日誌目錄到宿主機
     volumes:
       - ./logs:/app/logs
@@ -35,6 +36,7 @@ services:
         max-file: "1"
     networks:
       - dev-daodao-network
+      - dev_network
     depends_on:
       mongo_dev:
         condition: service_healthy
@@ -121,3 +123,5 @@ networks:
     external: true
   dev-daodao-network:
     external: true
+  dev_network:
+  prod_network:
