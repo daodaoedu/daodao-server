@@ -93,7 +93,7 @@ export const globalErrorHandler = (
   }
 
   // 開發環境下記錄完整錯誤
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'dev') {
     try {
       console.error('Error details:', {
         name: error?.name || 'Unknown',
@@ -186,7 +186,7 @@ export const globalErrorHandler = (
       ...(errors && { details: errors }),
     },
     timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === 'development' && { 
+    ...(process.env.NODE_ENV === 'dev' && { 
       debug: {
         stack: error?.stack || 'No stack trace available',
         name: error?.name || 'Unknown' 

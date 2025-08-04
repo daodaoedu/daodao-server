@@ -71,7 +71,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // 缺失: HTTPS 強制
+    secure: process.env.NODE_ENV === 'prod', // 缺失: HTTPS 強制
     httpOnly: true,                 // 缺失: XSS 保護
     maxAge: 24 * 60 * 60 * 1000,   // 缺失: 過期時間配置
     sameSite: 'strict'              // 缺失: CSRF 保護
@@ -298,7 +298,7 @@ export const sessionConfig = session({
   saveUninitialized: false,
   rolling: true, // 重置 session 過期時間
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'prod',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 小時
     sameSite: 'strict'

@@ -18,7 +18,7 @@ const getUserIdOrTestUser = (req: Request): number => {
   if (!userId) {
     // 為 Swagger UI 測試提供預設用戶 ID（僅在開發環境）
     if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === undefined) {
-      console.log('⚠️  Using test user ID for development/testing');
+      console.log('⚠️  Using test user ID for dev/testing');
       const testUserId = 1;
       req.user = { 
         id: testUserId,

@@ -183,10 +183,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    environment: production
+    environment: prod
     
     steps:
-    - name: Deploy to Production
+    - name: Deploy to prod
       env:
         IMAGE: ${{ needs.build.outputs.image }}
       run: |
@@ -273,7 +273,7 @@ FROM base AS deps
 COPY package*.json ./
 # 使用 BuildKit 快取掛載提升速度
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production && npm cache clean --force
+    npm ci --only=prod && npm cache clean --force
 
 # === 建置階段 ===  
 FROM base AS builder

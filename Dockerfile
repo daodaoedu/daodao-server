@@ -35,7 +35,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 只安裝生產依賴
-RUN npm ci --only=production && \
+RUN npm ci --only=prod && \
     npm install -g pm2 && \
     npm cache clean --force
 

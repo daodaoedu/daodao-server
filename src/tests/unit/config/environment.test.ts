@@ -327,20 +327,20 @@ describe('Environment Configuration Tests', () => {
 
   describe('Node Environment', () => {
     it('should handle development environment', () => {
-      process.env.NODE_ENV = 'development';
+      process.env.NODE_ENV = 'dev';
 
-      expect(process.env.NODE_ENV).toBe('development');
+      expect(process.env.NODE_ENV).toBe('dev');
       
-      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isDevelopment = process.env.NODE_ENV === 'dev';
       expect(isDevelopment).toBe(true);
     });
 
-    it('should handle production environment', () => {
-      process.env.NODE_ENV = 'production';
+    it('should handle prod environment', () => {
+      process.env.NODE_ENV = 'prod';
 
-      expect(process.env.NODE_ENV).toBe('production');
+      expect(process.env.NODE_ENV).toBe('prod');
       
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === 'prod';
       expect(isProduction).toBe(true);
     });
 
@@ -356,8 +356,8 @@ describe('Environment Configuration Tests', () => {
     it('should handle missing NODE_ENV', () => {
       delete process.env.NODE_ENV;
 
-      const environment = process.env.NODE_ENV || 'development';
-      expect(environment).toBe('development');
+      const environment = process.env.NODE_ENV || 'dev';
+      expect(environment).toBe('dev');
     });
 
     it('should handle custom environments', () => {
@@ -365,7 +365,7 @@ describe('Environment Configuration Tests', () => {
 
       expect(process.env.NODE_ENV).toBe('staging');
       
-      const knownEnvironments = ['development', 'production', 'test'];
+      const knownEnvironments = ['dev', 'prod', 'test'];
       const isKnownEnvironment = knownEnvironments.includes(process.env.NODE_ENV);
       expect(isKnownEnvironment).toBe(false);
     });
@@ -410,7 +410,7 @@ describe('Environment Configuration Tests', () => {
       expect(isCommonPort).toBe(true);
 
       // In development, might want to warn about using common ports
-      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isDevelopment = process.env.NODE_ENV === 'dev';
       if (isDevelopment && isCommonPort) {
         // This would typically log a warning
         expect(true).toBe(true); // Placeholder for warning logic
