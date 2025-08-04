@@ -1,0 +1,333 @@
+name: CD - Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: 'Docker image tag (prod/dev)'
+        required: true
+        type: string
+      commit-sha:
+        description: 'Commit SHA'
+        required: true
+        type: string
+      branch:  
+        description: 'Branch name'
+        required: true
+        type: string
+      triggered-by:
+        description: 'Workflow trigger source'
+        required: false
+        type: string
+        default: 'manual'
+
+jobs:
+  # 部署階段
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.image-tag == 'prod' && 'production' || 'development' }}
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Linode
+        env:
+          LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
+          BRANCH_NAME: ${{ inputs.branch }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+          APP_ENV: ${{ inputs.image-tag }}
+          APP_SERVICE: ${{ inputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}
+          COMMIT_SHA: ${{ inputs.commit-sha }}
+        timeout-minutes: 15
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=10 root@$LINODE_INSTANCE_IP << 'ENDSSH'
+            set -e
+            export APP_DIR=/root/daodao-server
+            export COMPOSE_FILE=docker-compose.yaml
+            export APP_ENV=${{ env.APP_ENV }}
+            export APP_SERVICE=${{ env.APP_SERVICE }}
+            export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+            export IMAGE_TAG=${{ env.IMAGE_TAG }}
+            export COMMIT_SHA=${{ env.COMMIT_SHA }}
+
+            echo "=== Starting deployment for $APP_ENV environment ==="
+            
+            # 快速更新代碼（淺層克隆或增量更新）
+            if [ -d $APP_DIR/.git ]; then
+              cd $APP_DIR
+              echo "Updating existing repository..."
+              # 只獲取最新的變更
+              git fetch --depth 1 origin ${{ env.BRANCH_NAME }}
+              git reset --hard FETCH_HEAD
+              git clean -fd
+            else
+              echo "Cloning repository..."
+              # 淺層克隆
+              git clone --depth 1 --branch ${{ env.BRANCH_NAME }} \
+                https://${{ secrets.GIT_HUB_USERNAME }}:${{ secrets.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \
+                $APP_DIR
+              cd $APP_DIR
+            fi
+
+            # 檢查環境文件
+            if [ ! -f .env.${APP_ENV} ] && [ -f .env.${APP_ENV}_temp ]; then
+              cp .env.${APP_ENV}_temp .env.${APP_ENV}
+              echo "Created .env.${APP_ENV} from template"
+            fi
+
+            # 載入環境變數
+            set -o allexport && source .env.${APP_ENV} && set +o allexport
+            echo "Environment variables loaded for $APP_ENV"
+
+            # 使用 blue-green 部署策略
+            echo "=== Blue-Green Deployment Strategy ==="
+            OLD_CONTAINER=$(docker ps -q -f name=${APP_SERVICE} | head -1)
+            
+            if [ -n "$OLD_CONTAINER" ]; then
+              echo "Found existing container: $OLD_CONTAINER"
+            else
+              echo "No existing container found, performing initial deployment"
+            fi
+            
+            # 拉取新映像 (增加重試機制)
+            echo "Pulling new image..."
+            PULL_SUCCESS=false
+            for attempt in 1 2 3; do
+              echo "Pull attempt $attempt/3..."
+              if timeout 300 docker pull ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}-${COMMIT_SHA}; then
+                echo "Successfully pulled image with commit SHA"
+                PULL_SUCCESS=true
+                break
+              elif timeout 300 docker pull ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}; then
+                echo "Successfully pulled latest image"
+                PULL_SUCCESS=true
+                break
+              else
+                echo "Pull attempt $attempt failed, waiting 10 seconds..."
+                sleep 10
+              fi
+            done
+            
+            if [ "$PULL_SUCCESS" = false ]; then
+              echo "Failed to pull image after 3 attempts, aborting deployment"
+              exit 1
+            fi
+
+            # 啟動新容器
+            echo "Starting new container..."
+            docker-compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE up -d --no-deps --scale ${APP_SERVICE}=2 ${APP_SERVICE}
+
+            # 健康檢查
+            echo "=== Health Check ==="
+            NEW_CONTAINER=""
+            for i in {1..30}; do
+              NEW_CONTAINER=$(docker ps -q -f name=${APP_SERVICE} | grep -v "$OLD_CONTAINER" | head -1)
+              if [ -n "$NEW_CONTAINER" ]; then
+                if docker exec $NEW_CONTAINER wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health 2>/dev/null; then
+                  echo "New container $NEW_CONTAINER is healthy"
+                  break
+                fi
+              fi
+              echo "Health check attempt $i/30..."
+              sleep 2
+            done
+
+            if [ -z "$NEW_CONTAINER" ] || ! docker exec $NEW_CONTAINER wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health 2>/dev/null; then
+              echo "Health check failed, rolling back..."
+              if [ -n "$NEW_CONTAINER" ]; then
+                docker stop $NEW_CONTAINER || true
+                docker rm $NEW_CONTAINER || true
+              fi
+              exit 1
+            fi
+
+            # 停止舊容器
+            if [ -n "$OLD_CONTAINER" ]; then
+              echo "Stopping old container: $OLD_CONTAINER"
+              docker stop $OLD_CONTAINER || true
+              docker rm $OLD_CONTAINER || true
+            fi
+
+            # 清理舊映像
+            echo "Cleaning up old images..."
+            docker image prune -f --filter "until=24h"
+            
+            echo "=== Deployment completed successfully ==="
+          ENDSSH
+
+  # 驗證部署
+  verify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
+    
+      - name: Set Environment Variables
+        run: |
+          echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
+          echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
+          echo "APP_ENV=${{ inputs.image-tag }}" >> $GITHUB_ENV
+          echo "APP_SERVICE=${{ inputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}" >> $GITHUB_ENV
+
+      - name: Comprehensive Deployment Verification
+        env:
+          LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
+        timeout-minutes: 10
+        run: |
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 root@$LINODE_INSTANCE_IP "
+            set -e
+            echo '=== Deployment Verification Started ==='
+            
+            echo '=== Checking Docker Containers ==='
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+            echo '=== Checking System Resources ==='
+            echo 'CPU Load:' && uptime
+            echo 'Memory Usage:' && free -h
+            echo 'Disk Usage:' && df -h /
+
+            echo '=== Checking Docker Networks ==='
+            docker network ls
+
+            echo '=== Checking Nginx Logs ==='
+            cd ${{ env.APP_DIR }}
+            timeout 10 docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 nginx || echo 'Nginx logs check completed'
+
+            echo '=== Checking Application Logs ==='
+            timeout 10 docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 ${{ env.APP_SERVICE }} || echo 'Application logs check completed'
+            
+            echo '=== Final Health Check ==='
+            for i in {1..10}; do
+              if docker-compose exec -T ${{ env.APP_SERVICE }} wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health; then
+                echo 'Final health check passed'
+                break
+              fi
+              echo \"Health check attempt \$i/10 failed, retrying...\"
+              sleep 5
+            done
+            
+            echo '=== Deployment Verification Complete ==='
+          "
+
+  # 通知系統
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    steps:
+      - name: Send Discord Notification
+        run: |
+          # 獲取部署資訊
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ inputs.branch }}"
+          COMMIT_SHA="${{ inputs.commit-sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          IMAGE_TAG="${{ inputs.image-tag }}"
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # 判斷部署狀態
+          DEPLOY_STATUS="${{ needs.deploy.result }}"
+          VERIFY_STATUS="${{ needs.verify.result || 'skipped' }}"
+          
+          if [ "$DEPLOY_STATUS" == "failure" ] || [ -z "$DEPLOY_STATUS" ]; then
+            # 部署失敗 (包括所有失敗情況)
+            FAILURE_REASON=""
+            if [ "$DEPLOY_STATUS" == "failure" ]; then
+              FAILURE_REASON="部署過程發生錯誤"
+            else
+              FAILURE_REASON="部署狀態未知或連接中斷"
+            fi
+            
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"🚨 **部署失敗！**\",
+              \"embeds\": [{
+                \"title\": \"💥 Deployment Failed\",
+                \"description\": \"$FAILURE_REASON，請檢查服務器狀態\",
+                \"color\": 16711680,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"❌ Status\", \"value\": \"Deploy: $DEPLOY_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          elif [ "$DEPLOY_STATUS" == "cancelled" ]; then
+            # 取消通知
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"⏹️ **部署已取消**\",
+              \"embeds\": [{
+                \"title\": \"🚀 Deployment Cancelled\",
+                \"description\": \"部署流程被用戶取消\",
+                \"color\": 8421504,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          elif [ "$VERIFY_STATUS" == "failure" ]; then
+            # 驗證失敗
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"⚠️ **部署完成但驗證失敗！**\",
+              \"embeds\": [{
+                \"title\": \"🏥 Verification Failed\",
+                \"description\": \"服務部署完成但後續驗證失敗，請檢查應用程式狀態\",
+                \"color\": 16776960,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          else
+            # 成功部署
+            ENV_INFO=""
+            if [ "$IMAGE_TAG" == "prod" ]; then
+              ENV_INFO="🔴 **PRODUCTION** 環境"
+            else
+              ENV_INFO="🟡 **DEVELOPMENT** 環境"
+            fi
+            
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"✅ **部署成功！** 🎉\",
+              \"embeds\": [{
+                \"title\": \"🚀 Deployment Successful\",
+                \"description\": \"服務已成功更新至 $ENV_INFO\",
+                \"color\": 3066993,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"📊 Status\", \"value\": \"✅ Deploy: $DEPLOY_STATUS\\n✅ Verify: $VERIFY_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+          fi
