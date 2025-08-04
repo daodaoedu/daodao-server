@@ -2,8 +2,8 @@
  * TypeScript 服務器入口文件
  */
 
-// 只在開發環境載入 tsconfig-paths
-if (process.env.NODE_ENV === 'dev') {
+// 只在本機環境載入 tsconfig-paths
+if (process.env.NODE_ENV === 'local') {
   require('tsconfig-paths/register');
 }
 import dotenv from 'dotenv';
