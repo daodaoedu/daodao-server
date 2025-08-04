@@ -50,11 +50,14 @@ RUN ln -sf /app/generated /app/dist/generated
 # 複製其他必要檔案
 COPY prisma/ ./prisma/
 
+# 建立 logs 目錄
+RUN mkdir -p /app/logs
+
 # 建立非 root 使用者
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# 變更檔案擁有者
+# 變更檔案擁有者（包含 logs 目錄）
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
