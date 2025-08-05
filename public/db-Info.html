@@ -1,133 +1,1030 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>資料庫資訊視覺化 Dashboard</title>
-  <!-- 引入 Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    .section-container {
-      margin-bottom: 40px;
-    }
-    .schema-container {
-      background: #f4f4f4;
-      padding: 10px;
-      border-radius: 5px;
-      margin-bottom: 10px;
-    }
-    h3 {
-      margin: 0 0 5px;
-    }
-    ul {
-      list-style-type: disc;
-      margin-left: 20px;
-      padding-left: 0;
-    }
-    li {
-      margin-bottom: 3px;
-    }
-    .chart-container {
-      width: 400px;
-      margin: 20px auto;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DaoDao Database Schema Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --gray: #6b7280;
+            --light: #f3f4f6;
+            --white: #ffffff;
+            --mongo: #13aa52;
+            --postgres: #336791;
+            --redis: #dc382d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem 2rem;
+            color: var(--white);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .api-endpoint {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--white);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 2rem;
+        }
+
+        .db-selector {
+            margin-bottom: 2rem;
+        }
+
+        .db-button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            background: var(--light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .db-button:hover {
+            transform: translateX(5px);
+        }
+
+        .db-button.active {
+            color: var(--white);
+        }
+
+        .db-button.mongodb.active {
+            background: var(--mongo);
+            border-color: var(--mongo);
+        }
+
+        .db-button.postgres.active {
+            background: var(--postgres);
+            border-color: var(--postgres);
+        }
+
+        .db-button.redis.active {
+            background: var(--redis);
+            border-color: var(--redis);
+        }
+
+        .db-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Search */
+        .search-container {
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--light);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Stats */
+        .stats-container {
+            display: grid;
+            gap: 12px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            background: var(--white);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .content-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            background: var(--light);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--gray);
+        }
+
+        .view-btn.active {
+            background: var(--white);
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Tables Grid */
+        .tables-container {
+            display: none;
+        }
+
+        .tables-container.active {
+            display: block;
+        }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .table-card {
+            background: var(--white);
+            border: 2px solid var(--light);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .table-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .table-card-header {
+            background: linear-gradient(135deg, var(--light) 0%, var(--white) 100%);
+            padding: 16px;
+            border-bottom: 2px solid var(--light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .field-count {
+            background: var(--primary);
+            color: var(--white);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .table-card-body {
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .field-list {
+            list-style: none;
+        }
+
+        .field-item {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: var(--light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .field-item:hover {
+            background: #e5e7eb;
+            transform: translateX(4px);
+        }
+
+        .field-name {
+            font-weight: 500;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .field-type {
+            background: var(--white);
+            color: var(--gray);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            border: 1px solid var(--light);
+        }
+
+        /* Charts View */
+        .charts-container {
+            display: none;
+        }
+
+        .charts-container.active {
+            display: block;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        .chart-card {
+            background: var(--white);
+            border: 2px solid var(--light);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        /* Loading & Error States */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            color: var(--gray);
+        }
+
+        .error-container {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            color: var(--danger);
+        }
+
+        .error-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-message {
+            color: var(--gray);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                position: static;
+            }
+
+            .db-selector {
+                display: flex;
+                gap: 8px;
+            }
+
+            .db-button {
+                margin-bottom: 0;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .tables-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--dark);
+        }
+    </style>
 </head>
 <body>
-  <h1>資料庫資訊視覺化 Dashboard</h1>
-  
-  <section class="section-container" id="mongo-section">
-    <h2>MongoDB Collections Schema</h2>
-    <!-- MongoDB 的各個 collection 欄位會動態產生 -->
-  </section>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🗄️</div>
+                    <span>DaoDao Database Explorer</span>
+                </div>
+                <div class="api-endpoint">/api/v1/db-info</div>
+            </div>
+        </header>
 
-  <section class="section-container" id="postgres-section">
-    <h2>PostgreSQL Tables Schema</h2>
-    <!-- PostgreSQL 的各個 table 欄位會動態產生 -->
-  </section>
+        <!-- Main Content -->
+        <div class="main-container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="db-selector">
+                    <button class="db-button mongodb active" onclick="selectDatabase('mongo')">
+                        <span class="db-icon">🍃</span>
+                        MongoDB
+                    </button>
+                    <button class="db-button postgres" onclick="selectDatabase('postgres')">
+                        <span class="db-icon">🐘</span>
+                        PostgreSQL
+                    </button>
+                    <button class="db-button redis" onclick="selectDatabase('redis')">
+                        <span class="db-icon">⚡</span>
+                        Redis
+                    </button>
+                </div>
 
-  <section class="section-container" id="chart-section">
-    <h2>資料庫表格數量統計</h2>
-    <div class="chart-container">
-      <canvas id="dbInfoChart"></canvas>
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        id="searchInput" 
+                        placeholder="搜尋表格或欄位..."
+                        onkeyup="handleSearch()"
+                    >
+                </div>
+
+                <div class="stats-container" id="statsContainer">
+                    <!-- Stats will be populated here -->
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content">
+                <div class="content-header">
+                    <h2 class="content-title" id="contentTitle">MongoDB Collections</h2>
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="switchView('tables')">
+                            📋 Tables
+                        </button>
+                        <button class="view-btn" onclick="switchView('charts')">
+                            📊 Charts
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingContainer" class="loading-container">
+                    <div class="spinner"></div>
+                    <div class="loading-text">載入資料中...</div>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorContainer" class="error-container" style="display: none;">
+                    <div class="error-title">載入失敗</div>
+                    <div class="error-message" id="errorMessage"></div>
+                </div>
+
+                <!-- Tables View -->
+                <div id="tablesContainer" class="tables-container">
+                    <div id="tablesGrid" class="tables-grid">
+                        <!-- Tables will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Charts View -->
+                <div id="chartsContainer" class="charts-container">
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3 class="chart-title">資料庫表格數量比較</h3>
+                            <canvas id="tableCountChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 class="chart-title">欄位數量分布</h3>
+                            <canvas id="fieldDistributionChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 class="chart-title">表格欄位數排行</h3>
+                            <canvas id="topTablesChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3 class="chart-title">資料類型統計</h3>
+                            <canvas id="dataTypesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
-  </section>
 
-  <script>
-    // 從 /db-info API 取得資料庫資訊
-    fetch('/db-info')
-      .then(response => response.json())
-      .then(data => {
-        // 顯示 MongoDB 的 schema
-        const mongoSection = document.getElementById('mongo-section');
-        let mongoTableCount = 0;
-        for (let collection in data.mongo) {
-          mongoTableCount++;
-          const container = document.createElement('div');
-          container.className = 'schema-container';
-          let html = `<h3>${collection}</h3>`;
-          if (data.mongo[collection].fields && data.mongo[collection].fields.length > 0) {
-            html += '<ul>';
-            data.mongo[collection].fields.forEach(field => {
-              html += `<li>${field}</li>`;
-            });
-            html += '</ul>';
-          } else {
-            html += '<p>無欄位資訊</p>';
-          }
-          container.innerHTML = html;
-          mongoSection.appendChild(container);
-        }
+    <script>
+        // Global State
+        let dbData = {};
+        let currentDb = 'mongo';
+        let currentView = 'tables';
+        let charts = {};
 
-        // 顯示 PostgreSQL 的 schema
-        const postgresSection = document.getElementById('postgres-section');
-        let postgresTableCount = 0;
-        for (let table in data.postgres) {
-          postgresTableCount++;
-          const container = document.createElement('div');
-          container.className = 'schema-container';
-          let html = `<h3>${table}</h3>`;
-          if (data.postgres[table].columns && data.postgres[table].columns.length > 0) {
-            html += '<ul>';
-            data.postgres[table].columns.forEach(column => {
-              html += `<li>${column.column_name} (${column.data_type})</li>`;
-            });
-            html += '</ul>';
-          } else {
-            html += '<p>無欄位資訊</p>';
-          }
-          container.innerHTML = html;
-          postgresSection.appendChild(container);
-        }
-
-        // 使用 Chart.js 建立直條圖，顯示各資料庫的表格數量
-        const ctx = document.getElementById('dbInfoChart').getContext('2d');
-        new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: ['MongoDB Tables', 'PostgreSQL Tables'],
-            datasets: [{
-              label: 'Table Count',
-              data: [mongoTableCount, postgresTableCount],
-              backgroundColor: ['#FF6384', '#36A2EB']
-            }]
-          },
-          options: {
-            scales: {
-              y: {
-                beginAtZero: true,
-                precision: 0
-              }
-            }
-          }
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDatabaseInfo();
         });
-      })
-      .catch(error => {
-        console.error('取得資料庫資訊失敗:', error);
-      });
-  </script>
+
+        // Fetch Database Information
+        async function fetchDatabaseInfo() {
+            try {
+                const response = await fetch('/db-info');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                dbData = await response.json();
+                hideLoading();
+                displayDatabase(currentDb);
+                
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // Database Selection
+        function selectDatabase(dbName) {
+            currentDb = dbName;
+            
+            // Update button states
+            document.querySelectorAll('.db-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.db-button').classList.add('active');
+            
+            // Update content title
+            const titles = {
+                'mongo': 'MongoDB Collections',
+                'postgres': 'PostgreSQL Tables',
+                'redis': 'Redis Information'
+            };
+            document.getElementById('contentTitle').textContent = titles[dbName];
+            
+            displayDatabase(dbName);
+        }
+
+        // Display Database Content
+        function displayDatabase(dbName) {
+            const data = dbData[dbName];
+            
+            if (!data) {
+                showEmptyState('資料庫資訊不可用');
+                updateStats(0, 0);
+                return;
+            }
+            
+            if (data.error) {
+                showEmptyState(data.error);
+                updateStats(0, 0);
+                return;
+            }
+            
+            if (dbName === 'redis') {
+                displayRedisInfo(data);
+            } else {
+                displayTables(dbName, data);
+            }
+            
+            if (currentView === 'charts') {
+                updateCharts();
+            }
+        }
+
+        // Display Tables
+        function displayTables(dbName, data) {
+            const tablesGrid = document.getElementById('tablesGrid');
+            const tables = Object.keys(data);
+            
+            if (tables.length === 0) {
+                showEmptyState('沒有找到任何表格');
+                updateStats(0, 0);
+                return;
+            }
+            
+            let totalFields = 0;
+            const tablesHtml = tables.map(tableName => {
+                const tableData = data[tableName];
+                const fields = dbName === 'mongo' ? 
+                    (tableData.fields || []) : 
+                    (tableData.columns || []);
+                
+                totalFields += fields.length;
+                
+                const fieldsHtml = fields.map(field => {
+                    const fieldName = dbName === 'mongo' ? field : field.column_name;
+                    const fieldType = dbName === 'postgres' ? field.data_type : '';
+                    
+                    return `
+                        <li class="field-item">
+                            <span class="field-name">
+                                📝 ${fieldName}
+                            </span>
+                            ${fieldType ? `<span class="field-type">${fieldType}</span>` : ''}
+                        </li>
+                    `;
+                }).join('');
+                
+                return `
+                    <div class="table-card" data-table="${tableName}">
+                        <div class="table-card-header">
+                            <span class="table-name">
+                                ${dbName === 'mongo' ? '📁' : '📊'} ${tableName}
+                            </span>
+                            <span class="field-count">${fields.length} fields</span>
+                        </div>
+                        <div class="table-card-body">
+                            ${fieldsHtml ? `<ul class="field-list">${fieldsHtml}</ul>` : '<div class="empty-state">No fields</div>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            tablesGrid.innerHTML = tablesHtml;
+            updateStats(tables.length, totalFields);
+            showTablesView();
+        }
+
+        // Display Redis Info
+        function displayRedisInfo(data) {
+            const tablesGrid = document.getElementById('tablesGrid');
+            
+            const infoHtml = `
+                <div class="table-card" style="grid-column: 1 / -1;">
+                    <div class="table-card-header">
+                        <span class="table-name">⚡ Redis Server Information</span>
+                    </div>
+                    <div class="table-card-body">
+                        <ul class="field-list">
+                            ${Object.entries(data).map(([key, value]) => `
+                                <li class="field-item">
+                                    <span class="field-name">${key.replace(/_/g, ' ').toUpperCase()}</span>
+                                    <span class="field-type">${value}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            tablesGrid.innerHTML = infoHtml;
+            updateStats(1, Object.keys(data).length);
+            showTablesView();
+        }
+
+        // Update Statistics
+        function updateStats(tableCount, fieldCount) {
+            const statsContainer = document.getElementById('statsContainer');
+            statsContainer.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${tableCount}</div>
+                    <div class="stat-label">Tables</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${fieldCount}</div>
+                    <div class="stat-label">Total Fields</div>
+                </div>
+            `;
+        }
+
+        // View Switching
+        function switchView(view) {
+            currentView = view;
+            
+            // Update button states
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (view === 'tables') {
+                showTablesView();
+            } else {
+                showChartsView();
+                updateCharts();
+            }
+        }
+
+        // Show/Hide Views
+        function showTablesView() {
+            document.getElementById('tablesContainer').classList.add('active');
+            document.getElementById('chartsContainer').classList.remove('active');
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('loadingContainer').style.display = 'none';
+        }
+
+        function showChartsView() {
+            document.getElementById('tablesContainer').classList.remove('active');
+            document.getElementById('chartsContainer').classList.add('active');
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('loadingContainer').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingContainer').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('tablesContainer').classList.remove('active');
+            document.getElementById('chartsContainer').classList.remove('active');
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function showEmptyState(message) {
+            const tablesGrid = document.getElementById('tablesGrid');
+            tablesGrid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">📭</div>
+                    <div>${message}</div>
+                </div>
+            `;
+            showTablesView();
+        }
+
+        // Search Functionality
+        function handleSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.table-card');
+            
+            cards.forEach(card => {
+                const content = card.textContent.toLowerCase();
+                card.style.display = content.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+
+        // Charts Update
+        function updateCharts() {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            
+            // Table Count Chart
+            const mongoCount = dbData.mongo && !dbData.mongo.error ? Object.keys(dbData.mongo).length : 0;
+            const postgresCount = dbData.postgres && !dbData.postgres.error ? Object.keys(dbData.postgres).length : 0;
+            
+            charts.tableCount = new Chart(document.getElementById('tableCountChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['MongoDB', 'PostgreSQL'],
+                    datasets: [{
+                        label: 'Tables',
+                        data: [mongoCount, postgresCount],
+                        backgroundColor: [
+                            'rgba(19, 170, 82, 0.8)',
+                            'rgba(51, 103, 145, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(19, 170, 82, 1)',
+                            'rgba(51, 103, 145, 1)'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+            
+            // Field Distribution Chart
+            const mongoFields = mongoCount > 0 ? 
+                Object.values(dbData.mongo).reduce((sum, col) => sum + (col.fields?.length || 0), 0) : 0;
+            const postgresFields = postgresCount > 0 ?
+                Object.values(dbData.postgres).reduce((sum, table) => sum + (table.columns?.length || 0), 0) : 0;
+            
+            charts.fieldDistribution = new Chart(document.getElementById('fieldDistributionChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['MongoDB Fields', 'PostgreSQL Fields'],
+                    datasets: [{
+                        data: [mongoFields, postgresFields],
+                        backgroundColor: [
+                            'rgba(19, 170, 82, 0.8)',
+                            'rgba(51, 103, 145, 0.8)'
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Top Tables by Field Count
+            const allTables = [];
+            
+            if (dbData.mongo && !dbData.mongo.error) {
+                Object.entries(dbData.mongo).forEach(([name, data]) => {
+                    allTables.push({
+                        name: name,
+                        fields: data.fields?.length || 0,
+                        type: 'MongoDB'
+                    });
+                });
+            }
+            
+            if (dbData.postgres && !dbData.postgres.error) {
+                Object.entries(dbData.postgres).forEach(([name, data]) => {
+                    allTables.push({
+                        name: name,
+                        fields: data.columns?.length || 0,
+                        type: 'PostgreSQL'
+                    });
+                });
+            }
+            
+            const topTables = allTables
+                .sort((a, b) => b.fields - a.fields)
+                .slice(0, 10);
+            
+            charts.topTables = new Chart(document.getElementById('topTablesChart'), {
+                type: 'horizontalBar',
+                data: {
+                    labels: topTables.map(t => t.name),
+                    datasets: [{
+                        label: 'Field Count',
+                        data: topTables.map(t => t.fields),
+                        backgroundColor: topTables.map(t => 
+                            t.type === 'MongoDB' ? 
+                            'rgba(19, 170, 82, 0.8)' : 
+                            'rgba(51, 103, 145, 0.8)'
+                        ),
+                        borderWidth: 0,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+            
+            // Data Types Chart (PostgreSQL only)
+            const dataTypes = {};
+            if (dbData.postgres && !dbData.postgres.error) {
+                Object.values(dbData.postgres).forEach(table => {
+                    (table.columns || []).forEach(col => {
+                        const type = col.data_type;
+                        dataTypes[type] = (dataTypes[type] || 0) + 1;
+                    });
+                });
+            }
+            
+            const sortedTypes = Object.entries(dataTypes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+            
+            charts.dataTypes = new Chart(document.getElementById('dataTypesChart'), {
+                type: 'pie',
+                data: {
+                    labels: sortedTypes.map(t => t[0]),
+                    datasets: [{
+                        data: sortedTypes.map(t => t[1]),
+                        backgroundColor: [
+                            '#6366f1',
+                            '#8b5cf6',
+                            '#ec4899',
+                            '#f43f5e',
+                            '#f97316',
+                            '#eab308',
+                            '#22c55e',
+                            '#06b6d4'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>

@@ -168,7 +168,7 @@ router.get('/', async (req: Request, res: Response) => {
         SELECT 
           t.tablename AS table_name,
           pg_size_pretty(pg_total_relation_size('"' || t.tablename || '"')) AS size,
-          (SELECT reltuples::bigint AS row_count FROM pg_class WHERE relname = t.tablename) AS row_count
+          (SELECT reltuples::int AS row_count FROM pg_class WHERE relname = t.tablename) AS row_count
         FROM pg_tables t
         WHERE t.schemaname = 'public'
       `;
