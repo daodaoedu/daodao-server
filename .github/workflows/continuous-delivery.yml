@@ -87,19 +87,29 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          # 建立兩個標籤：環境標籤和特定 commit 標籤
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
           build-args: |
             NODE_ENV=${{ env.NODE_ENV }}
+            # 啟用內聯快取 - 將快取資訊嵌入到映像中，提升後續快取命中率
             BUILDKIT_INLINE_CACHE=1
+          # 多層快取來源策略 - 提高快取命中率，減少重建時間
           cache-from: |
+            # 1. 從當前環境的最新映像讀取快取 (最有可能命中相同的依賴層)
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
+            # 2. 從專用的快取映像讀取 (保存完整的構建快取)
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }}
+            # 3. 從 GitHub Actions 快取讀取 (本地快取，速度最快)
             type=gha
+          # 快取輸出策略 - 將構建快取保存到多個位置
           cache-to: |
+            # 1. 保存到專用快取映像 (跨 runner 共享，持久化)
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
+            # 2. 保存到 GitHub Actions 快取 (同一 runner 快速存取)
             type=gha,mode=max
+            # 3. 內聯快取由 BUILDKIT_INLINE_CACHE=1 自動處理，避免重複設置
           platforms: linux/amd64
 
   # 部署階段
