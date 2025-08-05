@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.config';
 // Prisma 不需要手動引入模型，在服務層中直接使用
@@ -144,6 +145,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use(errorLogger);
   console.log('🚨 錯誤日誌中間件已初始化');
   
+  // 靜態文件服務（在錯誤處理之前）
+  app.use(express.static(path.join(__dirname, '../public')));
+  console.log('📁 靜態文件服務已初始化');
+
   // 添加全域錯誤處理中間件（必須在最後）
   const { globalErrorHandler, notFoundHandler } = require('./middleware/error.middleware');
   app.use(notFoundHandler);

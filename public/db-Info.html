@@ -619,7 +619,7 @@
         // Fetch Database Information
         async function fetchDatabaseInfo() {
             try {
-                const response = await fetch('/db-info');
+                const response = await fetch('/api/v1/db-info');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
