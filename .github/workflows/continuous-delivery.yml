@@ -246,7 +246,7 @@ jobs:
             fi
             
             # ===== 拉取新映像 =====
-            # 使用 docker-compose pull 而非 docker pull
+            # 使用 docker compose pull 而非 docker pull
             # 優點：
             # - 自動顯示下載進度
             # - 支援多個服務同時拉取
@@ -256,7 +256,7 @@ jobs:
             echo "Pulling ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}-${COMMIT_SHA}..."
             
             # 直接執行 pull，讓它有足夠時間完成下載
-            if docker-compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE pull ${APP_SERVICE}; then
+            if docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE pull ${APP_SERVICE}; then
               echo "✅ Successfully pulled image"
             else
               echo "❌ Failed to pull image"
@@ -266,7 +266,7 @@ jobs:
 
             # 啟動新容器
             echo "Starting new container..."
-            docker-compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE up -d --no-deps --scale ${APP_SERVICE}=2 ${APP_SERVICE}
+            docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE up -d --no-deps --scale ${APP_SERVICE}=2 ${APP_SERVICE}
 
             # ===== 健康檢查流程 =====
             # 檢查內容：
@@ -364,14 +364,14 @@ jobs:
 
             echo '=== Checking Nginx Logs ==='
             cd ${{ env.APP_DIR }}
-            timeout 10 docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 nginx || echo 'Nginx logs check completed'
+            timeout 10 docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 nginx || echo 'Nginx logs check completed'
 
             echo '=== Checking Application Logs ==='
-            timeout 10 docker-compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 ${{ env.APP_SERVICE }} || echo 'Application logs check completed'
+            timeout 10 docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 ${{ env.APP_SERVICE }} || echo 'Application logs check completed'
             
             echo '=== Final Health Check ==='
             for i in {1..10}; do
-              if docker-compose exec -T ${{ env.APP_SERVICE }} wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health; then
+              if docker compose exec -T ${{ env.APP_SERVICE }} wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health; then
                 echo 'Final health check passed'
                 break
               fi
