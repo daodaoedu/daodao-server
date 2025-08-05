@@ -1,9 +1,22 @@
 name: Continuous Delivery
 
+# ===== 並發控制設定 =====
+# 目的：防止同一分支的多個部署同時執行
+# group: 使用 workflow 名稱和 ref 建立唯一群組識別
+# cancel-in-progress: 當有新的部署時，自動取消進行中的舊部署
+# 這樣可以確保只有最新的代碼被部署到伺服器
+# =======================
 concurrency:
   group: cd-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ===== 觸發條件設定 =====
+# 1. push 事件：當代碼推送到 main 或 dev 分支時自動觸發
+#    - main 分支：部署到生產環境
+#    - dev 分支：部署到開發環境
+# 2. workflow_dispatch：提供手動觸發選項
+#    - force_deploy：允許跳過 CI 檢查直接部署（緊急修復時使用）
+# =======================
 on:
   push:
     branches:
@@ -18,18 +31,38 @@ on:
         default: false
         type: boolean
 
+# ===== 全域環境變數 =====
+# NODE_VERSION: 指定 Node.js 版本，確保構建一致性
+# DOCKER_BUILDKIT: 啟用 Docker BuildKit 以支援進階快取功能
+# ========================
 env:
   NODE_VERSION: 20
   DOCKER_BUILDKIT: 1
 
 jobs:
-  # 只在 push 事件時執行 CI 檢查 (手動部署可跳過)
+  # ===== 持續整合 (CI) 階段 =====
+  # 目的：在部署前執行程式碼品質檢查
+  # 執行條件：
+  #   - 只在 push 事件時執行（確保程式碼品質）
+  #   - 手動部署且啟用 force_deploy 時跳過（緊急部署）
+  # 內容：呼叫 continuous-integration.yml 執行測試、linting 等
+  # secrets: inherit 確保子工作流程可以存取相同的 secrets
+  # ==============================
   continuous_integration:
     if: ${{ github.event_name == 'push' && !inputs.force_deploy }}
     uses: ./.github/workflows/continuous-integration.yml
     secrets: inherit
 
-  # 構建並推送 Docker image
+  # ===== Docker 映像構建階段 =====
+  # 目的：構建應用程式的 Docker 映像並推送到 Docker Hub
+  # 執行條件：
+  #   - CI 成功完成
+  #   - 或手動觸發且啟用 force_deploy
+  #   - 或 CI 被跳過（例如直接手動部署）
+  # 輸出：
+  #   - image-tag：環境標籤（prod/dev）供後續步驟使用
+  #   - image-digest：映像摘要用於驗證
+  # ===============================
   build:
     runs-on: ubuntu-latest
     needs: [continuous_integration]
@@ -56,6 +89,16 @@ jobs:
           npm ci
           npm run types:generate
 
+      # ===== 環境變數設定 =====
+      # 根據分支決定部署環境：
+      # - main 分支 → prod 環境
+      # - 其他分支 → dev 環境
+      # 設定的變數：
+      # - IMAGE_TAG：Docker 映像標籤
+      # - NODE_ENV：Node.js 環境
+      # - CACHE_TAG：快取標籤
+      # - image-tag：輸出給其他 job 使用
+      # ========================
       - name: Set Environment Variables
         id: meta
         run: |
@@ -80,6 +123,17 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+      # ===== Docker 映像構建與推送 =====
+      # 多層快取策略說明：
+      # 1. Registry 快取：從當前環境的最新映像讀取（最可能命中相同依賴層）
+      # 2. BuildCache：從專用快取映像讀取（保存完整構建快取）
+      # 3. GitHub Actions：從本地快取讀取（速度最快）
+      # 
+      # 快取輸出策略：
+      # 1. 專用快取映像：跨 runner 共享，持久化
+      # 2. GitHub Actions 快取：同一 runner 快速存取
+      # 3. 內聯快取：由 BUILDKIT_INLINE_CACHE=1 自動處理
+      # ================================
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v5
@@ -93,26 +147,25 @@ jobs:
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
           build-args: |
             NODE_ENV=${{ env.NODE_ENV }}
-            # 啟用內聯快取 - 將快取資訊嵌入到映像中，提升後續快取命中率
             BUILDKIT_INLINE_CACHE=1
-          # 多層快取來源策略 - 提高快取命中率，減少重建時間
           cache-from: |
-            # 1. 從當前環境的最新映像讀取快取 (最有可能命中相同的依賴層)
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
-            # 2. 從專用的快取映像讀取 (保存完整的構建快取)
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }}
-            # 3. 從 GitHub Actions 快取讀取 (本地快取，速度最快)
             type=gha
-          # 快取輸出策略 - 將構建快取保存到多個位置
           cache-to: |
-            # 1. 保存到專用快取映像 (跨 runner 共享，持久化)
             type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
-            # 2. 保存到 GitHub Actions 快取 (同一 runner 快速存取)
             type=gha,mode=max
-            # 3. 內聯快取由 BUILDKIT_INLINE_CACHE=1 自動處理，避免重複設置
           platforms: linux/amd64
 
-  # 部署階段
+  # ===== 部署階段 =====
+  # 目的：將構建好的 Docker 映像部署到 Linode 伺服器
+  # 執行條件：只在 build job 成功後執行
+  # environment：根據映像標籤選擇對應的 GitHub 環境
+  #   - production：需要審核和特定權限
+  #   - development：較寬鬆的部署權限
+  # timeout：15 分鐘超時限制，防止部署卡住
+  # 部署策略：藍綠部署（Blue-Green Deployment）
+  # ====================
   deploy:
     runs-on: ubuntu-latest
     needs: [build]
@@ -175,7 +228,14 @@ jobs:
             set -o allexport && source .env.${APP_ENV} && set +o allexport
             echo "Environment variables loaded for $APP_ENV"
 
-            # 使用 blue-green 部署策略
+            # ===== 藍綠部署策略實施 =====
+            # 策略說明：
+            # 1. 保留舊容器運行，確保服務不中斷
+            # 2. 啟動新容器並進行健康檢查
+            # 3. 確認新容器正常後，才停止舊容器
+            # 4. 如果新容器啟動失敗，自動回滾
+            # 優點：零停機時間、快速回滾、安全可靠
+            # ============================
             echo "=== Blue-Green Deployment Strategy ==="
             OLD_CONTAINER=$(docker ps -q -f name=${APP_SERVICE} | head -1)
             
@@ -185,7 +245,13 @@ jobs:
               echo "No existing container found, performing initial deployment"
             fi
             
-            # 拉取新映像 (使用 docker-compose 顯示進度)
+            # ===== 拉取新映像 =====
+            # 使用 docker-compose pull 而非 docker pull
+            # 優點：
+            # - 自動顯示下載進度
+            # - 支援多個服務同時拉取
+            # - 遵循 compose 文件中的映像設定
+            # =======================
             echo "=== Pulling new image with progress display ==="
             echo "Pulling ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}-${COMMIT_SHA}..."
             
@@ -202,7 +268,15 @@ jobs:
             echo "Starting new container..."
             docker-compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE up -d --no-deps --scale ${APP_SERVICE}=2 ${APP_SERVICE}
 
-            # 健康檢查
+            # ===== 健康檢查流程 =====
+            # 檢查內容：
+            # - 新容器是否成功啟動
+            # - 應用程式是否響應健康檢查端點
+            # 重試邏輯：
+            # - 最多嘗試 30 次，每次間隔 2 秒
+            # - 總計等待時間：60 秒
+            # 失敗處理：自動停止新容器並回滾
+            # ========================
             echo "=== Health Check ==="
             NEW_CONTAINER=""
             for i in {1..30}; do
@@ -240,7 +314,16 @@ jobs:
             echo "=== Deployment completed successfully ==="
           ENDSSH
 
-  # 驗證部署
+  # ===== 部署後驗證階段 =====
+  # 目的：確保部署成功且服務正常運行
+  # 執行時機：部署完成後立即執行
+  # 驗證項目：
+  #   - Docker 容器狀態
+  #   - 系統資源使用情況
+  #   - 應用程式日誌
+  #   - 最終健康檢查
+  # timeout：10 分鐘，比部署階段短
+  # ==========================
   verify:
     runs-on: ubuntu-latest
     needs: deploy
@@ -299,7 +382,15 @@ jobs:
             echo '=== Deployment Verification Complete ==='
           "
 
-  # 通知系統
+  # ===== Discord 通知系統 =====
+  # 目的：向團隊報告部署結果
+  # 執行條件：always() - 無論成功或失敗都執行
+  # 通知類型：
+  #   1. 部署失敗：紅色警告，包含錯誤資訊
+  #   2. 部署取消：灰色通知
+  #   3. 驗證失敗：黃色警告，部署成功但驗證失敗
+  #   4. 完全成功：綠色通知，包含完整狀態
+  # ============================
   notify:
     runs-on: ubuntu-latest
     needs: [build, deploy, verify]
