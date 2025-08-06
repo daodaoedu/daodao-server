@@ -130,13 +130,13 @@ export function setupTypescriptRoutes(app: express.Application) {
   
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/monitor.html'));
+    res.sendFile(path.join(__dirname, '../../public/monitor.html'));
   });
   console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
   
   // 資料庫資訊 HTML 頁面的直接路由
   app.get('/api/v1/db-info.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/db-info.html'));
+    res.sendFile(path.join(__dirname, '../../public/db-info.html'));
   });
   console.log('🗃️ 資料庫資訊頁面路由已註冊 - 可在 /api/v1/db-info.html 訪問');
   
