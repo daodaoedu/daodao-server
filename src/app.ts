@@ -128,6 +128,18 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/monitor', monitorRoutes);
   console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
   
+  // 監控 HTML 頁面的直接路由
+  app.get('/api/v1/monitor.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/monitor.html'));
+  });
+  console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
+  
+  // 資料庫資訊 HTML 頁面的直接路由
+  app.get('/api/v1/db-info.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/db-info.html'));
+  });
+  console.log('🗃️ 資料庫資訊頁面路由已註冊 - 可在 /api/v1/db-info.html 訪問');
+  
   // v1 健康檢查端點
   app.get('/api/v1/health', (req, res) => {
     res.json({
