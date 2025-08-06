@@ -153,13 +153,13 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 使用 Prisma 架構，不需要手動加載模型
   console.log('✅ 已啟用 Prisma 資料庫架構');
   
+  // 靜態文件服務（必須在錯誤處理之前）
+  app.use(express.static(path.join(__dirname, '../public')));
+  console.log('📁 靜態文件服務已初始化');
+  
   // 註冊錯誤日誌中間件（必須在所有路由之後）
   app.use(errorLogger);
   console.log('🚨 錯誤日誌中間件已初始化');
-  
-  // 靜態文件服務（在錯誤處理之前）
-  app.use(express.static(path.join(__dirname, '../public')));
-  console.log('📁 靜態文件服務已初始化');
 
   // 添加全域錯誤處理中間件（必須在最後）
   const { globalErrorHandler, notFoundHandler } = require('./middleware/error.middleware');
