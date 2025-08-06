@@ -1,5 +1,6 @@
 
 import { Router, Request, Response } from 'express';
+import path from 'path';
 import os from 'os';
 import { prismaService } from '../services/database/prisma.service';
 import { mongoClient } from '../services/database/mongo.service';
