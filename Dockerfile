@@ -29,6 +29,7 @@ COPY services ./services
 COPY middlewares ./middlewares
 COPY utils ./utils
 COPY config ./config
+COPY public ./public
 COPY index.js ./
 COPY ecosystem.config.js ./
 
