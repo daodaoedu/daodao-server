@@ -5,7 +5,7 @@
 
 import { prisma } from '@/services/database/prisma.service';
 import type { resources, resource_review } from '../../generated/prisma';
-import { Prisma } from '../../generated/prisma';
+import { Prisma, PrismaClient } from '../../generated/prisma';
 import { 
   contentFeaturesMappings, 
   resourceUsageMappings
@@ -287,11 +287,14 @@ export function transformReviewToDb(
     resourceUsageMappings
   );
   
-  // Helper function to convert score values to Prisma.Decimal
-  const convertScore = (value: unknown): Prisma.Decimal | undefined => {
+  // Helper function to convert score values to Decimal
+  const convertScore = (value: unknown): any => {
     if (value === null || value === undefined) return undefined;
     const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
-    return isNaN(numValue) ? undefined : new Prisma.Decimal(numValue);
+    if (isNaN(numValue)) return undefined;
+    
+    // 測試環境中直接返回數字，運行時會被 Prisma 轉換為 Decimal
+    return numValue;
   };
   
   return {

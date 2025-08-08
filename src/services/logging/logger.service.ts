@@ -7,7 +7,6 @@ import winston, { Logger, LoggerOptions } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 import fs from 'fs';
-import DailyRotateFile from 'winston-daily-rotate-file';
 
 // 日誌級別配置
 export const LOG_LEVELS = {
