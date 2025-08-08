@@ -620,7 +620,7 @@ describe('ResourceController', () => {
 
     it('應該在生產環境下拒絕未登入用戶的請求', async () => {
       // 設置為生產環境
-      process.env.NODE_ENV = 'production';
+      process.env.NODE_ENV = 'prod';
       
       const createData = {
         name: '測試資源',

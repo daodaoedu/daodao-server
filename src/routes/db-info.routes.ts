@@ -181,8 +181,8 @@ router.get('/', async (req: Request, res: Response) => {
         `;
         
         // 取得表格行數
-        const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-          `SELECT COUNT(*) as count FROM "${table.tablename}"`
+        const countResult = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+          `SELECT COUNT(*)::int as count FROM "${table.tablename}"`
         );
         
         postgresData[table.tablename] = {

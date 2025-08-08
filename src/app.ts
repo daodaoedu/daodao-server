@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.config';
 // Prisma 不需要手動引入模型，在服務層中直接使用
@@ -46,7 +47,7 @@ export function setupTypescriptRoutes(app: express.Application) {
   logApplicationEvent('startup', {
     nodeVersion: process.version,
     platform: process.platform,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'dev'
   });
   
   // 註冊日誌中間件（必須在路由之前）
@@ -127,6 +128,18 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/monitor', monitorRoutes);
   console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
   
+  // 監控 HTML 頁面的直接路由
+  app.get('/api/v1/monitor.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../public/monitor.html'));
+  });
+  console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
+  
+  // 資料庫資訊 HTML 頁面的直接路由
+  app.get('/api/v1/db-info.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../public/db-info.html'));
+  });
+  console.log('🗃️ 資料庫資訊頁面路由已註冊 - 可在 /api/v1/db-info.html 訪問');
+  
   // v1 健康檢查端點
   app.get('/api/v1/health', (req, res) => {
     res.json({
@@ -140,10 +153,14 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 使用 Prisma 架構，不需要手動加載模型
   console.log('✅ 已啟用 Prisma 資料庫架構');
   
+  // 靜態文件服務（必須在錯誤處理之前）
+  app.use(express.static(path.join(__dirname, '../public')));
+  console.log('📁 靜態文件服務已初始化');
+  
   // 註冊錯誤日誌中間件（必須在所有路由之後）
   app.use(errorLogger);
   console.log('🚨 錯誤日誌中間件已初始化');
-  
+
   // 添加全域錯誤處理中間件（必須在最後）
   const { globalErrorHandler, notFoundHandler } = require('./middleware/error.middleware');
   app.use(notFoundHandler);

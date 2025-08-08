@@ -296,7 +296,7 @@ export class SecurityLogger {
             winston.format.colorize(),
             winston.format.simple()
           ),
-          level: process.env.NODE_ENV === 'production' ? 'warn' : 'info'
+          level: process.env.NODE_ENV === 'prod' ? 'warn' : 'info'
         })
       ]
     });
@@ -518,7 +518,7 @@ export const sessionConfig = session({
   saveUninitialized: false,
   rolling: true, // 每次請求都重置過期時間
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // 生產環境強制 HTTPS
+    secure: process.env.NODE_ENV === 'prod', // 生產環境強制 HTTPS
     httpOnly: true, // 防止 XSS 攻擊
     maxAge: 24 * 60 * 60 * 1000, // 24 小時
     sameSite: 'strict' // CSRF 保護

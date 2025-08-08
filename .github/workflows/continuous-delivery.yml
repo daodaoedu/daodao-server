@@ -1,0 +1,505 @@
+name: Continuous Delivery
+
+# ===== 並發控制設定 =====
+# 目的：防止同一分支的多個部署同時執行
+# group: 使用 workflow 名稱和 ref 建立唯一群組識別
+# cancel-in-progress: 當有新的部署時，自動取消進行中的舊部署
+# 這樣可以確保只有最新的代碼被部署到伺服器
+# =======================
+concurrency:
+  group: cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ===== 觸發條件設定 =====
+# 1. push 事件：當代碼推送到 main 或 dev 分支時自動觸發
+#    - main 分支：部署到生產環境
+#    - dev 分支：部署到開發環境
+# 2. workflow_dispatch：提供手動觸發選項
+#    - force_deploy：允許跳過 CI 檢查直接部署（緊急修復時使用）
+# =======================
+on:
+  push:
+    branches:
+      - main
+      - dev
+  # 手動觸發部署
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: '強制部署 (跳過 CI 檢查)'
+        required: false
+        default: false
+        type: boolean
+
+# ===== 全域環境變數 =====
+# NODE_VERSION: 指定 Node.js 版本，確保構建一致性
+# DOCKER_BUILDKIT: 啟用 Docker BuildKit 以支援進階快取功能
+# ========================
+env:
+  NODE_VERSION: 20
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  # ===== 持續整合 (CI) 階段 =====
+  # 目的：在部署前執行程式碼品質檢查
+  # 執行條件：
+  #   - 只在 push 事件時執行（確保程式碼品質）
+  #   - 手動部署且啟用 force_deploy 時跳過（緊急部署）
+  # 內容：呼叫 continuous-integration.yml 執行測試、linting 等
+  # secrets: inherit 確保子工作流程可以存取相同的 secrets
+  # ==============================
+  continuous_integration:
+    if: ${{ github.event_name == 'push' && !inputs.force_deploy }}
+    uses: ./.github/workflows/continuous-integration.yml
+    secrets: inherit
+
+  # ===== Docker 映像構建階段 =====
+  # 目的：構建應用程式的 Docker 映像並推送到 Docker Hub
+  # 執行條件：
+  #   - CI 成功完成
+  #   - 或手動觸發且啟用 force_deploy
+  #   - 或 CI 被跳過（例如直接手動部署）
+  # 輸出：
+  #   - image-tag：環境標籤（prod/dev）供後續步驟使用
+  #   - image-digest：映像摘要用於驗證
+  # ===============================
+  build:
+    runs-on: ubuntu-latest
+    needs: [continuous_integration]
+    # 當 CI 成功、手動強制部署、或沒有執行 CI 時執行
+    if: ${{ always() && (needs.continuous_integration.result == 'success' || inputs.force_deploy || needs.continuous_integration.result == 'skipped') }}
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code (shallow)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download generated files
+        if: ${{ needs.continuous_integration.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.continuous_integration.outputs.generated-files-artifact }}
+
+      - name: Generate files when CI was skipped or forced
+        if: ${{ needs.continuous_integration.result != 'success' }}
+        run: |
+          npm ci
+          npm run types:generate
+
+      # ===== 環境變數設定 =====
+      # 根據分支決定部署環境：
+      # - main 分支 → prod 環境
+      # - 其他分支 → dev 環境
+      # 設定的變數：
+      # - IMAGE_TAG：Docker 映像標籤
+      # - NODE_ENV：Node.js 環境
+      # - CACHE_TAG：快取標籤
+      # - image-tag：輸出給其他 job 使用
+      # ========================
+      - name: Set Environment Variables
+        id: meta
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+            echo "NODE_ENV=prod" >> $GITHUB_ENV
+            echo "CACHE_TAG=prod" >> $GITHUB_ENV
+            echo "image-tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+            echo "NODE_ENV=dev" >> $GITHUB_ENV
+            echo "CACHE_TAG=dev" >> $GITHUB_ENV
+            echo "image-tag=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      # ===== Docker 映像構建與推送 =====
+      # 多層快取策略說明：
+      # 1. Registry 快取：從當前環境的最新映像讀取（最可能命中相同依賴層）
+      # 2. BuildCache：從專用快取映像讀取（保存完整構建快取）
+      # 3. GitHub Actions：從本地快取讀取（速度最快）
+      # 
+      # 快取輸出策略：
+      # 1. 專用快取映像：跨 runner 共享，持久化
+      # 2. GitHub Actions 快取：同一 runner 快速存取
+      # 3. 內聯快取：由 BUILDKIT_INLINE_CACHE=1 自動處理
+      # ================================
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          # 建立兩個標籤：環境標籤和特定 commit 標籤
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
+          build-args: |
+            NODE_ENV=${{ env.NODE_ENV }}
+            BUILDKIT_INLINE_CACHE=1
+          cache-from: |
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }}
+            type=gha
+          cache-to: |
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
+            type=gha,mode=max
+          platforms: linux/amd64
+
+  # ===== 部署階段 =====
+  # 目的：將構建好的 Docker 映像部署到 Linode 伺服器
+  # 執行條件：只在 build job 成功後執行
+  # environment：根據映像標籤選擇對應的 GitHub 環境
+  #   - production：需要審核和特定權限
+  #   - development：較寬鬆的部署權限
+  # timeout：15 分鐘超時限制，防止部署卡住
+  # 部署策略：藍綠部署（Blue-Green Deployment）
+  # ====================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: needs.build.result == 'success'
+    environment: ${{ needs.build.outputs.image-tag == 'prod' && 'production' || 'development' }}
+    timeout-minutes: 15
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Linode
+        env:
+          LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          APP_ENV: ${{ needs.build.outputs.image-tag }}
+          APP_SERVICE: ${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=10 root@$LINODE_INSTANCE_IP << 'ENDSSH'
+            set -e
+            export APP_DIR=/root/daodao-server
+            export COMPOSE_FILE=docker-compose.yaml
+            export APP_ENV=${{ env.APP_ENV }}
+            export APP_SERVICE=${{ env.APP_SERVICE }}
+            export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+            export IMAGE_TAG=${{ env.IMAGE_TAG }}
+            export COMMIT_SHA=${{ env.COMMIT_SHA }}
+
+            echo "=== Starting deployment for $APP_ENV environment ==="
+            
+            # 快速更新代碼（淺層克隆或增量更新）
+            if [ -d $APP_DIR/.git ]; then
+              cd $APP_DIR
+              echo "Updating existing repository..."
+              # 只獲取最新的變更
+              git fetch --depth 1 origin ${{ env.BRANCH_NAME }}
+              git reset --hard FETCH_HEAD
+              git clean -fd
+            else
+              echo "Cloning repository..."
+              # 淺層克隆
+              git clone --depth 1 --branch ${{ env.BRANCH_NAME }} \
+                https://${{ secrets.GIT_HUB_USERNAME }}:${{ secrets.GIT_HUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git \
+                $APP_DIR
+              cd $APP_DIR
+            fi
+
+            # 檢查環境文件
+            if [ ! -f .env.${APP_ENV} ] && [ -f .env.${APP_ENV}_temp ]; then
+              cp .env.${APP_ENV}_temp .env.${APP_ENV}
+              echo "Created .env.${APP_ENV} from template"
+            fi
+
+            # 載入環境變數
+            set -o allexport && source .env.${APP_ENV} && set +o allexport
+            echo "Environment variables loaded for $APP_ENV"
+
+            # ===== 藍綠部署策略實施 =====
+            # 策略說明：
+            # 1. 保留舊容器運行，確保服務不中斷
+            # 2. 啟動新容器並進行健康檢查
+            # 3. 確認新容器正常後，才停止舊容器
+            # 4. 如果新容器啟動失敗，自動回滾
+            # 優點：零停機時間、快速回滾、安全可靠
+            # ============================
+            echo "=== Blue-Green Deployment Strategy ==="
+            OLD_CONTAINER=$(docker ps -q -f name=${APP_SERVICE} | head -1)
+            
+            if [ -n "$OLD_CONTAINER" ]; then
+              echo "Found existing container: $OLD_CONTAINER"
+            else
+              echo "No existing container found, performing initial deployment"
+            fi
+            
+            # ===== 拉取新映像 =====
+            # 使用 docker compose pull 而非 docker pull
+            # 優點：
+            # - 自動顯示下載進度
+            # - 支援多個服務同時拉取
+            # - 遵循 compose 文件中的映像設定
+            # =======================
+            echo "=== Pulling new image with progress display ==="
+            echo "Pulling ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}-${COMMIT_SHA}..."
+            
+            # 直接執行 pull，讓它有足夠時間完成下載
+            if docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE pull ${APP_SERVICE}; then
+              echo "✅ Successfully pulled image"
+            else
+              echo "❌ Failed to pull image"
+              echo "This might be due to network issues or the image doesn't exist"
+              exit 1
+            fi
+
+            # 啟動新容器
+            echo "Starting new container..."
+            docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE up -d --no-deps --scale ${APP_SERVICE}=2 ${APP_SERVICE}
+
+            # ===== 健康檢查流程 =====
+            # 檢查內容：
+            # - 新容器是否成功啟動
+            # - 應用程式是否響應健康檢查端點
+            # 重試邏輯：
+            # - 最多嘗試 30 次，每次間隔 2 秒
+            # - 總計等待時間：60 秒
+            # 失敗處理：自動停止新容器並回滾
+            # ========================
+            echo "=== Health Check ==="
+            NEW_CONTAINER=""
+            for i in {1..30}; do
+              NEW_CONTAINER=$(docker ps -q -f name=${APP_SERVICE} | grep -v "$OLD_CONTAINER" | head -1)
+              if [ -n "$NEW_CONTAINER" ]; then
+                if docker exec $NEW_CONTAINER wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health 2>/dev/null; then
+                  echo "New container $NEW_CONTAINER is healthy"
+                  break
+                fi
+              fi
+              echo "Health check attempt $i/30..."
+              sleep 2
+            done
+
+            if [ -z "$NEW_CONTAINER" ] || ! docker exec $NEW_CONTAINER wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health 2>/dev/null; then
+              echo "Health check failed, rolling back..."
+              if [ -n "$NEW_CONTAINER" ]; then
+                docker stop $NEW_CONTAINER || true
+                docker rm $NEW_CONTAINER || true
+              fi
+              exit 1
+            fi
+
+            # 停止舊容器
+            if [ -n "$OLD_CONTAINER" ]; then
+              echo "Stopping old container: $OLD_CONTAINER"
+              docker stop $OLD_CONTAINER || true
+              docker rm $OLD_CONTAINER || true
+            fi
+
+            # 清理舊映像
+            echo "Cleaning up old images..."
+            docker image prune -f --filter "until=24h"
+            
+            echo "=== Deployment completed successfully ==="
+          ENDSSH
+
+  # ===== 部署後驗證階段 =====
+  # 目的：確保部署成功且服務正常運行
+  # 執行時機：部署完成後立即執行
+  # 驗證項目：
+  #   - Docker 容器狀態
+  #   - 系統資源使用情況
+  #   - 應用程式日誌
+  #   - 最終健康檢查
+  # timeout：10 分鐘，比部署階段短
+  # ==========================
+  verify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 10
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_INSTANCE_IP }} >> ~/.ssh/known_hosts
+    
+      - name: Set Environment Variables
+        run: |
+          echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
+          echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
+          echo "APP_ENV=${{ needs.build.outputs.image-tag }}" >> $GITHUB_ENV
+          echo "APP_SERVICE=${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || 'dev_app' }}" >> $GITHUB_ENV
+
+      - name: Comprehensive Deployment Verification
+        env:
+          LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
+        run: |
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 root@$LINODE_INSTANCE_IP "
+            set -e
+            echo '=== Deployment Verification Started ==='
+            
+            echo '=== Checking Docker Containers ==='
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+            echo '=== Checking System Resources ==='
+            echo 'CPU Load:' && uptime
+            echo 'Memory Usage:' && free -h
+            echo 'Disk Usage:' && df -h /
+
+            echo '=== Checking Docker Networks ==='
+            docker network ls
+
+            echo '=== Checking Nginx Logs ==='
+            cd ${{ env.APP_DIR }}
+            timeout 10 docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 nginx || echo 'Nginx logs check completed'
+
+            echo '=== Checking Application Logs ==='
+            timeout 10 docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=10 ${{ env.APP_SERVICE }} || echo 'Application logs check completed'
+            
+            echo '=== Final Health Check ==='
+            for i in {1..10}; do
+              if docker compose exec -T ${{ env.APP_SERVICE }} wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health; then
+                echo 'Final health check passed'
+                break
+              fi
+              echo \"Health check attempt \$i/10 failed, retrying...\"
+              sleep 5
+            done
+            
+            echo '=== Deployment Verification Complete ==='
+          "
+
+  # ===== Discord 通知系統 =====
+  # 目的：向團隊報告部署結果
+  # 執行條件：always() - 無論成功或失敗都執行
+  # 通知類型：
+  #   1. 部署失敗：紅色警告，包含錯誤資訊
+  #   2. 部署取消：灰色通知
+  #   3. 驗證失敗：黃色警告，部署成功但驗證失敗
+  #   4. 完全成功：綠色通知，包含完整狀態
+  # ============================
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build, deploy, verify]
+    if: always()
+    steps:
+      - name: Send Discord Notification
+        run: |
+          # 獲取部署資訊
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          IMAGE_TAG="${{ needs.build.outputs.image-tag }}"
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # 判斷部署狀態
+          DEPLOY_STATUS="${{ needs.deploy.result }}"
+          VERIFY_STATUS="${{ needs.verify.result || 'skipped' }}"
+          
+          if [ "$DEPLOY_STATUS" == "failure" ] || [ -z "$DEPLOY_STATUS" ]; then
+            # 部署失敗 (包括所有失敗情況)
+            FAILURE_REASON=""
+            if [ "$DEPLOY_STATUS" == "failure" ]; then
+              FAILURE_REASON="部署過程發生錯誤"
+            else
+              FAILURE_REASON="部署狀態未知或連接中斷"
+            fi
+            
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"🚨 **部署失敗！**\",
+              \"embeds\": [{
+                \"title\": \"💥 Deployment Failed\",
+                \"description\": \"$FAILURE_REASON，請檢查服務器狀態\",
+                \"color\": 16711680,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"❌ Status\", \"value\": \"Deploy: $DEPLOY_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          elif [ "$DEPLOY_STATUS" == "cancelled" ]; then
+            # 取消通知
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"⏹️ **部署已取消**\",
+              \"embeds\": [{
+                \"title\": \"🚀 Deployment Cancelled\",
+                \"description\": \"部署流程被用戶取消\",
+                \"color\": 8421504,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          elif [ "$VERIFY_STATUS" == "failure" ]; then
+            # 驗證失敗
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"⚠️ **部署完成但驗證失敗！**\",
+              \"embeds\": [{
+                \"title\": \"🏥 Verification Failed\",
+                \"description\": \"服務部署完成但後續驗證失敗，請檢查應用程式狀態\",
+                \"color\": 16776960,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          else
+            # 成功部署
+            ENV_INFO=""
+            if [ "$IMAGE_TAG" == "prod" ]; then
+              ENV_INFO="🔴 **PRODUCTION** 環境"
+            else
+              ENV_INFO="🟡 **DEVELOPMENT** 環境"
+            fi
+            
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"✅ **部署成功！** 🎉\",
+              \"embeds\": [{
+                \"title\": \"🚀 Deployment Successful\",
+                \"description\": \"服務已成功更新至 $ENV_INFO\",
+                \"color\": 3066993,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"📊 Status\", \"value\": \"✅ Deploy: $DEPLOY_STATUS\\n✅ Verify: $VERIFY_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+          fi
