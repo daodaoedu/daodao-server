@@ -16,7 +16,9 @@
       "@middleware/*": ["src/middleware/*"],
       "@utils/*": ["src/utils/*"],
       "@models/*": ["src/models/*"],
-      "@controllers/*": ["src/controllers/*"]
+      "@controllers/*": ["src/controllers/*"],
+      "@generated/*": ["generated/*"],
+      "@tests/*": ["tests/*"]
     },
     "allowJs": true,
     "declaration": false,
@@ -31,7 +33,9 @@
     "controllers/**/*",
     "routes/**/*",
     "validators/**/*",
-    "src/types/**/*.d.ts"
+    "src/types/**/*.d.ts",
+    "tests/**/*",
+    "generated/**/*"
   ],
   "exclude": [
     "node_modules",
