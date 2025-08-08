@@ -1,72 +1,80 @@
-# 階段一：建構階段
-FROM node:20-alpine AS builder
+# 優化的 Dockerfile - 更好的層緩存策略
 
-ARG NODE_ENV
-ENV NODE_ENV=$NODE_ENV
-
-# 設置工作目錄
+# 基礎映像層 - 很少變動
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# 複製 package.json 和 package-lock.json
+# 依賴層 - 只在 package.json 變動時重建
+FROM base AS deps
 COPY package*.json ./
-
-# 安裝所有依賴（包含開發依賴）
-RUN npm ci && \
+RUN npm ci --only=prod && \
+    cp -R node_modules prod_node_modules && \
+    npm ci && \
     npm cache clean --force
 
-# 複製原始碼
-COPY . .
+# Prisma 層 - 只在 schema 變動時重建
+FROM deps AS prisma
+COPY prisma ./prisma
+RUN npx prisma generate
 
-# 生成 Prisma 客戶端和編譯 TypeScript
-RUN npx prisma generate && \
-    npx tsc --project tsconfig.build.json && \
+# 構建層 - 編譯 TypeScript
+FROM prisma AS builder
+COPY tsconfig*.json ./
+COPY src ./src
+COPY controllers ./controllers
+COPY models ./models
+COPY routes ./routes
+COPY services ./services
+COPY middlewares ./middlewares
+COPY utils ./utils
+COPY config ./config
+COPY public ./public
+COPY index.js ./
+COPY ecosystem.config.js ./
+
+# 編譯 TypeScript
+RUN npx tsc --project tsconfig.build.json && \
     npx tsc-alias --project tsconfig.build.json
 
-# 階段二：運行階段
-FROM node:20-alpine AS runtime
+# 生產映像 - 最小化尺寸
+FROM base AS runtime
 
-ARG NODE_ENV
+ARG NODE_ENV=prod
 ENV NODE_ENV=$NODE_ENV
 
-# 設置工作目錄
-WORKDIR /app
+# 安裝 PM2
+RUN npm install -g pm2
 
-# 複製 package.json 和 package-lock.json
-COPY package*.json ./
-
-# 只安裝生產依賴
-RUN npm ci --only=production && \
-    npm install -g pm2 && \
-    npm cache clean --force
-
-# 從建構階段複製編譯後的檔案
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/generated ./generated
-COPY --from=builder /app/ecosystem.config.js ./
-
-# 確保 generated 目錄在正確位置以供編譯後的 JS 檔案使用
-RUN ln -sf /app/generated /app/dist/generated
-
-# 複製其他必要檔案
-COPY prisma/ ./prisma/
-
-# 建立非 root 使用者
+# 創建用戶
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# 創建並設置 logs 目錄權限
-RUN mkdir -p /app/logs/dev /app/logs/prod && \
-    chown -R nodejs:nodejs /app
+# 複製生產依賴
+COPY --from=deps /app/prod_node_modules ./node_modules
 
+# 複製編譯後的代碼
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/ecosystem.config.js ./
+
+# 複製 Prisma 文件
+COPY --from=prisma /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=prisma /app/generated ./generated
+COPY prisma ./prisma
+
+# 創建必要的目錄和符號鏈接
+RUN ln -sf /app/generated /app/dist/generated && \
+    mkdir -p /app/logs
+
+# 設置權限
+RUN chown -R nodejs:nodejs /app
 USER nodejs
-
-# 暴露應用程式運行的端口
-EXPOSE 3000
 
 # 健康檢查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-# 使用 PM2 啟動應用程式
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+EXPOSE 3000
 
+# 使用 PM2 啟動
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]

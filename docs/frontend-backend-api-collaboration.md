@@ -276,7 +276,7 @@ SWAGGER_PATH=/api-docs
 REACT_APP_API_URL=http://localhost:3000/api/v1
 REACT_APP_SWAGGER_URL=http://localhost:3000/api-docs
 
-# .env.production
+# .env.prod
 REACT_APP_API_URL=https://dao-server.daoedu.tw/api/v1
 REACT_APP_SWAGGER_URL=https://dao-server.daoedu.tw/api-docs
 ```

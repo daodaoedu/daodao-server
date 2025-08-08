@@ -4,6 +4,7 @@
  */
 
 import winston, { Logger, LoggerOptions } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 import fs from 'fs';
 import DailyRotateFile from 'winston-daily-rotate-file';
@@ -55,7 +56,7 @@ class LoggerService {
   private readonly isDevelopment: boolean;
 
   constructor() {
-    this.isDevelopment = process.env.NODE_ENV !== 'production';
+    this.isDevelopment = process.env.NODE_ENV !== 'prod';
     this.logger = this.createLogger();
   }
 
@@ -72,61 +73,50 @@ class LoggerService {
 
   private createLogger(): Logger {
     const transports: winston.transport[] = [];
-    
-    // 根據環境決定日誌目錄
-    const logDir = this.isDevelopment ? '/app/logs/dev' : '/app/logs/prod';
-    
-    // 確保日誌目錄存在
-    this.ensureLogDirectory(logDir);
+    const env = process.env.NODE_ENV || 'local';
+
+    // 根據環境設定檔案前綴
+    let logPrefix: string;
+    switch (env) {
+      case 'prod':
+        logPrefix = 'prod';
+        break;
+      case 'dev':
+        logPrefix = 'dev';
+        break;
+      case 'local':
+      default:
+        logPrefix = 'local';
+        break;
+    }
+
+    // 每日輪替的檔案輸出（所有環境都記錄）
+    transports.push(
+      new DailyRotateFile({
+        filename: path.join(process.cwd(), 'logs', `${logPrefix}-error-%DATE%.log`),
+        datePattern: 'YYYY-MM-DD',
+        level: 'error',
+        format: logFormat,
+        maxSize: '20m', // 單一檔案最大 20MB
+        maxFiles: '30d', // 保留 30 天
+        zippedArchive: true, // 壓縮舊檔案
+      }),
+      new DailyRotateFile({
+        filename: path.join(process.cwd(), 'logs', `${logPrefix}-combined-%DATE%.log`),
+        datePattern: 'YYYY-MM-DD',
+        format: logFormat,
+        maxSize: '20m', // 單一檔案最大 20MB
+        maxFiles: '30d', // 保留 30 天
+        zippedArchive: true, // 壓縮舊檔案
+      })
+    );
 
     if (this.isDevelopment) {
-      // 開發環境：控制台輸出 + 日期分割文件
+      // 開發環境（dev 和 local）：額外加入控制台輸出
       transports.push(
         new winston.transports.Console({
           level: 'debug',
           format: devFormat,
-        }),
-        // 開發環境錯誤日誌（按日期分割）
-        new DailyRotateFile({
-          filename: path.join(logDir, 'error-%DATE%.log'),
-          datePattern: 'YYYY-MM-DD',
-          level: 'error',
-          format: logFormat,
-          maxSize: '20m',
-          maxFiles: '30d',
-          zippedArchive: true,
-        }),
-        // 開發環境合併日誌（按日期分割）
-        new DailyRotateFile({
-          filename: path.join(logDir, 'combined-%DATE%.log'),
-          datePattern: 'YYYY-MM-DD',
-          format: logFormat,
-          maxSize: '20m',
-          maxFiles: '30d',
-          zippedArchive: true,
-        })
-      );
-    } else {
-      // 生產環境：僅文件輸出，按日期分割
-      transports.push(
-        // 生產環境錯誤日誌（按日期分割）
-        new DailyRotateFile({
-          filename: path.join(logDir, 'error-%DATE%.log'),
-          datePattern: 'YYYY-MM-DD',
-          level: 'error',
-          format: logFormat,
-          maxSize: '20m',
-          maxFiles: '30d',
-          zippedArchive: true,
-        }),
-        // 生產環境合併日誌（按日期分割）
-        new DailyRotateFile({
-          filename: path.join(logDir, 'combined-%DATE%.log'),
-          datePattern: 'YYYY-MM-DD',
-          format: logFormat,
-          maxSize: '20m',
-          maxFiles: '30d',
-          zippedArchive: true,
         })
       );
     }
@@ -201,7 +191,7 @@ class LoggerService {
   ): void {
     const level = success ? 'info' : 'error';
     const message = `Database ${operation} on ${table}`;
-    
+
     this.logger.log(level, message, {
       operation,
       table,

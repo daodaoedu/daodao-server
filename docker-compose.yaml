@@ -1,8 +1,7 @@
-version: '3.8'
+
 services:
   prod_app:
     image: ${DOCKER_HUB_USERNAME}/app:prod
-    container_name: prod_app
     env_file:
       - .env.prod
     # 禁用 Docker 日誌捕獲
@@ -10,7 +9,8 @@ services:
       driver: "none"
     networks:
       - prod-daodao-network
-    # 掛載日誌目錄到宿主機（Winston 會自動創建 prod 子資料夾）
+      - prod_network
+    # 掛載日誌目錄到宿主機
     volumes:
       - ./logs:/app/logs
     depends_on:
@@ -21,7 +21,6 @@ services:
 
   dev_app:
     image: ${DOCKER_HUB_USERNAME}/app:dev
-    container_name: dev_app
     env_file:
       - .env.dev
     volumes:
@@ -35,6 +34,7 @@ services:
         max-file: "1"
     networks:
       - dev-daodao-network
+      - dev_network
     depends_on:
       mongo_dev:
         condition: service_healthy
@@ -121,3 +121,5 @@ networks:
     external: true
   dev-daodao-network:
     external: true
+  dev_network:
+  prod_network:

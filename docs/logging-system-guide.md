@@ -97,7 +97,7 @@ module.exports = {
     merge_logs: false,
     
     env: {
-      NODE_ENV: "production"
+      NODE_ENV: "prod"
     },
     env_development: {
       NODE_ENV: "development"
@@ -134,14 +134,14 @@ services:
 
 #### 生產環境 (`.env.prod`)
 ```bash
-NODE_ENV=production
+NODE_ENV=prod
 LOG_LEVEL=info
 WINSTON_CONSOLE=false
 ```
 
 #### 開發環境 (`.env.dev`)
 ```bash
-NODE_ENV=development
+NODE_ENV=dev
 LOG_LEVEL=debug
 WINSTON_CONSOLE=true
 ```
