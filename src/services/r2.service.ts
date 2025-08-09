@@ -42,7 +42,7 @@ export const uploadToR2 = async (file: Express.Multer.File, filename: string): P
   
   try {
     const params = {
-      Bucket: process.env.R2_BUCKET_NAME || (() => { throw new Error('R2_BUCKET_NAME not configured'); })(),
+      Bucket: process.env.R2_BUCKET_NAME || ((): string => { throw new Error('R2_BUCKET_NAME not configured'); return ''; })(),
       Key: filename,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -78,7 +78,7 @@ export const getFromR2 = async (filename: string): Promise<Readable> => {
   
   try {
     const params = {
-      Bucket: process.env.R2_BUCKET_NAME || (() => { throw new Error('R2_BUCKET_NAME not configured'); })(),
+      Bucket: process.env.R2_BUCKET_NAME || ((): string => { throw new Error('R2_BUCKET_NAME not configured'); return ''; })(),
       Key: filename,
     };
     
@@ -111,7 +111,7 @@ export const deleteFromR2 = async (filename: string): Promise<void> => {
   
   try {
     const params = {
-      Bucket: process.env.R2_BUCKET_NAME || (() => { throw new Error('R2_BUCKET_NAME not configured'); })(),
+      Bucket: process.env.R2_BUCKET_NAME || ((): string => { throw new Error('R2_BUCKET_NAME not configured'); return ''; })(),
       Key: filename,
     };
     

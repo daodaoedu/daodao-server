@@ -237,14 +237,29 @@ const swaggerOptions: swaggerJsdoc.Options = {
         'x-order': 7
       },
       {
+        name: 'Email',
+        description: '郵件服務相關操作',
+        'x-order': 8
+      },
+      {
+        name: 'Projects',
+        description: '專案管理相關操作',
+        'x-order': 9
+      },
+      {
+        name: 'Images',
+        description: '圖片管理相關操作',
+        'x-order': 10
+      },
+      {
         name: 'Database Info',
         description: '資料庫資訊查詢相關操作',
-        'x-order': 8
+        'x-order': 11
       },
       {
         name: 'System Monitor',
         description: '系統監控相關操作',
-        'x-order': 9
+        'x-order': 12
       }
     ]
   },
