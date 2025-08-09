@@ -8,7 +8,7 @@ import type { ParamsDictionary } from 'express-serve-static-core';
 import type { ParsedQs } from 'qs';
 import type { Socket } from 'net';
 import jwt from 'jsonwebtoken';
-import { AuthRequest, UserJwtPayload } from '@/types/auth.types';
+import { AuthRequest, UserJwtPayload } from '../types/auth.types';
 
 // Mock JWT secret for testing
 export const TEST_JWT_SECRET = 'test-jwt-secret';
@@ -36,7 +36,7 @@ export const createMockRequest = (options: {
     originalUrl: '/test',
     ip: '127.0.0.1',
     connection: { remoteAddress: '127.0.0.1' } as unknown as Socket,
-    isAuthenticated: jest.fn().mockReturnValue(true),
+    isAuthenticated: (function(this: Express.Request): this is Express.AuthenticatedRequest { return !!this.user; }),
   };
 };
 
@@ -103,10 +103,11 @@ export const createTestTempUserPayload = (overrides: Record<string, unknown> = {
 
 /**
  * 建立完整的 Prisma 用戶模擬物件
+ * 返回類型兼容 Prisma users.findUnique 的返回值
  */
-export const createMockPrismaUser = (overrides: Partial<Record<string, unknown>> = {}) => {
+export const createMockPrismaUser = (overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> => {
   const now = new Date();
-  return {
+  const mockUser = {
     id: 1,
     external_id: 'test-external-id',
     mongo_id: null,
@@ -148,8 +149,14 @@ export const createMockPrismaUser = (overrides: Partial<Record<string, unknown>>
       name: 'user',
       description: null
     },
-    user_positions: [],
+    user_positions: [] as Array<{
+      user_id: number;
+      position_id: number;
+      position: { name: string; id: number };
+    }>,
     location: null,
     ...overrides
   };
+  // 返回 mock 用戶，使用工具類型確保類型安全
+  return mockUser;
 };

@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /tags/popular:
+ * /api/v1/tags/popular:
  *   get:
  *     summary: 獲取熱門標籤
  *     tags: [Tags]
@@ -30,7 +30,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /tags/search:
+ * /api/v1/tags/search:
  *   get:
  *     summary: 搜索標籤
  *     tags: [Tags]
@@ -63,7 +63,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /tags/stats:
+ * /api/v1/tags/stats:
  *   get:
  *     summary: 獲取標籤統計
  *     tags: [Tags]
@@ -77,7 +77,7 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /tags/entities:
+ * /api/v1/tags/entities:
  *   get:
  *     summary: 獲取特定實體的標籤
  *     tags: [Tags]

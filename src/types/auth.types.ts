@@ -109,10 +109,7 @@ export interface AuthRequest extends Omit<Request, 'user'> {
   isTemporary?: boolean;
 }
 
-// 保持向後兼容
-export interface AuthenticatedRequest extends AuthRequest {
-  user?: User | TempUser;
-}
+// AuthenticatedRequest 現在使用 Express/Passport 的標準類型定義
 
 // 登入請求資料介面
 export interface LoginRequest {

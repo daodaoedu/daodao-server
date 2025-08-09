@@ -354,12 +354,12 @@ describe('Transform Service Tests', () => {
         status: 'published'
       });
 
-      // 驗證評分欄位 - 在測試環境中是數字，運行時會被轉換為 Decimal
-      expect(result.score_impact).toBe(4.5);
-      expect(result.score_mindset).toBe(4.0);
-      expect(result.score_problems).toBe(3.5);
-      expect(result.score_perspectives).toBe(4.0);
-      expect(result.score_goals).toBe(5.0);
+      // 驗證評分欄位 - 現在總是轉換為 Decimal
+      expect(result.score_impact?.toString()).toBe('4.5');
+      expect(result.score_mindset?.toString()).toBe('4');
+      expect(result.score_problems?.toString()).toBe('3.5');
+      expect(result.score_perspectives?.toString()).toBe('4');
+      expect(result.score_goals?.toString()).toBe('5');
 
       // 檢查 Boolean 欄位
       // 內容特色
