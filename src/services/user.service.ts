@@ -18,7 +18,7 @@ import {
   NotFoundError,
   ConflictError 
 } from '../utils/error-handler';
-import { city_t, want_to_do_list_t } from '@generated/prisma';
+import { city_t, want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
 
