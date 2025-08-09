@@ -9,14 +9,21 @@ import { Readable } from 'stream';
 /**
  * S3 客戶端配置
  */
-const s3Client = new S3Client({
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+const hasR2Credentials = process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY;
+
+if (!isTestEnvironment && !hasR2Credentials) {
+  throw new Error('R2 credentials not configured');
+}
+
+const s3Client = hasR2Credentials ? new S3Client({
   region: process.env.R2_REGION || 'auto',
   endpoint: process.env.R2_ENDPOINT,
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
-});
+}) : null;
 
 /**
  * 上傳檔案到 R2
@@ -25,9 +32,17 @@ const s3Client = new S3Client({
  * @returns 上傳成功的檔案名稱
  */
 export const uploadToR2 = async (file: Express.Multer.File, filename: string): Promise<string> => {
+  if (!s3Client) {
+    if (isTestEnvironment) {
+      // Mock successful upload in test environment
+      return filename;
+    }
+    throw new Error('R2 client not initialized');
+  }
+  
   try {
     const params = {
-      Bucket: process.env.R2_BUCKET_NAME!,
+      Bucket: process.env.R2_BUCKET_NAME || (() => { throw new Error('R2_BUCKET_NAME not configured'); })(),
       Key: filename,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -50,9 +65,20 @@ export const uploadToR2 = async (file: Express.Multer.File, filename: string): P
  * @returns 檔案串流
  */
 export const getFromR2 = async (filename: string): Promise<Readable> => {
+  if (!s3Client) {
+    if (isTestEnvironment) {
+      // Mock file retrieval in test environment
+      const mockStream = new Readable();
+      mockStream.push('mock file content');
+      mockStream.push(null);
+      return mockStream;
+    }
+    throw new Error('R2 client not initialized');
+  }
+  
   try {
     const params = {
-      Bucket: process.env.R2_BUCKET_NAME!,
+      Bucket: process.env.R2_BUCKET_NAME || (() => { throw new Error('R2_BUCKET_NAME not configured'); })(),
       Key: filename,
     };
     
@@ -75,9 +101,17 @@ export const getFromR2 = async (filename: string): Promise<Readable> => {
  * @param filename - 檔案名稱
  */
 export const deleteFromR2 = async (filename: string): Promise<void> => {
+  if (!s3Client) {
+    if (isTestEnvironment) {
+      // Mock successful deletion in test environment
+      return;
+    }
+    throw new Error('R2 client not initialized');
+  }
+  
   try {
     const params = {
-      Bucket: process.env.R2_BUCKET_NAME!,
+      Bucket: process.env.R2_BUCKET_NAME || (() => { throw new Error('R2_BUCKET_NAME not configured'); })(),
       Key: filename,
     };
     

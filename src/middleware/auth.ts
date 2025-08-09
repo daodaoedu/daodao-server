@@ -301,7 +301,7 @@ export const requireCompleteProfile = (req: Request, res: Response, next: NextFu
     return next(new UnauthorizedError('未經授權的訪問'));
   }
 
-  if (req.isTemporary || (req.user as any).isTemp) {
+  if (req.isTemporary || req.user.isTemp) {
     return next(new ForbiddenError('請完成個人資料註冊'));
   }
 

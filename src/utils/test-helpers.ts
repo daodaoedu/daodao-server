@@ -3,13 +3,12 @@
  * Provides comprehensive testing utilities with type safety and parameter order validation
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import type { ParamsDictionary } from 'express-serve-static-core';
 import type { ParsedQs } from 'qs';
+import type { Socket } from 'net';
 import jwt from 'jsonwebtoken';
 import { AuthRequest, UserJwtPayload } from '@/types/auth.types';
-import { CreateIdeaRequest, UpdateIdeaRequest } from '@/validators/idea.validators';
-import { ProjectCreateRequest, ProjectUpdateRequest } from '@/types/project.types';
 
 // Mock JWT secret for testing
 export const TEST_JWT_SECRET = 'test-jwt-secret';
@@ -31,13 +30,13 @@ export const createMockRequest = (options: {
     isTemporary: options.isTemporary || false,
     body: options.body || {} as Record<string, unknown>,
     params: options.params as ParamsDictionary || {},
-    query: (options.query || {}) as any,
+    query: (options.query || {}) as ParsedQs,
     url: '/test',
     method: 'GET',
     originalUrl: '/test',
     ip: '127.0.0.1',
-    connection: { remoteAddress: '127.0.0.1' } as any,
-    isAuthenticated: jest.fn().mockReturnValue(true) as any,
+    connection: { remoteAddress: '127.0.0.1' } as unknown as Socket,
+    isAuthenticated: jest.fn().mockReturnValue(true),
   };
 };
 
@@ -79,7 +78,7 @@ export const createAuthHeader = (token: string): { authorization: string } => {
 /**
  * 建立測試用戶 Payload
  */
-export const createTestUserPayload = (overrides: Record<string, unknown> = {}) => {
+export const createTestUserPayload = (overrides: Record<string, unknown> = {}): UserJwtPayload => {
   return {
     id: 1,
     username: 'testuser',
@@ -92,7 +91,7 @@ export const createTestUserPayload = (overrides: Record<string, unknown> = {}) =
 /**
  * 建立測試用臨時用戶 Payload
  */
-export const createTestTempUserPayload = (overrides: Record<string, unknown> = {}) => {
+export const createTestTempUserPayload = (overrides: Record<string, unknown> = {}): UserJwtPayload => {
   return {
     id: 1,
     username: 'tempuser',
@@ -105,7 +104,7 @@ export const createTestTempUserPayload = (overrides: Record<string, unknown> = {
 /**
  * 建立完整的 Prisma 用戶模擬物件
  */
-export const createMockPrismaUser = (overrides: Record<string, unknown> = {}) => {
+export const createMockPrismaUser = (overrides: Partial<Record<string, unknown>> = {}) => {
   const now = new Date();
   return {
     id: 1,
