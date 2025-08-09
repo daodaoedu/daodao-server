@@ -441,7 +441,7 @@ describe('Authentication Flow Integration Tests', () => {
         external_id: 'test-user-id',
         nickname: 'testuser'
       });
-      mockAuthService.findUserByExternalId.mockResolvedValueOnce(mockUser);
+      mockAuthService.findUserByExternalId.mockResolvedValueOnce(mockUser as Awaited<ReturnType<typeof mockAuthService.findUserByExternalId>>);
 
       const response = await request(app)
         .get('/api/v1/auth/me')
@@ -617,7 +617,7 @@ describe('Authentication Flow Integration Tests', () => {
           description: 'Regular user'
         }
       });
-      mockAuthService.findUserByExternalId.mockResolvedValueOnce(unverifiedUser);
+      mockAuthService.findUserByExternalId.mockResolvedValueOnce(unverifiedUser as Awaited<ReturnType<typeof mockAuthService.findUserByExternalId>>);
 
       const response = await request(app)
         .post('/api/v1/auth/verify-email')
@@ -663,7 +663,7 @@ describe('Authentication Flow Integration Tests', () => {
           description: 'Regular user'
         }
       });
-      mockAuthService.findUserByExternalId.mockResolvedValueOnce(verifiedUser);
+      mockAuthService.findUserByExternalId.mockResolvedValueOnce(verifiedUser as Awaited<ReturnType<typeof mockAuthService.findUserByExternalId>>);
 
       const verificationToken = jwtService.generateToken({
         id: testUser.id,

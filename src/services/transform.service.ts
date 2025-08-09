@@ -288,15 +288,12 @@ export function transformReviewToDb(
   );
   
   // Helper function to convert score values to Decimal
-  const convertScore = (value: unknown): Decimal | number | undefined => {
+  const convertScore = (value: unknown): Decimal | undefined => {
     if (value === null || value === undefined) return undefined;
     const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
     if (isNaN(numValue)) return undefined;
     
-    // In test environment, return number; otherwise convert to Decimal for Prisma
-    if (process.env.NODE_ENV === 'test') {
-      return numValue;
-    }
+    // Always convert to Decimal for Prisma compatibility
     return new Decimal(numValue);
   };
   
