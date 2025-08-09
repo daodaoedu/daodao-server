@@ -28,6 +28,8 @@ import userRoutes from './routes/user.routes';
 import emailRoutes from './routes/email.routes';
 // 引入留言路由
 import commentRoutes from './routes/comment.routes';
+// 引入圖片路由
+import imageRoutes from './routes/image.routes';
 // 引入 OAuth 服務初始化
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
@@ -115,6 +117,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊留言路由
   app.use('/api/v1/comments', commentRoutes);
   console.log('💬 v1 留言路由已註冊 - 可在 /api/v1/comments 訪問');
+  
+  // 註冊圖片路由
+  app.use('/api/v1/images', imageRoutes);
+  console.log('🖼️ v1 圖片路由已註冊 - 可在 /api/v1/images 訪問');
   
   // 註冊郵件路由
   app.use('/api/v1/email', emailRoutes);
