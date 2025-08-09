@@ -11,7 +11,6 @@ import {
   AllowedMimeType,
   FileValidationError,
   ValidationErrorCode,
-  FileValidationResult,
   BatchValidationError
 } from '../types/image.types';
 
@@ -187,7 +186,7 @@ export function transformZodErrors(zodErrors: z.ZodError): FileValidationError[]
       field: error.path.join('.') || `field_${index}`,
       message: error.message,
       code,
-      value: (error as any).received,
+      value: (error as { received?: unknown }).received,
     };
   });
 }
@@ -237,7 +236,7 @@ export function transformBatchZodErrors(
           field: pathParts.slice(1).join('.') || 'file',
           message: error.message,
           code,
-          value: (error as any).received,
+          value: (error as { received?: unknown }).received,
         });
       }
     }

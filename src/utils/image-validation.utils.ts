@@ -3,7 +3,6 @@
  * 提供類型安全的驗證工具、錯誤聚合和回應格式化功能
  */
 
-import { z } from 'zod';
 import {
   FileValidationError,
   FileValidationResult,
@@ -25,10 +24,6 @@ import {
   enhancedFilesSchema,
   transformZodErrors,
   transformBatchZodErrors,
-  FileValidationSuccess,
-  FileValidationFailure,
-  FilesValidationSuccess,
-  FilesValidationFailure,
 } from '../validators/image.validators';
 
 // ============================================================================
@@ -43,7 +38,7 @@ import {
  */
 export function validateSingleFile(
   file: Express.Multer.File | undefined,
-  useEnhanced: boolean = false
+  useEnhanced = false
 ): FileValidationResult {
   if (!file) {
     return {
@@ -114,7 +109,7 @@ export function isValidFileSize(size: number): boolean {
  */
 export function validateMultipleFiles(
   files: Express.Multer.File[] | undefined,
-  useEnhanced: boolean = false
+  useEnhanced = false
 ): FileValidationResult & { batchErrors?: BatchValidationError[] } {
   if (!files || files.length === 0) {
     return {
@@ -205,7 +200,7 @@ export function isValidTotalSize(files: Express.Multer.File[]): boolean {
  */
 export function aggregateErrorMessages(
   errors: FileValidationError[],
-  separator: string = '; '
+  separator = '; '
 ): string {
   return errors.map(error => error.message).join(separator);
 }
@@ -328,14 +323,14 @@ export function createBatchUploadResult(
  */
 export async function validateFileForMiddleware(
   file: Express.Multer.File,
-  fieldName: string = 'file'
+  fieldName = 'file'
 ): Promise<void> {
   const result = validateSingleFile(file, true);
   
   if (!result.isValid) {
     const error = new Error(aggregateErrorMessages(result.errors));
-    (error as any).field = fieldName;
-    (error as any).validationErrors = result.errors;
+    (error as unknown as { field: string }).field = fieldName;
+    (error as unknown as { validationErrors: FileValidationError[] }).validationErrors = result.errors;
     throw error;
   }
 }
@@ -348,15 +343,15 @@ export async function validateFileForMiddleware(
  */
 export async function validateFilesForMiddleware(
   files: Express.Multer.File[],
-  fieldName: string = 'files'
+  fieldName = 'files'
 ): Promise<void> {
   const result = validateMultipleFiles(files, true);
   
   if (!result.isValid) {
     const error = new Error(aggregateErrorMessages(result.errors));
-    (error as any).field = fieldName;
-    (error as any).validationErrors = result.errors;
-    (error as any).batchErrors = result.batchErrors;
+    (error as unknown as { field: string }).field = fieldName;
+    (error as unknown as { validationErrors: FileValidationError[] }).validationErrors = result.errors;
+    (error as unknown as { batchErrors?: BatchValidationError[] }).batchErrors = result.batchErrors;
     throw error;
   }
 }

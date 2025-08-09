@@ -3,7 +3,65 @@
  * 提供所有常用的 Prisma 方法 mock
  */
 
-const createModelMock = () => ({
+export type ModelMock = {
+  findUnique: jest.Mock;
+  findFirst: jest.Mock;
+  findMany: jest.Mock;
+  create: jest.Mock;
+  createMany: jest.Mock;
+  update: jest.Mock;
+  updateMany: jest.Mock;
+  upsert: jest.Mock;
+  delete: jest.Mock;
+  deleteMany: jest.Mock;
+  count: jest.Mock;
+  aggregate: jest.Mock;
+  groupBy: jest.Mock;
+  $queryRaw: jest.Mock;
+  $executeRaw: jest.Mock;
+};
+
+export type PrismaMock = {
+  $connect: jest.Mock;
+  $disconnect: jest.Mock;
+  $transaction: jest.Mock;
+  $use: jest.Mock;
+  $extends: jest.Mock;
+  $on: jest.Mock;
+  $queryRaw: jest.Mock;
+  $executeRaw: jest.Mock;
+  users: ModelMock;
+  contacts: ModelMock;
+  temp_users: ModelMock;
+  roles: ModelMock;
+  user_roles: ModelMock;
+  permissions: ModelMock;
+  user_permissions: ModelMock;
+  resources: ModelMock;
+  resource_review: ModelMock;
+  categories: ModelMock;
+  entity_tags: ModelMock;
+  entity_resources: ModelMock;
+  tags: ModelMock;
+  ideas: ModelMock;
+  projects: ModelMock;
+  project: ModelMock;
+  marathon: ModelMock;
+  task: ModelMock;
+  user_positions: ModelMock;
+  positions: ModelMock;
+  comments: ModelMock;
+  comment_replies: ModelMock;
+  mentor_participants: ModelMock;
+  post: ModelMock;
+  groups: ModelMock;
+  note: ModelMock;
+  outcome: ModelMock;
+  review: ModelMock;
+  role_permissions: ModelMock;
+};
+
+const createModelMock = (): ModelMock => ({
   findUnique: jest.fn(),
   findFirst: jest.fn(),
   findMany: jest.fn(),
@@ -21,7 +79,7 @@ const createModelMock = () => ({
   $executeRaw: jest.fn()
 });
 
-export const createPrismaMock = () => {
+export const createPrismaMock = (): PrismaMock => {
   const modelMocks = {
     users: createModelMock(),
     contacts: createModelMock(),

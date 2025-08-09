@@ -136,7 +136,7 @@ export interface FileValidationError {
   field: string;
   message: string;
   code: ValidationErrorCode;
-  value?: any;
+  value?: unknown;
 }
 
 /**

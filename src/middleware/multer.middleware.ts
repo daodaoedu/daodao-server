@@ -16,7 +16,7 @@ const storage = multer.memoryStorage();
  * 檔案過濾器
  * 只允許特定類型的圖片檔案
  */
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback): void => {
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
   
   if (allowedMimeTypes.includes(file.mimetype)) {
