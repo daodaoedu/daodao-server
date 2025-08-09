@@ -13,6 +13,7 @@ import userRoutes from './user.routes';
 import ideaRoutes from './idea.routes';
 import meRoutes from './me.routes';
 import commentRoutes from './comment.routes';
+import imageRoutes from './image.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -106,6 +107,13 @@ router.use('/me', meRoutes);
 // DELETE /api/v1/comments/:commentId
 router.use('/comments', commentRoutes);
 
+// 圖片路由
+// GET    /api/v1/images/:filename
+// POST   /api/v1/images
+// POST   /api/v1/images/multiple
+// DELETE /api/v1/images/:filename
+router.use('/images', imageRoutes);
+
 /**
  * API 健康檢查端點
  * GET /api/v1/health
@@ -140,6 +148,7 @@ router.get('/info', (req, res) => {
         ideas: '/api/v1/ideas',
         me: '/api/v1/me',
         comments: '/api/v1/comments',
+        images: '/api/v1/images',
         health: '/api/v1/health'
       },
       features: [

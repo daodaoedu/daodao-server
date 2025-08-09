@@ -292,6 +292,23 @@ export const requireActiveUser = (req: Request, res: Response, next: NextFunctio
 };
 
 /**
+ * 需要完整個人資料中間件
+ * 禁止臨時用戶訪問，要求完成註冊流程
+ * 別名：與原 JavaScript 版本保持一致
+ */
+export const requireCompleteProfile = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    return next(new UnauthorizedError('未經授權的訪問'));
+  }
+
+  if (req.isTemporary || req.user.isTemp) {
+    return next(new ForbiddenError('請完成個人資料註冊'));
+  }
+
+  next();
+};
+
+/**
  * Session 認證中間件
  * 檢查 Passport session 認證
  */

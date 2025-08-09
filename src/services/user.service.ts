@@ -18,7 +18,7 @@ import {
   NotFoundError,
   ConflictError 
 } from '../utils/error-handler';
-import { city_t, want_to_do_list_t } from '../../generated/prisma';
+import { city_t, want_to_do_list_t } from '@generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
 
@@ -26,49 +26,60 @@ import { validate as isUuid } from 'uuid';
  * 城市名稱映射表
  * 支持中文名稱和英文枚舉值的映射
  */
-const cityNameMapping: Record<string, city_t> = {
-  // 中文名稱映射
-  '台北市': city_t.taipei_city,
-  '基隆市': city_t.keelung_city,
-  '新北市': city_t.new_taipei_city,
-  '連江縣': city_t.lianjiang_county,
-  '桃園市': city_t.taoyuan_city,
-  '新竹市': city_t.hsinchu_city,
-  '新竹縣': city_t.hsinchu_county,
-  '苗栗縣': city_t.miaoli_county,
-  '台中市': city_t.taichung_city,
-  '彰化縣': city_t.changhua_county,
-  '雲林縣': city_t.yunlin_county,
-  '嘉義縣': city_t.chiayi_county,
-  '嘉義市': city_t.chiayi_city,
-  '台南市': city_t.tainan_city,
-  '南投縣': city_t.nantou_county,
-  '高雄市': city_t.kaohsiung_city,
-  '屏東縣': city_t.pingtung_county,
-  '海南島': city_t.hainan_island,
-  '澎湖縣': city_t.penghu_county,
-  '金門縣': city_t.kinmen_county,
-  // 英文枚舉值直接映射
-  'taipei_city': city_t.taipei_city,
-  'keelung_city': city_t.keelung_city,
-  'new_taipei_city': city_t.new_taipei_city,
-  'lianjiang_county': city_t.lianjiang_county,
-  'taoyuan_city': city_t.taoyuan_city,
-  'hsinchu_city': city_t.hsinchu_city,
-  'hsinchu_county': city_t.hsinchu_county,
-  'miaoli_county': city_t.miaoli_county,
-  'taichung_city': city_t.taichung_city,
-  'changhua_county': city_t.changhua_county,
-  'yunlin_county': city_t.yunlin_county,
-  'chiayi_county': city_t.chiayi_county,
-  'chiayi_city': city_t.chiayi_city,
-  'tainan_city': city_t.tainan_city,
-  'nantou_county': city_t.nantou_county,
-  'kaohsiung_city': city_t.kaohsiung_city,
-  'pingtung_county': city_t.pingtung_county,
-  'hainan_island': city_t.hainan_island,
-  'penghu_county': city_t.penghu_county,
-  'kinmen_county': city_t.kinmen_county,
+/**
+ * 獲取城市名稱映射表（惰性初始化）
+ */
+const getCityNameMapping = (): Record<string, city_t> => {
+  return {
+    // 中文名稱映射
+    '台北市': 'taipei_city' as city_t,
+    '基隆市': 'keelung_city' as city_t,
+    '新北市': 'new_taipei_city' as city_t,
+    '連江縣': 'lianjiang_county' as city_t,
+    '桃園市': 'taoyuan_city' as city_t,
+    '新竹市': 'hsinchu_city' as city_t,
+    '新竹縣': 'hsinchu_county' as city_t,
+    '苗栗縣': 'miaoli_county' as city_t,
+    '台中市': 'taichung_city' as city_t,
+    '彰化縣': 'changhua_county' as city_t,
+    '雲林縣': 'yunlin_county' as city_t,
+    '嘉義縣': 'chiayi_county' as city_t,
+    '嘉義市': 'chiayi_city' as city_t,
+    '台南市': 'tainan_city' as city_t,
+    '南投縣': 'nantou_county' as city_t,
+    '高雄市': 'kaohsiung_city' as city_t,
+    '屏東縣': 'pingtung_county' as city_t,
+    '海南島': 'hainan_island' as city_t,
+    '澎湖縣': 'penghu_county' as city_t,
+    '金門縣': 'kinmen_county' as city_t,
+    // 英文枚舉值直接映射
+    'taipei_city': 'taipei_city' as city_t,
+    'keelung_city': 'keelung_city' as city_t,
+    'new_taipei_city': 'new_taipei_city' as city_t,
+    'lianjiang_county': 'lianjiang_county' as city_t,
+    'taoyuan_city': 'taoyuan_city' as city_t,
+    'hsinchu_city': 'hsinchu_city' as city_t,
+    'hsinchu_county': 'hsinchu_county' as city_t,
+    'miaoli_county': 'miaoli_county' as city_t,
+    'taichung_city': 'taichung_city' as city_t,
+    'changhua_county': 'changhua_county' as city_t,
+    'yunlin_county': 'yunlin_county' as city_t,
+    'chiayi_county': 'chiayi_county' as city_t,
+    'chiayi_city': 'chiayi_city' as city_t,
+    'tainan_city': 'tainan_city' as city_t,
+    'nantou_county': 'nantou_county' as city_t,
+    'kaohsiung_city': 'kaohsiung_city' as city_t,
+    'pingtung_county': 'pingtung_county' as city_t,
+    'hainan_island': 'hainan_island' as city_t,
+    'penghu_county': 'penghu_county' as city_t,
+    'kinmen_county': 'kinmen_county' as city_t,
+    'yilan_county': 'yilan_county' as city_t,
+    'hualien_county': 'hualien_county' as city_t,
+    'taitung_county': 'taitung_county' as city_t,
+    'other': 'other' as city_t,
+    'tbd': 'tbd' as city_t,
+    'online': 'online' as city_t
+  };
 };
 
 /**
@@ -458,7 +469,7 @@ export class UserService {
       let locationId: number | null = null;
       if (areaCode) {
         // 根據城市名稱映射獲取對應的枚舉值
-        const cityEnum = cityNameMapping[areaCode];
+        const cityEnum = getCityNameMapping()[areaCode];
         
         if (!cityEnum) {
           throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);

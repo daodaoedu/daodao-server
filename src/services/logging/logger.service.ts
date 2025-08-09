@@ -6,6 +6,7 @@
 import winston, { Logger, LoggerOptions } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
+import fs from 'fs';
 
 // 日誌級別配置
 export const LOG_LEVELS = {
@@ -58,10 +59,21 @@ class LoggerService {
     this.logger = this.createLogger();
   }
 
+  private ensureLogDirectory(logDir: string): void {
+    try {
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true, mode: 0o755 });
+      }
+    } catch (error) {
+      // 如果無法創建目錄，記錄錯誤但不讓應用崩潰
+      console.warn(`Warning: Could not create log directory ${logDir}:`, error);
+    }
+  }
+
   private createLogger(): Logger {
     const transports: winston.transport[] = [];
     const env = process.env.NODE_ENV || 'local';
-    
+
     // 根據環境設定檔案前綴
     let logPrefix: string;
     switch (env) {
@@ -178,7 +190,7 @@ class LoggerService {
   ): void {
     const level = success ? 'info' : 'error';
     const message = `Database ${operation} on ${table}`;
-    
+
     this.logger.log(level, message, {
       operation,
       table,
