@@ -421,13 +421,12 @@ jobs:
               \"content\": \"**CI 檢查失敗！**\",
               \"embeds\": [{
                 \"title\": \"CI Failed\",
-                \"description\": \"$FAILURE_REASON，請檢查測試、類型檢查或代碼品質\",
+                \"description\": \"$BRANCH: $FAILURE_REASON，請檢查測試、類型檢查或代碼品質\",
                 \"color\": 16711680,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/CI-Failed-red?style=for-the-badge&logo=github&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/CI-Failed-red.png?style=for-the-badge&logo=github&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
@@ -442,13 +441,12 @@ jobs:
               \"content\": \"**Build 失敗！**\",
               \"embeds\": [{
                 \"title\": \"Build Failed\",
-                \"description\": \"$FAILURE_REASON，請檢查代碼和構建腳本\",
+                \"description\": \"$BRANCH: $FAILURE_REASON，請檢查代碼和構建腳本\",
                 \"color\": 16711680,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/Build-Failed-red?style=for-the-badge&logo=docker&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/Build-Failed-red.png?style=for-the-badge&logo=docker&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
@@ -463,13 +461,12 @@ jobs:
               \"content\": \"**部署失敗！**\",
               \"embeds\": [{
                 \"title\": \"Deployment Failed\",
-                \"description\": \"$FAILURE_REASON，請檢查服務器狀態\",
+                \"description\": \"$BRANCH: $FAILURE_REASON，請檢查服務器狀態\",
                 \"color\": 16711680,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/Deploy-Failed-red?style=for-the-badge&logo=rocket&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/Deploy-Failed-red.png?style=for-the-badge&logo=rocket&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
@@ -482,13 +479,12 @@ jobs:
               \"content\": \"**部署已取消**\",
               \"embeds\": [{
                 \"title\": \"Deployment Cancelled\",
-                \"description\": \"部署流程被用戶取消\",
+                \"description\": \"$BRANCH: 部署流程被用戶取消\",
                 \"color\": 8421504,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/Deploy-Cancelled-lightgrey?style=for-the-badge&logo=pause&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/Deploy-Cancelled-lightgrey.png?style=for-the-badge&logo=pause&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
@@ -501,13 +497,12 @@ jobs:
               \"content\": \"**部署完成但驗證失敗！**\",
               \"embeds\": [{
                 \"title\": \"Verification Failed\",
-                \"description\": \"服務部署完成但後續驗證失敗，請檢查應用程式狀態\",
+                \"description\": \"$BRANCH: 服務部署完成但後續驗證失敗，請檢查應用程式狀態\",
                 \"color\": 16776960,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/Verify-Failed-orange?style=for-the-badge&logo=search&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/Verify-Failed-orange.png?style=for-the-badge&logo=search&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
@@ -527,13 +522,12 @@ jobs:
               \"content\": \"**部署成功！** ✨\",
               \"embeds\": [{
                 \"title\": \"Deployment Successful\",
-                \"description\": \"服務已成功更新至 $ENV_INFO\",
+                \"description\": \"$BRANCH: 服務已成功更新至 $ENV_INFO\",
                 \"color\": 3066993,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/Deploy-Success-brightgreen?style=for-the-badge&logo=check-circle&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/Deploy-Success-brightgreen.png?style=for-the-badge&logo=check-circle&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
@@ -546,16 +540,14 @@ jobs:
               \"content\": \"**部署狀態未明！**\",
               \"embeds\": [{
                 \"title\": \"Unknown Status\",
-                \"description\": \"部署流程結束但狀態不明確，請手動檢查\",
+                \"description\": \"$BRANCH: 部署流程結束但狀態不明確，請手動檢查\",
                 \"color\": 16776960,
                 \"thumbnail\": {
-                  \"url\": \"https://img.shields.io/badge/Status-Unknown-yellow?style=for-the-badge&logo=question&logoColor=white\"
+                  \"url\": \"https://img.shields.io/badge/Status-Unknown-yellow.png?style=for-the-badge&logo=question&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
-                  {\"name\": \"Status\", \"value\": \"CI: $CI_STATUS\\nBuild: $BUILD_STATUS\\nDeploy: $DEPLOY_STATUS\\nVerify: $VERIFY_STATUS\", \"inline\": false}
-                ],
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                  ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
             }" ${{ secrets.DISCORD_WEBHOOK_URL }}
