@@ -176,20 +176,23 @@ const getMyResources = async (userId: number, params: ResourcesQueryParams): Pro
     );
 
     // Transform to MyResourceItem format
-    const myResources: MyResourceItem[] = result.data.map((resource: any) => ({
-      id: resource.id, // external_id as string
-      name: resource.name,
-      description: resource.description || undefined,
-      url: resource.url || undefined,
-      type: mapResourceType(resource.type || ''),
-      category: resource.majorCategory || undefined,
-      status: (resource.status as 'draft' | 'published' | 'archived') || 'draft',
-      tags: resource.tags || [],
-      createdAt: resource.createdAt,
-      updatedAt: resource.updatedAt,
-      visibility: 'private', // Personal resources are private by default
-      metadata: undefined // ResourceResponse doesn't include metadata
-    }));
+    const myResources: MyResourceItem[] = result.data.map((resource: unknown) => {
+      const resourceData = resource as Record<string, unknown>;
+      return {
+        id: resourceData.id as string, // external_id as string
+        name: resourceData.name as string,
+        description: (resourceData.description as string) || undefined,
+        url: (resourceData.url as string) || undefined,
+        type: mapResourceType((resourceData.type as string) || ''),
+        category: (resourceData.majorCategory as string) || undefined,
+        status: (resourceData.status as 'draft' | 'published' | 'archived') || 'draft',
+        tags: (resourceData.tags as string[]) || [],
+        createdAt: resourceData.createdAt as string,
+        updatedAt: resourceData.updatedAt as string,
+        visibility: 'private', // Personal resources are private by default
+        metadata: undefined // ResourceResponse doesn't include metadata
+      };
+    });
 
     // Get stats using existing resource service
     const stats = await getResourceStatsFromService(userId);
@@ -218,7 +221,7 @@ const getMyResources = async (userId: number, params: ResourcesQueryParams): Pro
 /**
  * Get user's preferences
  */
-const getMyPreferences = async (userId: number, _params: PreferencesQueryParams): Promise<ApiSuccessResponse<{ preferences: UserPreference[]; categories: any[] }>> => {
+const getMyPreferences = async (userId: number, _params: PreferencesQueryParams): Promise<ApiSuccessResponse<{ preferences: UserPreference[]; categories: unknown[] }>> => {
   try {
     const where: Record<string, unknown> = { user_id: userId };
 
@@ -485,10 +488,10 @@ const getResourceStatsFromService = async (userId: number): Promise<{ totalResou
     
     // Fallback for non-standard response
     return {
-      totalResources: (serviceStats as any).totalCount || 0,
+      totalResources: (serviceStats as unknown as Record<string, unknown>).totalCount as number || 0,
       draftCount: 0,
-      publishedCount: (serviceStats as any).activeCount || 0,
-      byCategory: (serviceStats as any).typeStats || {}
+      publishedCount: (serviceStats as unknown as Record<string, unknown>).activeCount as number || 0,
+      byCategory: (serviceStats as unknown as Record<string, unknown>).typeStats as Record<string, number> || {}
     };
   } catch (error) {
     // Fallback to direct database query if service method fails

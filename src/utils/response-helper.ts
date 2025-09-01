@@ -82,7 +82,7 @@ export const createErrorResponse = (
  * Create error response from AppError
  */
 export const createErrorFromAppError = (
-  error: any,
+  error: unknown,
   requestId?: string
 ): ApiErrorResponse => {
   // Map AppError class names to standard error codes
@@ -97,13 +97,14 @@ export const createErrorFromAppError = (
     'InternalServerError': 'INTERNAL_SERVER_ERROR'
   };
   
+  const errorData = error as Record<string, unknown>;
   return {
     success: false,
     data: null,
     error: {
-      code: errorCodeMap[error.name] || 'INTERNAL_SERVER_ERROR',
-      message: error.message,
-      details: error.errors
+      code: errorCodeMap[errorData.name as string] || 'INTERNAL_SERVER_ERROR',
+      message: (errorData.message as string) || 'Unknown error',
+      details: errorData.errors as Record<string, string> || undefined
     },
     timestamp: new Date().toISOString(),
     meta: requestId ? { requestId } : undefined

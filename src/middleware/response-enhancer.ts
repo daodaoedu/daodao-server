@@ -15,20 +15,21 @@ export const responseEnhancerMiddleware = (
   req: Request, 
   res: Response, 
   next: NextFunction
-) => {
+): void => {
   req.startTime = Date.now();
   req.requestId = extractRequestId(req);
   
   // Intercept res.json method
   const originalJson = res.json;
-  res.json = function(data: any) {
+  res.json = function(data: unknown): Response {
     // Only enhance if it's our standard response format
     if (data && typeof data === 'object' && 'success' in data) {
-      data.timestamp = new Date().toISOString();
-      data.meta = {
-        ...data.meta,
+      const responseData = data as Record<string, unknown>;
+      responseData.timestamp = new Date().toISOString();
+      responseData.meta = {
+        ...(responseData.meta as Record<string, unknown> || {}),
         requestId: req.requestId,
-        processingTime: Date.now() - req.startTime!
+        processingTime: Date.now() - (req.startTime || 0)
       };
     }
     return originalJson.call(this, data);

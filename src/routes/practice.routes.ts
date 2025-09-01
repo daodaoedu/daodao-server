@@ -5,7 +5,6 @@
 
 import { Router, RequestHandler } from 'express';
 import { practiceController } from '../controllers/practice.controller';
-import { validate } from '../validators/validation.middleware';
 import { authenticate, optionalAuth } from '../middleware/auth';
 
 const router = Router();

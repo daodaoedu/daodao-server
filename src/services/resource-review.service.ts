@@ -18,7 +18,6 @@ import {
   ForbiddenError 
 } from '@/middleware/error.middleware';
 import { 
-  ApiResponse, 
   ApiSuccessResponse,
   CursorPaginatedApiResponse
 } from '@/types/api-response.types';

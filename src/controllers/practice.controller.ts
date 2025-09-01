@@ -6,7 +6,6 @@
 import { Request, Response } from 'express';
 import * as practiceService from '../services/practice.service';
 import * as practiceCheckInService from '../services/practice-checkin.service';
-import * as practiceEventService from '../services/practice-event.service';
 import * as practiceInteractionService from '../services/practice-interaction.service';
 import { asyncHandler } from '../middleware/error.middleware';
 import { BadRequestError, UnauthorizedError } from '../middleware/error.middleware';
@@ -16,10 +15,11 @@ import type {
   PracticeQueryParams,
   CreateCheckInRequest,
   CheckInQueryParams,
-  ViewEventRequest,
-  ClickEventRequest,
-  ShareEventRequest,
-  FavoriteEventRequest
+  ContentType,
+  PracticeStatus,
+  SortField,
+  SortOrder,
+  CheckInMood
 } from '../types/practice.types';
 
 export class PracticeController {
@@ -32,10 +32,10 @@ export class PracticeController {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
-      contentType: req.query.contentType as any,
-      status: req.query.status as any,
-      sortBy: req.query.sortBy as any,
-      sortOrder: req.query.sortOrder as any,
+      contentType: req.query.contentType as ContentType,
+      status: req.query.status as PracticeStatus,
+      sortBy: req.query.sortBy as SortField,
+      sortOrder: req.query.sortOrder as SortOrder,
       userId: req.query.userId ? parseInt(req.query.userId as string) : undefined
     };
 
@@ -56,10 +56,10 @@ export class PracticeController {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
-      contentType: req.query.contentType as any,
-      status: req.query.status as any,
-      sortBy: req.query.sortBy as any,
-      sortOrder: req.query.sortOrder as any,
+      contentType: req.query.contentType as ContentType,
+      status: req.query.status as PracticeStatus,
+      sortBy: req.query.sortBy as SortField,
+      sortOrder: req.query.sortOrder as SortOrder,
       userId: req.user.id
     };
 
@@ -185,7 +185,7 @@ export class PracticeController {
       limit: parseInt(req.query.limit as string) || 20,
       startDate: req.query.startDate as string,
       endDate: req.query.endDate as string,
-      mood: req.query.mood as any
+      mood: req.query.mood as CheckInMood
     };
 
     const userId = req.user?.id;
