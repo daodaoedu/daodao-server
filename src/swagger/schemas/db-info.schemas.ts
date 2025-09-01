@@ -5,15 +5,15 @@
  *     DatabaseColumn:
  *       type: object
  *       properties:
- *         column_name:
+ *         columnName:
  *           type: string
  *           description: 欄位名稱
- *         data_type:
+ *         dataType:
  *           type: string
  *           description: 資料類型
  *       required:
- *         - column_name
- *         - data_type
+ *         - columnName
+ *         - dataType
  * 
  *     PostgresTableInfo:
  *       type: object

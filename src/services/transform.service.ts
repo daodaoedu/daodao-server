@@ -29,6 +29,15 @@ import {
   isCategoryData,
   isStatsData
 } from '@/types/transform.types';
+import tagService from './tag.service';
+
+/**
+ * 獲取用戶標籤
+ */
+const getUserTagsFromService = async (userId: number): Promise<string[]> => {
+  const tags = await tagService.getEntityTags('user', userId);
+  return tags.map(tag => tag.name);
+};
 
 /**
  * 將資料庫 Resource 記錄轉換為 API 回應格式
@@ -36,10 +45,10 @@ import {
  * @param includeAssociations - 是否包含關聯資料
  * @returns API格式的資源對象
  */
-export function transformResourceToApi(
+export async function transformResourceToApi(
   dbResource: Record<string, unknown>,
   includeAssociations = true
-): ResourceResponse {
+): Promise<ResourceResponse> {
   // 基本資源轉換
   const resource: ResourceResponse = {
     id: String(dbResource.external_id || dbResource.id), // 使用 external_id (UUID)，如果沒有則降級到 id
@@ -87,7 +96,7 @@ export function transformResourceToApi(
         roleList: Array.isArray(user.roleList) ? user.roleList : [],
         photoURL: user.avatar_url ? String(user.avatar_url) : null,
         educationStage: user.education_stage || null,
-        tagList: Array.isArray(user.tag_list) ? user.tag_list : [],
+        tagList: await getUserTagsFromService(Number(user.id || 0)),
         selfIntroduction: user.BasicInfo?.self_introduction || null
       };
     }
@@ -189,10 +198,10 @@ export async function transformResourceToDb(
  * @param includeAssociations - 是否包含關聯資料
  * @returns API格式的心得評價對象
  */
-export function transformReviewToApi(
+export async function transformReviewToApi(
   dbReview: Record<string, unknown>,
   includeAssociations = true
-): ResourceReviewResponse {
+): Promise<ResourceReviewResponse> {
   // 計算平均評分
   const avgRating = calculateAverageRating(dbReview);
   
@@ -244,7 +253,7 @@ export function transformReviewToApi(
         roleList: Array.isArray(user.roleList) ? user.roleList : [],
         photoURL: user.avatar_url ? String(user.avatar_url) : null,
         educationStage: user.education_stage || null,
-        tagList: Array.isArray(user.tag_list) ? user.tag_list : [],
+        tagList: await getUserTagsFromService(Number(user.id || 0)),
         selfIntroduction: user.BasicInfo?.self_introduction || null
       };
     }

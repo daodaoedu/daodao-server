@@ -10,12 +10,14 @@ import {
   UnauthorizedError,
   NotFoundError,
   ConflictError
-} from '../../utils/error-handler';
+} from '../../middleware/error.middleware';
+import { createSuccessResponse } from '../../utils/response-helper';
+import { ApiResponse } from '../../types/api-response.types';
 
 /**
  * 根據 email 查找用戶及其聯絡資訊
  */
-export const findUserByEmail = async (email: string) => {
+export const findUserByEmail = async (email: string): Promise<ApiResponse<{ contact: any; user: any } | null>> => {
   const contact = await prisma.contacts.findFirst({
     where: { email },
     include: {
@@ -33,14 +35,16 @@ export const findUserByEmail = async (email: string) => {
   });
 
   if (!contact || !contact.users || contact.users.length === 0) {
-    return null;
+    return createSuccessResponse(null);
   }
 
   // 返回第一個關聯的用戶
-  return {
+  const result = {
     contact,
     user: contact.users[0]
   };
+
+  return createSuccessResponse(result);
 };
 
 /**
@@ -51,7 +55,7 @@ export const findOrCreateTempUser = async (profile: {
   email: string;
   name: string;
   photoUrl?: string;
-}) => {
+}): Promise<ApiResponse<any>> => {
   const { googleId, email, name, photoUrl } = profile;
 
   // 先檢查是否已存在
@@ -80,13 +84,13 @@ export const findOrCreateTempUser = async (profile: {
     });
   }
 
-  return tempUser;
+  return createSuccessResponse(tempUser);
 };
 
 /**
  * 根據 external_id 查找正式用戶
  */
-export const findUserByExternalId = async (externalId: string) => {
+export const findUserByExternalId = async (externalId: string): Promise<ApiResponse<any | null>> => {
   const user = await prisma.users.findUnique({
     where: { external_id: externalId },
     include: {
@@ -106,13 +110,13 @@ export const findUserByExternalId = async (externalId: string) => {
     }
   });
 
-  return user;
+  return createSuccessResponse(user);
 };
 
 /**
  * 根據用戶 ID 獲取角色
  */
-export const getUserRoles = async (userId: number) => {
+export const getUserRoles = async (userId: number): Promise<ApiResponse<any[]>> => {
   const user = await prisma.users.findUnique({
     where: { id: userId },
     include: {
@@ -126,7 +130,7 @@ export const getUserRoles = async (userId: number) => {
   });
 
   if (!user) {
-    return [];
+    return createSuccessResponse([]);
   }
 
   const roles = [];
@@ -146,13 +150,13 @@ export const getUserRoles = async (userId: number) => {
     });
   }
 
-  return roles;
+  return createSuccessResponse(roles);
 };
 
 /**
  * 獲取用戶權限
  */
-export const getUserPermissions = async (userId: number) => {
+export const getUserPermissions = async (userId: number): Promise<ApiResponse<any[]>> => {
   const userPermissions = await prisma.user_permissions.findMany({
     where: { user_id: userId },
     include: {
@@ -160,11 +164,13 @@ export const getUserPermissions = async (userId: number) => {
     }
   });
 
-  return userPermissions.map(up => ({
+  const permissions = userPermissions.map(up => ({
     id: up.permissions.id,
     name: up.permissions.name,
     description: up.permissions.description
   }));
+
+  return createSuccessResponse(permissions);
 };
 
 /**
@@ -192,33 +198,37 @@ export const generateAuthToken = (payload: {
 /**
  * 更新用戶最後登入時間
  */
-export const updateLastLogin = async (userId: number) => {
+export const updateLastLogin = async (userId: number): Promise<ApiResponse<{ success: boolean }>> => {
   await prisma.users.update({
     where: { id: userId },
     data: {
       updated_at: new Date()
     }
   });
+
+  return createSuccessResponse({ success: true });
 };
 
 /**
  * 驗證用戶郵件
  */
-export const verifyUserEmail = async (userId: number) => {
+export const verifyUserEmail = async (userId: number): Promise<ApiResponse<{ success: boolean }>> => {
   await prisma.users.update({
     where: { id: userId },
     data: {
-      email_verified: true,
-      email_verified_at: new Date(),
+      verified: true,
+      verified_at: new Date(),
       updated_at: new Date()
     }
   });
+
+  return createSuccessResponse({ success: true });
 };
 
 /**
  * 啟用/停用用戶
  */
-export const setUserActiveStatus = async (userId: number, isActive: boolean) => {
+export const setUserActiveStatus = async (userId: number, isActive: boolean): Promise<ApiResponse<{ success: boolean }>> => {
   await prisma.users.update({
     where: { id: userId },
     data: {
@@ -226,30 +236,32 @@ export const setUserActiveStatus = async (userId: number, isActive: boolean) => 
       updated_at: new Date()
     }
   });
+
+  return createSuccessResponse({ success: true });
 };
 
 /**
  * 檢查用戶是否已驗證郵件
  */
-export const isUserEmailVerified = async (userId: number): Promise<boolean> => {
+export const isUserEmailVerified = async (userId: number): Promise<ApiResponse<boolean>> => {
   const user = await prisma.users.findUnique({
     where: { id: userId },
-    select: { email_verified: true }
+    select: { verified: true }
   });
   
-  return user?.email_verified || false;
+  return createSuccessResponse(user?.verified || false);
 };
 
 /**
  * 檢查用戶是否處於活躍狀態
  */
-export const isUserActive = async (userId: number): Promise<boolean> => {
+export const isUserActive = async (userId: number): Promise<ApiResponse<boolean>> => {
   const user = await prisma.users.findUnique({
     where: { id: userId },
     select: { is_active: true }
   });
   
-  return user?.is_active || false;
+  return createSuccessResponse(user?.is_active || false);
 };
 
 export const authService = {

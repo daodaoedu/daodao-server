@@ -2,47 +2,103 @@
  * @swagger
  * components:
  *   schemas:
- *     ErrorResponse:
+ *     ApiErrorResponse:
  *       type: object
  *       required:
  *         - success
- *         - message
+ *         - data
+ *         - error
+ *         - timestamp
  *       properties:
  *         success:
  *           type: boolean
  *           description: 請求是否成功
  *           example: false
- *         message:
- *           type: string
- *           description: 錯誤訊息
- *           example: "請求參數錯誤"
+ *         data:
+ *           type: "null"
+ *           description: 錯誤時資料為 null
+ *           example: null
  *         error:
+ *           type: object
+ *           required:
+ *             - code
+ *             - message
+ *           properties:
+ *             code:
+ *               type: string
+ *               description: 錯誤代碼
+ *               example: "INVALID_REQUEST"
+ *             message:
+ *               type: string
+ *               description: 錯誤訊息
+ *               example: "請求參數錯誤"
+ *             details:
+ *               type: object
+ *               additionalProperties:
+ *                 type: string
+ *               description: 詳細錯誤資訊
+ *               example: { "field": "email", "reason": "格式不正確" }
+ *         timestamp:
  *           type: string
- *           description: 詳細錯誤資訊
- *           example: "Invalid request parameters"
- *         errors:
- *           type: array
- *           description: 驗證錯誤詳情
- *           items:
- *             type: object
- *             properties:
- *               path:
- *                 type: string
- *                 example: "email"
- *               message:
- *                 type: string
- *                 example: "Invalid email format"
- *     
- *     PaginationMeta:
+ *           format: date-time
+ *           description: 時間戳
+ *           example: "2024-01-15T10:30:00Z"
+ *         meta:
+ *           $ref: '#/components/schemas/ResponseMeta'
+ *           nullable: true
+ * 
+ *     ApiSuccessResponse:
  *       type: object
  *       required:
- *         - limit
+ *         - success
+ *         - data
+ *         - timestamp
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: 請求是否成功
+ *           example: true
+ *         data:
+ *           description: 成功時的資料內容
+ *           example: { "id": 1, "name": "範例資料" }
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *           description: 時間戳
+ *           example: "2024-01-15T10:30:00Z"
+ *         meta:
+ *           $ref: '#/components/schemas/ResponseMeta'
+ *           nullable: true
+
+ *     PaginationInfo:
+ *       type: object
+ *       required:
+ *         - currentPage
+ *         - totalPages
+ *         - totalItems
+ *         - itemsPerPage
  *         - hasNext
  *         - hasPrev
  *       properties:
- *         limit:
+ *         currentPage:
  *           type: integer
- *           description: 每頁記錄數
+ *           minimum: 1
+ *           description: 目前頁碼
+ *           example: 2
+ *         totalPages:
+ *           type: integer
+ *           minimum: 0
+ *           description: 總頁數
+ *           example: 10
+ *         totalItems:
+ *           type: integer
+ *           minimum: 0
+ *           description: 總項目數
+ *           example: 150
+ *         itemsPerPage:
+ *           type: integer
+ *           minimum: 1
+ *           description: 每頁項目數
  *           example: 20
  *         hasNext:
  *           type: boolean
@@ -51,41 +107,134 @@
  *         hasPrev:
  *           type: boolean
  *           description: 是否有上一頁
- *           example: false
- *         nextCursor:
- *           type: string
- *           nullable: true
- *           description: 下一頁游標
- *           example: "eyJpZCI6MTAwfQ=="
- *         prevCursor:
- *           type: string
- *           nullable: true
- *           description: 上一頁游標
- *           example: null
- *         totalEstimate:
+ *           example: true
+
+ *     CursorPaginationInfo:
+ *       type: object
+ *       required:
+ *         - cursors
+ *         - hasMore
+ *         - count
+ *       properties:
+ *         cursors:
+ *           type: object
+ *           required:
+ *             - start
+ *             - end
+ *           properties:
+ *             start:
+ *               type: string
+ *               nullable: true
+ *               description: 開始游標
+ *               example: "eyJpZCI6MTAwfQ=="
+ *             end:
+ *               type: string
+ *               nullable: true
+ *               description: 結束游標
+ *               example: "eyJpZCI6MTIwfQ=="
+ *         hasMore:
+ *           type: boolean
+ *           description: 是否有更多數據
+ *           example: true
+ *         count:
  *           type: integer
- *           description: 預估總記錄數
- *           example: 150
- *         parentTotalEstimate:
- *           type: integer
- *           nullable: true
- *           description: 父分類下的資源總數估計（僅在有子分類篩選時提供）
+ *           minimum: 0
+ *           description: 本次返回的項目數
+ *           example: 20
+
+ *     ResponseMeta:
+ *       type: object
+ *       properties:
+ *         searchQuery:
+ *           type: string
+ *           description: 搜尋查詢
+ *           example: "JavaScript"
+ *         searchTime:
+ *           type: number
+ *           description: 搜尋耗時（毫秒）
  *           example: 45
- *     
- *     SuccessResponse:
+ *         filters:
+ *           type: object
+ *           additionalProperties: true
+ *           description: 應用的篩選條件
+ *           example: { "category": "tech", "status": "active" }
+ *         categoryCounts:
+ *           type: object
+ *           additionalProperties:
+ *             type: integer
+ *           description: 分類統計
+ *           example: { "tech": 50, "design": 30 }
+ *         aggregateData:
+ *           type: object
+ *           additionalProperties: true
+ *           description: 聚合資料
+ *         requestId:
+ *           type: string
+ *           description: 請求 ID
+ *           example: "req-12345"
+ *         cacheHit:
+ *           type: boolean
+ *           description: 是否命中快取
+ *           example: true
+ *         processingTime:
+ *           type: number
+ *           description: 處理時間（毫秒）
+ *           example: 123
+
+ *     PaginatedApiResponse:
  *       type: object
  *       required:
  *         - success
+ *         - data
+ *         - pagination
+ *         - timestamp
  *       properties:
  *         success:
  *           type: boolean
  *           description: 請求是否成功
  *           example: true
- *         message:
+ *         data:
+ *           type: array
+ *           description: 分頁資料陣列
+ *           items: {}
+ *         pagination:
+ *           $ref: '#/components/schemas/PaginationInfo'
+ *         timestamp:
  *           type: string
- *           description: 成功訊息
- *           example: "操作成功"
- *     
+ *           format: date-time
+ *           description: 時間戳
+ *           example: "2024-01-15T10:30:00Z"
+ *         meta:
+ *           $ref: '#/components/schemas/ResponseMeta'
+ *           nullable: true
+
+ *     CursorPaginatedApiResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - data
+ *         - pagination
+ *         - timestamp
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: 請求是否成功
+ *           example: true
+ *         data:
+ *           type: array
+ *           description: 分頁資料陣列
+ *           items: {}
+ *         pagination:
+ *           $ref: '#/components/schemas/CursorPaginationInfo'
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *           description: 時間戳
+ *           example: "2024-01-15T10:30:00Z"
+ *         meta:
+ *           $ref: '#/components/schemas/ResponseMeta'
+ *           nullable: true
+     
  *     Timestamps:
  *       type: object
  *       properties:
@@ -99,7 +248,7 @@
  *           format: date-time
  *           description: 更新時間
  *           example: "2024-01-15T10:30:00Z"
- *     
+     
  *     UserBasicInfo:
  *       type: object
  *       description: 使用者基本資訊
@@ -146,8 +295,8 @@
  *           nullable: true
  *           description: 自我介紹
  *           example: "我是一名熱愛學習的軟體開發者"
- *   
- * 
+
+ 
  *   responses:
  *     BadRequestError:
  *       description: 請求參數錯誤
@@ -155,11 +304,50 @@
  *         application/json:
  *           schema:
  *             allOf:
- *               - $ref: '#/components/schemas/ErrorResponse'
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
  *               - type: object
  *                 properties:
- *                   message:
- *                     example: "請求參數錯誤"
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "BAD_REQUEST"
+ *                       message:
+ *                         example: "請求參數錯誤"
+ *     
+ *     UnauthorizedError:
+ *       description: 未授權存取
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "UNAUTHORIZED"
+ *                       message:
+ *                         example: "未授權存取"
+
+ *     ForbiddenError:
+ *       description: 禁止存取
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "FORBIDDEN"
+ *                       message:
+ *                         example: "無權限執行此操作"
  *     
  *     NotFoundError:
  *       description: 資源不存在
@@ -167,11 +355,53 @@
  *         application/json:
  *           schema:
  *             allOf:
- *               - $ref: '#/components/schemas/ErrorResponse'
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
  *               - type: object
  *                 properties:
- *                   message:
- *                     example: "資源不存在"
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "NOT_FOUND"
+ *                       message:
+ *                         example: "資源不存在"
+
+ *     ConflictError:
+ *       description: 資源衝突
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "CONFLICT"
+ *                       message:
+ *                         example: "資源已存在或發生衝突"
+
+ *     ValidationError:
+ *       description: 資料驗證錯誤
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
+ *               - type: object
+ *                 properties:
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "VALIDATION_ERROR"
+ *                       message:
+ *                         example: "資料驗證失敗"
+ *                       details:
+ *                         type: object
+ *                         example: { "title": "標題不能為空", "email": "信箱格式錯誤" }
  *     
  *     InternalServerError:
  *       description: 伺服器內部錯誤
@@ -179,9 +409,14 @@
  *         application/json:
  *           schema:
  *             allOf:
- *               - $ref: '#/components/schemas/ErrorResponse'
+ *               - $ref: '#/components/schemas/ApiErrorResponse'
  *               - type: object
  *                 properties:
- *                   message:
- *                     example: "伺服器內部錯誤"
+ *                   error:
+ *                     type: object
+ *                     properties:
+ *                       code:
+ *                         example: "INTERNAL_SERVER_ERROR"
+ *                       message:
+ *                         example: "伺服器內部錯誤"
  */

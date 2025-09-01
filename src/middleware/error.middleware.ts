@@ -3,8 +3,95 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/error-handler';
-import { ErrorResponse } from '../types/common.types';
+
+/**
+ * 基本錯誤類
+ */
+export class AppError extends Error {
+  statusCode: number;
+  errors?: Record<string, string>;
+
+  constructor(message: string, statusCode: number, errors?: Record<string, string>) {
+    super(message);
+    this.statusCode = statusCode;
+    this.errors = errors;
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+/**
+ * 400 錯誤 - BAD_REQUEST
+ */
+export class BadRequestError extends AppError {
+  constructor(message = '請求參數驗證失敗', errors?: Record<string, string>) {
+    super(message, 400, errors);
+  }
+}
+
+/**
+ * 401 錯誤 - UNAUTHORIZED  
+ */
+export class UnauthorizedError extends AppError {
+  constructor(message = '請先登入') {
+    super(message, 401);
+  }
+}
+
+/**
+ * 403 錯誤 - FORBIDDEN
+ */
+export class ForbiddenError extends AppError {
+  constructor(message = '無權限執行此操作') {
+    super(message, 403);
+  }
+}
+
+/**
+ * 404 錯誤 - NOT_FOUND
+ */
+export class NotFoundError extends AppError {
+  constructor(message = '找不到指定的資源') {
+    super(message, 404);
+  }
+}
+
+/**
+ * 409 錯誤 - CONFLICT
+ */
+export class ConflictError extends AppError {
+  constructor(message = '資源衝突') {
+    super(message, 409);
+  }
+}
+
+/**
+ * 422 錯誤 - UNPROCESSABLE_ENTITY
+ */
+export class UnprocessableEntityError extends AppError {
+  constructor(message = '無法處理請求的實體', errors?: Record<string, string>) {
+    super(message, 422, errors);
+  }
+}
+
+/**
+ * 429 錯誤 - TOO_MANY_REQUESTS
+ */
+export class TooManyRequestsError extends AppError {
+  constructor(message = '請求過於頻繁，請稍後再試', errors?: Record<string, string>) {
+    super(message, 429, errors);
+  }
+}
+
+/**
+ * 500 錯誤 - INTERNAL_SERVER_ERROR
+ */
+export class InternalServerError extends AppError {
+  constructor(message = '伺服器發生未預期的錯誤') {
+    super(message, 500);
+  }
+}
+import { ApiErrorResponse } from '../types/api-response.types';
 import { 
   isPrismaError, 
   categorizePrismaError, 
@@ -156,36 +243,22 @@ export const globalErrorHandler = (
     }
   };
 
-  // 獲取錯誤類型
-  const getErrorType = (statusCode: number): string => {
-    switch (statusCode) {
-      case 400:
-        return 'bad_request';
-      case 401:
-        return 'unauthorized';
-      case 403:
-        return 'forbidden';
-      case 404:
-        return 'not_found';
-      case 409:
-        return 'conflict';
-      case 500:
-        return 'internal_server_error';
-      default:
-        return 'error';
-    }
-  };
-
   // 返回標準化錯誤響應
-  const response: ErrorResponse = {
+  const response: ApiErrorResponse = {
     success: false,
+    data: null,
     error: {
       code: getErrorCode(error),
       message: message,
-      type: getErrorType(statusCode) as ErrorResponse['error']['type'],
       ...(errors && { details: errors }),
     },
     timestamp: new Date().toISOString(),
+    ...(req.requestId && { 
+      meta: { 
+        requestId: req.requestId,
+        ...(req.startTime && { processingTime: Date.now() - req.startTime })
+      }
+    }),
     ...(process.env.NODE_ENV === 'dev' && { 
       debug: {
         stack: error?.stack || 'No stack trace available',

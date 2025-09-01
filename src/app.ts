@@ -30,10 +30,24 @@ import emailRoutes from './routes/email.routes';
 import commentRoutes from './routes/comment.routes';
 // 引入圖片路由
 import imageRoutes from './routes/image.routes';
+// 引入便利貼路由
+import noteRoutes from './routes/note.routes';
+// 引入成果路由
+import outcomeRoutes from './routes/outcome.routes';
+// 引入覆盤路由
+import reviewRoutes from './routes/review.routes';
+// 引入導師路由
+import mentorRoutes from './routes/mentor.routes';
+// 引入里程碑路由
+import milestoneRoutes from './routes/milestone.routes';
+// 引入實踐路由
+import practiceRoutes from './routes/practice.routes';
 // 引入 OAuth 服務初始化
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
 import { requestLogger, errorLogger, logApplicationEvent } from './middleware/logging.middleware';
+// 引入回應增強中間件
+import { responseEnhancerMiddleware } from './middleware/response-enhancer';
 // 引入資料庫資訊和監控路由
 import dbInfoRoutes from './routes/db-info.routes';
 import monitorRoutes from './routes/monitor.routes';
@@ -44,23 +58,42 @@ import monitorRoutes from './routes/monitor.routes';
  */
 export function setupTypescriptRoutes(app: express.Application) {
   console.log('🚀 初始化 TypeScript 模型和相關設定...');
-  
+
   // 記錄應用程式啟動
   logApplicationEvent('startup', {
     nodeVersion: process.version,
     platform: process.platform,
     environment: process.env.NODE_ENV || 'dev'
   });
-  
+
   // 註冊日誌中間件（必須在路由之前）
   app.use(requestLogger);
   console.log('📝 Winston 日誌中間件已初始化');
-  
+
+  // 註冊回應增強中間件
+  app.use(responseEnhancerMiddleware);
+  console.log('🔄 Response Enhancer Middleware 已初始化');
+
   // 初始化 Passport 認證
   app.use(initializePassport());
   app.use(initializePassportSession());
   console.log('🔐 Passport 認證系統已初始化');
-  
+
+  // 為 Swagger UI 路徑添加特殊的 CORS 處理中間件
+  // 這允許 Chrome 擴充功能和其他工具訪問 Swagger UI 的靜態資源
+  app.use(['/api-docs', '/api/docs'], (req, res, next) => {
+    // 允許所有來源訪問 Swagger UI 的靜態資源
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+    } else {
+      next();
+    }
+  });
+
   // 設置 Swagger UI
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
@@ -73,7 +106,7 @@ export function setupTypescriptRoutes(app: express.Application) {
     customSiteTitle: 'DaoDao API 文檔'
   }));
   console.log('📚 Swagger UI 已初始化 - 可在 /api-docs 和 /api/docs 訪問');
-  
+
   // 添加簡單的測試路由來確認路由工作
   app.get('/api/ts-test', (req, res) => {
     res.json({
@@ -82,70 +115,94 @@ export function setupTypescriptRoutes(app: express.Application) {
     });
   });
   console.log('🧪 TypeScript 測試路由已註冊 - 可在 /api/ts-test 訪問');
-  
+
   // 註冊認證路由
   app.use('/api/v1/auth', authRoutes);
   console.log('🔑 v1 認證路由已註冊 - 可在 /api/v1/auth 訪問');
-  
+
   // 註冊資源路由
   app.use('/api/v1/resources', resourceRoutes);
   console.log('💯 v1 資源路由已註冊 - 可在 /api/v1/resources 訪問');
   // 註冊資源評價路由
   app.use('/api/v1/resources/:resourceId/reviews', resourceReviewRoutes);
   console.log('💯 v1 資源和評價路由已註冊 - 可在 /api/v1/resources 訪問');
-  
+
   // 註冊想法路由
   app.use('/api/v1/ideas', ideaRoutes);
   console.log('💡 v1 想法路由已註冊 - 可在 /api/v1/ideas 訪問');
-  
+
   // 註冊我的想法路由
   app.use('/api/v1/me', meRoutes);
   console.log('👤 v1 個人路由已註冊 - 可在 /api/v1/me 訪問');
-  
+
   // 註冊標籤路由
   app.use('/api/v1/tags', tagRoutes);
   console.log('🏷️ v1 標籤路由已註冊 - 可在 /api/v1/tags 訪問');
-  
+
   // 註冊專案路由
   app.use('/api/v1/projects', projectRoutes);
   console.log('📁 v1 專案路由已註冊 - 可在 /api/v1/projects 訪問');
-  
+
   // 註冊用戶路由
   app.use('/api/v1/users', userRoutes);
   console.log('👥 v1 用戶路由已註冊 - 可在 /api/v1/users 訪問');
-  
+
   // 註冊留言路由
   app.use('/api/v1/comments', commentRoutes);
   console.log('💬 v1 留言路由已註冊 - 可在 /api/v1/comments 訪問');
-  
+
   // 註冊圖片路由
   app.use('/api/v1/images', imageRoutes);
   console.log('🖼️ v1 圖片路由已註冊 - 可在 /api/v1/images 訪問');
-  
+
   // 註冊郵件路由
   app.use('/api/v1/email', emailRoutes);
   console.log('📧 v1 郵件路由已註冊 - 可在 /api/v1/email 訪問');
-  
+
+  // 註冊便利貼路由
+  app.use('/api/v1/notes', noteRoutes);
+  console.log('📝 v1 便利貼路由已註冊 - 可在 /api/v1/notes 訪問');
+
+  // 註冊成果路由
+  app.use('/api/v1/outcomes', outcomeRoutes);
+  console.log('🎯 v1 成果路由已註冊 - 可在 /api/v1/outcomes 訪問');
+
+  // 註冊覆盤路由
+  app.use('/api/v1/reviews', reviewRoutes);
+  console.log('📊 v1 覆盤路由已註冊 - 可在 /api/v1/reviews 訪問');
+
+  // 註冊導師路由
+  app.use('/api/v1/mentor', mentorRoutes);
+  console.log('👨‍🏫 v1 導師路由已註冊 - 可在 /api/v1/mentor 訪問');
+
+  // 註冊里程碑路由（作為專案的子路由）
+  app.use('/api/v1/projects/:projectId/milestones', milestoneRoutes);
+  console.log('🎯 v1 里程碑路由已註冊 - 可在 /api/v1/projects/:projectId/milestones 訪問');
+
+  // 註冊實踐路由
+  app.use('/api/v1/practices', practiceRoutes);
+  console.log('⚡ v1 實踐路由已註冊 - 可在 /api/v1/practices 訪問');
+
   // 註冊資料庫資訊路由
   app.use('/api/v1/db-info', dbInfoRoutes);
   console.log('🗃️ v1 資料庫資訊路由已註冊 - 可在 /api/v1/db-info 訪問');
-  
+
   // 註冊系統監控路由
   app.use('/api/v1/monitor', monitorRoutes);
   console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
-  
+
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../../public/monitor.html'));
   });
   console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
-  
+
   // 資料庫資訊 HTML 頁面的直接路由
   app.get('/api/v1/db-info.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../../public/db-info.html'));
   });
   console.log('🗃️ 資料庫資訊頁面路由已註冊 - 可在 /api/v1/db-info.html 訪問');
-  
+
   // v1 健康檢查端點
   app.get('/api/v1/health', (req, res) => {
     res.json({
@@ -155,14 +212,14 @@ export function setupTypescriptRoutes(app: express.Application) {
     });
   });
   console.log('✅ v1 健康檢查端點已註冊 - 可在 /api/v1/health 訪問');
-  
+
   // 使用 Prisma 架構，不需要手動加載模型
   console.log('✅ 已啟用 Prisma 資料庫架構');
-  
+
   // 靜態文件服務（必須在錯誤處理之前）
   app.use(express.static(path.join(__dirname, '../public')));
   console.log('📁 靜態文件服務已初始化');
-  
+
   // 註冊錯誤日誌中間件（必須在所有路由之後）
   app.use(errorLogger);
   console.log('🚨 錯誤日誌中間件已初始化');
@@ -172,6 +229,9 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
   console.log('🚨 全域錯誤處理中間件已初始化');
-  
+
   return app;
 }
+
+// Export app for testing
+export const app = express();

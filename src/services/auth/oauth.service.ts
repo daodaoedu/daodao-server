@@ -45,7 +45,7 @@ const getAuthOptions = (): AuthOptions | null => {
  */
 passport.serializeUser((user: any, done) => {
   console.log('SerializeUser:', user);
-  
+
   const userId = getUserId(user as AnyUser);
   if (userId) {
     // 使用新的用戶類型檢測邏輯
@@ -70,9 +70,9 @@ passport.serializeUser((user: any, done) => {
 passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user' }, done) => {
   try {
     console.log('DeserializeUser:', sessionData);
-    
+
     let foundUser;
-    
+
     if (sessionData.type === 'user') {
       // 查找正式用戶
       foundUser = await authService.findUserByExternalId(sessionData.id);
@@ -82,9 +82,9 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
         where: { id: parseInt(sessionData.id) }
       });
     }
-    
+
     console.log('DeserializeUser result:', foundUser);
-    done(null, foundUser as any);
+    done(null, foundUser as unknown as Express.User);
   } catch (error) {
     console.error('Deserialize user error:', error);
     done(error, null);
@@ -100,42 +100,46 @@ if (authOptions) {
   passport.use('google', new GoogleStrategy(
     authOptions,
     async (accessToken: string, refreshToken: string, profile: Profile, done) => {
-    try {
-      console.log('Google OAuth profile:', profile);
-      
-      if (!profile.emails || profile.emails.length === 0) {
-        throw new Error('No email found in Google profile');
-      }
-      
-      const email = profile.emails[0].value;
-      const photoUrl = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined;
-      
-      // 首先檢查是否存在正式用戶
-      const userResult = await authService.findUserByEmail(email);
-      
-      console.log('Found user result:', userResult);
-      
-      if (userResult) {
-        console.log('用戶已註冊，返回正式用戶');
-        return done(null, userResult.user as unknown as Express.User);
-      }
+      try {
+        console.log('Google OAuth profile:', profile);
 
-      // 如果沒有正式用戶，則檢查或創建臨時用戶
-      const tempUser = await authService.findOrCreateTempUser({
-        googleId: profile.id,
-        email,
-        name: profile.displayName,
-        photoUrl
-      });
-      
-      console.log('臨時用戶:', tempUser);
-      
-      return done(null, tempUser as unknown as Express.User);
-    } catch (error) {
-      console.error('Google OAuth 策略錯誤:', error);
-      return done(error, false);
+        if (!profile.emails || profile.emails.length === 0) {
+          throw new Error('No email found in Google profile');
+        }
+
+        const email = profile.emails[0].value;
+        const photoUrl = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined;
+
+        // 首先檢查是否存在正式用戶
+        const userResult = await authService.findUserByEmail(email);
+
+        console.log('Found user result:', userResult);
+
+        if (userResult && userResult.success && userResult.data) {
+          console.log('用戶已註冊，返回正式用戶');
+          return done(null, userResult.data.user as unknown as Express.User);
+        }
+
+        // 如果沒有正式用戶，則檢查或創建臨時用戶
+        const tempUserResult = await authService.findOrCreateTempUser({
+          googleId: profile.id,
+          email,
+          name: profile.displayName,
+          photoUrl
+        });
+
+        console.log('臨時用戶:', tempUserResult);
+
+        if (tempUserResult.success && tempUserResult.data) {
+          return done(null, tempUserResult.data as unknown as Express.User);
+        } else {
+          return done(new Error('Failed to create temp user'), false);
+        }
+      } catch (error) {
+        console.error('Google OAuth 策略錯誤:', error);
+        return done(error, false);
+      }
     }
-  }
   ));
 } else {
   console.warn('⚠️ 跳過 Google OAuth 策略設定');
@@ -161,13 +165,13 @@ export const initializePassportSession = () => {
  * Google 認證中間件
  * 開始 Google OAuth 流程
  */
-export const authenticateGoogle = isOAuthConfigured() 
+export const authenticateGoogle = isOAuthConfigured()
   ? passport.authenticate('google', {
-      scope: ['profile', 'email']
-    })
+    scope: ['profile', 'email']
+  })
   : (req: any, res: any, next: any) => {
-      res.status(500).json({ error: 'OAuth not configured' });
-    };
+    res.status(500).json({ error: 'OAuth not configured' });
+  };
 
 /**
  * Google 認證回調中間件
@@ -175,11 +179,11 @@ export const authenticateGoogle = isOAuthConfigured()
  */
 export const authenticateGoogleCallback = isOAuthConfigured()
   ? passport.authenticate('google', {
-      failureRedirect: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/auth/failure'
-    })
+    failureRedirect: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/auth/failure'
+  })
   : (req: any, res: any, next: any) => {
-      res.status(500).json({ error: 'OAuth not configured' });
-    };
+    res.status(500).json({ error: 'OAuth not configured' });
+  };
 
 /**
  * OAuth 服務導出

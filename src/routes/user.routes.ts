@@ -19,6 +19,10 @@ import {
   getUserParamsSchema,
   getUserQuerySchema
 } from '../validators/user.validators';
+import {
+  customIdSchema,
+  customIdParamsSchema
+} from '../validators/user-custom-id.validators';
 
 const router = Router();
 
@@ -42,6 +46,48 @@ router.get('/',
 router.get('/me', 
   authenticate,
   userController.getMe as RequestHandler
+);
+
+/**
+ * GET /users/custom-id/check/:customId
+ * 檢查自訂 ID 可用性
+ * 路徑參數：customId - 要檢查的自訂 ID
+ */
+router.get('/custom-id/check/:customId', 
+  validate(customIdParamsSchema, 'params'),
+  userController.checkCustomIdAvailability as RequestHandler
+);
+
+/**
+ * GET /users/custom-id/:customId
+ * 透過自訂 ID 獲取用戶資訊
+ * 路徑參數：customId - 用戶自訂 ID
+ */
+router.get('/custom-id/:customId', 
+  validate(customIdParamsSchema, 'params'),
+  userController.getUserByCustomId as RequestHandler
+);
+
+/**
+ * POST /users/me/custom-id
+ * 設置當前用戶的自訂 ID
+ * 請求體：{ customId: string }
+ * 需要身份驗證
+ */
+router.post('/me/custom-id', 
+  authenticate,
+  validate(customIdSchema, 'body'),
+  userController.setCustomId as RequestHandler
+);
+
+/**
+ * DELETE /users/me/custom-id
+ * 移除當前用戶的自訂 ID
+ * 需要身份驗證
+ */
+router.delete('/me/custom-id', 
+  authenticate,
+  userController.removeCustomId as RequestHandler
 );
 
 /**

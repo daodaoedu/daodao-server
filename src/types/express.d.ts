@@ -15,6 +15,8 @@ declare global {
     interface Request {
       user?: UserJwtPayload;
       isTemporary?: boolean;
+      startTime?: number;
+      requestId?: string;
     }
     
     // AuthenticatedRequest 由 Passport 提供，確保兼容性

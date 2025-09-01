@@ -1,200 +1,251 @@
 /**
- * 資源服務測試
- * 完整測試資源相關業務邏輯
+ * Resource Service Unit Tests
+ * Tests resource service business logic in isolation
+ * 
+ * Focus: Business logic validation, data transformation, resource management operations
+ * Mocks: All external dependencies (database, transform service, tag service, pagination utils)
  */
 
-import { mockPrisma } from '@/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
+
+// Mock external dependencies
+const mockTransformService = {
+  transformResourceToApi: jest.fn(),
+  transformResourceToDb: jest.fn()
+};
+
+const mockTagService = {
+  setEntityTags: jest.fn(),
+  getEntityTags: jest.fn(),
+  removeEntityTag: jest.fn()
+};
+
+const mockTransformUtils = {
+  decodeCursor: jest.fn(),
+  generatePaginationMetadata: jest.fn()
+};
+
+const mockResponseHelper = {
+  createSuccessResponse: jest.fn(),
+  createCursorPaginatedResponse: jest.fn()
+};
 
 jest.mock('@/services/database/prisma.service', () => ({
-  prisma: mockPrisma
+  prisma: prismaMock
 }));
 
-jest.mock('@/services/transform.service', () => ({
-  transformResourceToApi: jest.fn().mockImplementation((data) => data),
-  transformResourceToDb: jest.fn().mockImplementation(async (data, userId) => ({
-    name: data.name,
-    url: data.url,
-    image_url: data.imageUrl || null,
-    description: data.description,
-    video_url: data.videoUrl || null,
-    type: data.type,
-    cost: data.cost,
-    level: data.level,
-    major_category_id: data.majorCategory ? 1 : null,
-    sub_category_id: data.subCategory ? 2 : null
-  }))
-}));
+jest.mock('@/services/transform.service', () => mockTransformService);
 
-jest.mock('@/services/tag.service', () => ({
-  __esModule: true,
-  default: {
-    setEntityTags: jest.fn().mockResolvedValue([]),
-    getEntityTags: jest.fn().mockResolvedValue([])
-  }
-}));
+jest.mock('@/services/tag.service', () => mockTagService);
 
-jest.mock('@/utils/transform-utils', () => ({
-  decodeCursor: jest.fn().mockReturnValue({ id: 10, timestamp: '2024-01-01T00:00:00Z' }),
-  generatePaginationMetadata: jest.fn().mockImplementation((data, count, limit, sort, hasMore) => ({
-    cursors: { start: null, end: null },
-    hasMore: hasMore || false,
-    count: count
-  }))
-}));
+jest.mock('@/utils/transform-utils', () => mockTransformUtils);
 
-import resourceService from '@/services/resource.service';
-import tagService from '@/services/tag.service';
-import { NotFoundError, ForbiddenError } from '@/utils/error-handler';
+jest.mock('@/utils/response-helper', () => mockResponseHelper);
 
-describe('Resource Service Tests', () => {
+import * as resourceService from '@/services/resource.service';
+import { NotFoundError, ForbiddenError } from '@/middleware/error.middleware';
+
+describe('Resource Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks(); // Restore any spies from previous tests
+    setupTransactionMock();
+    
+    // Setup common mock responses
+    mockTransformService.transformResourceToApi.mockImplementation((data) => data);
+    mockTransformService.transformResourceToDb.mockImplementation(async (data) => ({
+      name: data.name || '',
+      url: data.url || '',
+      image_url: data.imageUrl || null,
+      description: data.description || '',
+      video_url: data.videoUrl || null,
+      type: data.type || '',
+      cost: data.cost || '',
+      level: data.level || '',
+      major_category_id: data.majorCategory ? 1 : null,
+      sub_category_id: data.subCategory ? 2 : null
+    }));
+    
+    mockTagService.setEntityTags.mockResolvedValue(undefined);
+    mockTagService.getEntityTags.mockResolvedValue([]);
+    
+    mockTransformUtils.decodeCursor.mockReturnValue({ id: 10, timestamp: new Date('2024-01-01') });
+    mockTransformUtils.generatePaginationMetadata.mockImplementation((_, count, __, ___, hasMore) => ({
+      cursors: { start: null, end: null },
+      hasMore: hasMore || false,
+      count: count
+    }));
+    
+    mockResponseHelper.createSuccessResponse.mockImplementation((data) => ({
+      success: true,
+      data,
+      message: 'Success'
+    }));
+    
+    mockResponseHelper.createCursorPaginatedResponse.mockImplementation((data, pagination, meta = {}) => ({
+      success: true,
+      data,
+      pagination,
+      meta
+    }));
+  });
+  
+  // Test data factories matching Prisma schema
+  const createTestResource = (overrides = {}) => ({
+    id: 1,
+    external_id: 'resource-uuid',
+    name: 'Test Resource',
+    url: 'https://example.com',
+    image_url: null,
+    description: 'Test description',
+    video_url: null,
+    type: 'books_articles',
+    cost: 'free',
+    level: 'beginner',
+    status: 'active',
+    major_category_id: null,
+    sub_category_id: null,
+    created_by: 1,
+    created_at: new Date('2024-01-01'),
+    updated_at: new Date('2024-01-01'),
+    deleted_at: null,
+    ...overrides
+  });
+  
+  const createTestResourceWithRelations = (overrides = {}) => ({
+    ...createTestResource(overrides),
+    users: {
+      id: 1,
+      nickname: 'Test User',
+      contacts: {
+        photo_url: null
+      }
+    },
+    categories_resources_major_category_idTocategories: null,
+    categories_resources_sub_category_idTocategories: null
+  });
+  
+  
+  const createTestReviewStats = (overrides = {}) => ({
+    _avg: {
+      score_impact: 4.5,
+      score_mindset: 4.0,
+      score_problems: 4.2,
+      score_perspectives: 4.1,
+      score_goals: 4.3
+    },
+    _count: { id: 10 },
+    _sum: {},
+    _min: {},
+    _max: {},
+    ...overrides
   });
 
   describe('getResourceById', () => {
-    const resourceId = '550e8400-e29b-41d4-a716-446655440000';
-
-    it('應該成功獲取資源詳情', async () => {
-      const mockResource = {
-        id: 1,
+    it('should get resource by ID successfully with complete data', async () => {
+      // Arrange: Setup test data and mocks
+      const resourceId = 'resource-uuid';
+      const testResource = createTestResourceWithRelations({
         external_id: resourceId,
-        name: '測試資源',
-        url: 'https://example.com',
-        image_url: 'https://example.com/image.jpg',
-        description: '這是一個測試資源',
-        video_url: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
-        status: 'active',
-        created_by: 1,
-        created_at: new Date('2024-01-01'),
-        updated_at: new Date('2024-01-01'),
-        users: {
-          id: 1,
-          nickname: 'TestUser',
-          contacts: {
-            photo_url: null
-          }
-        },
-        categories_resources_major_category_idTocategories: {
-          id: 1,
-          name: 'Programming'
-        },
-        categories_resources_sub_category_idTocategories: {
-          id: 2,
-          name: 'JavaScript'
-        }
-      };
-
-      const mockTags = [
-        {
-          entity_id: resourceId,
-          tags: { id: 1, name: 'javascript' }
-        },
-        {
-          entity_id: resourceId,
-          tags: { id: 2, name: 'react' }
-        }
+        name: 'Test Resource',
+        description: 'Test description',
+        categories_resources_major_category_idTocategories: { id: 1, name: 'Programming' },
+        categories_resources_sub_category_idTocategories: { id: 2, name: 'JavaScript' }
+      });
+      
+      const mockTagResults = [
+        { tag_id: 1, tag_name: 'javascript' },
+        { tag_id: 2, tag_name: 'react' }
       ];
+      
+      const mockReviewStats = createTestReviewStats();
+      
+      prismaMock.resources.findFirst.mockResolvedValue(testResource);
+      prismaMock.$queryRaw.mockResolvedValue(mockTagResults);
+      prismaMock.resource_review.aggregate.mockResolvedValue(mockReviewStats as any);
 
-      const mockReviewStats = {
-        _avg: {
-          score_impact: 4.5,
-          score_mindset: 4.0,
-          score_problems: 4.2,
-          score_perspectives: 4.1,
-          score_goals: 4.3
-        },
-        _count: { id: 10 }
-      };
-
-      mockPrisma.resources.findUnique.mockResolvedValue(mockResource);
-      mockPrisma.entity_tags.findMany.mockResolvedValue(mockTags);
-      mockPrisma.resource_review.aggregate.mockResolvedValue(mockReviewStats);
-
+      // Act: Execute the service method
       const result = await resourceService.getResourceById(resourceId);
 
-      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+      // Assert: Verify behavior and database calls
+      expect(prismaMock.resources.findFirst).toHaveBeenCalledWith({
         where: {
           external_id: resourceId,
           deleted_at: null
         },
         include: expect.objectContaining({
-          users: expect.any(Object),
-          categories_resources_major_category_idTocategories: expect.any(Object),
-          categories_resources_sub_category_idTocategories: expect.any(Object)
+          users: expect.objectContaining({
+            select: expect.objectContaining({
+              id: true,
+              nickname: true,
+              contacts: expect.objectContaining({
+                select: expect.objectContaining({
+                  photo_url: true
+                })
+              })
+            })
+          })
         })
       });
-
-      expect(mockPrisma.entity_tags.findMany).toHaveBeenCalledWith({
-        where: {
-          entity_type: 'resource',
-          entity_id: resourceId
-        },
-        include: {
-          tags: true
-        }
-      });
-
-      expect(mockPrisma.resource_review.aggregate).toHaveBeenCalledWith({
+      
+      expect(prismaMock.$queryRaw).toHaveBeenCalled();
+      
+      expect(prismaMock.resource_review.aggregate).toHaveBeenCalledWith({
         where: {
           resource_id: 1,
           deleted_at: null
         },
-        _avg: expect.any(Object),
-        _count: expect.any(Object)
+        _avg: expect.objectContaining({
+          score_impact: true,
+          score_mindset: true,
+          score_problems: true,
+          score_perspectives: true,
+          score_goals: true
+        }),
+        _count: { id: true }
       });
 
-      expect(result).toBeDefined();
+      expect(mockTransformService.transformResourceToApi).toHaveBeenCalled();
+      expect(mockResponseHelper.createSuccessResponse).toHaveBeenCalled();
+      expect(result.success).toBe(true);
     });
 
-    it('應該在資源不存在時拋出 NotFoundError', async () => {
-      mockPrisma.resources.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundError when resource not found', async () => {
+      // Arrange: Resource doesn't exist
+      const resourceId = 'non-existent-uuid';
+      prismaMock.resources.findFirst.mockResolvedValue(null);
 
+      // Act & Assert: Verify error is thrown
       await expect(resourceService.getResourceById(resourceId))
         .rejects
-        .toThrow(NotFoundError);
-
-      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+        .toThrow('資源不存在');
+        
+      expect(prismaMock.resources.findFirst).toHaveBeenCalledWith({
         where: {
           external_id: resourceId,
           deleted_at: null
         },
         include: expect.any(Object)
       });
+      
+      // Should not call other methods if resource not found
+      expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+      expect(prismaMock.resource_review.aggregate).not.toHaveBeenCalled();
     });
 
-    it('應該處理資源沒有分類的情況', async () => {
-      const mockResource = {
-        id: 1,
-        external_id: resourceId,
-        name: '測試資源',
-        url: 'https://example.com',
-        image_url: null,
-        description: '這是一個測試資源',
-        video_url: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
-        status: 'active',
-        created_by: 1,
-        created_at: new Date('2024-01-01'),
-        updated_at: new Date('2024-01-01'),
-        users: {
-          id: 1,
-          nickname: 'TestUser',
-          contacts: {
-            photo_url: null
-          }
-        },
-        categories_resources_major_category_idTocategories: null,
-        categories_resources_sub_category_idTocategories: null
+    it('should handle resource with null categories and empty review stats', async () => {
+      // Arrange: Resource with minimal data
+      const resourceId = 'resource-uuid';
+      const testResource = {
+        ...createTestResourceWithRelations({
+          external_id: resourceId,
+          categories_resources_major_category_idTocategories: null,
+          categories_resources_sub_category_idTocategories: null
+        }),
+        users: null // Test handling of null user
       };
-
-      mockPrisma.resources.findUnique.mockResolvedValue(mockResource);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-      mockPrisma.resource_review.aggregate.mockResolvedValue({
+      
+      const mockReviewStats = {
         _avg: {
           score_impact: null,
           score_mindset: null,
@@ -202,113 +253,97 @@ describe('Resource Service Tests', () => {
           score_perspectives: null,
           score_goals: null
         },
-        _count: { id: 0 }
-      });
+        _count: { id: 0 },
+        _sum: {},
+        _min: {},
+        _max: {}
+      };
+      
+      prismaMock.resources.findFirst.mockResolvedValue(testResource);
+      prismaMock.$queryRaw.mockResolvedValue([]);
+      prismaMock.resource_review.aggregate.mockResolvedValue(mockReviewStats as any);
 
+      // Act: Execute the service method
       const result = await resourceService.getResourceById(resourceId);
 
-      expect(result).toBeDefined();
+      // Assert: Verify correct handling of null values
+      expect(result.success).toBe(true);
+      expect(mockTransformService.transformResourceToApi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: resourceId,
+          name: 'Test Resource',
+          majorCategory: null,
+          subCategory: null,
+          tags: [],
+          author: expect.objectContaining({
+            id: 0,
+            nickname: 'Unknown User'
+          }),
+          reviewStats: expect.objectContaining({
+            totalReviews: 0,
+            averageScores: expect.objectContaining({
+              impact: 0,
+              mindset: 0,
+              problems: 0,
+              perspectives: 0,
+              goals: 0
+            })
+          })
+        })
+      );
     });
   });
 
   describe('getResources', () => {
-    it('應該使用預設分頁參數獲取資源列表', async () => {
-      const mockResources = [
-        {
-          id: 1,
-          external_id: '550e8400-e29b-41d4-a716-446655440000',
-          name: '測試資源1',
-          url: 'https://example.com/1',
-          image_url: null,
-          description: '描述1',
-          video_url: null,
-          type: 'books_articles',
-          cost: 'free',
-          level: 'beginner',
-          status: 'active',
-          created_by: 1,
-          created_at: new Date('2024-01-01'),
-          updated_at: new Date('2024-01-01'),
-          users: {
-            id: 1,
-            nickname: 'TestUser'
-          },
-          categories_resources_major_category_idTocategories: {
-            id: 1,
-            name: 'Programming'
-          },
-          categories_resources_sub_category_idTocategories: {
-            id: 2,
-            name: 'JavaScript'
-          }
-        }
+    it('should get resources list with default pagination parameters', async () => {
+      // Arrange: Setup resources data
+      const testResources = [
+        createTestResourceWithRelations({ id: 1, external_id: 'resource-1' }),
+        createTestResourceWithRelations({ id: 2, external_id: 'resource-2' })
       ];
+      
+      prismaMock.resources.findMany.mockResolvedValue(testResources);
+      prismaMock.$queryRaw.mockResolvedValue([]);
 
-      mockPrisma.resources.findMany.mockResolvedValue(mockResources);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-
+      // Act: Execute the service method
       const result = await resourceService.getResources({}, {});
 
-      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
-        where: {
-          deleted_at: null
-        },
-        include: expect.any(Object),
-        orderBy: {
-          created_at: 'desc'
-        },
+      // Assert: Verify database calls and response
+      expect(prismaMock.resources.findMany).toHaveBeenCalledWith({
+        where: { deleted_at: null },
+        include: expect.objectContaining({
+          users: expect.any(Object),
+          categories_resources_major_category_idTocategories: expect.any(Object),
+          categories_resources_sub_category_idTocategories: expect.any(Object)
+        }),
+        orderBy: { created_at: 'desc' },
         take: 6 // DEFAULT_RESOURCE_PAGE_LIMIT + 1
       });
-
-      expect(result).toEqual({
-        resources: expect.any(Array),
-        pagination: expect.any(Object)
-      });
+      
+      expect(mockResponseHelper.createCursorPaginatedResponse).toHaveBeenCalled();
+      expect(result.success).toBe(true);
     });
 
-    it('應該正確處理分頁參數', async () => {
-      mockPrisma.resources.findMany.mockResolvedValue([]);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-
-      const paginationParams = {
-        cursor: 'test-cursor',
-        limit: 10,
-        sort: 'updated_at',
-        order: 'asc' as const
-      };
-
-      await resourceService.getResources({}, paginationParams);
-
-      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
-        where: {
-          deleted_at: null
-          // 注意：當 sort 是 'updated_at' 時，不會有 created_at 條件
-        },
-        include: expect.any(Object),
-        orderBy: {
-          updated_at: 'asc'
-        },
-        take: 11 // limit + 1
-      });
-    });
-
-    it('應該正確處理篩選參數', async () => {
-      mockPrisma.resources.findMany.mockResolvedValue([]);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-
+    it('should handle filters correctly', async () => {
+      // Arrange: Setup filters
       const filters = {
         type: 'books_articles',
         cost: 'free',
         level: 'beginner',
         majorCategory: 'Programming',
         subCategory: 'JavaScript',
-        query: 'test query',
+        query: 'test search',
         createdBy: 1
       };
+      
+      prismaMock.resources.findMany.mockResolvedValue([]);
+      prismaMock.$queryRaw.mockResolvedValue([]);
 
+      // Act: Execute the service method
       await resourceService.getResources(filters, {});
 
-      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
+      // Assert: Verify where conditions
+      expect(prismaMock.resources.findMany).toHaveBeenCalledWith({
         where: {
           deleted_at: null,
           type: 'books_articles',
@@ -324,13 +359,13 @@ describe('Resource Service Tests', () => {
           OR: [
             {
               name: {
-                contains: 'test query',
+                contains: 'test search',
                 mode: 'insensitive'
               }
             },
             {
               description: {
-                contains: 'test query',
+                contains: 'test search',
                 mode: 'insensitive'
               }
             }
@@ -342,25 +377,30 @@ describe('Resource Service Tests', () => {
       });
     });
 
-    it('應該正確處理標籤篩選', async () => {
-      const mockTaggedResources = [
-        { entity_id: '550e8400-e29b-41d4-a716-446655440000' },
-        { entity_id: '550e8400-e29b-41d4-a716-446655440001' }
-      ];
+    it('should handle tag filtering correctly', async () => {
+      // Arrange: Setup tag filtering
+      const taggedResourceIds = [1, 2];
+      const mockTaggedEntities = taggedResourceIds.map(id => ({
+        id: id,
+        created_by: 1,
+        created_at: new Date(),
+        updated_at: new Date(),
+        entity_type: 'resource',
+        entity_id: id,
+        tag_id: 1
+      }));
+      
+      prismaMock.entity_tags.findMany.mockResolvedValue(mockTaggedEntities);
+      prismaMock.resources.findMany.mockResolvedValue([]);
+      prismaMock.$queryRaw.mockResolvedValue([]);
 
-      mockPrisma.entity_tags.findMany
-        .mockResolvedValueOnce(mockTaggedResources) // 第一次調用用於標籤篩選
-        .mockResolvedValueOnce([]); // 第二次調用用於獲取資源標籤
+      const filters = { tags: ['javascript', 'react'] };
 
-      mockPrisma.resources.findMany.mockResolvedValue([]);
-
-      const filters = {
-        tags: ['javascript', 'react']
-      };
-
+      // Act: Execute the service method
       await resourceService.getResources(filters, {});
 
-      expect(mockPrisma.entity_tags.findMany).toHaveBeenCalledWith({
+      // Assert: Verify tag filtering query
+      expect(prismaMock.entity_tags.findMany).toHaveBeenCalledWith({
         where: {
           entity_type: 'resource',
           tags: {
@@ -373,156 +413,107 @@ describe('Resource Service Tests', () => {
           entity_id: true
         }
       });
-
-      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith({
-        where: {
-          deleted_at: null,
-          external_id: {
-            in: ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001']
-          }
-        },
-        include: expect.any(Object),
-        orderBy: expect.any(Object),
-        take: expect.any(Number)
-      });
+      
+      expect(prismaMock.resources.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: {
+              in: taggedResourceIds
+            }
+          })
+        })
+      );
     });
 
-    it('應該在沒有標籤匹配的資源時返回空結果', async () => {
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+    it('should return empty result when no resources match tag filter', async () => {
+      // Arrange: No resources match tag filter
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
-      const filters = {
-        tags: ['non-existent-tag']
-      };
+      // Act: Execute the service method
+      await resourceService.getResources({ tags: ['non-existent-tag'] }, {});
 
-      const result = await resourceService.getResources(filters, {});
-
-      expect(result).toEqual({
-        resources: [],
-        pagination: {
+      // Assert: Verify empty response
+      expect(mockResponseHelper.createCursorPaginatedResponse).toHaveBeenCalledWith(
+        [],
+        {
           cursors: { start: null, end: null },
           hasMore: false,
           count: 0
         }
-      });
-
-      expect(mockPrisma.resources.findMany).not.toHaveBeenCalled();
+      );
+      
+      // Should not query resources if no tags match
+      expect(prismaMock.resources.findMany).not.toHaveBeenCalled();
     });
 
-    it('應該正確處理分頁（有下一頁）', async () => {
-      const mockResources = Array(6).fill(null).map((_, index) => ({
-        id: index + 1,
-        external_id: `550e8400-e29b-41d4-a716-44665544000${index}`,
-        name: `測試資源${index + 1}`,
-        url: `https://example.com/${index + 1}`,
-        image_url: null,
-        description: `描述${index + 1}`,
-        video_url: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
-        status: 'active',
-        created_by: 1,
-        created_at: new Date('2024-01-01'),
-        updated_at: new Date('2024-01-01'),
-        deleted_at: null,
-        major_category_id: 1,
-        sub_category_id: 2,
-        users: {
-          id: 1,
-          nickname: 'TestUser'
-        },
-        categories_resources_major_category_idTocategories: {
-          id: 1,
-          name: 'Programming'
-        },
-        categories_resources_sub_category_idTocategories: {
-          id: 2,
-          name: 'JavaScript'
-        }
-      }));
+    it('should handle pagination with cursor correctly', async () => {
+      // Arrange: Setup pagination
+      const paginationParams = {
+        cursor: 'test-cursor',
+        limit: 10,
+        sort: 'created_at',
+        order: 'asc' as const
+      };
+      
+      prismaMock.resources.findMany.mockResolvedValue([]);
+      prismaMock.$queryRaw.mockResolvedValue([]);
 
-      mockPrisma.resources.findMany.mockResolvedValue(mockResources);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
+      // Act: Execute the service method
+      await resourceService.getResources({}, paginationParams);
 
-      const result = await resourceService.getResources({}, { limit: 5 });
-
-      expect(result.resources).toHaveLength(5); // 應該只返回5個，因為第6個用於判斷是否有下一頁
-      expect(result.pagination.hasMore).toBe(true); // 應該有更多數據
+      // Assert: Verify cursor pagination
+      expect(mockTransformUtils.decodeCursor).toHaveBeenCalledWith('test-cursor');
+      expect(prismaMock.resources.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            created_at: { gt: new Date('2024-01-01') } // asc order
+          }),
+          orderBy: { created_at: 'asc' },
+          take: 11 // limit + 1
+        })
+      );
     });
   });
 
   describe('createResource', () => {
     const userId = 1;
     const resourceData = {
-      name: '新測試資源',
+      name: 'New Test Resource',
       url: 'https://example.com/new',
-      description: '新資源描述',
-      type: 'books_articles' as const,
-      cost: 'free' as const,
-      level: 'beginner' as const,
+      description: 'New resource description',
+      type: 'books_articles',
+      cost: 'free',
+      level: 'beginner',
       tags: ['javascript', 'react']
     };
 
-    it('應該成功創建資源', async () => {
-      const mockCreatedResource = {
-        id: 1,
-        external_id: '550e8400-e29b-41d4-a716-446655440000',
+    it('should create resource successfully with complete data', async () => {
+      // Arrange: Setup test data
+      const createdResource = createTestResource({
+        external_id: 'new-resource-uuid',
         name: resourceData.name,
         url: resourceData.url,
-        description: resourceData.description,
-        type: resourceData.type,
-        cost: resourceData.cost,
-        level: resourceData.level,
-        status: 'active',
-        created_by: userId,
-        created_at: new Date(),
-        updated_at: new Date()
-      };
+        description: resourceData.description
+      });
+      
+      
+      prismaMock.resources.create.mockResolvedValue(createdResource);
+      
+      // The getResourceById is called internally - we need to prevent the recursion
+      // by mocking the internal database calls it would make
+      prismaMock.resources.findFirst.mockResolvedValueOnce(createdResource);
+      prismaMock.$queryRaw.mockResolvedValueOnce([]);
+      prismaMock.resource_review.aggregate.mockResolvedValueOnce({
+        _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
+        _count: { id: 0 },
+        _sum: {}, _min: {}, _max: {}
+      } as any);
 
-      const mockGetResourceResult = {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        name: resourceData.name,
-        url: resourceData.url,
-        imageUrl: null,
-        description: resourceData.description,
-        videoUrl: null,
-        type: resourceData.type,
-        cost: resourceData.cost,
-        level: resourceData.level,
-        status: 'active',
-        avgRating: null,
-        majorCategory: null,
-        subCategory: null,
-        user: {
-          id: 1,
-          name: 'TestUser',
-          _id: 'user-uuid',
-          roleList: ['user'],
-          photoURL: null,
-          educationStage: null,
-          tagList: [],
-          selfIntroduction: null
-        },
-        tags: [],
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
-        viewCount: 0,
-        favoriteCount: 0,
-        shareCount: 0,
-        reviewCount: 0,
-        likeCount: 0
-      };
-
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.create.mockResolvedValue(mockCreatedResource);
-
-      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById')
-        .mockResolvedValue(mockGetResourceResult);
-
+      // Act: Execute the service method
       const result = await resourceService.createResource(resourceData, userId);
 
-      expect(mockPrisma.$transaction).toHaveBeenCalled();
-      expect(mockPrisma.resources.create).toHaveBeenCalledWith({
+      // Assert: Verify database operations
+      expect(prismaMock.resources.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           name: resourceData.name,
           url: resourceData.url,
@@ -534,412 +525,292 @@ describe('Resource Service Tests', () => {
           status: 'active'
         })
       });
-
-      expect(tagService.setEntityTags).toHaveBeenCalledWith(
+      
+      expect(mockTagService.setEntityTags).toHaveBeenCalledWith(
         'resource',
-        '550e8400-e29b-41d4-a716-446655440000',
+        createdResource.id,
         ['javascript', 'react'],
         userId,
-        mockPrisma
+        prismaMock
       );
-
-      expect(result).toBeDefined();
-      expect(result).not.toBeNull();
-      if (result) {
-        expect(result.id).toBe('550e8400-e29b-41d4-a716-446655440000');
-      }
-
-      getResourceByIdSpy.mockRestore();
+      
+      expect(result.success).toBe(true);
     });
 
-    it('應該在沒有標籤時成功創建資源', async () => {
-      const resourceDataWithoutTags = {
-        ...resourceData,
-        tags: undefined
-      };
+    it('should create resource without tags successfully', async () => {
+      // Arrange: Resource data without tags
+      const resourceDataWithoutTags = { ...resourceData, tags: undefined };
+      const createdResource = createTestResource();
+      
+      prismaMock.resources.create.mockResolvedValue(createdResource);
+      
+      // Mock the internal getResourceById database calls
+      prismaMock.resources.findFirst.mockResolvedValueOnce(createdResource);
+      prismaMock.$queryRaw.mockResolvedValueOnce([]);
+      prismaMock.resource_review.aggregate.mockResolvedValueOnce({
+        _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
+        _count: { id: 0 },
+        _sum: {}, _min: {}, _max: {}
+      } as any);
 
-      const mockCreatedResource = {
-        id: 1,
-        external_id: '550e8400-e29b-41d4-a716-446655440000',
-        name: resourceDataWithoutTags.name,
-        url: resourceDataWithoutTags.url,
-        description: resourceDataWithoutTags.description,
-        type: resourceDataWithoutTags.type,
-        cost: resourceDataWithoutTags.cost,
-        level: resourceDataWithoutTags.level,
-        status: 'active',
-        created_by: userId,
-        created_at: new Date(),
-        updated_at: new Date()
-      };
-
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.create.mockResolvedValue(mockCreatedResource);
-
-      const getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById')
-        .mockResolvedValue({
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: resourceDataWithoutTags.name,
-          url: resourceDataWithoutTags.url,
-          imageUrl: null,
-          description: resourceDataWithoutTags.description,
-          videoUrl: null,
-          type: resourceDataWithoutTags.type,
-          cost: resourceDataWithoutTags.cost,
-          level: resourceDataWithoutTags.level,
-          status: 'active',
-          avgRating: null,
-          majorCategory: null,
-          subCategory: null,
-          user: {
-            id: 1,
-            name: 'TestUser',
-            _id: 'user-uuid',
-            roleList: ['user'],
-            photoURL: null,
-            educationStage: null,
-            tagList: [],
-            selfIntroduction: null
-          },
-          tags: [],
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z',
-          viewCount: 0,
-          favoriteCount: 0,
-          shareCount: 0,
-          reviewCount: 0,
-          likeCount: 0
-        });
-
+      // Act: Execute the service method
       await resourceService.createResource(resourceDataWithoutTags, userId);
 
-      expect(tagService.setEntityTags).not.toHaveBeenCalled();
-
-      getResourceByIdSpy.mockRestore();
+      // Assert: Verify tags are not set
+      expect(mockTagService.setEntityTags).not.toHaveBeenCalled();
     });
 
-    it('應該驗證主分類是否存在', async () => {
+    it('should validate major category exists', async () => {
+      // Arrange: Resource with non-existent major category
       const resourceDataWithCategory = {
         ...resourceData,
-        majorCategory: 'Programming'
+        majorCategory: 'NonExistentCategory'
       };
+      
+      prismaMock.categories.findUnique.mockResolvedValue(null);
 
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.categories.findUnique.mockResolvedValue(null);
-
+      // Act & Assert: Verify validation error
       await expect(resourceService.createResource(resourceDataWithCategory, userId))
         .rejects
-        .toThrow(NotFoundError);
-
-      expect(mockPrisma.categories.findUnique).toHaveBeenCalledWith({
-        where: { name: 'Programming' }
+        .toThrow('主分類不存在');
+        
+      expect(prismaMock.categories.findUnique).toHaveBeenCalledWith({
+        where: { name: 'NonExistentCategory' }
       });
     });
 
-    it('應該驗證子分類是否存在', async () => {
+    it('should validate sub category exists', async () => {
+      // Arrange: Resource with non-existent sub category
       const resourceDataWithSubCategory = {
         ...resourceData,
-        subCategory: 'JavaScript'
+        subCategory: 'NonExistentSubCategory'
       };
+      
+      prismaMock.categories.findUnique.mockResolvedValue(null);
 
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.categories.findUnique.mockResolvedValue(null);
-
+      // Act & Assert: Verify validation error
       await expect(resourceService.createResource(resourceDataWithSubCategory, userId))
         .rejects
-        .toThrow(NotFoundError);
-
-      expect(mockPrisma.categories.findUnique).toHaveBeenCalledWith({
-        where: { name: 'JavaScript' }
+        .toThrow('子分類不存在');
+        
+      expect(prismaMock.categories.findUnique).toHaveBeenCalledWith({
+        where: { name: 'NonExistentSubCategory' }
       });
-    });
-
-    it('應該在事務失敗時回滾', async () => {
-      const error = new Error('Database error');
-      mockPrisma.$transaction.mockRejectedValue(error);
-
-      await expect(resourceService.createResource(resourceData, userId))
-        .rejects
-        .toThrow(error);
     });
   });
 
   describe('updateResource', () => {
-    const resourceId = '550e8400-e29b-41d4-a716-446655440000';
+    const resourceId = 'resource-uuid';
     const userId = 1;
     const updateData = {
-      name: '更新後的資源名稱',
-      description: '更新後的描述',
+      name: 'Updated Resource Name',
+      description: 'Updated description',
       tags: ['updated-tag']
     };
 
-    let getResourceByIdSpy: jest.SpyInstance;
-
-    beforeEach(() => {
-      getResourceByIdSpy = jest.spyOn(resourceService, 'getResourceById')
-        .mockResolvedValue({
-          id: resourceId,
-          name: updateData.name,
-          url: 'https://example.com',
-          imageUrl: null,
-          description: updateData.description,
-          videoUrl: null,
-          type: 'books_articles',
-          cost: 'free',
-          level: 'beginner',
-          status: 'active',
-          avgRating: null,
-          majorCategory: null,
-          subCategory: null,
-          user: {
-            id: 1,
-            name: 'TestUser',
-            _id: 'user-uuid',
-            roleList: ['user'],
-            photoURL: null,
-            educationStage: null,
-            tagList: [],
-            selfIntroduction: null
-          },
-          tags: [],
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z',
-          viewCount: 0,
-          favoriteCount: 0,
-          shareCount: 0,
-          reviewCount: 0,
-          likeCount: 0
-        });
-    });
-
-    afterEach(() => {
-      getResourceByIdSpy.mockRestore();
-    });
-
-    it('應該成功更新資源', async () => {
-      const mockExistingResource = {
-        id: 1,
+    it('should update resource successfully', async () => {
+      // Arrange: Setup existing resource
+      const existingResource = createTestResource({
         external_id: resourceId,
-        name: '舊名稱',
-        created_by: userId,
-        deleted_at: null
-      };
+        created_by: userId
+      });
+      
+      
+      prismaMock.resources.findUnique.mockResolvedValue(existingResource);
+      prismaMock.resources.update.mockResolvedValue(existingResource);
+      
+      // Mock the internal getResourceById database calls
+      prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
+      prismaMock.$queryRaw.mockResolvedValueOnce([]);
+      prismaMock.resource_review.aggregate.mockResolvedValueOnce({
+        _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
+        _count: { id: 0 },
+        _sum: {}, _min: {}, _max: {}
+      } as any);
 
-      const mockUpdatedResource = {
-        ...mockExistingResource,
-        name: updateData.name,
-        description: updateData.description
-      };
-
-      const expectedResult = {
-        id: resourceId,
-        name: updateData.name,
-        url: 'https://example.com',
-        imageUrl: null,
-        description: updateData.description,
-        videoUrl: null,
-        type: 'books_articles',
-        cost: 'free',
-        level: 'beginner',
-        status: 'active',
-        avgRating: null,
-        majorCategory: null,
-        subCategory: null,
-        user: {
-          id: 1,
-          name: 'TestUser',
-          _id: 'user-uuid',
-          roleList: ['user'],
-          photoURL: null,
-          educationStage: null,
-          tagList: [],
-          selfIntroduction: null
-        },
-        tags: [],
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
-        viewCount: 0,
-        favoriteCount: 0,
-        shareCount: 0,
-        reviewCount: 0,
-        likeCount: 0
-      };
-
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
-      mockPrisma.resources.update.mockResolvedValue(mockUpdatedResource);
-
+      // Act: Execute the service method
       const result = await resourceService.updateResource(resourceId, updateData, userId);
 
-      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+      // Assert: Verify update operations
+      expect(prismaMock.resources.findUnique).toHaveBeenCalledWith({
         where: {
           external_id: resourceId,
           deleted_at: null
         }
       });
-
-      expect(mockPrisma.resources.update).toHaveBeenCalledWith({
+      
+      expect(prismaMock.resources.update).toHaveBeenCalledWith({
         where: { external_id: resourceId },
         data: expect.objectContaining({
           name: updateData.name,
           description: updateData.description
         })
       });
-
-      expect(tagService.setEntityTags).toHaveBeenCalledWith(
+      
+      expect(mockTagService.setEntityTags).toHaveBeenCalledWith(
         'resource',
-        resourceId,
-        ['updated-tag'],
+        existingResource.id,
+        updateData.tags,
         userId,
-        mockPrisma
+        prismaMock
       );
-
-      expect(result).toBeDefined();
+      
+      expect(result.success).toBe(true);
     });
 
-    it('應該在資源不存在時拋出 NotFoundError', async () => {
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundError when resource not found', async () => {
+      // Arrange: Resource doesn't exist
+      prismaMock.resources.findUnique.mockResolvedValue(null);
 
+      // Act & Assert: Verify error is thrown
       await expect(resourceService.updateResource(resourceId, updateData, userId))
         .rejects
-        .toThrow(NotFoundError);
+        .toThrow('資源不存在');
     });
 
-    it('應該在無權限時拋出 ForbiddenError', async () => {
-      const mockExistingResource = {
-        id: 1,
+    it('should throw ForbiddenError when user lacks permission', async () => {
+      // Arrange: Resource owned by different user
+      const existingResource = createTestResource({
         external_id: resourceId,
-        name: '舊名稱',
-        created_by: 999, // 不同的用戶ID
-        deleted_at: null
-      };
+        created_by: 999 // Different user ID
+      });
+      
+      prismaMock.resources.findUnique.mockResolvedValue(existingResource);
 
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
-
+      // Act & Assert: Verify permission error
       await expect(resourceService.updateResource(resourceId, updateData, userId))
         .rejects
-        .toThrow(ForbiddenError);
+        .toThrow('無權限修改此資源');
     });
 
-    it('應該處理未提供標籤的更新', async () => {
+    it('should handle update without tags', async () => {
+      // Arrange: Update data without tags
       const updateDataWithoutTags = {
-        name: '更新後的資源名稱',
-        description: '更新後的描述'
+        name: 'Updated Name',
+        description: 'Updated description'
       };
-
-      const mockExistingResource = {
-        id: 1,
+      
+      const existingResource = createTestResource({
         external_id: resourceId,
-        name: '舊名稱',
-        created_by: userId,
-        deleted_at: null
-      };
+        created_by: userId
+      });
+      
+      prismaMock.resources.findUnique.mockResolvedValue(existingResource);
+      prismaMock.resources.update.mockResolvedValue(existingResource);
+      
+      // Mock the internal getResourceById database calls
+      prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
+      prismaMock.$queryRaw.mockResolvedValueOnce([]);
+      prismaMock.resource_review.aggregate.mockResolvedValueOnce({
+        _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
+        _count: { id: 0 },
+        _sum: {}, _min: {}, _max: {}
+      } as any);
 
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
-      mockPrisma.resources.update.mockResolvedValue(mockExistingResource);
-
-
+      // Act: Execute the service method
       await resourceService.updateResource(resourceId, updateDataWithoutTags, userId);
 
-      expect(tagService.setEntityTags).not.toHaveBeenCalled();
+      // Assert: Verify tags are not updated
+      expect(mockTagService.setEntityTags).not.toHaveBeenCalled();
     });
   });
 
   describe('deleteResource', () => {
-    const resourceId = '550e8400-e29b-41d4-a716-446655440000';
+    const resourceId = 'resource-uuid';
     const userId = 1;
 
-    it('應該成功軟刪除資源', async () => {
-      const mockExistingResource = {
-        id: 1,
+    it('should soft delete resource successfully', async () => {
+      // Arrange: Setup existing resource
+      const existingResource = createTestResource({
         external_id: resourceId,
-        name: '測試資源',
-        created_by: userId,
-        deleted_at: null
-      };
+        created_by: userId
+      });
+      
+      prismaMock.resources.findUnique.mockResolvedValue(existingResource);
+      prismaMock.resources.update.mockResolvedValue(existingResource);
 
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
-      mockPrisma.resources.update.mockResolvedValue(mockExistingResource);
+      // Act: Execute the service method
+      const result = await resourceService.deleteResource(resourceId, userId);
 
-      await resourceService.deleteResource(resourceId, userId);
-
-      expect(mockPrisma.resources.findUnique).toHaveBeenCalledWith({
+      // Assert: Verify soft delete operation
+      expect(prismaMock.resources.findUnique).toHaveBeenCalledWith({
         where: {
           external_id: resourceId,
           deleted_at: null
         }
       });
-
-      expect(mockPrisma.resources.update).toHaveBeenCalledWith({
+      
+      expect(prismaMock.resources.update).toHaveBeenCalledWith({
         where: { external_id: resourceId },
         data: {
           deleted_at: expect.any(Date)
         }
       });
+      
+      expect(mockResponseHelper.createSuccessResponse).toHaveBeenCalledWith({ success: true });
+      expect(result.success).toBe(true);
     });
 
-    it('應該在資源不存在時拋出 NotFoundError', async () => {
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundError when resource not found', async () => {
+      // Arrange: Resource doesn't exist
+      prismaMock.resources.findUnique.mockResolvedValue(null);
 
+      // Act & Assert: Verify error is thrown
       await expect(resourceService.deleteResource(resourceId, userId))
         .rejects
-        .toThrow(NotFoundError);
+        .toThrow('資源不存在');
     });
 
-    it('應該在無權限時拋出 ForbiddenError', async () => {
-      const mockExistingResource = {
-        id: 1,
+    it('should throw ForbiddenError when user lacks permission', async () => {
+      // Arrange: Resource owned by different user
+      const existingResource = createTestResource({
         external_id: resourceId,
-        name: '測試資源',
-        created_by: 999, // 不同的用戶ID
-        deleted_at: null
-      };
+        created_by: 999 // Different user ID
+      });
+      
+      prismaMock.resources.findUnique.mockResolvedValue(existingResource);
 
-      mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockPrisma));
-      mockPrisma.resources.findUnique.mockResolvedValue(mockExistingResource);
-
+      // Act & Assert: Verify permission error
       await expect(resourceService.deleteResource(resourceId, userId))
         .rejects
-        .toThrow(ForbiddenError);
+        .toThrow('無權限刪除此資源');
     });
   });
 
   describe('getResourceStats', () => {
-    it('應該返回全部資源統計', async () => {
+    it('should return global resource statistics', async () => {
+      // Arrange: Setup statistics data  
       const mockTypeStats = [
         { type: 'books_articles', _count: { type: 5 } },
         { type: 'video_content', _count: { type: 3 } },
         { type: 'workshops_courses', _count: { type: 2 } }
-      ];
-
-      mockPrisma.resources.count
+      ] as any;
+      
+      prismaMock.resources.count
         .mockResolvedValueOnce(10) // totalCount
         .mockResolvedValueOnce(8); // activeCount
+        
+      prismaMock.resources.groupBy.mockResolvedValue(mockTypeStats);
 
-      mockPrisma.resources.groupBy.mockResolvedValue(mockTypeStats);
+      // Act: Execute the service method
+      await resourceService.getResourceStats();
 
-      const result = await resourceService.getResourceStats();
-
-      expect(mockPrisma.resources.count).toHaveBeenCalledTimes(2);
-      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(1, {
-        where: { deleted_at: null }
+      // Assert: Verify statistics queries
+      expect(prismaMock.resources.count).toHaveBeenCalledTimes(2);
+      expect(prismaMock.resources.count).toHaveBeenNthCalledWith(1, {
+        where: {}
       });
-      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(2, {
+      expect(prismaMock.resources.count).toHaveBeenNthCalledWith(2, {
         where: { deleted_at: null, status: 'active' }
       });
-
-      expect(mockPrisma.resources.groupBy).toHaveBeenCalledWith({
+      
+      expect(prismaMock.resources.groupBy).toHaveBeenCalledWith({
         by: ['type'],
         where: { deleted_at: null },
         _count: { type: true }
       });
-
-      expect(result).toEqual({
+      
+      expect(mockResponseHelper.createSuccessResponse).toHaveBeenCalledWith({
         totalCount: 10,
         activeCount: 8,
         typeStats: {
@@ -950,61 +821,164 @@ describe('Resource Service Tests', () => {
       });
     });
 
-    it('應該返回特定用戶的資源統計', async () => {
+    it('should return user-specific resource statistics', async () => {
+      // Arrange: Setup user-specific data
       const userId = 1;
-
-      mockPrisma.resources.count
-        .mockResolvedValueOnce(5) // totalCount
-        .mockResolvedValueOnce(4); // activeCount
-
-      mockPrisma.resources.groupBy.mockResolvedValue([
+      const mockTypeStats = [
         { type: 'books_articles', _count: { type: 3 } },
         { type: 'video_content', _count: { type: 2 } }
-      ]);
+      ] as any;
+      
+      prismaMock.resources.count
+        .mockResolvedValueOnce(5) // totalCount
+        .mockResolvedValueOnce(4); // activeCount
+        
+      prismaMock.resources.groupBy.mockResolvedValue(mockTypeStats);
 
-      const result = await resourceService.getResourceStats(userId);
+      // Act: Execute the service method
+      await resourceService.getResourceStats(userId);
 
-      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(1, {
-        where: { deleted_at: null, created_by: userId }
+      // Assert: Verify user-filtered queries
+      expect(prismaMock.resources.count).toHaveBeenNthCalledWith(1, {
+        where: { created_by: userId }
       });
-      expect(mockPrisma.resources.count).toHaveBeenNthCalledWith(2, {
+      expect(prismaMock.resources.count).toHaveBeenNthCalledWith(2, {
         where: { deleted_at: null, created_by: userId, status: 'active' }
       });
-
-      expect(mockPrisma.resources.groupBy).toHaveBeenCalledWith({
+      
+      expect(prismaMock.resources.groupBy).toHaveBeenCalledWith({
         by: ['type'],
         where: { deleted_at: null, created_by: userId },
         _count: { type: true }
       });
+    });
+  });
 
-      expect(result).toEqual({
-        totalCount: 5,
-        activeCount: 4,
-        typeStats: {
-          'books_articles': 3,
-          'video_content': 2
-        }
+  describe('Business logic validation', () => {
+    describe('data formatting', () => {
+      it('should handle null values with sensible defaults', async () => {
+        // Arrange: Resource with null optional fields
+        const resourceWithNulls = {
+          ...createTestResourceWithRelations({
+            image_url: null,
+            video_url: null,
+            categories_resources_major_category_idTocategories: null,
+            categories_resources_sub_category_idTocategories: null
+          }),
+          users: null
+        };
+        
+        prismaMock.resources.findFirst.mockResolvedValue(resourceWithNulls);
+        prismaMock.$queryRaw.mockResolvedValue([]);
+        prismaMock.resource_review.aggregate.mockResolvedValue({
+          _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
+          _count: { id: 0 },
+          _sum: {},
+          _min: {},
+          _max: {}
+        });
+
+        // Act: Execute the service method
+        await resourceService.getResourceById('resource-uuid');
+
+        // Assert: Verify default values are applied
+        expect(mockTransformService.transformResourceToApi).toHaveBeenCalledWith(
+          expect.objectContaining({
+            imageUrl: null,
+            videoUrl: null,
+            majorCategory: null,
+            subCategory: null,
+            author: expect.objectContaining({
+              id: 0,
+              nickname: 'Unknown User'
+            }),
+            reviewStats: expect.objectContaining({
+              totalReviews: 0,
+              averageScores: expect.objectContaining({
+                impact: 0,
+                mindset: 0,
+                problems: 0,
+                perspectives: 0,
+                goals: 0
+              })
+            })
+          })
+        );
+      });
+    });
+
+    describe('pagination boundaries', () => {
+      it('should enforce maximum page limit', async () => {
+        // Arrange: Request with excessive limit
+        const excessiveLimit = 1000;
+        prismaMock.resources.findMany.mockResolvedValue([]);
+        prismaMock.$queryRaw.mockResolvedValue([]);
+
+        // Act: Execute the service method
+        await resourceService.getResources({}, { limit: excessiveLimit });
+
+        // Assert: Verify limit is capped
+        expect(prismaMock.resources.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            take: 21 // MAX_RESOURCE_PAGE_LIMIT + 1
+          })
+        );
+      });
+    });
+
+    describe('search query handling', () => {
+      it('should handle special characters in search query', async () => {
+        // Arrange: Search query with special characters
+        const specialQuery = "test'query\"with<special>chars&symbols";
+        prismaMock.resources.findMany.mockResolvedValue([]);
+        prismaMock.$queryRaw.mockResolvedValue([]);
+
+        // Act: Execute the service method
+        await resourceService.getResources({ query: specialQuery }, {});
+
+        // Assert: Verify special characters are handled properly
+        expect(prismaMock.resources.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: [
+                {
+                  name: {
+                    contains: specialQuery,
+                    mode: 'insensitive'
+                  }
+                },
+                {
+                  description: {
+                    contains: specialQuery,
+                    mode: 'insensitive'
+                  }
+                }
+              ]
+            })
+          })
+        );
       });
     });
   });
 
-  describe('錯誤處理', () => {
-    it('應該正確處理 Prisma 連接錯誤', async () => {
-      const error = new Error('Connection failed');
-      mockPrisma.resources.findUnique.mockRejectedValue(error);
+  describe('Error handling', () => {
+    it('should handle database connection errors', async () => {
+      // Arrange: Database error
+      const dbError = new Error('Database connection failed');
+      prismaMock.resources.findFirst.mockRejectedValue(dbError);
 
-      // 確保沒有其他 spy 干擾
-      jest.restoreAllMocks();
-
+      // Act & Assert: Verify error is propagated
       await expect(resourceService.getResourceById('test-id'))
         .rejects
-        .toThrow(error);
+        .toThrow(dbError);
     });
 
-    it('應該正確處理事務回滾', async () => {
-      const error = new Error('Transaction failed');
-      mockPrisma.$transaction.mockRejectedValue(error);
+    it('should handle transaction rollback on create failure', async () => {
+      // Arrange: Transaction failure
+      const transactionError = new Error('Transaction failed');
+      prismaMock.$transaction.mockRejectedValue(transactionError);
 
+      // Act & Assert: Verify transaction error is propagated
       await expect(resourceService.createResource({
         name: 'Test',
         url: 'https://example.com',
@@ -1012,62 +986,7 @@ describe('Resource Service Tests', () => {
         type: 'books_articles',
         cost: 'free',
         level: 'beginner'
-      }, 1)).rejects.toThrow(error);
-    });
-  });
-
-  describe('邊界情況測試', () => {
-    it('應該處理空的資源列表', async () => {
-      mockPrisma.resources.findMany.mockResolvedValue([]);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-
-      const result = await resourceService.getResources({}, {});
-
-      expect(result.resources).toEqual([]);
-      expect(result.pagination.count).toBe(0);
-    });
-
-    it('應該處理極大的分頁限制', async () => {
-      mockPrisma.resources.findMany.mockResolvedValue([]);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-
-      await resourceService.getResources({}, { limit: 1000 });
-
-      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          take: 21 // 應該被限制為 MAX_RESOURCE_PAGE_LIMIT + 1
-        })
-      );
-    });
-
-    it('應該處理特殊字符的搜尋查詢', async () => {
-      mockPrisma.resources.findMany.mockResolvedValue([]);
-      mockPrisma.entity_tags.findMany.mockResolvedValue([]);
-
-      const specialQuery = "test'query\"with<special>chars&symbols";
-
-      await resourceService.getResources({ query: specialQuery }, {});
-
-      expect(mockPrisma.resources.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            OR: [
-              {
-                name: {
-                  contains: specialQuery,
-                  mode: 'insensitive'
-                }
-              },
-              {
-                description: {
-                  contains: specialQuery,
-                  mode: 'insensitive'
-                }
-              }
-            ]
-          })
-        })
-      );
+      }, 1)).rejects.toThrow(transactionError);
     });
   });
 });

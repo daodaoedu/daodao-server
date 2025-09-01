@@ -11,6 +11,7 @@
 
 import { prisma } from './database/prisma.service';
 import type { Prisma } from '../../generated/prisma';
+import idConverter, { EntityType } from './id-converter.service';
 import {
   CommentResponse,
   CommentUser,
@@ -31,7 +32,12 @@ import {
   ForbiddenError,
   BadRequestError,
   InternalServerError
-} from '../utils/error-handler';
+} from '../middleware/error.middleware';
+import {
+  ApiSuccessResponse,
+  ApiResponse
+} from '../types/api-response.types';
+import { createSuccessResponse } from '../utils/response-helper';
 
 /**
  * Comment Service Class
@@ -42,9 +48,9 @@ export class CommentService implements CommentServiceInterface {
   /**
    * Create a new comment
    * @param params - Comment creation parameters
-   * @returns Promise<CommentResponse> - The created comment with user data
+   * @returns Promise<ApiSuccessResponse<CommentResponse>> - The created comment with user data
    */
-  async createComment(params: CreateCommentParams): Promise<CommentResponse> {
+  async createComment(params: CreateCommentParams): Promise<ApiSuccessResponse<CommentResponse>> {
     const { targetType, targetId, content, visibility = 'private', parentId, userId } = params;
 
     return await prisma.$transaction(async (tx) => {
@@ -54,8 +60,9 @@ export class CommentService implements CommentServiceInterface {
           throw new BadRequestError('Missing required parameters: targetType, targetId, content, or userId');
         }
 
-        // Validate target entity exists
-        await this.getTargetEntity(targetType, targetId, tx);
+        // Validate target entity exists and get internal ID
+        const targetEntity = await idConverter.getTargetEntity(targetType as EntityType, targetId);
+        const internalTargetId = targetEntity.id;
         
         // Validate parent comment if provided
         if (parentId) {
@@ -67,16 +74,17 @@ export class CommentService implements CommentServiceInterface {
             throw new NotFoundError('Parent comment not found');
           }
           
-          // Ensure parent comment belongs to the same target
-          if (parentComment.target_type !== targetType || parentComment.target_id !== targetId) {
+          // Ensure parent comment belongs to the same target (using internal ID)
+          if (parentComment.target_type !== targetType || parentComment.target_id !== internalTargetId) {
             throw new BadRequestError('Parent comment does not belong to the same target entity');
           }
         }
 
         // Create the comment using unchecked input for direct field access
+        // IMPORTANT: Use internal ID for target_id field
         const commentData: Prisma.commentsUncheckedCreateInput = {
           target_type: targetType,
-          target_id: targetId,
+          target_id: internalTargetId, // Use internal int ID, not external UUID
           content,
           visibility: visibility as string,
           parent_id: parentId || null,
@@ -101,7 +109,8 @@ export class CommentService implements CommentServiceInterface {
         });
 
         // Format and return the response
-        return this.formatCommentResponse(createdComment);
+        const formattedComment = await this.formatCommentResponse(createdComment);
+        return createSuccessResponse(formattedComment);
         
       } catch (error) {
         if (error instanceof NotFoundError || error instanceof BadRequestError) {
@@ -115,20 +124,21 @@ export class CommentService implements CommentServiceInterface {
   /**
    * Get comments for a specific target entity
    * @param params - Query parameters including target info and current user
-   * @returns Promise<CommentResponse[]> - Array of comments in tree structure
+   * @returns Promise<ApiSuccessResponse<CommentResponse[]>> - Array of comments in tree structure
    */
-  async getComments(params: GetCommentsParams): Promise<CommentResponse[]> {
+  async getComments(params: GetCommentsParams): Promise<ApiSuccessResponse<CommentResponse[]>> {
     const { targetType, targetId, currentUser } = params;
 
     try {
-      // Validate target entity exists
-      const entity = await this.getTargetEntity(targetType, targetId);
+      // Validate target entity exists and get internal ID
+      const entity = await idConverter.getTargetEntity(targetType as EntityType, targetId);
+      const internalTargetId = entity.id;
 
-      // Get all comments for the target
+      // Get all comments for the target using internal ID
       const comments = await prisma.comments.findMany({
         where: {
           target_type: targetType,
-          target_id: targetId
+          target_id: internalTargetId // Use internal int ID, not external UUID
         },
         include: {
           users: {
@@ -172,12 +182,16 @@ export class CommentService implements CommentServiceInterface {
         );
         
         if (canView) {
-          visibleComments.push(this.formatCommentResponse(comment));
+          visibleComments.push(await this.formatCommentResponse(comment));
         }
       }
 
       // Build and return comment tree
-      return this.buildCommentTree(visibleComments);
+      const commentTree = this.buildCommentTree(visibleComments);
+      return createSuccessResponse(commentTree, {
+        searchQuery: `${targetType}:${targetId}`,
+        filters: { targetType, targetId }
+      });
       
     } catch (error) {
       if (error instanceof NotFoundError) {
@@ -191,9 +205,9 @@ export class CommentService implements CommentServiceInterface {
    * Get a specific comment by ID
    * @param commentId - The comment ID
    * @param currentUser - Current user for permission checking
-   * @returns Promise<CommentResponse> - The comment details
+   * @returns Promise<ApiSuccessResponse<CommentResponse>> - The comment details
    */
-  async getCommentDetail(commentId: number, currentUser?: AuthUser | null): Promise<CommentResponse> {
+  async getCommentDetail(commentId: number, currentUser?: AuthUser | null): Promise<ApiSuccessResponse<CommentResponse>> {
     try {
       const comment = await prisma.comments.findUnique({
         where: { id: commentId },
@@ -217,9 +231,10 @@ export class CommentService implements CommentServiceInterface {
       }
 
       // Get target entity for permission checking
-      const entity = await this.getTargetEntity(
-        comment.target_type as CommentTargetType,
-        comment.target_id
+      // Note: target_id is stored as int, need to convert to string for getTargetEntity
+      const entity = await idConverter.getTargetEntity(
+        comment.target_type as EntityType,
+        comment.target_id.toString()
       );
 
       // Check if user can view this comment
@@ -229,7 +244,8 @@ export class CommentService implements CommentServiceInterface {
         throw new ForbiddenError('You do not have permission to view this comment');
       }
 
-      return this.formatCommentResponse(comment);
+      const formattedComment = await this.formatCommentResponse(comment);
+      return createSuccessResponse(formattedComment);
       
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -242,9 +258,9 @@ export class CommentService implements CommentServiceInterface {
   /**
    * Update an existing comment
    * @param params - Update parameters including comment ID and new data
-   * @returns Promise<CommentResponse> - The updated comment
+   * @returns Promise<ApiSuccessResponse<CommentResponse>> - The updated comment
    */
-  async updateComment(params: UpdateCommentParams): Promise<CommentResponse> {
+  async updateComment(params: UpdateCommentParams): Promise<ApiSuccessResponse<CommentResponse>> {
     const { commentId, userId, content, visibility } = params;
 
     return await prisma.$transaction(async (tx) => {
@@ -303,7 +319,8 @@ export class CommentService implements CommentServiceInterface {
           }
         });
 
-        return this.formatCommentResponse(updatedComment);
+        const formattedComment = await this.formatCommentResponse(updatedComment);
+        return createSuccessResponse(formattedComment);
         
       } catch (error) {
         if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -317,9 +334,9 @@ export class CommentService implements CommentServiceInterface {
   /**
    * Delete a comment
    * @param params - Delete parameters including comment ID and user ID
-   * @returns Promise<{message: string}> - Success message
+   * @returns Promise<ApiSuccessResponse<{ message: string }>> - Success message
    */
-  async deleteComment(params: DeleteCommentParams): Promise<{ message: string }> {
+  async deleteComment(params: DeleteCommentParams): Promise<ApiSuccessResponse<{ message: string }>> {
     const { commentId, userId } = params;
 
     return await prisma.$transaction(async (tx) => {
@@ -342,7 +359,7 @@ export class CommentService implements CommentServiceInterface {
           where: { id: commentId }
         });
 
-        return { message: 'Comment deleted successfully' };
+        return createSuccessResponse({ message: 'Comment deleted successfully' });
         
       } catch (error) {
         if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -353,134 +370,6 @@ export class CommentService implements CommentServiceInterface {
     });
   }
 
-  /**
-   * Get target entity based on target type and ID
-   * @private
-   * @param targetType - The type of target entity
-   * @param targetId - The ID of target entity
-   * @param tx - Optional transaction client
-   * @returns Promise<TargetEntity> - The target entity with user_id
-   */
-  private async getTargetEntity(
-    targetType: CommentTargetType,
-    targetId: string,
-    tx?: Prisma.TransactionClient
-  ): Promise<TargetEntity> {
-    const client = tx || prisma;
-    let entity: TargetEntity | null = null;
-
-    try {
-      switch (targetType) {
-        case 'post': {
-          const post = await client.post.findUnique({
-            where: { id: parseInt(targetId) },
-            select: { id: true, user_id: true }
-          });
-          entity = post;
-          break;
-        }
-
-        case 'circle': {
-          const circle = await client.groups.findUnique({
-            where: { external_id: targetId },
-            select: { id: true, created_by: true }
-          });
-          if (circle) {
-            entity = { id: circle.id, user_id: circle.created_by || 0 };
-          }
-          break;
-        }
-
-        case 'idea': {
-          const idea = await client.ideas.findUnique({
-            where: { external_id: targetId },
-            select: { id: true, user_id: true }
-          });
-          entity = idea;
-          break;
-        }
-
-        case 'note': {
-          const note = await client.note.findUnique({
-            where: { id: parseInt(targetId) },
-            include: {
-              post: {
-                select: { user_id: true }
-              }
-            }
-          });
-          if (note && note.post) {
-            entity = { id: note.id, user_id: note.post.user_id };
-          }
-          break;
-        }
-
-        case 'outcome': {
-          const outcome = await client.outcome.findUnique({
-            where: { id: parseInt(targetId) },
-            include: {
-              post: {
-                select: { user_id: true }
-              }
-            }
-          });
-          if (outcome) {
-            entity = { id: outcome.id, user_id: outcome.post.user_id };
-          }
-          break;
-        }
-
-        case 'review': {
-          const review = await client.review.findUnique({
-            where: { id: parseInt(targetId) },
-            include: {
-              post: {
-                select: { user_id: true }
-              }
-            }
-          });
-          if (review) {
-            entity = { id: review.id, user_id: review.post.user_id };
-          }
-          break;
-        }
-
-        case 'resource': {
-          // Resources are linked through entity_resources table
-          const resourceEntity = await client.entity_resources.findFirst({
-            where: {
-              entity_type: 'resource',
-              entity_id: targetId
-            },
-            select: { id: true, created_by: true}
-          });
-          if (resourceEntity) {
-            entity = { id: resourceEntity.id, user_id: resourceEntity.created_by };
-          }
-          break;
-        }
-
-        case 'portfolio':
-          // Portfolio handling would go here when implemented
-          throw new BadRequestError(`Target type '${targetType}' is not yet implemented`);
-
-        default:
-          throw new BadRequestError(`Invalid target type: ${targetType}`);
-      }
-
-      if (!entity) {
-        throw new NotFoundError(`${targetType} with ID ${targetId} not found`);
-      }
-
-      return entity;
-      
-    } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
-        throw error;
-      }
-      throw new InternalServerError(`Failed to get target entity: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
 
   /**
    * Check if a user can view a specific comment
@@ -576,12 +465,83 @@ export class CommentService implements CommentServiceInterface {
   }
 
   /**
+   * Convert internal ID back to external ID for API response
+   * @private
+   * @param targetType - The type of target entity
+   * @param internalId - The internal integer ID
+   * @returns Promise<string> - The external ID (UUID or string number)
+   */
+  private async convertToExternalId(targetType: CommentTargetType, internalId: number): Promise<string> {
+    try {
+      switch (targetType) {
+        case 'post': {
+          // Post uses internal ID directly
+          return internalId.toString();
+        }
+
+        case 'note': {
+          // Note uses internal ID directly
+          return internalId.toString();
+        }
+
+        case 'outcome': {
+          // Outcome uses internal ID directly
+          return internalId.toString();
+        }
+
+        case 'review': {
+          // Review uses internal ID directly
+          return internalId.toString();
+        }
+
+        case 'circle': {
+          // Circle uses external_id (UUID)
+          const circle = await prisma.groups.findUnique({
+            where: { id: internalId },
+            select: { external_id: true }
+          });
+          return circle?.external_id || internalId.toString();
+        }
+
+        case 'idea': {
+          // Idea uses external_id (UUID)
+          const idea = await prisma.ideas.findUnique({
+            where: { id: internalId },
+            select: { external_id: true }
+          });
+          return idea?.external_id || internalId.toString();
+        }
+
+        case 'resource': {
+          // Resource uses external_id (UUID)
+          const resource = await prisma.resources.findUnique({
+            where: { id: internalId },
+            select: { external_id: true }
+          });
+          return resource?.external_id || internalId.toString();
+        }
+
+        case 'portfolio':
+          // Portfolio handling would go here when implemented
+          return internalId.toString();
+
+        default:
+          return internalId.toString();
+      }
+    } catch (error) {
+      // Fallback to string number if conversion fails
+      console.warn(`Failed to convert internal ID ${internalId} for ${targetType}:`, error);
+      return internalId.toString();
+    }
+  }
+
+  /**
    * Format comment data for API response
    * @private
    * @param comment - Raw comment data from database
-   * @returns CommentResponse - Formatted comment response
+   * @returns Promise<CommentResponse> - Formatted comment response
    */
-  private formatCommentResponse(comment: DatabaseComment): CommentResponse {
+  private async formatCommentResponse(comment: DatabaseComment): Promise<CommentResponse> {
     const user: CommentUser = {
       id: comment.users.id,
       name: comment.users.nickname || '',
@@ -590,9 +550,17 @@ export class CommentService implements CommentServiceInterface {
       photoURL: comment.users.contacts?.photo_url || null
     };
 
+    // Convert internal target_id back to external ID for frontend
+    const externalTargetId = await this.convertToExternalId(
+      comment.target_type as CommentTargetType, 
+      comment.target_id
+    );
+
     return {
       id: comment.id,
       userId: comment.user_id,
+      targetId: externalTargetId, // Return external ID as string
+      targetType: comment.target_type as CommentTargetType,
       content: comment.content,
       visibility: comment.visibility as CommentVisibility,
       createdAt: comment.created_at || new Date(),

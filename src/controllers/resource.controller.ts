@@ -4,9 +4,9 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
-import resourceService from '@/services/resource.service';
-import tagService from '@/services/tag.service';
+import { asyncHandler, BadRequestError, NotFoundError } from '../middleware/error.middleware';
+import * as resourceService from '../services/resource.service';
+import * as tagService from '../services/tag.service';
 import type { tags } from '../../generated/prisma';
 
 /**
@@ -37,13 +37,13 @@ import {
   validateCreateResource, 
   validateUpdateResource, 
   validateUpdateResourceStatus 
-} from '@/validators/resource.validator';
+} from '../validators/resource.validator';
 
 /**
  * 獲取資源列表
  * GET /resources
  */
-export const getResources = asyncWrapper(async (req: Request, res: Response) => {
+export const getResources = asyncHandler(async (req: Request, res: Response) => {
   const { 
     cursor, 
     limit, 
@@ -82,18 +82,15 @@ export const getResources = asyncWrapper(async (req: Request, res: Response) => 
   // 查詢資源列表
   const result = await resourceService.getResources(filters, pagination);
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: result
-  });
+  // 直接透傳 Service 回應
+  res.json(result);
 });
 
 /**
  * 獲取單個資源
  * GET /resources/:id
  */
-export const getResourceById = asyncWrapper(async (req: Request, res: Response) => {
+export const getResourceById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   
   // 查詢資源
@@ -104,18 +101,15 @@ export const getResourceById = asyncWrapper(async (req: Request, res: Response) 
   //   console.error('Failed to increment view count:', err);
   // });
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: resource
-  });
+  // 直接透傳 Service 回應
+  res.json(resource);
 });
 
 /**
  * 創建資源
  * POST /resources
  */
-export const createResource = asyncWrapper(async (req: Request, res: Response) => {
+export const createResource = asyncHandler(async (req: Request, res: Response) => {
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
 
@@ -125,18 +119,15 @@ export const createResource = asyncWrapper(async (req: Request, res: Response) =
   // 創建資源
   const resource = await resourceService.createResource(validatedData, userId);
 
-  // 返回結果
-  res.status(201).json({
-    success: true,
-    data: resource
-  });
+  // 直接透傳 Service 回應
+  res.status(201).json(resource);
 });
 
 /**
  * 更新資源
  * PATCH /resources/:id
  */
-export const updateResource = asyncWrapper(async (req: Request, res: Response) => {
+export const updateResource = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
@@ -151,18 +142,15 @@ export const updateResource = asyncWrapper(async (req: Request, res: Response) =
     userId
   );
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: resource
-  });
+  // 直接透傳 Service 回應
+  res.json(resource);
 });
 
 /**
  * 更新資源狀態
  * PATCH /resources/:id/status
  */
-export const updateResourceStatus = asyncWrapper(async (req: Request, res: Response) => {
+export const updateResourceStatus = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
@@ -177,41 +165,89 @@ export const updateResourceStatus = asyncWrapper(async (req: Request, res: Respo
     userId
   );
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: resource
-  });
+  // 直接透傳 Service 回應
+  res.json(resource);
 });
 
 /**
  * 刪除資源
  * DELETE /resources/:id
  */
-export const deleteResource = asyncWrapper(async (req: Request, res: Response) => {
+export const deleteResource = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
 
   // 刪除資源
-  await resourceService.deleteResource(id, userId); // 直接傳遞 UUID 字串
+  const result = await resourceService.deleteResource(id, userId); // 直接傳遞 UUID 字串
 
-  // 返回結果
-  res.json({
-    success: true,
-    message: '資源已成功刪除'
-  });
+  // 直接透傳 Service 回應
+  res.json(result);
+});
+
+/**
+ * 獲取資源統計資訊
+ * GET /resources/stats
+ * @swagger
+ * /api/resources/stats:
+ *   get:
+ *     tags: [Resources]
+ *     summary: 獲取資源統計資訊
+ *     description: 獲取系統中資源的基礎統計資訊，包括總數、啟用數和類型分布
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 統計資訊獲取成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/ResourceStatsResponse'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+export const getResourceStats = asyncHandler(async (req: Request, res: Response) => {
+  // 可選的用戶過濾（如果已登入）
+  const userId = req.user?.id;
+  
+  // 獲取資源統計
+  const stats = await resourceService.getResourceStats(userId);
+
+  // 直接透傳 Service 回應
+  res.json(stats);
 });
 
 /**
  * 獲取資源標籤
  * GET /resources/:id/tags
  */
-export const getResourceTags = asyncWrapper(async (req: Request, res: Response) => {
-  const { id } = req.params;
+export const getResourceTags = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params; // UUID
   
-  // 獲取資源標籤
-  const tags = await tagService.getEntityTags('resource', id);
+  // 直接查詢資源的數字 ID
+  const { prisma } = await import('../services/database/prisma.service');
+  const resource = await prisma.resources.findFirst({
+    where: { 
+      external_id: id,
+      deleted_at: null 
+    },
+    select: {
+      id: true
+    }
+  });
+  
+  if (!resource) {
+    throw new NotFoundError('資源不存在');
+  }
+  
+  // 使用資源的數字 ID 獲取標籤
+  const tags = await tagService.getEntityTags('resource', resource.id);
 
   // 返回結果
   res.json({
@@ -228,5 +264,6 @@ export default {
   updateResource,
   updateResourceStatus,
   deleteResource,
+  getResourceStats,
   getResourceTags
 };

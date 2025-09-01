@@ -3,8 +3,10 @@
  * 處理標籤相關的業務邏輯
  */
 
-import { prisma } from '@/services/database/prisma.service';
+import { prisma } from './database/prisma.service';
 import type { tags } from '../../generated/prisma';
+import type { ApiSuccessResponse } from '../types/api-response.types';
+import { createSuccessResponse } from '../utils/response-helper';
 
 // 定義事務類型
 type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -37,7 +39,7 @@ export async function createTag(
 }
 
 /**
- * 根據 ID 獲取標籤
+ * 根據 ID 獲取標籤 (內部工具函數)
  * @param id - 標籤 ID
  * @returns 標籤信息
  */
@@ -45,6 +47,20 @@ export async function getTagById(id: number): Promise<tags | null> {
   return await prisma.tags.findUnique({
     where: { id }
   });
+}
+
+/**
+ * 根據 ID 獲取標籤 (API 版本)
+ * @param id - 標籤 ID
+ * @returns API 回應格式的標籤信息
+ */
+export async function getTagByIdApi(id: number): Promise<ApiSuccessResponse<tags | null>> {
+  try {
+    const tag = await getTagById(id);
+    return createSuccessResponse(tag);
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取標籤失敗');
+  }
 }
 
 /**
@@ -59,7 +75,7 @@ export async function getTagByName(name: string): Promise<tags | null> {
 }
 
 /**
- * 獲取所有標籤
+ * 獲取所有標籤 (內部工具函數)
  * @param limit - 限制數量
  * @param offset - 偏移量
  * @returns 標籤列表
@@ -73,7 +89,27 @@ export async function getAllTags(limit?: number, offset?: number): Promise<tags[
 }
 
 /**
- * 搜尋標籤
+ * 獲取所有標籤 (API 版本)
+ * @param limit - 限制數量
+ * @param offset - 偏移量
+ * @returns API 回應格式的標籤列表
+ */
+export async function getAllTagsApi(limit?: number, offset?: number): Promise<ApiSuccessResponse<tags[]>> {
+  try {
+    const tags = await getAllTags(limit, offset);
+    return createSuccessResponse(tags, {
+      filters: {
+        limit,
+        offset
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取標籤列表失敗');
+  }
+}
+
+/**
+ * 搜尋標籤 (內部工具函數)
  * @param query - 搜尋關鍵字
  * @param limit - 限制數量
  * @returns 標籤列表
@@ -92,6 +128,26 @@ export async function searchTags(query: string, limit = 10): Promise<tags[]> {
 }
 
 /**
+ * 搜尋標籤 (API 版本)
+ * @param query - 搜尋關鍵字
+ * @param limit - 限制數量
+ * @returns API 回應格式的標籤列表
+ */
+export async function searchTagsApi(query: string, limit = 10): Promise<ApiSuccessResponse<tags[]>> {
+  try {
+    const tags = await searchTags(query, limit);
+    return createSuccessResponse(tags, {
+      searchQuery: query,
+      filters: {
+        limit
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('搜尋標籤失敗');
+  }
+}
+
+/**
  * 為實體設置標籤
  * @param entityType - 實體類型 (resource, idea, etc.)
  * @param entityId - 實體 ID
@@ -101,7 +157,7 @@ export async function searchTags(query: string, limit = 10): Promise<tags[]> {
  */
 export async function setEntityTags(
   entityType: string,
-  entityId: string,
+  entityId: number,
   tagNames: string[],
   userId: number,
   transaction?: TransactionClient | typeof prisma
@@ -134,14 +190,14 @@ export async function setEntityTags(
 }
 
 /**
- * 獲取實體的標籤
+ * 獲取實體的標籤 (內部工具函數)
  * @param entityType - 實體類型
  * @param entityId - 實體 ID
  * @returns 標籤列表
  */
 export async function getEntityTags(
   entityType: string,
-  entityId: string
+  entityId: number
 ): Promise<tags[]> {
   const entityTags = await prisma.entity_tags.findMany({
     where: {
@@ -162,6 +218,29 @@ export async function getEntityTags(
 }
 
 /**
+ * 獲取實體的標籤 (API 版本)
+ * @param entityType - 實體類型
+ * @param entityId - 實體 ID
+ * @returns API 回應格式的標籤列表
+ */
+export async function getEntityTagsApi(
+  entityType: string,
+  entityId: number
+): Promise<ApiSuccessResponse<tags[]>> {
+  try {
+    const tags = await getEntityTags(entityType, entityId);
+    return createSuccessResponse(tags, {
+      filters: {
+        entityType,
+        entityId
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取實體標籤失敗');
+  }
+}
+
+/**
  * 刪除實體標籤關聯
  * @param entityType - 實體類型
  * @param entityId - 實體 ID
@@ -170,7 +249,7 @@ export async function getEntityTags(
  */
 export async function removeEntityTag(
   entityType: string,
-  entityId: string,
+  entityId: number,
   tagId: number,
   transaction?: TransactionClient | typeof prisma
 ): Promise<void> {
@@ -186,7 +265,7 @@ export async function removeEntityTag(
 }
 
 /**
- * 獲取標籤使用統計
+ * 獲取標籤使用統計 (內部工具函數)
  * @param tagId - 標籤 ID
  * @returns 使用統計
  */
@@ -221,7 +300,34 @@ export async function getTagUsageStats(tagId: number): Promise<{
 }
 
 /**
- * 獲取熱門標籤
+ * 獲取標籤使用統計 (API 版本)
+ * @param tagId - 標籤 ID
+ * @returns API 回應格式的使用統計
+ */
+export async function getTagUsageStatsApi(tagId: number): Promise<ApiSuccessResponse<{
+  totalUsage: number;
+  resourceCount: number;
+  ideaCount: number;
+}>> {
+  try {
+    const stats = await getTagUsageStats(tagId);
+    return createSuccessResponse(stats, {
+      aggregateData: {
+        tagId,
+        breakdown: {
+          resources: stats.resourceCount,
+          ideas: stats.ideaCount,
+          total: stats.totalUsage
+        }
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取標籤統計失敗');
+  }
+}
+
+/**
+ * 獲取熱門標籤 (內部工具函數)
  * @param limit - 限制數量
  * @returns 熱門標籤列表
  */
@@ -259,7 +365,32 @@ export async function getPopularTags(limit = 20): Promise<Array<{
 }
 
 /**
- * 刪除未使用的標籤
+ * 獲取熱門標籤 (API 版本)
+ * @param limit - 限制數量
+ * @returns API 回應格式的熱門標籤列表
+ */
+export async function getPopularTagsApi(limit = 20): Promise<ApiSuccessResponse<Array<{
+  tag: tags;
+  usageCount: number;
+}>>> {
+  try {
+    const popularTags = await getPopularTags(limit);
+    return createSuccessResponse(popularTags, {
+      filters: {
+        limit
+      },
+      aggregateData: {
+        totalTags: popularTags.length,
+        topUsage: popularTags[0]?.usageCount || 0
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取熱門標籤失敗');
+  }
+}
+
+/**
+ * 刪除未使用的標籤 (內部工具函數)
  * @returns 刪除的標籤數量
  */
 export async function cleanupUnusedTags(): Promise<number> {
@@ -288,8 +419,30 @@ export async function cleanupUnusedTags(): Promise<number> {
   return result.count;
 }
 
-// 匯出所有函數
+/**
+ * 刪除未使用的標籤 (API 版本)
+ * @returns API 回應格式的刪除結果
+ */
+export async function cleanupUnusedTagsApi(): Promise<ApiSuccessResponse<{ deletedCount: number }>> {
+  try {
+    const deletedCount = await cleanupUnusedTags();
+    return createSuccessResponse({ deletedCount }, {
+      message: `已刪除 ${deletedCount} 個未使用的標籤`,
+      aggregateData: {
+        cleanupResult: {
+          deletedTags: deletedCount,
+          cleanupDate: new Date().toISOString()
+        }
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('清理標籤失敗');
+  }
+}
+
+// 匯出所有函數 (包含 API 版本)
 export default {
+  // 內部工具函數
   createTag,
   getTagById,
   getTagByName,
@@ -300,5 +453,14 @@ export default {
   removeEntityTag,
   getTagUsageStats,
   getPopularTags,
-  cleanupUnusedTags
+  cleanupUnusedTags,
+  
+  // API 版本函數
+  getTagByIdApi,
+  getAllTagsApi,
+  searchTagsApi,
+  getEntityTagsApi,
+  getTagUsageStatsApi,
+  getPopularTagsApi,
+  cleanupUnusedTagsApi
 };

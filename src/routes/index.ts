@@ -14,6 +14,12 @@ import ideaRoutes from './idea.routes';
 import meRoutes from './me.routes';
 import commentRoutes from './comment.routes';
 import imageRoutes from './image.routes';
+import noteRoutes from './note.routes';
+import outcomeRoutes from './outcome.routes';
+import reviewRoutes from './review.routes';
+import mentorRoutes from './mentor.routes';
+import milestoneRoutes from './milestone.routes';
+import practiceRoutes from './practice.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -96,7 +102,14 @@ router.use('/users', userRoutes);
 router.use('/ideas', ideaRoutes);
 
 // 個人 API 路由
+// GET    /api/v1/me/auth
+// GET    /api/v1/me/users
 // GET    /api/v1/me/ideas
+// GET    /api/v1/me/practices
+// GET    /api/v1/me/practice-stats
+// GET    /api/v1/me/resources
+// GET    /api/v1/me/preferences
+// PUT    /api/v1/me/preferences
 router.use('/me', meRoutes);
 
 // 留言路由
@@ -113,6 +126,74 @@ router.use('/comments', commentRoutes);
 // POST   /api/v1/images/multiple
 // DELETE /api/v1/images/:filename
 router.use('/images', imageRoutes);
+
+// 便利貼路由
+// GET    /api/v1/notes/public
+// GET    /api/v1/notes/my
+// POST   /api/v1/notes/projects/:projectId
+// GET    /api/v1/notes/projects/:projectId
+// GET    /api/v1/notes/projects/:projectId/:noteId
+// PUT    /api/v1/notes/projects/:projectId/:noteId
+// DELETE /api/v1/notes/projects/:projectId/:noteId
+router.use('/notes', noteRoutes);
+
+// 成果路由
+// GET    /api/v1/outcomes/public
+// GET    /api/v1/outcomes/my
+// POST   /api/v1/outcomes/projects/:projectId
+// GET    /api/v1/outcomes/projects/:projectId
+// GET    /api/v1/outcomes/projects/:projectId/:outcomeId
+// PUT    /api/v1/outcomes/projects/:projectId/:outcomeId
+// DELETE /api/v1/outcomes/projects/:projectId/:outcomeId
+router.use('/outcomes', outcomeRoutes);
+
+// 覆盤路由
+// GET    /api/v1/reviews/stats
+// POST   /api/v1/reviews/projects/:projectId
+// GET    /api/v1/reviews/projects/:projectId
+// GET    /api/v1/reviews/projects/:projectId/:reviewId
+// PUT    /api/v1/reviews/projects/:projectId/:reviewId
+// DELETE /api/v1/reviews/projects/:projectId/:reviewId
+router.use('/reviews', reviewRoutes);
+
+// 導師路由
+// POST   /api/v1/mentor/marathon
+// PUT    /api/v1/mentor/marathon/:assignmentId
+// DELETE /api/v1/mentor/marathon/:assignmentId
+// GET    /api/v1/mentor/marathons
+// POST   /api/v1/mentor/participant
+// PUT    /api/v1/mentor/participant/:participantId
+// DELETE /api/v1/mentor/participant/:participantId
+// GET    /api/v1/mentor/marathon/:eventId/participants
+// GET    /api/v1/mentor/marathon/:eventId/reviews
+router.use('/mentor', mentorRoutes);
+
+// 里程碑路由（作為專案的子路由）
+// GET    /api/v1/projects/:projectId/milestones
+// POST   /api/v1/projects/:projectId/milestones
+// PUT    /api/v1/projects/:projectId/milestones/:milestoneId
+// DELETE /api/v1/projects/:projectId/milestones/:milestoneId
+router.use('/projects/:projectId/milestones', milestoneRoutes);
+
+// 實踐路由
+// GET    /api/v1/practices
+// GET    /api/v1/practices/my
+// GET    /api/v1/practices/stats
+// GET    /api/v1/practices/:id
+// POST   /api/v1/practices
+// PUT    /api/v1/practices/:id
+// DELETE /api/v1/practices/:id
+// POST   /api/v1/practices/:id/checkins
+// GET    /api/v1/practices/:id/checkins
+// GET    /api/v1/practices/:id/checkins/stats
+// GET    /api/v1/practices/:id/checkins/calendar/:year/:month
+// POST   /api/v1/practices/:id/like
+// POST   /api/v1/practices/:id/favorite
+// POST   /api/v1/practices/:id/share
+// POST   /api/v1/practices/:id/view
+// GET    /api/v1/practices/:id/stats
+// GET    /api/v1/practices/:id/user-status
+router.use('/practices', practiceRoutes);
 
 /**
  * API 健康檢查端點
@@ -149,6 +230,12 @@ router.get('/info', (req, res) => {
         me: '/api/v1/me',
         comments: '/api/v1/comments',
         images: '/api/v1/images',
+        notes: '/api/v1/notes',
+        outcomes: '/api/v1/outcomes',
+        reviews: '/api/v1/reviews',
+        mentor: '/api/v1/mentor',
+        milestones: '/api/v1/projects/:projectId/milestones',
+        practices: '/api/v1/practices',
         health: '/api/v1/health'
       },
       features: [
@@ -163,6 +250,9 @@ router.get('/info', (req, res) => {
         '想法管理系統',
         '留言系統',
         '個人 API 端點',
+        '實踐管理系統',
+        '簽到記錄系統',
+        '互動功能系統',
         '巢狀路由支援',
         '分頁查詢',
         '複雜過濾條件',

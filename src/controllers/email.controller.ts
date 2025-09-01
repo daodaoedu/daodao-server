@@ -4,40 +4,23 @@
  */
 
 import { Request, Response } from 'express';
-import { emailService } from '../services/email/email.service';
-import { asyncWrapper } from '../utils/error-handler';
-import { BadRequestError } from '../utils/error-handler';
-// import type { 
-//   ContactEmailOptions,
-//   MarathonEmailOptions,
-//   BulkEmailOptions,
-//   EmailTemplate
-// } from '../types/email.types';
-
-/**
- * 統一的響應格式
- */
-interface EmailResponse {
-  success: boolean;
-  message: string;
-  messageId?: string;
-  data?: unknown;
-}
+import { emailService, sendWelcomeEmailApi, sendVerificationEmailApi } from '../services/email/email.service';
+import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
+import { createSuccessResponse } from '../utils/response-helper';
 
 /**
  * 發送聯絡郵件
  * POST /api/v1/email/contact
  */
-export const sendContactEmail = asyncWrapper(async (req: Request, res: Response) => {
-  const { 
-    from, 
-    to, 
-    subject, 
-    text, 
-    information, 
-    name, 
-    // title, // 暫時未使用
-    activityTitle 
+export const sendContactEmail = asyncHandler(async (req: Request, res: Response) => {
+  const {
+    from,
+    to,
+    subject,
+    text,
+    information,
+    name,
+    activityTitle
   } = req.body;
 
   // 驗證必填欄位
@@ -45,28 +28,34 @@ export const sendContactEmail = asyncWrapper(async (req: Request, res: Response)
     throw new BadRequestError('缺少必要的郵件資訊：from, to, subject, text, name');
   }
 
-
   // 發送郵件
   const result = await emailService.sendContactEmail(to, name, text, information, activityTitle);
 
-  const response: EmailResponse = {
-    success: result.success,
-    message: result.success ? '聯絡郵件發送成功' : `郵件發送失敗: ${result.error}`,
-    messageId: result.messageId
-  };
-
-  if (result.success) {
-    res.json(response);
-  } else {
-    res.status(500).json(response);
+  if (!result.success) {
+    throw new Error(result.error || '聯絡郵件發送失敗');
   }
+
+  const response = createSuccessResponse({
+    messageId: result.messageId
+  }, {
+    message: '聯絡郵件發送成功',
+    aggregateData: {
+      emailInfo: {
+        recipient: to,
+        template: 'contact',
+        sentAt: new Date().toISOString()
+      }
+    }
+  });
+
+  res.json(response);
 });
 
 /**
  * 發送驗證郵件
  * POST /api/v1/email/verification
  */
-export const sendVerificationEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const sendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
   const { email, verifyLink, name } = req.body;
 
   if (!email) {
@@ -77,54 +66,32 @@ export const sendVerificationEmail = asyncWrapper(async (req: Request, res: Resp
     throw new BadRequestError('驗證連結為必填項');
   }
 
-  // 發送驗證郵件
-  const result = await emailService.sendVerificationEmail(email, verifyLink, name);
-
-  const response: EmailResponse = {
-    success: result.success,
-    message: result.success ? '驗證郵件發送成功' : `驗證郵件發送失敗: ${result.error}`,
-    messageId: result.messageId
-  };
-
-  if (result.success) {
-    res.json(response);
-  } else {
-    res.status(500).json(response);
-  }
+  // 使用 API 版本
+  const result = await sendVerificationEmailApi(email, verifyLink, name);
+  res.json(result);
 });
 
 /**
  * 發送歡迎郵件
  * POST /api/v1/email/welcome
  */
-export const sendWelcomeEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response) => {
   const { email, name } = req.body;
 
   if (!email || !name) {
     throw new BadRequestError('email 和 name 為必填項');
   }
 
-  // 發送歡迎郵件
-  const result = await emailService.sendWelcomeEmail(email, name);
-
-  const response: EmailResponse = {
-    success: result.success,
-    message: result.success ? '歡迎郵件發送成功' : `歡迎郵件發送失敗: ${result.error}`,
-    messageId: result.messageId
-  };
-
-  if (result.success) {
-    res.json(response);
-  } else {
-    res.status(500).json(response);
-  }
+  // 使用 API 版本
+  const result = await sendWelcomeEmailApi(email, name);
+  res.json(result);
 });
 
 /**
  * 發送密碼重設郵件
  * POST /api/v1/email/password-reset
  */
-export const sendPasswordResetEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const sendPasswordResetEmail = asyncHandler(async (req: Request, res: Response) => {
   const { email, resetLink, name } = req.body;
 
   if (!email) {
@@ -138,24 +105,24 @@ export const sendPasswordResetEmail = asyncWrapper(async (req: Request, res: Res
   // 發送密碼重設郵件
   const result = await emailService.sendPasswordResetEmail(email, resetLink, name);
 
-  const response: EmailResponse = {
-    success: result.success,
-    message: result.success ? '密碼重設郵件發送成功' : `密碼重設郵件發送失敗: ${result.error}`,
-    messageId: result.messageId
-  };
-
-  if (result.success) {
-    res.json(response);
-  } else {
-    res.status(500).json(response);
+  if (!result.success) {
+    throw new Error(result.error || '密碼重設郵件發送失敗');
   }
+
+  const response = createSuccessResponse({
+    messageId: result.messageId
+  }, {
+    message: '密碼重設郵件發送成功'
+  });
+
+  res.json(response);
 });
 
 /**
  * 發送馬拉松郵件
  * POST /api/v1/email/marathon
  */
-export const sendMarathonEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const sendMarathonEmail = asyncHandler(async (req: Request, res: Response) => {
   const { email, name, marathonTitle, marathonDate, marathonDescription } = req.body;
 
   if (!email || !name || !marathonTitle) {
@@ -166,24 +133,24 @@ export const sendMarathonEmail = asyncWrapper(async (req: Request, res: Response
   // 發送馬拉松郵件
   const result = await emailService.sendMarathonEmail(email, name, marathonTitle, marathonDate, marathonDescription);
 
-  const response: EmailResponse = {
-    success: result.success,
-    message: result.success ? '馬拉松郵件發送成功' : `馬拉松郵件發送失敗: ${result.error}`,
-    messageId: result.messageId
-  };
-
-  if (result.success) {
-    res.json(response);
-  } else {
-    res.status(500).json(response);
+  if (!result.success) {
+    throw new Error(result.error || '馬拉松郵件發送失敗');
   }
+
+  const response = createSuccessResponse({
+    messageId: result.messageId
+  }, {
+    message: '馬拉松郵件發送成功'
+  });
+
+  res.json(response);
 });
 
 /**
  * 發送自定義郵件
  * POST /api/v1/email/custom
  */
-export const sendCustomEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const sendCustomEmail = asyncHandler(async (req: Request, res: Response) => {
   const { to, subject, htmlContent, template, data } = req.body;
 
   if (!to || !subject) {
@@ -196,7 +163,7 @@ export const sendCustomEmail = asyncWrapper(async (req: Request, res: Response) 
     // 使用模板發送
     const { EmailTemplateService } = await import('../services/email/template.service');
     const templateService = new EmailTemplateService();
-    
+
     let emailTemplate;
     switch (template) {
       case 'welcome':
@@ -217,7 +184,7 @@ export const sendCustomEmail = asyncWrapper(async (req: Request, res: Response) 
       default:
         throw new BadRequestError('不支援的模板類型');
     }
-    
+
     result = await emailService.sendEmail({
       to,
       subject: emailTemplate.subject,
@@ -234,24 +201,24 @@ export const sendCustomEmail = asyncWrapper(async (req: Request, res: Response) 
     throw new BadRequestError('必須提供 htmlContent 或 (template + data)');
   }
 
-  const response: EmailResponse = {
-    success: result.success,
-    message: result.success ? '自定義郵件發送成功' : `自定義郵件發送失敗: ${result.error}`,
-    messageId: result.messageId
-  };
-
-  if (result.success) {
-    res.json(response);
-  } else {
-    res.status(500).json(response);
+  if (!result.success) {
+    throw new Error(result.error || '自定義郵件發送失敗');
   }
+
+  const response = createSuccessResponse({
+    messageId: result.messageId
+  }, {
+    message: '自定義郵件發送成功'
+  });
+
+  res.json(response);
 });
 
 /**
  * 批量發送郵件
  * POST /api/v1/email/bulk
  */
-export const sendBulkEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const sendBulkEmail = asyncHandler(async (req: Request, res: Response) => {
   const { template, subject, recipients /* from, scheduledAt */ } = req.body;
 
   if (!template || !subject || !recipients || !Array.isArray(recipients)) {
@@ -273,16 +240,22 @@ export const sendBulkEmail = asyncWrapper(async (req: Request, res: Response) =>
   const successCount = results.success;
   const failureCount = results.failed;
 
-  const response: EmailResponse = {
-    success: failureCount === 0,
+  const response = createSuccessResponse({
+    total: results.results.length,
+    success: successCount,
+    failed: failureCount,
+    results: results.results
+  }, {
     message: `批量郵件發送完成：成功 ${successCount} 件，失敗 ${failureCount} 件`,
-    data: {
-      total: results.results.length,
-      success: successCount,
-      failed: failureCount,
-      results: results.results
+    aggregateData: {
+      batchEmail: {
+        totalRecipients: results.results.length,
+        successCount,
+        failureCount,
+        processedAt: new Date().toISOString()
+      }
     }
-  };
+  });
 
   res.json(response);
 });
@@ -291,7 +264,7 @@ export const sendBulkEmail = asyncWrapper(async (req: Request, res: Response) =>
  * 驗證郵件地址
  * POST /api/v1/email/validate
  */
-export const validateEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const validateEmail = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
@@ -300,18 +273,21 @@ export const validateEmail = asyncWrapper(async (req: Request, res: Response) =>
 
   const isValid = emailService.validateEmailAddress(email);
 
-  res.json({
-    success: true,
-    message: isValid ? '郵件地址有效' : '郵件地址無效',
-    data: { email, isValid }
+  const response = createSuccessResponse({
+    email,
+    isValid
+  }, {
+    message: isValid ? '郵件地址有效' : '郵件地址無效'
   });
+
+  res.json(response);
 });
 
 /**
  * 預覽郵件模板
  * POST /api/v1/email/preview
  */
-export const previewEmailTemplate = asyncWrapper(async (req: Request, res: Response) => {
+export const previewEmailTemplate = asyncHandler(async (req: Request, res: Response) => {
   const { template, data } = req.body;
 
   if (!template || !data) {
@@ -321,9 +297,9 @@ export const previewEmailTemplate = asyncWrapper(async (req: Request, res: Respo
   try {
     const { EmailTemplateService } = await import('../services/email/template.service');
     const templateService = new EmailTemplateService();
-    
+
     let preview;
-    
+
     switch (template) {
       case 'welcome':
         preview = templateService.generateWelcomeEmail(data);
@@ -343,12 +319,12 @@ export const previewEmailTemplate = asyncWrapper(async (req: Request, res: Respo
       default:
         throw new Error('不支援的模板類型');
     }
-    
-    res.json({
-      success: true,
-      message: '模板預覽生成成功',
-      data: preview
+
+    const response = createSuccessResponse(preview, {
+      message: '模板預覽生成成功'
     });
+
+    res.json(response);
   } catch (error) {
     throw new BadRequestError(`模板預覽失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -358,7 +334,7 @@ export const previewEmailTemplate = asyncWrapper(async (req: Request, res: Respo
  * 獲取郵件統計
  * GET /api/v1/email/stats
  */
-export const getEmailStats = asyncWrapper(async (req: Request, res: Response) => {
+export const getEmailStats = asyncHandler(async (req: Request, res: Response) => {
   const { startDate, endDate } = req.query;
 
   let start: Date | undefined;
@@ -380,30 +356,30 @@ export const getEmailStats = asyncWrapper(async (req: Request, res: Response) =>
 
   const stats = emailService.getStats();
 
-  res.json({
-    success: true,
-    message: '郵件統計獲取成功',
-    data: stats
+  const response = createSuccessResponse(stats, {
+    message: '郵件統計獲取成功'
   });
+
+  res.json(response);
 });
 
 /**
  * 檢查郵件服務健康狀態
  * GET /api/v1/email/health
  */
-export const checkEmailHealth = asyncWrapper(async (req: Request, res: Response) => {
+export const checkEmailHealth = asyncHandler(async (req: Request, res: Response) => {
   const healthStatus = await emailService.checkHealth();
 
-  res.status(healthStatus.status === 'healthy' ? 200 : 503).json({
-    success: healthStatus.status === 'healthy',
-    message: healthStatus.status === 'healthy' ? '郵件服務健康狀態正常' : '郵件服務健康狀態異常',
-    data: {
-      status: healthStatus.status,
-      lastCheck: healthStatus.lastCheck,
-      transporterConnected: healthStatus.transporterConnected,
-      error: healthStatus.error
-    }
+  const response = createSuccessResponse({
+    status: healthStatus.status,
+    lastCheck: healthStatus.lastCheck,
+    transporterConnected: healthStatus.transporterConnected,
+    error: healthStatus.error
+  }, {
+    message: healthStatus.status === 'healthy' ? '郵件服務健康狀態正常' : '郵件服務健康狀態異常'
   });
+
+  res.status(healthStatus.status === 'healthy' ? 200 : 503).json(response);
 });
 
 // 導出所有控制器方法

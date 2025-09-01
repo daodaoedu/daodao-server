@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { UnauthorizedError, ForbiddenError } from '../utils/error-handler';
+import { UnauthorizedError, ForbiddenError } from '../middleware/error.middleware';
 import { 
   UserJwtPayload,
   AuthMiddlewareOptions, 

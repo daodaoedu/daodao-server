@@ -53,14 +53,21 @@ const corsOptions = {
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
     const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
+    const chromeExtensionPattern = /^chrome-extension:\/\//;
 
+    // 允許沒有 origin 的請求（例如從同源或某些工具的請求）
+    // 允許已配置的來源
+    // 允許 Chrome 擴充功能
+    // 允許本地開發
     if (!origin || 
         allowedOrigins.includes(origin) || 
         daodaoTestPattern.test(origin) ||
-        localhostPattern.test(origin)) {
+        localhostPattern.test(origin) ||
+        chromeExtensionPattern.test(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // 對於靜態資源（如 favicon），允許所有來源
+      callback(null, false);
     }
   },
   methods: "GET,POST,PUT,DELETE,OPTIONS",
@@ -68,6 +75,7 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
+// 使用 CORS 中間件
 app.use(cors(corsOptions));
 
 // Rate limiting

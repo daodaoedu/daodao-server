@@ -62,25 +62,25 @@
  *         - type: object
  *           required:
  *             - id
- *             - external_id
- *             - user_id
- *             - is_public
+ *             - externalId
+ *             - userId
+ *             - isPublic
  *             - status
  *           properties:
  *             id:
  *               type: integer
  *               description: 專案內部 ID
  *               example: 123
- *             external_id:
+ *             externalId:
  *               type: string
  *               format: uuid
  *               description: 專案外部 UUID
  *               example: "123e4567-e89b-12d3-a456-426614174000"
- *             user_id:
+ *             userId:
  *               type: integer
  *               description: 使用者 ID
  *               example: 1
- *             img_url:
+ *             imgUrl:
  *               type: string
  *               format: uri
  *               description: 專案圖片 URL
@@ -101,7 +101,7 @@
  *                 $ref: '#/components/schemas/ProjectMotivation'
  *               description: 專案動機列表
  *               example: ["personal_growth", "career_development"]
- *             motivation_description:
+ *             motivationDescription:
  *               type: string
  *               maxLength: 1000
  *               description: 動機描述
@@ -122,7 +122,7 @@
  *                 $ref: '#/components/schemas/ProjectStrategy'
  *               description: 學習策略列表
  *               example: ["book_reading", "watching_videos", "doing_projects"]
- *             strategy_description:
+ *             strategyDescription:
  *               type: string
  *               maxLength: 1000
  *               description: 策略描述
@@ -138,23 +138,23 @@
  *                 $ref: '#/components/schemas/ProjectOutcome'
  *               description: 預期成果列表
  *               example: ["building_websites"]
- *             outcome_description:
+ *             outcomeDescription:
  *               type: string
  *               maxLength: 1000
  *               description: 成果描述
  *               example: "建立個人作品集網站"
- *             is_public:
+ *             isPublic:
  *               type: boolean
  *               description: 是否公開
  *               example: false
  *             status:
  *               $ref: '#/components/schemas/ProjectStatus'
- *             start_date:
+ *             startDate:
  *               type: string
  *               format: date-time
  *               description: 開始日期
  *               example: "2024-01-01T00:00:00Z"
- *             end_date:
+ *             endDate:
  *               type: string
  *               format: date-time
  *               description: 結束日期
@@ -165,11 +165,11 @@
  *               maximum: 365
  *               description: 間隔天數
  *               example: 180
- *             created_by:
+ *             createdBy:
  *               type: integer
  *               description: 創建者 ID
  *               example: 1
- *             updated_by:
+ *             updatedBy:
  *               type: integer
  *               description: 更新者 ID
  *               example: 1
@@ -184,16 +184,16 @@
  *         - type: object
  *           required:
  *             - id
- *             - project_id
+ *             - projectId
  *             - position
- *             - is_completed
- *             - is_deleted
+ *             - isCompleted
+ *             - isDeleted
  *           properties:
  *             id:
  *               type: integer
  *               description: 里程碑 ID
  *               example: 1
- *             project_id:
+ *             projectId:
  *               type: string
  *               format: uuid
  *               description: 專案 ID
@@ -213,21 +213,21 @@
  *               maxLength: 1000
  *               description: 里程碑描述
  *               example: "掌握 React 基本概念和語法"
- *             start_date:
+ *             startDate:
  *               type: string
  *               format: date-time
  *               description: 開始日期
  *               example: "2024-01-01T00:00:00Z"
- *             end_date:
+ *             endDate:
  *               type: string
  *               format: date-time
  *               description: 結束日期
  *               example: "2024-02-01T00:00:00Z"
- *             is_completed:
+ *             isCompleted:
  *               type: boolean
  *               description: 是否完成
  *               example: false
- *             is_deleted:
+ *             isDeleted:
  *               type: boolean
  *               description: 是否刪除
  *               example: false
@@ -238,16 +238,16 @@
  *         - type: object
  *           required:
  *             - id
- *             - milestone_id
+ *             - milestoneId
  *             - position
- *             - is_completed
- *             - is_deleted
+ *             - isCompleted
+ *             - isDeleted
  *           properties:
  *             id:
  *               type: integer
  *               description: 任務 ID
  *               example: 1
- *             milestone_id:
+ *             milestoneId:
  *               type: integer
  *               description: 里程碑 ID
  *               example: 1
@@ -266,17 +266,17 @@
  *               maxLength: 1000
  *               description: 任務描述
  *               example: "完整閱讀 React 官方文檔的核心概念部分"
- *             days_of_week:
+ *             daysOfWeek:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/DaysOfWeek'
  *               description: 執行日期（星期）
  *               example: ["Monday", "Wednesday", "Friday"]
- *             is_completed:
+ *             isCompleted:
  *               type: boolean
  *               description: 是否完成
  *               example: false
- *             is_deleted:
+ *             isDeleted:
  *               type: boolean
  *               description: 是否刪除
  *               example: false
@@ -287,8 +287,8 @@
  *         - type: object
  *           required:
  *             - id
- *             - project_id
- *             - user_id
+ *             - projectId
+ *             - userId
  *             - type
  *             - week
  *             - title
@@ -300,11 +300,11 @@
  *               type: integer
  *               description: 發文 ID
  *               example: 1
- *             project_id:
+ *             projectId:
  *               type: integer
  *               description: 專案 ID
  *               example: 123
- *             user_id:
+ *             userId:
  *               type: integer
  *               description: 使用者 ID
  *               example: 1
@@ -334,17 +334,17 @@
  *         - type: object
  *           required:
  *             - id
- *             - post_id
+ *             - postId
  *             - content
- *             - image_urls
- *             - video_urls
+ *             - imageUrls
+ *             - videoUrls
  *             - visibility
  *           properties:
  *             id:
  *               type: integer
  *               description: 筆記 ID
  *               example: 1
- *             post_id:
+ *             postId:
  *               type: integer
  *               description: 發文 ID
  *               example: 1
@@ -352,14 +352,14 @@
  *               type: string
  *               description: 筆記內容
  *               example: "今天學習了 React 的基本概念，包括組件和 JSX 語法"
- *             image_urls:
+ *             imageUrls:
  *               type: array
  *               items:
  *                 type: string
  *                 format: uri
  *               description: 圖片 URL 列表
  *               example: ["https://example.com/image1.jpg"]
- *             video_urls:
+ *             videoUrls:
  *               type: array
  *               items:
  *                 type: string
@@ -375,17 +375,17 @@
  *         - type: object
  *           required:
  *             - id
- *             - post_id
+ *             - postId
  *             - content
- *             - image_urls
- *             - video_urls
+ *             - imageUrls
+ *             - videoUrls
  *             - visibility
  *           properties:
  *             id:
  *               type: integer
  *               description: 成果 ID
  *               example: 1
- *             post_id:
+ *             postId:
  *               type: integer
  *               description: 發文 ID
  *               example: 1
@@ -393,14 +393,14 @@
  *               type: string
  *               description: 成果內容
  *               example: "完成了第一個 React 專案 - 待辦事項應用"
- *             image_urls:
+ *             imageUrls:
  *               type: array
  *               items:
  *                 type: string
  *                 format: uri
  *               description: 圖片 URL 列表
  *               example: ["https://example.com/screenshot.jpg"]
- *             video_urls:
+ *             videoUrls:
  *               type: array
  *               items:
  *                 type: string
@@ -416,7 +416,7 @@
  *         - type: object
  *           required:
  *             - id
- *             - post_id
+ *             - postId
  *             - mood
  *             - visibility
  *           properties:
@@ -424,33 +424,33 @@
  *               type: integer
  *               description: 評審 ID
  *               example: 1
- *             post_id:
+ *             postId:
  *               type: integer
  *               description: 發文 ID
  *               example: 1
  *             mood:
  *               $ref: '#/components/schemas/Mood'
- *             mood_description:
+ *             moodDescription:
  *               type: string
  *               description: 心情描述
  *               example: "今天學習很順利，感覺很有成就感"
- *             stress_level:
+ *             stressLevel:
  *               type: integer
  *               minimum: 1
  *               maximum: 10
  *               description: 壓力等級 (1-10)
  *               example: 3
- *             learning_review:
+ *             learningReview:
  *               type: integer
  *               minimum: 1
  *               maximum: 10
  *               description: 學習回顧評分 (1-10)
  *               example: 8
- *             learning_feedback:
+ *             learningFeedback:
  *               type: string
  *               description: 學習反饋
  *               example: "今天的學習內容比較容易理解，進度不錯"
- *             adjustment_plan:
+ *             adjustmentPlan:
  *               type: string
  *               description: 調整計劃
  *               example: "明天加強練習 React Hooks"
@@ -506,7 +506,7 @@
  *             $ref: '#/components/schemas/ProjectMotivation'
  *           description: 專案動機列表
  *           example: ["personal_growth", "career_development"]
- *         motivation_description:
+ *         motivationDescription:
  *           type: string
  *           maxLength: 1000
  *           description: 動機描述
@@ -527,7 +527,7 @@
  *             $ref: '#/components/schemas/ProjectStrategy'
  *           description: 學習策略列表
  *           example: ["book_reading", "watching_videos", "doing_projects"]
- *         strategy_description:
+ *         strategyDescription:
  *           type: string
  *           maxLength: 1000
  *           description: 策略描述
@@ -543,23 +543,23 @@
  *             $ref: '#/components/schemas/ProjectOutcome'
  *           description: 預期成果列表
  *           example: ["building_websites"]
- *         outcome_description:
+ *         outcomeDescription:
  *           type: string
  *           maxLength: 1000
  *           description: 成果描述
  *           example: "建立個人作品集網站"
- *         is_public:
+ *         isPublic:
  *           type: boolean
  *           description: 是否公開
  *           example: false
  *         status:
  *           $ref: '#/components/schemas/ProjectStatus'
- *         start_date:
+ *         startDate:
  *           type: string
  *           format: date-time
  *           description: 開始日期
  *           example: "2024-01-01T00:00:00Z"
- *         end_date:
+ *         endDate:
  *           type: string
  *           format: date-time
  *           description: 結束日期
@@ -570,7 +570,7 @@
  *           maximum: 365
  *           description: 間隔天數
  *           example: 180
- *         img_url:
+ *         imgUrl:
  *           type: string
  *           format: uri
  *           description: 專案圖片 URL
@@ -592,7 +592,7 @@
  *           items:
  *             $ref: '#/components/schemas/ProjectMotivation'
  *           description: 專案動機列表
- *         motivation_description:
+ *         motivationDescription:
  *           type: string
  *           maxLength: 1000
  *           description: 動機描述
@@ -609,7 +609,7 @@
  *           items:
  *             $ref: '#/components/schemas/ProjectStrategy'
  *           description: 學習策略列表
- *         strategy_description:
+ *         strategyDescription:
  *           type: string
  *           maxLength: 1000
  *           description: 策略描述
@@ -622,20 +622,20 @@
  *           items:
  *             $ref: '#/components/schemas/ProjectOutcome'
  *           description: 預期成果列表
- *         outcome_description:
+ *         outcomeDescription:
  *           type: string
  *           maxLength: 1000
  *           description: 成果描述
- *         is_public:
+ *         isPublic:
  *           type: boolean
  *           description: 是否公開
  *         status:
  *           $ref: '#/components/schemas/ProjectStatus'
- *         start_date:
+ *         startDate:
  *           type: string
  *           format: date-time
  *           description: 開始日期
- *         end_date:
+ *         endDate:
  *           type: string
  *           format: date-time
  *           description: 結束日期
@@ -644,7 +644,7 @@
  *           minimum: 1
  *           maximum: 365
  *           description: 間隔天數
- *         img_url:
+ *         imgUrl:
  *           type: string
  *           format: uri
  *           description: 專案圖片 URL
@@ -661,29 +661,29 @@
  *     ProjectStats:
  *       type: object
  *       required:
- *         - total_projects
- *         - ongoing_projects
- *         - completed_projects
- *         - not_started_projects
- *         - canceled_projects
+ *         - totalProjects
+ *         - ongoingProjects
+ *         - completedProjects
+ *         - notStartedProjects
+ *         - canceledProjects
  *       properties:
- *         total_projects:
+ *         totalProjects:
  *           type: integer
  *           description: 總專案數
  *           example: 10
- *         ongoing_projects:
+ *         ongoingProjects:
  *           type: integer
  *           description: 進行中專案數
  *           example: 3
- *         completed_projects:
+ *         completedProjects:
  *           type: integer
  *           description: 已完成專案數
  *           example: 5
- *         not_started_projects:
+ *         notStartedProjects:
  *           type: integer
  *           description: 未開始專案數
  *           example: 1
- *         canceled_projects:
+ *         canceledProjects:
  *           type: integer
  *           description: 已取消專案數
  *           example: 1
