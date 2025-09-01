@@ -79,7 +79,13 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
 
     if (sessionData.type === 'user') {
       // 查找正式用戶
-      foundUser = await authService.findUserByExternalId(sessionData.id);
+      const userResult = await authService.findUserByExternalId(sessionData.id);
+      if (userResult.success && userResult.data) {
+        foundUser = userResult.data;
+      } else {
+        console.warn('Failed to find user by external_id:', sessionData.id);
+        foundUser = null;
+      }
     } else if (sessionData.type === 'temp') {
       // 查找臨時用戶
       foundUser = await prisma.temp_users.findUnique({
