@@ -3,6 +3,7 @@
 DaoDao Server 是一個基於 Node.js、Express 和 TypeScript 的現代化後端服務。作為 DaoDao 學習平台的核心後端，提供完整的學習管理、社群互動、資源分享等功能，幫助使用者規劃和追蹤學習進度。
 
 ## 目錄
+
 - [技術架構](#技術架構)
 - [主要功能](#主要功能)
 - [專案結構](#專案結構)
@@ -31,25 +32,31 @@ DaoDao Server 是一個基於 Node.js、Express 和 TypeScript 的現代化後�
 - **部署**: Docker, PM2
 - **測試**: Jest (支持 TypeScript)
 - **CI/CD**: GitHub Actions
-- **其他技術**: 
+- **其他技術**:
   - 檔案上傳: Multer
   - Cloudflare R2 儲存服務
   - 電子郵件發送: Nodemailer
   - 資料驗證: Zod
   - 型別檢查: TypeScript, ESLint
   - 型別生成: Prisma Client, OpenAPI TypeScript
+  - 日誌記錄: Winston
+  - 安全防護: Helmet
+  - 系統監控: Systeminformation
+  - 時間處理: Moment Timezone
 
 ## 主要功能
 
 DaoDao Server 是一個全功能的學習平台後端服務，提供以下核心功能模組:
 
 ### 身份驗證與使用者管理
+
 - **多重身份驗證**: JWT + Google OAuth 整合
 - **使用者管理**: 完整的 CRUD 操作，個人資料管理
 - **角色權限系統**: 基於角色的存取控制 (RBAC)
 - **會話管理**: Redis 快取與會話持久化
 
 ### 學習計畫管理系統
+
 - **專案管理**: 建立、查詢、更新和刪除學習計畫
 - **里程碑追蹤**: 設定和管理學習里程碑
 - **任務管理**: 詳細的任務建立與進度追蹤
@@ -58,6 +65,7 @@ DaoDao Server 是一個全功能的學習平台後端服務，提供以下核心
 - **評價系統**: 專案評價與回饋機制
 
 ### 學習資源系統
+
 - **資源管理**: 進階過濾、分頁與搜尋功能
 - **多媒體支援**: 支援各種學習資源類型
 - **評論與評分**: 使用者評論、按讚系統
@@ -65,42 +73,58 @@ DaoDao Server 是一個全功能的學習平台後端服務，提供以下核心
 - **狀態管理**: 草稿、發佈、封存等狀態控制
 
 ### 學習馬拉松活動
+
 - **活動創建**: 建立和管理學習馬拉松
 - **參與管理**: 報名、進度追蹤、完成認證
 - **導師系統**: 導師分配與輔導管理
 - **活動統計**: 活動數據分析與報告
 
 ### 社群與互動
+
 - **學習圈子**: 建立和參與學習社群
 - **想法分享**: 創意與想法交流平台
 - **活動組織**: 線上線下學習活動
 - **多層評論系統**: 支援巢狀回覆的評論架構
 
+### 學習實踐系統
+
+- **實踐管理**: 建立和追蹤個人學習實踐計畫
+- **打卡記錄**: 每日學習打卡與習慣養成
+- **實踐事件**: 管理實踐過程中的重要事件和里程碑
+- **互動功能**: 實踐社群互動、激勵與分享
+- **統計分析**: 實踐數據統計與進度視覺化
+- **目標設定**: 支援多種目標類型（每日、每週、累計）
+
 ### 智慧標籤系統
+
 - **動態標籤**: 自動生成與手動管理
 - **標籤統計**: 熱門標籤與使用分析
 - **實體關聯**: 跨模組標籤關聯管理
 - **搜尋整合**: 基於標籤的智慧搜尋
 
 ### 檔案與媒體管理
+
 - **圖片上傳**: Cloudflare R2 整合的可擴展儲存
 - **多檔案支援**: 批量上傳與管理
 - **檔案最佳化**: 自動壓縮與格式轉換
 - **安全控制**: 檔案類型驗證與存取控制
 
 ### 通訊與通知系統
+
 - **電子郵件服務**: 系統通知與提醒
 - **專案通知**: 學習進度與成就通知
 - **電子郵件驗證**: 帳戶安全驗證機制
 - **客製化模板**: 多樣化的郵件模板
 
 ### 系統監控與管理
+
 - **即時監控**: 系統效能、記憶體、資料庫狀態
 - **管理儀表板**: 全面的系統管理介面
 - **資料分析**: 使用者行為與平台統計
 - **健康檢查**: 自動化系統健康監測
 
 ### 安全與效能
+
 - **速率限制**: 多層級 API 存取控制
 - **CORS 配置**: 跨域安全管理
 - **資料驗證**: Zod 架構的型別安全驗證
@@ -159,12 +183,14 @@ daodao-server/
 │   │   │   ├── auth.service.ts    # 核心驗證邏輯
 │   │   │   ├── oauth.service.ts   # OAuth 整合
 │   │   │   ├── email.service.ts   # 驗證郵件服務
-│   │   │   └── permission.service.ts # 權限管理
+│   │   │   ├── permission.service.ts # 權限管理
+│   │   │   └── index.ts           # 驗證服務匯出
 │   │   ├── database/              # 資料庫服務
 │   │   │   ├── prisma.service.ts  # Prisma ORM 服務
 │   │   │   ├── mongo.service.ts   # MongoDB 連接服務
 │   │   │   ├── postgres.service.ts # PostgreSQL 服務
-│   │   │   └── redis.service.ts   # Redis 快取服務
+│   │   │   ├── redis.service.ts   # Redis 快取服務
+│   │   │   └── index.ts           # 資料庫服務匯出
 │   │   ├── email/                 # 郵件系統服務
 │   │   │   ├── email.service.ts   # 郵件發送服務
 │   │   │   ├── enhanced-email.service.ts # 增強郵件功能
@@ -174,9 +200,11 @@ daodao-server/
 │   │   │   ├── verification-template.ts # 驗證郵件模板
 │   │   │   ├── password-reset-template.ts # 密碼重置模板
 │   │   │   ├── contact-template.ts # 聯絡表單模板
-│   │   │   └── marathon-template.ts # 馬拉松活動模板
+│   │   │   ├── marathon-template.ts # 馬拉松活動模板
+│   │   │   └── types.ts           # 郵件型別定義
 │   │   ├── logging/               # 日誌服務
-│   │   │   └── logger.service.ts  # Winston 日誌管理
+│   │   │   ├── logger.service.ts  # Winston 日誌管理
+│   │   │   └── index.ts           # 日誌服務匯出
 │   │   ├── user.service.ts        # 使用者業務邏輯
 │   │   ├── resource.service.ts    # 資源管理業務邏輯
 │   │   ├── project.service.ts     # 專案管理業務邏輯
@@ -184,8 +212,20 @@ daodao-server/
 │   │   ├── idea.service.ts        # 想法分享業務邏輯
 │   │   ├── tag.service.ts         # 標籤管理業務邏輯
 │   │   ├── resource-review.service.ts # 資源評價業務邏輯
+│   │   ├── practice.service.ts    # 學習實踐核心服務
+│   │   ├── practice-checkin.service.ts # 實踐打卡記錄服務
+│   │   ├── practice-event.service.ts # 實踐事件管理服務
+│   │   ├── practice-interaction.service.ts # 實踐互動服務
+│   │   ├── mentor.service.ts      # 導師管理服務
+│   │   ├── milestone.service.ts   # 里程碑管理服務
+│   │   ├── note.service.ts        # 筆記管理服務
+│   │   ├── outcome.service.ts     # 學習成果管理服務
+│   │   ├── review.service.ts      # 評價管理服務
+│   │   ├── r2.service.ts          # Cloudflare R2 儲存服務
 │   │   ├── jwt.service.ts         # JWT 令牌管理
-│   │   └── transform.service.ts   # 資料轉換服務
+│   │   ├── transform.service.ts   # 資料轉換服務
+│   │   ├── id-converter.service.ts # ID 轉換服務
+│   │   └── index.ts               # 服務層匯出
 │   ├── types/                     # TypeScript 型別定義
 │   │   ├── auth.types.ts          # 身份驗證型別
 │   │   ├── user.types.ts          # 使用者型別
@@ -295,23 +335,27 @@ daodao-server/
 ### 核心架構特點
 
 #### 分層架構設計
+
 - **控制器層 (Controllers)**: 處理 HTTP 請求和回應，負責參數驗證和錯誤處理
 - **服務層 (Services)**: 實現核心業務邏輯，包含資料庫操作和第三方服務整合
 - **中間件層 (Middleware)**: 提供身份驗證、權限檢查、請求日誌、錯誤處理等橫切關注點
 - **路由層 (Routes)**: 定義 API 端點和路由規則，整合 Swagger 文檔
 
 #### 現代化工具整合
+
 - **Prisma ORM**: 型別安全的資料庫操作，自動生成 TypeScript 型別
 - **Zod 驗證**: 強型別的請求驗證和資料解析
 - **Winston 日誌**: 結構化日誌記錄和多種輸出格式
 - **Swagger/OpenAPI**: 完整的 API 文檔生成和互動式測試介面
 
 #### 型別安全保證
+
 - **完整型別覆蓋**: 從資料庫到 API 回應的端到端型別安全
 - **路徑別名**: `@/*` 對應 `src/*`，簡化模組導入
 - **自動型別生成**: Prisma 和 OpenAPI 型別自動生成和同步
 
 #### 測試架構
+
 - **分層測試**: 單元測試、整合測試、API 端點測試
 - **測試工具**: 完整的測試輔助函數和資料工廠
 - **模擬框架**: Prisma 模擬和外部服務模擬
@@ -321,6 +365,7 @@ daodao-server/
 ### 本地開發
 
 1. 安裝依賴:
+
    ```bash
    npm install
    ```
@@ -328,6 +373,7 @@ daodao-server/
 2. 建立 .env.dev 檔案並配置必要的環境變數
 
 3. 啟動開發服務器:
+
    ```bash
    npm run dev        # 使用 ts-node-dev 啟動開發伺服器
    npm start          # 啟動生產伺服器 (執行編譯後的 dist/src/server.js)
@@ -361,6 +407,7 @@ npm run test:paths    # 使用 NODE_PATH=src 執行測試
 1. 建立必要的環境變數檔案 (.env.dev, .env.prod)
 
 2. 啟動 Docker 容器:
+
    ```bash
    # 開發環境
    docker-compose up dev_app
@@ -376,6 +423,7 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 ### API 路由架構
 
 #### 核心業務 API (v1)
+
 - **`/api/v1/auth`** - 身份驗證與授權管理
   - JWT 令牌驗證、Google OAuth 整合
   - 使用者註冊、登入、登出、密碼重置
@@ -400,14 +448,39 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 - **`/api/v1/tags`** - 智慧標籤管理
   - 動態標籤生成、標籤統計分析
   - 跨模組標籤關聯、搜尋整合
-- **`/api/v1/me`** - 個人資料管理
-  - 個人資訊查詢和更新
-  - 個人活動記錄、偏好設定
+- **`/api/v1/me`** - 個人資料管理中心
+  - 身份認證資訊 (`GET /auth`)
+  - 用戶完整資料 (`GET /users`)
+  - 實踐記錄管理 (`GET /practices`, `GET /practice-stats`)
+  - 資源草稿管理 (`GET /resources`)
+  - 偏好設定管理 (`GET /preferences`, `PUT /preferences`)
+  - 想法創意管理 (`GET /ideas`)
 - **`/api/v1/email`** - 電子郵件服務
   - 系統通知、驗證郵件發送
   - 郵件模板管理、發送狀態追蹤
+- **`/api/v1/practices`** - 學習實踐系統
+  - 實踐計畫建立、進度追蹤、統計分析
+  - 打卡記錄、習慣養成、社群互動
+  - 實踐事件管理、互動功能（按讚、收藏、分享）
+- **`/api/v1/mentor`** - 導師系統
+  - 導師-學員配對管理
+  - 馬拉松活動導師分配
+  - 學員參與管理和評估
+- **`/api/v1/notes`** - 便利貼系統
+  - 專案筆記建立和管理
+  - 筆記可見性控制、分享功能
+- **`/api/v1/outcomes`** - 成果管理
+  - 學習成果記錄和展示
+  - 專案成果管理
+- **`/api/v1/reviews`** - 覆盤系統
+  - 學習過程回顧和反思
+  - 專案覆盤記錄管理
+- **`/api/v1/images`** - 圖片管理
+  - 圖片上傳和儲存服務
+  - 多檔案批量上傳、圖片處理
 
 #### 系統管理 API (v1)
+
 - **`/api/v1/monitor`** - 系統監控儀表板
   - 即時效能監控、資源使用統計
   - 系統健康檢查、警報管理
@@ -416,6 +489,7 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
   - 資料表資訊、索引使用情況
 
 #### 健康檢查與工具 API
+
 - **`/api/v1/health`** - 系統健康檢查
   - 服務運行狀態、系統運行時間
   - 即時狀態回報、依賴服務檢查
@@ -425,6 +499,7 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 ### API 文檔與測試
 
 #### 互動式文檔
+
 - **主要文檔**: `/api-docs` - 完整的 Swagger UI 介面
 - **備用文檔**: `/api/docs` - 相同功能的備用路徑
 - **文檔特色**:
@@ -434,6 +509,7 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
   - 整合身份驗證測試，支援 JWT 令牌驗證
 
 #### API 設計特點
+
 - **版本化設計**: 採用 `/api/v1/` 前綴，支援未來版本升級
 - **TypeScript 優先**: 完整的型別安全和 Swagger 註解
 - **標準化回應**: 統一的成功/錯誤狀態格式和錯誤碼
@@ -455,17 +531,25 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
   - 速率限制計數器
 
 主要資料模型包括:
-- User (使用者)
-- Project (學習計畫)
-- Milestone (里程碑)
-- Task (任務)
-- Marathon (馬拉松活動)
-- Circle (社群揪團)
-- Comment (評論)
-- Tag (標籤)
-- Note (筆記)
-- Outcome (學習成果)
-- Review (評價)
+
+- **users** (使用者) - 用戶基本資訊和認證
+- **projects** (學習計畫) - 用戶學習專案管理
+- **milestones** (里程碑) - 專案進度里程碑
+- **tasks** (任務) - 具體學習任務
+- **marathons** (馬拉松活動) - 學習馬拉松活動
+- **groups** (社群揪團) - 學習社群和揪團
+- **comments** (評論) - 多層次評論系統
+- **tags** (標籤) - 標籤分類系統
+- **resources** (資源) - 學習資源管理
+- **resource_review** (資源評價) - 資源評分和評論
+- **practices** (實踐) - 學習實踐記錄
+- **practice_checkins** (實踐打卡) - 實踐進度記錄
+- **ideas** (想法) - 創意想法分享
+- **categories** (分類) - 階層式分類系統
+- **user_preferences** (用戶偏好) - 個人偏好設定
+- **note** (筆記) - 學習筆記記錄
+- **outcome** (學習成果) - 學習成果展示
+- **review** (評價) - 學習過程評價和反思
 
 ## 環境變數
 
@@ -491,8 +575,9 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 ### 測試框架架構
 
 #### 測試層級結構
+
 ```
-src/tests/
+tests/
 ├── integration/                    # 整合測試 - 測試 API 端點和業務流程
 │   ├── api-endpoints.test.ts       # 全面 API 端點測試
 │   ├── auth-flow.test.ts           # 身份驗證流程測試
@@ -559,6 +644,7 @@ src/tests/
 ### 執行測試
 
 #### 基本測試命令
+
 ```bash
 # 執行所有測試
 npm test
@@ -583,6 +669,7 @@ npm test -- --coverage
 ```
 
 #### 進階測試選項
+
 ```bash
 # 執行特定模式的測試
 npm test -- --testNamePattern="Auth"
@@ -600,18 +687,21 @@ npm test -- --onlyFailures
 ### 測試架構特點
 
 #### 企業級測試配置
+
 - **Jest 配置**: `config/jest.config.js` - 完整的企業級測試配置
 - **TypeScript 支援**: 透過 `ts-jest` 提供完整的 TypeScript 測試支援
 - **路徑別名**: 支援 `@/*` 路徑別名，與主專案保持一致
 - **全域設置**: `globalSetup.js` 和 `globalTeardown.js` 管理測試環境
 
 #### 測試工具生態系統
+
 - **資料工廠模式**: `test-data-factory.ts` 提供一致的測試資料生成
 - **Prisma 模擬**: `prisma-mock.ts` 提供資料庫操作模擬
 - **增強測試工具**: `enhanced-test-utilities.ts` 提供進階測試功能
 - **自動清理**: `test-cleanup.ts` 確保測試環境隔離
 
 #### 測試覆蓋範圍
+
 - **API 端點測試**: 完整覆蓋所有 REST API 端點
 - **身份驗證測試**: JWT、OAuth、權限系統全面測試
 - **業務邏輯測試**: 核心服務層邏輯驗證
@@ -623,11 +713,13 @@ npm test -- --onlyFailures
 ### 測試開發指南
 
 #### 測試檔案命名規範
+
 - **單元測試**: `[模組名].test.ts` (如：`auth.service.test.ts`)
 - **整合測試**: `[功能名]-api.test.ts` (如：`user-api.test.ts`)
 - **測試工具**: `[工具名].ts` (如：`test-helpers.ts`)
 
 #### 測試撰寫最佳實踐
+
 1. **隔離性**: 每個測試獨立運行，不依賴其他測試結果
 2. **模擬策略**: 使用適當的 mock 來隔離外部依賴
 3. **資料一致性**: 使用測試資料工廠確保測試資料一致性

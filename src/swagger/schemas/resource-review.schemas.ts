@@ -333,36 +333,20 @@
  *           $ref: '#/components/schemas/ReviewStatus'
  *     
  *     ResourceReviewListResponse:
- *       type: object
- *       required:
- *         - success
- *         - data
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           type: object
- *           required:
- *             - reviews
- *             - pagination
+ *       allOf:
+ *         - $ref: '#/components/schemas/PaginatedApiResponse'
+ *         - type: object
  *           properties:
- *             reviews:
+ *             data:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/ResourceReview'
- *             pagination:
- *               $ref: '#/components/schemas/PaginationMeta'
  *     
  *     ResourceReviewResponse:
- *       type: object
- *       required:
- *         - success
- *         - data
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           $ref: '#/components/schemas/ResourceReview'
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             data:
+ *               $ref: '#/components/schemas/ResourceReview'
  */

@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
-import { BadRequestError } from '../utils/error-handler';
+import { BadRequestError } from '../middleware/error.middleware';
 
 /**
  * 格式化 Zod 錯誤

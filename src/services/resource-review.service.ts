@@ -16,7 +16,16 @@ import {
   NotFoundError, 
   ConflictError, 
   ForbiddenError 
-} from '@/utils/error-handler';
+} from '@/middleware/error.middleware';
+import { 
+  ApiResponse, 
+  ApiSuccessResponse,
+  CursorPaginatedApiResponse
+} from '@/types/api-response.types';
+import { 
+  createSuccessResponse, 
+  createCursorPaginatedResponse 
+} from '@/utils/response-helper';
 import { 
   decodeCursor, 
   generatePaginationMetadata 
@@ -51,7 +60,7 @@ interface PaginationParams {
  * @param id - 心得評價 ID
  * @returns 心得評價詳情
  */
-export async function getReviewById(id: number): Promise<ResourceReviewResponse | null> {
+export async function getReviewById(id: number): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
   // 查詢心得評價，包含關聯資料
   const review = await prisma.resource_review.findUnique({
     where: { 
@@ -89,7 +98,7 @@ export async function getReviewById(id: number): Promise<ResourceReviewResponse 
   const tags = await prisma.entity_tags.findMany({
     where: {
       entity_type: 'resource_review',
-      entity_id: review.id.toString()
+      entity_id: review.id
     },
     include: {
       tags: true
@@ -102,13 +111,16 @@ export async function getReviewById(id: number): Promise<ResourceReviewResponse 
   };
 
   // 將心得評價資料轉換為 API 格式
-  const result = transformReviewToApi({
+  const result = await transformReviewToApi({
     ...review,
     tags: tags.map(tag => tag.tags),
     stats
   });
 
-  return result;
+  return createSuccessResponse(result, {
+    requestId: `review_${id}`,
+    processingTime: Date.now() - Date.now()
+  });
 }
 
 /**
@@ -120,15 +132,7 @@ export async function getReviewById(id: number): Promise<ResourceReviewResponse 
 export async function getReviews(
   filters: ReviewFilterParams = {},
   pagination: PaginationParams = {}
-): Promise<{
-  reviews: ResourceReviewResponse[];
-  pagination: {
-    cursors: { start: string | null; end: string | null };
-    hasMore: boolean;
-    count: number;
-    parentCount?: number;
-  };
-}> {
+): Promise<CursorPaginatedApiResponse<ResourceReviewResponse>> {
   // 處理分頁參數
   const limit = Math.min(
     pagination.limit || DEFAULT_REVIEW_PAGE_LIMIT,
@@ -255,7 +259,7 @@ export async function getReviews(
   const reviewsData = hasMore ? reviews.slice(0, limit) : reviews;
 
   // 批量查詢標籤
-  const reviewIds = reviewsData.map(review => review.id.toString());
+  const reviewIds = reviewsData.map(review => review.id);
   const allTags = await prisma.entity_tags.findMany({
     where: {
       entity_type: 'resource_review',
@@ -273,19 +277,19 @@ export async function getReviews(
     }
     acc[tag.entity_id].push(tag.tags);
     return acc;
-  }, {} as Record<string, Array<tags>>);
+  }, {} as Record<number, Array<tags>>);
 
   // 轉換為 API 格式
-  const reviewList = reviewsData.map((review) => {
-    return transformReviewToApi({
+  const reviewList = await Promise.all(reviewsData.map(async (review) => {
+    return await transformReviewToApi({
       ...review,
-      tags: tagsByReviewId[review.id.toString()] || [],
+      tags: tagsByReviewId[review.id] || [],
       // 統計數據可以在實際項目中從 Redis 或其他快取系統中獲取
       stats: {
         likes_count: 0
       }
     });
-  });
+  }));
 
   // 生成分頁元數據
   const pagination_meta = generatePaginationMetadata(
@@ -296,7 +300,20 @@ export async function getReviews(
     hasMore
   );
 
-  return { reviews: reviewList, pagination: pagination_meta };
+  return createCursorPaginatedResponse(reviewList, {
+    cursors: pagination_meta.cursors,
+    hasMore: pagination_meta.hasMore,
+    count: pagination_meta.count
+  }, {
+    searchQuery: filters.tags?.join(','),
+    filters: {
+      resourceId: filters.resourceId,
+      userId: filters.userId,
+      status: filters.status,
+      minScore: filters.minScore,
+      maxScore: filters.maxScore
+    }
+  });
 }
 
 /**
@@ -310,7 +327,7 @@ export async function createReview(
   resourceExternalId: string,
   data: ResourceReviewSchema,
   userId: number
-): Promise<ResourceReviewResponse | null> {
+): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在（使用 external_id）
     const resource = await tx.resources.findUnique({
@@ -355,7 +372,7 @@ export async function createReview(
     if (data.tags && data.tags.length > 0) {
       await tagService.setEntityTags(
         'resource_review',
-        review.id.toString(),
+        review.id,
         data.tags,
         userId,
         tx
@@ -363,7 +380,8 @@ export async function createReview(
     }
 
     // 查詢完整的心得評價數據（包含關聯數據）
-    return await getReviewById(review.id);
+    const reviewResponse = await getReviewById(review.id);
+    return reviewResponse;
   });
 }
 
@@ -378,7 +396,7 @@ export async function updateReview(
   id: number,
   data: UpdateResourceReviewSchema,
   userId: number
-): Promise<ResourceReviewResponse | null> {
+): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
   return await prisma.$transaction(async (tx) => {
     // 查詢心得評價
     const review = await tx.resource_review.findUnique({
@@ -421,7 +439,7 @@ export async function updateReview(
     if (data.tags !== undefined) {
       await tagService.setEntityTags(
         'resource_review',
-        id.toString(),
+        id,
         data.tags,
         userId,
         tx
@@ -444,7 +462,7 @@ export async function updateReviewStatus(
   id: number,
   status: string,
   userId: number
-): Promise<ResourceReviewResponse | null> {
+): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
   // 查詢心得評價
   const review = await prisma.resource_review.findUnique({
     where: { 
@@ -468,9 +486,7 @@ export async function updateReviewStatus(
   });
 
   // 查詢更新後的心得評價
-  const updatedReview = await getReviewById(id);
-
-  return updatedReview;
+  return await getReviewById(id);
 }
 
 /**
@@ -482,7 +498,7 @@ export async function updateReviewStatus(
 export async function deleteReview(
   id: number,
   userId: number
-): Promise<{ success: boolean }> {
+): Promise<ApiSuccessResponse<{ success: boolean }>> {
   return await prisma.$transaction(async (tx) => {
     // 查詢心得評價
     const review = await tx.resource_review.findUnique({
@@ -508,7 +524,10 @@ export async function deleteReview(
       }
     });
 
-    return { success: true };
+    return createSuccessResponse({ success: true }, {
+      requestId: `delete_review_${id}`,
+      processingTime: Date.now() - Date.now()
+    });
   });
 }
 
@@ -519,7 +538,7 @@ export async function deleteReview(
  */
 export async function toggleLikeReview(
   id: number
-): Promise<{ success: boolean }> {
+): Promise<ApiSuccessResponse<{ success: boolean }>> {
   // 查詢心得評價
   const review = await prisma.resource_review.findUnique({
     where: { 
@@ -535,7 +554,10 @@ export async function toggleLikeReview(
   // 這裡只是一個示例
 
   // 返回成功
-  return { success: true };
+  return createSuccessResponse({ success: true }, {
+    requestId: `like_review_${id}`,
+    processingTime: Date.now() - Date.now()
+  });
 }
 
 export const resourceReviewService = {

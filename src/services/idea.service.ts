@@ -7,13 +7,18 @@ import { prisma } from '@/services/database/prisma.service';
 import type { Prisma } from '../../generated/prisma';
 import { 
   IdeaEntity, 
-  IdeaQueryResult, 
   IdeaFilters, 
-  CreateIdeaResponse,
   IdeaStats,
-  PaginationInfo,
   IdeaStatus
 } from '@/types/idea.types';
+import { 
+  ApiSuccessResponse, 
+  PaginatedApiResponse 
+} from '@/types/api-response.types';
+import { 
+  createSuccessResponse, 
+  createPaginatedResponse 
+} from '@/utils/response-helper';
 import { 
   CreateIdeaRequest, 
   UpdateIdeaRequest
@@ -21,7 +26,7 @@ import {
 import { 
   NotFoundError, 
   ForbiddenError
-} from '@/utils/error-handler';
+} from '@/middleware/error.middleware';
 import tagService from '@/services/tag.service';
 
 // 定義分頁參數介面
@@ -38,7 +43,7 @@ interface PaginationParams {
  * @param userId - 當前使用者 ID（用於查詢互動狀態）
  * @returns 想法詳情
  */
-export async function getIdeaById(externalId: string, _userId?: number): Promise<IdeaEntity> {
+export async function getIdeaById(externalId: string, _userId?: number): Promise<ApiSuccessResponse<IdeaEntity>> {
   // 查詢想法，使用 external_id
   const idea = await prisma.ideas.findUnique({
     where: { external_id: externalId },
@@ -65,7 +70,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
   const tags = await prisma.entity_tags.findMany({
     where: {
       entity_type: 'idea',
-      entity_id: idea.external_id || ''
+      entity_id: idea.id
     },
     include: {
       tags: true
@@ -76,7 +81,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
   const resources = await prisma.entity_resources.findMany({
     where: {
       entity_type: 'idea',
-      entity_id: idea.external_id || ''
+      entity_id: idea.id
     },
     include: {
       resources: {
@@ -115,7 +120,9 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     updatedAt: idea.updated_at?.toISOString() || new Date().toISOString()
   };
 
-  return ideaEntity;
+  return createSuccessResponse(ideaEntity, {
+    cacheHit: false
+  });
 }
 
 /**
@@ -129,12 +136,12 @@ export async function getIdeas(
   filters: IdeaFilters,
   pagination: PaginationParams,
   _userId?: number
-): Promise<IdeaQueryResult> {
+): Promise<PaginatedApiResponse<IdeaEntity>> {
   const { page, limit, sort, order } = pagination;
   const skip = (page - 1) * limit;
 
   // 預先處理標籤篩選
-  let ideaExternalIds: string[] | undefined;
+  let ideaInternalIds: number[] | undefined;
   if (filters.tags && filters.tags.length > 0) {
     const taggedIdeaIds = await prisma.entity_tags.findMany({
       where: {
@@ -150,19 +157,28 @@ export async function getIdeas(
       }
     });
     
-    ideaExternalIds = taggedIdeaIds.map(tag => tag.entity_id);
-    if (ideaExternalIds.length === 0) {
+    ideaInternalIds = taggedIdeaIds.map(tag => tag.entity_id);
+    if (ideaInternalIds.length === 0) {
       // 如果沒有找到任何標籤匹配的想法，返回空結果
-      return {
-        ideas: [],
-        pagination: {
-          page,
+      return createPaginatedResponse<IdeaEntity>(
+        [],
+        {
           currentPage: page,
           totalPages: 0,
-          total: 0,
-          limit
+          totalItems: 0,
+          itemsPerPage: limit,
+          hasNext: false,
+          hasPrev: false
+        },
+        {
+          searchQuery: filters.search,
+          filters: {
+            tags: filters.tags,
+            status: filters.status,
+            authorId: filters.authorId
+          }
         }
-      };
+      );
     }
   }
 
@@ -190,9 +206,9 @@ export async function getIdeas(
   }
 
   // 添加標籤篩選結果
-  if (ideaExternalIds) {
-    where.external_id = {
-      in: ideaExternalIds
+  if (ideaInternalIds) {
+    where.id = {
+      in: ideaInternalIds
     };
   }
 
@@ -229,7 +245,7 @@ export async function getIdeas(
   ]);
 
   // 批量查詢標籤
-  const ideaIds = ideas.map(idea => idea.external_id || '');
+  const ideaIds = ideas.map(idea => idea.id);
   const allTags = await prisma.entity_tags.findMany({
     where: {
       entity_type: 'idea',
@@ -250,7 +266,7 @@ export async function getIdeas(
       name: tag.tags.name
     });
     return acc;
-  }, {} as Record<string, Array<{ id: number; name: string }>>);
+  }, {} as Record<number, Array<{ id: number; name: string }>>);
 
   // 構建想法實體列表
   const ideaEntities: IdeaEntity[] = ideas.map(idea => ({
@@ -263,7 +279,7 @@ export async function getIdeas(
       name: idea.users.nickname || '',
       photoUrl: idea.users.contacts?.photo_url || undefined
     },
-    tags: tagsByIdeaId[idea.external_id || '']?.map(tag => tag.name) || [],
+    tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
     likeCount: 0,
     commentCount: 0,
     viewCount: 0,
@@ -275,20 +291,29 @@ export async function getIdeas(
     updatedAt: (idea.updated_at || new Date()).toISOString()
   }));
 
-  // 構建分頁資訊
   const totalPages = Math.ceil(totalCount / limit);
-  const paginationInfo: PaginationInfo = {
-    page,
-    currentPage: page,
-    totalPages,
-    total: totalCount,
-    limit
-  };
-
-  return {
-    ideas: ideaEntities,
-    pagination: paginationInfo
-  };
+  
+  return createPaginatedResponse(
+    ideaEntities,
+    {
+      currentPage: page,
+      totalPages: totalPages,
+      totalItems: totalCount,
+      itemsPerPage: limit,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    },
+    {
+      searchQuery: filters.search,
+      filters: {
+        tags: filters.tags,
+        status: filters.status,
+        authorId: filters.authorId
+      },
+      sort: sort,
+      order: order
+    }
+  );
 }
 
 /**
@@ -297,7 +322,7 @@ export async function getIdeas(
  * @param userId - 創建者 ID
  * @returns 創建結果
  */
-export async function createIdea(data: CreateIdeaRequest, userId: number): Promise<CreateIdeaResponse> {
+export async function createIdea(data: CreateIdeaRequest, userId: number): Promise<ApiSuccessResponse<IdeaEntity>> {
   return await prisma.$transaction(async (tx) => {
     // 創建想法
     const idea = await tx.ideas.create({
@@ -311,7 +336,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
 
     // 處理標籤
     if (data.tags && data.tags.length > 0) {
-      await tagService.setEntityTags('idea', idea.external_id || '', data.tags, userId, tx);
+      await tagService.setEntityTags('idea', idea.id, data.tags, userId, tx);
     }
 
     // 處理資源 - 創建新資源並關聯到想法
@@ -335,7 +360,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
         await tx.entity_resources.create({
           data: {
             entity_type: 'idea',
-            entity_id: idea.external_id || '',
+            entity_id: idea.id,
             resource_id: resource.id,
             created_by: userId
           }
@@ -343,12 +368,10 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
       }
     }
 
-    // 獲取完整的想法詳情
+    // 獲取完整的想法詳情（內部調用不需要包裝）
     const fullIdea = await getIdeaById(idea.external_id || '', userId);
     
-    return {
-      idea: fullIdea
-    };
+    return fullIdea;
   });
 }
 
@@ -359,7 +382,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
  * @param userId - 當前使用者 ID
  * @returns 更新後的想法
  */
-export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId: number): Promise<IdeaEntity> {
+export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId: number): Promise<ApiSuccessResponse<IdeaEntity>> {
   return await prisma.$transaction(async (tx) => {
     // 檢查想法是否存在
     const existingIdea = await tx.ideas.findUnique({
@@ -386,7 +409,7 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
 
     // 更新標籤
     if (data.tags !== undefined) {
-      await tagService.setEntityTags('idea', ideaId, data.tags, userId, tx);
+      await tagService.setEntityTags('idea', existingIdea.id, data.tags, userId, tx);
     }
 
     // 更新資源
@@ -395,7 +418,7 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
       await tx.entity_resources.deleteMany({
         where: {
           entity_type: 'idea',
-          entity_id: ideaId
+          entity_id: existingIdea.id
         }
       });
 
@@ -419,7 +442,7 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
         await tx.entity_resources.create({
           data: {
             entity_type: 'idea',
-            entity_id: ideaId,
+            entity_id: existingIdea.id,
             resource_id: resource.id,
             created_by: userId
           }
@@ -437,8 +460,8 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
  * @param ideaId - 想法 ID
  * @param userId - 當前使用者 ID
  */
-export async function deleteIdea(ideaId: string, userId: number): Promise<void> {
-  return await prisma.$transaction(async (tx) => {
+export async function deleteIdea(ideaId: string, userId: number): Promise<ApiSuccessResponse<{ message: string }>> {
+  await prisma.$transaction(async (tx) => {
     // 檢查想法是否存在
     const existingIdea = await tx.ideas.findUnique({
       where: { external_id: ideaId }
@@ -461,6 +484,8 @@ export async function deleteIdea(ideaId: string, userId: number): Promise<void> 
       }
     });
   });
+
+  return createSuccessResponse({ message: '想法已刪除' });
 }
 
 /**
@@ -468,7 +493,7 @@ export async function deleteIdea(ideaId: string, userId: number): Promise<void> 
  * @param userId - 使用者 ID（可選）
  * @returns 統計資訊
  */
-export async function getIdeaStats(userId?: number): Promise<IdeaStats> {
+export async function getIdeaStats(userId?: number): Promise<ApiSuccessResponse<IdeaStats>> {
   const where: Prisma.ideasWhereInput = {
     deleted_at: null
   };
@@ -487,7 +512,7 @@ export async function getIdeaStats(userId?: number): Promise<IdeaStats> {
     })
   ]);
 
-  return {
+  const stats: IdeaStats = {
     likeCount: 0,
     commentCount: 0,
     viewCount: 0,
@@ -495,6 +520,10 @@ export async function getIdeaStats(userId?: number): Promise<IdeaStats> {
     resourceCount: withResourcesCount,
     hasResources: withResourcesCount > 0
   };
+
+  return createSuccessResponse(stats, {
+    userId: userId?.toString()
+  });
 }
 
 // 匯出所有函數

@@ -6,7 +6,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { permissionService } from '../services/auth/permission.service';
 import { PERMISSIONS, ROLES } from '../constants';
-import { UnauthorizedError, ForbiddenError } from '../utils/error-handler';
+import { UnauthorizedError, ForbiddenError } from '../middleware/error.middleware';
 import type { PermissionOptions, UserJwtPayload } from '../types/auth.types';
 
 // Use UserJwtPayload type alias for consistency

@@ -6,6 +6,7 @@
  */
 
 import { Request, Response } from 'express';
+import { ApiSuccessResponse } from './api-response.types';
 
 // Core comment target types based on the existing system
 export type CommentTargetType = 
@@ -24,7 +25,7 @@ export type CommentVisibility = 'public' | 'private';
 // Core comment interface matching Prisma schema
 export interface Comment {
   id: number;
-  target_id: string;
+  target_id: number; // Changed to number for internal ID storage
   target_type: CommentTargetType;
   user_id: number;
   content: string;
@@ -47,6 +48,8 @@ export interface CommentUser {
 export interface CommentResponse {
   id: number;
   userId: number;
+  targetId: string; // External ID (UUID for circle/idea/resource, string number for others)
+  targetType: CommentTargetType;
   content: string;
   visibility: CommentVisibility;
   createdAt: Date;
@@ -205,17 +208,17 @@ export interface CommentParamsSchema {
 
 // Service interface definition
 export interface CommentServiceInterface {
-  createComment(params: CreateCommentParams): Promise<CommentResponse>;
-  getComments(params: GetCommentsParams): Promise<CommentResponse[]>;
-  getCommentDetail(commentId: number, currentUser?: AuthUser | null): Promise<CommentResponse>;
-  updateComment(params: UpdateCommentParams): Promise<CommentResponse>;
-  deleteComment(params: DeleteCommentParams): Promise<{ message: string }>;
+  createComment(params: CreateCommentParams): Promise<ApiSuccessResponse<CommentResponse>>;
+  getComments(params: GetCommentsParams): Promise<ApiSuccessResponse<CommentResponse[]>>;
+  getCommentDetail(commentId: number, currentUser?: AuthUser | null): Promise<ApiSuccessResponse<CommentResponse>>;
+  updateComment(params: UpdateCommentParams): Promise<ApiSuccessResponse<CommentResponse>>;
+  deleteComment(params: DeleteCommentParams): Promise<ApiSuccessResponse<{ message: string }>>;
 }
 
 // Database comment type with relations
 export interface DatabaseComment {
   id: number;
-  target_id: string;
+  target_id: number; // Changed to number for internal ID storage
   target_type: string;
   user_id: number;
   content: string;

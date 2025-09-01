@@ -154,7 +154,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
+ *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       401:

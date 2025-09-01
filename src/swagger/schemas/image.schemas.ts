@@ -3,60 +3,52 @@
  * components:
  *   schemas:
  *     ImageUploadResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         message:
- *           type: string
- *           example: 圖片上傳成功
- *         data:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
  *           properties:
- *             filename:
- *               type: string
- *               description: 上傳後的檔案名稱
- *               example: image-123456789.jpg
- *             originalName:
- *               type: string
- *               description: 原始檔案名稱
- *               example: my-photo.jpg
- *             size:
- *               type: integer
- *               description: 檔案大小（位元組）
- *               example: 524288
- *             mimeType:
- *               type: string
- *               description: MIME 類型
- *               example: image/jpeg
- *             url:
- *               type: string
- *               format: uri
- *               description: 圖片存取URL
- *               example: https://example.com/api/v1/images/image-123456789.jpg
- *             uploadedAt:
- *               type: string
- *               format: date-time
- *               description: 上傳時間
- *               example: 2024-04-01T12:00:00Z
- *             uploadedBy:
- *               type: string
- *               description: 上傳者用戶ID
- *               example: user-abc123
+ *             data:
+ *               type: object
+ *               properties:
+ *                 filename:
+ *                   type: string
+ *                   description: 上傳後的檔案名稱
+ *                   example: image-123456789.jpg
+ *                 originalName:
+ *                   type: string
+ *                   description: 原始檔案名稱
+ *                   example: my-photo.jpg
+ *                 size:
+ *                   type: integer
+ *                   description: 檔案大小（位元組）
+ *                   example: 524288
+ *                 mimeType:
+ *                   type: string
+ *                   description: MIME 類型
+ *                   example: image/jpeg
+ *                 url:
+ *                   type: string
+ *                   format: uri
+ *                   description: 圖片存取URL
+ *                   example: https://example.com/api/v1/images/image-123456789.jpg
+ *                 uploadedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: 上傳時間
+ *                   example: 2024-04-01T12:00:00Z
+ *                 uploadedBy:
+ *                   type: string
+ *                   description: 上傳者用戶ID
+ *                   example: user-abc123
  *
  *     MultipleImageUploadResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         message:
- *           type: string
- *           example: 圖片批量上傳成功
- *         data:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
  *           properties:
+ *             data:
+ *               type: object
+ *               properties:
  *             uploaded:
  *               type: array
  *               items:
@@ -115,17 +107,13 @@
  *               example: user-abc123
  *
  *     ImageDeleteResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         message:
- *           type: string
- *           example: 圖片已成功刪除
- *         data:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
  *           properties:
+ *             data:
+ *               type: object
+ *               properties:
  *             filename:
  *               type: string
  *               description: 已刪除的檔案名稱
@@ -141,18 +129,13 @@
  *               example: user-abc123
  *
  *     ImageErrorResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: false
- *         message:
- *           type: string
- *           description: 錯誤訊息
- *           example: 檔案格式不支援
- *         error:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiErrorResponse'
+ *         - type: object
  *           properties:
+ *             error:
+ *               type: object
+ *               properties:
  *             code:
  *               type: string
  *               enum: [INVALID_FILE_TYPE, FILE_TOO_LARGE, FILE_NOT_FOUND, UPLOAD_FAILED, DELETE_FAILED, PERMISSION_DENIED]

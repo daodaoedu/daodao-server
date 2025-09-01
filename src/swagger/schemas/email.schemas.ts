@@ -284,154 +284,146 @@
  *             companyName: 測試公司
  *
  *     EmailStatsResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
  *           properties:
- *             sent:
- *               type: integer
- *               description: 已發送郵件數量
- *               example: 1500
- *             failed:
- *               type: integer
- *               description: 發送失敗郵件數量
- *               example: 15
- *             pending:
- *               type: integer
- *               description: 待發送郵件數量
- *               example: 100
- *             totalRecipients:
- *               type: integer
- *               description: 總收件人數量
- *               example: 1615
- *             period:
+ *             data:
  *               type: object
  *               properties:
- *                 startDate:
- *                   type: string
- *                   format: date-time
- *                   example: 2024-01-01T00:00:00Z
- *                 endDate:
- *                   type: string
- *                   format: date-time
+ *                 sent:
+ *                   type: integer
+ *                   description: 已發送郵件數量
+ *                   example: 1500
+ *                 failed:
+ *                   type: integer
+ *                   description: 發送失敗郵件數量
+ *                   example: 15
+ *                 pending:
+ *                   type: integer
+ *                   description: 待發送郵件數量
+ *                   example: 100
+ *                 totalRecipients:
+ *                   type: integer
+ *                   description: 總收件人數量
+ *                   example: 1615
+ *                 period:
+ *                   type: object
+ *                   properties:
+ *                     startDate:
+ *                       type: string
+ *                       format: date-time
+ *                       example: 2024-01-01T00:00:00Z
+ *                     endDate:
+ *                       type: string
+ *                       format: date-time
  *                   example: 2024-04-01T00:00:00Z
  *
  *     EmailHealthResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
  *           properties:
- *             status:
- *               type: string
- *               enum: [healthy, degraded, unhealthy]
- *               description: 服務健康狀態
- *               example: healthy
- *             provider:
- *               type: string
- *               description: 郵件服務提供商
- *               example: SendGrid
- *             lastCheck:
- *               type: string
- *               format: date-time
- *               description: 最後檢查時間
- *               example: 2024-04-01T12:00:00Z
- *             responseTime:
- *               type: number
- *               description: 響應時間（毫秒）
- *               example: 150
- *             details:
- *               type: object
- *               additionalProperties: true
- *               description: 詳細健康資訊
- *
- *     EmailResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         message:
- *           type: string
- *           example: 郵件已成功發送
- *         data:
- *           type: object
- *           properties:
- *             messageId:
- *               type: string
- *               description: 郵件訊息ID
- *               example: msg_abc123xyz
- *             status:
- *               type: string
- *               enum: [sent, queued, failed]
- *               description: 發送狀態
- *               example: sent
- *             timestamp:
- *               type: string
- *               format: date-time
- *               description: 發送時間戳
- *               example: 2024-04-01T12:00:00Z
- *
- *     ValidateEmailResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           type: object
- *           properties:
- *             valid:
- *               type: boolean
- *               description: 郵件地址是否有效
- *               example: true
- *             reason:
- *               type: string
- *               description: 驗證結果原因
- *               example: Email format is valid
- *             suggestions:
- *               type: array
- *               items:
- *                 type: string
- *               description: 建議的修正
- *               example: []
- *
- *     PreviewEmailResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           type: object
- *           properties:
- *             subject:
- *               type: string
- *               description: 郵件主旨預覽
- *               example: 歡迎加入 DaoDao Learning
- *             htmlContent:
- *               type: string
- *               description: HTML 內容預覽
- *               example: <html>...</html>
- *             textContent:
- *               type: string
- *               description: 純文字內容預覽
- *               example: 歡迎加入...
- *             metadata:
+ *             data:
  *               type: object
  *               properties:
- *                 template:
+ *                 status:
  *                   type: string
- *                   example: welcome
- *                 generatedAt:
+ *                   enum: [healthy, degraded, unhealthy]
+ *                   description: 服務健康狀態
+ *                   example: healthy
+ *                 provider:
+ *                   type: string
+ *                   description: 郵件服務提供商
+ *                   example: SendGrid
+ *                 lastCheck:
  *                   type: string
  *                   format: date-time
+ *                   description: 最後檢查時間
  *                   example: 2024-04-01T12:00:00Z
+ *                 responseTime:
+ *                   type: number
+ *                   description: 響應時間（毫秒）
+ *                   example: 150
+ *                 details:
+ *                   type: object
+ *                   additionalProperties: true
+ *                   description: 詳細健康資訊
+ *
+ *     EmailResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             data:
+ *               type: object
+ *               properties:
+ *                 messageId:
+ *                   type: string
+ *                   description: 郵件訊息ID
+ *                   example: msg_abc123xyz
+ *                 status:
+ *                   type: string
+ *                   enum: [sent, queued, failed]
+ *                   description: 發送狀態
+ *                   example: sent
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   description: 發送時間戳
+ *                   example: 2024-04-01T12:00:00Z
+ *
+ *     ValidateEmailResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             data:
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                   description: 郵件地址是否有效
+ *                   example: true
+ *                 reason:
+ *                   type: string
+ *                   description: 驗證結果原因
+ *                   example: Email format is valid
+ *                 suggestions:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: 建議的修正
+ *                   example: []
+ *
+ *     PreviewEmailResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             data:
+ *               type: object
+ *               properties:
+ *                 subject:
+ *                   type: string
+ *                   description: 郵件主旨預覽
+ *                   example: 歡迎加入 DaoDao Learning
+ *                 htmlContent:
+ *                   type: string
+ *                   description: HTML 內容預覽
+ *                   example: <html>...</html>
+ *                 textContent:
+ *                   type: string
+ *                   description: 純文字內容預覽
+ *                   example: 歡迎加入...
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     template:
+ *                       type: string
+ *                       example: welcome
+ *                     generatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: 2024-04-01T12:00:00Z
  */

@@ -109,16 +109,11 @@
  *           description: 用戶電子郵件
  *           example: "user@example.com"
  *     
- *     AuthResponse:
+ *     AuthSuccessData:
  *       type: object
  *       required:
- *         - success
  *         - message
  *       properties:
- *         success:
- *           type: boolean
- *           description: 操作是否成功
- *           example: true
  *         message:
  *           type: string
  *           description: 響應訊息
@@ -137,6 +132,14 @@
  *           type: string
  *           description: 重定向 URL
  *           example: "https://app.example.com/dashboard"
+ *     
+ *     AuthResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             data:
+ *               $ref: '#/components/schemas/AuthSuccessData'
  *     
  *     UserProfile:
  *       type: object
@@ -160,30 +163,30 @@
  *           type: string
  *           description: 顯示名稱
  *           example: "John Doe"
- *         photo_url:
+ *         photoUrl:
  *           type: string
  *           nullable: true
  *           description: 頭像 URL
  *           example: "https://example.com/avatar.jpg"
- *         is_active:
+ *         isActive:
  *           type: boolean
  *           description: 帳號是否啟用
  *           example: true
- *         email_verified:
+ *         emailVerified:
  *           type: boolean
  *           description: 電子郵件是否已驗證
  *           example: true
- *         created_at:
+ *         createdAt:
  *           type: string
  *           format: date-time
  *           description: 建立時間
  *           example: "2024-01-15T10:30:00Z"
- *         updated_at:
+ *         updatedAt:
  *           type: string
  *           format: date-time
  *           description: 更新時間
  *           example: "2024-01-15T10:30:00Z"
- *         last_login_at:
+ *         lastLoginAt:
  *           type: string
  *           format: date-time
  *           nullable: true
@@ -210,26 +213,26 @@
  *           type: string
  *           description: 顯示名稱
  *           example: "Temp User"
- *         photo_url:
+ *         photoUrl:
  *           type: string
  *           nullable: true
  *           description: 頭像 URL
  *           example: "https://example.com/avatar.jpg"
- *         google_id:
+ *         googleId:
  *           type: string
  *           description: Google OAuth ID
  *           example: "google-oauth-id"
- *         is_verified:
+ *         isVerified:
  *           type: boolean
  *           description: 是否已驗證
  *           example: false
- *         expires_at:
+ *         expiresAt:
  *           type: string
  *           format: date-time
  *           nullable: true
  *           description: 過期時間
  *           example: "2024-01-22T10:30:00Z"
- *         created_at:
+ *         createdAt:
  *           type: string
  *           format: date-time
  *           description: 建立時間
@@ -248,40 +251,4 @@
  *       name: connect.sid
  *       description: Session 認證，基於 cookie
  *   
- *   responses:
- *     UnauthorizedError:
- *       description: 未授權錯誤
- *       content:
- *         application/json:
- *           schema:
- *             allOf:
- *               - $ref: '#/components/schemas/ErrorResponse'
- *               - type: object
- *                 properties:
- *                   message:
- *                     example: "未經授權的訪問"
- *     
- *     ForbiddenError:
- *       description: 禁止存取錯誤
- *       content:
- *         application/json:
- *           schema:
- *             allOf:
- *               - $ref: '#/components/schemas/ErrorResponse'
- *               - type: object
- *                 properties:
- *                   message:
- *                     example: "無權限執行此操作"
- *     
- *     ConflictError:
- *       description: 資源衝突錯誤
- *       content:
- *         application/json:
- *           schema:
- *             allOf:
- *               - $ref: '#/components/schemas/ErrorResponse'
- *               - type: object
- *                 properties:
- *                   message:
- *                     example: "此電子郵件已被註冊"
  */
