@@ -33,8 +33,8 @@ COPY index.js ./
 COPY ecosystem.config.js ./
 
 # 編譯 TypeScript
-RUN npx tsc --project tsconfig.build.json && \
-    npx tsc-alias --project tsconfig.build.json
+RUN npx tsc --project tsconfig.json && \
+    npx tsc-alias --project tsconfig.json
 
 # 生產映像 - 最小化尺寸
 FROM base AS runtime
