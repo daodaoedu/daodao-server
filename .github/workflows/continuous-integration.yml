@@ -212,10 +212,7 @@ jobs:
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           curl -X POST -H "Content-Type: application/json" -d "{
-            \"content\": \"**CI 檢查通過！** ✨\",
             \"embeds\": [{
-              \"title\": \"CI Tests Passed\",
-              \"description\": \"$BRANCH: 所有檢查項目都通過了，程式碼品質良好\",
               \"color\": 3066993,
               \"thumbnail\": {
                 \"url\": \"https://img.shields.io/badge/CI-Passed-brightgreen.png?style=for-the-badge&logo=github-actions&logoColor=white\"
@@ -246,7 +243,7 @@ jobs:
       #   - 紅色 embed（color: 16711680）表示失敗
       #   - 明確的錯誤描述和修復指引
       #   - 包含相同的上下文資訊便於定位問題
-      #   - 使用 ❌ 符號增強視覺警示效果
+      #   - 使用紅色標識符號表示失敗
       # 
       # 觸發時機：
       #   - TypeScript 類型檢查失敗
@@ -264,10 +261,7 @@ jobs:
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           curl -X POST -H "Content-Type: application/json" -d "{
-            \"content\": \"**CI 檢查失敗！**\",
             \"embeds\": [{
-              \"title\": \"CI Tests Failed\",
-              \"description\": \"$BRANCH: 程式碼檢查過程中發現問題，請修復後重新提交\",
               \"color\": 16711680,
               \"thumbnail\": {
                 \"url\": \"https://img.shields.io/badge/CI-Failed-red.png?style=for-the-badge&logo=github-actions&logoColor=white\"

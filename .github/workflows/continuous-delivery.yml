@@ -415,13 +415,8 @@ jobs:
           
           if [ "$CI_STATUS" == "failure" ]; then
             # CI 失敗
-            FAILURE_REASON="持續整合檢查失敗"
-            
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**CI 檢查失敗！**\",
               \"embeds\": [{
-                \"title\": \"CI Failed\",
-                \"description\": \"$BRANCH: $FAILURE_REASON，請檢查測試、類型檢查或代碼品質\",
                 \"color\": 16711680,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/CI-Failed-red.png?style=for-the-badge&logo=github&logoColor=white\"
@@ -435,13 +430,8 @@ jobs:
             
           elif [ "$BUILD_STATUS" == "failure" ]; then
             # Build 失敗
-            FAILURE_REASON="Docker 映像構建失敗"
-            
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**Build 失敗！**\",
               \"embeds\": [{
-                \"title\": \"Build Failed\",
-                \"description\": \"$BRANCH: $FAILURE_REASON，請檢查代碼和構建腳本\",
                 \"color\": 16711680,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Build-Failed-red.png?style=for-the-badge&logo=docker&logoColor=white\"
@@ -455,13 +445,8 @@ jobs:
             
           elif [ "$DEPLOY_STATUS" == "failure" ]; then
             # 部署失敗
-            FAILURE_REASON="部署過程發生錯誤"
-            
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**部署失敗！**\",
               \"embeds\": [{
-                \"title\": \"Deployment Failed\",
-                \"description\": \"$BRANCH: $FAILURE_REASON，請檢查服務器狀態\",
                 \"color\": 16711680,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Deploy-Failed-red.png?style=for-the-badge&logo=rocket&logoColor=white\"
@@ -476,10 +461,8 @@ jobs:
           elif [ "$DEPLOY_STATUS" == "cancelled" ]; then
             # 取消通知
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**部署已取消**\",
               \"embeds\": [{
-                \"title\": \"Deployment Cancelled\",
-                \"description\": \"$BRANCH: 部署流程被用戶取消\",
+                \"embeds\": [{
                 \"color\": 8421504,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Deploy-Cancelled-lightgrey.png?style=for-the-badge&logo=pause&logoColor=white\"
@@ -494,10 +477,8 @@ jobs:
           elif [ "$VERIFY_STATUS" == "failure" ]; then
             # 驗證失敗
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**部署完成但驗證失敗！**\",
               \"embeds\": [{
-                \"title\": \"Verification Failed\",
-                \"description\": \"$BRANCH: 服務部署完成但後續驗證失敗，請檢查應用程式狀態\",
+                \"embeds\": [{
                 \"color\": 16776960,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Verify-Failed-orange.png?style=for-the-badge&logo=search&logoColor=white\"
@@ -510,19 +491,10 @@ jobs:
             }" ${{ secrets.DISCORD_WEBHOOK_URL }}
             
           elif [ "$BUILD_STATUS" == "success" ] && [ "$DEPLOY_STATUS" == "success" ] && ([ "$VERIFY_STATUS" == "success" ] || [ "$VERIFY_STATUS" == "skipped" ]); then
-            # 成功部署
-            ENV_INFO=""
-            if [ "$IMAGE_TAG" == "prod" ]; then
-              ENV_INFO="🔴 **PRODUCTION** 環境"
-            else
-              ENV_INFO="🟡 **DEVELOPMENT** 環境"
-            fi
-            
+            # 成功部署  
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**部署成功！** ✨\",
               \"embeds\": [{
-                \"title\": \"Deployment Successful\",
-                \"description\": \"$BRANCH: 服務已成功更新至 $ENV_INFO\",
+                \"embeds\": [{
                 \"color\": 3066993,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Deploy-Success-brightgreen.png?style=for-the-badge&logo=check-circle&logoColor=white\"
@@ -537,10 +509,8 @@ jobs:
           else
             # 未知狀態或部分失敗
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"**部署狀態未明！**\",
               \"embeds\": [{
-                \"title\": \"Unknown Status\",
-                \"description\": \"$BRANCH: 部署流程結束但狀態不明確，請手動檢查\",
+                \"embeds\": [{
                 \"color\": 16776960,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Status-Unknown-yellow.png?style=for-the-badge&logo=question&logoColor=white\"
