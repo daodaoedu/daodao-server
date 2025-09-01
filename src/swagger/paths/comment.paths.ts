@@ -23,13 +23,20 @@
  *                 content: "這是一個很有用的資源，謝謝分享！"
  *                 visibility: "public"
  *             createReply:
- *               summary: 建立回覆評論
+ *               summary: 建立回覆評論（資源使用 UUID）
  *               value:
  *                 targetType: "resource"
- *                 targetId: "456"
+ *                 targetId: "uuid-abc-123-def-456"
  *                 content: "我同意你的觀點，這確實很有幫助。"
  *                 visibility: "private"
  *                 parentId: 789
+ *             createCircleComment:
+ *               summary: 建立圈子評論（使用 UUID）
+ *               value:
+ *                 targetType: "circle"
+ *                 targetId: "uuid-circle-789-ghi-012"
+ *                 content: "這個圈子的討論很有意思！"
+ *                 visibility: "public"
  *     responses:
  *       201:
  *         description: 評論建立成功
@@ -43,6 +50,8 @@
  *               data:
  *                 id: 789
  *                 userId: 1
+ *                 targetId: "123"
+ *                 targetType: "post"
  *                 content: "這是一個很有用的資源，謝謝分享！"
  *                 visibility: "public"
  *                 createdAt: "2024-01-15T10:30:00Z"
@@ -64,7 +73,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "目標實體不存在"
@@ -74,7 +83,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "父評論必須屬於同一目標實體"
@@ -114,6 +123,8 @@
  *               data:
  *                 - id: 789
  *                   userId: 1
+ *                   targetId: "123"
+ *                   targetType: "post"
  *                   content: "這是一個根評論"
  *                   visibility: "public"
  *                   createdAt: "2024-01-15T10:30:00Z"
@@ -128,6 +139,8 @@
  *                   replies:
  *                     - id: 790
  *                       userId: 2
+ *                       targetId: "123"
+ *                       targetType: "post"
  *                       content: "這是一個回覆"
  *                       visibility: "public"
  *                       createdAt: "2024-01-15T11:00:00Z"
@@ -147,7 +160,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "目標實體不存在"
@@ -181,6 +194,8 @@
  *               data:
  *                 id: 789
  *                 userId: 1
+ *                 targetId: "uuid-string-123"
+ *                 targetType: "resource"
  *                 content: "這是評論內容"
  *                 visibility: "public"
  *                 createdAt: "2024-01-15T10:30:00Z"
@@ -200,7 +215,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "無權限查看此評論"
@@ -210,7 +225,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "評論不存在"
@@ -267,6 +282,8 @@
  *               data:
  *                 id: 789
  *                 userId: 1
+ *                 targetId: "456"
+ *                 targetType: "idea"
  *                 content: "更新後的評論內容"
  *                 visibility: "public"
  *                 createdAt: "2024-01-15T10:30:00Z"
@@ -288,7 +305,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "只有評論作者可以編輯評論"
@@ -298,7 +315,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "評論不存在"
@@ -339,7 +356,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "只有評論作者可以刪除評論"
@@ -349,7 +366,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *             example:
  *               success: false
  *               message: "評論不存在"

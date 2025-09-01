@@ -11,16 +11,73 @@ import {
   CreateUserRequest,
   UpdateUserRequest,
   FormattedUserResponse,
-  PaginatedUsersResponse,
   CompletenessWeights
 } from '../types/user.types';
+import {
+  ApiSuccessResponse,
+  PaginatedApiResponse
+} from '../types/api-response.types';
+import {
+  createSuccessResponse,
+  createPaginatedResponse
+} from '../utils/response-helper';
+import { calculatePagination } from '../utils/pagination-helper';
 import { 
   NotFoundError,
   ConflictError 
-} from '../utils/error-handler';
+} from '../middleware/error.middleware';
 import { city_t, want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
+import tagService from './tag.service';
+
+/**
+ * 獲取用戶標籤
+ */
+const getUserTags = async (userId: number): Promise<string[]> => {
+  const tags = await tagService.getEntityTags('user', userId);
+  return tags.map(tag => tag.name);
+};
+
+/**
+ * 處理用戶偏好設定
+ */
+const handleUserPreferences = async (
+  userId: number,
+  preferences: Record<string, string[]> | undefined,
+  tx: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+): Promise<void> => {
+  if (!preferences) return;
+
+  // 先刪除現有的所有偏好設定
+  await tx.user_preferences.deleteMany({
+    where: { user_id: userId }
+  });
+
+  // 遍歷每個偏好類型
+  for (const [typeValue, optionValues] of Object.entries(preferences)) {
+    // 查找偏好選項
+    const preferenceOptions = await tx.preference_options.findMany({
+      where: {
+        value: { in: optionValues },
+        preference_types: {
+          value: typeValue
+        }
+      }
+    });
+
+    // 創建用戶偏好記錄
+    for (const option of preferenceOptions) {
+      await tx.user_preferences.create({
+        data: {
+          user_id: userId,
+          preference_option_id: option.id,
+          is_selected: true
+        }
+      });
+    }
+  }
+};
 
 /**
  * 城市名稱映射表
@@ -135,6 +192,21 @@ interface PrismaUserWithRelations {
   education_stage?: string | null;
   created_at?: Date | null;
   updated_at?: Date | null;
+  custom_id?: string | null;
+  custom_id_verified?: boolean | null;
+  custom_id_created_at?: Date | null;
+  user_preferences?: Array<{
+    preference_option_id: number;
+    is_selected: boolean | null;
+    preference_options: {
+      name: string;
+      value: string;
+      preference_types: {
+        name: string;
+        value: string;
+      };
+    };
+  }>;
   contacts?: {
     email?: string | null;
     photo_url?: string | null;
@@ -164,7 +236,20 @@ interface PrismaUserWithRelations {
   }>;
 }
 
-const formatUserResponse = (user: PrismaUserWithRelations): FormattedUserResponse => {
+const formatUserResponse = async (user: PrismaUserWithRelations): Promise<FormattedUserResponse> => {
+  // 格式化偏好設定
+  const preferences = user.user_preferences?.reduce((acc, pref) => {
+    const typeValue = pref.preference_options.preference_types.value;
+    if (!acc[typeValue]) {
+      acc[typeValue] = [];
+    }
+    acc[typeValue].push({
+      name: pref.preference_options.name,
+      value: pref.preference_options.value
+    });
+    return acc;
+  }, {} as Record<string, Array<{ name: string; value: string }>>);
+
   return {
     id: user.id,
     _id: user.external_id || '',
@@ -177,11 +262,12 @@ const formatUserResponse = (user: PrismaUserWithRelations): FormattedUserRespons
     isOpenProfile: user.is_open_profile || undefined,
     role: user.roles?.id,
     location: user.location?.city?.name || '',
-    tagList: user.tag_list || [],
+    tagList: await getUserTags(user.id),
     wantToDoList: (user.basic_info?.want_to_do_list || []).map(item => String(item)),
     educationStage: user.education_stage || undefined,
     selfIntroduction: user.basic_info?.self_introduction || undefined,
     share: user.basic_info?.share_list || undefined,
+    preferences: preferences || undefined,
     contactList: {
       email: user.contacts?.email || undefined,
       photoUrl: user.contacts?.photo_url || undefined,
@@ -197,341 +283,544 @@ const formatUserResponse = (user: PrismaUserWithRelations): FormattedUserRespons
       wantToDoList: (user.basic_info?.want_to_do_list || []).map(item => String(item))
     },
     roleList: user.user_positions?.map((up) => up.position.name) || [],
+    customId: user.custom_id || undefined,
+    customIdVerified: user.custom_id_verified || undefined,
+    customIdCreatedAt: formatToTaipeiTime(user.custom_id_created_at) || undefined,
     createdDate: formatToTaipeiTime(user.created_at) || '',
     updatedDate: formatToTaipeiTime(user.updated_at) || ''
   };
 };
 
 /**
- * 用戶服務類
+ * 取得所有用戶
  */
-export class UserService {
-  /**
-   * 取得所有用戶
-   */
-  async getAllUsers(params: UserQueryParams): Promise<PaginatedUsersResponse> {
-    const {
-      page = 1,
-      pageSize = 10,
-      educationStage,
-      roleList,
-      location,
-      search
-    } = params;
+const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiResponse<FormattedUserResponse>> => {
+  const {
+    page = 1,
+    pageSize = 10,
+    educationStage,
+    roleList,
+    location,
+    search
+  } = params;
 
-    const currentPage = parseInt(String(page));
-    const currentPageSize = parseInt(String(pageSize));
-    const offset = (currentPage - 1) * currentPageSize;
+  const currentPage = parseInt(String(page));
+  const currentPageSize = parseInt(String(pageSize));
+  const offset = (currentPage - 1) * currentPageSize;
 
-    // 建立 where 條件
-    const whereConditions: Record<string, unknown> = {
-      is_open_profile: true
+  // 建立 where 條件
+  const whereConditions: Record<string, unknown> = {
+    is_open_profile: true
+  };
+
+  // 教育階段過濾
+  if (educationStage) {
+    whereConditions.education_stage = {
+      in: String(educationStage).split(',')
     };
+  }
 
-    // 教育階段過濾
-    if (educationStage) {
-      whereConditions.education_stage = {
-        in: String(educationStage).split(',')
-      };
-    }
+  // 搜索條件
+  if (search) {
+    whereConditions.OR = [
+      { nickname: { contains: search, mode: 'insensitive' } },
+      { basic_info: { self_introduction: { contains: search, mode: 'insensitive' } } },
+      { basic_info: { share_list: { contains: search, mode: 'insensitive' } } }
+    ];
+  }
 
-    // 搜索條件
-    if (search) {
-      whereConditions.OR = [
-        { nickname: { contains: search, mode: 'insensitive' } },
-        { basic_info: { self_introduction: { contains: search, mode: 'insensitive' } } },
-        { basic_info: { share_list: { contains: search, mode: 'insensitive' } } }
-      ];
-    }
-
-    // 角色過濾
-    if (roleList) {
-      whereConditions.user_positions = {
-        some: {
-          position: {
-            name: {
-              in: String(roleList).split(',')
-            }
-          }
-        }
-      };
-    }
-
-    // 地區過濾
-    if (location) {
-      whereConditions.location = {
-        city: {
+  // 角色過濾
+  if (roleList) {
+    whereConditions.user_positions = {
+      some: {
+        position: {
           name: {
-            in: String(location).split(',')
+            in: String(roleList).split(',')
           }
         }
-      };
-    }
+      }
+    };
+  }
 
-    // 查詢用戶
-    const users = await prisma.users.findMany({
-      where: whereConditions,
-      include: {
-        roles: true,
-        location: {
-          include: {
-            city: true,
-            country: true
-          }
-        },
-        contacts: true,
-        basic_info: true,
-        user_positions: {
-          include: {
-            position: true
-          }
+  // 地區過濾
+  if (location) {
+    whereConditions.location = {
+      city: {
+        name: {
+          in: String(location).split(',')
+        }
+      }
+    };
+  }
+
+  // 查詢用戶
+  const users = await prisma.users.findMany({
+    where: whereConditions,
+    include: {
+      roles: true,
+      location: {
+        include: {
+          city: true,
+          country: true
         }
       },
-      orderBy: {
-        created_at: 'desc'
-      }
-    });
-
-    // 計算完整度並排序
-    const completenessWeights: CompletenessWeights = {
-      self_introduction: { base: 2, levels: [50, 100, 200, 300] },
-      share_list: { base: 2, levels: [50, 100, 200, 300] },
-      tag_list: { tagWeight: 0.5, maxScore: 4 },
-      contact: 1,
-      location: 1,
-      positions: 1,
-    };
-
-    const usersWithCompleteness = users.map(user => {
-      let completenessScore = 0;
-
-      if (user.basic_info) {
-        if (user.basic_info.self_introduction) {
-          const introLength = user.basic_info.self_introduction.length;
-          completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
+      contacts: true,
+      basic_info: true,
+      user_positions: {
+        include: {
+          position: true
         }
-
-        if (user.basic_info.share_list) {
-          const shareLength = typeof user.basic_info.share_list === 'string'
-            ? user.basic_info.share_list.length
-            : JSON.stringify(user.basic_info.share_list).length;
-          completenessScore += calculateScore(shareLength, completenessWeights.share_list);
-        }
-      }
-
-      if (user.tag_list && user.tag_list.length > 0) {
-        const tagScore = Math.min(
-          user.tag_list.length * completenessWeights.tag_list.tagWeight,
-          completenessWeights.tag_list.maxScore
-        );
-        completenessScore += tagScore;
-      }
-
-      if (user.contacts && Object.keys(user.contacts).length > 1) {
-        completenessScore += completenessWeights.contact;
-      }
-      if (user.location?.city) {
-        completenessScore += completenessWeights.location;
-      }
-      if (user.user_positions && user.user_positions.length > 0) {
-        completenessScore += completenessWeights.positions;
-      }
-
-      return { user, completenessScore };
-    });
-
-    // 按完整度排序
-    usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
-
-    // 分頁
-    const paginatedUsers = usersWithCompleteness
-      .slice(offset, offset + currentPageSize)
-      .map(item => item.user);
-
-    const formattedData = paginatedUsers.map(user => formatUserResponse(user));
-
-    return {
-      data: formattedData,
-      page: currentPage,
-      pageSize: currentPageSize,
-      totalCount: users.length,
-      totalPages: Math.ceil(users.length / currentPageSize)
-    };
-  }
-
-  /**
-   * 獲取當前用戶
-   */
-  async getMe(externalId: string): Promise<FormattedUserResponse | null> {
-    if (!externalId || !isUuid(externalId)) {
-      return null;
-    }
-
-    const user = await prisma.users.findUnique({
-      where: { external_id: externalId },
-      include: {
-        roles: true,
-        location: {
-          include: {
-            city: true,
-            country: true
-          }
+      },
+      user_preferences: {
+        where: {
+          is_selected: true
         },
-        contacts: true,
-        basic_info: true,
-        user_positions: {
-          include: {
-            position: true
-          }
-        }
-      }
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    return formatUserResponse(user);
-  }
-
-  /**
-   * 獲取指定用戶
-   */
-  async getOneUser(externalId: string): Promise<FormattedUserResponse | null> {
-    const user = await prisma.users.findUnique({
-      where: { external_id: externalId },
-      include: {
-        roles: true,
-        location: {
-          include: {
-            city: true,
-            country: true
-          }
-        },
-        contacts: true,
-        basic_info: true,
-        user_positions: {
-          include: {
-            position: true
-          }
-        }
-      }
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    return formatUserResponse(user);
-  }
-
-  /**
-   * 創建用戶
-   */
-  async createUser(userData: CreateUserRequest, tempUserId: string): Promise<{ user: FormattedUserResponse; token: string }> {
-    return await prisma.$transaction(async (tx) => {
-      const {
-        gender,
-        birthDate,
-        contactList,
-        educationStage,
-        isOpenLocation,
-        isOpenProfile,
-        isSubscribeEmail,
-        location: areaCode,
-        roleList,
-        selfIntroduction,
-        share,
-        wantToDoList,
-        tagList,
-        isSendEmail
-      } = userData;
-
-      // 查找臨時用戶
-      const tempUser = await tx.temp_users.findUnique({
-        where: { id: parseInt(tempUserId) }
-      });
-
-      if (!tempUser) {
-        throw new NotFoundError('Temporary user not found');
-      }
-
-      // 檢查用戶名稱是否已存在
-      const existingUser = await tx.users.findFirst({
-        where: { nickname: tempUser.name }
-      });
-
-      if (existingUser) {
-        throw new ConflictError(`使用者名稱 ${tempUser.name} 已存在`);
-      }
-
-      // 處理地區
-      let locationId: number | null = null;
-      if (areaCode) {
-        // 根據城市名稱映射獲取對應的枚舉值
-        const cityEnum = getCityNameMapping()[areaCode];
-        
-        if (!cityEnum) {
-          throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
-        }
-        
-        // 查找對應的 location
-        const location = await tx.location.findFirst({
-          where: {
-            city: {
-              name: cityEnum
+        include: {
+          preference_options: {
+            include: {
+              preference_types: true
             }
           }
-        });
-        
-        if (!location) {
-          throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
         }
-        locationId = location.id;
+      }
+    },
+    orderBy: {
+      created_at: 'desc'
+    }
+  });
+
+  // 計算完整度並排序
+  const completenessWeights: CompletenessWeights = {
+    self_introduction: { base: 2, levels: [50, 100, 200, 300] },
+    share_list: { base: 2, levels: [50, 100, 200, 300] },
+    tag_list: { tagWeight: 0.5, maxScore: 4 },
+    contact: 1,
+    location: 1,
+    positions: 1,
+  };
+
+  const usersWithCompleteness = await Promise.all(users.map(async (user) => {
+    let completenessScore = 0;
+
+    if (user.basic_info) {
+      if (user.basic_info.self_introduction) {
+        const introLength = user.basic_info.self_introduction.length;
+        completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
       }
 
-      // 創建基本資訊
-      const basicInfo = await tx.basic_info.create({
-        data: {
-          self_introduction: selfIntroduction,
-          share_list: Array.isArray(share) ? share.join(',') : share,
-          want_to_do_list: validateWantToDoList(wantToDoList || [])
+      if (user.basic_info.share_list) {
+        const shareLength = typeof user.basic_info.share_list === 'string'
+          ? user.basic_info.share_list.length
+          : JSON.stringify(user.basic_info.share_list).length;
+        completenessScore += calculateScore(shareLength, completenessWeights.share_list);
+      }
+    }
+
+    const userTags = await getUserTags(user.id);
+    if (userTags && userTags.length > 0) {
+      const tagScore = Math.min(
+        userTags.length * completenessWeights.tag_list.tagWeight,
+        completenessWeights.tag_list.maxScore
+      );
+      completenessScore += tagScore;
+    }
+
+    if (user.contacts && Object.keys(user.contacts).length > 1) {
+      completenessScore += completenessWeights.contact;
+    }
+    if (user.location?.city) {
+      completenessScore += completenessWeights.location;
+    }
+    if (user.user_positions && user.user_positions.length > 0) {
+      completenessScore += completenessWeights.positions;
+    }
+
+    return { user, completenessScore };
+  }));
+
+  // 按完整度排序
+  usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
+
+  // 分頁
+  const paginatedUsers = usersWithCompleteness
+    .slice(offset, offset + currentPageSize)
+    .map(item => item.user);
+
+  const formattedData = await Promise.all(paginatedUsers.map(user => formatUserResponse(user)));
+
+  // Calculate pagination info using the new helper
+  const paginationInfo = calculatePagination(
+    currentPage,
+    currentPageSize,
+    users.length
+  );
+
+  // Create meta information for search and filtering
+  const meta = {
+    searchQuery: search,
+    filters: {
+      educationStage: educationStage || undefined,
+      roleList: roleList || undefined,
+      location: location || undefined
+    }
+  };
+
+  return createPaginatedResponse(formattedData, paginationInfo, meta);
+};
+
+/**
+ * 獲取當前用戶
+ */
+const getMe = async (externalId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null> => {
+  if (!externalId || !isUuid(externalId)) {
+    return null;
+  }
+
+  const user = await prisma.users.findUnique({
+    where: { external_id: externalId },
+    include: {
+      roles: true,
+      location: {
+        include: {
+          city: true,
+          country: true
+        }
+      },
+      contacts: true,
+      basic_info: true,
+      user_positions: {
+        include: {
+          position: true
+        }
+      }
+    }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const formattedUser = await formatUserResponse(user);
+  return createSuccessResponse(formattedUser);
+};
+
+/**
+ * 獲取指定用戶
+ */
+const getOneUser = async (externalId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null> => {
+  const user = await prisma.users.findUnique({
+    where: { external_id: externalId },
+    include: {
+      roles: true,
+      location: {
+        include: {
+          city: true,
+          country: true
+        }
+      },
+      contacts: true,
+      basic_info: true,
+      user_positions: {
+        include: {
+          position: true
+        }
+      }
+    }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const formattedUser = await formatUserResponse(user);
+  return createSuccessResponse(formattedUser);
+};
+
+/**
+ * 創建用戶
+ */
+const createUser = async (userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>> => {
+  return await prisma.$transaction(async (tx) => {
+    const {
+      gender,
+      birthDate,
+      contactList,
+      educationStage,
+      isOpenLocation,
+      isOpenProfile,
+      isSubscribeEmail,
+      location: areaCode,
+      roleList,
+      selfIntroduction,
+      share,
+      wantToDoList,
+      tagList,
+      preferences,
+      isSendEmail
+    } = userData;
+
+    // 查找臨時用戶
+    const tempUser = await tx.temp_users.findUnique({
+      where: { id: parseInt(tempUserId) }
+    });
+
+    if (!tempUser) {
+      throw new NotFoundError('Temporary user not found');
+    }
+
+    // 檢查用戶名稱是否已存在
+    const existingUser = await tx.users.findFirst({
+      where: { nickname: tempUser.name }
+    });
+
+    if (existingUser) {
+      throw new ConflictError(`使用者名稱 ${tempUser.name} 已存在`);
+    }
+
+    // 處理地區
+    let locationId: number | null = null;
+    if (areaCode) {
+      // 根據城市名稱映射獲取對應的枚舉值
+      const cityEnum = getCityNameMapping()[areaCode];
+      
+      if (!cityEnum) {
+        throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
+      }
+      
+      // 查找對應的 location
+      const location = await tx.location.findFirst({
+        where: {
+          city: {
+            name: cityEnum
+          }
         }
       });
+      
+      if (!location) {
+        throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
+      }
+      locationId = location.id;
+    }
 
-      // 創建聯絡資訊
-      const contact = await tx.contacts.create({
+    // 創建基本資訊
+    const basicInfo = await tx.basic_info.create({
+      data: {
+        self_introduction: selfIntroduction,
+        share_list: Array.isArray(share) ? share.join(',') : share,
+        want_to_do_list: validateWantToDoList(wantToDoList || [])
+      }
+    });
+
+    // 創建聯絡資訊
+    const contact = await tx.contacts.create({
+      data: {
+        google_id: tempUser.google_id,
+        photo_url: tempUser.photo_url,
+        is_subscribe_email: isSubscribeEmail,
+        email: tempUser.email,
+        ig: contactList?.instagram,
+        discord: contactList?.discord,
+        line: contactList?.line,
+        fb: contactList?.facebook
+      }
+    });
+
+    // 創建用戶
+    const newUser = await tx.users.create({
+      data: {
+        mongo_id: tempUser.id.toString(), // Use temp user ID as mongo_id
+        nickname: tempUser.name,
+        gender: gender as 'male' | 'female' | 'other' | undefined,
+        education_stage: (educationStage as 'university' | 'high' | 'other') || 'other',
+        tag_list: [],  // Tags will be handled separately via entity_tags
+        contact_id: contact.id,
+        is_open_location: isOpenLocation ?? true,
+        location_id: locationId,
+        role_id: 2, // 默認角色
+        is_open_profile: isOpenProfile ?? true,
+        birth_date: birthDate ? new Date(birthDate) : null,
+        basic_info_id: basicInfo.id,
+      }
+    });
+
+    // 處理職位關聯
+    if (roleList && roleList.length > 0) {
+      const positions = await tx.position.findMany({
+        where: { name: { in: roleList } }
+      });
+
+      if (positions.length > 0) {
+        await tx.user_positions.createMany({
+          data: positions.map(position => ({
+            user_id: newUser.id,
+            position_id: position.id
+          }))
+        });
+      }
+    }
+
+    // 獲取完整的用戶資訊
+    const createdUser = await tx.users.findUnique({
+      where: { id: newUser.id },
+      include: {
+        roles: true,
+        location: {
+          include: {
+            city: true,
+            country: true
+          }
+        },
+        contacts: true,
+        basic_info: true,
+        user_positions: {
+          include: {
+            position: true
+          }
+        }
+      }
+    });
+
+    if (!createdUser) {
+      throw new Error('Failed to retrieve created user');
+    }
+
+    // Handle preferences
+    if (preferences) {
+      await handleUserPreferences(createdUser.id, preferences, tx);
+    }
+    
+    // Handle tags via entity_tags table
+    if (tagList && tagList.length > 0) {
+      await tagService.setEntityTags('user', createdUser.id, tagList, createdUser.id, tx);
+    }
+
+    // 生成新 token
+    const newToken = jwtService.generateToken({
+      id: createdUser.id,
+      _id: createdUser.external_id || '',
+      isTemp: false,
+    });
+
+    // 發送註冊郵件
+    if (isSendEmail && createdUser.contacts?.email) {
+      // 發送驗證郵件
+      await emailService.sendVerificationEmail(
+        createdUser.contacts.email, 
+        `${process.env.BACKEND_URL}/email/verify?token=${newToken}`
+      );
+      
+      // 刪除臨時用戶
+      await tx.temp_users.delete({ where: { id: tempUser.id } });
+    }
+
+    const result = {
+      user: await formatUserResponse(createdUser),
+      token: newToken
+    };
+
+    return createSuccessResponse(result);
+  });
+};
+
+/**
+ * 更新用戶
+ */
+const updateUser = async (externalId: string, userData: UpdateUserRequest): Promise<ApiSuccessResponse<FormattedUserResponse>> => {
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.users.findUnique({
+      where: { external_id: externalId },
+      include: { 
+        contacts: true, 
+        basic_info: true,
+        user_preferences: {
+          where: {
+            is_selected: true
+          },
+          include: {
+            preference_options: {
+              include: {
+                preference_types: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      throw new NotFoundError('用戶不存在');
+    }
+
+    const {
+      name: nickname,
+      email,
+      photoUrl,
+      gender,
+      birthDate,
+      contactList,
+      educationStage,
+      isOpenLocation,
+      isOpenProfile,
+      isSubscribeEmail,
+      selfIntroduction,
+      share,
+      wantToDoList,
+      tagList,
+      roleList
+    } = userData;
+
+    // 更新聯絡方式
+    if (user.contacts) {
+      await tx.contacts.update({
+        where: { id: user.contacts.id },
         data: {
-          google_id: tempUser.google_id,
-          photo_url: tempUser.photo_url,
+          photo_url: photoUrl,
           is_subscribe_email: isSubscribeEmail,
-          email: tempUser.email,
+          email,
           ig: contactList?.instagram,
           discord: contactList?.discord,
           line: contactList?.line,
           fb: contactList?.facebook
         }
       });
+    }
 
-      // 創建用戶
-      const newUser = await tx.users.create({
+    // 更新基本資訊
+    if (user.basic_info) {
+      await tx.basic_info.update({
+        where: { id: user.basic_info.id },
         data: {
-          nickname: tempUser.name,
-          gender: gender as 'male' | 'female' | 'other' | undefined,
-          education_stage: (educationStage as 'university' | 'high' | 'other') || 'other',
-          tag_list: tagList || [],
-          contact_id: contact.id,
-          is_open_location: isOpenLocation ?? true,
-          location_id: locationId,
-          role_id: 2, // 默認角色
-          is_open_profile: isOpenProfile ?? true,
-          birth_date: birthDate ? new Date(birthDate) : null,
-          basic_info_id: basicInfo.id,
+          self_introduction: selfIntroduction,
+          share_list: Array.isArray(share) ? share.join(',') : share,
+          want_to_do_list: wantToDoList ? validateWantToDoList(wantToDoList) : undefined
         }
       });
+    }
 
-      // 處理職位關聯
-      if (roleList && roleList.length > 0) {
+    // 更新用戶主表
+    await tx.users.update({
+      where: { id: user.id },
+      data: {
+        nickname,
+        gender: gender as 'male' | 'female' | 'other' | undefined,
+        tag_list: [],  // Tags will be handled separately via entity_tags
+        education_stage: educationStage as 'university' | 'high' | 'other' | undefined,
+        is_open_location: isOpenLocation,
+        is_open_profile: isOpenProfile,
+        birth_date: birthDate ? new Date(birthDate) : undefined,
+        updated_at: new Date()
+      }
+    });
+
+    // 更新職位關聯
+    if (roleList && Array.isArray(roleList)) {
+      // 刪除現有關聯
+      await tx.user_positions.deleteMany({
+        where: { user_id: user.id }
+      });
+
+      // 添加新關聯
+      if (roleList.length > 0) {
         const positions = await tx.position.findMany({
           where: { name: { in: roleList } }
         });
@@ -539,269 +828,305 @@ export class UserService {
         if (positions.length > 0) {
           await tx.user_positions.createMany({
             data: positions.map(position => ({
-              user_id: newUser.id,
+              user_id: user.id,
               position_id: position.id
             }))
           });
         }
       }
+    }
 
-      // 獲取完整的用戶資訊
-      const createdUser = await tx.users.findUnique({
-        where: { id: newUser.id },
-        include: {
-          roles: true,
-          location: {
-            include: {
-              city: true,
-              country: true
-            }
+    // Handle tags via entity_tags table
+    if (tagList !== undefined) {
+      await tagService.setEntityTags('user', user.id, tagList || [], user.id, tx);
+    }
+
+    // 獲取更新後的完整用戶資訊
+    const updatedUser = await tx.users.findUnique({
+      where: { external_id: externalId },
+      include: {
+        roles: true,
+        location: {
+          include: {
+            city: true,
+            country: true
+          }
+        },
+        contacts: true,
+        basic_info: true,
+        user_positions: {
+          include: {
+            position: true
+          }
+        }
+      }
+    });
+
+    if (!updatedUser) {
+      throw new Error('Failed to retrieve updated user');
+    }
+
+    const formattedUser = await formatUserResponse(updatedUser);
+    return createSuccessResponse(formattedUser);
+  });
+};
+
+/**
+ * 刪除當前用戶
+ */
+const deleteMe = async (externalId: string): Promise<ApiSuccessResponse<{ message: string }>> => {
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.users.findUnique({
+      where: { external_id: externalId }
+    });
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    // 刪除用戶職位關聯
+    await tx.user_positions.deleteMany({
+      where: { user_id: user.id }
+    });
+
+    // 刪除關聯資料
+    if (user.contact_id) {
+      await tx.contacts.delete({
+        where: { id: user.contact_id }
+      });
+    }
+
+    if (user.basic_info_id) {
+      await tx.basic_info.delete({
+        where: { id: user.basic_info_id }
+      });
+    }
+
+    // 刪除用戶
+    await tx.users.delete({
+      where: { id: user.id }
+    });
+  });
+
+  return createSuccessResponse({ message: '用戶已成功刪除' });
+};
+
+/**
+ * 刪除用戶（管理員功能）
+ */
+const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message: string }>> => {
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.users.findUnique({
+      where: { id: userId },
+      include: { 
+        contacts: true, 
+        basic_info: true,
+        user_preferences: {
+          where: {
+            is_selected: true
           },
-          contacts: true,
-          basic_info: true,
-          user_positions: {
-            include: {
-              position: true
+          include: {
+            preference_options: {
+              include: {
+                preference_types: true
+              }
             }
           }
         }
-      });
-
-      if (!createdUser) {
-        throw new Error('Failed to retrieve created user');
       }
-
-      // 生成新 token
-      const newToken = jwtService.generateToken({
-        id: createdUser.id,
-        _id: createdUser.external_id || '',
-        isTemp: false,
-      });
-
-      // 發送註冊郵件
-      if (isSendEmail && createdUser.contacts?.email) {
-        // 發送驗證郵件
-        await emailService.sendVerificationEmail(
-          createdUser.contacts.email, 
-          `${process.env.BACKEND_URL}/email/verify?token=${newToken}`
-        );
-        
-        // 刪除臨時用戶
-        await tx.temp_users.delete({ where: { id: tempUser.id } });
-      }
-
-      return {
-        user: formatUserResponse(createdUser),
-        token: newToken
-      };
     });
+
+    if (!user) {
+      throw new NotFoundError('用戶不存在');
+    }
+
+    // 刪除用戶職位關聯
+    await tx.user_positions.deleteMany({
+      where: { user_id: userId }
+    });
+
+    // 刪除關聯資料
+    if (user.contacts) {
+      await tx.contacts.delete({
+        where: { id: user.contacts.id }
+      });
+    }
+
+    if (user.basic_info) {
+      await tx.basic_info.delete({
+        where: { id: user.basic_info.id }
+      });
+    }
+
+    // 刪除用戶
+    await tx.users.delete({
+      where: { id: userId }
+    });
+  });
+
+  return createSuccessResponse({ message: '用戶已成功刪除' });
+};
+
+/**
+ * 檢查自訂 ID 可用性
+ */
+const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessResponse<{ available: boolean }>> => {
+  // 基本格式檢查
+  const isValidFormat = /^[a-zA-Z0-9_-]{3,50}$/.test(customId) &&
+                       !customId.startsWith('_') && 
+                       !customId.startsWith('-') &&
+                       !customId.endsWith('_') && 
+                       !customId.endsWith('-');
+
+  if (!isValidFormat) {
+    return createSuccessResponse({ available: false });
   }
 
-  /**
-   * 更新用戶
-   */
-  async updateUser(externalId: string, userData: UpdateUserRequest): Promise<FormattedUserResponse> {
+  // 檢查資料庫中是否已存在
+  const existingUser = await prisma.users.findUnique({
+    where: { custom_id: customId }
+  });
+
+  return createSuccessResponse({ available: !existingUser });
+};
+
+/**
+ * 設置用戶自訂 ID
+ */
+const setCustomId = async (userId: number, customId: string): Promise<ApiSuccessResponse<{ customId: string }>> => {
+  // 檢查格式
+  const isValidFormat = /^[a-zA-Z0-9_-]{3,50}$/.test(customId) &&
+                       !customId.startsWith('_') && 
+                       !customId.startsWith('-') &&
+                       !customId.endsWith('_') && 
+                       !customId.endsWith('-');
+
+  if (!isValidFormat) {
+    throw new ConflictError('自訂 ID 格式不正確：需3-50個字符，只能包含英文字母、數字、底線和連字符，且不能以底線或連字符開頭/結尾');
+  }
+
+  try {
     return await prisma.$transaction(async (tx) => {
+      // 檢查是否已被使用
+      const existingUser = await tx.users.findUnique({
+        where: { custom_id: customId }
+      });
+
+      if (existingUser) {
+        throw new ConflictError('此自訂 ID 已被使用');
+      }
+
+      // 檢查用戶是否存在
       const user = await tx.users.findUnique({
-        where: { external_id: externalId },
-        include: { contacts: true, basic_info: true }
-      });
-
-      if (!user) {
-        throw new NotFoundError('用戶不存在');
-      }
-
-      const {
-        name: nickname,
-        email,
-        photoUrl,
-        gender,
-        birthDate,
-        contactList,
-        educationStage,
-        isOpenLocation,
-        isOpenProfile,
-        isSubscribeEmail,
-        selfIntroduction,
-        share,
-        wantToDoList,
-        tagList,
-        roleList
-      } = userData;
-
-      // 更新聯絡方式
-      if (user.contacts) {
-        await tx.contacts.update({
-          where: { id: user.contacts.id },
-          data: {
-            photo_url: photoUrl,
-            is_subscribe_email: isSubscribeEmail,
-            email,
-            ig: contactList?.instagram,
-            discord: contactList?.discord,
-            line: contactList?.line,
-            fb: contactList?.facebook
-          }
-        });
-      }
-
-      // 更新基本資訊
-      if (user.basic_info) {
-        await tx.basic_info.update({
-          where: { id: user.basic_info.id },
-          data: {
-            self_introduction: selfIntroduction,
-            share_list: Array.isArray(share) ? share.join(',') : share,
-            want_to_do_list: wantToDoList ? validateWantToDoList(wantToDoList) : undefined
-          }
-        });
-      }
-
-      // 更新用戶主表
-      await tx.users.update({
-        where: { id: user.id },
-        data: {
-          nickname,
-          gender: gender as 'male' | 'female' | 'other' | undefined,
-          tag_list: tagList,
-          education_stage: educationStage as 'university' | 'high' | 'other' | undefined,
-          is_open_location: isOpenLocation,
-          is_open_profile: isOpenProfile,
-          birth_date: birthDate ? new Date(birthDate) : undefined,
-          updated_at: new Date()
-        }
-      });
-
-      // 更新職位關聯
-      if (roleList && Array.isArray(roleList)) {
-        // 刪除現有關聯
-        await tx.user_positions.deleteMany({
-          where: { user_id: user.id }
-        });
-
-        // 添加新關聯
-        if (roleList.length > 0) {
-          const positions = await tx.position.findMany({
-            where: { name: { in: roleList } }
-          });
-
-          if (positions.length > 0) {
-            await tx.user_positions.createMany({
-              data: positions.map(position => ({
-                user_id: user.id,
-                position_id: position.id
-              }))
-            });
-          }
-        }
-      }
-
-      // 獲取更新後的完整用戶資訊
-      const updatedUser = await tx.users.findUnique({
-        where: { external_id: externalId },
-        include: {
-          roles: true,
-          location: {
-            include: {
-              city: true,
-              country: true
-            }
-          },
-          contacts: true,
-          basic_info: true,
-          user_positions: {
-            include: {
-              position: true
-            }
-          }
-        }
-      });
-
-      if (!updatedUser) {
-        throw new Error('Failed to retrieve updated user');
-      }
-
-      return formatUserResponse(updatedUser);
-    });
-  }
-
-  /**
-   * 刪除當前用戶
-   */
-  async deleteMe(externalId: string): Promise<void> {
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.users.findUnique({
-        where: { external_id: externalId }
-      });
-
-      if (!user) {
-        throw new NotFoundError('User not found');
-      }
-
-      // 刪除用戶職位關聯
-      await tx.user_positions.deleteMany({
-        where: { user_id: user.id }
-      });
-
-      // 刪除關聯資料
-      if (user.contact_id) {
-        await tx.contacts.delete({
-          where: { id: user.contact_id }
-        });
-      }
-
-      if (user.basic_info_id) {
-        await tx.basic_info.delete({
-          where: { id: user.basic_info_id }
-        });
-      }
-
-      // 刪除用戶
-      await tx.users.delete({
-        where: { id: user.id }
-      });
-    });
-  }
-
-  /**
-   * 刪除用戶（管理員功能）
-   */
-  async deleteUser(userId: number): Promise<void> {
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.users.findUnique({
-        where: { id: userId },
-        include: { contacts: true, basic_info: true }
-      });
-
-      if (!user) {
-        throw new NotFoundError('用戶不存在');
-      }
-
-      // 刪除用戶職位關聯
-      await tx.user_positions.deleteMany({
-        where: { user_id: userId }
-      });
-
-      // 刪除關聯資料
-      if (user.contacts) {
-        await tx.contacts.delete({
-          where: { id: user.contacts.id }
-        });
-      }
-
-      if (user.basic_info) {
-        await tx.basic_info.delete({
-          where: { id: user.basic_info.id }
-        });
-      }
-
-      // 刪除用戶
-      await tx.users.delete({
         where: { id: userId }
       });
-    });
-  }
-}
 
-export const userService = new UserService();
+      if (!user) {
+        throw new NotFoundError('用戶不存在');
+      }
+
+      // 檢查用戶是否已有自訂 ID
+      if (user.custom_id) {
+        throw new ConflictError('用戶已設置自訂 ID，請先移除現有 ID');
+      }
+
+      // 設置自訂 ID
+      await tx.users.update({
+        where: { id: userId },
+        data: {
+          custom_id: customId,
+          custom_id_verified: true, // 簡化版本直接設為已驗證
+          custom_id_created_at: new Date()
+        }
+      });
+
+      return createSuccessResponse({ customId });
+    });
+  } catch (error: unknown) {
+    // 處理 Prisma 的唯一約束違反錯誤 (P2002)
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as { code: string; meta?: { target?: string[] } };
+      if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('custom_id')) {
+        throw new ConflictError('此自訂 ID 已被其他用戶使用，請選擇其他 ID');
+      }
+    }
+    throw error;
+  }
+};
+
+/**
+ * 透過自訂 ID 查詢用戶
+ */
+const getUserByCustomId = async (customId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null> => {
+  const user = await prisma.users.findUnique({
+    where: { custom_id: customId },
+    include: {
+      roles: true,
+      location: {
+        include: {
+          city: true,
+          country: true
+        }
+      },
+      contacts: true,
+      basic_info: true,
+      user_positions: {
+        include: {
+          position: true
+        }
+      }
+    }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const formattedUser = await formatUserResponse(user);
+  return createSuccessResponse(formattedUser);
+};
+
+/**
+ * 移除用戶自訂 ID
+ */
+const removeCustomId = async (userId: number): Promise<ApiSuccessResponse<{ message: string }>> => {
+  const user = await prisma.users.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user) {
+    throw new NotFoundError('用戶不存在');
+  }
+
+  if (!user.custom_id) {
+    throw new ConflictError('用戶尚未設置自訂 ID');
+  }
+
+  await prisma.users.update({
+    where: { id: userId },
+    data: {
+      custom_id: null,
+      custom_id_verified: false,
+      custom_id_created_at: null
+    }
+  });
+
+  return createSuccessResponse({ message: '自訂 ID 已成功移除' });
+};
+
+// 匯出服務函數
+export const userService = {
+  getAllUsers,
+  getMe,
+  getOneUser,
+  createUser,
+  updateUser,
+  deleteMe,
+  deleteUser,
+  checkCustomIdAvailability,
+  setCustomId,
+  getUserByCustomId,
+  removeCustomId
+} as const;
+
 export default userService;

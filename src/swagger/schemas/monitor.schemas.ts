@@ -65,13 +65,13 @@
  *       properties:
  *         version:
  *           type: string
- *         current_connections:
+ *         currentConnections:
  *           type: number
- *         max_connections:
+ *         maxConnections:
  *           type: number
- *         database_size:
+ *         databaseSize:
  *           type: string
- *         start_time:
+ *         startTime:
  *           type: string
  *           format: date-time
  *         config:
@@ -83,11 +83,11 @@
  *           items:
  *             type: object
  *             properties:
- *               table_name:
+ *               tableName:
  *                 type: string
  *               size:
  *                 type: string
- *               row_count:
+ *               rowCount:
  *                 type: number
  *         error:
  *           type: string

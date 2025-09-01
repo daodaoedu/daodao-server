@@ -4,7 +4,8 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
+import { asyncHandler } from '@/middleware/error.middleware';
+import { BadRequestError } from '@/middleware/error.middleware';
 import resourceReviewService from '@/services/resource-review.service';
 import tagService from '@/services/tag.service';
 import type { tags } from '../../generated/prisma';
@@ -18,7 +19,7 @@ import {
  * 獲取特定資源的心得評價列表
  * GET /resources/:resourceId/reviews
  */
-export const getReviewsByResource = asyncWrapper(async (req: Request, res: Response) => {
+export const getReviewsByResource = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   const { 
     cursor, 
@@ -55,18 +56,15 @@ export const getReviewsByResource = asyncWrapper(async (req: Request, res: Respo
   // 查詢心得評價列表
   const result = await resourceReviewService.getReviews(filters, pagination);
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: result
-  });
+  // 直接透傳結果
+  res.json(result);
 });
 
 /**
  * 獲取使用者的心得評價列表
  * GET /users/:userId/reviews
  */
-export const getReviewsByUser = asyncWrapper(async (req: Request, res: Response) => {
+export const getReviewsByUser = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { 
     cursor, 
@@ -101,35 +99,29 @@ export const getReviewsByUser = asyncWrapper(async (req: Request, res: Response)
   // 查詢心得評價列表
   const result = await resourceReviewService.getReviews(filters, pagination);
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: result
-  });
+  // 直接透傳結果
+  res.json(result);
 });
 
 /**
  * 獲取單個心得評價
  * GET /reviews/:id
  */
-export const getReviewById = asyncWrapper(async (req: Request, res: Response) => {
+export const getReviewById = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   
   // 查詢心得評價
   const review = await resourceReviewService.getReviewById(parseInt(reviewId, 10));
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: review
-  });
+  // 直接透傳結果
+  res.json(review);
 });
 
 /**
  * 創建心得評價
  * POST /resources/:resourceId/reviews
  */
-export const createReview = asyncWrapper(async (req: Request, res: Response) => {
+export const createReview = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -148,18 +140,15 @@ export const createReview = asyncWrapper(async (req: Request, res: Response) => 
     userId
   );
 
-  // 返回結果
-  res.status(201).json({
-    success: true,
-    data: review
-  });
+  // 直接透傳結果
+  res.status(201).json(review);
 });
 
 /**
  * 更新心得評價
  * PATCH /reviews/:id
  */
-export const updateReview = asyncWrapper(async (req: Request, res: Response) => {
+export const updateReview = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -178,18 +167,15 @@ export const updateReview = asyncWrapper(async (req: Request, res: Response) => 
     userId
   );
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: review
-  });
+  // 直接透傳結果
+  res.json(review);
 });
 
 /**
  * 更新心得評價狀態
  * PATCH /reviews/:id/status
  */
-export const updateReviewStatus = asyncWrapper(async (req: Request, res: Response) => {
+export const updateReviewStatus = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -208,18 +194,15 @@ export const updateReviewStatus = asyncWrapper(async (req: Request, res: Respons
     userId
   );
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: review
-  });
+  // 直接透傳結果
+  res.json(review);
 });
 
 /**
  * 刪除心得評價
  * DELETE /reviews/:id
  */
-export const deleteReview = asyncWrapper(async (req: Request, res: Response) => {
+export const deleteReview = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -229,20 +212,17 @@ export const deleteReview = asyncWrapper(async (req: Request, res: Response) => 
   }
 
   // 刪除心得評價
-  await resourceReviewService.deleteReview(parseInt(reviewId, 10), userId);
+  const result = await resourceReviewService.deleteReview(parseInt(reviewId, 10), userId);
 
-  // 返回結果
-  res.json({
-    success: true,
-    message: '心得評價已成功刪除'
-  });
+  // 直接透傳結果
+  res.json(result);
 });
 
 /**
  * 點讚心得評價
  * POST /reviews/:id/like
  */
-export const likeReview = asyncWrapper(async (req: Request, res: Response) => {
+export const likeReview = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -252,20 +232,17 @@ export const likeReview = asyncWrapper(async (req: Request, res: Response) => {
   }
 
   // 點讚心得評價
-  await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
+  const result = await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
 
-  // 返回結果
-  res.json({
-    success: true,
-    message: '已成功點讚心得評價'
-  });
+  // 直接透傳結果
+  res.json(result);
 });
 
 /**
  * 取消點讚心得評價
  * DELETE /reviews/:id/like
  */
-export const unlikeReview = asyncWrapper(async (req: Request, res: Response) => {
+export const unlikeReview = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   // 假設經過認證中間件獲取的用戶 ID
   const userId = req.user?.id;
@@ -275,24 +252,21 @@ export const unlikeReview = asyncWrapper(async (req: Request, res: Response) => 
   }
 
   // 取消點讚心得評價
-  await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
+  const result = await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
 
-  // 返回結果
-  res.json({
-    success: true,
-    message: '已成功取消點讚心得評價'
-  });
+  // 直接透傳結果
+  res.json(result);
 });
 
 /**
  * 獲取心得評價標籤
  * GET /reviews/:id/tags
  */
-export const getReviewTags = asyncWrapper(async (req: Request, res: Response) => {
+export const getReviewTags = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
   
-  // 獲取心得評價標籤
-  const tags = await tagService.getEntityTags('resource_review', reviewId);
+  // 獲取心得評價標籤 - reviewId 是數字 ID 的字串形式
+  const tags = await tagService.getEntityTags('resource_review', parseInt(reviewId, 10));
 
   // 返回結果
   res.json({
@@ -305,7 +279,7 @@ export const getReviewTags = asyncWrapper(async (req: Request, res: Response) =>
  * 獲取心得評價列表（通用）
  * GET /reviews
  */
-export const getReviews = asyncWrapper(async (req: Request, res: Response) => {
+export const getReviews = asyncHandler(async (req: Request, res: Response) => {
   const { 
     cursor, 
     limit, 
@@ -339,10 +313,8 @@ export const getReviews = asyncWrapper(async (req: Request, res: Response) => {
   // 查詢心得評價列表
   const result = await resourceReviewService.getReviews(filters, pagination);
 
-  res.json({
-    success: true,
-    data: result
-  });
+  // 直接透傳結果
+  res.json(result);
 });
 
 // 導出所有控制器函數

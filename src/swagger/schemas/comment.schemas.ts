@@ -89,11 +89,13 @@
  *       required:
  *         - id
  *         - userId
+ *         - targetId
+ *         - targetType
  *         - content
  *         - visibility
  *         - createdAt
  *         - updatedAt
- *         - parent_id
+ *         - parentId
  *         - user
  *         - replies
  *       properties:
@@ -105,6 +107,15 @@
  *           type: integer
  *           description: 評論作者 ID
  *           example: 1
+ *         targetId:
+ *           type: string
+ *           description: 目標實體的外部 ID（UUID 或數字字串）
+ *           example: "uuid-string-123"
+ *         targetType:
+ *           type: string
+ *           enum: [post, resource, note, outcome, review, circle, idea, portfolio]
+ *           description: 目標實體類型
+ *           example: "resource"
  *         content:
  *           type: string
  *           description: 評論內容
@@ -124,7 +135,7 @@
  *           format: date-time
  *           description: 更新時間
  *           example: "2024-01-15T10:30:00Z"
- *         parent_id:
+ *         parentId:
  *           type: integer
  *           nullable: true
  *           description: 父評論 ID
@@ -140,7 +151,7 @@
  *     
  *     CommentListResponse:
  *       allOf:
- *         - $ref: '#/components/schemas/SuccessResponse'
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
  *         - type: object
  *           properties:
  *             data:
@@ -151,7 +162,7 @@
  *     
  *     CommentDetailResponse:
  *       allOf:
- *         - $ref: '#/components/schemas/SuccessResponse'
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
  *         - type: object
  *           properties:
  *             data:
@@ -159,7 +170,7 @@
  *     
  *     CommentCreateResponse:
  *       allOf:
- *         - $ref: '#/components/schemas/SuccessResponse'
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
  *         - type: object
  *           properties:
  *             message:
@@ -169,7 +180,7 @@
  *     
  *     CommentUpdateResponse:
  *       allOf:
- *         - $ref: '#/components/schemas/SuccessResponse'
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
  *         - type: object
  *           properties:
  *             message:
@@ -179,7 +190,7 @@
  *     
  *     CommentDeleteResponse:
  *       allOf:
- *         - $ref: '#/components/schemas/SuccessResponse'
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
  *         - type: object
  *           properties:
  *             message:

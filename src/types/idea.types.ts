@@ -46,32 +46,13 @@ export interface IdeaResource {
 
 export type ResourceStatus = 'draft' | 'active' | 'archived';
 
-// API 回應型別
-export interface PaginationInfo {
-  page: number;
-  currentPage?: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface ApiSuccessResponse<T> {
-  success: true;
-  data: T;
-  message?: string;
-  pagination?: PaginationInfo;
-}
-
-export interface ApiErrorResponse {
-  success: false;
-  error: {
-    message: string;
-    code?: string;
-    details?: unknown;
-  };
-}
-
-export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+// 從統一響應類型文件導入
+import type { 
+  ApiSuccessResponse, 
+  ApiErrorResponse, 
+  ApiResponse,
+  PaginationInfo
+} from './api-response.types';
 
 // 事件相關型別
 export interface EventResponse {

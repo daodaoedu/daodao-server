@@ -4,7 +4,16 @@
  */
 
 import { Router, RequestHandler } from 'express';
-import { projectController } from '../controllers/project.controller';
+import {
+  createProjectController,
+  getProjectController,
+  getProjectsController,
+  updateProjectController,
+  deleteProjectController,
+  getProjectStatsController,
+  getMyProjectsController,
+  duplicateProjectController
+} from '../controllers/project.controller';
 import { validate } from '../validators/validation.middleware';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { 
@@ -21,6 +30,7 @@ import {
   duplicateProjectSchema,
   projectStatsQuerySchema
 } from '../validators/project.validators';
+import milestoneRoutes from './milestone.routes';
 
 const router = Router();
 
@@ -33,7 +43,7 @@ const router = Router();
 router.get('/', 
   optionalAuth,
   validate(projectQuerySchema, 'query'),
-  projectController.getProjects as RequestHandler);
+  getProjectsController as RequestHandler);
 
 /**
  * GET /projects/my
@@ -44,7 +54,7 @@ router.get('/',
 router.get('/my', 
   authenticate,
   validate(projectQuerySchema, 'query'),
-  projectController.getMyProjects as RequestHandler);
+  getMyProjectsController as RequestHandler);
 
 /**
  * GET /projects/stats
@@ -55,7 +65,7 @@ router.get('/my',
 router.get('/stats', 
   optionalAuth,
   validate(projectStatsQuerySchema, 'query'),
-  projectController.getProjectStats as RequestHandler);
+  getProjectStatsController as RequestHandler);
 
 /**
  * GET /projects/:id
@@ -66,7 +76,7 @@ router.get('/stats',
 router.get('/:id', 
   optionalAuth,
   validate(projectParamsSchema, 'params'),
-  projectController.getProject as RequestHandler);
+  getProjectController as RequestHandler);
 
 /**
  * POST /projects
@@ -78,7 +88,7 @@ router.post('/',
   authenticate,
   canCreateProject(),
   validate(createProjectSchema, 'body'),
-  projectController.createProject as RequestHandler);
+  createProjectController as RequestHandler);
 
 /**
  * PUT /projects/:id
@@ -92,7 +102,7 @@ router.put('/:id',
   canUpdateProject(),
   validate(projectParamsSchema, 'params'),
   validate(updateProjectSchema, 'body'),
-  projectController.updateProject as RequestHandler);
+  updateProjectController as RequestHandler);
 
 /**
  * DELETE /projects/:id
@@ -104,7 +114,7 @@ router.delete('/:id',
   authenticate,
   canDeleteProject(),
   validate(projectParamsSchema, 'params'),
-  projectController.deleteProject as RequestHandler);
+  deleteProjectController as RequestHandler);
 
 /**
  * POST /projects/:id/duplicate
@@ -118,6 +128,12 @@ router.post('/:id/duplicate',
   canCreateProject(),
   validate(projectParamsSchema, 'params'),
   validate(duplicateProjectSchema, 'body'),
-  projectController.duplicateProject as RequestHandler);
+  duplicateProjectController as RequestHandler);
+
+/**
+ * 巢狀里程碑路由
+ * /projects/:projectId/milestones/*
+ */
+router.use('/:projectId/milestones', milestoneRoutes);
 
 export default router;

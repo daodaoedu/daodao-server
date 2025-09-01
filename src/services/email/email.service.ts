@@ -6,6 +6,8 @@
 import nodemailer from 'nodemailer';
 import { emailConfig } from './enhanced-email.service';
 import { EmailTemplateService } from './template.service';
+import { createSuccessResponse } from '../../utils/response-helper';
+import { ApiSuccessResponse } from '../../types/api-response.types';
 import type { EmailTemplate } from './types';
 // 簡單的 Logger 介面
 interface Logger {
@@ -152,6 +154,30 @@ export class EmailService {
   }
 
   /**
+   * 發送歡迎郵件 (API 版本)
+   */
+  async sendWelcomeEmailApi(to: string, name: string): Promise<ApiSuccessResponse<{ messageId?: string }>> {
+    const result = await this.sendWelcomeEmail(to, name);
+    
+    if (!result.success) {
+      throw new Error(result.error || '發送歡迎郵件失敗');
+    }
+
+    return createSuccessResponse({
+      messageId: result.messageId
+    }, {
+      message: '歡迎郵件發送成功',
+      aggregateData: {
+        emailInfo: {
+          recipient: to,
+          template: 'welcome',
+          sentAt: new Date().toISOString()
+        }
+      }
+    });
+  }
+
+  /**
    * 發送驗證郵件
    */
   async sendVerificationEmail(to: string, verifyLink: string, name?: string): Promise<EmailSendResult> {
@@ -161,6 +187,30 @@ export class EmailService {
       to,
       subject: template.subject,
       html: template.html
+    });
+  }
+
+  /**
+   * 發送驗證郵件 (API 版本)
+   */
+  async sendVerificationEmailApi(to: string, verifyLink: string, name?: string): Promise<ApiSuccessResponse<{ messageId?: string }>> {
+    const result = await this.sendVerificationEmail(to, verifyLink, name);
+    
+    if (!result.success) {
+      throw new Error(result.error || '發送驗證郵件失敗');
+    }
+
+    return createSuccessResponse({
+      messageId: result.messageId
+    }, {
+      message: '驗證郵件發送成功',
+      aggregateData: {
+        emailInfo: {
+          recipient: to,
+          template: 'verification',
+          sentAt: new Date().toISOString()
+        }
+      }
     });
   }
 
@@ -407,4 +457,9 @@ export class EmailService {
 // 創建並導出郵件服務實例
 const templateService = new EmailTemplateService();
 export const emailService = new EmailService(templateService);
+
+// 導出 API 版本的郵件服務函數
+export const sendWelcomeEmailApi = emailService.sendWelcomeEmailApi.bind(emailService);
+export const sendVerificationEmailApi = emailService.sendVerificationEmailApi.bind(emailService);
+
 export default emailService;

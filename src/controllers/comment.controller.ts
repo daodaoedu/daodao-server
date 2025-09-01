@@ -19,8 +19,8 @@ import {
 } from '../types/comment.types';
 import {
   UnauthorizedError
-} from '../utils/error-handler';
-import { asyncWrapper } from '../utils/error-handler';
+} from '../middleware/error.middleware';
+import { asyncHandler } from '../middleware/error.middleware';
 import {
   validateCreateComment,
   validateUpdateComment,
@@ -60,14 +60,10 @@ export class CommentController implements CommentControllerInterface {
     };
 
     // Create comment through service
-    const comment = await commentService.createComment(createParams);
+    const result = await commentService.createComment(createParams);
 
     // Send success response
-    res.status(201).json({
-      success: true,
-      message: 'Comment created successfully',
-      data: comment
-    });
+    res.status(201).json(result);
   }
 
   /**
@@ -94,13 +90,10 @@ export class CommentController implements CommentControllerInterface {
     };
 
     // Get comments through service
-    const comments = await commentService.getComments(getParams);
+    const result = await commentService.getComments(getParams);
 
     // Send success response
-    res.status(200).json({
-      success: true,
-      data: comments
-    });
+    res.json(result);
   }
 
   /**
@@ -121,16 +114,13 @@ export class CommentController implements CommentControllerInterface {
     } : null;
 
     // Get comment detail through service
-    const comment = await commentService.getCommentDetail(
+    const result = await commentService.getCommentDetail(
       validatedParams.commentId,
       currentUser
     );
 
     // Send success response
-    res.status(200).json({
-      success: true,
-      data: comment
-    });
+    res.json(result);
   }
 
   /**
@@ -159,14 +149,10 @@ export class CommentController implements CommentControllerInterface {
     };
 
     // Update comment through service
-    const updatedComment = await commentService.updateComment(updateParams);
+    const result = await commentService.updateComment(updateParams);
 
     // Send success response
-    res.status(200).json({
-      success: true,
-      message: 'Comment updated successfully',
-      data: updatedComment
-    });
+    res.json(result);
   }
 
   /**
@@ -194,35 +180,31 @@ export class CommentController implements CommentControllerInterface {
     const result = await commentService.deleteComment(deleteParams);
 
     // Send success response
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      data: {}
-    });
+    res.json(result);
   }
 }
 
 // Create controller instance
 const commentControllerInstance = new CommentController();
 
-// Export individual controller methods wrapped with asyncWrapper
-export const createComment = asyncWrapper(
+// Export individual controller methods wrapped with asyncHandler
+export const createComment = asyncHandler(
   commentControllerInstance.createComment.bind(commentControllerInstance)
 );
 
-export const getComments = asyncWrapper(
+export const getComments = asyncHandler(
   commentControllerInstance.getComments.bind(commentControllerInstance)
 );
 
-export const getCommentDetail = asyncWrapper(
+export const getCommentDetail = asyncHandler(
   commentControllerInstance.getCommentDetail.bind(commentControllerInstance)
 );
 
-export const updateComment = asyncWrapper(
+export const updateComment = asyncHandler(
   commentControllerInstance.updateComment.bind(commentControllerInstance)
 );
 
-export const deleteComment = asyncWrapper(
+export const deleteComment = asyncHandler(
   commentControllerInstance.deleteComment.bind(commentControllerInstance)
 );
 

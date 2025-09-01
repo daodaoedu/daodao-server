@@ -83,32 +83,6 @@
  *         - status
  *         - createdAt
  *         - updatedAt
- *
- *     UserBasicInfo:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           format: uuid
- *           description: 使用者 ID
- *           example: '660e8400-e29b-41d4-a716-446655440001'
- *         name:
- *           type: string
- *           description: 使用者名稱
- *           example: '陳小明'
- *         photoUrl:
- *           type: string
- *           format: uri
- *           description: 頭像 URL
- *           example: 'https://example.com/avatar.jpg'
- *         role:
- *           type: string
- *           description: 角色
- *           example: '學生'
- *       required:
- *         - id
- *         - name
- *
  *     IdeaResource:
  *       type: object
  *       properties:
@@ -183,97 +157,47 @@
  *           example: active
  *
  *     CreateIdeaResponse:
- *       type: object
- *       properties:
- *         idea:
- *           $ref: '#/components/schemas/IdeaEntity'
- *         resources:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               id:
- *                 type: string
- *                 format: uuid
- *                 description: 資源 ID
- *               name:
- *                 type: string
- *                 description: 資源名稱
- *               url:
- *                 type: string
- *                 format: uri
- *                 description: 資源 URL
- *               description:
- *                 type: string
- *                 description: 資源描述
- *               status:
- *                 type: string
- *                 enum: [draft, active, archived]
- *                 description: 資源狀態
- *               createdFromType:
- *                 type: string
- *                 enum: [idea]
- *                 description: 創建來源類型
- *               createdFromId:
- *                 type: string
- *                 format: uuid
- *                 description: 創建來源 ID
- *           description: 創建的關聯資源
- *       required:
- *         - idea
- *
- *     PaginationInfo:
- *       type: object
- *       properties:
- *         page:
- *           type: integer
- *           minimum: 1
- *           description: 當前頁碼
- *           example: 1
- *         limit:
- *           type: integer
- *           minimum: 1
- *           description: 每頁數量
- *           example: 20
- *         total:
- *           type: integer
- *           minimum: 0
- *           description: 總數量
- *           example: 150
- *         totalPages:
- *           type: integer
- *           minimum: 0
- *           description: 總頁數
- *           example: 8
- *       required:
- *         - page
- *         - limit
- *         - total
- *         - totalPages
- *
- *     ApiErrorResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: false
- *         error:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
  *           properties:
- *             message:
- *               type: string
- *               description: 錯誤訊息
- *               example: '找不到指定的想法'
- *             code:
- *               type: string
- *               description: 錯誤代碼
- *               example: 'IDEA_NOT_FOUND'
- *             details:
+ *             data:
  *               type: object
- *               description: 錯誤詳情
- *           required:
- *             - message
- *       required:
- *         - success
- *         - error
+ *               properties:
+ *                 idea:
+ *                   $ref: '#/components/schemas/IdeaEntity'
+ *                 resources:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: 資源 ID
+ *                       name:
+ *                         type: string
+ *                         description: 資源名稱
+ *                       url:
+ *                         type: string
+ *                         format: uri
+ *                         description: 資源 URL
+ *                       description:
+ *                         type: string
+ *                         description: 資源描述
+ *                       status:
+ *                         type: string
+ *                         enum: [draft, active, archived]
+ *                         description: 資源狀態
+ *                       createdFromType:
+ *                         type: string
+ *                         enum: [idea]
+ *                         description: 創建來源類型
+ *                       createdFromId:
+ *                         type: string
+ *                         format: uuid
+ *                         description: 創建來源 ID
+ *                   description: 創建的關聯資源
+ *               required:
+ *                 - idea
  */
