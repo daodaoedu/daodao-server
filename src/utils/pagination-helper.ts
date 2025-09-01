@@ -29,9 +29,9 @@ export const calculatePagination = (
  * Create cursor pagination information
  */
 export const createCursorInfo = (
-  data: any[],
+  data: Record<string, unknown>[],
   hasMore: boolean,
-  cursorField: string = 'id'
+  cursorField = 'id'
 ): CursorPaginationInfo => {
   const start = data.length > 0 ? data[0][cursorField] : null;
   const end = data.length > 0 ? data[data.length - 1][cursorField] : null;

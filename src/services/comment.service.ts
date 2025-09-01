@@ -34,8 +34,7 @@ import {
   InternalServerError
 } from '../middleware/error.middleware';
 import {
-  ApiSuccessResponse,
-  ApiResponse
+  ApiSuccessResponse
 } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
 

@@ -48,9 +48,6 @@ export type ResourceStatus = 'draft' | 'active' | 'archived';
 
 // 從統一響應類型文件導入
 import type { 
-  ApiSuccessResponse, 
-  ApiErrorResponse, 
-  ApiResponse,
   PaginationInfo
 } from './api-response.types';
 

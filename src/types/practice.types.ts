@@ -82,9 +82,6 @@ export interface CheckInEntity {
 
 // 從統一響應類型文件導入
 import type { 
-  ApiSuccessResponse, 
-  ApiErrorResponse, 
-  ApiResponse,
   PaginationInfo
 } from './api-response.types';
 
