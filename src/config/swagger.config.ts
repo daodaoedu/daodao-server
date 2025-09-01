@@ -144,46 +144,80 @@ const swaggerOptions: swaggerJsdoc.Options = {
             default: 'desc'
           },
           description: '排序方向'
+        },
+        // 分頁參數（標準）
+        pageParam: {
+          in: 'query',
+          name: 'page',
+          required: false,
+          schema: {
+            type: 'integer',
+            minimum: 1,
+            default: 1
+          },
+          description: '頁數'
+        },
+        pageSizeParam: {
+          in: 'query',
+          name: 'pageSize',
+          required: false,
+          schema: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            default: 10
+          },
+          description: '每頁項目數'
         }
       },
       responses: {
         // 通用響應定義
-        BadRequest: {
+        BadRequestError: {
           description: '請求參數錯誤',
           content: {
             'application/json': {
               schema: {
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiErrorResponse'
               }
             }
           }
         },
-        Unauthorized: {
+        UnauthorizedError: {
           description: '未授權，需要登入',
           content: {
             'application/json': {
               schema: {
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiErrorResponse'
               }
             }
           }
         },
-        Forbidden: {
+        ForbiddenError: {
           description: '禁止訪問，權限不足',
           content: {
             'application/json': {
               schema: {
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiErrorResponse'
               }
             }
           }
         },
-        NotFound: {
+        NotFoundError: {
           description: '資源不存在',
           content: {
             'application/json': {
               schema: {
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiErrorResponse'
+              }
+            }
+          }
+        },
+        ConflictError: {
+          description: '資源衝突',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ApiErrorResponse'
               }
             }
           }
@@ -193,7 +227,7 @@ const swaggerOptions: swaggerJsdoc.Options = {
           content: {
             'application/json': {
               schema: {
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiErrorResponse'
               }
             }
           }
@@ -260,6 +294,61 @@ const swaggerOptions: swaggerJsdoc.Options = {
         name: 'System Monitor',
         description: '系統監控相關操作',
         'x-order': 12
+      },
+      {
+        name: 'Authentication',
+        description: '用戶認證相關操作',
+        'x-order': 13
+      },
+      {
+        name: 'OAuth',
+        description: 'OAuth 第三方登入相關操作',
+        'x-order': 14
+      },
+      {
+        name: 'Users',
+        description: '用戶管理相關操作',
+        'x-order': 15
+      },
+      {
+        name: 'Mentor',
+        description: '導師系統相關操作',
+        'x-order': 16
+      },
+      {
+        name: 'Milestones',
+        description: '里程碑管理相關操作',
+        'x-order': 17
+      },
+      {
+        name: 'Notes',
+        description: '便利貼相關操作',
+        'x-order': 18
+      },
+      {
+        name: 'Outcomes',
+        description: '成果相關操作',
+        'x-order': 19
+      },
+      {
+        name: 'Reviews',
+        description: '覆盤相關操作',
+        'x-order': 20
+      },
+      {
+        name: 'Practice',
+        description: '實踐管理相關操作',
+        'x-order': 21
+      },
+      {
+        name: 'Practice Check-ins',
+        description: '實踐簽到相關操作',
+        'x-order': 22
+      },
+      {
+        name: 'Practice Interactions',
+        description: '實踐互動相關操作（點讚、收藏、分享等）',
+        'x-order': 23
       }
     ]
   },
