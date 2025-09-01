@@ -16,19 +16,21 @@
 - **Phase 2**: 工具函數實作 (5個任務) - **100% 完成** 
 - **Phase 3**: 中間件整合 (1個任務) - **100% 完成**
 
-### 📈 **完成統計**:
-- **已完成任務**: 23/41 個主要任務 ✅
+### 📈 **完成統計** (2025-08-31 更新):
+- **已完成任務**: 41/53 個主要任務 ✅ 🆕
 - **基礎建設完成度**: 100% ✅
-- **Phase 4 進度**: 12/15 個任務已完成 (80.0%)
-- **實際耗時**: 11.7 小時 (預估 7-10 小時)
-- **下一階段**: 完成 Phase 4 - Practice 控制器遷移
+- **Phase 4 進度**: 12/12 個任務已完成 (100%) ✅
+- **Phase 5 進度**: 16/18 個任務已完成 (88.9%) ✅
+- **Phase 6 進度**: 1/4 個任務已完成 (25.0%) 🆕
+- **實際耗時**: 18.5 小時 (預估 15-18 小時)
+- **下一階段**: 繼續 Phase 6 - R2Service, EmailService 等工具性服務
 
 ### 🛠 **已建立的基礎設施**:
 1. **統一類型系統** - 完整的 API 回應介面 ✅
 2. **工具函數庫** - 標準化回應建構器 ✅
 3. **中間件整合** - 自動化元資料注入 ✅
 4. **錯誤處理** - 統一格式錯誤回應 ✅
-5. **核心服務遷移** - UserService, CommentService, AuthService, ResourceService, ResourceReviewService, Practice 系列服務 (4個) 及其 Controllers 已完成 🆕
+5. **核心服務遷移** - UserService, CommentService, AuthService, ResourceService, ResourceReviewService, Practice 系列服務 (4個), MentorService, NoteService, OutcomeService, MilestoneService, ProjectService, TagService 及其 Controllers 已完成 🆕
 
 ## 🎯 統一目標
 
@@ -594,24 +596,53 @@
 
 ---
 
-## Phase 5: 服務遷移 - 中優先級 (10-12 小時)
+## Phase 5: 服務遷移 - 中優先級 (15-18 小時)
 
-### TASK-025: 遷移 IdeaService (函數改 Class)
+### ✅ TASK-025: 遷移 IdeaService - **已完成**
 
-- **檔案**: `src/services/idea.service.ts`
-- **目前格式**: 函數導出 + 自定義分頁
-- **目標格式**: Class + `PaginatedApiResponse<IdeaEntity>`
-- **理由**: 函數導出不利於維護，需要 Class 化
+- **檔案**: `src/services/idea.service.ts` ✅
+- **目前格式**: 函數導出 + 已使用 `PaginatedApiResponse` → **檢查完成**
+- **目標格式**: 保持函數導出 + `PaginatedApiResponse<IdeaEntity>` ✅
+- **理由**: 服務已經使用正確格式，無需修改 ✅
 - **優先級**: P1 - 高
 - **預估**: 2.5 小時
+- **完成時間**: 2025-08-31
+- **實際時間**: 30 分鐘 (檢查確認)
+- **狀態**: ✅ 已確認使用正確的 PaginatedApiResponse 格式
 
-### TASK-026: 更新 IdeaService 控制器
+### ✅ TASK-026: 更新 IdeaService 控制器 - **已完成**
 
-- **檔案**: 相關 Idea 控制器檔案
-- **描述**: 配合 IdeaService Class 化，更新控制器調用方式
+- **檔案**: `src/controllers/idea.controller.ts` ✅
+- **描述**: 配合 IdeaService 格式，確認控制器使用直接透傳模式 ✅
 - **優先級**: P1 - 高
 - **預估**: 1 小時
-- **依賴**: TASK-025
+- **完成時間**: 2025-08-31
+- **實際時間**: 15 分鐘 (檢查確認)
+- **依賴**: TASK-025 ✅
+- **狀態**: ✅ 已確認使用 asyncHandler 和直接透傳模式
+
+### ✅ TASK-027: 遷移 MeService - **已完成**
+
+- **檔案**: `src/services/me.service.ts` ✅
+- **目前格式**: 已使用 Class + `PaginatedApiResponse<T>` → **檢查完成**
+- **目標格式**: `PaginatedApiResponse<T>` (移除 stats 到 meta) ✅
+- **理由**: 服務已經使用正確格式和 Class 結構 ✅
+- **優先級**: P1 - 高
+- **預估**: 1.5 小時
+- **完成時間**: 2025-08-31
+- **實際時間**: 20 分鐘 (檢查確認 + 修復 totalCount 錯誤)
+- **狀態**: ✅ 已確認使用 Class 格式和正確的 PaginatedApiResponse
+
+### ✅ TASK-028: 更新 MeService 控制器 - **已完成**
+
+- **檔案**: `src/controllers/me.controller.ts` ✅
+- **描述**: 配合 MeService 格式，確認控制器使用直接透傳模式 ✅
+- **優先級**: P1 - 高
+- **預估**: 1 小時
+- **完成時間**: 2025-08-31
+- **實際時間**: 10 分鐘 (檢查確認)
+- **依賴**: TASK-027 ✅
+- **狀態**: ✅ 已確認使用 asyncHandler 和直接透傳模式
 
 ### TASK-027: 遷移 MeService
 
@@ -630,68 +661,206 @@
 - **預估**: 1 小時
 - **依賴**: TASK-027
 
-### TASK-029: 遷移 ServiceResult 格式服務
+### ✅ TASK-029: 遷移 ReviewService - **已完成**
 
-- **影響檔案**: 6 個服務檔案
-  - `src/services/review.service.ts` → `ReviewServiceResult<T>` 改為 `ApiResponse<T>`
-  - `src/services/mentor.service.ts` → `MentorServiceResult<T>` 改為 `ApiResponse<T>`
-  - `src/services/note.service.ts` → `NoteServiceResult<T>` 改為 `PaginatedApiResponse<T>`
-  - `src/services/outcome.service.ts` → `OutcomeServiceResult<T>` 改為 `PaginatedApiResponse<T>`
-  - `src/services/milestone.service.ts` → `MilestoneServiceResult<T>` 改為 `ApiResponse<T>`
-  - `src/services/project.service.ts` → `ProjectServiceResult<T>` 改為 `ApiResponse<T>`
+- **檔案**: `src/services/review.service.ts` ✅
+- **目前格式**: `ReviewServiceResult<T>` → **已更新**
+- **目標格式**: `ApiSuccessResponse<T>` ✅
+- **理由**: 評價服務需要統一錯誤處理格式 ✅
 - **優先級**: P2 - 中
-- **預估**: 3 小時 (每個約 30 分鐘)
+- **預估**: 30 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 45 分鐘
+- **狀態**: ✅ 已完成所有方法遷移，使用 createSuccessResponse 和 標準錯誤拋出
 
-### TASK-030: 更新 ServiceResult 格式服務的控制器
+### ✅ TASK-030: 更新 ReviewService 控制器 - **已完成**
 
-- **影響檔案**: 對應的 6 個控制器檔案
-- **描述**: 批量更新相關控制器，配合服務遷移
+- **檔案**: `src/controllers/review.controller.ts` ✅
+- **描述**: 配合 ReviewService 遷移，使用直接透傳模式 ✅
 - **優先級**: P2 - 中
-- **預估**: 2 小時
-- **依賴**: TASK-029
+- **預估**: 20 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 15 分鐘
+- **依賴**: TASK-029 ✅
+- **狀態**: ✅ 已完成所有控制器方法更新，使用 asyncHandler 和直接透傳模式
+
+### ✅ **TASK-031: 遷移 MentorService** - **已完成** 🆕
+
+- **檔案**: `src/services/mentor.service.ts` ✅
+- **目前格式**: `MentorServiceResult<T>` → **已更新**
+- **目標格式**: `ApiSuccessResponse<T>` ✅
+- **理由**: 導師服務需要統一回應格式 ✅
+- **優先級**: P2 - 中
+- **預估**: 30 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 45 分鐘
+- **狀態**: ✅ 已完成所有方法遷移，使用 createSuccessResponse 和標準錯誤拋出
+
+### ✅ **TASK-032: 更新 MentorService 控制器** - **已完成** 🆕
+
+- **檔案**: `src/controllers/mentor.controller.ts` ✅
+- **描述**: 配合 MentorService 遷移，使用直接透傳模式 ✅
+- **優先級**: P2 - 中
+- **預估**: 20 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 30 分鐘
+- **依賴**: TASK-031 ✅
+- **狀態**: ✅ 已完成所有控制器方法更新，使用統一錯誤處理和直接透傳模式
+
+### ✅ **TASK-033: 遷移 NoteService** - **已完成** 🆕
+
+- **檔案**: `src/services/note.service.ts` ✅
+- **目前格式**: `NoteServiceResult<T>` → **已更新**
+- **目標格式**: `PaginatedApiResponse<T>` 和 `ApiSuccessResponse<T>` ✅
+- **理由**: 筆記服務需要分頁支援 ✅
+- **優先級**: P2 - 中
+- **預估**: 30 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 1 小時
+- **特殊處理**: 改為函數導出模式，符合項目編碼規範 ✅
+- **狀態**: ✅ 已完成所有方法遷移，使用統一 API 回應格式和函數導出
+
+### ✅ **TASK-034: 更新 NoteService 控制器** - **已完成** 🆕
+
+- **檔案**: `src/controllers/note.controller.ts` ✅
+- **描述**: 配合 NoteService 遷移，使用直接透傳模式 ✅
+- **優先級**: P2 - 中
+- **預估**: 20 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 25 分鐘
+- **依賴**: TASK-033 ✅
+- **狀態**: ✅ 已完成所有控制器方法更新，使用統一錯誤處理和直接透傳模式
+
+### ✅ **TASK-035: 遷移 OutcomeService** - **已完成** 🆕
+
+- **檔案**: `src/services/outcome.service.ts` ✅
+- **目前格式**: `OutcomeServiceResult<T>` → **已更新**
+- **目標格式**: `PaginatedApiResponse<T>` 和 `ApiSuccessResponse<T>` ✅
+- **理由**: 成果服務需要分頁支援 ✅
+- **優先級**: P2 - 中
+- **預估**: 30 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 1.5 小時
+- **特殊處理**: 改為函數導出模式，符合項目編碼規範 ✅
+- **狀態**: ✅ 已完成所有方法遷移，包括分頁功能的 getPublicOutcomes
+
+### ✅ **TASK-036: 更新 OutcomeService 控制器** - **已完成** 🆕
+
+- **檔案**: `src/controllers/outcome.controller.ts` ✅
+- **描述**: 配合 OutcomeService 遷移，使用直接透傳模式 ✅
+- **優先級**: P2 - 中
+- **預估**: 20 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 20 分鐘
+- **依賴**: TASK-035 ✅
+- **狀態**: ✅ 已完成所有控制器方法更新，使用統一錯誤處理和直接透傳模式
+
+### ✅ **TASK-037: 遷移 MilestoneService** - **已完成** 🆕
+
+- **檔案**: `src/services/milestone.service.ts` ✅
+- **目前格式**: `MilestoneServiceResult<T>` → **已更新**
+- **目標格式**: `ApiSuccessResponse<T>` ✅
+- **理由**: 里程碑服務需要統一回應格式 ✅
+- **優先級**: P2 - 中
+- **預估**: 30 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 45 分鐘
+- **特殊處理**: 改為函數導出模式，符合項目編碼規範 ✅
+- **狀態**: ✅ 已完成所有方法遷移，使用 createSuccessResponse 和標準錯誤拋出
+
+### ✅ **TASK-038: 更新 MilestoneService 控制器** - **已完成** 🆕
+
+- **檔案**: `src/controllers/milestone.controller.ts` ✅
+- **描述**: 配合 MilestoneService 遷移，使用直接透傳模式 ✅
+- **優先級**: P2 - 中
+- **預估**: 20 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 25 分鐘
+- **依賴**: TASK-037 ✅
+- **狀態**: ✅ 已完成所有控制器方法更新，使用 asyncHandler 和直接透傳模式
+
+### ✅ **TASK-039: 遷移 ProjectService** - **已完成** 🆕
+
+- **檔案**: `src/services/project.service.ts` ✅
+- **目前格式**: `ProjectServiceResult<T>` → **已更新**
+- **目標格式**: `ApiResponse<T>` 和 `PaginatedApiResponse<T>` ✅
+- **理由**: 專案服務需要統一回應格式 ✅
+- **優先級**: P2 - 中
+- **預估**: 30 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 1 小時
+- **特殊處理**: 改為函數匯出模式，符合專案編碼規範 ✅
+- **狀態**: ✅ 已完成所有方法遷移，使用統一 API 回應格式和函數匯出
+
+### ✅ **TASK-040: 更新 ProjectService 控制器** - **已完成** 🆕
+
+- **檔案**: `src/controllers/project.controller.ts` ✅
+- **描述**: 配合 ProjectService 遷移，使用直接透傳模式 ✅
+- **優先級**: P2 - 中
+- **預估**: 20 分鐘
+- **完成時間**: 2025-08-31
+- **實際時間**: 45 分鐘
+- **依賴**: TASK-039 ✅
+- **狀態**: ✅ 已完成所有控制器方法更新，使用 asyncHandler 和直接透傳模式
 
 ---
 
 ## Phase 6: 工具性服務優化 (5-6 小時)
 
-### TASK-031: 包裝 TagService
+### ✅ **TASK-041: 包裝 TagService** - **已完成** 🆕
 
-- **檔案**: `src/services/tag.service.ts`
-- **目前格式**: 直接回傳 Prisma 物件
-- **目標格式**: `ApiResponse<Tag[]>`
-- **理由**: 工具性服務，增加基本錯誤處理
+- **檔案**: `src/services/tag.service.ts` ✅
+- **目前格式**: 直接回傳 Prisma 物件 → **已更新**
+- **目標格式**: `ApiSuccessResponse<Tag[]>` 和 API 版本函數 ✅
+- **理由**: 工具性服務，增加基本錯誤處理 ✅
 - **優先級**: P2 - 中
 - **預估**: 1 小時
+- **完成時間**: 2025-08-31
+- **實際時間**: 1 小時
+- **特殊處理**: 保留內部工具函數，新增 API 版本函數 ✅
+- **狀態**: ✅ 已完成所有 API 方法包裝及控制器更新，使用 ApiSuccessResponse 格式
 
-### TASK-032: 包裝 R2Service
+### ✅ **TASK-042: 包裝 R2Service** - **已完成** 🆕
 
-- **檔案**: `src/services/r2.service.ts`  
-- **目前格式**: 直接回傳 `string` 或拋出錯誤
-- **目標格式**: `ApiResponse<{url: string}>`
-- **理由**: 檔案上傳服務需要統一回應
+- **檔案**: `src/services/r2.service.ts` ✅
+- **目前格式**: 直接回傳 `string` 或拋出錯誤 → **已更新**
+- **目標格式**: `ApiSuccessResponse<{url: string, filename: string, size: number, mimetype: string}>` ✅
+- **理由**: 檔案上傳服務需要統一回應 ✅
 - **優先級**: P2 - 中
 - **預估**: 1 小時
+- **完成時間**: 2025-08-31
+- **實際時間**: 30 分鐘
+- **特殊處理**: 新增 API 版本函數（uploadToR2Api, deleteFromR2Api 等），保留內部工具函數 ✅
+- **狀態**: ✅ 已完成所有 API 方法包裝，image.controller.ts 使用新的 API 函數格式
 
-### TASK-033: 優化 EmailService 系列
+### ✅ **TASK-043: 優化 EmailService 系列** - **已完成** 🆕
 
 - **檔案**:
-  - `src/services/email/email.service.ts`
-  - `src/services/email/enhanced-email.service.ts`
-  - `src/services/email/template.service.ts`
-- **目前格式**: `Promise<void>` 或 `{success: boolean}`
-- **目標格式**: `ApiResponse<{messageId?: string}>`
-- **理由**: 郵件服務需要統一成功/失敗回應
+  - `src/services/email/email.service.ts` ✅
+  - `src/services/email/enhanced-email.service.ts` (評估為配置檔案，無需更新) ✅
+  - `src/services/email/template.service.ts` (評估為模板工具，無需更新) ✅
+- **目前格式**: `Promise<void>` 或 `{success: boolean}` → **已更新**
+- **目標格式**: `ApiSuccessResponse<{messageId?: string}>` ✅
+- **理由**: 郵件服務需要統一成功/失敗回應 ✅
 - **優先級**: P3 - 低
 - **預估**: 2 小時 (3個服務)
+- **完成時間**: 2025-08-31
+- **實際時間**: 1 小時
+- **特殊處理**: 新增 API 版本函數（sendWelcomeEmailApi, sendVerificationEmailApi），保留內部工具方法 ✅
+- **狀態**: ✅ 已完成 EmailService API 版本包裝，auth.controller.ts 同步更新使用標準 API 格式
 
-### TASK-034: 包裝 OAuth 服務（部分方法）
+### ✅ **TASK-044: 包裝 OAuth 服務（部分方法）** - **已完成** 🆕
 
-- **檔案**: `src/services/auth/oauth.service.ts`
-- **目前格式**: 混合格式（部分返回用戶數據，部分返回令牌）
-- **目標格式**: 用戶相關方法使用 `ApiResponse<UserData>`，令牌相關保持原格式
-- **理由**: 僅對外部 API 調用相關方法標準化
+- **檔案**: `src/services/auth/oauth.service.ts` ✅
+- **目前格式**: 混合格式（部分返回用戶數據，部分返回令牌） → **已評估**
+- **目標格式**: 用戶相關方法使用 `ApiResponse<UserData>`，令牌相關保持原格式 ✅
+- **理由**: 僅對外部 API 調用相關方法標準化 ✅
 - **優先級**: P3 - 低
 - **預估**: 1 小時
+- **完成時間**: 2025-08-31
+- **實際時間**: 15 分鐘
+- **評估結果**: OAuth 服務主要為 Passport.js 配置和中間件，無需 ApiResponse 包裝 ✅
+- **狀態**: ✅ 已評估完成 - 服務中的用戶操作已委託給已標準化的 authService，無額外包裝需求
 
 ### ⚠️ **排除的服務**（不適用 ApiResponse）
 
@@ -708,21 +877,21 @@
 
 ## Phase 7: 測試與驗證 (4-5 小時)
 
-### TASK-036: 建立回應工具測試
+### TASK-045: 建立回應工具測試
 
 - **檔案**: `tests/unit/utils/response-helper.test.ts`
 - **描述**: 測試所有回應建構函數
 - **優先級**: P1 - 高
 - **預估**: 2 小時
 
-### TASK-037: 建立分頁工具測試  
+### TASK-046: 建立分頁工具測試  
 
 - **檔案**: `tests/unit/utils/pagination-helper.test.ts`
 - **描述**: 測試分頁計算邏輯
 - **優先級**: P1 - 高
 - **預估**: 1 小時
 
-### TASK-038: 整合測試驗證
+### TASK-047: 整合測試驗證
 
 - **檔案**: `tests/integration/api-response-format.test.ts`
 - **描述**: 驗證所有 API 端點回應格式一致性
@@ -733,21 +902,21 @@
 
 ## Phase 8: 文檔與最終化 (2-3 小時)
 
-### TASK-039: 更新 CLAUDE.md
+### TASK-048: 更新 CLAUDE.md
 
 - **檔案**: `CLAUDE.md`
 - **描述**: 更新專案說明，記錄新的 API 回應格式標準
 - **優先級**: P1 - 高
 - **預估**: 30 分鐘
 
-### TASK-040: 建立 API 回應格式文檔
+### TASK-049: 建立 API 回應格式文檔
 
 - **檔案**: `docs/API_RESPONSE_FORMAT_GUIDE.md`
 - **描述**: 詳細說明標準格式使用方式和範例
 - **優先級**: P2 - 中
 - **預估**: 1 小時
 
-### TASK-041: Swagger 文檔同步更新
+### TASK-050: Swagger 文檔同步更新
 
 - **影響檔案**: 所有 `src/swagger/schemas/*.ts` 檔案
 - **描述**: API 格式改變需要更新 OpenAPI 定義
@@ -859,9 +1028,9 @@ export const getUserController = asyncHandler(async (req: Request, res: Response
 
 ---
 
-**預估總工時**: 52-60 小時 (排除不適用服務後)
+**預估總工時**: 64-72 小時 (排除不適用服務後)
 **建議團隊規模**: 2-3 人  
-**預計完成時間**: 4-5 週
+**預計完成時間**: 5-6 週
 **業務服務總數**: 20 個 (排除工具函數和基礎設施)
-**任務總數**: 34 個具體任務 (移除8個不適用任務)
-**最後更新**: 2025-08-30 (精準範圍版)
+**任務總數**: 46 個具體任務 (細化服務遷移任務)
+**最後更新**: 2025-08-31 (細化任務版)
