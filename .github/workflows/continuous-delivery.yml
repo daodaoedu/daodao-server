@@ -407,18 +407,58 @@ jobs:
           IMAGE_TAG="${{ needs.build.outputs.image-tag }}"
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          # 判斷部署狀態
+          # 判斷各階段狀態
+          CI_STATUS="${{ needs.continuous_integration.result }}"
+          BUILD_STATUS="${{ needs.build.result }}"
           DEPLOY_STATUS="${{ needs.deploy.result }}"
           VERIFY_STATUS="${{ needs.verify.result || 'skipped' }}"
           
-          if [ "$DEPLOY_STATUS" == "failure" ] || [ -z "$DEPLOY_STATUS" ]; then
-            # 部署失敗 (包括所有失敗情況)
-            FAILURE_REASON=""
-            if [ "$DEPLOY_STATUS" == "failure" ]; then
-              FAILURE_REASON="部署過程發生錯誤"
-            else
-              FAILURE_REASON="部署狀態未知或連接中斷"
-            fi
+          if [ "$CI_STATUS" == "failure" ]; then
+            # CI 失敗
+            FAILURE_REASON="持續整合檢查失敗"
+            
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"🚨 **CI 檢查失敗！**\",
+              \"embeds\": [{
+                \"title\": \"🧪 CI Failed\",
+                \"description\": \"$FAILURE_REASON，請檢查測試、類型檢查或代碼品質\",
+                \"color\": 16711680,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"❌ Status\", \"value\": \"CI: $CI_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          elif [ "$BUILD_STATUS" == "failure" ]; then
+            # Build 失敗
+            FAILURE_REASON="Docker 映像構建失敗"
+            
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"🚨 **Build 失敗！**\",
+              \"embeds\": [{
+                \"title\": \"🔨 Build Failed\",
+                \"description\": \"$FAILURE_REASON，請檢查代碼和構建腳本\",
+                \"color\": 16711680,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"❌ Status\", \"value\": \"Build: $BUILD_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          elif [ "$DEPLOY_STATUS" == "failure" ]; then
+            # 部署失敗
+            FAILURE_REASON="部署過程發生錯誤"
             
             curl -X POST -H "Content-Type: application/json" -d "{
               \"content\": \"🚨 **部署失敗！**\",
@@ -476,7 +516,7 @@ jobs:
               }]
             }" ${{ secrets.DISCORD_WEBHOOK_URL }}
             
-          else
+          elif [ "$BUILD_STATUS" == "success" ] && [ "$DEPLOY_STATUS" == "success" ] && ([ "$VERIFY_STATUS" == "success" ] || [ "$VERIFY_STATUS" == "skipped" ]); then
             # 成功部署
             ENV_INFO=""
             if [ "$IMAGE_TAG" == "prod" ]; then
@@ -498,6 +538,26 @@ jobs:
                   {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
                   {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
                   {\"name\": \"📊 Status\", \"value\": \"✅ Deploy: $DEPLOY_STATUS\\n✅ Verify: $VERIFY_STATUS\", \"inline\": true}
+                ],
+                \"timestamp\": \"$CURRENT_TIME\"
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            
+          else
+            # 未知狀態或部分失敗
+            curl -X POST -H "Content-Type: application/json" -d "{
+              \"content\": \"⚠️ **部署狀態未明！**\",
+              \"embeds\": [{
+                \"title\": \"❓ Unknown Status\",
+                \"description\": \"部署流程結束但狀態不明確，請手動檢查\",
+                \"color\": 16776960,
+                \"fields\": [
+                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
+                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"📊 Status\", \"value\": \"CI: $CI_STATUS\\nBuild: $BUILD_STATUS\\nDeploy: $DEPLOY_STATUS\\nVerify: $VERIFY_STATUS\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]

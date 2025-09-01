@@ -16,7 +16,8 @@ RUN npm ci --only=prod && \
 # Prisma 層 - 只在 schema 變動時重建
 FROM deps AS prisma
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN npx prisma generate && \
+    echo "Prisma client generated successfully"
 
 # 構建層 - 編譯 TypeScript
 FROM prisma AS builder
@@ -56,14 +57,14 @@ COPY --from=deps /app/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/ecosystem.config.js ./
 
-# 複製 Prisma 文件
+# 複製 Prisma 文件和生成的客戶端
 COPY --from=prisma /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=prisma /app/generated ./generated
 COPY prisma ./prisma
 
-# 創建必要的目錄和符號鏈接
-RUN ln -sf /app/generated /app/dist/generated && \
-    mkdir -p /app/logs
+# 創建必要的目錄和確保 generated 目錄可訪問
+RUN mkdir -p /app/logs /app/dist/generated && \
+    cp -r /app/generated/* /app/dist/generated/ 2>/dev/null || true
 
 # 設置權限
 RUN chown -R nodejs:nodejs /app
