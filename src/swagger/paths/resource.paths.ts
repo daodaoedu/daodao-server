@@ -161,7 +161,7 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
+ *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:

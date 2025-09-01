@@ -218,34 +218,31 @@ export const batchProjectOperationSchema = z.object({
 
 // 里程碑相關驗證
 export const createMilestoneSchema = z.object({
-  project_id: z.string()
-    .uuid('專案 ID 格式不正確'),
   position: z.number()
     .int('位置必須是整數')
-    .min(1, '位置必須大於 0'),
+    .min(1, '位置必須大於 0')
+    .optional(),
   name: z.string()
     .min(1, '里程碑名稱不能為空')
-    .max(100, '里程碑名稱不能超過 100 字元')
-    .optional(),
+    .max(100, '里程碑名稱不能超過 100 字元'),
   description: z.string()
     .max(1000, '里程碑描述不能超過 1000 字元')
     .optional(),
-  start_date: z.string()
-    .datetime({ message: '開始日期格式不正確' })
-    .optional(),
-  end_date: z.string()
-    .datetime({ message: '結束日期格式不正確' })
-    .optional()
+  startDate: z.string()
+    .min(1, '開始日期不能為空'),
+  endDate: z.string()
+    .min(1, '結束日期不能為空'),
+  isCompleted: z.boolean().optional()
 }).refine(
   (data) => {
-    if (data.start_date && data.end_date) {
-      return new Date(data.start_date) <= new Date(data.end_date);
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
     }
     return true;
   },
   {
     message: '開始日期不能晚於結束日期',
-    path: ['end_date']
+    path: ['endDate']
   }
 );
 
@@ -261,29 +258,29 @@ export const updateMilestoneSchema = z.object({
   description: z.string()
     .max(1000, '里程碑描述不能超過 1000 字元')
     .optional(),
-  start_date: z.string()
-    .datetime({ message: '開始日期格式不正確' })
+  startDate: z.string()
+    .min(1, '開始日期不能為空')
     .optional(),
-  end_date: z.string()
-    .datetime({ message: '結束日期格式不正確' })
+  endDate: z.string()
+    .min(1, '結束日期不能為空')
     .optional(),
-  is_completed: z.boolean().optional()
+  isCompleted: z.boolean().optional()
 }).refine(
   (data) => {
-    if (data.start_date && data.end_date) {
-      return new Date(data.start_date) <= new Date(data.end_date);
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
     }
     return true;
   },
   {
     message: '開始日期不能晚於結束日期',
-    path: ['end_date']
+    path: ['endDate']
   }
 );
 
 // 里程碑 ID 參數驗證
 export const milestoneParamsSchema = z.object({
-  id: z.string()
+  milestoneId: z.string()
     .regex(/^\d+$/, '里程碑 ID 必須是數字')
     .transform(Number)
 });

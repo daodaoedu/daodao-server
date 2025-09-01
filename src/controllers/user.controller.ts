@@ -8,68 +8,49 @@ import { userService } from '../services/user.service';
 import {
   UserQueryParams,
   CreateUserRequest,
-  UpdateUserRequest
+  UpdateUserRequest,
+  SetCustomIdRequest
 } from '../types/user.types';
 import {
   NotFoundError
-} from '../utils/error-handler';
-import { asyncWrapper } from '../utils/error-handler';
+} from '../middleware/error.middleware';
+import { asyncHandler } from '../middleware/error.middleware';
 
 /**
  * 取得所有用戶
  * GET /api/users
  */
-export const getAllUsers = asyncWrapper(async (req: Request, res: Response) => {
+export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   const params = req.query as UserQueryParams;
   const result = await userService.getAllUsers(params);
-  res.status(200).json({
-    success: true,
-    data: result
-  });
+  res.json(result);
 });
 
 /**
  * 獲取當前用戶
  * GET /api/users/me
  */
-export const getMe = asyncWrapper(async (req: Request, res: Response) => {
+export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
   if (!currentUser || !currentUser._id) {
-    const response = {
-      success: true,
-      data: null,
-      message: "User not found"
-    };
-    res.status(200).json(response);
-    return;
+    throw new NotFoundError('User not found');
   }
 
   const user = await userService.getMe(currentUser._id);
 
   if (!user) {
-    const response = {
-      success: true,
-      data: null,
-      message: "User not found"
-    };
-    res.status(200).json(response);
-    return;
+    throw new NotFoundError('User not found');
   }
 
-  const response = {
-    success: true,
-    data: user,
-  };
-
-  res.status(200).json(response);
+  res.json(user);
 });
 
 /**
  * 獲取指定用戶
  * GET /api/users/:id
  */
-export const getOneUser = asyncWrapper(async (req: Request, res: Response) => {
+export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const user = await userService.getOneUser(id);
@@ -78,90 +59,126 @@ export const getOneUser = asyncWrapper(async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  const response = {
-    success: true,
-    data: user,
-  };
-
-  res.status(200).json(response);
+  res.json(user);
 });
 
 /**
  * 創建用戶
  * POST /api/users
  */
-export const createUser = asyncWrapper(async (req: Request, res: Response) => {
+export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const requestData = req.body as CreateUserRequest;
   const currentUser = req.user;
 
   if (!currentUser || !currentUser._id) {
-    throw new Error('User information not found');
+    throw new NotFoundError('User information not found');
   }
 
   const result = await userService.createUser(requestData, currentUser._id);
 
-  res.status(201).json({
-    success: true,
-    message: "User created successfully",
-    data: {
-      user: result.user,
-      token: result.token
-    }
-  });
+  res.status(201).json(result);
 });
 
 /**
  * 更新用戶
  * PUT /api/users/:id
  */
-export const updateUser = asyncWrapper(async (req: Request, res: Response) => {
+export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const requestData = req.body as UpdateUserRequest;
 
-  const updatedUser = await userService.updateUser(id, requestData);
+  const result = await userService.updateUser(id, requestData);
 
-  const response = {
-    success: true,
-    data: updatedUser,
-  };
-
-  res.status(200).json(response);
+  res.json(result);
 });
 
 /**
  * 刪除當前用戶
  * DELETE /api/users/me
  */
-export const deleteMe = asyncWrapper(async (req: Request, res: Response) => {
+export const deleteMe = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
   if (!currentUser || !currentUser._id) {
-    throw new Error('User information not found');
+    throw new NotFoundError('User information not found');
   }
 
-  await userService.deleteMe(currentUser._id);
+  const result = await userService.deleteMe(currentUser._id);
 
-  res.status(200).json({
-    success: true,
-    message: "User deleted successfully",
-    data: {}
-  });
+  res.json(result);
 });
 
 /**
  * 刪除用戶（管理員功能）
  * DELETE /api/users/:id
  */
-export const deleteUser = asyncWrapper(async (req: Request, res: Response) => {
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   const userId = parseInt(req.params.id);
 
-  await userService.deleteUser(userId);
+  const result = await userService.deleteUser(userId);
 
-  res.status(200).json({
-    success: true,
-    message: "User deleted successfully",
-    data: {}
-  });
+  res.json(result);
+});
+
+/**
+ * 檢查自訂 ID 可用性
+ * GET /api/users/custom-id/check/:customId
+ */
+export const checkCustomIdAvailability = asyncHandler(async (req: Request, res: Response) => {
+  const { customId } = req.params;
+
+  const result = await userService.checkCustomIdAvailability(customId);
+
+  res.json(result);
+});
+
+/**
+ * 設置當前用戶的自訂 ID
+ * POST /api/users/me/custom-id
+ */
+export const setCustomId = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+  const { customId } = req.body as SetCustomIdRequest;
+
+  if (!currentUser) {
+    throw new NotFoundError('User not found');
+  }
+
+  const result = await userService.setCustomId(currentUser.id, customId);
+
+  res.json(result);
+});
+
+/**
+ * 移除當前用戶的自訂 ID
+ * DELETE /api/users/me/custom-id
+ */
+export const removeCustomId = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser) {
+    throw new NotFoundError('User not found');
+  }
+
+  const result = await userService.removeCustomId(currentUser.id);
+
+  res.json(result);
+});
+
+/**
+ * 透過自訂 ID 獲取用戶資訊
+ * GET /api/users/custom-id/:customId
+ */
+export const getUserByCustomId = asyncHandler(async (req: Request, res: Response) => {
+  const { customId } = req.params;
+
+  const result = await userService.getUserByCustomId(customId);
+
+  if (!result) {
+    throw new NotFoundError('User not found');
+  }
+
+  res.json(result);
 });
 
 export const userController = {
@@ -171,7 +188,11 @@ export const userController = {
   createUser,
   updateUser,
   deleteMe,
-  deleteUser
+  deleteUser,
+  checkCustomIdAvailability,
+  setCustomId,
+  removeCustomId,
+  getUserByCustomId
 };
 
 export default userController;

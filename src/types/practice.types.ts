@@ -27,22 +27,16 @@ export interface DailyGoal {
 
 // Practice resource interface
 export interface PracticeResource {
-  id: string;
+  id: number;
   name: string;
   url?: string;
 }
 
-// User basic info for practice responses
-export interface UserBasicInfo {
-  id: string;
-  name: string;
-  photoUrl?: string;
-  role?: string;
-}
+import { UserBasicInfo } from './common.types';
 
 // Core practice entity interface
 export interface PracticeEntity {
-  id: string;
+  id: number;
   title: string;
   contentType: ContentType;
   customContentType?: string;
@@ -71,9 +65,9 @@ export interface PracticeEntity {
 
 // Check-in entity interface
 export interface CheckInEntity {
-  id: string;
-  practiceId: string;
-  userId: string;
+  id: number;
+  practiceId: number;
+  userId: number;
   checkInDate: string;
   progressAmount: number;
   note?: string;
@@ -86,34 +80,13 @@ export interface CheckInEntity {
   updatedAt?: string;
 }
 
-// Pagination interface
-export interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
-// API response interfaces
-export interface ApiSuccessResponse<T> {
-  success: true;
-  data: T;
-  message?: string;
-  pagination?: PaginationInfo;
-}
-
-export interface ApiErrorResponse {
-  success: false;
-  error: {
-    message: string;
-    code?: string;
-    details?: unknown;
-  };
-}
-
-export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+// 從統一響應類型文件導入
+import type { 
+  ApiSuccessResponse, 
+  ApiErrorResponse, 
+  ApiResponse,
+  PaginationInfo
+} from './api-response.types';
 
 // Practice statistics interface
 export interface PracticeStats {
@@ -176,7 +149,7 @@ export interface CreateCheckInRequest {
 
 // Event request interfaces
 export interface ViewEventRequest {
-  entityId: string;
+  entityId: number;
   entityType: string;
   duration?: number;
   referrer?: string;
@@ -184,7 +157,7 @@ export interface ViewEventRequest {
 }
 
 export interface ClickEventRequest {
-  entityId: string;
+  entityId: number;
   entityType: string;
   clickType: string;
   clickTarget?: string;
@@ -193,7 +166,7 @@ export interface ClickEventRequest {
 }
 
 export interface ShareEventRequest {
-  entityId: string;
+  entityId: number;
   entityType: string;
   platform?: string;
   shareUrl?: string;
@@ -203,7 +176,7 @@ export interface ShareEventRequest {
 }
 
 export interface FavoriteEventRequest {
-  entityId: string;
+  entityId: number;
   entityType: string;
 }
 
@@ -234,25 +207,25 @@ export interface MyPracticesQueryParams extends PracticeQueryParams {
 // Event interfaces
 export interface EventViewRequest {
   entityType: 'practice';
-  entityId: string;
+  entityId: number;
   duration?: number;
 }
 
 export interface EventClickRequest {
   entityType: 'practice';
-  entityId: string;
+  entityId: number;
   clickPosition?: string;
 }
 
 export interface EventShareRequest {
   entityType: 'practice';
-  entityId: string;
+  entityId: number;
   shareChannel: string;
 }
 
 export interface EventFavoriteRequest {
   entityType: 'practice';
-  entityId: string;
+  entityId: number;
 }
 
 export interface ReactionRequest {
@@ -265,13 +238,13 @@ export interface CreatePracticeParams extends CreatePracticeRequest {
 }
 
 export interface UpdatePracticeParams {
-  practiceId: string;
+  practiceId: number;
   userId: number;
   updates: UpdatePracticeRequest;
 }
 
 export interface DeletePracticeParams {
-  practiceId: string;
+  practiceId: number;
   userId: number;
 }
 
@@ -281,24 +254,24 @@ export interface GetPracticesParams {
 }
 
 export interface GetPracticeDetailParams {
-  practiceId: string;
+  practiceId: number;
   include?: string;
   currentUserId?: number;
 }
 
 export interface CreateCheckInParams extends CheckInRequest {
-  practiceId: string;
+  practiceId: number;
   userId: number;
 }
 
 export interface GetCheckInsParams {
-  practiceId: string;
+  practiceId: number;
   queryParams: CheckInQueryParams;
   currentUserId?: number;
 }
 
 export interface ToggleLikeParams {
-  practiceId: string;
+  practiceId: number;
   userId: number;
   reactionType: string;
 }
@@ -311,7 +284,7 @@ export interface RecordEventParams {
 
 // Database interfaces (Prisma model types)
 export interface DatabasePractice {
-  id: string;
+  id: number;
   external_id: string | null;
   user_id: number;
   title: string;
@@ -350,7 +323,7 @@ export interface DatabasePractice {
 
 export interface DatabaseCheckIn {
   id: string;
-  practice_id: string;
+  practice_id: number;
   user_id: number;
   checkin_date: Date;
   progress_amount: number;
@@ -378,8 +351,8 @@ export interface PracticeServiceInterface {
 export interface CheckInServiceInterface {
   createCheckIn(params: CreateCheckInParams): Promise<CheckInEntity>;
   getCheckIns(params: GetCheckInsParams): Promise<{ checkIns: CheckInEntity[]; pagination: PaginationInfo }>;
-  calculateStreak(practiceId: string, userId: number, date: Date): Promise<number>;
-  updatePracticeProgress(practiceId: string, progress: number): Promise<void>;
+  calculateStreak(practiceId: number, userId: number, date: Date): Promise<number>;
+  updatePracticeProgress(practiceId: number, progress: number): Promise<void>;
 }
 
 export interface InteractionServiceInterface {
@@ -449,7 +422,7 @@ export interface PracticeTransformOptions {
 
 // Bulk operations interfaces
 export interface BulkPracticeOperationParams {
-  practiceIds: string[];
+  practiceIds: number[];
   userId: number;
   operation: 'delete' | 'update_status' | 'archive';
   status?: PracticeStatus;

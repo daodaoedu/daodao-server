@@ -3,6 +3,7 @@
  */
 
 import type { users } from '../../generated/prisma';
+import type { ApiSuccessResponse, PaginatedApiResponse } from './api-response.types';
 
 // 分頁查詢參數介面
 export interface UserQueryParams {
@@ -35,6 +36,7 @@ export interface CreateUserRequest {
   wantToDoList?: string[];
   tagList?: string[];
   interestList?: string[];
+  preferences?: Record<string, string[]>; // e.g. { "learning_style": ["visual", "audio"] }
   isSendEmail?: boolean;
 }
 
@@ -61,6 +63,23 @@ export interface UpdateUserRequest {
   tagList?: string[];
   roleList?: string[];
   interestList?: string[];
+  preferences?: Record<string, string[]>; // e.g. { "learning_style": ["visual", "audio"] }
+  customId?: string;
+}
+
+// 自訂 ID 相關請求介面
+export interface SetCustomIdRequest {
+  customId: string;
+}
+
+// 自訂 ID 可用性檢查回應介面
+export interface CustomIdAvailabilityResponse {
+  available: boolean;
+}
+
+// 自訂 ID 設置回應介面
+export interface CustomIdSetResponse {
+  customId: string;
 }
 
 // 格式化後的用戶回應介面
@@ -81,6 +100,7 @@ export interface FormattedUserResponse {
   educationStage?: string;
   selfIntroduction?: string;
   share?: string | string[];
+  preferences?: Record<string, Array<{ name: string; value: string }>>;
   contactList?: {
     email?: string;
     photoUrl?: string;
@@ -96,6 +116,9 @@ export interface FormattedUserResponse {
     wantToDoList?: string[];
   };
   roleList?: string[];
+  customId?: string;
+  customIdVerified?: boolean;
+  customIdCreatedAt?: string;
   createdDate?: string;
   updatedDate?: string;
 }
@@ -116,7 +139,8 @@ export interface UserWithCompleteness {
   completenessScore: number;
 }
 
-// 分頁回應介面
+// Legacy pagination response - deprecated, use PaginatedApiResponse instead
+// @deprecated Use PaginatedApiResponse<FormattedUserResponse> instead
 export interface PaginatedUsersResponse {
   data: FormattedUserResponse[];
   page: number;
@@ -135,13 +159,13 @@ export interface UserResponse {
 
 // 用戶服務介面
 export interface UserService {
-  getAllUsers(params: UserQueryParams): Promise<PaginatedUsersResponse>;
-  getMe(userId: string): Promise<FormattedUserResponse | null>;
-  getOneUser(externalId: string): Promise<FormattedUserResponse | null>;
-  createUser(userData: CreateUserRequest, tempUserId: string): Promise<{ user: FormattedUserResponse; token: string }>;
-  updateUser(externalId: string, userData: UpdateUserRequest): Promise<FormattedUserResponse>;
-  deleteMe(externalId: string): Promise<void>;
-  deleteUser(userId: number): Promise<void>;
+  getAllUsers(params: UserQueryParams): Promise<PaginatedApiResponse<FormattedUserResponse>>;
+  getMe(userId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null>;
+  getOneUser(externalId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null>;
+  createUser(userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>>;
+  updateUser(externalId: string, userData: UpdateUserRequest): Promise<ApiSuccessResponse<FormattedUserResponse>>;
+  deleteMe(externalId: string): Promise<ApiSuccessResponse<{ message: string }>>;
+  deleteUser(userId: number): Promise<ApiSuccessResponse<{ message: string }>>;
 }
 
 // 關聯模型型別 (基於現有的 JavaScript 模型結構)

@@ -261,36 +261,48 @@
  *           $ref: '#/components/schemas/ResourceStatus'
  *     
  *     ResourceListResponse:
- *       type: object
- *       required:
- *         - success
- *         - data
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           type: object
- *           required:
- *             - resources
- *             - pagination
+ *       allOf:
+ *         - $ref: '#/components/schemas/PaginatedApiResponse'
+ *         - type: object
  *           properties:
- *             resources:
+ *             data:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Resource'
- *             pagination:
- *               $ref: '#/components/schemas/PaginationMeta'
  *     
  *     ResourceResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/ApiSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             data:
+ *               $ref: '#/components/schemas/Resource'
+ *     
+ *     ResourceStatsResponse:
  *       type: object
  *       required:
- *         - success
- *         - data
+ *         - totalCount
+ *         - activeCount
+ *         - typeStats
  *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         data:
- *           $ref: '#/components/schemas/Resource'
+ *         totalCount:
+ *           type: integer
+ *           description: 資源總數量（包含所有資源）
+ *           example: 853
+ *         activeCount:
+ *           type: integer
+ *           description: 啟用狀態的資源數量（排除軟刪除）
+ *           example: 843
+ *         typeStats:
+ *           type: object
+ *           description: 按資源類型分組的統計
+ *           additionalProperties:
+ *             type: integer
+ *           example:
+ *             course: 45
+ *             book: 30
+ *             video: 25
+ *             article: 15
+ *             tool: 3
+ *             other: 2
  */

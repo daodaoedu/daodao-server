@@ -3,23 +3,25 @@
  * 處理資源相關的業務邏輯
  */
 
-import { prisma } from '@/services/database/prisma.service';
+import { prisma } from './database/prisma.service';
 import type { Prisma } from '../../generated/prisma';
 import { 
   transformResourceToApi, 
   transformResourceToDb
-} from '@/services/transform.service';
+} from './transform.service';
 import { 
   NotFoundError, 
   ForbiddenError 
-} from '@/utils/error-handler';
+} from '../middleware/error.middleware';
 import { 
   decodeCursor, 
   generatePaginationMetadata 
-} from '@/utils/transform-utils';
-import { createResourceSchema, updateResourceSchema } from '@/validators/resource.validator';
-import { DEFAULT_RESOURCE_PAGE_LIMIT, MAX_RESOURCE_PAGE_LIMIT } from '@/constants/mappings';
-import tagService from '@/services/tag.service';
+} from '../utils/transform-utils';
+import { createResourceSchema, updateResourceSchema } from '../validators/resource.validator';
+import { DEFAULT_RESOURCE_PAGE_LIMIT, MAX_RESOURCE_PAGE_LIMIT } from '../constants/mappings';
+import * as tagService from './tag.service';
+import { createSuccessResponse, createCursorPaginatedResponse } from '../utils/response-helper';
+import { ApiResponse, CursorPaginatedApiResponse } from '../types/api-response.types';
 
 // 定義篩選參數介面
 interface ResourceFilterParams {
@@ -32,6 +34,7 @@ interface ResourceFilterParams {
   tags?: string[];
   query?: string;
   createdBy?: number;
+  [key: string]: unknown;
 }
 
 // 定義分頁參數介面
@@ -47,9 +50,9 @@ interface PaginationParams {
  * @param id - 資源的 external_id (UUID)
  * @returns 資源詳情
  */
-export async function getResourceById(id: string): Promise<import('@/types/resource.types').ResourceResponse | null> {
+export async function getResourceById(id: string): Promise<ApiResponse<import('../types/resource.types').ResourceResponse | null>> {
   // 查詢資源，使用 external_id
-  const resource = await prisma.resources.findUnique({
+  const resource = await prisma.resources.findFirst({
     where: { 
       external_id: id,
       deleted_at: null 
@@ -85,16 +88,28 @@ export async function getResourceById(id: string): Promise<import('@/types/resou
     throw new NotFoundError('資源不存在');
   }
 
-  // 查詢標籤 - 使用 external_id
-  const tags = await prisma.entity_tags.findMany({
-    where: {
-      entity_type: 'resource',
-      entity_id: resource.external_id || ''
-    },
-    include: {
-      tags: true
+  // 查詢標籤 - entity_tags 使用數字 ID，使用原生 SQL 避免型別問題
+  interface TagResult {
+    tag_id: number;
+    tag_name: string;
+  }
+  
+  const tagResults = await prisma.$queryRaw<TagResult[]>`
+    SELECT 
+      t.id as tag_id,
+      t.name as tag_name
+    FROM entity_tags et
+    INNER JOIN tags t ON et.tag_id = t.id
+    WHERE et.entity_type = 'resource'
+    AND et.entity_id::integer = ${resource.id}
+  `;
+  
+  const tags = tagResults.map(row => ({
+    tags: {
+      id: row.tag_id,
+      name: row.tag_name
     }
-  });
+  }));
 
   // 查詢評價統計
   const reviewStats = await prisma.resource_review.aggregate({
@@ -170,7 +185,8 @@ export async function getResourceById(id: string): Promise<import('@/types/resou
     updatedAt: resource.updated_at
   };
 
-  return transformResourceToApi(resourceDetail);
+  const transformedResource = await transformResourceToApi(resourceDetail);
+  return createSuccessResponse(transformedResource);
 }
 
 /**
@@ -182,20 +198,12 @@ export async function getResourceById(id: string): Promise<import('@/types/resou
 export async function getResources(
   filters: ResourceFilterParams,
   pagination: PaginationParams
-): Promise<{
-  resources: import('@/types/resource.types').ResourceResponse[];
-  pagination: {
-    cursors: { start: string | null; end: string | null };
-    hasMore: boolean;
-    count: number;
-    parentCount?: number;
-  };
-}> {
+): Promise<CursorPaginatedApiResponse<import('../types/resource.types').ResourceResponse>> {
   const { cursor, limit = DEFAULT_RESOURCE_PAGE_LIMIT, sort = 'created_at', order = 'desc' } = pagination;
   const actualLimit = Math.min(limit, MAX_RESOURCE_PAGE_LIMIT);
 
   // 預先處理標籤篩選
-  let tagFilteredExternalIds: string[] | undefined;
+  let tagFilteredResourceIds: number[] | undefined;
   if (filters.tags && filters.tags.length > 0) {
     const taggedResourceIds = await prisma.entity_tags.findMany({
       where: {
@@ -211,17 +219,18 @@ export async function getResources(
       }
     });
     
-    tagFilteredExternalIds = taggedResourceIds.map(tag => tag.entity_id);
-    if (tagFilteredExternalIds.length === 0) {
+    // entity_id 在 entity_tags 表中存儲的是 resource 的數字 ID
+    tagFilteredResourceIds = taggedResourceIds.map(tag => tag.entity_id);
+    if (tagFilteredResourceIds.length === 0) {
       // 如果沒有找到任何標籤匹配的資源，返回空結果
-      return {
-        resources: [],
-        pagination: {
+      return createCursorPaginatedResponse(
+        [],
+        {
           cursors: { start: null, end: null },
           hasMore: false,
           count: 0
         }
-      };
+      );
     }
   }
 
@@ -281,9 +290,9 @@ export async function getResources(
   }
 
   // 添加標籤篩選結果
-  if (tagFilteredExternalIds) {
-    where.external_id = {
-      in: tagFilteredExternalIds
+  if (tagFilteredResourceIds) {
+    where.id = {
+      in: tagFilteredResourceIds
     };
   }
 
@@ -339,27 +348,62 @@ export async function getResources(
   const hasMore = resources.length > actualLimit;
   const resourcesData = hasMore ? resources.slice(0, actualLimit) : resources;
 
-  // 批量查詢標籤 - 使用 external_id 字符串 (修正型別錯誤)
-  const resourceExternalIds = resourcesData
-    .map(resource => resource.external_id)
-    .filter((id): id is string => id !== null && id !== undefined);
+  // 批量查詢標籤 - entity_tags 表使用數字 ID，不是 UUID
+  const resourceIds = resourcesData
+    .map(resource => resource.id)
+    .filter((id): id is number => id !== null && id !== undefined);
   
-  const allTags = resourceExternalIds.length > 0 ? await prisma.entity_tags.findMany({
-    where: {
-      entity_type: 'resource',
-      entity_id: { in: resourceExternalIds }
-    },
-    include: {
-      tags: true
-    }
-  }) : [];
+  interface TagQueryResult {
+    entity_id: string;
+    entity_type: string;
+    tag_id: number;
+    tag_name: string;
+    created_at: Date;
+    updated_at: Date;
+    created_by: number | null;
+  }
+  
+  interface TagWithEntity {
+    entity_id: string;
+    resource_id: number;
+    tags: {
+      id: number;
+      name: string;
+    };
+  }
+  
+  let allTags: TagWithEntity[] = [];
+  if (resourceIds.length > 0) {
+    // 使用原生 SQL 查詢，entity_id 實際儲存的是資源的數字 ID
+    const rawTags = await prisma.$queryRaw<TagQueryResult[]>`
+      SELECT 
+        et.*,
+        t.id as tag_id,
+        t.name as tag_name
+      FROM entity_tags et
+      INNER JOIN tags t ON et.tag_id = t.id
+      WHERE et.entity_type = 'resource'
+      AND et.entity_id::integer = ANY(${resourceIds}::integer[])
+    `;
+    
+    // 轉換為預期的格式
+    allTags = rawTags.map(row => ({
+      entity_id: row.entity_id,
+      resource_id: parseInt(row.entity_id),
+      tags: {
+        id: row.tag_id,
+        name: row.tag_name
+      }
+    }));
+  }
 
-  // 將標籤按資源 ID 分組
+  // 將標籤按資源 ID 分組（使用數字 ID）
   const tagsByResourceId = allTags.reduce((acc, tag) => {
-    if (!acc[tag.entity_id]) {
-      acc[tag.entity_id] = [];
+    const resourceId = tag.resource_id.toString();
+    if (!acc[resourceId]) {
+      acc[resourceId] = [];
     }
-    acc[tag.entity_id].push({
+    acc[resourceId].push({
       id: tag.tags.id,
       name: tag.tags.name
     });
@@ -389,7 +433,7 @@ export async function getResources(
       id: resource.categories_resources_sub_category_idTocategories.id,
       name: resource.categories_resources_sub_category_idTocategories.name
     } : null,
-    tags: tagsByResourceId[resource.external_id || ''] || [],
+    tags: tagsByResourceId[resource.id.toString()] || [],
     createdAt: resource.created_at,
     updatedAt: resource.updated_at
   }));
@@ -403,10 +447,16 @@ export async function getResources(
     hasMore
   );
 
-  return {
-    resources: resourceList.map((resource) => transformResourceToApi(resource)),
-    pagination: paginationMetadata
-  };
+  const transformedResources = await Promise.all(resourceList.map((resource) => transformResourceToApi(resource)));
+  
+  return createCursorPaginatedResponse(
+    transformedResources,
+    paginationMetadata,
+    {
+      searchQuery: filters.query,
+      filters: filters
+    }
+  );
 }
 
 /**
@@ -415,7 +465,7 @@ export async function getResources(
  * @param userId - 創建者 ID
  * @returns 創建的資源
  */
-export async function createResource(data: Record<string, unknown>, userId: number): Promise<import('@/types/resource.types').ResourceResponse | null> {
+export async function createResource(data: Record<string, unknown>, userId: number): Promise<ApiResponse<import('../types/resource.types').ResourceResponse | null>> {
   return await prisma.$transaction(async (tx) => {
     // 驗證數據
     const validatedData = createResourceSchema.parse(data);
@@ -462,10 +512,12 @@ export async function createResource(data: Record<string, unknown>, userId: numb
 
     // 處理標籤
     if (validatedData.tags && validatedData.tags.length > 0) {
-      await tagService.setEntityTags('resource', resource.external_id || '', validatedData.tags, userId, tx);
+      await tagService.setEntityTags('resource', resource.id, validatedData.tags, userId, tx);
     }
 
-    return await getResourceById(resource.external_id || '');
+    const createdResource = await getResourceById(resource.external_id || '');
+    // getResourceById now returns ApiResponse, we need to extract the data
+    return createdResource;
   });
 }
 
@@ -476,7 +528,7 @@ export async function createResource(data: Record<string, unknown>, userId: numb
  * @param userId - 當前使用者 ID
  * @returns 更新後的資源
  */
-export async function updateResource(id: string, data: Record<string, unknown>, userId: number): Promise<import('@/types/resource.types').ResourceResponse | null> {
+export async function updateResource(id: string, data: Record<string, unknown>, userId: number): Promise<ApiResponse<import('../types/resource.types').ResourceResponse | null>> {
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在
     const existingResource = await tx.resources.findUnique({
@@ -539,10 +591,11 @@ export async function updateResource(id: string, data: Record<string, unknown>, 
 
     // 更新標籤
     if (validatedData.tags !== undefined && validatedData.tags !== null) {
-      await tagService.setEntityTags('resource', id, validatedData.tags, userId, tx);
+      await tagService.setEntityTags('resource', existingResource.id, validatedData.tags, userId, tx);
     }
 
-    return await getResourceById(id);
+    const updatedResource = await getResourceById(id);
+    return updatedResource;
   });
 }
 
@@ -551,7 +604,7 @@ export async function updateResource(id: string, data: Record<string, unknown>, 
  * @param id - 資源 ID
  * @param userId - 當前使用者 ID
  */
-export async function deleteResource(id: string, userId: number): Promise<void> {
+export async function deleteResource(id: string, userId: number): Promise<ApiResponse<{ success: boolean }>> {
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在
     const existingResource = await tx.resources.findUnique({
@@ -577,6 +630,8 @@ export async function deleteResource(id: string, userId: number): Promise<void> 
         deleted_at: new Date()
       }
     });
+
+    return createSuccessResponse({ success: true });
   });
 }
 
@@ -585,34 +640,36 @@ export async function deleteResource(id: string, userId: number): Promise<void> 
  * @param userId - 使用者 ID（可選）
  * @returns 統計資訊
  */
-export async function getResourceStats(userId?: number): Promise<{
+export async function getResourceStats(userId?: number): Promise<ApiResponse<{
   totalCount: number;
   activeCount: number;
   typeStats: Record<string, number>;
-}> {
-  const where: Prisma.resourcesWhereInput = {
+}>> {
+  const baseWhere: Prisma.resourcesWhereInput = {};
+  const activeWhere: Prisma.resourcesWhereInput = {
     deleted_at: null
   };
 
   if (userId) {
-    where.created_by = userId;
+    baseWhere.created_by = userId;
+    activeWhere.created_by = userId;
   }
 
   const [totalCount, activeCount, typeStats] = await Promise.all([
-    prisma.resources.count({ where }),
+    prisma.resources.count({ where: baseWhere }), // 包含所有資源（含軟刪除）
     prisma.resources.count({ 
-      where: { ...where, status: 'active' } 
+      where: { ...activeWhere, status: 'active' } 
     }),
     prisma.resources.groupBy({
       by: ['type'],
-      where,
+      where: activeWhere, // 類型統計仍排除軟刪除
       _count: {
         type: true
       }
     })
   ]);
 
-  return {
+  const stats = {
     totalCount,
     activeCount,
     typeStats: typeStats.reduce((acc, stat) => {
@@ -620,6 +677,8 @@ export async function getResourceStats(userId?: number): Promise<{
       return acc;
     }, {} as Record<string, number>)
   };
+
+  return createSuccessResponse(stats);
 }
 
 // 匯出所有函數

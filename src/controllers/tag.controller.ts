@@ -4,88 +4,104 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncWrapper, BadRequestError } from '@/utils/error-handler';
-import tagService from '@/services/tag.service';
+import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
+import {
+  getPopularTagsApi,
+  searchTagsApi,
+  getAllTagsApi,
+  getEntityTagsApi,
+  setEntityTags,
+  removeEntityTag as removeEntityTagInternal,
+  getTagByName
+} from '../services/tag.service';
+import { createSuccessResponse } from '../utils/response-helper';
 import type { tags } from '../../generated/prisma';
 
 /**
  * 獲取熱門標籤
  * GET /tags/popular
  */
-export const getPopularTags = asyncWrapper(async (req: Request, res: Response) => {
+export const getPopularTags = asyncHandler(async (req: Request, res: Response) => {
   const { limit } = req.query;
   
-  // 獲取熱門標籤
-  const tags = await tagService.getPopularTags(
+  const result = await getPopularTagsApi(
     limit ? parseInt(limit as string, 10) : 20
   );
-
-  // 返回結果
-  res.json({
-    success: true,
-    data: tags.map((tag: { tag: tags; usageCount: number }) => ({
+  
+  // 格式化回應資料
+  const formattedResult = {
+    ...result,
+    data: result.data.map((tag: { tag: tags; usageCount: number }) => ({
       id: tag.tag.id,
       name: tag.tag.name,
       count: tag.usageCount
     }))
-  });
+  };
+  
+  res.json(formattedResult);
 });
 
 /**
  * 搜索標籤
  * GET /tags/search
  */
-export const searchTags = asyncWrapper(async (req: Request, res: Response) => {
+export const searchTags = asyncHandler(async (req: Request, res: Response) => {
   const { query, limit } = req.query;
   
   if (!query) {
     throw new BadRequestError('必須提供搜索關鍵詞');
   }
 
-  // 搜索標籤
-  const tags = await tagService.searchTags(
+  const result = await searchTagsApi(
     query as string,
-    limit ? parseInt(limit as string, 10) : undefined
+    limit ? parseInt(limit as string, 10) : 10
   );
-
-  // 返回結果
-  res.json({
-    success: true,
-    data: tags.map((tag: tags) => ({
+  
+  // 格式化回應資料
+  const formattedResult = {
+    ...result,
+    data: result.data.map((tag: tags) => ({
       id: tag.id,
       name: tag.name
     }))
-  });
+  };
+  
+  res.json(formattedResult);
 });
 
 /**
  * 獲取標籤統計
  * GET /tags/stats
  */
-export const getTagStats = asyncWrapper(async (req: Request, res: Response) => {
-  // 獲取標籤統計 - 暫時使用簡單的統計
-  const allTags = await tagService.getAllTags();
-  const popularTags = await tagService.getPopularTags(10);
+export const getTagStats = asyncHandler(async (req: Request, res: Response) => {
+  // 獲取標籤統計
+  const [allTagsResult, popularTagsResult] = await Promise.all([
+    getAllTagsApi(),
+    getPopularTagsApi(10)
+  ]);
 
-  // 返回結果
-  res.json({
-    success: true,
-    data: {
-      totalTags: allTags.length,
-      popularTags: popularTags.map(item => ({
-        id: item.tag.id,
-        name: item.tag.name,
-        usageCount: item.usageCount
-      }))
+  const result = createSuccessResponse({
+    totalTags: allTagsResult.data.length,
+    popularTags: popularTagsResult.data.map(item => ({
+      id: item.tag.id,
+      name: item.tag.name,
+      usageCount: item.usageCount
+    }))
+  }, {
+    aggregateData: {
+      totalTagsCount: allTagsResult.data.length,
+      topTagsCount: popularTagsResult.data.length
     }
   });
+  
+  res.json(result);
 });
 
 /**
  * 為特定實體添加標籤
  * POST /tags/entities
  */
-export const addEntityTag = asyncWrapper(async (req: Request, res: Response) => {
+export const addEntityTag = asyncHandler(async (req: Request, res: Response) => {
   const { entityId, entityType, tagName } = req.body;
   
   // 驗證請求數據
@@ -93,30 +109,36 @@ export const addEntityTag = asyncWrapper(async (req: Request, res: Response) => 
     throw new BadRequestError('必須提供實體ID、實體類型和標籤名稱');
   }
 
+  // 獲取用戶ID
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('需要用戶認證');
+  }
+
   // 添加實體標籤
-  await tagService.setEntityTags(
+  await setEntityTags(
     entityType as string,
-    entityId as string,
+    parseInt(entityId as string),
     [tagName as string],
-    1 // 暫時使用默認用戶ID，實際應從認證中獲取
+    userId
   );
 
-  // 返回結果
-  res.status(201).json({
-    success: true,
-    data: {
-      entityId: entityId,
-      entityType,
-      tagName
-    }
+  const result = createSuccessResponse({
+    entityId: parseInt(entityId as string),
+    entityType,
+    tagName
+  }, {
+    message: '標籤已成功添加到實體'
   });
+  
+  res.status(201).json(result);
 });
 
 /**
  * 為特定實體移除標籤
  * DELETE /tags/entities
  */
-export const removeEntityTag = asyncWrapper(async (req: Request, res: Response) => {
+export const removeEntityTag = asyncHandler(async (req: Request, res: Response) => {
   const { entityId, entityType, tagName } = req.body;
   
   // 驗證請求數據
@@ -125,29 +147,29 @@ export const removeEntityTag = asyncWrapper(async (req: Request, res: Response) 
   }
 
   // 移除實體標籤 - 先根據名稱查找標籤ID
-  const tag = await tagService.getTagByName(tagName as string);
+  const tag = await getTagByName(tagName as string);
   if (!tag) {
     throw new BadRequestError('標籤不存在');
   }
   
-  await tagService.removeEntityTag(
+  await removeEntityTagInternal(
     entityType as string,
-    entityId as string,
+    parseInt(entityId as string),
     tag.id
   );
 
-  // 返回結果
-  res.json({
-    success: true,
+  const result = createSuccessResponse(undefined, {
     message: '標籤已成功移除'
   });
+  
+  res.json(result);
 });
 
 /**
  * 獲取特定實體的標籤
  * GET /tags/entities
  */
-export const getEntityTags = asyncWrapper(async (req: Request, res: Response) => {
+export const getEntityTags = asyncHandler(async (req: Request, res: Response) => {
   const { entityId, entityType } = req.query;
   
   // 驗證請求數據
@@ -155,20 +177,21 @@ export const getEntityTags = asyncWrapper(async (req: Request, res: Response) =>
     throw new BadRequestError('必須提供實體ID和實體類型');
   }
 
-  // 獲取實體標籤
-  const tags = await tagService.getEntityTags(
+  const result = await getEntityTagsApi(
     entityType as string,
-    entityId as string
+    parseInt(entityId as string)
   );
-
-  // 返回結果
-  res.json({
-    success: true,
-    data: tags.map((tag: tags) => ({
+  
+  // 格式化回應資料
+  const formattedResult = {
+    ...result,
+    data: result.data.map((tag: tags) => ({
       id: tag.id,
       name: tag.name
     }))
-  });
+  };
+  
+  res.json(formattedResult);
 });
 
 // 導出所有控制器函數

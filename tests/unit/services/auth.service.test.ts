@@ -1,82 +1,74 @@
 /**
- * Auth Service 單元測試
- * 測試認證服務的核心功能
+ * Auth Service Unit Tests
+ * Tests authentication service business logic in isolation
+ * 
+ * Focus: Business logic validation, data transformation, error handling
+ * Mocks: All external dependencies (database, bcrypt, JWT)
  */
 
-import { authService } from '@/services/auth/auth.service';
-import { jwtService } from '@/services/jwt.service';
-import * as bcrypt from 'bcrypt';
-import { ConflictError } from '@/utils/error-handler';
+import { prismaMock, mockResponses, PRISMA_ERRORS, mockPrismaError } from '@tests/utils/prisma-mock';
+import { createTestUser, createTestToken } from '@tests/utils/test-factories';
+import bcrypt from 'bcrypt';
 
-// Mock dependencies
+// Mock external dependencies
 jest.mock('@/services/database/prisma.service', () => ({
-  prisma: {
-    contacts: {
-      findFirst: jest.fn(),
-    },
-    temp_users: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-    },
-    users: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
-    user_permissions: {
-      findMany: jest.fn(),
-    },
+  prisma: prismaMock
+}));
+
+jest.mock('bcrypt');
+jest.mock('@/services/jwt.service', () => ({
+  jwtService: {
+    generateToken: jest.fn()
   }
 }));
 
-jest.mock('@/services/jwt.service');
-jest.mock('bcrypt');
-
 // Import mocked modules
-import { prisma } from '@/services/database/prisma.service';
+import { jwtService } from '@/services/jwt.service';
+import { authService } from '@/services/auth/auth.service';
 
 describe('Auth Service', () => {
-  const mockPrisma = prisma as any;
-  let mockJwtService: jest.Mocked<typeof jwtService>;
-  let mockBcrypt: jest.Mocked<typeof bcrypt>;
+  const mockJwtService = jwtService as jest.Mocked<typeof jwtService>;
+  const mockBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetAllMocks();
-    mockJwtService = jwtService as jest.Mocked<typeof jwtService>;
-    mockBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
-    
-    // Reset all prisma mocks to default values
-    mockPrisma.contacts.findFirst.mockReset();
-    mockPrisma.temp_users.findUnique.mockReset();
-    mockPrisma.temp_users.create.mockReset();
-    mockPrisma.users.findUnique.mockReset();
-    mockPrisma.users.update.mockReset();
-    mockPrisma.user_permissions.findMany.mockReset();
+    // Prisma mock is already reset in prisma-mock.ts
+  });
+
+  // Test data factories
+  const createTestContact = (overrides = {}) => ({
+    id: 1,
+    google_id: 'google-123',
+    photo_url: null,
+    is_subscribe_email: false,
+    email: 'test@example.com',
+    ig: null,
+    discord: null,
+    line: null,
+    fb: null,
+    users: [createTestUser({ id: 1 })],
+    ...overrides
+  });
+
+  const createTestTempUser = (overrides = {}) => ({
+    id: 1,
+    google_id: 'google-123',
+    email: 'temp@example.com',
+    name: 'Temp User',
+    photo_url: 'https://example.com/photo.jpg',
+    created_date: new Date(),
+    updated_date: new Date(),
+    ...overrides
   });
 
   describe('findUserByEmail', () => {
-    it('should find user by email with complete relations', async () => {
-      const mockContact = {
-        id: 1,
-        email: 'test@example.com',
-        users: [{
-          id: 1,
-          external_id: 'user-123',
-          nickname: 'testuser',
-          roles: { id: 1, name: 'user' },
-          user_positions: [
-            {
-              position: { id: 1, name: 'developer' }
-            }
-          ]
-        }]
-      };
-
-      mockPrisma.contacts.findFirst.mockResolvedValue(mockContact as any);
+    it('should find user by email and return success response', async () => {
+      const mockContact = createTestContact();
+      prismaMock.contacts.findFirst.mockResolvedValue(mockContact);
 
       const result = await authService.findUserByEmail('test@example.com');
 
-      expect(mockPrisma.contacts.findFirst).toHaveBeenCalledWith({
+      expect(prismaMock.contacts.findFirst).toHaveBeenCalledWith({
         where: { email: 'test@example.com' },
         include: {
           users: {
@@ -92,39 +84,38 @@ describe('Auth Service', () => {
         }
       });
 
-      expect(result).toEqual({
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual({
         contact: mockContact,
         user: mockContact.users[0]
       });
     });
 
-    it('should return null if contact not found', async () => {
-      mockPrisma.contacts.findFirst.mockResolvedValue(null);
+    it('should return null data when contact not found', async () => {
+      prismaMock.contacts.findFirst.mockResolvedValue(null);
 
       const result = await authService.findUserByEmail('nonexistent@example.com');
 
-      expect(result).toBeNull();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeNull();
     });
 
-    it('should return null if contact has no users', async () => {
-      const mockContact = {
-        id: 1,
-        email: 'test@example.com',
-        users: []
-      };
-
-      mockPrisma.contacts.findFirst.mockResolvedValue(mockContact as any);
+    it('should return null data when contact has no users', async () => {
+      const mockContact = createTestContact({ users: [] });
+      prismaMock.contacts.findFirst.mockResolvedValue(mockContact);
 
       const result = await authService.findUserByEmail('test@example.com');
 
-      expect(result).toBeNull();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeNull();
     });
 
-    it('should handle database errors', async () => {
-      mockPrisma.contacts.findFirst.mockRejectedValue(new Error('Database error'));
+    it('should propagate database errors', async () => {
+      const dbError = mockPrismaError(PRISMA_ERRORS.CONNECTION_ERROR, 'Database connection failed');
+      prismaMock.contacts.findFirst.mockRejectedValue(dbError);
 
       await expect(authService.findUserByEmail('test@example.com'))
-        .rejects.toThrow('Database error');
+        .rejects.toThrow('Database connection failed');
     });
   });
 
@@ -136,49 +127,37 @@ describe('Auth Service', () => {
       photoUrl: 'https://example.com/photo.jpg'
     };
 
-    it('should return existing temp user if found', async () => {
-      const existingTempUser = {
-        id: 1,
-        google_id: 'google-123',
-        email: 'temp@example.com',
-        name: 'Temp User'
-      };
-
-      mockPrisma.temp_users.findUnique.mockResolvedValue(existingTempUser as any);
+    it('should return existing temp user in success response', async () => {
+      const existingTempUser = createTestTempUser();
+      prismaMock.temp_users.findUnique.mockResolvedValue(existingTempUser);
 
       const result = await authService.findOrCreateTempUser(mockProfile);
 
-      expect(mockPrisma.temp_users.findUnique).toHaveBeenCalledWith({
+      expect(prismaMock.temp_users.findUnique).toHaveBeenCalledWith({
         where: { google_id: 'google-123' }
       });
-      expect(result).toEqual(existingTempUser);
-      expect(mockPrisma.temp_users.create).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(existingTempUser);
+      expect(prismaMock.temp_users.create).not.toHaveBeenCalled();
     });
 
-    it('should create new temp user if not found', async () => {
-      const newTempUser = {
-        id: 1,
-        google_id: 'google-123',
-        email: 'temp@example.com',
-        name: 'Temp User',
-        photo_url: 'https://example.com/photo.jpg'
-      };
-
-      mockPrisma.temp_users.findUnique
-        .mockResolvedValueOnce(null) // First call for googleId
-        .mockResolvedValueOnce(null); // Second call for email
-
-      mockPrisma.temp_users.create.mockResolvedValue(newTempUser as any);
+    it('should create new temp user when not found', async () => {
+      const newTempUser = createTestTempUser();
+      
+      prismaMock.temp_users.findUnique
+        .mockResolvedValueOnce(null) // googleId check
+        .mockResolvedValueOnce(null); // email check
+      prismaMock.temp_users.create.mockResolvedValue(newTempUser);
 
       const result = await authService.findOrCreateTempUser(mockProfile);
 
-      expect(mockPrisma.temp_users.findUnique).toHaveBeenCalledWith({
+      expect(prismaMock.temp_users.findUnique).toHaveBeenNthCalledWith(1, {
         where: { google_id: 'google-123' }
       });
-      expect(mockPrisma.temp_users.findUnique).toHaveBeenCalledWith({
+      expect(prismaMock.temp_users.findUnique).toHaveBeenNthCalledWith(2, {
         where: { email: 'temp@example.com' }
       });
-      expect(mockPrisma.temp_users.create).toHaveBeenCalledWith({
+      expect(prismaMock.temp_users.create).toHaveBeenCalledWith({
         data: {
           google_id: 'google-123',
           email: 'temp@example.com',
@@ -186,24 +165,24 @@ describe('Auth Service', () => {
           photo_url: 'https://example.com/photo.jpg'
         }
       });
-      expect(result).toEqual(newTempUser);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(newTempUser);
     });
 
-    it('should throw ConflictError if email already exists', async () => {
-      const existingByEmail = {
-        id: 2,
-        google_id: 'different-google-id',
+    it('should throw ConflictError when email already exists', async () => {
+      const existingByEmail = createTestTempUser({ 
+        google_id: 'different-id',
         email: 'temp@example.com'
-      };
+      });
 
-      mockPrisma.temp_users.findUnique
-        .mockResolvedValueOnce(null) // First call for googleId
-        .mockResolvedValueOnce(existingByEmail as any); // Second call for email
+      prismaMock.temp_users.findUnique
+        .mockResolvedValueOnce(null) // googleId check
+        .mockResolvedValueOnce(existingByEmail); // email check
 
       await expect(authService.findOrCreateTempUser(mockProfile))
-        .rejects.toThrow(ConflictError);
+        .rejects.toThrow('此電子郵件已被使用');
       
-      expect(mockPrisma.temp_users.create).not.toHaveBeenCalled();
+      expect(prismaMock.temp_users.create).not.toHaveBeenCalled();
     });
 
     it('should handle profile without photoUrl', async () => {
@@ -213,22 +192,21 @@ describe('Auth Service', () => {
         name: 'No Photo User'
       };
 
-      const newTempUser = {
-        id: 1,
+      const newTempUser = createTestTempUser({
         google_id: 'google-456',
         email: 'nophoto@example.com',
         name: 'No Photo User',
         photo_url: undefined
-      };
+      });
 
-      mockPrisma.temp_users.findUnique
+      prismaMock.temp_users.findUnique
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null);
-      mockPrisma.temp_users.create.mockResolvedValue(newTempUser as any);
+      prismaMock.temp_users.create.mockResolvedValue(newTempUser);
 
       const result = await authService.findOrCreateTempUser(profileWithoutPhoto);
 
-      expect(mockPrisma.temp_users.create).toHaveBeenCalledWith({
+      expect(prismaMock.temp_users.create).toHaveBeenCalledWith({
         data: {
           google_id: 'google-456',
           email: 'nophoto@example.com',
@@ -236,16 +214,25 @@ describe('Auth Service', () => {
           photo_url: undefined
         }
       });
-      expect(result).toEqual(newTempUser);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(newTempUser);
+    });
+
+    it('should handle database errors during creation', async () => {
+      prismaMock.temp_users.findUnique.mockResolvedValue(null);
+      const dbError = mockPrismaError(PRISMA_ERRORS.UNIQUE_CONSTRAINT, 'Unique constraint violation');
+      prismaMock.temp_users.create.mockRejectedValue(dbError);
+
+      await expect(authService.findOrCreateTempUser(mockProfile))
+        .rejects.toThrow('Unique constraint violation');
     });
   });
 
   describe('findUserByExternalId', () => {
-    it('should find user by external_id with all relations', async () => {
-      const mockUser = {
-        id: 1,
+    it('should find user by external_id with success response', async () => {
+      const mockUser = createTestUser({
         external_id: 'user-123',
-        nickname: 'testuser',
+        // Add related data
         roles: { id: 1, name: 'user' },
         contacts: { id: 1, email: 'test@example.com' },
         location: {
@@ -255,13 +242,13 @@ describe('Auth Service', () => {
         user_positions: [
           { position: { id: 1, name: 'developer' } }
         ]
-      };
+      });
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockUser as any);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
       const result = await authService.findUserByExternalId('user-123');
 
-      expect(mockPrisma.users.findUnique).toHaveBeenCalledWith({
+      expect(prismaMock.users.findUnique).toHaveBeenCalledWith({
         where: { external_id: 'user-123' },
         include: {
           roles: true,
@@ -279,81 +266,86 @@ describe('Auth Service', () => {
           }
         }
       });
-      expect(result).toEqual(mockUser);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockUser);
     });
 
-    it('should return null if user not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should return null data when user not found', async () => {
+      prismaMock.users.findUnique.mockResolvedValue(null);
 
       const result = await authService.findUserByExternalId('nonexistent');
 
-      expect(result).toBeNull();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeNull();
     });
   });
 
   describe('getUserRoles', () => {
-    it('should return user roles including positions', async () => {
-      const mockUser = {
-        id: 1,
+    it('should return user roles including positions in success response', async () => {
+      const mockUser = createTestUser({
         roles: { id: 1, name: 'user' },
         user_positions: [
           { position: { id: 2, name: 'developer' } },
           { position: { id: 3, name: 'admin' } }
         ]
-      };
+      });
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockUser as any);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
       const result = await authService.getUserRoles(1);
 
-      expect(result).toEqual([
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([
         { id: 1, name: 'user' },
         { id: 2, name: 'developer' },
         { id: 3, name: 'admin' }
       ]);
     });
 
-    it('should return empty array if user not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should return empty array when user not found', async () => {
+      prismaMock.users.findUnique.mockResolvedValue(null);
 
       const result = await authService.getUserRoles(999);
 
-      expect(result).toEqual([]);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
     });
 
     it('should handle user with no roles or positions', async () => {
-      const mockUser = {
-        id: 1,
+      const mockUser = createTestUser({
         roles: null,
         user_positions: []
-      };
+      });
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockUser as any);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
       const result = await authService.getUserRoles(1);
 
-      expect(result).toEqual([]);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
     });
 
     it('should handle user with roles but no positions', async () => {
-      const mockUser = {
-        id: 1,
+      const mockUser = createTestUser({
         roles: { id: 1, name: 'user' },
         user_positions: []
-      };
+      });
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockUser as any);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
       const result = await authService.getUserRoles(1);
 
-      expect(result).toEqual([{ id: 1, name: 'user' }]);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([{ id: 1, name: 'user' }]);
     });
   });
 
   describe('getUserPermissions', () => {
-    it('should return user permissions', async () => {
+    it('should return user permissions in success response', async () => {
       const mockPermissions = [
         {
+          user_id: 1,
+          permission_id: 1,
           permissions: {
             id: 1,
             name: 'user:read',
@@ -361,6 +353,8 @@ describe('Auth Service', () => {
           }
         },
         {
+          user_id: 1,
+          permission_id: 2,
           permissions: {
             id: 2,
             name: 'user:write',
@@ -369,18 +363,19 @@ describe('Auth Service', () => {
         }
       ];
 
-      mockPrisma.user_permissions.findMany.mockResolvedValue(mockPermissions as any);
+      prismaMock.user_permissions.findMany.mockResolvedValue(mockPermissions);
 
       const result = await authService.getUserPermissions(1);
 
-      expect(mockPrisma.user_permissions.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.user_permissions.findMany).toHaveBeenCalledWith({
         where: { user_id: 1 },
         include: {
           permissions: true
         }
       });
 
-      expect(result).toEqual([
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([
         {
           id: 1,
           name: 'user:read',
@@ -394,18 +389,19 @@ describe('Auth Service', () => {
       ]);
     });
 
-    it('should return empty array if no permissions found', async () => {
-      mockPrisma.user_permissions.findMany.mockResolvedValue([]);
+    it('should return empty array when no permissions found', async () => {
+      prismaMock.user_permissions.findMany.mockResolvedValue([]);
 
       const result = await authService.getUserPermissions(1);
 
-      expect(result).toEqual([]);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
     });
   });
 
   describe('verifyPassword', () => {
-    it('should return true for correct password', async () => {
-      mockBcrypt.compare.mockResolvedValue(true as never);
+    it('should return true for matching password', async () => {
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await authService.verifyPassword('password123', 'hashedpassword');
 
@@ -413,8 +409,8 @@ describe('Auth Service', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false for incorrect password', async () => {
-      mockBcrypt.compare.mockResolvedValue(false as never);
+    it('should return false for non-matching password', async () => {
+      (mockBcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       const result = await authService.verifyPassword('wrongpassword', 'hashedpassword');
 
@@ -422,8 +418,8 @@ describe('Auth Service', () => {
       expect(result).toBe(false);
     });
 
-    it('should handle bcrypt errors', async () => {
-      mockBcrypt.compare.mockRejectedValue(new Error('Bcrypt error') as never);
+    it('should propagate bcrypt errors', async () => {
+      (mockBcrypt.compare as jest.Mock).mockRejectedValue(new Error('Bcrypt error'));
 
       await expect(authService.verifyPassword('password', 'hash'))
         .rejects.toThrow('Bcrypt error');
@@ -431,7 +427,7 @@ describe('Auth Service', () => {
   });
 
   describe('generateAuthToken', () => {
-    it('should generate token with complete payload', async () => {
+    it('should generate token with complete payload', () => {
       const payload = {
         id: 1,
         email: 'test@example.com',
@@ -449,10 +445,8 @@ describe('Auth Service', () => {
       expect(result).toBe('mock-token');
     });
 
-    it('should generate token with minimal payload', async () => {
-      const payload = {
-        id: 1
-      };
+    it('should generate token with minimal payload', () => {
+      const payload = { id: 1 };
 
       mockJwtService.generateToken.mockReturnValue('mock-token-minimal');
 
@@ -462,144 +456,215 @@ describe('Auth Service', () => {
       expect(result).toBe('mock-token-minimal');
     });
 
-    it('should handle JWT service errors', async () => {
+    it('should propagate JWT service errors', () => {
       const payload = { id: 1 };
       mockJwtService.generateToken.mockImplementation(() => {
-        throw new Error('JWT error');
+        throw new Error('JWT generation failed');
       });
 
       expect(() => authService.generateAuthToken(payload))
-        .toThrow('JWT error');
+        .toThrow('JWT generation failed');
     });
   });
 
   describe('updateLastLogin', () => {
-    it('should update user last login time', async () => {
-      const mockUpdatedUser = {
-        id: 1,
-        updated_at: new Date()
-      };
+    it('should update user last login time and return success', async () => {
+      const mockUpdatedUser = createTestUser({ updated_at: new Date() });
+      prismaMock.users.update.mockResolvedValue(mockUpdatedUser);
 
-      mockPrisma.users.update.mockResolvedValue(mockUpdatedUser as any);
+      const result = await authService.updateLastLogin(1);
 
-      await authService.updateLastLogin(1);
-
-      expect(mockPrisma.users.update).toHaveBeenCalledWith({
+      expect(prismaMock.users.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           updated_at: expect.any(Date)
         }
       });
+      expect(result.success).toBe(true);
+      expect(result.data!.success).toBe(true);
     });
 
     it('should handle database errors during update', async () => {
-      mockPrisma.users.update.mockRejectedValue(new Error('Update failed'));
-
-      await expect(authService.updateLastLogin(1))
-        .rejects.toThrow('Update failed');
-    });
-
-    it('should handle non-existent user gracefully', async () => {
-      mockPrisma.users.update.mockRejectedValue(new Error('Record not found'));
+      const dbError = mockPrismaError(PRISMA_ERRORS.NOT_FOUND, 'User not found');
+      prismaMock.users.update.mockRejectedValue(dbError);
 
       await expect(authService.updateLastLogin(999))
-        .rejects.toThrow('Record not found');
+        .rejects.toThrow('User not found');
     });
   });
 
-  describe('Integration scenarios', () => {
-    it('should handle complete OAuth flow for new temp user', async () => {
-      const profile = {
-        googleId: 'new-google-123',
-        email: 'newuser@example.com',
-        name: 'New User'
-      };
+  describe('verifyUserEmail', () => {
+    it('should verify user email and return success', async () => {
+      const mockUpdatedUser = createTestUser({ verified: true });
+      prismaMock.users.update.mockResolvedValue(mockUpdatedUser);
 
-      // Mock sequence: user not found, temp user not found, create temp user
-      mockPrisma.contacts.findFirst.mockResolvedValue(null);
-      mockPrisma.temp_users.findUnique
-        .mockResolvedValueOnce(null) // googleId check
-        .mockResolvedValueOnce(null); // email check
+      const result = await authService.verifyUserEmail(1);
 
-      const newTempUser = {
-        id: 1,
-        google_id: profile.googleId,
-        email: profile.email,
-        name: profile.name
-      };
-      mockPrisma.temp_users.create.mockResolvedValue(newTempUser as any);
-      mockJwtService.generateToken.mockReturnValue('temp-user-token');
-
-      // Execute OAuth flow simulation
-      const userResult = await authService.findUserByEmail(profile.email);
-      expect(userResult).toBeNull();
-
-      const tempUser = await authService.findOrCreateTempUser(profile);
-      expect(tempUser).toEqual(newTempUser);
-
-      const token = authService.generateAuthToken({
-        id: tempUser.id,
-        email: tempUser.email,
-        isTemp: true
+      expect(prismaMock.users.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          verified: true,
+          verified_at: expect.any(Date),
+          updated_at: expect.any(Date)
+        }
       });
-      expect(token).toBe('temp-user-token');
+      expect(result.success).toBe(true);
+      expect(result.data!.success).toBe(true);
+    });
+  });
+
+  describe('setUserActiveStatus', () => {
+    it('should set user active status and return success', async () => {
+      const mockUpdatedUser = createTestUser({ is_active: false });
+      prismaMock.users.update.mockResolvedValue(mockUpdatedUser);
+
+      const result = await authService.setUserActiveStatus(1, false);
+
+      expect(prismaMock.users.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          is_active: false,
+          updated_at: expect.any(Date)
+        }
+      });
+      expect(result.success).toBe(true);
+      expect(result.data!.success).toBe(true);
+    });
+  });
+
+  describe('isUserEmailVerified', () => {
+    it('should return true when user email is verified', async () => {
+      const verifiedUser = createTestUser({ verified: true });
+      prismaMock.users.findUnique.mockResolvedValue(verifiedUser);
+
+      const result = await authService.isUserEmailVerified(1);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
     });
 
-    it('should handle complete OAuth flow for existing formal user', async () => {
-      const email = 'existing@example.com';
-      
-      const mockContact = {
-        id: 1,
-        email,
-        users: [{
-          id: 1,
-          external_id: 'user-123',
-          nickname: 'existinguser',
-          roles: { id: 1, name: 'user' },
-          user_positions: []
-        }]
-      };
+    it('should return false when user email is not verified', async () => {
+      const unverifiedUser = createTestUser({ verified: false });
+      prismaMock.users.findUnique.mockResolvedValue(unverifiedUser);
 
-      const mockPermissions = [
-        {
-          permissions: {
-            id: 1,
-            name: 'user:read',
-            description: 'Read user data'
-          }
-        }
-      ];
+      const result = await authService.isUserEmailVerified(1);
 
-      mockPrisma.contacts.findFirst.mockResolvedValue(mockContact as any);
-      mockPrisma.users.findUnique.mockResolvedValue(mockContact.users[0] as any);
-      mockPrisma.user_permissions.findMany.mockResolvedValue(mockPermissions as any);
-      mockJwtService.generateToken.mockReturnValue('formal-user-token');
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
+    });
 
-      // Execute OAuth flow for existing user
-      const userResult = await authService.findUserByEmail(email);
-      expect(userResult).toBeTruthy();
-      expect(userResult!.user.id).toBe(1);
+    it('should return false when user not found', async () => {
+      prismaMock.users.findUnique.mockResolvedValue(null);
 
-      const roles = await authService.getUserRoles(1);
-      expect(roles).toContainEqual({ id: 1, name: 'user' });
+      const result = await authService.isUserEmailVerified(999);
 
-      const permissions = await authService.getUserPermissions(1);
-      expect(permissions).toHaveLength(1);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
+    });
+  });
 
-      const token = authService.generateAuthToken({
-        id: 1,
-        email,
-        username: 'existinguser',
-        isTemp: false,
-        roles: ['user'],
-        permissions: ['user:read']
+  describe('isUserActive', () => {
+    it('should return true when user is active', async () => {
+      const activeUser = createTestUser({ is_active: true });
+      prismaMock.users.findUnique.mockResolvedValue(activeUser);
+
+      const result = await authService.isUserActive(1);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
+    });
+
+    it('should return false when user is inactive', async () => {
+      const inactiveUser = createTestUser({ is_active: false });
+      prismaMock.users.findUnique.mockResolvedValue(inactiveUser);
+
+      const result = await authService.isUserActive(1);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
+    });
+  });
+
+  describe('Business logic integration', () => {
+    describe('OAuth flow for new temp user', () => {
+      it('should create temp user when formal user not found', async () => {
+        const profile = {
+          googleId: 'new-google-123',
+          email: 'newuser@example.com',
+          name: 'New User'
+        };
+
+        // Setup mocks
+        prismaMock.contacts.findFirst.mockResolvedValue(null);
+        prismaMock.temp_users.findUnique
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null);
+        
+        const newTempUser = createTestTempUser({
+          google_id: profile.googleId,
+          email: profile.email,
+          name: profile.name
+        });
+        prismaMock.temp_users.create.mockResolvedValue(newTempUser);
+        mockJwtService.generateToken.mockReturnValue('temp-user-token');
+
+        // Execute flow
+        const userResult = await authService.findUserByEmail(profile.email);
+        expect(userResult.data).toBeNull();
+
+        const tempUserResult = await authService.findOrCreateTempUser(profile);
+        expect(tempUserResult.data).toEqual(newTempUser);
+
+        const token = authService.generateAuthToken({
+          id: tempUserResult.data.id,
+          email: tempUserResult.data.email,
+          isTemp: true
+        });
+        expect(token).toBe('temp-user-token');
       });
-      expect(token).toBe('formal-user-token');
+    });
 
-      await authService.updateLastLogin(1);
-      expect(mockPrisma.users.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { updated_at: expect.any(Date) }
+    describe('OAuth flow for existing formal user', () => {
+      it('should return user with roles and permissions', async () => {
+        const email = 'existing@example.com';
+        const mockContact = createTestContact({ email });
+        const mockPermissions = [
+          {
+            user_id: 1,
+            permission_id: 1,
+            permissions: {
+              id: 1,
+              name: 'user:read',
+              description: 'Read user data'
+            }
+          }
+        ];
+
+        prismaMock.contacts.findFirst.mockResolvedValue(mockContact);
+        prismaMock.users.findUnique.mockResolvedValue(mockContact.users[0]);
+        prismaMock.user_permissions.findMany.mockResolvedValue(mockPermissions);
+        mockJwtService.generateToken.mockReturnValue('formal-user-token');
+
+        // Execute flow
+        const userResult = await authService.findUserByEmail(email);
+        expect(userResult.data).toBeTruthy();
+        expect(userResult.data!.user.id).toBe(1);
+
+        const rolesResult = await authService.getUserRoles(1);
+        expect(rolesResult.data).toBeDefined();
+
+        const permissionsResult = await authService.getUserPermissions(1);
+        expect(permissionsResult.data).toBeDefined();
+
+        const token = authService.generateAuthToken({
+          id: 1,
+          email,
+          username: mockContact.users[0].nickname,
+          isTemp: false,
+          roles: ['USER'],
+          permissions: ['user:read']
+        });
+        expect(token).toBe('formal-user-token');
       });
     });
   });

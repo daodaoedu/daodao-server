@@ -4,18 +4,27 @@
  */
 
 import { Router } from 'express';
-import * as resourceController from '@/controllers/resource.controller';
-import { validate } from '@/validators/validation.middleware';
-import { authenticate, optionalAuth, requireRole } from '@/middleware/auth';
+import {
+  getResources,
+  getResourceById,
+  createResource,
+  updateResource,
+  updateResourceStatus,
+  deleteResource,
+  getResourceStats,
+  getResourceTags
+} from '../controllers/resource.controller';
+import { validate } from '../validators/validation.middleware';
+import { authenticate, optionalAuth, requireRole } from '../middleware/auth';
 import { 
   createResourceSchema, 
   updateResourceSchema, 
   updateResourceStatusSchema 
-} from '@/validators/resource.validator';
+} from '../validators/resource.validator';
 import { 
   paginationSchema, 
   resourceFilterSchema 
-} from '@/validators/request-params.validator';
+} from '../validators/request-params.validator';
 
 const router = Router();
 
@@ -29,7 +38,16 @@ router.get('/',
   optionalAuth,
   validate(paginationSchema, 'query'),
   validate(resourceFilterSchema, 'query'),
-  resourceController.default.getResources);
+  getResources);
+
+/**
+ * GET /resources/stats
+ * 獲取資源統計資訊
+ * 支援可選身份驗證（用於個人化統計）
+ */
+router.get('/stats', 
+  optionalAuth,
+  getResourceStats);
 
 /**
  * GET /resources/:resourceId
@@ -39,7 +57,7 @@ router.get('/',
  */
 router.get('/:resourceId', 
   optionalAuth,
-  resourceController.default.getResourceById);
+  getResourceById);
 
 /**
  * POST /resources
@@ -50,7 +68,7 @@ router.get('/:resourceId',
 router.post('/', 
   authenticate,
   validate(createResourceSchema, 'body'),
-  resourceController.default.createResource
+  createResource
 );
 
 /**
@@ -63,7 +81,7 @@ router.post('/',
 router.patch('/:resourceId',
   authenticate,
   validate(updateResourceSchema, 'body'),
-  resourceController.default.updateResource
+  updateResource
 );
 
 /**
@@ -77,7 +95,7 @@ router.patch('/:resourceId/status',
   authenticate,
   requireRole(['admin']), // 只有管理員可以更改狀態
   validate(updateResourceStatusSchema, 'body'),
-  resourceController.default.updateResourceStatus
+  updateResourceStatus
 );
 
 /**
@@ -88,7 +106,7 @@ router.patch('/:resourceId/status',
  */
 router.delete('/:resourceId',
   authenticate,
-  resourceController.default.deleteResource
+  deleteResource
 );
 
 /**
@@ -96,6 +114,6 @@ router.delete('/:resourceId',
  * 獲取資源標籤
  * 路徑參數：resourceId - 資源 ID
  */
-router.get('/:resourceId/tags', resourceController.default.getResourceTags);
+router.get('/:resourceId/tags', getResourceTags);
 
 export default router;

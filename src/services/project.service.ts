@@ -4,15 +4,19 @@
  */
 
 import { prisma } from './database/prisma.service';
-import '../utils/error-handler';
 import type {
   ProjectCreateRequest,
   ProjectUpdateRequest,
   ProjectResponse,
   ProjectQueryParams,
-  ProjectServiceResult,
   ProjectStats
 } from '../types/project.types';
+import type {
+  ApiSuccessResponse,
+  PaginatedApiResponse
+} from '../types/api-response.types';
+import { createSuccessResponse, createPaginatedResponse } from '../utils/response-helper';
+import { calculatePagination } from '../utils/pagination-helper';
 import type { motivation_t, strategy_t, outcome_t, day_enum } from '../../generated/prisma';
 
 /**
@@ -128,170 +132,236 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
   };
 };
 
-export class ProjectService {
-  /**
-   * 創建專案
-   */
-  async createProject(
-    userId: number, 
-    projectData: ProjectCreateRequest
-  ): Promise<ProjectServiceResult<ProjectResponse>> {
-    return await prisma.$transaction(async (tx) => {
-      try {
-        // 檢查用戶是否存在
-        const user = await tx.users.findUnique({
-          where: { id: userId },
-          include: { roles: true }
+/**
+ * 創建專案
+ */
+export const createProject = async (
+  userId: number,
+  projectData: ProjectCreateRequest
+): Promise<ApiSuccessResponse<ProjectResponse>> => {
+  return await prisma.$transaction(async (tx) => {
+    try {
+      // 檢查用戶是否存在
+      const user = await tx.users.findUnique({
+        where: { id: userId },
+        include: { roles: true }
+      });
+
+      if (!user) {
+        throw new Error('用戶不存在');
+      }
+
+      // 角色和數量驗證（參考原有邏輯）
+      if (user.role_id === 2) {
+        throw new Error('此角色無權新增學習計畫');
+      }
+
+      if (user.role_id === 3) {
+        const projectCount = await tx.project.count({
+          where: { user_id: userId }
         });
 
-        if (!user) {
-          return {
-            success: false,
-            error: '用戶不存在'
-          };
+        if (projectCount >= 3) {
+          throw new Error('已達最大學習計畫數量限制（3個）');
         }
+      }
 
-        // 角色和數量驗證（參考原有邏輯）
-        if (user.role_id === 2) {
-          return {
-            success: false,
-            error: '此角色無權新增學習計畫'
-          };
+      // 驗證必填字段
+      if (!projectData.title) {
+        throw new Error('缺少必要欄位');
+      }
+
+      // 驗證日期
+      if (projectData.start_date && projectData.end_date &&
+        new Date(projectData.start_date) >= new Date(projectData.end_date)) {
+        throw new Error('結束日期必須晚於開始日期');
+      }
+
+      // 創建專案
+      const project = await tx.project.create({
+        data: {
+          user_id: userId,
+          img_url: projectData.imgUrl,
+          title: projectData.title,
+          description: projectData.description,
+          motivation: projectData.motivation ? { set: projectData.motivation as motivation_t[] } : undefined,
+          motivation_description: projectData.motivationDescription,
+          goal: projectData.goal,
+          content: projectData.content,
+          strategy: projectData.strategy ? { set: projectData.strategy as strategy_t[] } : undefined,
+          strategy_description: projectData.strategyDescription,
+          resource: projectData.resources,
+          outcome: projectData.outcome ? { set: projectData.outcome as outcome_t[] } : undefined,
+          outcome_description: projectData.outcomeDescription,
+          is_public: projectData.isPublic ?? true,
+          status: projectData.status || 'Not Started',
+          start_date: projectData.start_date ? new Date(projectData.start_date) : null,
+          end_date: projectData.end_date ? new Date(projectData.end_date) : null,
+          interval: projectData.interval,
+          created_by: userId,
+          updated_by: userId
         }
+      });
 
-        if (user.role_id === 3) {
-          const projectCount = await tx.project.count({
-            where: { user_id: userId }
+      // 創建里程碑（如果有的話）
+      if (projectData.milestones && projectData.milestones.length > 0) {
+        for (const milestoneData of projectData.milestones) {
+          const milestone = await tx.milestone.create({
+            data: {
+              project_id: project.id,
+              position: milestoneData.position,
+              name: milestoneData.name,
+              description: milestoneData.description,
+              start_date: milestoneData.startDate ? new Date(milestoneData.startDate) : new Date(),
+              end_date: milestoneData.endDate ? new Date(milestoneData.endDate) : new Date(),
+              is_completed: milestoneData.isCompleted || false
+            }
           });
 
-          if (projectCount >= 3) {
-            return {
-              success: false,
-              error: '已達最大學習計畫數量限制（3個）'
-            };
-          }
-        }
-
-        // 驗證必填字段
-        if (!projectData.title) {
-          return {
-            success: false,
-            error: '缺少必要欄位'
-          };
-        }
-
-        // 驗證日期
-        if (projectData.start_date && projectData.end_date && 
-            new Date(projectData.start_date) >= new Date(projectData.end_date)) {
-          return {
-            success: false,
-            error: '結束日期必須晚於開始日期'
-          };
-        }
-
-        // 創建專案
-        const project = await tx.project.create({
-          data: {
-            user_id: userId,
-            img_url: projectData.imgUrl,
-            title: projectData.title,
-            description: projectData.description,
-            motivation: projectData.motivation ? { set: projectData.motivation as motivation_t[] } : undefined,
-            motivation_description: projectData.motivationDescription,
-            goal: projectData.goal,
-            content: projectData.content,
-            strategy: projectData.strategy ? { set: projectData.strategy as strategy_t[] } : undefined,
-            strategy_description: projectData.strategyDescription,
-            resource: projectData.resources,
-            outcome: projectData.outcome ? { set: projectData.outcome as outcome_t[] } : undefined,
-            outcome_description: projectData.outcomeDescription,
-            is_public: projectData.isPublic ?? true,
-            status: projectData.status || 'Not Started',
-            start_date: projectData.start_date ? new Date(projectData.start_date) : null,
-            end_date: projectData.end_date ? new Date(projectData.end_date) : null,
-            interval: projectData.interval,
-            created_by: userId,
-            updated_by: userId
-          }
-        });
-
-        // 創建里程碑（如果有的話）
-        if (projectData.milestones && projectData.milestones.length > 0) {
-          for (const milestoneData of projectData.milestones) {
-            const milestone = await tx.milestone.create({
-              data: {
-                project_id: project.id,
-                position: milestoneData.position,
-                name: milestoneData.name,
-                description: milestoneData.description,
-                start_date: milestoneData.startDate ? new Date(milestoneData.startDate) : new Date(),
-                end_date: milestoneData.endDate ? new Date(milestoneData.endDate) : new Date(),
-                is_completed: milestoneData.isCompleted || false
-              }
+          // 創建任務（如果有的話）
+          if (milestoneData.tasks && milestoneData.tasks.length > 0) {
+            await tx.task.createMany({
+              data: milestoneData.tasks.map(taskData => ({
+                milestone_id: milestone.id,
+                position: taskData.position,
+                name: taskData.name,
+                description: taskData.description,
+                days_of_week: taskData.daysOfWeek ? { set: taskData.daysOfWeek as day_enum[] } : undefined,
+                is_completed: taskData.isCompleted || false
+              }))
             });
+          }
+        }
+      }
 
-            // 創建任務（如果有的話）
-            if (milestoneData.tasks && milestoneData.tasks.length > 0) {
-              await tx.task.createMany({
-                data: milestoneData.tasks.map(taskData => ({
-                  milestone_id: milestone.id,
-                  position: taskData.position,
-                  name: taskData.name,
-                  description: taskData.description,
-                  days_of_week: taskData.daysOfWeek ? { set: taskData.daysOfWeek as day_enum[] } : undefined,
-                  is_completed: taskData.isCompleted || false
-                }))
-              });
+      // 獲取完整的專案資料
+      const createdProject = await getProjectById(project.external_id || '', userId);
+
+      if (!createdProject.success || !createdProject.data) {
+        throw new Error('創建後無法獲取專案資料');
+      }
+
+      return createSuccessResponse(createdProject.data, {
+        message: '專案創建成功'
+      });
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('創建專案失敗');
+    }
+  });
+};
+
+/**
+ * 根據 ID 獲取專案
+ */
+export const getProjectById = async (
+  projectId: string,
+  userId?: number
+): Promise<ApiSuccessResponse<ProjectResponse>> => {
+  try {
+    // 構建查詢條件
+    const whereClause: Record<string, unknown> = { external_id: projectId };
+
+    // 如果不是專案擁有者，只能查看公開專案
+    if (userId) {
+      whereClause.OR = [
+        { user_id: userId },
+        { is_public: true }
+      ];
+    } else {
+      whereClause.is_public = true;
+    }
+
+    const project = await prisma.project.findFirst({
+      where: whereClause,
+      include: {
+        users: {
+          include: {
+            contacts: true,
+            user_positions: {
+              include: {
+                position: true
+              }
+            }
+          }
+        },
+        milestone: {
+          where: { is_deleted: false },
+          orderBy: { position: 'asc' },
+          include: {
+            task: {
+              where: { is_deleted: false },
+              orderBy: { position: 'asc' }
             }
           }
         }
-
-        // 獲取完整的專案資料
-        const createdProject = await this.getProjectById(project.external_id || '', userId);
-        
-        if (!createdProject.success || !createdProject.data) {
-          return {
-            success: false,
-            error: '創建後無法獲取專案資料'
-          };
-        }
-        
-        return {
-          success: true,
-          data: createdProject.data,
-          message: '專案創建成功'
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : '創建專案失敗'
-        };
       }
     });
+
+    if (!project) {
+      throw new Error('專案不存在或無權限存取');
+    }
+
+    const formattedProject = formatProjectResponse(project);
+
+    return createSuccessResponse(formattedProject);
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取專案失敗');
   }
+};
 
-  /**
-   * 根據 ID 獲取專案
-   */
-  async getProjectById(
-    projectId: string, 
-    userId?: number
-  ): Promise<ProjectServiceResult<ProjectResponse>> {
-    try {
-      // 構建查詢條件
-      const whereClause: Record<string, unknown> = { external_id: projectId };
-      
-      // 如果不是專案擁有者，只能查看公開專案
-      if (userId) {
-        whereClause.OR = [
-          { user_id: userId },
-          { is_public: true }
-        ];
-      } else {
-        whereClause.is_public = true;
-      }
+/**
+ * 獲取專案列表
+ */
+export const getProjects = async (
+  queryParams: ProjectQueryParams,
+  userId?: number
+): Promise<PaginatedApiResponse<ProjectResponse>> => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      is_public,
+      user_id,
+      search,
+      sort_by = 'created_at',
+      sort_order = 'DESC'
+    } = queryParams;
 
-      const project = await prisma.project.findFirst({
+    const skip = (page - 1) * limit;
+    const whereClause: Record<string, unknown> = {};
+
+    // 狀態篩選
+    if (status) {
+      whereClause.status = status;
+    }
+
+    // 公開性篩選
+    if (is_public !== undefined) {
+      whereClause.is_public = is_public;
+    }
+
+    // 使用者篩選
+    if (user_id) {
+      whereClause.user_id = user_id;
+    }
+
+    // 如果沒有指定使用者且沒有登入，只顯示公開專案
+    if (!userId && !user_id) {
+      whereClause.is_public = true;
+    }
+
+    // 搜尋功能
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { goal: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
         where: whereClause,
         include: {
           users: {
@@ -314,267 +384,157 @@ export class ProjectService {
               }
             }
           }
-        }
-      });
+        },
+        orderBy: { [sort_by]: sort_order.toLowerCase() as 'asc' | 'desc' },
+        take: limit,
+        skip
+      }),
+      prisma.project.count({ where: whereClause })
+    ]);
 
-      if (!project) {
-        return {
-          success: false,
-          error: '專案不存在或無權限存取'
-        };
-      }
+    const formattedProjects = projects.map(project => formatProjectResponse(project));
+    const paginationInfo = calculatePagination(page, limit, total);
 
-      const formattedProject = formatProjectResponse(project);
-
-      return {
-        success: true,
-        data: formattedProject
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '獲取專案失敗'
-      };
-    }
-  }
-
-  /**
-   * 獲取專案列表
-   */
-  async getProjects(
-    queryParams: ProjectQueryParams,
-    userId?: number
-  ): Promise<ProjectServiceResult<{ projects: ProjectResponse[]; total: number; page: number; limit: number }>> {
-    try {
-      const {
-        page = 1,
-        limit = 20,
+    return createPaginatedResponse(formattedProjects, paginationInfo, {
+      searchQuery: search,
+      filters: {
         status,
         is_public,
         user_id,
-        search,
-        sort_by = 'created_at',
-        sort_order = 'DESC'
-      } = queryParams;
-
-      const skip = (page - 1) * limit;
-      const whereClause: Record<string, unknown> = {};
-
-      // 狀態篩選
-      if (status) {
-        whereClause.status = status;
+        sort_by,
+        sort_order
       }
-
-      // 公開性篩選
-      if (is_public !== undefined) {
-        whereClause.is_public = is_public;
-      }
-
-      // 使用者篩選
-      if (user_id) {
-        whereClause.user_id = user_id;
-      }
-
-      // 如果沒有指定使用者且沒有登入，只顯示公開專案
-      if (!userId && !user_id) {
-        whereClause.is_public = true;
-      }
-
-      // 搜尋功能
-      if (search) {
-        whereClause.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { goal: { contains: search, mode: 'insensitive' } }
-        ];
-      }
-
-      const [projects, total] = await Promise.all([
-        prisma.project.findMany({
-          where: whereClause,
-          include: {
-            users: {
-              include: {
-                contacts: true,
-                user_positions: {
-                  include: {
-                    position: true
-                  }
-                }
-              }
-            },
-            milestone: {
-              where: { is_deleted: false },
-              orderBy: { position: 'asc' },
-              include: {
-                task: {
-                  where: { is_deleted: false },
-                  orderBy: { position: 'asc' }
-                }
-              }
-            }
-          },
-          orderBy: { [sort_by]: sort_order.toLowerCase() as 'asc' | 'desc' },
-          take: limit,
-          skip
-        }),
-        prisma.project.count({ where: whereClause })
-      ]);
-
-      const formattedProjects = projects.map(project => formatProjectResponse(project));
-
-      return {
-        success: true,
-        data: {
-          projects: formattedProjects,
-          total,
-          page,
-          limit
-        }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '獲取專案列表失敗'
-      };
-    }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取專案列表失敗');
   }
+};
 
-  /**
-   * 更新專案
-   */
-  async updateProject(
-    projectId: string,
-    userId: number,
-    updateData: ProjectUpdateRequest
-  ): Promise<ProjectServiceResult<ProjectResponse>> {
-    try {
-      const project = await prisma.project.findFirst({
-        where: { 
-          external_id: projectId,
-          user_id: userId
-        }
-      });
-
-      if (!project) {
-        return {
-          success: false,
-          error: '專案不存在或無權限修改'
-        };
+/**
+ * 更新專案
+ */
+export const updateProject = async (
+  projectId: string,
+  userId: number,
+  updateData: ProjectUpdateRequest
+): Promise<ApiSuccessResponse<ProjectResponse>> => {
+  try {
+    const project = await prisma.project.findFirst({
+      where: {
+        external_id: projectId,
+        user_id: userId
       }
+    });
 
-      const updateDataWithDates = {
-        ...updateData,
-        updated_by: userId,
-        start_date: updateData.start_date ? new Date(updateData.start_date) : undefined,
-        end_date: updateData.end_date ? new Date(updateData.end_date) : undefined,
-        motivation: updateData.motivation ? { set: updateData.motivation as motivation_t[] } : undefined,
-        strategy: updateData.strategy ? { set: updateData.strategy as strategy_t[] } : undefined,
-        outcome: updateData.outcome ? { set: updateData.outcome as outcome_t[] } : undefined
-      };
-      
-      await prisma.project.update({
-        where: { id: project.id },
-        data: updateDataWithDates
-      });
-
-      const updatedProject = await this.getProjectById(projectId, userId);
-
-      return {
-        success: true,
-        data: updatedProject.data,
-        message: '專案更新成功'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '更新專案失敗'
-      };
+    if (!project) {
+      throw new Error('專案不存在或無權限修改');
     }
+
+    const updateDataWithDates = {
+      ...updateData,
+      updated_by: userId,
+      start_date: updateData.start_date ? new Date(updateData.start_date) : undefined,
+      end_date: updateData.end_date ? new Date(updateData.end_date) : undefined,
+      motivation: updateData.motivation ? { set: updateData.motivation as motivation_t[] } : undefined,
+      strategy: updateData.strategy ? { set: updateData.strategy as strategy_t[] } : undefined,
+      outcome: updateData.outcome ? { set: updateData.outcome as outcome_t[] } : undefined
+    };
+
+    await prisma.project.update({
+      where: { id: project.id },
+      data: updateDataWithDates
+    });
+
+    const updatedProject = await getProjectById(projectId, userId);
+
+    if (!updatedProject.success || !updatedProject.data) {
+      throw new Error('更新後無法獲取專案資料');
+    }
+
+    return createSuccessResponse(updatedProject.data, {
+      message: '專案更新成功'
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('更新專案失敗');
   }
+};
 
-  /**
-   * 刪除專案
-   */
-  async deleteProject(
-    projectId: string,
-    userId: number
-  ): Promise<ProjectServiceResult<void>> {
-    try {
-      const project = await prisma.project.findFirst({
-        where: { 
-          external_id: projectId,
-          user_id: userId
-        }
-      });
-
-      if (!project) {
-        return {
-          success: false,
-          error: '專案不存在或無權限刪除'
-        };
+/**
+ * 刪除專案
+ */
+export const deleteProject = async (
+  projectId: string,
+  userId: number
+): Promise<ApiSuccessResponse<void>> => {
+  try {
+    const project = await prisma.project.findFirst({
+      where: {
+        external_id: projectId,
+        user_id: userId
       }
+    });
 
-      await prisma.project.delete({
-        where: { id: project.id }
-      });
-
-      return {
-        success: true,
-        message: '專案刪除成功'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '刪除專案失敗'
-      };
+    if (!project) {
+      throw new Error('專案不存在或無權限刪除');
     }
+
+    await prisma.project.delete({
+      where: { id: project.id }
+    });
+
+    return createSuccessResponse(undefined, {
+      message: '專案刪除成功'
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('刪除專案失敗');
   }
+};
 
-  /**
-   * 獲取專案統計資訊
-   */
-  async getProjectStats(userId?: number): Promise<ProjectServiceResult<ProjectStats>> {
-    try {
-      const whereClause: Record<string, unknown> = {};
-      if (userId) {
-        whereClause.user_id = userId;
-      } else {
-        whereClause.is_public = true;
-      }
+/**
+ * 獲取專案統計資訊
+ */
+export const getProjectStats = async (userId?: number): Promise<ApiSuccessResponse<ProjectStats>> => {
+  try {
+    const whereClause: Record<string, unknown> = {};
+    if (userId) {
+      whereClause.user_id = userId;
+    } else {
+      whereClause.is_public = true;
+    }
 
-      const [
-        total_projects,
-        ongoing_projects,
-        completed_projects,
-        not_started_projects,
-        canceled_projects
-      ] = await Promise.all([
-        prisma.project.count({ where: whereClause }),
-        prisma.project.count({ where: { ...whereClause, status: 'Ongoing' } }),
-        prisma.project.count({ where: { ...whereClause, status: 'Completed' } }),
-        prisma.project.count({ where: { ...whereClause, status: 'Not Started' } }),
-        prisma.project.count({ where: { ...whereClause, status: 'Canceled' } })
-      ]);
+    const [
+      total_projects,
+      ongoing_projects,
+      completed_projects,
+      not_started_projects,
+      canceled_projects
+    ] = await Promise.all([
+      prisma.project.count({ where: whereClause }),
+      prisma.project.count({ where: { ...whereClause, status: 'Ongoing' } }),
+      prisma.project.count({ where: { ...whereClause, status: 'Completed' } }),
+      prisma.project.count({ where: { ...whereClause, status: 'Not Started' } }),
+      prisma.project.count({ where: { ...whereClause, status: 'Canceled' } })
+    ]);
 
-      return {
-        success: true,
-        data: {
-          total_projects,
-          ongoing_projects,
-          completed_projects,
-          not_started_projects,
-          canceled_projects
+    const stats: ProjectStats = {
+      total_projects,
+      ongoing_projects,
+      completed_projects,
+      not_started_projects,
+      canceled_projects
+    };
+
+    return createSuccessResponse(stats, {
+      aggregateData: {
+        statusBreakdown: {
+          ongoing: ongoing_projects,
+          completed: completed_projects,
+          not_started: not_started_projects,
+          canceled: canceled_projects
         }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '獲取統計資訊失敗'
-      };
-    }
+      }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('獲取統計資訊失敗');
   }
-}
-
-// 匯出服務實例
-export const projectService = new ProjectService();
+};

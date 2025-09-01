@@ -8,22 +8,20 @@ import { jwtService } from '../services/jwt.service';
 import { emailService } from '../services/auth/email.service';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
-import { 
-  AuthResponse
-} from '../types/auth.types';
+import { createSuccessResponse } from '../utils/response-helper';
 import { 
   BadRequestError, 
   UnauthorizedError, 
   NotFoundError
-} from '../utils/error-handler';
-import { asyncWrapper } from '../utils/error-handler';
+} from '../middleware/error.middleware';
+import { asyncHandler } from '../middleware/error.middleware';
 
 /**
  * 用戶登入
  * POST /api/auth/login
  * 注意：當前版本僅支援 OAuth 登入，密碼登入需要 schema 更新
  */
-export const login = asyncWrapper(async (_req: Request, _res: Response) => {
+export const login = asyncHandler(async (_req: Request, _res: Response) => {
   // 目前 Prisma schema 不包含密碼字段，暫時只支援 OAuth
   // TODO: 更新 schema 以支援密碼認證
   throw new UnauthorizedError('請使用 Google 登入');
@@ -34,7 +32,7 @@ export const login = asyncWrapper(async (_req: Request, _res: Response) => {
  * POST /api/auth/register
  * 注意：當前版本暫不支援註冊，需要 schema 更新
  */
-export const register = asyncWrapper(async (_req: Request, _res: Response) => {
+export const register = asyncHandler(async (_req: Request, _res: Response) => {
   // 目前 Prisma schema 不包含密碼字段，暫時禁用註冊功能
   // TODO: 更新 schema 以支援完整的用戶註冊
   throw new BadRequestError('註冊功能暫時不可用，請使用 Google 登入');
@@ -44,7 +42,7 @@ export const register = asyncWrapper(async (_req: Request, _res: Response) => {
  * Google OAuth 成功回調
  * GET /api/auth/google/callback
  */
-export const googleCallback = asyncWrapper(async (req: Request, res: Response) => {
+export const googleCallback = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user as { googleID?: string; _id?: string; id?: number; external_id?: string; roleId?: number; name?: string };
   
   if (!user) {
@@ -69,8 +67,15 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
   
   if (!isTemp && id) {
     try {
-      userRoles = await authService.getUserRoles(id);
-      userPermissions = await authService.getUserPermissions(id);
+      const rolesResponse = await authService.getUserRoles(id);
+      const permissionsResponse = await authService.getUserPermissions(id);
+      
+      if (rolesResponse.success) {
+        userRoles = rolesResponse.data;
+      }
+      if (permissionsResponse.success) {
+        userPermissions = permissionsResponse.data;
+      }
     } catch (error) {
       console.error('Failed to fetch user roles/permissions:', error);
       // 繼續執行，但不會有權限
@@ -96,14 +101,13 @@ export const googleCallback = asyncWrapper(async (req: Request, res: Response) =
  * 登出
  * POST /api/auth/logout
  */
-export const logout = asyncWrapper(async (req: Request, res: Response) => {
+export const logout = asyncHandler(async (req: Request, res: Response) => {
   // JWT 是無狀態的，客戶端只需要刪除本地 token
   // 如果需要服務端登出，可以實現 token 黑名單機制
   
-  const response: AuthResponse = {
-    success: true,
+  const response = createSuccessResponse(null, {
     message: '登出成功'
-  };
+  });
 
   res.json(response);
 });
@@ -112,7 +116,7 @@ export const logout = asyncWrapper(async (req: Request, res: Response) => {
  * 刷新 token
  * POST /api/auth/refresh
  */
-export const refreshToken = asyncWrapper(async (req: Request, res: Response) => {
+export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   const currentToken = authHeader && authHeader.split(' ')[1];
 
@@ -126,11 +130,9 @@ export const refreshToken = asyncWrapper(async (req: Request, res: Response) => 
     throw new UnauthorizedError('令牌刷新失敗');
   }
 
-  const response: AuthResponse = {
-    success: true,
-    message: '令牌刷新成功',
-    token: newToken
-  };
+  const response = createSuccessResponse({ token: newToken }, {
+    message: '令牌刷新成功'
+  });
 
   res.json(response);
 });
@@ -139,7 +141,7 @@ export const refreshToken = asyncWrapper(async (req: Request, res: Response) => 
  * 獲取當前用戶資訊
  * GET /api/auth/me
  */
-export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) => {
+export const getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
   // 從 JWT 中獲取用戶信息
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
@@ -177,25 +179,31 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
     }
   } else {
     // 正式用戶
-    user = await authService.findUserByExternalId(decoded._id || '');
-    if (!user) {
+    const userResponse = await authService.findUserByExternalId(decoded._id || '');
+    if (!userResponse.success || !userResponse.data) {
       throw new NotFoundError('用戶不存在');
     }
+    user = userResponse.data;
     contact = user.contacts;
     
     // 獲取用戶角色和權限
     try {
-      userRoles = await authService.getUserRoles(user.id);
-      userPermissions = await authService.getUserPermissions(user.id);
+      const rolesResponse = await authService.getUserRoles(user.id);
+      const permissionsResponse = await authService.getUserPermissions(user.id);
+      
+      if (rolesResponse.success) {
+        userRoles = rolesResponse.data;
+      }
+      if (permissionsResponse.success) {
+        userPermissions = permissionsResponse.data;
+      }
     } catch (error) {
       console.error('Failed to fetch user roles/permissions:', error);
       // 繼續執行，但不會有權限
     }
   }
 
-  const response: AuthResponse = {
-    success: true,
-    message: '獲取用戶資訊成功',
+  const response = createSuccessResponse({
     user: {
       id: user.id,
       nickname: isTemporary ? undefined : (user as { nickname?: string }).nickname,
@@ -209,7 +217,9 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
       permissions: userPermissions.map(permission => permission.name)
     },
     isTemporary
-  };
+  }, {
+    message: '獲取用戶資訊成功'
+  });
 
   res.json(response);
 });
@@ -218,7 +228,7 @@ export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) =
  * 請求密碼重設
  * POST /api/auth/forgot-password
  */
-export const forgotPassword = asyncWrapper(async (_req: Request, _res: Response) => {
+export const forgotPassword = asyncHandler(async (_req: Request, _res: Response) => {
   // 目前不支援密碼重設功能
   throw new BadRequestError('密碼重設功能暫時不可用');
 });
@@ -227,7 +237,7 @@ export const forgotPassword = asyncWrapper(async (_req: Request, _res: Response)
  * 確認密碼重設
  * POST /api/auth/reset-password
  */
-export const resetPassword = asyncWrapper(async (_req: Request, _res: Response) => {
+export const resetPassword = asyncHandler(async (_req: Request, _res: Response) => {
   // 目前不支援密碼重設功能
   throw new BadRequestError('密碼重設功能暫時不可用');
 });
@@ -236,7 +246,7 @@ export const resetPassword = asyncWrapper(async (_req: Request, _res: Response) 
  * 驗證電子郵件
  * POST /api/auth/verify-email
  */
-export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   const { token, email } = req.body;
   
   if (!token) {
@@ -258,20 +268,25 @@ export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
     }
 
     // 使用 external_id 查找用戶
-    const user = await authService.findUserByExternalId(decoded._id || '');
-    console.log("user", user);
+    const userResponse = await authService.findUserByExternalId(decoded._id || '');
+    console.log("userResponse", userResponse);
 
-    if (!user) {
+    if (!userResponse.success || !userResponse.data) {
       throw new NotFoundError('用戶不存在');
     }
 
+    const user = userResponse.data;
+
     // 檢查是否已驗證
-    if (user.email_verified) {
+    if (user.verified) {
       throw new BadRequestError('郵件已驗證');
     }
 
     // 更新用戶郵件驗證狀態
-    await authService.verifyUserEmail(user.id);
+    const verifyResponse = await authService.verifyUserEmail(user.id);
+    if (!verifyResponse.success) {
+      throw new BadRequestError('郵件驗證失敗');
+    }
     console.log("user_verification_updated", user.id);
     
     // 發送歡迎郵件
@@ -280,10 +295,11 @@ export const verifyEmail = asyncWrapper(async (req: Request, res: Response) => {
       await emailService.sendWelcomeEmail(contact.email, user.nickname || 'User');
     }
 
-    res.json({
-      success: true,
+    const response = createSuccessResponse(null, {
       message: '郵件驗證成功'
     });
+    
+    res.json(response);
   } catch (err) {
     console.error("verifyEmail error:", err);
     throw err;

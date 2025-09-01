@@ -2,9 +2,10 @@
  * @swagger
  * /api/v1/auth/login:
  *   post:
- *     summary: 用戶登入
- *     description: 使用電子郵件和密碼進行用戶認證
+ *     summary: 用戶登入（暫不支援）
+ *     description: 密碼登入功能暫時不可用，請使用 Google OAuth 登入
  *     tags: [Authentication]
+ *     deprecated: true
  *     requestBody:
  *       required: true
  *       content:
@@ -12,24 +13,26 @@
  *           schema:
  *             $ref: '#/components/schemas/LoginRequest'
  *     responses:
- *       200:
- *         description: 登入成功
+ *       401:
+ *         description: 功能暫不支援，請使用 Google 登入
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         $ref: '#/components/responses/BadRequestError'
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ *               example:
+ *                 success: false
+ *                 error:
+ *                   type: "unauthorized"
+ *                   message: "請使用 Google 登入"
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
  * /api/v1/auth/register:
  *   post:
- *     summary: 用戶註冊
- *     description: 創建新的用戶帳號
+ *     summary: 用戶註冊（暫不支援）
+ *     description: 註冊功能暫時不可用，請使用 Google OAuth 登入
  *     tags: [Authentication]
+ *     deprecated: true
  *     requestBody:
  *       required: true
  *       content:
@@ -37,16 +40,17 @@
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
- *       201:
- *         description: 註冊成功
+ *       400:
+ *         description: 功能暫不支援，請使用 Google 登入
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         $ref: '#/components/responses/BadRequestError'
- *       409:
- *         $ref: '#/components/responses/ConflictError'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ *               example:
+ *                 success: false
+ *                 error:
+ *                   type: "bad_request"
+ *                   message: "註冊功能暫時不可用，請使用 Google 登入"
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -113,9 +117,10 @@
  * 
  * /api/v1/auth/forgot-password:
  *   post:
- *     summary: 請求密碼重設
- *     description: 發送密碼重設連結到用戶的電子郵箱
+ *     summary: 請求密碼重設（暫不支援）
+ *     description: 密碼重設功能暫時不可用，請使用 Google OAuth 登入
  *     tags: [Authentication]
+ *     deprecated: true
  *     requestBody:
  *       required: true
  *       content:
@@ -123,22 +128,21 @@
  *           schema:
  *             $ref: '#/components/schemas/ForgotPasswordRequest'
  *     responses:
- *       200:
- *         description: 密碼重設郵件已發送（無論用戶是否存在都返回成功，避免洩露用戶資訊）
+ *       400:
+ *         description: 功能暫不支援，請使用 Google 登入
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         $ref: '#/components/responses/BadRequestError'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
  * /api/v1/auth/reset-password:
  *   post:
- *     summary: 確認密碼重設
- *     description: 使用重設令牌更新用戶密碼
+ *     summary: 確認密碼重設（暫不支援）
+ *     description: 密碼重設功能暫時不可用，請使用 Google OAuth 登入
  *     tags: [Authentication]
+ *     deprecated: true
  *     requestBody:
  *       required: true
  *       content:
@@ -146,14 +150,12 @@
  *           schema:
  *             $ref: '#/components/schemas/ResetPasswordRequest'
  *     responses:
- *       200:
- *         description: 密碼重設成功
+ *       400:
+ *         description: 功能暫不支援，請使用 Google 登入
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         $ref: '#/components/responses/BadRequestError'
+ *               $ref: '#/components/schemas/ApiErrorResponse'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 

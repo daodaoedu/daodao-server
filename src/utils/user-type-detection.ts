@@ -126,7 +126,7 @@ export function hasVerifiedEmail(user: AnyUser | null | undefined): boolean {
   
   // Formal users check email_verified field
   if (isFormalUser(user)) {
-    return user.email_verified === true;
+    return user.verified === true;
   }
   
   return false;
