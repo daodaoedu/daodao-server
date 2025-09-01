@@ -46,21 +46,24 @@ const getAuthOptions = (): AuthOptions | null => {
 passport.serializeUser((user: any, done) => {
   console.log('SerializeUser:', user);
 
-  const userId = getUserId(user as AnyUser);
-  if (userId) {
-    // 使用新的用戶類型檢測邏輯
-    const userType = getUserType(user as AnyUser);
-    if (userType !== 'unknown') {
-      // 確保 ID 轉為字串以保持一致性
-      done(null, { id: String(userId), type: userType });
-    } else {
-      done(new Error('Unknown user type'), null);
-    }
-  } else if (user.external_id) {
-    // PostgreSQL 正式用戶（備用識別）
-    done(null, { id: String(user.external_id), type: 'user' });
+  // 優先檢查是否為 PostgreSQL 正式用戶（有 external_id）
+  if (user.external_id) {
+    // PostgreSQL 正式用戶 - external_id 是 UUID 字串
+    done(null, { id: user.external_id, type: 'user' });
   } else {
-    done(new Error('Invalid user object'), null);
+    // 其他用戶類型（temp_users 等）
+    const userId = getUserId(user as AnyUser);
+    if (userId) {
+      const userType = getUserType(user as AnyUser);
+      if (userType !== 'unknown') {
+        // temp_users 的 ID 保持為數字字串
+        done(null, { id: String(userId), type: userType });
+      } else {
+        done(new Error('Unknown user type'), null);
+      }
+    } else {
+      done(new Error('Invalid user object'), null);
+    }
   }
 });
 
