@@ -427,11 +427,8 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/CI-Failed-red?style=for-the-badge&logo=github&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
-                  {\"name\": \"❌ Status\", \"value\": \"CI: $CI_STATUS\", \"inline\": true}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
@@ -451,12 +448,8 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/Build-Failed-red?style=for-the-badge&logo=docker&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
-                  {\"name\": \"❌ Status\", \"value\": \"Build: $BUILD_STATUS\", \"inline\": true}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
@@ -476,12 +469,8 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/Deploy-Failed-red?style=for-the-badge&logo=rocket&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
-                  {\"name\": \"❌ Status\", \"value\": \"Deploy: $DEPLOY_STATUS\", \"inline\": true}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
@@ -499,11 +488,8 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/Deploy-Cancelled-lightgrey?style=for-the-badge&logo=pause&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
@@ -521,11 +507,8 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/Verify-Failed-orange?style=for-the-badge&logo=search&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
@@ -550,12 +533,8 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/Deploy-Success-brightgreen?style=for-the-badge&logo=check-circle&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
-                  {\"name\": \"📊 Status\", \"value\": \"✅ Deploy: $DEPLOY_STATUS\\n✅ Verify: $VERIFY_STATUS\", \"inline\": true}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
@@ -573,12 +552,9 @@ jobs:
                   \"url\": \"https://img.shields.io/badge/Status-Unknown-yellow?style=for-the-badge&logo=question&logoColor=white\"
                 },
                 \"fields\": [
-                  {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                  {\"name\": \"🏷️ Environment\", \"value\": \"$IMAGE_TAG\", \"inline\": true},
-                  {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
-                  {\"name\": \"📊 Status\", \"value\": \"CI: $CI_STATUS\\nBuild: $BUILD_STATUS\\nDeploy: $DEPLOY_STATUS\\nVerify: $VERIFY_STATUS\", \"inline\": false}
+                  {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                  {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false},
+                  {\"name\": \"Status\", \"value\": \"CI: $CI_STATUS\\nBuild: $BUILD_STATUS\\nDeploy: $DEPLOY_STATUS\\nVerify: $VERIFY_STATUS\", \"inline\": false}
                 ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
