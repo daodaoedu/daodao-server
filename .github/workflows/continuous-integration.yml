@@ -212,16 +212,17 @@ jobs:
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           curl -X POST -H "Content-Type: application/json" -d "{
-            \"content\": \"✅ **CI 檢查通過！**\",
+            \"content\": \"**CI 檢查通過！** ✨\",
             \"embeds\": [{
-              \"title\": \"🧪 CI Tests Passed\",
+              \"title\": \"CI Tests Passed\",
               \"description\": \"所有檢查項目都通過了，程式碼品質良好\",
               \"color\": 3066993,
+              \"thumbnail\": {
+                \"url\": \"https://img.shields.io/badge/CI-Passed-brightgreen?style=for-the-badge&logo=github-actions&logoColor=white\"
+              },
               \"fields\": [
-                {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
               ],
               \"timestamp\": \"$CURRENT_TIME\"
             }]
@@ -264,16 +265,17 @@ jobs:
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           curl -X POST -H "Content-Type: application/json" -d "{
-            \"content\": \"❌ **CI 檢查失敗！**\",
+            \"content\": \"**CI 檢查失敗！**\",
             \"embeds\": [{
-              \"title\": \"💥 CI Tests Failed\",
+              \"title\": \"CI Tests Failed\",
               \"description\": \"程式碼檢查過程中發現問題，請修復後重新提交\",
               \"color\": 16711680,
+              \"thumbnail\": {
+                \"url\": \"https://img.shields.io/badge/CI-Failed-red?style=for-the-badge&logo=github-actions&logoColor=white\"
+              },
               \"fields\": [
-                {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
-                {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
-                {\"name\": \"👤 Author\", \"value\": \"$AUTHOR\", \"inline\": true},
-                {\"name\": \"💬 Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+                {\"name\": \"Branch\", \"value\": \"$BRANCH\", \"inline\": true},
+                {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
               ],
               \"timestamp\": \"$CURRENT_TIME\"
             }]
