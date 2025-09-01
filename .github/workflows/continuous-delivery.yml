@@ -418,11 +418,14 @@ jobs:
             FAILURE_REASON="持續整合檢查失敗"
             
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"🚨 **CI 檢查失敗！**\",
+              \"content\": \"**CI 檢查失敗！**\",
               \"embeds\": [{
-                \"title\": \"🧪 CI Failed\",
+                \"title\": \"CI Failed\",
                 \"description\": \"$FAILURE_REASON，請檢查測試、類型檢查或代碼品質\",
                 \"color\": 16711680,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/CI-Failed-red?style=for-the-badge&logo=github&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
@@ -439,11 +442,14 @@ jobs:
             FAILURE_REASON="Docker 映像構建失敗"
             
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"🚨 **Build 失敗！**\",
+              \"content\": \"**Build 失敗！**\",
               \"embeds\": [{
-                \"title\": \"🔨 Build Failed\",
+                \"title\": \"Build Failed\",
                 \"description\": \"$FAILURE_REASON，請檢查代碼和構建腳本\",
                 \"color\": 16711680,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/Build-Failed-red?style=for-the-badge&logo=docker&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
@@ -461,11 +467,14 @@ jobs:
             FAILURE_REASON="部署過程發生錯誤"
             
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"🚨 **部署失敗！**\",
+              \"content\": \"**部署失敗！**\",
               \"embeds\": [{
-                \"title\": \"💥 Deployment Failed\",
+                \"title\": \"Deployment Failed\",
                 \"description\": \"$FAILURE_REASON，請檢查服務器狀態\",
                 \"color\": 16711680,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/Deploy-Failed-red?style=for-the-badge&logo=rocket&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
@@ -481,11 +490,14 @@ jobs:
           elif [ "$DEPLOY_STATUS" == "cancelled" ]; then
             # 取消通知
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"⏹️ **部署已取消**\",
+              \"content\": \"**部署已取消**\",
               \"embeds\": [{
-                \"title\": \"🚀 Deployment Cancelled\",
+                \"title\": \"Deployment Cancelled\",
                 \"description\": \"部署流程被用戶取消\",
                 \"color\": 8421504,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/Deploy-Cancelled-lightgrey?style=for-the-badge&logo=pause&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
@@ -500,11 +512,14 @@ jobs:
           elif [ "$VERIFY_STATUS" == "failure" ]; then
             # 驗證失敗
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"⚠️ **部署完成但驗證失敗！**\",
+              \"content\": \"**部署完成但驗證失敗！**\",
               \"embeds\": [{
-                \"title\": \"🏥 Verification Failed\",
+                \"title\": \"Verification Failed\",
                 \"description\": \"服務部署完成但後續驗證失敗，請檢查應用程式狀態\",
                 \"color\": 16776960,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/Verify-Failed-orange?style=for-the-badge&logo=search&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
@@ -526,11 +541,14 @@ jobs:
             fi
             
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"✅ **部署成功！** 🎉\",
+              \"content\": \"**部署成功！** ✨\",
               \"embeds\": [{
-                \"title\": \"🚀 Deployment Successful\",
+                \"title\": \"Deployment Successful\",
                 \"description\": \"服務已成功更新至 $ENV_INFO\",
                 \"color\": 3066993,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/Deploy-Success-brightgreen?style=for-the-badge&logo=check-circle&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},
@@ -546,11 +564,14 @@ jobs:
           else
             # 未知狀態或部分失敗
             curl -X POST -H "Content-Type: application/json" -d "{
-              \"content\": \"⚠️ **部署狀態未明！**\",
+              \"content\": \"**部署狀態未明！**\",
               \"embeds\": [{
-                \"title\": \"❓ Unknown Status\",
+                \"title\": \"Unknown Status\",
                 \"description\": \"部署流程結束但狀態不明確，請手動檢查\",
                 \"color\": 16776960,
+                \"thumbnail\": {
+                  \"url\": \"https://img.shields.io/badge/Status-Unknown-yellow?style=for-the-badge&logo=question&logoColor=white\"
+                },
                 \"fields\": [
                   {\"name\": \"📋 Repository\", \"value\": \"$REPO\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"$BRANCH\", \"inline\": true},

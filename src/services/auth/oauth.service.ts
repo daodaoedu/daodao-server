@@ -51,13 +51,14 @@ passport.serializeUser((user: any, done) => {
     // 使用新的用戶類型檢測邏輯
     const userType = getUserType(user as AnyUser);
     if (userType !== 'unknown') {
-      done(null, { id: userId, type: userType });
+      // 確保 ID 轉為字串以保持一致性
+      done(null, { id: String(userId), type: userType });
     } else {
       done(new Error('Unknown user type'), null);
     }
   } else if (user.external_id) {
     // PostgreSQL 正式用戶（備用識別）
-    done(null, { id: user.external_id, type: 'user' });
+    done(null, { id: String(user.external_id), type: 'user' });
   } else {
     done(new Error('Invalid user object'), null);
   }
