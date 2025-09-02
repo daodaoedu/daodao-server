@@ -171,7 +171,7 @@ export const projectQuerySchema = z.object({
     'start_date',
     'end_date'
   ]).optional(),
-  sort_order: z.enum(['ASC', 'DESC']).optional()
+  sort_order: z.enum(['asc', 'desc']).optional()
 });
 
 // 複製專案驗證

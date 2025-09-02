@@ -55,7 +55,7 @@ export interface PaginatedResponse<T> {
 // 排序參數通用介面
 export interface SortParams {
   sortBy?: string;
-  sortOrder?: 'ASC' | 'DESC' | 'asc' | 'desc';
+  sortOrder?: 'asc' | 'desc';
 }
 
 // 查詢參數通用介面
