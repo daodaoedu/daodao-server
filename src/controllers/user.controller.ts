@@ -181,6 +181,49 @@ export const getUserByCustomId = asyncHandler(async (req: Request, res: Response
   res.json(result);
 });
 
+/**
+ * 獲取當前用戶的偏好設定
+ * GET /api/users/me/preferences
+ */
+export const getUserPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser) {
+    throw new NotFoundError('User not found');
+  }
+
+  const result = await userService.getUserPreferences(currentUser.id);
+
+  res.json(result);
+});
+
+/**
+ * 更新當前用戶的偏好設定
+ * PUT /api/users/me/preferences
+ */
+export const updateUserPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+  const preferences = req.body.preferences as Record<string, string[]>;
+
+  if (!currentUser) {
+    throw new NotFoundError('User not found');
+  }
+
+  const result = await userService.updateUserPreferences(currentUser.id, preferences);
+
+  res.json(result);
+});
+
+/**
+ * 獲取所有可用的偏好選項
+ * GET /api/users/preferences/available
+ */
+export const getAvailablePreferences = asyncHandler(async (_req: Request, res: Response) => {
+  const result = await userService.getAvailablePreferences();
+
+  res.json(result);
+});
+
 export const userController = {
   getAllUsers,
   getMe,
@@ -192,7 +235,10 @@ export const userController = {
   checkCustomIdAvailability,
   setCustomId,
   removeCustomId,
-  getUserByCustomId
+  getUserByCustomId,
+  getUserPreferences,
+  updateUserPreferences,
+  getAvailablePreferences
 };
 
 export default userController;

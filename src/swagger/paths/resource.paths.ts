@@ -68,7 +68,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceListResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *   
@@ -91,9 +91,52 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ * 
+ * /api/v1/resources/stats:
+ *   get:
+ *     summary: 獲取資源統計資訊
+ *     description: 獲取資源的整體統計資訊，包括總數、分類統計等
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
+ *     responses:
+ *       200:
+ *         description: 成功獲取資源統計
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalResources:
+ *                       type: integer
+ *                       description: 資源總數
+ *                     resourcesByType:
+ *                       type: object
+ *                       description: 按類型分類的資源數量
+ *                     resourcesByLevel:
+ *                       type: object
+ *                       description: 按難度分類的資源數量
+ *                     resourcesByCost:
+ *                       type: object
+ *                       description: 按費用分類的資源數量
+ *                     recentResources:
+ *                       type: integer
+ *                       description: 最近新增的資源數量
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -111,7 +154,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -138,9 +181,9 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -163,7 +206,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -193,9 +236,9 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -217,7 +260,7 @@
  *             schema:
  *               $ref: '#/components/schemas/EntityTagsResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:

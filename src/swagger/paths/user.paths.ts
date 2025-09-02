@@ -49,18 +49,31 @@
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/FormattedUser'
- *                 page:
- *                   type: integer
- *                 pageSize:
- *                   type: integer
- *                 totalCount:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     itemsPerPage:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -83,18 +96,24 @@
  *             schema:
  *               type: object
  *               properties:
- *                 message:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/FormattedUser'
+ *                     token:
+ *                       type: string
+ *                       description: 新的 JWT token
+ *                 timestamp:
  *                   type: string
- *                   example: "User created successfully"
- *                 user:
- *                   $ref: '#/components/schemas/FormattedUser'
- *                 token:
- *                   type: string
- *                   description: 新的 JWT token
+ *                   format: date-time
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       409:
@@ -119,12 +138,16 @@
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 data:
  *                   $ref: '#/components/schemas/FormattedUser'
- *                 message:
+ *                 timestamp:
  *                   type: string
+ *                   format: date-time
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -141,11 +164,267 @@
  *             schema:
  *               type: object
  *               properties:
- *                 message:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "用戶已成功刪除"
+ *                 timestamp:
  *                   type: string
- *                   example: "User deleted successfully"
+ *                   format: date-time
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/me/preferences:
+ *   get:
+ *     summary: 獲取當前用戶的偏好設定
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 成功獲取用戶偏好設定
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/UserPreferences'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ * 
+ *   put:
+ *     summary: 更新當前用戶的偏好設定
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UserPreferencesRequest'
+ *     responses:
+ *       200:
+ *         description: 偏好設定更新成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "偏好設定已成功更新"
+ *                     preferences:
+ *                       $ref: '#/components/schemas/UserPreferences'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         $ref: '#/components/responses/BadRequestError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/preferences/available:
+ *   get:
+ *     summary: 獲取所有可用的偏好選項
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: 成功獲取可用偏好選項
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/AvailablePreferences'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/me/custom-id:
+ *   post:
+ *     summary: 設置當前用戶的自訂 ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CustomIdRequest'
+ *     responses:
+ *       200:
+ *         description: 自訂 ID 設置成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/CustomIdSetResponse'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         $ref: '#/components/responses/BadRequestError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ * 
+ *   delete:
+ *     summary: 移除當前用戶的自訂 ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 自訂 ID 移除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "自訂 ID 已成功移除"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/custom-id/check/{customId}:
+ *   get:
+ *     summary: 檢查自訂 ID 可用性
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: customId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^[a-zA-Z0-9_-]{3,50}$'
+ *         description: 要檢查的自訂 ID
+ *     responses:
+ *       200:
+ *         description: 成功檢查自訂 ID 可用性
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/CustomIdAvailabilityResponse'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         $ref: '#/components/responses/BadRequestError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/custom-id/{customId}:
+ *   get:
+ *     summary: 透過自訂 ID 獲取用戶資訊
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: customId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 用戶自訂 ID
+ *     responses:
+ *       200:
+ *         description: 成功獲取用戶資訊
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/FormattedUser'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -213,9 +492,9 @@
  *                 data:
  *                   $ref: '#/components/schemas/FormattedUser'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -245,7 +524,7 @@
  *                   type: string
  *                   example: "User deleted successfully"
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:

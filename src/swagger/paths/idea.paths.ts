@@ -91,7 +91,7 @@
  *                           type: integer
  *                           example: 5
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -165,9 +165,9 @@
  *                 data:
  *                   $ref: '#/components/schemas/Idea'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -199,7 +199,7 @@
  *                 data:
  *                   $ref: '#/components/schemas/Idea'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -284,9 +284,9 @@
  *                 data:
  *                   $ref: '#/components/schemas/Idea'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -324,9 +324,9 @@
  *                   type: string
  *                   example: 想法已成功刪除
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:

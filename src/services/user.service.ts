@@ -766,7 +766,8 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       share,
       wantToDoList,
       tagList,
-      roleList
+      roleList,
+      preferences
     } = userData;
 
     // 更新聯絡方式
@@ -841,6 +842,11 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       await tagService.setEntityTags('user', user.id, tagList || [], user.id, tx);
     }
 
+    // Handle preferences
+    if (preferences !== undefined) {
+      await handleUserPreferences(user.id, preferences, tx);
+    }
+
     // 獲取更新後的完整用戶資訊
     const updatedUser = await tx.users.findUnique({
       where: { external_id: externalId },
@@ -857,6 +863,18 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         user_positions: {
           include: {
             position: true
+          }
+        },
+        user_preferences: {
+          where: {
+            is_selected: true
+          },
+          include: {
+            preference_options: {
+              include: {
+                preference_types: true
+              }
+            }
           }
         }
       }
@@ -1114,6 +1132,125 @@ const removeCustomId = async (userId: number): Promise<ApiSuccessResponse<{ mess
   return createSuccessResponse({ message: '自訂 ID 已成功移除' });
 };
 
+/**
+ * 獲取用戶偏好設定
+ */
+const getUserPreferences = async (userId: number): Promise<ApiSuccessResponse<Record<string, Array<{ name: string; value: string }>>>> => {
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    include: {
+      user_preferences: {
+        where: {
+          is_selected: true
+        },
+        include: {
+          preference_options: {
+            include: {
+              preference_types: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!user) {
+    throw new NotFoundError('用戶不存在');
+  }
+
+  const preferences = user.user_preferences?.reduce((acc, pref) => {
+    const typeValue = pref.preference_options.preference_types.value;
+    if (!acc[typeValue]) {
+      acc[typeValue] = [];
+    }
+    acc[typeValue].push({
+      name: pref.preference_options.name,
+      value: pref.preference_options.value
+    });
+    return acc;
+  }, {} as Record<string, Array<{ name: string; value: string }>>);
+
+  return createSuccessResponse(preferences || {});
+};
+
+/**
+ * 更新用戶偏好設定
+ */
+const updateUserPreferences = async (
+  userId: number, 
+  preferences: Record<string, string[]>
+): Promise<ApiSuccessResponse<{ message: string; preferences: Record<string, Array<{ name: string; value: string }>> }>> => {
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.users.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new NotFoundError('用戶不存在');
+    }
+
+    // Handle preferences
+    await handleUserPreferences(userId, preferences, tx);
+
+    // Get updated preferences
+    const updatedUser = await tx.users.findUnique({
+      where: { id: userId },
+      include: {
+        user_preferences: {
+          where: {
+            is_selected: true
+          },
+          include: {
+            preference_options: {
+              include: {
+                preference_types: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const formattedPreferences = updatedUser?.user_preferences?.reduce((acc, pref) => {
+      const typeValue = pref.preference_options.preference_types.value;
+      if (!acc[typeValue]) {
+        acc[typeValue] = [];
+      }
+      acc[typeValue].push({
+        name: pref.preference_options.name,
+        value: pref.preference_options.value
+      });
+      return acc;
+    }, {} as Record<string, Array<{ name: string; value: string }>>);
+
+    return createSuccessResponse({ 
+      message: '偏好設定已成功更新',
+      preferences: formattedPreferences || {}
+    });
+  });
+};
+
+/**
+ * 獲取可用的偏好選項
+ */
+const getAvailablePreferences = async (): Promise<ApiSuccessResponse<Record<string, Array<{ name: string; value: string }>>>> => {
+  const preferenceTypes = await prisma.preference_types.findMany({
+    include: {
+      preference_options: true
+    }
+  });
+
+  const availablePreferences = preferenceTypes.reduce((acc, type) => {
+    acc[type.value] = type.preference_options.map(option => ({
+      name: option.name,
+      value: option.value
+    }));
+    return acc;
+  }, {} as Record<string, Array<{ name: string; value: string }>>);
+
+  return createSuccessResponse(availablePreferences);
+};
+
 // 匯出服務函數
 export const userService = {
   getAllUsers,
@@ -1126,7 +1263,10 @@ export const userService = {
   checkCustomIdAvailability,
   setCustomId,
   getUserByCustomId,
-  removeCustomId
+  removeCustomId,
+  getUserPreferences,
+  updateUserPreferences,
+  getAvailablePreferences
 } as const;
 
 export default userService;

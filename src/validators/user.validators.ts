@@ -29,6 +29,7 @@ export const createUserSchema = z.object({
   wantToDoList: z.array(z.string()).optional(),
   tagList: z.array(z.string()).optional(),
   interestList: z.array(z.string()).optional(),
+  preferences: z.record(z.array(z.string())).optional(),
   isSendEmail: z.boolean().optional(),
 });
 
@@ -50,6 +51,7 @@ export const updateUserSchema = z.object({
   tagList: z.array(z.string()).optional(),
   roleList: z.array(z.string()).optional(),
   interestList: z.array(z.string()).optional(),
+  preferences: z.record(z.array(z.string())).optional(),
 });
 
 // 獲取用戶參數 schema
@@ -67,8 +69,17 @@ export const getUserQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+// 偏好設定 schema
+export const userPreferencesSchema = z.object({
+  preferences: z.record(z.array(z.string())).refine(
+    (data) => Object.keys(data).length > 0, 
+    { message: "至少需要一個偏好設定" }
+  ),
+});
+
 // 導出型別
 export type CreateUserDto = z.infer<typeof createUserSchema>;
 export type UpdateUserDto = z.infer<typeof updateUserSchema>;
 export type GetUserParamsDto = z.infer<typeof getUserParamsSchema>;
 export type GetUserQueryDto = z.infer<typeof getUserQuerySchema>;
+export type UserPreferencesDto = z.infer<typeof userPreferencesSchema>;

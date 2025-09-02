@@ -93,28 +93,6 @@
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
- * /api/v1/auth/me:
- *   get:
- *     summary: 獲取當前用戶資訊
- *     description: 返回當前已認證用戶的個人資訊
- *     tags: [Authentication]
- *     security:
- *       - BearerAuth: []
- *       - SessionAuth: []
- *     responses:
- *       200:
- *         description: 成功獲取用戶資訊
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- * 
  * /api/v1/auth/forgot-password:
  *   post:
  *     summary: 請求密碼重設（暫不支援）

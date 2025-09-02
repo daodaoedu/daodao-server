@@ -21,9 +21,9 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -48,9 +48,9 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -75,9 +75,9 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
@@ -102,7 +102,7 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -127,9 +127,9 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
@@ -156,9 +156,9 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
@@ -204,9 +204,9 @@
  *                       type: string
  *                       example: queued
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
@@ -231,7 +231,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ValidateEmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -256,9 +256,9 @@
  *             schema:
  *               $ref: '#/components/schemas/PreviewEmailResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -292,7 +292,7 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailStatsResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
@@ -313,7 +313,7 @@
  *             schema:
  *               $ref: '#/components/schemas/EmailHealthResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
