@@ -90,6 +90,353 @@ users (主表)
 - `location`: 地區篩選 (逗號分隔)
 - `search`: 關鍵字搜尋 (搜尋暱稱、自介、分享內容)
 
+## API 請求/回應格式
+
+### 標準回應格式
+
+所有 API 端點遵循統一的回應格式（定義於 `src/types/api-response.types.ts`）：
+
+#### 成功回應
+```typescript
+{
+  success: true;
+  data: T;  // 實際資料
+  timestamp: string;
+  meta?: ResponseMeta;  // 可選元資料
+}
+```
+
+#### 錯誤回應
+```typescript
+{
+  success: false;
+  data: null;
+  error: {
+    code: string;     // 錯誤代碼
+    message: string;  // 錯誤訊息
+    details?: Record<string, string>;  // 詳細錯誤資訊
+  };
+  timestamp: string;
+  meta?: ResponseMeta;
+}
+```
+
+#### 分頁回應
+```typescript
+{
+  success: true;
+  data: T[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  timestamp: string;
+  meta?: ResponseMeta;
+}
+```
+
+### 具體端點格式
+
+#### POST /api/users (創建用戶)
+
+**請求格式:**
+```json
+{
+  "gender": "male",
+  "birthDate": "1990-01-01",
+  "contactList": {
+    "instagram": "john_doe",
+    "discord": "john#1234",
+    "line": "johndoe",
+    "facebook": "john.doe"
+  },
+  "educationStage": "university",
+  "isOpenLocation": true,
+  "isOpenProfile": true,
+  "isSubscribeEmail": false,
+  "location": "台北市",
+  "roleList": ["frontend_developer", "ui_designer"],
+  "selfIntroduction": "我是一名前端工程師，熱愛學習新技術...",
+  "share": "分享我的開發經驗和學習心得",
+  "wantToDoList": ["learning_react", "improve_design_skills"],
+  "tagList": ["JavaScript", "React", "UI/UX"],
+  "preferences": {
+    "learning_style": ["visual", "hands_on"],
+    "time_preference": ["evening"]
+  },
+  "isSendEmail": true
+}
+```
+
+**成功回應:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### GET /api/users (獲取用戶列表)
+
+**查詢參數範例:**
+```
+GET /api/users?page=1&pageSize=10&educationStage=university,high&search=JavaScript&location=台北市,新北市
+```
+
+**成功回應:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "John Doe",
+      "gender": "male",
+      "email": "john@example.com",
+      "photoURL": "https://example.com/photo.jpg",
+      "birthDay": "1990-01-01",
+      "isOpenLocation": true,
+      "isOpenProfile": true,
+      "location": "台北市",
+      "educationStage": "university",
+      "selfIntroduction": "我是一名前端工程師...",
+      "tagList": ["JavaScript", "React"],
+      "roleList": ["前端工程師"],
+      "customId": "john-doe-dev",
+      "createdDate": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 5,
+    "totalItems": 47,
+    "itemsPerPage": 10,
+    "hasNext": true,
+    "hasPrev": false
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "meta": {
+    "searchTime": 23,
+    "cacheHit": false,
+    "filters": {
+      "educationStage": ["university", "high"],
+      "location": ["台北市", "新北市"]
+    }
+  }
+}
+```
+
+#### GET /api/users/me (獲取當前用戶)
+
+**成功回應:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "John Doe",
+    "gender": "male",
+    "email": "john@example.com",
+    "photoURL": "https://example.com/photo.jpg",
+    "birthDay": "1990-01-01",
+    "isOpenLocation": true,
+    "isOpenProfile": true,
+    "location": "台北市",
+    "educationStage": "university",
+    "selfIntroduction": "我是一名前端工程師...",
+    "share": "分享我的開發經驗",
+    "wantToDoList": ["learning_react", "improve_design_skills"],
+    "tagList": ["JavaScript", "React", "UI/UX"],
+    "roleList": ["前端工程師", "UI設計師"],
+    "contactList": {
+      "email": "john@example.com",
+      "photoUrl": "https://example.com/photo.jpg",
+      "isSubscribeEmail": false,
+      "instagram": "john_doe",
+      "discord": "john#1234",
+      "line": "johndoe",
+      "facebook": "john.doe"
+    },
+    "preferences": {
+      "learning_style": [
+        {"name": "學習風格", "value": "視覺化"},
+        {"name": "學習風格", "value": "實作導向"}
+      ],
+      "time_preference": [
+        {"name": "時間偏好", "value": "晚上"}
+      ]
+    },
+    "customId": "john-doe-dev",
+    "customIdVerified": true,
+    "customIdCreatedAt": "2024-01-01T12:00:00.000Z",
+    "createdDate": "2024-01-01T00:00:00.000Z",
+    "updatedDate": "2024-01-10T15:30:00.000Z"
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### PUT /api/users/:id (更新用戶)
+
+**請求格式:**
+```json
+{
+  "name": "John Smith",
+  "selfIntroduction": "更新後的自我介紹...",
+  "contactList": {
+    "instagram": "john_smith"
+  },
+  "tagList": ["JavaScript", "TypeScript", "React"],
+  "isOpenProfile": false
+}
+```
+
+**成功回應:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "John Smith",
+    "updatedDate": "2024-01-15T10:30:00.000Z"
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### POST /api/users/me/custom-id (設置自訂 ID)
+
+**請求格式:**
+```json
+{
+  "customId": "john-doe-dev"
+}
+```
+
+**成功回應:**
+```json
+{
+  "success": true,
+  "data": {
+    "customId": "john-doe-dev",
+    "customIdVerified": true,
+    "customIdCreatedAt": "2024-01-15T10:30:00.000Z"
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### GET /api/users/custom-id/check/:customId (檢查自訂 ID)
+
+**成功回應:**
+```json
+{
+  "success": true,
+  "data": {
+    "available": true
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+### 常見錯誤回應
+
+#### 404 用戶不存在
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "用戶不存在",
+    "details": {
+      "userId": "550e8400-e29b-41d4-a716-446655440000"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### 409 自訂 ID 衝突
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "CUSTOM_ID_TAKEN",
+    "message": "此自訂 ID 已被其他用戶使用",
+    "details": {
+      "customId": "john-doe"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### 400 驗證錯誤
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "輸入驗證失敗",
+    "details": {
+      "email": "必須是有效的電子郵件地址",
+      "customId": "自訂 ID 不能以底線開頭"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### 401 認證失敗
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "需要有效的認證憑證",
+    "details": {
+      "reason": "JWT token 已過期"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### 403 權限不足
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "PERMISSION_DENIED",
+    "message": "權限不足",
+    "details": {
+      "requiredRole": "admin",
+      "userRole": "user"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
 ## 主要業務流程
 
 ### 1. 用戶創建流程
@@ -449,41 +796,59 @@ const validateWantToDoList = (items: unknown[]): want_to_do_list_t[] => {
 - 關鍵操作使用資料庫交易確保資料一致性
 - 失敗時自動回滾
 
-## 錯誤處理
+## 錯誤處理機制
 
 ### 常見錯誤類型
 
-1. **NotFoundError**: 用戶不存在
-2. **ConflictError**: 用戶名稱衝突、城市無效等
-3. **ValidationError**: 輸入資料格式錯誤
-4. **AuthenticationError**: 認證失敗
+1. **NotFoundError**: 用戶不存在、臨時用戶未找到
+2. **ConflictError**: 用戶名稱衝突、自訂 ID 已存在、城市無效
+3. **ValidationError**: Zod 驗證失敗時自動產生
+4. **AuthenticationError**: JWT token 認證失敗
 5. **PermissionError**: 權限不足
 
-### 錯誤回應格式
+### Prisma 錯誤處理
 
 ```typescript
-{
-  success: false,
-  message: "錯誤描述",
-  error: "ERROR_CODE",
-  details?: "詳細錯誤資訊"
+// 唯一約束違反處理
+if (error && typeof error === 'object' && 'code' in error) {
+  const prismaError = error as { code: string; meta?: { target?: string[] } };
+  if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('custom_id')) {
+    throw new ConflictError('此自訂 ID 已被其他用戶使用');
+  }
 }
 ```
 
-## 效能考量
+### 錯誤回應格式
 
-### 1. 資料庫索引
+統一的錯誤回應格式遵循 API 標準格式，詳見上方 API 回應格式章節。
+
+## 效能最佳化
+
+### 資料庫最佳化
+
+#### 索引策略
 - `external_id` 唯一索引
+- `custom_id` 唯一索引 (用於個人化 URL)
 - `email` 索引 (用於搜尋)
 - `is_open_profile` 索引 (用於公開用戶查詢)
 
-### 2. 查詢最佳化
-- 使用 Prisma 的 `include` 精確載入需要的關聯資料
-- 分頁查詢避免大量資料載入
+#### 查詢最佳化
+1. **精確載入**: 使用 Prisma `include` 只載入需要的關聯資料
+2. **分頁查詢**: 避免載入過多資料，支援自訂頁面大小
+3. **索引使用**: 關鍵欄位建立適當索引提升查詢效能
 
-### 3. 完整度計算
-- 在記憶體中計算，避免複雜的 SQL 聚合查詢
-- 可考慮快取完整度分數以提升效能
+### 應用層最佳化
+
+#### 記憶體最佳化
+1. **完整度計算**: 在應用層計算，避免複雜的 SQL 聚合查詢
+2. **資料轉換**: 延遲載入標籤資訊，只在需要時查詢
+3. **交易管理**: 適當的交易範圍，避免長時間鎖定
+
+#### 快取建議
+1. **用戶基本資料**: Redis 快取常用用戶資訊
+2. **完整度分數**: 快取計算結果，定期更新
+3. **城市映射**: 記憶體快取映射表
+4. **偏好選項**: 快取 preference_types 和 preference_options
 
 ## 測試覆蓋
 
@@ -518,49 +883,30 @@ const validateWantToDoList = (items: unknown[]): want_to_do_list_t[] => {
 ### 核心 CRUD 操作
 
 #### `getAllUsers(params: UserQueryParams)`
-- **功能**: 獲取用戶列表，支援分頁、篩選和搜尋
-- **特色**: 按完整度分數排序，優先顯示資料完整的用戶
-- **權限**: 僅返回 `is_open_profile: true` 的用戶
+獲取用戶列表，支援分頁、篩選和搜尋。按完整度分數排序，僅返回 `is_open_profile: true` 的用戶。
 
-#### `getMe(externalId: string)`
-- **功能**: 獲取當前用戶完整資訊
-- **驗證**: UUID 格式驗證
-- **回傳**: `FormattedUserResponse` 或 `null`
+#### `getMe(externalId: string)` / `getUserById(externalId: string)`
+獲取用戶完整資訊，包含 UUID 格式驗證，回傳 `FormattedUserResponse`。
 
 #### `createUser(userData: CreateUserRequest, tempUserId: string)`
-- **功能**: 從臨時用戶轉換為正式用戶
-- **交易**: 完整的資料庫交易操作
-- **流程**: 驗證 → 創建關聯資料 → 處理標籤/偏好 → 發送郵件
+從臨時用戶轉換為正式用戶，包含完整的資料庫交易操作和郵件發送。
 
 #### `updateUser(externalId: string, userData: UpdateUserRequest)`
-- **功能**: 更新用戶資訊
-- **交易**: 確保資料一致性
-- **支援**: 聯絡資訊、基本資訊、職位、標籤等全面更新
+更新用戶資訊，支援聯絡資訊、基本資訊、職位、標籤等全面更新，使用交易確保一致性。
 
-#### `deleteMe(externalId: string)` 和 `deleteUser(userId: number)`
-- **功能**: 刪除用戶及所有關聯資料
-- **交易**: 級聯刪除所有相關記錄
-- **權限**: `deleteMe` 需認證，`deleteUser` 需管理員權限
+#### `deleteMe(externalId: string)` / `deleteUser(userId: number)`
+刪除用戶及所有關聯資料，級聯刪除相關記錄。`deleteMe` 需認證，`deleteUser` 需管理員權限。
 
-### 自訂 ID 相關操作
+### 自訂 ID 操作
 
 #### `checkCustomIdAvailability(customId: string)`
-- **功能**: 檢查自訂 ID 是否可用
-- **驗證**: 格式檢查 + 唯一性檢查
-- **回傳**: `{ available: boolean }`
+檢查自訂 ID 可用性，包含格式檢查和唯一性驗證。
 
-#### `setCustomId(userId: number, customId: string)`
-- **功能**: 設置用戶自訂 ID
-- **保護**: 防止重複設置、格式驗證
-- **交易**: 確保唯一性約束
+#### `setCustomId(userId: number, customId: string)` / `removeCustomId(userId: number)`
+設置或移除用戶自訂 ID，防止重複設置，確保唯一性約束。
 
 #### `getUserByCustomId(customId: string)`
-- **功能**: 透過自訂 ID 查詢用戶
-- **用途**: 支援個人化 URL 訪問
-
-#### `removeCustomId(userId: number)`
-- **功能**: 移除用戶自訂 ID
-- **效果**: 重置相關欄位為 `null`
+透過自訂 ID 查詢用戶，支援個人化 URL 訪問。
 
 ## 資料處理工具函數
 
@@ -630,38 +976,3 @@ customId: z.string()
 - **邏輯**: 僅管理員可執行操作
 - **檢查**: 用戶角色權限
 
-## 錯誤處理機制
-
-### Prisma 錯誤處理
-```typescript
-// 唯一約束違反處理
-if (error && typeof error === 'object' && 'code' in error) {
-  const prismaError = error as { code: string; meta?: { target?: string[] } };
-  if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('custom_id')) {
-    throw new ConflictError('此自訂 ID 已被其他用戶使用');
-  }
-}
-```
-
-### 自訂錯誤類型
-- **NotFoundError**: 用戶不存在、臨時用戶未找到
-- **ConflictError**: 用戶名稱衝突、自訂 ID 已存在、城市無效
-- **ValidationError**: Zod 驗證失敗時自動產生
-
-## 效能最佳化
-
-### 查詢最佳化
-1. **精確載入**: 使用 Prisma `include` 只載入需要的關聯資料
-2. **索引使用**: `external_id`、`custom_id`、`email` 等關鍵欄位建立索引
-3. **分頁查詢**: 避免載入過多資料，支援自訂頁面大小
-
-### 記憶體最佳化
-1. **完整度計算**: 在應用層計算，避免複雜的 SQL 聚合查詢
-2. **資料轉換**: 延遲載入標籤資訊，只在需要時查詢
-3. **交易管理**: 適當的交易範圍，避免長時間鎖定
-
-### 快取建議
-1. **用戶基本資料**: Redis 快取常用用戶資訊
-2. **完整度分數**: 快取計算結果，定期更新
-3. **城市映射**: 記憶體快取映射表
-4. **偏好選項**: 快取 preference_types 和 preference_options
