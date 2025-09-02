@@ -78,6 +78,161 @@ src/
 - TypeScript-first API development with comprehensive Swagger annotations
 - Standardized response format with success/error states
 
+### API Response Format
+
+All API endpoints follow a standardized response format defined in `src/types/api-response.types.ts`:
+
+#### Success Response Format
+```typescript
+interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+  timestamp: string;
+  meta?: ResponseMeta;  // Optional metadata
+}
+```
+
+#### Error Response Format
+```typescript
+interface ApiErrorResponse {
+  success: false;
+  data: null;
+  error: {
+    code: string;
+    message: string;
+    details?: Record<string, string>;
+  };
+  timestamp: string;
+  meta?: ResponseMeta;
+}
+```
+
+#### Paginated Response Format
+```typescript
+// Page-based pagination
+interface PaginatedApiResponse<T> {
+  success: true;
+  data: T[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  timestamp: string;
+  meta?: ResponseMeta;
+}
+
+// Cursor-based pagination
+interface CursorPaginatedApiResponse<T> {
+  success: true;
+  data: T[];
+  pagination: {
+    cursors: { 
+      start: string | null; 
+      end: string | null; 
+    };
+    hasMore: boolean;
+    count: number;
+  };
+  timestamp: string;
+  meta?: ResponseMeta;
+}
+```
+
+#### Response Metadata (Optional)
+```typescript
+interface ResponseMeta {
+  // Search related
+  searchQuery?: string;
+  searchTime?: number;
+  filters?: Record<string, unknown>;
+  
+  // Statistics info
+  categoryCounts?: Record<string, number>;
+  aggregateData?: Record<string, unknown>;
+  
+  // System info
+  requestId?: string;
+  cacheHit?: boolean;
+  processingTime?: number;
+  
+  // Extension fields
+  [key: string]: unknown;
+}
+```
+
+#### Response Examples
+
+**Simple Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "John Doe"
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "用戶不存在",
+    "details": {
+      "userId": "123"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+**Paginated Response:**
+```json
+{
+  "success": true,
+  "data": [
+    { "id": 1, "name": "User 1" },
+    { "id": 2, "name": "User 2" }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 5,
+    "totalItems": 50,
+    "itemsPerPage": 10,
+    "hasNext": true,
+    "hasPrev": false
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "meta": {
+    "searchTime": 45,
+    "cacheHit": false
+  }
+}
+```
+
+#### TypeScript Usage
+```typescript
+import { ApiResponse, PaginatedResponse, ApiSuccessResponse } from '@types/api-response.types';
+
+// For single item responses
+type UserResponse = ApiResponse<UserData>;
+
+// For paginated responses
+type UsersListResponse = PaginatedResponse<UserData>;
+
+// For success-only responses
+type CreateUserResponse = ApiSuccessResponse<{ id: number; _id: string }>;
+```
+
 ### Development Guidelines
 
 #### TypeScript Migration Strategy

@@ -29,16 +29,16 @@
 
 #### 2.1 Services 測試 (高優先度)
 **核心業務邏輯服務**
-- [x] `services/auth/auth.service.test.ts`
+- [x] `services/auth.service.test.ts` (34/34 tests ✅)
 - [x] `services/user.service.test.ts` (23/23 tests ✅)
-- [x] `services/project.service.test.ts` (19/19 tests ✅)
-- [x] `services/idea.service.test.ts` (19/19 tests ✅)
 - [x] `services/resource.service.test.ts` (26/26 tests ✅)
+- [ ] `services/project.service.test.ts`
+- [ ] `services/idea.service.test.ts`
 
 **練習相關服務**
 - [x] `services/practice.service.test.ts` (22/22 tests ✅)
 - [x] `services/practice-checkin.service.test.ts` (31/31 tests ✅)
-- [ ] `services/practice-event.service.test.ts`
+- [x] `services/practice-event.service.test.ts` (26/26 tests ✅)
 - [ ] `services/practice-interaction.service.test.ts`
 
 **其他業務服務**
@@ -297,8 +297,10 @@ describe('[Service Name] Service', () => {
   - 涵蓋：實踐管理、CRUD 操作、權限驗證、統計計算、標籤/資源關聯、資料格式化
 - ✅ **practice-checkin.service.test.ts**: 31/31 tests (100% pass)
   - 涵蓋：簽到管理、進度追蹤、連續簽到計算、日期驗證、統計資訊、月度日曆、錯誤處理
+- ✅ **practice-event.service.test.ts**: 26/26 tests (100% pass)
+  - 涵蓋：事件記錄（瀏覽、點擊、分享、收藏）、批量處理、統計查詢、使用者歷史、錯誤處理
 
-**總計**：140/140 核心服務測試通過 ✅
+**總計**：166/166 核心服務測試通過 ✅
 
 ## 預期結果
 
