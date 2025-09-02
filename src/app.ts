@@ -6,7 +6,7 @@
 import express from 'express';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './config/swagger.config';
+import fs from 'fs';
 // Prisma 不需要手動引入模型，在服務層中直接使用
 // 引入實際的資源路由
 import resourceRoutes from './routes/resource.routes';
@@ -94,13 +94,32 @@ export function setupTypescriptRoutes(app: express.Application) {
     }
   });
 
+  // 載入 Zod v4 自動生成的 OpenAPI 規範
+  let swaggerDocument;
+  try {
+    const openapiPath = path.join(__dirname, '../openapi.json');
+    if (fs.existsSync(openapiPath)) {
+      swaggerDocument = JSON.parse(fs.readFileSync(openapiPath, 'utf-8'));
+      console.log('✅ 已載入 Zod v4 自動生成的 OpenAPI 文檔');
+    } else {
+      // 如果還沒生成 openapi.json，暫時使用舊的 swagger config
+      const { swaggerSpec } = require('./config/swagger.config');
+      swaggerDocument = swaggerSpec;
+      console.log('⚠️ 使用舊版 Swagger 配置（openapi.json 不存在）');
+    }
+  } catch (error) {
+    console.error('❌ 載入 OpenAPI 文檔失敗，使用舊版配置:', error);
+    const { swaggerSpec } = require('./config/swagger.config');
+    swaggerDocument = swaggerSpec;
+  }
+
   // 設置 Swagger UI
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'DaoDao API 文檔'
   }));
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'DaoDao API 文檔'
