@@ -462,7 +462,6 @@ jobs:
             # 取消通知
             curl -X POST -H "Content-Type: application/json" -d "{
               \"embeds\": [{
-                \"embeds\": [{
                 \"color\": 8421504,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Deploy-Cancelled-lightgrey.png?style=for-the-badge&logo=pause&logoColor=white\"
@@ -478,7 +477,6 @@ jobs:
             # 驗證失敗
             curl -X POST -H "Content-Type: application/json" -d "{
               \"embeds\": [{
-                \"embeds\": [{
                 \"color\": 16776960,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Verify-Failed-orange.png?style=for-the-badge&logo=search&logoColor=white\"
@@ -494,7 +492,6 @@ jobs:
             # 成功部署  
             curl -X POST -H "Content-Type: application/json" -d "{
               \"embeds\": [{
-                \"embeds\": [{
                 \"color\": 3066993,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Deploy-Success-brightgreen.png?style=for-the-badge&logo=check-circle&logoColor=white\"
@@ -510,14 +507,13 @@ jobs:
             # 未知狀態或部分失敗
             curl -X POST -H "Content-Type: application/json" -d "{
               \"embeds\": [{
-                \"embeds\": [{
                 \"color\": 16776960,
                 \"thumbnail\": {
                   \"url\": \"https://img.shields.io/badge/Status-Unknown-yellow.png?style=for-the-badge&logo=question&logoColor=white\"
                 },
                 \"fields\": [
                   {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
-                  ],
+                ],
                 \"timestamp\": \"$CURRENT_TIME\"
               }]
             }" ${{ secrets.DISCORD_WEBHOOK_URL }}
