@@ -1,7 +1,15 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: ['**/*.test.(ts|js)'],
+  testMatch: [
+    '<rootDir>/tests/**/*.test.(ts|js)',
+    '<rootDir>/src/**/*.test.(ts|js)'
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/coverage/'
+  ],
   
   // ES modules support
   extensionsToTreatAsEsm: ['.ts'],

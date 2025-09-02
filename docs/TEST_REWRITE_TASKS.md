@@ -16,10 +16,12 @@
 
 ### Phase 1: 測試基礎設施 ✅ 已完成
 
-#### 1.1 測試配置重構
-- [x] 簡化 Jest 配置，移除不必要選項
-- [x] 建立統一的測試環境設定
-- [x] 更新 package.json 測試腳本
+#### 1.1 測試配置設置
+- [x] 建立 Jest 配置檔案 (`jest.config.js`)
+- [x] 建立測試環境設定檔案 (`tests/setup.ts`) 
+- [x] 建立完整的 package.json 測試腳本
+- [x] 配置測試環境變數 (`.env.test`)
+- [x] **修正 Jest 配置**: 正確配置 `testMatch` 和 `testPathIgnorePatterns`，避免執行編譯後的檔案
 
 #### 1.2 測試工具統一
 - [x] 重寫 `tests/utils/prisma-mock.ts`
