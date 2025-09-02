@@ -124,7 +124,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/Forbidden'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -308,7 +308,7 @@
  *       400:
  *         $ref: '#/components/responses/BadRequestError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -351,9 +351,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/Forbidden'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -391,9 +391,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/Forbidden'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -449,9 +449,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/Forbidden'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */

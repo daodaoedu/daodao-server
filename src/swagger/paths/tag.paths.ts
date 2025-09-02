@@ -106,7 +106,7 @@
  *       400:
  *         $ref: '#/components/responses/BadRequestError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *   
@@ -133,7 +133,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *   
@@ -160,7 +160,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
