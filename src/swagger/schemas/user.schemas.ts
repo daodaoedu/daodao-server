@@ -2,6 +2,73 @@
  * @swagger
  * components:
  *   schemas:
+ *     PreferenceOption:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: 偏好選項顯示名稱
+ *           example: "視覺學習"
+ *         value:
+ *           type: string
+ *           description: 偏好選項值
+ *           example: "visual"
+ * 
+ *     UserPreferences:
+ *       type: object
+ *       additionalProperties:
+ *         type: array
+ *         items:
+ *           $ref: '#/components/schemas/PreferenceOption'
+ *       description: 用戶偏好設定，key 為偏好類型，value 為選項陣列
+ *       example:
+ *         learning_style:
+ *           - name: "視覺學習"
+ *             value: "visual"
+ *           - name: "聽覺學習" 
+ *             value: "audio"
+ *         difficulty_level:
+ *           - name: "初學者"
+ *             value: "beginner"
+ * 
+ *     UserPreferencesRequest:
+ *       type: object
+ *       required:
+ *         - preferences
+ *       properties:
+ *         preferences:
+ *           type: object
+ *           additionalProperties:
+ *             type: array
+ *             items:
+ *               type: string
+ *           description: 偏好設定，key 為偏好類型，value 為選項值陣列
+ *           example:
+ *             learning_style: ["visual", "audio"]
+ *             difficulty_level: ["beginner"]
+ * 
+ *     AvailablePreferences:
+ *       type: object
+ *       additionalProperties:
+ *         type: array
+ *         items:
+ *           $ref: '#/components/schemas/PreferenceOption'
+ *       description: 所有可用的偏好選項
+ *       example:
+ *         learning_style:
+ *           - name: "視覺學習"
+ *             value: "visual"
+ *           - name: "聽覺學習"
+ *             value: "audio"
+ *           - name: "動覺學習"
+ *             value: "kinesthetic"
+ *         difficulty_level:
+ *           - name: "初學者"
+ *             value: "beginner"
+ *           - name: "中級"
+ *             value: "intermediate"
+ *           - name: "進階"
+ *             value: "advanced"
  *     ContactList:
  *       type: object
  *       properties:
@@ -113,6 +180,8 @@
  *               items:
  *                 type: string
  *           description: 分享內容
+ *         preferences:
+ *           $ref: '#/components/schemas/UserPreferences'
  *         contactList:
  *           $ref: '#/components/schemas/ContactList'
  *         basicInfo:
@@ -122,6 +191,16 @@
  *           items:
  *             type: string
  *           description: 角色列表
+ *         customId:
+ *           type: string
+ *           description: 用戶自訂 ID
+ *         customIdVerified:
+ *           type: boolean
+ *           description: 自訂 ID 是否已驗證
+ *         customIdCreatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: 自訂 ID 創建時間
  *         createdDate:
  *           type: string
  *           format: date-time
@@ -206,6 +285,16 @@
  *           items:
  *             type: string
  *           description: 興趣列表
+ *         preferences:
+ *           type: object
+ *           additionalProperties:
+ *             type: array
+ *             items:
+ *               type: string
+ *           description: 偏好設定
+ *           example:
+ *             learning_style: ["visual", "audio"]
+ *             difficulty_level: ["beginner"]
  *         isSendEmail:
  *           type: boolean
  *           description: 是否發送電子郵件
@@ -293,4 +382,41 @@
  *           items:
  *             type: string
  *           description: 興趣列表
+ *         preferences:
+ *           type: object
+ *           additionalProperties:
+ *             type: array
+ *             items:
+ *               type: string
+ *           description: 偏好設定
+ *           example:
+ *             learning_style: ["visual", "audio"]
+ *             difficulty_level: ["beginner"]
+ * 
+ *     CustomIdRequest:
+ *       type: object
+ *       required:
+ *         - customId
+ *       properties:
+ *         customId:
+ *           type: string
+ *           pattern: '^[a-zA-Z0-9_-]{3,50}$'
+ *           description: 自訂 ID，3-50個字符，只能包含英文字母、數字、底線和連字符
+ *           example: "my_custom_id"
+ * 
+ *     CustomIdAvailabilityResponse:
+ *       type: object
+ *       properties:
+ *         available:
+ *           type: boolean
+ *           description: 自訂 ID 是否可用
+ *           example: true
+ * 
+ *     CustomIdSetResponse:
+ *       type: object
+ *       properties:
+ *         customId:
+ *           type: string
+ *           description: 設置的自訂 ID
+ *           example: "my_custom_id"
  */

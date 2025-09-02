@@ -17,7 +17,8 @@ import {
   createUserSchema,
   updateUserSchema,
   getUserParamsSchema,
-  getUserQuerySchema
+  getUserQuerySchema,
+  userPreferencesSchema
 } from '../validators/user.validators';
 import {
   customIdSchema,
@@ -88,6 +89,37 @@ router.post('/me/custom-id',
 router.delete('/me/custom-id', 
   authenticate,
   userController.removeCustomId as RequestHandler
+);
+
+/**
+ * GET /users/me/preferences
+ * 獲取當前用戶的偏好設定
+ * 需要身份驗證
+ */
+router.get('/me/preferences', 
+  authenticate,
+  userController.getUserPreferences as RequestHandler
+);
+
+/**
+ * PUT /users/me/preferences
+ * 更新當前用戶的偏好設定
+ * 請求體：{ preferences: Record<string, string[]> }
+ * 需要身份驗證
+ */
+router.put('/me/preferences', 
+  authenticate,
+  validate(userPreferencesSchema, 'body'),
+  userController.updateUserPreferences as RequestHandler
+);
+
+/**
+ * GET /users/preferences/available
+ * 獲取所有可用的偏好選項
+ * 公開API，無需驗證
+ */
+router.get('/preferences/available', 
+  userController.getAvailablePreferences as RequestHandler
 );
 
 /**

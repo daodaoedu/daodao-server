@@ -139,7 +139,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
 
 /**
  * 獲取當前用戶資訊
- * GET /api/auth/me
+ * 注意：此方法現在通過 /api/v1/me/auth 提供
  */
 export const getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
   // 從 JWT 中獲取用戶信息

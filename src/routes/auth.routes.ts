@@ -65,16 +65,6 @@ router.post('/refresh',
 );
 
 /**
- * GET /auth/me
- * 獲取當前用戶資訊
- * 需要認證（JWT 或 Session）
- */
-router.get('/me', 
-  authenticateAny, 
-  authController.getCurrentUser
-);
-
-/**
  * POST /auth/forgot-password
  * 請求密碼重設
  * 請求體：{ email }

@@ -26,7 +26,7 @@
  *             schema:
  *               $ref: '#/components/schemas/PopularTagsResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -59,7 +59,7 @@
  *             schema:
  *               $ref: '#/components/schemas/TagSearchResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -104,7 +104,7 @@
  *             schema:
  *               $ref: '#/components/schemas/EntityTagsResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -129,9 +129,9 @@
  *             schema:
  *               $ref: '#/components/schemas/TagResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -156,9 +156,9 @@
  *             schema:
  *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:

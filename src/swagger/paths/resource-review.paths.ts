@@ -45,7 +45,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceReviewListResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -72,9 +72,9 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceReviewResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -101,7 +101,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceReviewResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -135,9 +135,9 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceReviewResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -167,7 +167,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -204,9 +204,9 @@
  *             schema:
  *               $ref: '#/components/schemas/ResourceReviewResponse'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -237,7 +237,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -265,7 +265,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ApiSuccessResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:

@@ -90,7 +90,7 @@
  *                           type: integer
  *                           example: 5
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -120,9 +120,9 @@
  *                 data:
  *                   $ref: '#/components/schemas/Project'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
@@ -210,9 +210,9 @@
  *                           type: integer
  *                           example: 1
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -274,7 +274,7 @@
  *                       example: 0.333
  *                       description: 專案完成率
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *
@@ -306,7 +306,7 @@
  *                 data:
  *                   $ref: '#/components/schemas/Project'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -347,9 +347,9 @@
  *                 data:
  *                   $ref: '#/components/schemas/Project'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -387,9 +387,9 @@
  *                   type: string
  *                   example: 專案已成功刪除
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:
@@ -445,9 +445,9 @@
  *                   type: string
  *                   example: 專案已成功複製
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       404:

@@ -70,7 +70,7 @@
  *             schema:
  *               $ref: '#/components/schemas/ImageErrorResponse'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
  *         description: 權限不足（只能刪除自己上傳的圖片）
  *         content:
@@ -155,7 +155,7 @@
  *                     details: 檔案大小不能超過 5MB
  *                     maxFileSize: 5242880
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       429:
  *         description: 請求過於頻繁
  *         content:
@@ -286,7 +286,7 @@
  *                     details: 最多可上傳5個檔案
  *                     maxFiles: 5
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       429:
  *         description: 請求過於頻繁
  *         content:

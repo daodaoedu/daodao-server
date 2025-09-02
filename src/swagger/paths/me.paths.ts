@@ -56,7 +56,7 @@
  *                             type: string
  *                       example: [{"name": "user"}]
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -146,7 +146,7 @@
  *                       type: string
  *                       format: date-time
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -239,7 +239,7 @@
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -278,7 +278,7 @@
  *                 data:
  *                   $ref: '#/components/schemas/PracticeStatsData'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -383,7 +383,7 @@
  *                       additionalProperties:
  *                         type: integer
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -456,7 +456,7 @@
  *                       type: string
  *                       format: date-time
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  *   put:
@@ -540,7 +540,7 @@
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -650,7 +650,7 @@
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */

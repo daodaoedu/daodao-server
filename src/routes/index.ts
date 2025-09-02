@@ -33,7 +33,6 @@ const router = Router({ mergeParams: true });
 // POST   /api/v1/auth/register
 // POST   /api/v1/auth/logout
 // POST   /api/v1/auth/refresh
-// GET    /api/v1/auth/me
 // POST   /api/v1/auth/forgot-password
 // POST   /api/v1/auth/reset-password
 // POST   /api/v1/auth/verify-email
