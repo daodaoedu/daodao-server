@@ -12,9 +12,7 @@ export const moodSchema = z.enum([
   'neutral',
   'poor',
   'terrible'
-], {
-  errorMap: () => ({ message: '心情必須是以下之一: excellent, good, neutral, poor, terrible' })
-});
+], '心情必須是以下之一: excellent, good, neutral, poor, terrible');
 
 // 壓力等級驗證 (1-10)
 export const stressLevelSchema = z.number()
@@ -35,9 +33,7 @@ export const weekSchema = z.number()
   .max(52, { message: '週數最大值為 52' });
 
 // 可見性驗證
-export const visibilitySchema = z.enum(['private', 'public'], {
-  errorMap: () => ({ message: '可見性必須是 private 或 public' })
-});
+export const visibilitySchema = z.enum(['private', 'public'], '可見性必須是 private 或 public');
 
 // 創建覆盤驗證 Schema
 export const createReviewSchema = z.object({
@@ -87,15 +83,15 @@ export const reviewQuerySchema = z.object({
   mood: moodSchema.optional(),
   stressLevel: stressLevelSchema.optional(),
   page: z.string()
-    .transform(val => parseInt(val, 10))
-    .refine(val => !isNaN(val) && val > 0, { message: '頁數必須是正整數' })
     .optional()
-    .default('1'),
-  pageSize: z.string()
+    .default('1')
     .transform(val => parseInt(val, 10))
-    .refine(val => !isNaN(val) && val > 0 && val <= 100, { message: '每頁數量必須是 1-100 之間的正整數' })
+    .refine(val => !isNaN(val) && val > 0, { message: '頁數必須是正整數' }),
+  pageSize: z.string()
     .optional()
     .default('10')
+    .transform(val => parseInt(val, 10))
+    .refine(val => !isNaN(val) && val > 0 && val <= 100, { message: '每頁數量必須是 1-100 之間的正整數' })
 });
 
 // 路徑參數驗證 Schema
