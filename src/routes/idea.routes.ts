@@ -5,10 +5,10 @@
 
 import { Router, RequestHandler } from 'express';
 import { authenticate, optionalAuth } from '@/middleware/auth';
-import { validate } from '@/validators/validation.middleware';
-import { 
-  createIdeaSchema, 
-  updateIdeaSchema, 
+import { validate } from '@/middleware/validation.middleware';
+import {
+  createIdeaSchema,
+  updateIdeaSchema,
   ideaQuerySchema,
   ideaParamsSchema
 } from '@/validators/idea.validators';
@@ -22,7 +22,7 @@ const router = Router();
  * 查詢參數：page, limit, query, tags, userId, status, sort, order
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/', 
+router.get('/',
   optionalAuth,
   validate(ideaQuerySchema, 'query'),
   ideaController.getIdeas as RequestHandler

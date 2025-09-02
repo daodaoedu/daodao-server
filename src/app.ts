@@ -96,21 +96,36 @@ export function setupTypescriptRoutes(app: express.Application) {
 
   // 載入 Zod v4 自動生成的 OpenAPI 規範
   let swaggerDocument;
-  try {
-    const openapiPath = path.join(__dirname, '../openapi.json');
-    if (fs.existsSync(openapiPath)) {
+  const openapiPath = path.join(__dirname, '../openapi.json');
+  
+  if (!fs.existsSync(openapiPath)) {
+    console.error('❌ OpenAPI 文檔不存在，請先執行 npm run openapi:generate 生成文檔');
+    console.warn('⚠️  Swagger UI 將無法正常顯示');
+    swaggerDocument = {
+      openapi: '3.0.0',
+      info: {
+        title: 'API Documentation Not Available',
+        version: '1.0.0',
+        description: '請執行 npm run openapi:generate 生成 API 文檔'
+      },
+      paths: {}
+    };
+  } else {
+    try {
       swaggerDocument = JSON.parse(fs.readFileSync(openapiPath, 'utf-8'));
       console.log('✅ 已載入 Zod v4 自動生成的 OpenAPI 文檔');
-    } else {
-      // 如果還沒生成 openapi.json，暫時使用舊的 swagger config
-      const { swaggerSpec } = require('./config/swagger.config');
-      swaggerDocument = swaggerSpec;
-      console.log('⚠️ 使用舊版 Swagger 配置（openapi.json 不存在）');
+    } catch (error) {
+      console.error('❌ 載入 OpenAPI 文檔失敗:', error);
+      swaggerDocument = {
+        openapi: '3.0.0',
+        info: {
+          title: 'API Documentation Error',
+          version: '1.0.0',
+          description: 'OpenAPI 文檔載入失敗，請檢查 openapi.json 格式'
+        },
+        paths: {}
+      };
     }
-  } catch (error) {
-    console.error('❌ 載入 OpenAPI 文檔失敗，使用舊版配置:', error);
-    const { swaggerSpec } = require('./config/swagger.config');
-    swaggerDocument = swaggerSpec;
   }
 
   // 設置 Swagger UI

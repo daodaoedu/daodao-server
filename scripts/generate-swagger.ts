@@ -273,6 +273,7 @@ function getTagFromRouteName(routeName: string): string {
     'mentor.routes': 'Mentor',
     'milestone.routes': 'Milestones',
     'resource-review.routes': 'Resource Reviews',
+    'tag.routes': 'Tags',
     'db-info.routes': 'Database Info',
     'monitor.routes': 'System Monitor'
   };
