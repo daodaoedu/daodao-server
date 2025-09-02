@@ -7,8 +7,8 @@ import { Router, RequestHandler } from 'express';
 import { emailController } from '../controllers/email.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/permission.middleware';
-import { validate } from '../validators/validation.middleware';
-import { 
+import { validate } from '../middleware/validation.middleware';
+import {
   contactEmailSchema,
   verificationEmailSchema,
   welcomeEmailSchema,
@@ -27,7 +27,7 @@ const router = Router();
  * 發送聯絡郵件
  * 需要身份驗證
  */
-router.post('/contact', 
+router.post('/contact',
   authenticate,
   validate(contactEmailSchema, 'body'),
   emailController.sendContactEmail as RequestHandler
@@ -38,7 +38,7 @@ router.post('/contact',
  * 發送驗證郵件
  * 需要身份驗證
  */
-router.post('/verification', 
+router.post('/verification',
   authenticate,
   validate(verificationEmailSchema, 'body'),
   emailController.sendVerificationEmail as RequestHandler
@@ -49,7 +49,7 @@ router.post('/verification',
  * 發送歡迎郵件
  * 需要管理員權限
  */
-router.post('/welcome', 
+router.post('/welcome',
   authenticate,
   requireAdmin,
   validate(welcomeEmailSchema, 'body'),
@@ -61,7 +61,7 @@ router.post('/welcome',
  * 發送密碼重設郵件
  * 支援可選身份驗證（允許未登入用戶重設密碼）
  */
-router.post('/password-reset', 
+router.post('/password-reset',
   optionalAuth,
   validate(passwordResetEmailSchema, 'body'),
   emailController.sendPasswordResetEmail as RequestHandler
@@ -72,7 +72,7 @@ router.post('/password-reset',
  * 發送馬拉松郵件
  * 需要管理員權限
  */
-router.post('/marathon', 
+router.post('/marathon',
   authenticate,
   requireAdmin,
   validate(marathonEmailSchema, 'body'),
@@ -84,7 +84,7 @@ router.post('/marathon',
  * 發送自定義郵件
  * 需要管理員權限
  */
-router.post('/custom', 
+router.post('/custom',
   authenticate,
   requireAdmin,
   validate(customEmailSchema, 'body'),
@@ -96,7 +96,7 @@ router.post('/custom',
  * 批量發送郵件
  * 需要管理員權限
  */
-router.post('/bulk', 
+router.post('/bulk',
   authenticate,
   requireAdmin,
   validate(bulkEmailSchema, 'body'),
@@ -108,7 +108,7 @@ router.post('/bulk',
  * 驗證郵件地址
  * 支援可選身份驗證
  */
-router.post('/validate', 
+router.post('/validate',
   optionalAuth,
   validate(validateEmailSchema, 'body'),
   emailController.validateEmail as RequestHandler
@@ -119,7 +119,7 @@ router.post('/validate',
  * 預覽郵件模板
  * 需要身份驗證
  */
-router.post('/preview', 
+router.post('/preview',
   authenticate,
   validate(previewEmailSchema, 'body'),
   emailController.previewEmailTemplate as RequestHandler
@@ -130,7 +130,7 @@ router.post('/preview',
  * 獲取郵件統計
  * 需要管理員權限
  */
-router.get('/stats', 
+router.get('/stats',
   authenticate,
   requireAdmin,
   emailController.getEmailStats as RequestHandler
@@ -141,7 +141,7 @@ router.get('/stats',
  * 檢查郵件服務健康狀態
  * 需要管理員權限
  */
-router.get('/health', 
+router.get('/health',
   authenticate,
   requireAdmin,
   emailController.checkEmailHealth as RequestHandler

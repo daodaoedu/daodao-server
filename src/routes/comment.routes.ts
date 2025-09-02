@@ -10,7 +10,7 @@
 import { Router } from 'express';
 import { commentController } from '../controllers/comment.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
-import { validate } from '../validators/validation.middleware';
+import { validate } from '../middleware/validation.middleware';
 import {
   createCommentSchema,
   updateCommentSchema,

@@ -5,11 +5,11 @@
 
 import { Router, RequestHandler } from 'express';
 import tagController from '@/controllers/tag.controller';
-import { validate } from '@/validators/validation.middleware';
+import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
-import { 
-  tagQuerySchema, 
-  tagEntitySchema 
+import {
+  tagQuerySchema,
+  tagEntitySchema
 } from '@/validators/request-params.validator';
 
 const router = Router();
@@ -19,7 +19,7 @@ const router = Router();
  * 獲取熱門標籤
  * 查詢參數：entityType, limit
  */
-router.get('/popular', 
+router.get('/popular',
   validate(tagQuerySchema, 'query'),
   tagController.getPopularTags);
 
@@ -28,7 +28,7 @@ router.get('/popular',
  * 搜索標籤
  * 查詢參數：query, limit
  */
-router.get('/search', 
+router.get('/search',
   validate(tagQuerySchema, 'query'),
   tagController.searchTags as RequestHandler
 );
@@ -38,7 +38,7 @@ router.get('/search',
  * 獲取標籤統計
  * 查詢參數：entityType
  */
-router.get('/stats', 
+router.get('/stats',
   validate(tagQuerySchema, 'query'),
   tagController.getTagStats as RequestHandler
 );
@@ -49,7 +49,7 @@ router.get('/stats',
  * 請求體：{ entityId: number, entityType: string, tagName: string }
  * 需要身份驗證
  */
-router.post('/entities', 
+router.post('/entities',
   authenticateAny,
   validate(tagEntitySchema, 'body'),
   tagController.addEntityTag as RequestHandler
@@ -61,7 +61,7 @@ router.post('/entities',
  * 請求體：{ entityId: number, entityType: string, tagName: string }
  * 需要身份驗證和權限檢查
  */
-router.delete('/entities', 
+router.delete('/entities',
   authenticateAny,
   validate(tagEntitySchema, 'body'),
   tagController.removeEntityTag as RequestHandler
@@ -72,7 +72,7 @@ router.delete('/entities',
  * 獲取實體標籤列表
  * 查詢參數：entityId, entityType
  */
-router.get('/entities', 
+router.get('/entities',
   tagController.getEntityTags as RequestHandler
 );
 
