@@ -237,7 +237,7 @@
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
@@ -538,7 +538,7 @@
  *                   type: string
  *                   example: "偏好設定已更新：新增 2 項，更新 3 項，刪除 1 項"
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
@@ -648,7 +648,7 @@
  *                           type: integer
  *                           example: 2
  *       400:
- *         $ref: '#/components/responses/BadRequest'
+ *         $ref: '#/components/responses/BadRequestError'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       500:

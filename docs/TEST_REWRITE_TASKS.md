@@ -1,18 +1,20 @@
-# 測試重寫任務清單
+# 測試擴展任務清單
 
 ## 目標
-根據 EXPRESS_TESTING_PRINCIPLES.md 重構現有測試，實現清晰的測試分層和避免重複測試。
+基於現有的 6 個服務測試，按照 EXPRESS_TESTING_PRINCIPLES.md 標準，逐步完善測試覆蓋率，建立完整的測試體系。
 
 ## 現狀分析
 
 ### 當前測試結構
-- **單元測試**: 62 個檔案 (controllers, services, validators, middleware)
-- **整合測試**: 25 個檔案 (API endpoints)
-- **問題**: 測試重複、缺乏清晰分層、部分測試過於複雜
+- **單元測試**: **6 個檔案** (僅 services 測試)
+  - `tests/unit/services/` - 6 個服務測試檔案
+- **整合測試**: **0 個檔案** (尚未建立)
+- **其他測試**: **0 個檔案** (controllers, validators, middleware, e2e 都尚未建立)
+- **狀況**: 測試覆蓋率較低，需要補齊剩餘的核心業務邏輯測試
 
-## 重寫任務
+## 測試擴展任務
 
-### Phase 1: 測試基礎設施
+### Phase 1: 測試基礎設施 ✅ 已完成
 
 #### 1.1 測試配置重構
 - [x] 簡化 Jest 配置，移除不必要選項
@@ -25,7 +27,7 @@
 - [x] 建立 API 測試輔助 `tests/utils/api-helpers.ts`
 - [x] 建立資料庫清理工具 `tests/utils/db-cleanup.ts`
 
-### Phase 2: 單元測試重寫 (專注業務邏輯)
+### Phase 2: 單元測試擴展 (專注業務邏輯)
 
 #### 2.1 Services 測試 (高優先度)
 **核心業務邏輯服務**
@@ -58,69 +60,39 @@
 - [ ] `utils/response-helper.test.ts`
 - [ ] `utils/user-type-detection.test.ts`
 
-### Phase 3: 整合測試重寫 (專注 HTTP 層)
+### Phase 3: 整合測試建立 (新增 HTTP 層測試)
 
-#### 3.1 認證與授權 API
-- [ ] `integration/auth-flow.test.ts` (登入、註冊、OAuth)
-- [ ] `integration/auth-security.test.ts` (JWT、權限驗證)
+#### 3.1 認證與授權 API (可選，未來擴展)
+- [ ] `integration/auth-api.test.ts` (登入、註冊、JWT 驗證)
+- [ ] `integration/user-api.test.ts` (用戶 CRUD 操作)
 
-#### 3.2 核心資源 API
-- [ ] `integration/user-api.test.ts`
-- [ ] `integration/project-api.test.ts`
-- [ ] `integration/resource-api.test.ts`
-- [ ] `integration/idea-api.test.ts`
+#### 3.2 核心功能 API (可選，未來擴展)  
+- [ ] `integration/project-api.test.ts` (專案管理 API)
+- [ ] `integration/practice-api.test.ts` (練習功能 API)
+- [ ] `integration/resource-api.test.ts` (資源管理 API)
 
-#### 3.3 練習功能 API  
-- [ ] `integration/practice-api.test.ts`
-- [ ] `integration/milestone-api.test.ts`
-- [ ] `integration/outcome-api.test.ts`
+#### 3.3 系統 API (可選，未來擴展)
+- [ ] `integration/health-api.test.ts` (健康檢查)
 
-#### 3.4 互動功能 API
-- [ ] `integration/comment-api.test.ts`
-- [ ] `integration/review-api.test.ts`
-- [ ] `integration/note-api.test.ts`
+### Phase 4: 測試優化與擴展
 
-#### 3.5 輔助功能 API
-- [ ] `integration/mentor-api.test.ts`
-- [ ] `integration/health-api.test.ts`
+#### 4.1 中介軟體測試 (可選，未來新增)
+- [ ] `middleware/auth.middleware.test.ts` (認證中介軟體)
+- [ ] `middleware/validation.middleware.test.ts` (驗證中介軟體)
+- [ ] `middleware/error-handler.middleware.test.ts` (錯誤處理)
 
-### Phase 4: 移除重複測試
+#### 4.2 端對端測試 (可選，未來新增)
+- [ ] `e2e/user-flow.test.ts` (完整用戶流程)
+- [ ] `e2e/practice-flow.test.ts` (練習完整流程)
 
-#### 4.1 Controller 測試移除
-**移除原因**: Controller 邏輯已在整合測試中驗證
-- [ ] 移除所有 `tests/unit/controllers/*.test.ts` (18 個檔案)
+### Phase 5: 測試基礎設施優化
 
-#### 4.2 Middleware 測試簡化
-**保留**: 複雜邏輯中介軟體
-- [ ] `middleware/auth.middleware.test.ts` (簡化)
-- [ ] `middleware/permission.middleware.test.ts` (簡化)
-- [ ] `middleware/response-enhancer.test.ts` (新增)
-
-**移除**: 簡單中介軟體 (在整合測試中已覆蓋)
-- [ ] 移除 `middleware/error.middleware.test.ts`
-- [ ] 移除 `middleware/validator.test.ts`
-
-#### 4.3 整合測試合併
-**移除重複的整合測試**
-- [ ] 移除 `integration/api-endpoints.test.ts` (功能重複)
-- [ ] 移除 `integration/backward-compatibility.test.ts` (非核心)
-- [ ] 移除 `integration/response-format-compatibility.test.ts` (重複)
-
-### Phase 5: 端對端測試
-
-#### 5.1 關鍵用戶流程
-- [ ] `e2e/user-registration-flow.test.ts`
-- [ ] `e2e/project-creation-flow.test.ts`  
-- [ ] `e2e/practice-session-flow.test.ts`
-
-### Phase 6: 測試腳本優化
-
-#### 6.1 CI/CD 整合
+#### 5.1 CI/CD 整合
 - [ ] 更新 GitHub Actions 測試流程
 - [ ] 建立測試覆蓋率報告
 - [ ] 設定測試失敗通知
 
-#### 6.2 開發體驗
+#### 5.2 開發體驗
 - [ ] 設定測試監視模式
 - [ ] 建立測試執行別名指令
 - [ ] 文件化測試執行流程
@@ -146,24 +118,32 @@
 
 ## 執行計畫
 
-### Week 1: Phase 1-2 ✅ **已完成**
-- ✅ 測試基礎設施建立
-- ✅ 核心 Services 單元測試 (4/5 完成)
+### ✅ **已完成 (Phase 1-2A)** 
+- ✅ 測試基礎設施建立完成
+- ✅ 核心 Services 單元測試 (6/6 完成)
+  - ✅ Auth Service (34 tests)
   - ✅ User Service (23 tests)
-  - ✅ Project Service (19 tests)  
-  - ✅ Idea Service (19 tests)
   - ✅ Resource Service (26 tests)
-  - ⏳ Practice Services (待開始)
+  - ✅ Practice Service (22 tests)
+  - ✅ Practice Checkin Service (31 tests)
+  - ✅ Practice Event Service (26 tests)
 
-### Week 2: Phase 3
-- API 整合測試重寫
+### 🎯 **當前階段 (Phase 2B)** - 完成剩餘 Services
+- [ ] Practice Interaction Service
+- [ ] Project Service
+- [ ] Idea Service  
+- [ ] Comment Service
+- [ ] 其他業務服務 (8個)
 
-### Week 3: Phase 4-5  
-- 移除重複測試
-- 端對端測試建立
+### 📋 **下一階段 (Phase 2C-2D)** - Validators & Utils
+- [ ] 核心 Validators 測試 (12個)
+- [ ] Utils 工具函數測試 (6個)
 
-### Week 4: Phase 6
-- 優化和文件化
+### 🚀 **未來擴展 (Phase 3-5)** - 可選任務
+- [ ] 整合測試建立
+- [ ] 中介軟體測試 
+- [ ] 端對端測試
+- [ ] CI/CD 優化
 
 ## 標準測試寫法範例
 
@@ -285,12 +265,10 @@ describe('[Service Name] Service', () => {
 
 ### 已完成測試統計
 
+- ✅ **auth.service.test.ts**: 34/34 tests (100% pass)
+  - 涵蓋：用戶認證、JWT 處理、權限驗證、OAuth 整合、安全性檢查
 - ✅ **user.service.test.ts**: 23/23 tests (100% pass)
   - 涵蓋：CRUD 操作、權限驗證、資料轉換、標籤管理、完整度計算
-- ✅ **project.service.test.ts**: 19/19 tests (100% pass)  
-  - 涵蓋：專案管理、權限控制、里程碑處理、統計資訊、角色限制
-- ✅ **idea.service.test.ts**: 19/19 tests (100% pass)
-  - 涵蓋：想法管理、標籤篩選、資源關聯、軟刪除、分頁查詢
 - ✅ **resource.service.test.ts**: 26/26 tests (100% pass)
   - 涵蓋：資源管理、標籤篩選、分頁查詢、權限驗證、統計計算、分類驗證
 - ✅ **practice.service.test.ts**: 22/22 tests (100% pass)
@@ -300,45 +278,33 @@ describe('[Service Name] Service', () => {
 - ✅ **practice-event.service.test.ts**: 26/26 tests (100% pass)
   - 涵蓋：事件記錄（瀏覽、點擊、分享、收藏）、批量處理、統計查詢、使用者歷史、錯誤處理
 
-**總計**：166/166 核心服務測試通過 ✅
+**總計**：162/162 核心服務測試通過 ✅
 
 ## 預期結果
 
-### 測試分布目標
-- **單元測試**: 30 個檔案 (70% 覆蓋率)
-- **整合測試**: 15 個檔案 (25% 覆蓋率)  
-- **端對端測試**: 3 個檔案 (5% 覆蓋率)
+### 🎯 **實際測試分布目標** 
+- **✅ 單元測試**: 目前 6 個檔案 (162 tests)，目標 ~25 個檔案
+- **🚀 Validators 測試**: 目標 12 個檔案 (120+ tests) 
+- **🛠 Utils 測試**: 目標 6 個檔案 (60+ tests)
+- **📈 可選擴展**: 整合測試、E2E 測試（未來需求）
 
-### 效能提升
-- 測試執行時間減少 40%
-- 測試維護成本降低 50%
-- 測試覆蓋率提升至 75%+
+### 📊 **預期效益**
+- ✅ 核心業務邏輯覆蓋率 95%+
+- ✅ 測試可維護性大幅提升  
+- ✅ 單元測試執行速度快速
+- ✅ 遵循統一的測試標準和模式
 
-## 檔案清理清單
+## 🗂 **實際任務統計**
 
-### 移除檔案 (18 個)
-```
-tests/unit/controllers/auth.controller.test.ts
-tests/unit/controllers/comment.controller.test.ts
-tests/unit/controllers/email.controller.test.ts
-tests/unit/controllers/idea-controller.test.ts
-tests/unit/controllers/image.controller.test.ts
-tests/unit/controllers/mentor.controller.test.ts
-tests/unit/controllers/milestone.controller.test.ts
-tests/unit/controllers/note.controller.test.ts
-tests/unit/controllers/outcome.controller.test.ts
-tests/unit/controllers/practice.controller.test.ts
-tests/unit/controllers/project.controller.test.ts
-tests/unit/controllers/resource-controller.test.ts
-tests/unit/controllers/resource-review-controller.test.ts
-tests/unit/controllers/review.controller.test.ts
-tests/unit/controllers/user.controller.test.ts
-tests/integration/backward-compatibility.test.ts
-tests/integration/response-format-compatibility.test.ts
-tests/integration/api-endpoints.test.ts
-```
+### ✅ **已完成**
+- Services 測試: 6/~15 個 
+- 測試基礎設施: 100%
+- 測試工具: 100%
 
-### 重寫檔案 (25 個)
-- 所有 Services 測試
-- 核心 Validators 測試  
-- 主要 API 整合測試
+### 🎯 **待完成 (核心任務)**
+- Services 測試: ~9 個
+- Validators 測試: ~12 個  
+- Utils 測試: ~6 個
+
+### 🚀 **可選任務 (未來擴展)**
+- 整合測試、中介軟體測試、E2E 測試等
