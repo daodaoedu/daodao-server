@@ -59,7 +59,7 @@ export const uploadSingleImage = asyncHandler(async (req: MulterRequest, res: Re
   // 使用增強的檔案驗證
   const validation = fileSchema.safeParse(file);
   if (!validation.success) {
-    const errorMessages = validation.error.errors.map(err => err.message);
+    const errorMessages = validation.error.issues.map((err: z.ZodIssue) => err.message);
     throw new BadRequestError(errorMessages.join(', '));
   }
 
@@ -100,7 +100,7 @@ export const uploadMultipleImages = asyncHandler(async (req: MulterRequest, res:
   // 使用增強的檔案驗證
   const validation = filesSchema.safeParse(fileArray);
   if (!validation.success) {
-    const errorMessages = validation.error.errors.map(err => err.message);
+    const errorMessages = validation.error.issues.map((err: z.ZodIssue) => err.message);
     throw new BadRequestError(errorMessages.join(', '));
   }
 

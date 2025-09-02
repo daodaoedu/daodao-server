@@ -15,7 +15,7 @@ import { BadRequestError } from '../middleware/error.middleware';
 function formatZodErrors(error: ZodError): Record<string, string> {
   const errors: Record<string, string> = {};
   
-  for (const issue of error.errors) {
+  for (const issue of error.issues) {
     // 使用路徑作為錯誤鍵
     const path = issue.path.join('.');
     errors[path] = issue.message;

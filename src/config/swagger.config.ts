@@ -2,9 +2,12 @@
  * Swagger 配置文件
  */
 
-import swaggerJsdoc from 'swagger-jsdoc';
+interface SwaggerOptions {
+  definition: any;
+  apis: string[];
+}
 
-const swaggerOptions: swaggerJsdoc.Options = {
+const swaggerOptions: SwaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
@@ -361,5 +364,5 @@ const swaggerOptions: swaggerJsdoc.Options = {
   ]
 };
 
-export const swaggerSpec = swaggerJsdoc(swaggerOptions);
+export const swaggerSpec = swaggerOptions.definition;
 export default swaggerOptions;
