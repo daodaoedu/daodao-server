@@ -53,8 +53,8 @@
  *         name: sort_order
  *         schema:
  *           type: string
- *           enum: [asc, desc]
- *           default: desc
+ *           enum: [ASC, DESC]
+ *           default: DESC
  *         description: 排序方向
  *     responses:
  *       200:
@@ -173,8 +173,8 @@
  *         name: sort_order
  *         schema:
  *           type: string
- *           enum: [asc, desc]
- *           default: desc
+ *           enum: [ASC, DESC]
+ *           default: DESC
  *         description: 排序方向
  *     responses:
  *       200:
