@@ -115,9 +115,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       409:
- *         $ref: '#/components/responses/Conflict'
+ *         $ref: '#/components/responses/ConflictError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -179,7 +179,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -211,7 +211,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -253,7 +253,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -319,9 +319,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       409:
- *         $ref: '#/components/responses/Conflict'
+ *         $ref: '#/components/responses/ConflictError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -353,9 +353,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       409:
- *         $ref: '#/components/responses/Conflict'
+ *         $ref: '#/components/responses/ConflictError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -426,7 +426,7 @@
  *                   type: string
  *                   format: date-time
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -458,7 +458,7 @@
  *                   items:
  *                     $ref: '#/components/schemas/FormattedUser'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -496,7 +496,7 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  * 
@@ -526,9 +526,9 @@
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       403:
- *         $ref: '#/components/responses/Forbidden'
+ *         $ref: '#/components/responses/ForbiddenError'
  *       404:
- *         $ref: '#/components/responses/NotFound'
+ *         $ref: '#/components/responses/NotFoundError'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
