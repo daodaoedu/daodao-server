@@ -70,7 +70,7 @@ export const getProjectsController = asyncHandler(async (req: Request, res: Resp
     sort_by: (['created_at', 'updated_at', 'title', 'start_date', 'end_date'].includes(req.query.sort_by as string)) 
       ? (req.query.sort_by as 'created_at' | 'updated_at' | 'title' | 'start_date' | 'end_date') 
       : 'created_at',
-    sort_order: (req.query.sort_order as 'ASC' | 'DESC') || 'DESC'
+    sort_order: (req.query.sort_order as 'asc' | 'desc') || 'desc'
   };
 
   const userId = req.user?.id;
@@ -162,7 +162,7 @@ export const getMyProjectsController = asyncHandler(async (req: Request, res: Re
     sort_by: (['created_at', 'updated_at', 'title', 'start_date', 'end_date'].includes(req.query.sort_by as string)) 
       ? (req.query.sort_by as 'created_at' | 'updated_at' | 'title' | 'start_date' | 'end_date') 
       : 'updated_at',
-    sort_order: (req.query.sort_order as 'ASC' | 'DESC') || 'DESC',
+    sort_order: (req.query.sort_order as 'asc' | 'desc') || 'desc',
     user_id: req.user.id
   };
 

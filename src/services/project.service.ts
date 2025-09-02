@@ -325,7 +325,7 @@ export const getProjects = async (
       user_id,
       search,
       sort_by = 'created_at',
-      sort_order = 'DESC'
+      sort_order = 'desc'
     } = queryParams;
 
     const skip = (page - 1) * limit;
@@ -385,7 +385,7 @@ export const getProjects = async (
             }
           }
         },
-        orderBy: { [sort_by]: sort_order.toLowerCase() as 'asc' | 'desc' },
+        orderBy: { [sort_by]: sort_order as 'asc' | 'desc' },
         take: limit,
         skip
       }),
