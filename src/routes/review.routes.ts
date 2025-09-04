@@ -20,7 +20,7 @@ import {
   reviewParamsSchema,
   reviewQuerySchema
 } from '../validators/review.validators';
-import { projectParamsSchema } from '../validators/note.validators';
+import { noteProjectParamsSchema } from '../validators/note.validators';
 
 const router = Router();
 
@@ -40,7 +40,7 @@ router.get(
 router.post(
   '/projects/:projectId',
   authenticate,
-  validateRequest(projectParamsSchema, 'params'),
+  validateRequest(noteProjectParamsSchema, 'params'),
   validateRequest(createReviewSchema, 'body'),
   createReview
 );
@@ -49,7 +49,7 @@ router.post(
 router.get(
   '/projects/:projectId',
   authenticate,
-  validateRequest(projectParamsSchema, 'params'),
+  validateRequest(noteProjectParamsSchema, 'params'),
   validateRequest(reviewQuerySchema, 'query'),
   getReviews
 );

@@ -5,13 +5,8 @@
 
 import { Request, Response } from 'express';
 import { asyncHandler } from '@/middleware/error.middleware';
-import { 
-  createIdeaSchema, 
-  updateIdeaSchema, 
-  ideaQuerySchema,
-  ideaParamsSchema
-} from '@/validators/idea.validators';
 import ideaService from '@/services/idea.service';
+import type { IdeaQueryParams, IdeaParams, CreateIdeaData, UpdateIdeaData } from '@/validators/idea.validators';
 
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
@@ -35,8 +30,8 @@ const getUserIdOrTestUser = (user?: Request['user']): number | undefined => {
  * 獲取想法列表
  */
 export const getIdeas = asyncHandler(async (req: Request, res: Response) => {
-  // 驗證和解析查詢參數
-  const queryParams = ideaQuerySchema.parse(req.query);
+  // 查詢參數已經在 routes 層級驗證過
+  const queryParams = req.query as unknown as IdeaQueryParams;
   
   // 解析標籤
   const tags = queryParams.tags ? queryParams.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined;
@@ -72,8 +67,8 @@ export const getIdeas = asyncHandler(async (req: Request, res: Response) => {
  * 根據 ID 獲取想法詳情
  */
 export const getIdeaById = asyncHandler(async (req: Request, res: Response) => {
-  // 驗證路徑參數
-  const { id } = ideaParamsSchema.parse(req.params);
+  // 路徑參數已經在 routes 層級驗證過
+  const { id } = req.params as IdeaParams;
   
   // 獲取當前使用者 ID（如果已登入）
   const userId = getUserIdOrTestUser(req.user);
@@ -88,8 +83,8 @@ export const getIdeaById = asyncHandler(async (req: Request, res: Response) => {
  * 創建想法
  */
 export const createIdea = asyncHandler(async (req: Request, res: Response) => {
-  // 驗證請求資料
-  const data = createIdeaSchema.parse(req.body);
+  // 請求資料已經在 routes 層級驗證過
+  const data = req.body as CreateIdeaData;
   
   // 獲取當前使用者 ID
   const userId = getUserIdOrTestUser(req.user);
@@ -107,9 +102,9 @@ export const createIdea = asyncHandler(async (req: Request, res: Response) => {
  * 更新想法
  */
 export const updateIdea = asyncHandler(async (req: Request, res: Response) => {
-  // 驗證路徑參數和請求資料
-  const { id } = ideaParamsSchema.parse(req.params);
-  const data = updateIdeaSchema.parse(req.body);
+  // 參數和資料已經在 routes 層級驗證過
+  const { id } = req.params as IdeaParams;
+  const data = req.body as UpdateIdeaData;
   
   // 獲取當前使用者 ID
   const userId = getUserIdOrTestUser(req.user);
@@ -127,8 +122,8 @@ export const updateIdea = asyncHandler(async (req: Request, res: Response) => {
  * 刪除想法
  */
 export const deleteIdea = asyncHandler(async (req: Request, res: Response) => {
-  // 驗證路徑參數
-  const { id } = ideaParamsSchema.parse(req.params);
+  // 路徑參數已經在 routes 層級驗證過
+  const { id } = req.params as IdeaParams;
   
   // 獲取當前使用者 ID
   const userId = getUserIdOrTestUser(req.user);
@@ -146,8 +141,8 @@ export const deleteIdea = asyncHandler(async (req: Request, res: Response) => {
  * 獲取我的想法
  */
 export const getMyIdeas = asyncHandler(async (req: Request, res: Response) => {
-  // 驗證和解析查詢參數
-  const queryParams = ideaQuerySchema.parse(req.query);
+  // 查詢參數已經在 routes 層級驗證過
+  const queryParams = req.query as unknown as IdeaQueryParams;
   
   // 獲取當前使用者 ID
   const userId = getUserIdOrTestUser(req.user);

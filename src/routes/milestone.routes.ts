@@ -11,7 +11,7 @@ import {
   createMilestoneSchema,
   updateMilestoneSchema,
   milestoneParamsSchema
-} from '../validators/project.validators';
+} from '../validators/milestone.validators';
 
 const router = Router({ mergeParams: true });
 

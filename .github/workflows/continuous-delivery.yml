@@ -158,6 +158,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          no-cache: true
           # 建立兩個標籤：環境標籤和特定 commit 標籤
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
@@ -165,13 +166,6 @@ jobs:
           build-args: |
             NODE_ENV=${{ env.NODE_ENV }}
             BUILDKIT_INLINE_CACHE=1
-          cache-from: |
-            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
-            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }}
-            type=gha
-          cache-to: |
-            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
-            type=gha,mode=max
           platforms: linux/amd64
 
   # ===== 部署階段 =====

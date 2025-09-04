@@ -19,7 +19,7 @@ import {
   createNoteSchema,
   updateNoteSchema,
   noteParamsSchema,
-  projectParamsSchema,
+  noteProjectParamsSchema,
   publicNotesQuerySchema
 } from '../validators/note.validators';
 
@@ -48,7 +48,7 @@ router.get(
 router.post(
   '/projects/:projectId',
   authenticate,
-  validateRequest(projectParamsSchema, 'params'),
+  validateRequest(noteProjectParamsSchema, 'params'),
   validateRequest(createNoteSchema, 'body'),
   createNote
 );
@@ -57,7 +57,7 @@ router.post(
 router.get(
   '/projects/:projectId',
   optionalAuth,
-  validateRequest(projectParamsSchema, 'params'),
+  validateRequest(noteProjectParamsSchema, 'params'),
   getNotes
 );
 
