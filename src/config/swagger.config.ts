@@ -244,117 +244,112 @@ const swaggerOptions: SwaggerOptions = {
         'x-order': 1
       },
       {
-        name: 'OAuth',
-        description: 'OAuth 第三方登入相關操作',
-        'x-order': 2
-      },
-      {
         name: 'Me',
         description: '個人資料相關操作',
-        'x-order': 3
+        'x-order': 2
       },
       {
         name: 'Users',
         description: '用戶管理相關操作',
-        'x-order': 4
+        'x-order': 3
       },
       {
         name: 'Ideas',
         description: '想法分享相關操作',
-        'x-order': 5
+        'x-order': 4
       },
       {
         name: 'Practice',
         description: '實踐管理相關操作',
-        'x-order': 6
+        'x-order': 5
       },
       {
         name: 'Practice Check-ins',
         description: '實踐簽到相關操作',
-        'x-order': 7
+        'x-order': 6
       },
       {
         name: 'Practice Interactions',
         description: '實踐互動相關操作（點讚、收藏、分享等）',
-        'x-order': 8
+        'x-order': 7
       },
       {
         name: 'Projects',
         description: '專案管理相關操作',
-        'x-order': 9
+        'x-order': 8
       },
       {
         name: 'Milestones',
         description: '里程碑管理相關操作',
-        'x-order': 10
+        'x-order': 9
       },
       {
         name: 'Notes',
         description: '便利貼相關操作',
-        'x-order': 11
+        'x-order': 10
       },
       {
         name: 'Outcomes',
         description: '成果相關操作',
-        'x-order': 12
+        'x-order': 11
       },
       {
         name: 'Reviews',
         description: '覆盤相關操作',
-        'x-order': 13
+        'x-order': 12
       },
       {
         name: 'Mentor',
         description: '導師系統相關操作',
-        'x-order': 14
+        'x-order': 13
       },
       {
         name: 'Resources',
         description: '資源管理相關操作',
-        'x-order': 15
+        'x-order': 14
       },
       {
         name: 'Resource Reviews',
         description: '資源評價和心得相關操作',
-        'x-order': 16
+        'x-order': 15
       },
       {
         name: 'Tags',
         description: '標籤管理相關操作',
-        'x-order': 17
+        'x-order': 16
       },
 
       {
         name: 'Comments',
         description: '評論系統相關操作',
-        'x-order': 18
+        'x-order': 17
       },
 
       {
         name: 'Email',
         description: '郵件服務相關操作',
-        'x-order': 19
+        'x-order': 18
       },
 
       {
         name: 'Images',
         description: '圖片管理相關操作',
-        'x-order': 20
+        'x-order': 19
       },
       {
         name: 'System',
         description: '系統狀態和資訊相關操作',
-        'x-order': 21
+        'x-order': 20
       },
       {
         name: 'Database Info',
         description: '資料庫資訊查詢相關操作',
-        'x-order': 22
+        'x-order': 21
       },
       {
         name: 'System Monitor',
         description: '系統監控相關操作',
-        'x-order': 23
+        'x-order': 22
       }
     ]
   },

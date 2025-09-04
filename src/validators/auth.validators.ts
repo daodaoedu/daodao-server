@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { apiSuccessResponseSchema } from './api-response.validators';
 
 /**
  * 登入請求驗證器
@@ -409,6 +410,89 @@ export type UpdateProfileRequest = z.infer<typeof updateProfileValidator>;
 export type TokenRequest = z.infer<typeof tokenValidator>;
 export type RevokeAllSessionsRequest = z.infer<typeof revokeAllSessionsValidator>;
 export type OAuthStateRequest = z.infer<typeof oauthStateValidator>;
+
+// 認證相關的回應 schemas
+
+// 用戶資料 schema（簡化版，對應認證時返回的用戶資訊）
+const authUserSchema = z.object({
+  id: z.number().int().describe("用戶數字 ID"),
+  _id: z.string().describe("用戶 UUID"),
+  name: z.string().describe("用戶姓名"),
+  email: z.string().email().describe("電子郵件地址"),
+  photoUrl: z.string().url().nullable().describe("個人大頭照 URL"),
+  roleId: z.number().int().nullable().describe("角色 ID")
+}).describe("認證用戶資料").meta({
+  title: "認證用戶資訊",
+  examples: [{
+    id: 123,
+    _id: "123e4567-e89b-12d3-a456-426614174000",
+    name: "王小明",
+    email: "wang.xiaoming@example.com",
+    photoUrl: "https://example.com/avatar/wang.jpg",
+    roleId: 1
+  }]
+});
+
+// 登入成功回應 schema
+export const loginSuccessResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    user: authUserSchema,
+    token: z.string().describe("JWT 認證 token"),
+    refreshToken: z.string().optional().describe("刷新 token")
+  })
+).describe("登入成功回應").meta({
+  title: "登入成功回應",
+  examples: [{
+    success: true,
+    data: {
+      user: {
+        id: 123,
+        _id: "123e4567-e89b-12d3-a456-426614174000",
+        name: "王小明",
+        email: "wang.xiaoming@example.com",
+        photoUrl: "https://example.com/avatar/wang.jpg",
+        roleId: 1
+      },
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
+// 登出回應 schema
+export const logoutResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    message: z.string().describe("登出結果訊息")
+  })
+).describe("登出回應").meta({
+  title: "登出回應",
+  examples: [{
+    success: true,
+    data: {
+      message: "已成功登出"
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
+// 刷新 token 回應 schema
+export const refreshTokenResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    token: z.string().describe("新的 JWT 認證 token"),
+    refreshToken: z.string().optional().describe("新的刷新 token")
+  })
+).describe("刷新 token 回應").meta({
+  title: "刷新 Token 回應",
+  examples: [{
+    success: true,
+    data: {
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
 
 // 統一導出
 export const authValidators = {
