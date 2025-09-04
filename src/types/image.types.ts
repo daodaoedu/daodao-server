@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Readable } from 'stream';
 
 /**
  * 圖片相關類型定義
@@ -10,6 +11,7 @@ import { Request } from 'express';
 
 /**
  * 基本的 Multer File 介面定義
+ * 與 Express.Multer.File 相容
  */
 interface MulterFile {
   fieldname: string;
@@ -21,6 +23,7 @@ interface MulterFile {
   filename: string;
   path: string;
   buffer: Buffer;
+  stream: Readable;
 }
 
 /**

@@ -8,6 +8,23 @@ import path from 'path';
 import { z } from 'zod';
 
 /**
+ * 載入從程式碼中提取的錯誤範例
+ */
+function loadErrorExamples(): Record<string, any> {
+  try {
+    const errorExamplesPath = path.join(__dirname, 'error-examples.json');
+    if (fs.existsSync(errorExamplesPath)) {
+      const content = fs.readFileSync(errorExamplesPath, 'utf-8');
+      const errorData = JSON.parse(content);
+      return errorData.components || {};
+    }
+  } catch (error) {
+    console.warn('⚠️  無法載入錯誤範例文件:', error);
+  }
+  return {};
+}
+
+/**
  * 提取 Zod v4 metadata 的函數
  */
 function extractZodV4Metadata(schema: z.ZodSchema): any {
@@ -92,6 +109,56 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
     }
   } else if (schema instanceof z.ZodBoolean) {
     metadata.type = 'boolean';
+  } else if (schema instanceof z.ZodLiteral) {
+    const value = (schema as any)._def.value;
+    if (typeof value === 'string') {
+      metadata.type = 'string';
+      metadata.enum = [value];
+    } else if (typeof value === 'number') {
+      metadata.type = 'number';
+      metadata.enum = [value];
+    } else if (typeof value === 'boolean') {
+      metadata.type = 'boolean';
+      metadata.enum = [value];
+    }
+  } else if (schema instanceof z.ZodOptional) {
+    const innerMetadata = extractZodV4Metadata((schema as any)._def.innerType);
+    return { ...innerMetadata, nullable: true };
+  } else if (schema instanceof z.ZodNullable) {
+    const innerMetadata = extractZodV4Metadata((schema as any)._def.innerType);
+    return { ...innerMetadata, nullable: true };
+  } else if (schema instanceof z.ZodDefault) {
+    const innerMetadata = extractZodV4Metadata((schema as any)._def.innerType);
+    const defaultValue = (schema as any)._def.defaultValue;
+    if (typeof defaultValue === 'function') {
+      return { ...innerMetadata, default: defaultValue() };
+    } else {
+      return { ...innerMetadata, default: defaultValue };
+    }
+  } else if (schema instanceof z.ZodUnion) {
+    // 處理 union types
+    const options = (schema as any)._def.options;
+    if (options && options.length > 0) {
+      const types = new Set();
+      options.forEach((option: z.ZodSchema) => {
+        const optionMeta = extractZodV4Metadata(option);
+        if (optionMeta.type) {
+          types.add(optionMeta.type);
+        }
+      });
+      if (types.size === 1) {
+        metadata.type = Array.from(types)[0];
+      } else {
+        metadata.oneOf = options.map((option: z.ZodSchema) => extractZodV4Metadata(option));
+      }
+    }
+  } else if (schema instanceof z.ZodDate) {
+    metadata.type = 'string';
+    metadata.format = 'date-time';
+  } else {
+    // 未知類型，返回 any
+    metadata.type = 'object';
+    metadata.additionalProperties = true;
   }
 
   return metadata;
@@ -241,7 +308,7 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
         summary: summary || `${method.toUpperCase()} ${path}`,
         description,
         validatorName,
-        tags: [getTagFromRouteName(routeName)]
+        tags: [getTagFromRouteName(routeName.replace('.ts', ''))]
       });
     }
     
@@ -319,10 +386,77 @@ async function scanRouteDefinitions(): Promise<any[]> {
 }
 
 /**
+ * 路由與回應 schema 的對映表
+ */
+const routeResponseMapping: Record<string, string> = {
+  // 用戶相關路由
+  'GET:/api/v1/users/': 'user.validators_usersListResponseSchema',
+  'GET:/api/v1/users/me': 'user.validators_userSuccessResponseSchema',
+  'GET:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema',
+  'POST:/api/v1/users': 'user.validators_createUserResponseSchema',
+  'PUT:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema',
+  'DELETE:/api/v1/users/me': 'user.validators_deleteUserResponseSchema',
+  'DELETE:/api/v1/users/:id': 'user.validators_deleteUserResponseSchema',
+  
+  // 用戶自訂 ID 相關
+  'GET:/api/v1/users/custom-id/check/:customId': 'user.validators_customIdAvailabilityResponseSchema',
+  'GET:/api/v1/users/custom-id/:customId': 'user.validators_userSuccessResponseSchema',
+  'POST:/api/v1/users/me/custom-id': 'user.validators_setCustomIdResponseSchema',
+  'DELETE:/api/v1/users/me/custom-id': 'user.validators_removeCustomIdResponseSchema',
+  
+  // 用戶偏好設定相關
+  'GET:/api/v1/users/me/preferences': 'user.validators_userPreferencesResponseSchema',
+  'PUT:/api/v1/users/me/preferences': 'user.validators_updateUserPreferencesResponseSchema',
+  'GET:/api/v1/users/preferences/available': 'user.validators_availablePreferencesResponseSchema',
+  
+  // 認證相關路由
+  'POST:/api/v1/auth/login': 'auth.validators_loginSuccessResponseSchema',
+  'POST:/api/v1/auth/logout': 'auth.validators_logoutResponseSchema',
+  'POST:/api/v1/auth/refresh': 'auth.validators_refreshTokenResponseSchema',
+  'GET:/api/v1/auth/google/callback': 'auth.validators_loginSuccessResponseSchema',
+  
+  // 通用分頁路由模式 - 用於判斷是否為分頁 API
+  'GET:/api/v1/resources/': 'paginated',
+  'GET:/api/v1/reviews/': 'paginated',
+  'GET:/api/v1/projects/': 'paginated', 
+  'GET:/api/v1/practices/': 'paginated',
+  'GET:/api/v1/comments/': 'paginated',
+  'GET:/api/v1/ideas/': 'paginated',
+  'GET:/api/v1/notes/': 'paginated',
+  'GET:/api/v1/outcomes/': 'paginated',
+  'GET:/api/v1/tags/': 'paginated',
+  'GET:/api/v1/me/resources/': 'paginated',
+  'GET:/api/v1/me/reviews/': 'paginated',
+  'GET:/api/v1/me/projects/': 'paginated',
+  'GET:/api/v1/resources/{resourceId}/reviews/': 'paginated',
+  'GET:/api/v1/projects/{projectId}/milestones/': 'paginated'
+};
+
+/**
+ * 根據路由獲取對應的回應 schema
+ */
+function getResponseSchemaForRoute(path: string, method: string): string | null {
+  const routeKey = `${method.toUpperCase()}:${path}`;
+  return routeResponseMapping[routeKey] || null;
+}
+
+/**
+ * 判斷路由是否返回分頁資料
+ */
+function isPaginatedRoute(path: string, method: string): boolean {
+  const schema = getResponseSchemaForRoute(path, method);
+  return schema === 'paginated';
+}
+
+/**
  * 生成 OpenAPI 3.0 規範
  */
 async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
   console.log('📝 生成 OpenAPI 規範...');
+  
+  // 載入從程式碼提取的錯誤範例
+  const errorComponents = loadErrorExamples();
+  console.log(`📋 載入了 ${Object.keys(errorComponents).length} 個錯誤範例組件`);
   
   // 從現有的 swagger.config.ts 取得基本資訊
   const swaggerConfigPath = path.join(__dirname, '../src/config/swagger.config.ts');
@@ -362,140 +496,43 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
       parameters: baseConfig.components?.parameters || {},
       responses: {
         ...baseConfig.components?.responses,
-        // 標準錯誤回應定義
-        BadRequestError: {
-          description: '請求參數錯誤',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  data: { type: 'null' },
-                  error: {
-                    type: 'object',
-                    properties: {
-                      code: { type: 'string', example: 'VALIDATION_ERROR' },
-                      message: { type: 'string', example: '輸入資料格式錯誤' },
-                      details: { type: 'object' }
-                    }
-                  },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
+        // 從程式碼中提取的標準錯誤回應定義
+        ...errorComponents,
+        // 備用錯誤定義（如果程式碼提取失敗時使用）
+        ...(Object.keys(errorComponents).length === 0 ? {
+          BadRequestError: {
+            description: '請求參數錯誤',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/api-response.validators_apiErrorResponseSchema' }
+              }
+            }
+          },
+          UnauthorizedError: {
+            description: '未授權，需要登入', 
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/api-response.validators_apiErrorResponseSchema' }
+              }
+            }
+          },
+          NotFoundError: {
+            description: '資源不存在',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/api-response.validators_apiErrorResponseSchema' }
+              }
+            }
+          },
+          InternalServerError: {
+            description: '服務器內部錯誤',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/api-response.validators_apiErrorResponseSchema' }
               }
             }
           }
-        },
-        UnauthorizedError: {
-          description: '未授權，需要登入',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  data: { type: 'null' },
-                  error: {
-                    type: 'object',
-                    properties: {
-                      code: { type: 'string', example: 'UNAUTHORIZED' },
-                      message: { type: 'string', example: '請先登入' }
-                    }
-                  },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
-              }
-            }
-          }
-        },
-        ForbiddenError: {
-          description: '禁止訪問，權限不足',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  data: { type: 'null' },
-                  error: {
-                    type: 'object',
-                    properties: {
-                      code: { type: 'string', example: 'FORBIDDEN' },
-                      message: { type: 'string', example: '權限不足' }
-                    }
-                  },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
-              }
-            }
-          }
-        },
-        NotFoundError: {
-          description: '資源不存在',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  data: { type: 'null' },
-                  error: {
-                    type: 'object',
-                    properties: {
-                      code: { type: 'string', example: 'NOT_FOUND' },
-                      message: { type: 'string', example: '找不到指定的資源' }
-                    }
-                  },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
-              }
-            }
-          }
-        },
-        ConflictError: {
-          description: '資源衝突',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  data: { type: 'null' },
-                  error: {
-                    type: 'object',
-                    properties: {
-                      code: { type: 'string', example: 'CONFLICT' },
-                      message: { type: 'string', example: '資源已存在或衝突' }
-                    }
-                  },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
-              }
-            }
-          }
-        },
-        InternalServerError: {
-          description: '服務器內部錯誤',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  data: { type: 'null' },
-                  error: {
-                    type: 'object',
-                    properties: {
-                      code: { type: 'string', example: 'INTERNAL_ERROR' },
-                      message: { type: 'string', example: '伺服器發生錯誤' }
-                    }
-                  },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
-              }
-            }
-          }
-        }
+        } : {})
       }
     },
     paths: {} as Record<string, any>,
@@ -527,6 +564,40 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
       openApiSpec.paths[pathKey] = {};
     }
     
+    // 根據路由獲取對應的回應 schema
+    const specificResponseSchema = getResponseSchemaForRoute(route.path, route.method);
+    const isPaginated = isPaginatedRoute(route.path, route.method);
+    
+    
+    let successResponseSchema = '{}' as any;
+    
+    if (specificResponseSchema && specificResponseSchema !== 'paginated') {
+      // 使用特定的回應 schema
+      successResponseSchema = { $ref: `#/components/schemas/${specificResponseSchema}` };
+    } else if (isPaginated) {
+      // 分頁回應
+      successResponseSchema = { $ref: '#/components/schemas/api-response.validators_paginatedApiResponseExample' };
+    } else if (route.method === 'delete') {
+      // 刪除操作通常返回簡單訊息
+      successResponseSchema = {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: { 
+            type: 'object',
+            properties: {
+              message: { type: 'string', example: '資源已成功刪除' }
+            }
+          },
+          timestamp: { type: 'string', format: 'date-time' },
+          meta: { $ref: '#/components/schemas/api-response.validators_responseMetaSchema' }
+        }
+      };
+    } else {
+      // 一般成功回應 - 使用通用的成功回應 schema
+      successResponseSchema = { $ref: '#/components/schemas/api-response.validators_apiSuccessResponseExample' };
+    }
+    
     // 建立 OpenAPI operation 物件
     const operation: any = {
       tags: route.tags,
@@ -537,14 +608,15 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
           description: '成功回應',
           content: {
             'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: true },
-                  data: { type: 'object' },
-                  timestamp: { type: 'string', format: 'date-time' }
-                }
-              }
+              schema: successResponseSchema
+            }
+          }
+        },
+        '201': {
+          description: '資源創建成功',
+          content: {
+            'application/json': {
+              schema: successResponseSchema
             }
           }
         },
@@ -554,6 +626,13 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
         '500': { $ref: '#/components/responses/InternalServerError' }
       }
     };
+    
+    // POST 請求通常返回 201
+    if (route.method === 'post') {
+      delete operation.responses['200'];
+    } else {
+      delete operation.responses['201'];
+    }
     
     if (route.description) {
       operation.description = route.description;
