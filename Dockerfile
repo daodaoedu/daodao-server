@@ -45,9 +45,7 @@ FROM base AS runtime
 ARG NODE_ENV=prod
 ENV NODE_ENV=$NODE_ENV
 
-# 設置 pnpm 全局目錄並安裝 PM2
-RUN pnpm setup && \
-    pnpm add -g pm2
+# PM2 is already installed as a local dependency
 
 # 創建用戶
 RUN addgroup -g 1001 -S nodejs && \
@@ -80,4 +78,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 EXPOSE 3000
 
 # 使用 PM2 啟動
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+CMD ["./node_modules/.bin/pm2-runtime", "start", "ecosystem.config.js"]
