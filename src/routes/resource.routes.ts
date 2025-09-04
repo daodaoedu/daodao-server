@@ -14,16 +14,16 @@ import {
   getResourceStats,
   getResourceTags
 } from '../controllers/resource.controller';
-import { validate } from '../validators/validation.middleware';
+import { validate } from '../middleware/validation.middleware';
 import { authenticate, optionalAuth, requireRole } from '../middleware/auth';
-import { 
-  createResourceSchema, 
-  updateResourceSchema, 
-  updateResourceStatusSchema 
+import {
+  createResourceSchema,
+  updateResourceSchema,
+  updateResourceStatusSchema
 } from '../validators/resource.validator';
-import { 
-  paginationSchema, 
-  resourceFilterSchema 
+import {
+  paginationSchema,
+  resourceFilterSchema
 } from '../validators/request-params.validator';
 
 const router = Router();
@@ -34,7 +34,7 @@ const router = Router();
  * 查詢參數：cursor, limit, type, cost, level, majorCategory, subCategory, tags, query, sort, order
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/', 
+router.get('/',
   optionalAuth,
   validate(paginationSchema, 'query'),
   validate(resourceFilterSchema, 'query'),
@@ -45,7 +45,7 @@ router.get('/',
  * 獲取資源統計資訊
  * 支援可選身份驗證（用於個人化統計）
  */
-router.get('/stats', 
+router.get('/stats',
   optionalAuth,
   getResourceStats);
 
@@ -55,7 +55,7 @@ router.get('/stats',
  * 路徑參數：resourceId - 資源 ID
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/:resourceId', 
+router.get('/:resourceId',
   optionalAuth,
   getResourceById);
 
@@ -65,7 +65,7 @@ router.get('/:resourceId',
  * 請求體：CreateResourceDto (包含可選的嵌套評論)
  * 需要身份驗證
  */
-router.post('/', 
+router.post('/',
   authenticate,
   validate(createResourceSchema, 'body'),
   createResource

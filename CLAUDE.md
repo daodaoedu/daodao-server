@@ -4,19 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+### Package Management
+- `pnpm install` - Install all dependencies
+- `pnpm add <package>` - Add production dependency
+- `pnpm add -D <package>` - Add development dependency
+- `pnpm remove <package>` - Remove dependency
+- `pnpm list` - View dependency tree
+- `pnpm outdated` - Check outdated dependencies
+
 ### Core Commands
-- `npm start` - Start production server
-- `npm run dev` - Start development server with nodemon
-- `npm test` - Run Jest tests with custom config
-- `npm run test:paths` - Run tests with NODE_PATH=src for path resolution
+- `pnpm start` - Start production server
+- `pnpm run dev` - Start development server with nodemon
+- `pnpm test` - Run Jest tests with custom config
+- `pnpm run test:paths` - Run tests with NODE_PATH=src for path resolution
 
 ### TypeScript Commands
-- `npm run typecheck` - Run TypeScript type checking without emitting files
-- `npm run lint` - Run ESLint to check code quality and TypeScript issues
-- `npm run lint:fix` - Run ESLint and automatically fix issues
-- `npm run build` - Compile TypeScript and generate dist/ directory
-- `npm run prisma:generate` - Generate Prisma client types at generated/prisma
-- `npm run types:generate` - Generate both Prisma and OpenAPI types
+- `pnpm run typecheck` - Run TypeScript type checking without emitting files
+- `pnpm run lint` - Run ESLint to check code quality and TypeScript issues
+- `pnpm run lint:fix` - Run ESLint and automatically fix issues
+- `pnpm run build` - Compile TypeScript and generate dist/ directory
+- `pnpm run prisma:generate` - Generate Prisma client types at generated/prisma
+- `pnpm run types:generate` - Generate both Prisma and OpenAPI types
 - `tsc --noEmit` - Type checking without emitting files (direct command)
 - `ts-node src/index.ts` - Run TypeScript files directly
 

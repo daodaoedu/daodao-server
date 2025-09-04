@@ -5,10 +5,10 @@
 
 import { Router, RequestHandler } from 'express';
 import { milestoneController } from '../controllers/milestone.controller';
-import { validate } from '../validators/validation.middleware';
+import { validate } from '../middleware/validation.middleware';
 import { authenticate } from '../middleware/auth';
-import { 
-  createMilestoneSchema, 
+import {
+  createMilestoneSchema,
   updateMilestoneSchema,
   milestoneParamsSchema
 } from '../validators/project.validators';
@@ -21,7 +21,7 @@ const router = Router({ mergeParams: true });
  * 路徑參數：projectId - 專案 ID
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/', 
+router.get('/',
   milestoneController.getMilestones as RequestHandler);
 
 /**
@@ -31,7 +31,7 @@ router.get('/',
  * 請求體：MilestoneCreateRequestData
  * 需要身份驗證
  */
-router.post('/', 
+router.post('/',
   authenticate,
   validate(createMilestoneSchema, 'body'),
   milestoneController.createMilestone as RequestHandler);
@@ -43,7 +43,7 @@ router.post('/',
  * 請求體：MilestoneUpdateRequest
  * 需要身份驗證
  */
-router.put('/:milestoneId', 
+router.put('/:milestoneId',
   authenticate,
   validate(milestoneParamsSchema, 'params'),
   validate(updateMilestoneSchema, 'body'),
@@ -55,7 +55,7 @@ router.put('/:milestoneId',
  * 路徑參數：projectId - 專案 ID, milestoneId - 里程碑 ID
  * 需要身份驗證
  */
-router.delete('/:milestoneId', 
+router.delete('/:milestoneId',
   authenticate,
   validate(milestoneParamsSchema, 'params'),
   milestoneController.deleteMilestone as RequestHandler);

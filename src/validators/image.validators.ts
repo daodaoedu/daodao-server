@@ -14,6 +14,19 @@ import {
   BatchValidationError
 } from '../types/image.types';
 
+// 直接定義 Multer File 類型以避免導入問題
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+}
+
 // ============================================================================
 // Core Validation Schemas
 // ============================================================================
@@ -145,18 +158,18 @@ export const enhancedFilesSchema = z.array(enhancedFileSchema)
 /**
  * Zod 驗證結果類型
  */
-export type FileValidationSuccess = z.SafeParseSuccess<z.infer<typeof fileSchema>>;
-export type FileValidationFailure = z.SafeParseError<z.infer<typeof fileSchema>>;
-export type FilesValidationSuccess = z.SafeParseSuccess<z.infer<typeof filesSchema>>;
-export type FilesValidationFailure = z.SafeParseError<z.infer<typeof filesSchema>>;
+export type FileValidationSuccess = z.ZodSafeParseSuccess<z.infer<typeof fileSchema>>;
+export type FileValidationFailure = z.ZodSafeParseError<z.infer<typeof fileSchema>>;
+export type FilesValidationSuccess = z.ZodSafeParseSuccess<z.infer<typeof filesSchema>>;
+export type FilesValidationFailure = z.ZodSafeParseError<z.infer<typeof filesSchema>>;
 
 /**
  * 增強驗證結果類型
  */
-export type EnhancedFileValidationSuccess = z.SafeParseSuccess<z.infer<typeof enhancedFileSchema>>;
-export type EnhancedFileValidationFailure = z.SafeParseError<z.infer<typeof enhancedFileSchema>>;
-export type EnhancedFilesValidationSuccess = z.SafeParseSuccess<z.infer<typeof enhancedFilesSchema>>;
-export type EnhancedFilesValidationFailure = z.SafeParseError<z.infer<typeof enhancedFilesSchema>>;
+export type EnhancedFileValidationSuccess = z.ZodSafeParseSuccess<z.infer<typeof enhancedFileSchema>>;
+export type EnhancedFileValidationFailure = z.ZodSafeParseError<z.infer<typeof enhancedFileSchema>>;
+export type EnhancedFilesValidationSuccess = z.ZodSafeParseSuccess<z.infer<typeof enhancedFilesSchema>>;
+export type EnhancedFilesValidationFailure = z.ZodSafeParseError<z.infer<typeof enhancedFilesSchema>>;
 
 // ============================================================================
 // Validation Result Processing
@@ -166,7 +179,7 @@ export type EnhancedFilesValidationFailure = z.SafeParseError<z.infer<typeof enh
  * 將 Zod 錯誤轉換為標準化的驗證錯誤格式
  */
 export function transformZodErrors(zodErrors: z.ZodError): FileValidationError[] {
-  return zodErrors.errors.map((error, index) => {
+  return zodErrors.issues.map((error: z.ZodIssue, index: number) => {
     // 根據錯誤訊息內容推斷錯誤代碼
     let code: ValidationErrorCode = 'VALIDATION_ERROR' as ValidationErrorCode;
     
@@ -196,11 +209,11 @@ export function transformZodErrors(zodErrors: z.ZodError): FileValidationError[]
  */
 export function transformBatchZodErrors(
   zodErrors: z.ZodError,
-  files: Express.Multer.File[]
+  files: MulterFile[]
 ): BatchValidationError[] {
   const batchErrors: BatchValidationError[] = [];
   
-  zodErrors.errors.forEach((error) => {
+  zodErrors.issues.forEach((error: z.ZodIssue) => {
     const pathParts = error.path;
     if (pathParts.length > 0 && typeof pathParts[0] === 'number') {
       const fileIndex = pathParts[0];

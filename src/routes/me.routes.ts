@@ -5,7 +5,7 @@
 
 import { Router, RequestHandler } from 'express';
 import { authenticate } from '@/middleware/auth';
-import { validate } from '@/validators/validation.middleware';
+import { validate } from '@/middleware/validation.middleware';
 import { ideaQuerySchema } from '@/validators/idea.validators';
 import {
   practiceQuerySchema,

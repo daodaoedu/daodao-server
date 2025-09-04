@@ -10,12 +10,11 @@ import { z } from 'zod';
  */
 export const assignMentorToMarathonSchema = z.object({
   mentorId: z.number({
-    required_error: '導師 ID 為必填項目',
-    invalid_type_error: '導師 ID 必須是數字'
+    message: '導師 ID 必須是數字'
   }).int('導師 ID 必須是整數').min(1, '導師 ID 必須是正整數'),
   
   eventId: z.string({
-    required_error: '活動 ID 為必填項目'
+    message: '活動 ID 為必填項目'
   }).min(1, '活動 ID 不能為空')
 });
 
@@ -31,8 +30,7 @@ export const updateMentorMarathonSchema = z.object({
  */
 export const assignParticipantToMentorSchema = z.object({
   participantId: z.number({
-    required_error: '參與者 ID 為必填項目',
-    invalid_type_error: '參與者 ID 必須是數字'
+    message: '參與者 ID 必須是數字'
   }).int('參與者 ID 必須是整數').min(1, '參與者 ID 必須是正整數')
 });
 
@@ -41,19 +39,19 @@ export const assignParticipantToMentorSchema = z.object({
  */
 export const assignmentIdParamsSchema = z.object({
   assignmentId: z.string({
-    required_error: '指派 ID 為必填項目'
+    message: '指派 ID 為必填項目'
   }).regex(/^\d+$/, '指派 ID 必須是數字').transform(Number)
 });
 
 export const participantIdParamsSchema = z.object({
   participantId: z.string({
-    required_error: '參與者 ID 為必填項目'
+    message: '參與者 ID 為必填項目'
   }).regex(/^\d+$/, '參與者 ID 必須是數字').transform(Number)
 });
 
 export const eventIdParamsSchema = z.object({
   eventId: z.string({
-    required_error: '活動 ID 為必填項目'
+    message: '活動 ID 為必填項目'
   }).min(1, '活動 ID 不能為空')
 });
 
@@ -61,8 +59,8 @@ export const eventIdParamsSchema = z.object({
  * 分頁查詢驗證模式
  */
 export const paginationQuerySchema = z.object({
-  page: z.string().regex(/^\d+$/, '頁碼必須是正整數').transform(Number).optional().default('1'),
-  limit: z.string().regex(/^\d+$/, '每頁數量必須是正整數').transform(Number).optional().default('10')
+  page: z.string().regex(/^\d+$/, '頁碼必須是正整數').transform(Number).optional().default(1),
+  limit: z.string().regex(/^\d+$/, '每頁數量必須是正整數').transform(Number).optional().default(10)
 });
 
 // 導出驗證類型

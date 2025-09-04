@@ -6,14 +6,14 @@
 import { Router, RequestHandler } from 'express';
 import { userController } from '../controllers/user.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
-import { 
+import {
   canCreateUser,
   canUpdateUser,
   // canDeleteUser,
   requireAdmin
 } from '../middleware/permission.middleware';
-import { validate } from '../validators/validation.middleware';
-import { 
+import { validate } from '../middleware/validation.middleware';
+import {
   createUserSchema,
   updateUserSchema,
   getUserParamsSchema,
@@ -33,7 +33,7 @@ const router = Router();
  * 查詢參數：page, pageSize, educationStage, roleList, location, search
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/', 
+router.get('/',
   optionalAuth,
   validate(getUserQuerySchema, 'query'),
   userController.getAllUsers as RequestHandler
@@ -44,7 +44,7 @@ router.get('/',
  * 獲取當前用戶資訊
  * 需要身份驗證
  */
-router.get('/me', 
+router.get('/me',
   authenticate,
   userController.getMe as RequestHandler
 );
@@ -54,7 +54,7 @@ router.get('/me',
  * 檢查自訂 ID 可用性
  * 路徑參數：customId - 要檢查的自訂 ID
  */
-router.get('/custom-id/check/:customId', 
+router.get('/custom-id/check/:customId',
   validate(customIdParamsSchema, 'params'),
   userController.checkCustomIdAvailability as RequestHandler
 );
@@ -64,7 +64,7 @@ router.get('/custom-id/check/:customId',
  * 透過自訂 ID 獲取用戶資訊
  * 路徑參數：customId - 用戶自訂 ID
  */
-router.get('/custom-id/:customId', 
+router.get('/custom-id/:customId',
   validate(customIdParamsSchema, 'params'),
   userController.getUserByCustomId as RequestHandler
 );
@@ -75,7 +75,7 @@ router.get('/custom-id/:customId',
  * 請求體：{ customId: string }
  * 需要身份驗證
  */
-router.post('/me/custom-id', 
+router.post('/me/custom-id',
   authenticate,
   validate(customIdSchema, 'body'),
   userController.setCustomId as RequestHandler
@@ -86,7 +86,7 @@ router.post('/me/custom-id',
  * 移除當前用戶的自訂 ID
  * 需要身份驗證
  */
-router.delete('/me/custom-id', 
+router.delete('/me/custom-id',
   authenticate,
   userController.removeCustomId as RequestHandler
 );
@@ -96,7 +96,7 @@ router.delete('/me/custom-id',
  * 獲取當前用戶的偏好設定
  * 需要身份驗證
  */
-router.get('/me/preferences', 
+router.get('/me/preferences',
   authenticate,
   userController.getUserPreferences as RequestHandler
 );
@@ -107,7 +107,7 @@ router.get('/me/preferences',
  * 請求體：{ preferences: Record<string, string[]> }
  * 需要身份驗證
  */
-router.put('/me/preferences', 
+router.put('/me/preferences',
   authenticate,
   validate(userPreferencesSchema, 'body'),
   userController.updateUserPreferences as RequestHandler
@@ -118,7 +118,7 @@ router.put('/me/preferences',
  * 獲取所有可用的偏好選項
  * 公開API，無需驗證
  */
-router.get('/preferences/available', 
+router.get('/preferences/available',
   userController.getAvailablePreferences as RequestHandler
 );
 
@@ -127,7 +127,7 @@ router.get('/preferences/available',
  * 獲取指定用戶資訊
  * 路徑參數：id - 用戶 external_id
  */
-router.get('/:id', 
+router.get('/:id',
   validate(getUserParamsSchema, 'params'),
   userController.getOneUser as RequestHandler
 );
@@ -138,7 +138,7 @@ router.get('/:id',
  * 請求體：CreateUserRequest
  * 需要身份驗證和創建用戶權限（允許臨時用戶）
  */
-router.post('/', 
+router.post('/',
   authenticate,
   canCreateUser(),
   validate(createUserSchema, 'body'),
@@ -152,7 +152,7 @@ router.post('/',
  * 請求體：UpdateUserRequest
  * 需要身份驗證和更新用戶權限或本人修改
  */
-router.put('/:id', 
+router.put('/:id',
   authenticate,
   canUpdateUser(),
   validate(getUserParamsSchema, 'params'),
@@ -165,7 +165,7 @@ router.put('/:id',
  * 刪除當前用戶
  * 需要身份驗證
  */
-router.delete('/me', 
+router.delete('/me',
   authenticate,
   userController.deleteMe as RequestHandler
 );
@@ -176,7 +176,7 @@ router.delete('/me',
  * 路徑參數：id - 用戶 ID (數字)
  * 需要身份驗證和管理員權限
  */
-router.delete('/:id', 
+router.delete('/:id',
   authenticate,
   requireAdmin,
   userController.deleteUser as RequestHandler

@@ -3,7 +3,7 @@
  */
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { ZodError, ZodSchema } from 'zod';
+import { z, ZodError, ZodSchema } from 'zod';
 
 /**
  * 創建驗證中間件
@@ -49,7 +49,7 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
  * @returns 格式化的錯誤信息
  */
 function formatZodErrors(error: ZodError): Array<{ path: string; message: string }> {
-  return error.errors.map(err => ({
+  return error.issues.map((err: z.ZodIssue) => ({
     path: err.path.join('.'),
     message: err.message
   }));
