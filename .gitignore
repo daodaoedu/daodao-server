@@ -10,7 +10,6 @@ logs/
 backup/
 
 # pnpm
-pnpm-lock.yaml
 .pnpm-debug.log
 
 # npm (保留備份)
