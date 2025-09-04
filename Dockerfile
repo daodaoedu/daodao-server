@@ -3,20 +3,23 @@
 # 基礎映像層 - 很少變動
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
+# 啟用 corepack 並安裝 pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # 依賴層 - 只在 package.json 變動時重建
 FROM base AS deps
-COPY package*.json ./
-RUN npm ci --only=prod && \
+# 複製 pnpm 相關文件
+COPY package.json pnpm-lock.yaml ./
+# 使用 pnpm 安裝
+RUN pnpm install --frozen-lockfile --prod && \
     cp -R node_modules prod_node_modules && \
-    npm ci && \
-    npm cache clean --force
+    pnpm install --frozen-lockfile
 
 # Prisma 層 - 只在 schema 變動時重建
 FROM deps AS prisma
 COPY prisma ./prisma
-RUN npx prisma generate && \
+RUN pnpm run prisma:generate && \
     echo "Prisma client generated successfully"
 
 # 構建層 - 編譯 TypeScript
@@ -34,8 +37,7 @@ COPY index.js ./
 COPY ecosystem.config.js ./
 
 # 編譯 TypeScript
-RUN npx tsc --project tsconfig.json && \
-    npx tsc-alias --project tsconfig.json
+RUN pnpm run build
 
 # 生產映像 - 最小化尺寸
 FROM base AS runtime
@@ -44,7 +46,7 @@ ARG NODE_ENV=prod
 ENV NODE_ENV=$NODE_ENV
 
 # 安裝 PM2
-RUN npm install -g pm2
+RUN pnpm add -g pm2
 
 # 創建用戶
 RUN addgroup -g 1001 -S nodejs && \

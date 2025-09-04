@@ -5,16 +5,16 @@
 
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller';
-import { 
-  authenticateJWT, 
+import {
+  authenticateJWT,
   authenticateAny
 } from '../middleware/auth';
-import { 
-  authenticateGoogle, 
-  authenticateGoogleCallback 
+import {
+  authenticateGoogle,
+  authenticateGoogleCallback
 } from '../services/auth/oauth.service';
-import { validate } from '../validators/validation.middleware';
-import { 
+import { validate } from '../middleware/validation.middleware';
+import {
   loginValidator,
   registerValidator,
   forgotPasswordValidator,
@@ -29,8 +29,8 @@ const router = Router();
  * 用戶登入
  * 請求體：LoginRequest - 包含 email, password, rememberMe
  */
-router.post('/login', 
-  validate(loginValidator, 'body'), 
+router.post('/login',
+  validate(loginValidator, 'body'),
   authController.login
 );
 
@@ -39,8 +39,8 @@ router.post('/login',
  * 用戶註冊
  * 請求體：RegisterRequest - 包含 username, email, password, confirmPassword, name
  */
-router.post('/register', 
-  validate(registerValidator, 'body'), 
+router.post('/register',
+  validate(registerValidator, 'body'),
   authController.register
 );
 
@@ -49,8 +49,8 @@ router.post('/register',
  * 用戶登出
  * 需要認證（JWT 或 Session）
  */
-router.post('/logout', 
-  authenticateAny, 
+router.post('/logout',
+  authenticateAny,
   authController.logout
 );
 
@@ -59,8 +59,8 @@ router.post('/logout',
  * 刷新認證令牌
  * 需要有效的 JWT token
  */
-router.post('/refresh', 
-  authenticateJWT, 
+router.post('/refresh',
+  authenticateJWT,
   authController.refreshToken
 );
 
@@ -69,8 +69,8 @@ router.post('/refresh',
  * 請求密碼重設
  * 請求體：{ email }
  */
-router.post('/forgot-password', 
-  validate(forgotPasswordValidator, 'body'), 
+router.post('/forgot-password',
+  validate(forgotPasswordValidator, 'body'),
   authController.forgotPassword
 );
 
@@ -79,8 +79,8 @@ router.post('/forgot-password',
  * 確認密碼重設
  * 請求體：{ token, newPassword, confirmPassword }
  */
-router.post('/reset-password', 
-  validate(resetPasswordValidator, 'body'), 
+router.post('/reset-password',
+  validate(resetPasswordValidator, 'body'),
   authController.resetPassword
 );
 
@@ -89,8 +89,8 @@ router.post('/reset-password',
  * 驗證電子郵件
  * 請求體：{ token, email }
  */
-router.post('/verify-email', 
-  validate(verifyEmailValidator, 'body'), 
+router.post('/verify-email',
+  validate(verifyEmailValidator, 'body'),
   authController.verifyEmail
 );
 
@@ -108,8 +108,8 @@ router.get('/google', authenticateGoogle);
  * 處理 Google OAuth 認證回調
  * 查詢參數：code, state (由 Google 提供)
  */
-router.get('/google/callback', 
-  authenticateGoogleCallback, 
+router.get('/google/callback',
+  authenticateGoogleCallback,
   authController.googleCallback
 );
 

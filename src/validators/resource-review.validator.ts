@@ -61,8 +61,25 @@ export const resourceReviewBaseSchema = z.object({
   gainPerspectives: scoreSchema,
   achieveGoals: scoreSchema,
   timeUsage: timeUsageSchema.optional().nullable(),
-  contentFeatures: contentFeaturesSchema.optional().default({}),
-  resourceUsage: resourceUsageSchema.optional().default({}),
+  contentFeatures: contentFeaturesSchema.optional().default({
+    wellStructured: false,
+    practiceFocused: false,
+    wellRoundedConcepts: false,
+    thoughtProvoking: false,
+    progressiveLearning: false,
+    problemBased: false,
+    realWorldExamples: false,
+    interactive: false,
+    visuallyRich: false
+  }),
+  resourceUsage: resourceUsageSchema.optional().default({
+    withOnlineCourses: false,
+    withBooks: false,
+    withOtherTools: false,
+    withCommunity: false,
+    onlyThisResource: false,
+    notApplicableResource: false
+  }),
   tags: z.array(z.string()).optional()
 });
 

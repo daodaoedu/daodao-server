@@ -71,46 +71,58 @@ jobs:
 
       # ===== Node.js 環境設定 =====
       # 設定指定版本的 Node.js 環境
-      # cache: 'npm'：自動快取 npm 依賴
       # 使用全域環境變數 NODE_VERSION 確保版本一致性
       # actions/setup-node@v4：最新穩定版本
+      # 注意：不使用內建 cache，因為要使用 pnpm
       # ===========================
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      # ===== Node.js 依賴快取 =====
+      # ===== 安裝 pnpm =====
+      # 使用官方 pnpm action 安裝 pnpm
+      # version: 9 指定主版本號，自動使用最新的 9.x 版本
+      # run_install: false 因為我們要利用快取機制自行安裝
+      # =====================
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      # ===== 取得 pnpm store 路徑 =====
+      # 用於設定快取路徑
+      # pnpm store path 會返回 pnpm 的全域 store 路徑
+      # ================================
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      # ===== pnpm 依賴快取 =====
       # 多層快取策略：
-      # 1. 優先快取：完整的 node_modules（最快恢復）
-      # 2. 備用快取：npm 全域快取
-      # 3. 最後備用：OS 級別快取
-      # key：基於 package-lock.json 雜湊值，確保依賴變更時重新安裝
+      # 1. 優先快取：pnpm store（最快恢復）
+      # 2. 備用快取：OS 級別快取
+      # key：基於 pnpm-lock.yaml 雜湊值，確保依賴變更時重新安裝
       # id：用於後續步驟判斷是否命中快取
-      # ===========================
-      - name: Cache node modules
-        id: cache-npm
+      # ==========================
+      - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.npm
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-
-            ${{ runner.os }}-
+            ${{ runner.os }}-pnpm-store-
 
       # ===== 依賴安裝 =====
-      # 條件執行：只在快取未命中時執行
-      # npm ci：比 npm install 更快且更可靠
-      #   - 直接從 package-lock.json 安裝
-      #   - 不修改 package.json 或 package-lock.json
+      # pnpm install --frozen-lockfile：
+      #   - 類似 npm ci，確保安裝與 lockfile 完全一致的版本
+      #   - 不修改 pnpm-lock.yaml
       #   - 適合 CI/CD 環境
       # ===================
       - name: Install dependencies
-        if: steps.cache-npm.outputs.cache-hit != 'true'
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # ===== Prisma 客戶端快取 =====
       # 針對 Prisma 生成的文件進行專門快取
@@ -132,13 +144,13 @@ jobs:
 
       # ===== 類型生成 =====
       # 執行專案的類型生成腳本
-      # npm run types:generate 包含：
+      # pnpm run types:generate 包含：
       #   - Prisma 客戶端生成（prisma generate）
       #   - OpenAPI 類型生成
       # 這些生成的文件對於 TypeScript 編譯是必需的
       # ===================
       - name: Generate Prisma Client and OpenAPI types
-        run: npm run types:generate
+        run: pnpm run types:generate
 
       # ===== 並行品質檢查 =====
       # 同時執行多個檢查項目以節省時間：
@@ -152,9 +164,9 @@ jobs:
       # ========================
       - name: Run checks in parallel
         run: |
-          npm run typecheck &
-          npm run lint &
-          npm test &
+          pnpm run typecheck &
+          pnpm run lint &
+          pnpm test &
           wait
 
       # ===== 生成文件上傳 =====

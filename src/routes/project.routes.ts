@@ -14,16 +14,16 @@ import {
   getMyProjectsController,
   duplicateProjectController
 } from '../controllers/project.controller';
-import { validate } from '../validators/validation.middleware';
+import { validate } from '../middleware/validation.middleware';
 import { authenticate, optionalAuth } from '../middleware/auth';
-import { 
+import {
   canCreateProject,
   canUpdateProject,
   canDeleteProject
   // requireOwnership
 } from '../middleware/permission.middleware';
-import { 
-  createProjectSchema, 
+import {
+  createProjectSchema,
   updateProjectSchema,
   projectParamsSchema,
   projectQuerySchema,
@@ -40,7 +40,7 @@ const router = Router();
  * 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/', 
+router.get('/',
   optionalAuth,
   validate(projectQuerySchema, 'query'),
   getProjectsController as RequestHandler);
@@ -51,7 +51,7 @@ router.get('/',
  * 查詢參數：page, limit, status, search, sort_by, sort_order
  * 需要身份驗證
  */
-router.get('/my', 
+router.get('/my',
   authenticate,
   validate(projectQuerySchema, 'query'),
   getMyProjectsController as RequestHandler);
@@ -62,7 +62,7 @@ router.get('/my',
  * 查詢參數：user_id（可選）
  * 支援可選身份驗證
  */
-router.get('/stats', 
+router.get('/stats',
   optionalAuth,
   validate(projectStatsQuerySchema, 'query'),
   getProjectStatsController as RequestHandler);
@@ -73,7 +73,7 @@ router.get('/stats',
  * 路徑參數：id - 專案 ID
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/:id', 
+router.get('/:id',
   optionalAuth,
   validate(projectParamsSchema, 'params'),
   getProjectController as RequestHandler);
@@ -84,7 +84,7 @@ router.get('/:id',
  * 請求體：CreateProjectRequest
  * 需要身份驗證和創建專案權限
  */
-router.post('/', 
+router.post('/',
   authenticate,
   canCreateProject(),
   validate(createProjectSchema, 'body'),
@@ -97,7 +97,7 @@ router.post('/',
  * 請求體：UpdateProjectRequest
  * 需要身份驗證和更新專案權限或擁有權
  */
-router.put('/:id', 
+router.put('/:id',
   authenticate,
   canUpdateProject(),
   validate(projectParamsSchema, 'params'),
@@ -110,7 +110,7 @@ router.put('/:id',
  * 路徑參數：id - 專案 ID
  * 需要身份驗證和刪除專案權限或擁有權
  */
-router.delete('/:id', 
+router.delete('/:id',
   authenticate,
   canDeleteProject(),
   validate(projectParamsSchema, 'params'),
@@ -123,7 +123,7 @@ router.delete('/:id',
  * 請求體：DuplicateProjectRequest（可選）
  * 需要身份驗證和創建專案權限
  */
-router.post('/:id/duplicate', 
+router.post('/:id/duplicate',
   authenticate,
   canCreateProject(),
   validate(projectParamsSchema, 'params'),

@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Readable } from 'stream';
 
 /**
  * 圖片相關類型定義
@@ -9,9 +10,26 @@ import { Request } from 'express';
 // ============================================================================
 
 /**
+ * 基本的 Multer File 介面定義
+ * 與 Express.Multer.File 相容
+ */
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+  stream: Readable;
+}
+
+/**
  * 擴展的 Multer 檔案介面，包含額外的類型安全屬性
  */
-export interface TypedMulterFile extends Express.Multer.File {
+export interface TypedMulterFile extends MulterFile {
   mimetype: AllowedMimeType;
   size: number;
   originalname: string;
@@ -39,22 +57,22 @@ export interface FileValidationResult {
  * 擴展 Express Request 以包含 multer 檔案屬性
  */
 export interface MulterRequest extends Request {
-  file?: Express.Multer.File;
-  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
+  file?: MulterFile;
+  files?: MulterFile[] | { [fieldname: string]: MulterFile[] };
 }
 
 /**
  * 單一檔案上傳請求 - 確保有檔案的請求
  */
 export interface SingleFileRequest extends MulterRequest {
-  file: Express.Multer.File;
+  file: MulterFile;
 }
 
 /**
  * 多檔案上傳請求 - 確保有檔案陣列的請求
  */
 export interface MultipleFilesRequest extends MulterRequest {
-  files: Express.Multer.File[];
+  files: MulterFile[];
 }
 
 /**
@@ -285,7 +303,7 @@ export function hasFilenameParam(req: MulterRequest): req is FileParamsRequest {
 /**
  * 將 multer files 轉換為檔案陣列
  */
-export function normalizeMulterFiles(files: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] } | undefined): Express.Multer.File[] {
+export function normalizeMulterFiles(files: MulterFile[] | { [fieldname: string]: MulterFile[] } | undefined): MulterFile[] {
   if (!files) return [];
   
   if (Array.isArray(files)) {

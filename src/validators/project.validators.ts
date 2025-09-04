@@ -6,73 +6,180 @@
 import { z } from 'zod';
 
 // 專案動機驗證
-const motivationSchema = z.unknown().optional();
+const motivationSchema = z.unknown()
+  .optional()
+  .describe("專案動機資訊")
+  .meta({
+    title: "動機",
+    examples: [null, { reason: "提升技術能力" }]
+  });
 
 // 專案策略驗證
-const strategySchema = z.unknown().optional();
+const strategySchema = z.unknown()
+  .optional()
+  .describe("專案執行策略")
+  .meta({
+    title: "執行策略",
+    examples: [null, { approach: "逐步學習" }]
+  });
 
 // 專案成果驗證
-const outcomeSchema = z.unknown().optional();
+const outcomeSchema = z.unknown()
+  .optional()
+  .describe("專案預期成果")
+  .meta({
+    title: "預期成果",
+    examples: [null, { deliverable: "完成網站開發" }]
+  });
 
 // 專案狀態驗證
-const statusSchema = z.enum(['Not Started', 'Ongoing', 'Completed', 'Canceled']);
+const statusSchema = z.enum(['Not Started', 'Ongoing', 'Completed', 'Canceled'], "無效的專案狀態")
+  .describe("專案完成狀態")
+  .meta({
+    title: "專案狀態",
+    examples: ['Not Started', 'Ongoing', 'Completed', 'Canceled'],
+    enumDescriptions: {
+      "Not Started": "尚未開始",
+      "Ongoing": "進行中",
+      "Completed": "已完成",
+      "Canceled": "已取消"
+    }
+  });
 
 // 創建專案驗證
 export const createProjectSchema = z.object({
   title: z.string()
     .min(1, '專案標題不能為空')
     .max(100, '專案標題不能超過 100 字元')
-    .optional(),
+    .optional()
+    .describe("專案標題")
+    .meta({
+      title: "專案標題",
+      examples: ["學習 React 全端開發", "個人品牌網站建置", "機器學習專案實作"]
+    }),
   description: z.string()
     .max(2000, '專案描述不能超過 2000 字元')
-    .optional(),
+    .optional()
+    .describe("專案的詳細描述")
+    .meta({
+      title: "專案描述",
+      examples: ["這個專案旨在學習 React 全端開發，包含前後端整合和部署流程", "建置個人品牌網站，展示作品集和技術能力"]
+    }),
   motivation: motivationSchema,
-  motivation_description: z.string()
+  motivationDescription: z.string()
     .max(1000, '動機描述不能超過 1000 字元')
-    .optional(),
+    .optional()
+    .describe("專案動機的詳細描述")
+    .meta({
+      title: "動機描述",
+      examples: ["希望提升自己的全端開發能力，為轉職做準備", "想要建立個人品牌，展示專業能力"]
+    }),
   goal: z.string()
     .max(500, '專案目標不能超過 500 字元')
-    .optional(),
+    .optional()
+    .describe("專案的具體目標")
+    .meta({
+      title: "專案目標",
+      examples: ["在 3 個月內完成一個具有前後端功能的完整應用", "建立一個具有 SEO 優化的響應式網站"]
+    }),
   content: z.string()
     .max(5000, '專案內容不能超過 5000 字元')
-    .optional(),
+    .optional()
+    .describe("專案的詳細內容和計劃")
+    .meta({
+      title: "專案內容",
+      examples: ["本專案將分為以下階段：1. 學習 React 基礎 2. 開發後端 API 3. 整合前後端 4. 部署上線"]
+    }),
   strategy: strategySchema,
-  strategy_description: z.string()
+  strategyDescription: z.string()
     .max(1000, '策略描述不能超過 1000 字元')
-    .optional(),
+    .optional()
+    .describe("專案執行策略的描述")
+    .meta({
+      title: "執行策略",
+      examples: ["每週 20 小時的學習時間，先理論後實作", "按照敏捷開發模式，每兩週一個迭代"]
+    }),
   resource: z.string()
     .max(2000, '資源描述不能超過 2000 字元')
-    .optional(),
+    .optional()
+    .describe("專案所需資源")
+    .meta({
+      title: "所需資源",
+      examples: ["React 官方文檔、Node.js 教學、雲端伺服器費用", "設計軟體、網域費用、主機空間"]
+    }),
   outcome: outcomeSchema,
-  outcome_description: z.string()
+  outcomeDescription: z.string()
     .max(1000, '成果描述不能超過 1000 字元')
-    .optional(),
-  is_public: z.boolean().optional(),
+    .optional()
+    .describe("預期成果的描述")
+    .meta({
+      title: "預期成果",
+      examples: ["完成一個具有用戶管理、內容管理系統的網站", "獲得 React 全端開發技能及相關證書"]
+    }),
+  isPublic: z.boolean()
+    .optional()
+    .describe("是否為公開專案")
+    .meta({
+      title: "公開專案",
+      examples: [true, false]
+    }),
   status: statusSchema.optional(),
-  start_date: z.string()
+  startDate: z.string()
     .datetime({ message: '開始日期格式不正確' })
-    .optional(),
-  end_date: z.string()
+    .optional()
+    .describe("專案開始日期")
+    .meta({
+      title: "開始日期",
+      examples: ["2024-01-15T09:00:00.000Z", "2024-03-01T08:30:00.000Z"]
+    }),
+  endDate: z.string()
     .datetime({ message: '結束日期格式不正確' })
-    .optional(),
+    .optional()
+    .describe("專案結束日期")
+    .meta({
+      title: "結束日期",
+      examples: ["2024-04-15T18:00:00.000Z", "2024-06-01T17:30:00.000Z"]
+    }),
   interval: z.number()
     .int('間隔必須是整數')
     .min(1, '間隔必須大於 0')
     .max(365, '間隔不能超過 365 天')
-    .optional(),
-  img_url: z.string()
+    .optional()
+    .describe("專案執行間隔天數")
+    .meta({
+      title: "執行間隔",
+      examples: [1, 7, 14, 30]
+    }),
+  imgUrl: z.string()
     .url('圖片 URL 格式不正確')
     .optional()
+    .describe("專案封面圖片 URL")
+    .meta({
+      title: "專案圖片",
+      examples: ["https://example.com/project-cover.jpg", "https://cdn.example.com/projects/react-project.png"]
+    })
+}).describe("創建專案的請求資料").meta({
+  title: "創建專案",
+  examples: [{
+    title: "學習 React 全端開發",
+    description: "學習從零開始開發一個完整的 React 全端應用",
+    goal: "在 3 個月內掌握 React 全棧開發技能",
+    isPublic: true,
+    status: "Not Started",
+    startDate: "2024-01-15T09:00:00.000Z",
+    endDate: "2024-04-15T18:00:00.000Z",
+    interval: 7
+  }]
 }).refine(
   (data) => {
-    if (data.start_date && data.end_date) {
-      return new Date(data.start_date) <= new Date(data.end_date);
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
     }
     return true;
   },
   {
     message: '開始日期不能晚於結束日期',
-    path: ['end_date']
+    path: ['endDate']
   }
 );
 
@@ -81,57 +188,132 @@ export const updateProjectSchema = z.object({
   title: z.string()
     .min(1, '專案標題不能為空')
     .max(100, '專案標題不能超過 100 字元')
-    .optional(),
+    .optional()
+    .describe("專案標題")
+    .meta({
+      title: "專案標題",
+      examples: ["學習 React 全端開發", "個人品牌網站建置", "機器學習專案實作"]
+    }),
   description: z.string()
     .max(2000, '專案描述不能超過 2000 字元')
-    .optional(),
+    .optional()
+    .describe("專案的詳細描述")
+    .meta({
+      title: "專案描述",
+      examples: ["這個專案旨在學習 React 全端開發，包含前後端整合和部署流程", "建置個人品牌網站，展示作品集和技術能力"]
+    }),
   motivation: motivationSchema,
-  motivation_description: z.string()
+  motivationDescription: z.string()
     .max(1000, '動機描述不能超過 1000 字元')
-    .optional(),
+    .optional()
+    .describe("專案動機的詳細描述")
+    .meta({
+      title: "動機描述",
+      examples: ["希望提升自己的全端開發能力，為轉職做準備", "想要建立個人品牌，展示專業能力"]
+    }),
   goal: z.string()
     .max(500, '專案目標不能超過 500 字元')
-    .optional(),
+    .optional()
+    .describe("專案的具體目標")
+    .meta({
+      title: "專案目標",
+      examples: ["在 3 個月內完成一個具有前後端功能的完整應用", "建立一個具有 SEO 優化的響應式網站"]
+    }),
   content: z.string()
     .max(5000, '專案內容不能超過 5000 字元')
-    .optional(),
+    .optional()
+    .describe("專案的詳細內容和計劃")
+    .meta({
+      title: "專案內容",
+      examples: ["本專案將分為以下階段：1. 學習 React 基礎 2. 開發後端 API 3. 整合前後端 4. 部署上線"]
+    }),
   strategy: strategySchema,
-  strategy_description: z.string()
+  strategyDescription: z.string()
     .max(1000, '策略描述不能超過 1000 字元')
-    .optional(),
+    .optional()
+    .describe("專案執行策略的描述")
+    .meta({
+      title: "執行策略",
+      examples: ["每週 20 小時的學習時間，先理論後實作", "按照敏捷開發模式，每兩週一個迭代"]
+    }),
   resource: z.string()
     .max(2000, '資源描述不能超過 2000 字元')
-    .optional(),
+    .optional()
+    .describe("專案所需資源")
+    .meta({
+      title: "所需資源",
+      examples: ["React 官方文檔、Node.js 教學、雲端伺服器費用", "設計軟體、網域費用、主機空間"]
+    }),
   outcome: outcomeSchema,
-  outcome_description: z.string()
+  outcomeDescription: z.string()
     .max(1000, '成果描述不能超過 1000 字元')
-    .optional(),
-  is_public: z.boolean().optional(),
+    .optional()
+    .describe("預期成果的描述")
+    .meta({
+      title: "預期成果",
+      examples: ["完成一個具有用戶管理、內容管理系統的網站", "獲得 React 全端開發技能及相關證書"]
+    }),
+  isPublic: z.boolean()
+    .optional()
+    .describe("是否為公開專案")
+    .meta({
+      title: "公開專案",
+      examples: [true, false]
+    }),
   status: statusSchema.optional(),
-  start_date: z.string()
+  startDate: z.string()
     .datetime({ message: '開始日期格式不正確' })
-    .optional(),
-  end_date: z.string()
+    .optional()
+    .describe("專案開始日期")
+    .meta({
+      title: "開始日期",
+      examples: ["2024-01-15T09:00:00.000Z", "2024-03-01T08:30:00.000Z"]
+    }),
+  endDate: z.string()
     .datetime({ message: '結束日期格式不正確' })
-    .optional(),
+    .optional()
+    .describe("專案結束日期")
+    .meta({
+      title: "結束日期",
+      examples: ["2024-04-15T18:00:00.000Z", "2024-06-01T17:30:00.000Z"]
+    }),
   interval: z.number()
     .int('間隔必須是整數')
     .min(1, '間隔必須大於 0')
     .max(365, '間隔不能超過 365 天')
-    .optional(),
-  img_url: z.string()
+    .optional()
+    .describe("專案執行間隔天數")
+    .meta({
+      title: "執行間隔",
+      examples: [1, 7, 14, 30]
+    }),
+  imgUrl: z.string()
     .url('圖片 URL 格式不正確')
     .optional()
+    .describe("專案封面圖片 URL")
+    .meta({
+      title: "專案圖片",
+      examples: ["https://example.com/project-cover.jpg", "https://cdn.example.com/projects/react-project.png"]
+    })
+}).describe("更新專案的請求資料").meta({
+  title: "更新專案",
+  examples: [{
+    title: "學習 React 全端開發 (更新版)",
+    description: "更新專案描述，加入更多實作細節",
+    goal: "在 4 個月內掌握 React 全棧開發技能",
+    isPublic: true,
+    status: "Ongoing"
+  }]
 }).refine(
   (data) => {
-    if (data.start_date && data.end_date) {
-      return new Date(data.start_date) <= new Date(data.end_date);
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
     }
     return true;
   },
   {
     message: '開始日期不能晚於結束日期',
-    path: ['end_date']
+    path: ['endDate']
   }
 );
 
@@ -139,6 +321,16 @@ export const updateProjectSchema = z.object({
 export const projectParamsSchema = z.object({
   id: z.string()
     .uuid('專案 ID 格式不正確')
+    .describe("專案唯一識別碼")
+    .meta({
+      title: "專案 ID",
+      examples: ["123e4567-e89b-12d3-a456-426614174000", "550e8400-e29b-41d4-a716-446655440000"]
+    })
+}).describe("專案路徑參數").meta({
+  title: "專案參數",
+  examples: [{
+    id: "123e4567-e89b-12d3-a456-426614174000"
+  }]
 });
 
 // 專案查詢參數驗證
@@ -147,31 +339,90 @@ export const projectQuerySchema = z.object({
     .regex(/^\d+$/, '頁碼必須是數字')
     .transform(Number)
     .refine(n => n > 0, '頁碼必須大於 0')
-    .optional(),
+    .optional()
+    .describe("頁碼")
+    .meta({
+      title: "頁碼",
+      examples: ["1", "2", "10"]
+    }),
   limit: z.string()
     .regex(/^\d+$/, '每頁數量必須是數字')
     .transform(Number)
     .refine(n => n > 0 && n <= 100, '每頁數量必須在 1-100 之間')
-    .optional(),
+    .optional()
+    .describe("每頁項目數")
+    .meta({
+      title: "每頁數量",
+      examples: ["10", "20", "50"]
+    }),
   status: statusSchema.optional(),
-  is_public: z.string()
+  isPublic: z.string()
     .transform(val => val === 'true')
-    .optional(),
-  user_id: z.string()
+    .optional()
+    .describe("是否只查詢公開專案")
+    .meta({
+      title: "公開專案篩選",
+      examples: ["true", "false"]
+    }),
+  userId: z.string()
     .regex(/^\d+$/, '使用者 ID 必須是數字')
     .transform(Number)
-    .optional(),
+    .optional()
+    .describe("指定用戶ID篩選")
+    .meta({
+      title: "用戶 ID",
+      examples: ["123", "456", "789"]
+    }),
   search: z.string()
     .max(100, '搜尋關鍵字不能超過 100 字元')
-    .optional(),
-  sort_by: z.enum([
-    'created_at',
-    'updated_at',
+    .optional()
+    .describe("搜尋關鍵字")
+    .meta({
+      title: "搜尋關鍵字",
+      examples: ["React", "網站開發", "機器學習"]
+    }),
+  sortBy: z.enum([
+    'createdAt',
+    'updatedAt',
     'title',
-    'start_date',
-    'end_date'
-  ]).optional(),
-  sort_order: z.enum(['asc', 'desc']).optional()
+    'startDate',
+    'endDate'
+  ], "排序欄位無效")
+    .optional()
+    .describe("排序欄位")
+    .meta({
+      title: "排序欄位",
+      examples: ['createdAt', 'updatedAt', 'title', 'startDate', 'endDate'],
+      enumDescriptions: {
+        "createdAt": "建立時間",
+        "updatedAt": "更新時間",
+        "title": "標題",
+        "startDate": "開始日期",
+        "endDate": "結束日期"
+      }
+    }),
+  sortOrder: z.enum(['asc', 'desc'], "排序順序無效")
+    .optional()
+    .describe("排序順序")
+    .meta({
+      title: "排序順序",
+      examples: ['asc', 'desc'],
+      enumDescriptions: {
+        "asc": "升序",
+        "desc": "降序"
+      }
+    })
+}).describe("專案查詢參數").meta({
+  title: "專案查詢",
+  examples: [{
+    page: "1",
+    limit: "20",
+    status: "Ongoing",
+    isPublic: "true",
+    search: "React",
+    sortBy: "createdAt",
+    sortOrder: "desc"
+  }]
 });
 
 // 複製專案驗證
@@ -180,11 +431,21 @@ export const duplicateProjectSchema = z.object({
     .min(1, '新專案標題不能為空')
     .max(100, '新專案標題不能超過 100 字元')
     .optional()
+    .describe("複製專案的新標題")
+    .meta({
+      title: "新專案標題",
+      examples: ["學習 React 全端開發 (副本)", "個人品牌網站建置 v2"]
+    })
+}).describe("複製專案的請求資料").meta({
+  title: "複製專案",
+  examples: [{
+    title: "學習 React 全端開發 (副本)"
+  }]
 });
 
 // 專案統計查詢參數驗證
 export const projectStatsQuerySchema = z.object({
-  user_id: z.string()
+  userId: z.string()
     .regex(/^\d+$/, '使用者 ID 必須是數字')
     .transform(Number)
     .optional()
@@ -192,21 +453,21 @@ export const projectStatsQuerySchema = z.object({
 
 // 批量操作驗證
 export const batchProjectOperationSchema = z.object({
-  action: z.enum(['delete', 'update_status', 'change_visibility']),
-  project_ids: z.array(
+  action: z.enum(['delete', 'updateStatus', 'changeVisibility']),
+  projectIds: z.array(
     z.string().uuid('專案 ID 格式不正確')
   ).min(1, '至少選擇一個專案'),
   data: z.object({
     status: statusSchema.optional(),
-    is_public: z.boolean().optional()
+    isPublic: z.boolean().optional()
   }).optional()
 }).refine(
   (data) => {
-    if (data.action === 'update_status') {
+    if (data.action === 'updateStatus') {
       return data.data?.status !== undefined;
     }
-    if (data.action === 'change_visibility') {
-      return data.data?.is_public !== undefined;
+    if (data.action === 'changeVisibility') {
+      return data.data?.isPublic !== undefined;
     }
     return true;
   },
@@ -221,13 +482,28 @@ export const createMilestoneSchema = z.object({
   position: z.number()
     .int('位置必須是整數')
     .min(1, '位置必須大於 0')
-    .optional(),
+    .optional()
+    .describe("里程碑順序位置")
+    .meta({
+      title: "位置順序",
+      examples: [1, 2, 3, 4]
+    }),
   name: z.string()
     .min(1, '里程碑名稱不能為空')
-    .max(100, '里程碑名稱不能超過 100 字元'),
+    .max(100, '里程碑名稱不能超過 100 字元')
+    .describe("里程碑名稱")
+    .meta({
+      title: "里程碑名稱",
+      examples: ["完成需求分析", "前端原型開發", "後端 API 實作", "系統整合測試"]
+    }),
   description: z.string()
     .max(1000, '里程碑描述不能超過 1000 字元')
-    .optional(),
+    .optional()
+    .describe("里程碑詳細描述")
+    .meta({
+      title: "里程碑描述",
+      examples: ["分析用戶需求並制定開發規格", "完成前端頁面設計和基本功能實作"]
+    }),
   startDate: z.string()
     .min(1, '開始日期不能為空'),
   endDate: z.string()
@@ -287,7 +563,7 @@ export const milestoneParamsSchema = z.object({
 
 // 任務相關驗證
 export const createTaskSchema = z.object({
-  milestone_id: z.number()
+  milestoneId: z.number()
     .int('里程碑 ID 必須是整數'),
   position: z.number()
     .int('位置必須是整數')
@@ -299,7 +575,7 @@ export const createTaskSchema = z.object({
   description: z.string()
     .max(1000, '任務描述不能超過 1000 字元')
     .optional(),
-  days_of_week: z.array(
+  daysOfWeek: z.array(
     z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
   ).optional()
 });
@@ -316,10 +592,10 @@ export const updateTaskSchema = z.object({
   description: z.string()
     .max(1000, '任務描述不能超過 1000 字元')
     .optional(),
-  days_of_week: z.array(
+  daysOfWeek: z.array(
     z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
   ).optional(),
-  is_completed: z.boolean().optional()
+  isCompleted: z.boolean().optional()
 });
 
 // 任務 ID 參數驗證

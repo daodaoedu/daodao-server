@@ -83,11 +83,28 @@ jobs:
         with:
           name: ${{ needs.continuous_integration.outputs.generated-files-artifact }}
 
+      # ===== 安裝 Node.js 和 pnpm (當跳過 CI 時) =====
+      # 當直接部署或強制部署時需要手動生成文件
+      # 因此需要設置 Node.js 和 pnpm 環境
+      # ===============================================
+      - name: Set up Node.js (when CI was skipped)
+        if: ${{ needs.continuous_integration.result != 'success' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm (when CI was skipped)
+        if: ${{ needs.continuous_integration.result != 'success' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
       - name: Generate files when CI was skipped or forced
         if: ${{ needs.continuous_integration.result != 'success' }}
         run: |
-          npm ci
-          npm run types:generate
+          pnpm install --frozen-lockfile
+          pnpm run types:generate
 
       # ===== 環境變數設定 =====
       # 根據分支決定部署環境：

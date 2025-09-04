@@ -5,16 +5,16 @@
 
 import { Router } from 'express';
 import resourceReviewController from '@/controllers/resource-review.controller';
-import { validate } from '@/validators/validation.middleware';
+import { validate } from '@/middleware/validation.middleware';
 import { authenticate, optionalAuth, requireRole } from '@/middleware/auth';
-import { 
-  resourceReviewSchema, 
-  updateResourceReviewSchema, 
-  updateReviewStatusSchema 
+import {
+  resourceReviewSchema,
+  updateResourceReviewSchema,
+  updateReviewStatusSchema
 } from '@/validators/resource-review.validator';
-import { 
-  paginationSchema, 
-  reviewFilterSchema 
+import {
+  paginationSchema,
+  reviewFilterSchema
 } from '@/validators/request-params.validator';
 
 const router = Router({ mergeParams: true });
@@ -26,7 +26,7 @@ const router = Router({ mergeParams: true });
  * 查詢參數：cursor, limit, sort, order, status, minScore, maxScore, tags
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/', 
+router.get('/',
   optionalAuth,
   validate(paginationSchema, 'query'),
   validate(reviewFilterSchema, 'query'),
@@ -40,7 +40,7 @@ router.get('/',
  *   - reviewId - 心得評價 ID (字串格式，內容為數字)
  * 支援可選身份驗證（用於個人化內容）
  */
-router.get('/:reviewId', 
+router.get('/:reviewId',
   optionalAuth,
   resourceReviewController.getReviewById);
 
@@ -51,7 +51,7 @@ router.get('/:reviewId',
  * 請求體：CreateResourceReviewDto
  * 需要身份驗證
  */
-router.post('/', 
+router.post('/',
   authenticate,
   validate(resourceReviewSchema, 'body'),
   resourceReviewController.createReview

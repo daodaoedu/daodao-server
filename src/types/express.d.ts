@@ -19,6 +19,21 @@ declare global {
       requestId?: string;
     }
     
+    // Multer 類型定義
+    namespace Multer {
+      interface File {
+        fieldname: string;
+        originalname: string;
+        encoding: string;
+        mimetype: string;
+        size: number;
+        destination: string;
+        filename: string;
+        path: string;
+        buffer: Buffer;
+      }
+    }
+    
     // AuthenticatedRequest 由 Passport 提供，確保兼容性
     // interface AuthenticatedRequest 已由 @types/passport 定義
   }

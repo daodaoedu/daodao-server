@@ -77,10 +77,9 @@ export const customEmailSchema = z.object({
   subject: z.string().min(1, '主旨為必填項').max(200, '主旨不能超過200個字符'),
   htmlContent: z.string().min(1, 'HTML內容為必填項').max(50000, 'HTML內容不能超過50000個字符').optional(),
   template: z.enum(['welcome', 'verification', 'password-reset', 'contact', 'marathon', 'custom']).optional(),
-  data: z.record(z.any()).optional()
-}).refine(data => data.htmlContent || (data.template && data.data), {
-  message: '必須提供 htmlContent 或 (template + data)',
-  path: ['htmlContent']
+  data: z.record(z.string(), z.any()).optional()
+}).refine((data) => data.htmlContent || (data.template && data.data), {
+  message: '必須提供 htmlContent 或 (template + data)'
 });
 
 /**
@@ -91,7 +90,7 @@ export const bulkEmailSchema = z.object({
   subject: z.string().min(1, '主旨為必填項').max(200, '主旨不能超過200個字符'),
   recipients: z.array(z.object({
     email: emailSchema,
-    data: z.record(z.any())
+    data: z.record(z.string(), z.any())
   })).min(1, '收件人列表不能為空').max(100, '單次批量發送不能超過100個收件人'),
   from: emailSchema.optional(),
   scheduledAt: z.string().datetime('排程時間格式不正確').optional()
@@ -109,7 +108,7 @@ export const validateEmailSchema = z.object({
  */
 export const previewEmailSchema = z.object({
   template: z.enum(['welcome', 'verification', 'password-reset', 'contact', 'marathon', 'custom']),
-  data: z.record(z.any()).refine(data => {
+  data: z.record(z.string(), z.any()).refine((data) => {
     return Object.keys(data).length > 0;
   }, {
     message: '模板數據不能為空'
@@ -122,14 +121,13 @@ export const previewEmailSchema = z.object({
 export const emailStatsQuerySchema = z.object({
   startDate: z.string().datetime('開始時間格式不正確').optional(),
   endDate: z.string().datetime('結束時間格式不正確').optional()
-}).refine(data => {
+}).refine((data) => {
   if (data.startDate && data.endDate) {
     return new Date(data.startDate) <= new Date(data.endDate);
   }
   return true;
 }, {
-  message: '開始時間不能晚於結束時間',
-  path: ['startDate']
+  message: '開始時間不能晚於結束時間'
 });
 
 /**
