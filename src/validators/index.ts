@@ -10,4 +10,7 @@ export * from './note.validators';
 export * from './outcome.validators';
 export * from './review.validators';
 export * from './mentor.validators';
+export * from './milestone.validators';
+export * from './tag.validators';
+export * from './project.validators';
 export { default as validate, validate as validateMiddleware } from '../middleware/validation.middleware';

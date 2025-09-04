@@ -6,6 +6,26 @@
 import { Router, RequestHandler } from 'express';
 import { practiceController } from '../controllers/practice.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
+import { validate } from '../middleware/validation.middleware';
+import {
+  practiceQuerySchema,
+  myPracticesQuerySchema,
+  practiceParamsSchema,
+  createPracticeSchema,
+  updatePracticeSchema,
+  checkInSchema,
+  checkInQuerySchema,
+  eventViewSchema,
+  eventShareSchema
+} from '../validators/practice.validators';
+import { z } from 'zod';
+
+// 月度日曆參數 schema
+const monthlyCalendarParamsSchema = z.object({
+  id: z.string().uuid('Practice ID must be a valid UUID'),
+  year: z.string().regex(/^\d{4}$/, 'Year must be 4 digits').transform(Number),
+  month: z.string().regex(/^(0?[1-9]|1[0-2])$/, 'Month must be 1-12').transform(Number)
+});
 
 const router = Router();
 
@@ -17,7 +37,7 @@ const router = Router();
  */
 router.get('/',
   optionalAuth,
-  // TODO: validate(practiceQuerySchema, 'query'),
+  validate(practiceQuerySchema, 'query'),
   practiceController.getPractices as RequestHandler);
 
 /**
@@ -28,7 +48,7 @@ router.get('/',
  */
 router.get('/me',
   authenticate,
-  // TODO: validate(practiceQuerySchema, 'query'),
+  validate(myPracticesQuerySchema, 'query'),
   practiceController.getMyPractices as RequestHandler);
 
 /**
@@ -39,7 +59,6 @@ router.get('/me',
  */
 router.get('/stats',
   optionalAuth,
-  // TODO: validate(practiceStatsQuerySchema, 'query'),
   practiceController.getUserPracticeStats as RequestHandler);
 
 /**
@@ -50,7 +69,7 @@ router.get('/stats',
  */
 router.get('/:id',
   optionalAuth,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   practiceController.getPractice as RequestHandler);
 
 /**
@@ -61,7 +80,7 @@ router.get('/:id',
  */
 router.post('/',
   authenticate,
-  // TODO: validate(createPracticeSchema, 'body'),
+  validate(createPracticeSchema, 'body'),
   practiceController.createPractice as RequestHandler);
 
 /**
@@ -73,8 +92,8 @@ router.post('/',
  */
 router.put('/:id',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
-  // TODO: validate(updatePracticeSchema, 'body'),
+  validate(practiceParamsSchema, 'params'),
+  validate(updatePracticeSchema, 'body'),
   // TODO: requirePracticeOwnership middleware
   practiceController.updatePractice as RequestHandler);
 
@@ -86,7 +105,7 @@ router.put('/:id',
  */
 router.delete('/:id',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   // TODO: requirePracticeOwnership middleware
   practiceController.deletePractice as RequestHandler);
 
@@ -99,8 +118,8 @@ router.delete('/:id',
  */
 router.post('/:id/checkins',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
-  // TODO: validate(createCheckInSchema, 'body'),
+  validate(practiceParamsSchema, 'params'),
+  validate(checkInSchema, 'body'),
   // TODO: requirePracticeOwnership middleware
   practiceController.createCheckIn as RequestHandler);
 
@@ -113,8 +132,8 @@ router.post('/:id/checkins',
  */
 router.get('/:id/checkins',
   optionalAuth,
-  // TODO: validate(practiceParamsSchema, 'params'),
-  // TODO: validate(checkInQuerySchema, 'query'),
+  validate(practiceParamsSchema, 'params'),
+  validate(checkInQuerySchema, 'query'),
   practiceController.getCheckIns as RequestHandler);
 
 /**
@@ -125,7 +144,7 @@ router.get('/:id/checkins',
  */
 router.get('/:id/checkins/stats',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   // TODO: requirePracticeOwnership middleware
   practiceController.getCheckInStats as RequestHandler);
 
@@ -137,7 +156,7 @@ router.get('/:id/checkins/stats',
  */
 router.get('/:id/checkins/calendar/:year/:month',
   authenticate,
-  // TODO: validate(monthlyCalendarParamsSchema, 'params'),
+  validate(monthlyCalendarParamsSchema, 'params'),
   // TODO: requirePracticeOwnership middleware
   practiceController.getMonthlyCheckInCalendar as RequestHandler);
 
@@ -149,7 +168,7 @@ router.get('/:id/checkins/calendar/:year/:month',
  */
 router.post('/:id/like',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   practiceController.toggleLike as RequestHandler);
 
 /**
@@ -160,7 +179,7 @@ router.post('/:id/like',
  */
 router.post('/:id/favorite',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   practiceController.toggleFavorite as RequestHandler);
 
 /**
@@ -172,8 +191,8 @@ router.post('/:id/favorite',
  */
 router.post('/:id/share',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
-  // TODO: validate(shareEventSchema, 'body'),
+  validate(practiceParamsSchema, 'params'),
+  validate(eventShareSchema, 'body'),
   practiceController.recordShare as RequestHandler);
 
 /**
@@ -185,8 +204,8 @@ router.post('/:id/share',
  */
 router.post('/:id/view',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
-  // TODO: validate(viewEventSchema, 'body'),
+  validate(practiceParamsSchema, 'params'),
+  validate(eventViewSchema, 'body'),
   practiceController.recordView as RequestHandler);
 
 /**
@@ -197,7 +216,7 @@ router.post('/:id/view',
  */
 router.get('/:id/stats',
   optionalAuth,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   practiceController.getInteractionStats as RequestHandler);
 
 /**
@@ -208,7 +227,7 @@ router.get('/:id/stats',
  */
 router.get('/:id/user-status',
   authenticate,
-  // TODO: validate(practiceParamsSchema, 'params'),
+  validate(practiceParamsSchema, 'params'),
   practiceController.getUserInteractionStatus as RequestHandler);
 
 export default router;

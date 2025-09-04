@@ -8,19 +8,22 @@ import tagController from '@/controllers/tag.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import {
-  tagQuerySchema,
-  tagEntitySchema
-} from '@/validators/request-params.validator';
+  tagSearchQuerySchema,
+  popularTagsQuerySchema,
+  addEntityTagSchema,
+  removeEntityTagSchema,
+  entityTagsQuerySchema
+} from '@/validators/tag.validators';
 
 const router = Router();
 
 /**
  * GET /tags/popular
  * 獲取熱門標籤
- * 查詢參數：entityType, limit
+ * 查詢參數：limit
  */
 router.get('/popular',
-  validate(tagQuerySchema, 'query'),
+  validate(popularTagsQuerySchema, 'query'),
   tagController.getPopularTags);
 
 /**
@@ -29,17 +32,15 @@ router.get('/popular',
  * 查詢參數：query, limit
  */
 router.get('/search',
-  validate(tagQuerySchema, 'query'),
+  validate(tagSearchQuerySchema, 'query'),
   tagController.searchTags as RequestHandler
 );
 
 /**
  * GET /tags/stats
  * 獲取標籤統計
- * 查詢參數：entityType
  */
 router.get('/stats',
-  validate(tagQuerySchema, 'query'),
   tagController.getTagStats as RequestHandler
 );
 
@@ -51,7 +52,7 @@ router.get('/stats',
  */
 router.post('/entities',
   authenticateAny,
-  validate(tagEntitySchema, 'body'),
+  validate(addEntityTagSchema, 'body'),
   tagController.addEntityTag as RequestHandler
 );
 
@@ -63,7 +64,7 @@ router.post('/entities',
  */
 router.delete('/entities',
   authenticateAny,
-  validate(tagEntitySchema, 'body'),
+  validate(removeEntityTagSchema, 'body'),
   tagController.removeEntityTag as RequestHandler
 );
 
@@ -73,6 +74,7 @@ router.delete('/entities',
  * 查詢參數：entityId, entityType
  */
 router.get('/entities',
+  validate(entityTagsQuerySchema, 'query'),
   tagController.getEntityTags as RequestHandler
 );
 
