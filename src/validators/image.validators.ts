@@ -42,16 +42,44 @@ export const fileSchema = z.object({
     {
       message: '不支援的檔案類型。僅支援 JPEG、PNG 和 WebP 格式。',
     }
-  ),
+  )
+    .describe("上傳檔案的 MIME 類型")
+    .meta({
+      title: "檔案類型",
+      examples: ["image/jpeg", "image/png", "image/webp"]
+    }),
   size: z.number().refine(
     (size) => size > 0 && size <= MAX_FILE_SIZE,
     {
       message: `檔案大小必須在 1 byte 到 ${Math.round(MAX_FILE_SIZE / 1024)}KB 之間`,
     }
-  ),
-  originalname: z.string().min(1, '檔案名稱不能為空'),
-  buffer: z.instanceof(Buffer),
-}).strict();
+  )
+    .describe("檔案的位元組大小")
+    .meta({
+      title: "檔案大小",
+      examples: [102400, 512000, 1048576]
+    }),
+  originalname: z.string().min(1, '檔案名稱不能為空')
+    .describe("原始檔案名稱")
+    .meta({
+      title: "檔案名稱",
+      examples: ["profile.jpg", "avatar.png", "banner-image.webp"]
+    }),
+  buffer: z.instanceof(Buffer)
+    .describe("檔案的二進制數據緩衣")
+    .meta({
+      title: "檔案緩衣",
+      examples: ["Buffer類型的二進制數據"]
+    }),
+}).strict().describe("單一圖片檔案的驗證規則").meta({
+  title: "單一圖片檔案",
+  examples: [{
+    mimetype: "image/jpeg",
+    size: 512000,
+    originalname: "profile.jpg",
+    buffer: "Buffer數據"
+  }]
+});
 
 /**
  * 多檔案驗證 Schema
@@ -68,7 +96,25 @@ export const filesSchema = z.array(fileSchema)
     {
       message: `所有檔案的總大小不能超過 ${Math.round((MAX_FILE_SIZE * MAX_FILES_COUNT) / 1024)}KB`,
     }
-  );
+  )
+  .describe("多個圖片檔案的驗證和數量限制")
+  .meta({
+    title: "多個圖片檔案",
+    examples: [[
+      {
+        mimetype: "image/jpeg",
+        size: 512000,
+        originalname: "photo1.jpg",
+        buffer: "Buffer數據1"
+      },
+      {
+        mimetype: "image/png",
+        size: 256000,
+        originalname: "photo2.png",
+        buffer: "Buffer數據2"
+      }
+    ]]
+  });
 
 /**
  * 檔案名稱參數驗證 Schema
@@ -80,22 +126,80 @@ export const filenameParamSchema = z.string()
   .regex(
     /^[a-zA-Z0-9._-]+$/,
     '檔案名稱只能包含字母、數字、點號、底線和連字號'
-  );
+  )
+  .describe("網址參數中的檔案名稱，用於檔案查詢或下載")
+  .meta({
+    title: "檔案名稱參數",
+    examples: ["image_123.jpg", "user-avatar.png", "banner.webp", "profile_pic_2024.jpeg"]
+  });
 
 /**
  * 檔案上傳請求體驗證 Schema
  * 用於驗證包含檔案的請求
  */
 export const uploadRequestSchema = z.object({
-  file: fileSchema.optional(),
-  files: z.array(fileSchema).optional(),
+  file: fileSchema.optional()
+    .describe("單一檔案上傳")
+    .meta({
+      title: "單一檔案",
+      examples: [{
+        mimetype: "image/jpeg",
+        size: 512000,
+        originalname: "upload.jpg",
+        buffer: "Buffer數據"
+      }]
+    }),
+  files: z.array(fileSchema).optional()
+    .describe("多個檔案上傳")
+    .meta({
+      title: "多個檔案",
+      examples: [[
+        {
+          mimetype: "image/png",
+          size: 256000,
+          originalname: "file1.png",
+          buffer: "Buffer數據1"
+        },
+        {
+          mimetype: "image/webp",
+          size: 384000,
+          originalname: "file2.webp",
+          buffer: "Buffer數據2"
+        }
+      ]]
+    }),
 }).refine(
   (data) => data.file !== undefined || (data.files !== undefined && data.files.length > 0),
   {
     message: '必須提供至少一個檔案',
     path: ['file', 'files'],
   }
-);
+).describe("檔案上傳請求的驗證，支援單一或多個檔案").meta({
+  title: "檔案上傳請求",
+  examples: [{
+    file: {
+      mimetype: "image/jpeg",
+      size: 512000,
+      originalname: "single-upload.jpg",
+      buffer: "Buffer數據"
+    }
+  }, {
+    files: [
+      {
+        mimetype: "image/png",
+        size: 256000,
+        originalname: "batch1.png",
+        buffer: "Buffer數據1"
+      },
+      {
+        mimetype: "image/webp",
+        size: 384000,
+        originalname: "batch2.webp",
+        buffer: "Buffer數據2"
+      }
+    ]
+  }]
+});
 
 // ============================================================================
 // Enhanced Validation Schemas with Detailed Error Messages
@@ -112,7 +216,12 @@ export const enhancedFileSchema = z.object({
     {
       message: '不支援的檔案類型。僅支援 JPEG (.jpg, .jpeg)、PNG (.png) 和 WebP (.webp) 格式。',
     }
-  ),
+  )
+    .describe("上傳檔案的 MIME 類型（增強驗證）")
+    .meta({
+      title: "增強檔案類型",
+      examples: ["image/jpeg", "image/png", "image/webp"]
+    }),
   size: z.number().refine(
     (size) => size > 0,
     {
@@ -123,16 +232,39 @@ export const enhancedFileSchema = z.object({
     {
       message: `檔案大小超過 ${Math.round(MAX_FILE_SIZE / 1024)}KB 限制`,
     }
-  ),
+  )
+    .describe("檔案大小（位元組）增強驗證")
+    .meta({
+      title: "增強檔案大小",
+      examples: [102400, 512000, 1048576]
+    }),
   originalname: z.string()
     .min(1, '檔案名稱不能為空')
     .max(255, '檔案名稱過長')
     .refine(
       (name) => !/[<>:"/\\|?*]/.test(name),
       '檔案名稱包含無效字元'
-    ),
-  buffer: z.instanceof(Buffer),
-}).strict();
+    )
+    .describe("原始檔案名稱（增強安全驗證）")
+    .meta({
+      title: "增強檔案名稱",
+      examples: ["safe-filename.jpg", "user_avatar.png", "valid-image.webp"]
+    }),
+  buffer: z.instanceof(Buffer)
+    .describe("檔案的二進制數據緩衣（增強驗證）")
+    .meta({
+      title: "增強檔案緩衣",
+      examples: ["Buffer類型的安全二進制數據"]
+    }),
+}).strict().describe("增強安全性的單一圖片檔案驗證").meta({
+  title: "增強單一圖片檔案",
+  examples: [{
+    mimetype: "image/jpeg",
+    size: 512000,
+    originalname: "secure-upload.jpg",
+    buffer: "安全Buffer數據"
+  }]
+});
 
 /**
  * 增強的多檔案驗證 Schema
@@ -149,7 +281,25 @@ export const enhancedFilesSchema = z.array(enhancedFileSchema)
     {
       message: `所有檔案的總大小超過 ${Math.round((MAX_FILE_SIZE * MAX_FILES_COUNT) / 1024)}KB 限制`,
     }
-  );
+  )
+  .describe("增強安全性的多個圖片檔案批量驗證")
+  .meta({
+    title: "增強多個圖片檔案",
+    examples: [[
+      {
+        mimetype: "image/jpeg",
+        size: 512000,
+        originalname: "secure-photo1.jpg",
+        buffer: "安全Buffer數據1"
+      },
+      {
+        mimetype: "image/png",
+        size: 256000,
+        originalname: "secure-photo2.png",
+        buffer: "安全Buffer數據2"
+      }
+    ]]
+  });
 
 // ============================================================================
 // Type Definitions for Validation Results
