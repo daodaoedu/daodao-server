@@ -38,9 +38,8 @@ COPY public ./public
 COPY index.js ./
 COPY ecosystem.config.js ./
 
-# 生成 OpenAPI 文檔和編譯 TypeScript
-RUN pnpm run swagger:generate && \
-    pnpm run build
+# 編譯 TypeScript (包含 OpenAPI 文檔生成)
+RUN pnpm run build
 
 # 生產映像 - 最小化尺寸
 FROM base AS runtime

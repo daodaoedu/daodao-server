@@ -113,7 +113,21 @@ export const apiErrorResponseSchema = z.object({
   data: z.literal(null)
     .describe('Null data for error responses'),
   error: z.object({
-    code: z.string()
+    code: z.enum([
+      'VALIDATION_ERROR', 
+      'INVALID_TOKEN', 
+      'TOKEN_EXPIRED',
+      'DATABASE_ERROR',
+      'FILE_UPLOAD_ERROR',
+      'APP_ERROR',
+      'INTERNAL_SERVER_ERROR',
+      'USER_NOT_FOUND',
+      'RESOURCE_NOT_FOUND',
+      'UNAUTHORIZED',
+      'FORBIDDEN',
+      'CONFLICT',
+      'BAD_REQUEST'
+    ])
       .describe('Error code for programmatic handling'),
     message: z.string()
       .describe('Human-readable error message'),
@@ -215,7 +229,21 @@ export const cursorPaginationInfoSchema = z.object({
   hasMore: z.boolean()
     .describe('Whether there are more items after the current page'),
   count: z.number().int().min(0)
-    .describe('Number of items in the current page')
+    .describe('Number of items in the current page'),
+  limit: z.number().int().min(1)
+    .describe('Maximum number of items per page'),
+  hasNext: z.boolean()
+    .describe('Whether there are more items in the next page'),
+  hasPrev: z.boolean()
+    .describe('Whether there are items in the previous page'),
+  nextCursor: z.string().nullable()
+    .describe('Cursor to fetch the next page'),
+  prevCursor: z.string().nullable()
+    .describe('Cursor to fetch the previous page'),
+  totalEstimate: z.number().int().min(0).nullable()
+    .describe('Estimated total number of items (may be null if unknown)'),
+  parentTotalEstimate: z.number().int().min(0).nullable()
+    .describe('Estimated total number of items in parent context (may be null)')
 })
 .describe('Pagination information for cursor-based pagination')
 .meta({
@@ -223,11 +251,18 @@ export const cursorPaginationInfoSchema = z.object({
   examples: [
     {
       cursors: {
-        start: 'eyJpZCI6MTIzLCJjcmVhdGVkQXQiOiIyMDI0LTAxLTE1VDEwOjMwOjAwWiJ9',
-        end: 'eyJpZCI6MTQyLCJjcmVhdGVkQXQiOiIyMDI0LTAxLTE1VDExOjMwOjAwWiJ9'
+        start: 'eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==',
+        end: 'eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ=='
       },
       hasMore: true,
-      count: 20
+      count: 5,
+      limit: 5,
+      hasNext: true,
+      hasPrev: true,
+      nextCursor: 'eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ==',
+      prevCursor: 'eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==',
+      totalEstimate: 5,
+      parentTotalEstimate: null
     },
     {
       cursors: {
@@ -235,7 +270,14 @@ export const cursorPaginationInfoSchema = z.object({
         end: null
       },
       hasMore: false,
-      count: 8
+      count: 8,
+      limit: 10,
+      hasNext: false,
+      hasPrev: true,
+      nextCursor: null,
+      prevCursor: 'eyJpZCI6MTgwLCJjcmVhdGVkQXQiOiIyMDI0LTAxLTE1VDE0OjMwOjAwWiJ9',
+      totalEstimate: 8,
+      parentTotalEstimate: null
     }
   ]
 });
@@ -563,18 +605,29 @@ export const cursorPaginatedApiResponseExample = z.object({
   examples: [{
     success: true,
     data: [
-      { id: 123, name: 'Latest Item', title: 'Most Recent' },
-      { id: 122, name: 'Previous Item', title: 'Second Most Recent' }
+      { id: 853, name: 'Latest Resource', title: 'Most Recent Resource', status: 'published' },
+      { id: 849, name: 'Previous Resource', title: 'Second Most Recent Resource', status: 'published' }
     ],
     pagination: {
       cursors: {
-        start: 'eyJpZCI6MTIzfQ==',
-        end: 'eyJpZCI6MTIyfQ=='
+        start: 'eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==',
+        end: 'eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ=='
       },
       hasMore: true,
-      count: 20
+      count: 5,
+      limit: 5,
+      hasNext: true,
+      hasPrev: true,
+      nextCursor: 'eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ==',
+      prevCursor: 'eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==',
+      totalEstimate: 5,
+      parentTotalEstimate: null
     },
-    timestamp: '2024-01-15T10:30:00.000Z'
+    timestamp: '2024-01-15T10:30:00.000Z',
+    meta: {
+      requestId: 'req-123e4567-e89b-12d3-a456-426614174000',
+      processingTime: 42.5
+    }
   }]
 });
 

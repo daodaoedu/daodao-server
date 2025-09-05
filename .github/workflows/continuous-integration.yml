@@ -185,6 +185,7 @@ jobs:
           path: |
             generated/
             openapi.yaml
+            openapi.json
           retention-days: 1
 
   # ===== CI 成功通知階段 =====

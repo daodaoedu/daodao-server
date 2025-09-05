@@ -103,6 +103,13 @@ export function setupTypescriptRoutes(app: express.Application) {
     ? path.join(__dirname, '../../openapi.json')  // 生產環境: /app/dist/src -> /app/openapi.json
     : path.join(__dirname, '../openapi.json');    // 開發環境: /src -> /openapi.json
   
+  // 調試日誌
+  console.log(`🔍 OpenAPI 路徑調試:
+    __dirname: ${__dirname}
+    isDist: ${isDist}
+    openapiPath: ${openapiPath}
+    文件存在: ${fs.existsSync(openapiPath)}`);
+  
   if (!fs.existsSync(openapiPath)) {
     console.error('❌ OpenAPI 文檔不存在，請先執行 pnpm run types:generate 生成文檔');
     console.warn('⚠️  Swagger UI 將無法正常顯示');
