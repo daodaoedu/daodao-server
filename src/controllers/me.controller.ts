@@ -6,14 +6,14 @@
 
 import { Request, Response } from 'express';
 import { meService } from '../services/me.service';
-import {
-  practiceQuerySchema,
-  practiceStatsQuerySchema,
-  resourcesQuerySchema,
-  preferencesQuerySchema,
-  updatePreferencesSchema
-} from '../validators/me.validators';
 import { asyncHandler } from '../middleware/error.middleware';
+import type {
+  PracticeQueryParams,
+  PracticeStatsQueryParams,
+  ResourcesQueryParams,
+  PreferencesQueryParams,
+  UpdatePreferencesData
+} from '../validators/me.validators';
 
 /**
  * GET /api/v1/me/practices
@@ -25,7 +25,8 @@ export const getMyPractices = asyncHandler(async (req: Request, res: Response) =
     throw new Error('需要登入才能查看個人實踐記錄');
   }
 
-  const params = practiceQuerySchema.parse(req.query);
+  // 查詢參數已經在 routes 層級驗證過
+  const params = req.query as unknown as PracticeQueryParams;
   const result = await meService.getMyPractices(currentUser.id, params);
 
   res.json(result);
@@ -41,7 +42,8 @@ export const getMyPracticeStats = asyncHandler(async (req: Request, res: Respons
     throw new Error('需要登入才能查看實踐統計');
   }
 
-  const params = practiceStatsQuerySchema.parse(req.query);
+  // 查詢參數已經在 routes 層級驗證過
+  const params = req.query as unknown as PracticeStatsQueryParams;
   const result = await meService.getMyPracticeStats(currentUser.id, params);
 
   res.json(result);
@@ -57,7 +59,8 @@ export const getMyResources = asyncHandler(async (req: Request, res: Response) =
     throw new Error('需要登入才能查看個人資源');
   }
 
-  const params = resourcesQuerySchema.parse(req.query);
+  // 查詢參數已經在 routes 層級驗證過
+  const params = req.query as unknown as ResourcesQueryParams;
   const result = await meService.getMyResources(currentUser.id, params);
 
   res.json(result);
@@ -73,7 +76,8 @@ export const getMyPreferences = asyncHandler(async (req: Request, res: Response)
     throw new Error('需要登入才能查看個人偏好設定');
   }
 
-  const params = preferencesQuerySchema.parse(req.query);
+  // 查詢參數已經在 routes 層級驗證過
+  const params = req.query as unknown as PreferencesQueryParams;
   const result = await meService.getMyPreferences(currentUser.id, params);
 
   res.json(result);
@@ -89,7 +93,8 @@ export const updateMyPreferences = asyncHandler(async (req: Request, res: Respon
     throw new Error('需要登入才能更新個人偏好設定');
   }
 
-  const requestData = updatePreferencesSchema.parse(req.body);
+  // 請求資料已經在 routes 層級驗證過
+  const requestData = req.body as UpdatePreferencesData;
   const result = await meService.updateMyPreferences(currentUser.id, requestData);
 
   res.json(result);

@@ -50,7 +50,12 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
     // 遍歷物件屬性
     const shape = schema.shape;
     for (const [key, value] of Object.entries(shape)) {
-      metadata.properties[key] = extractZodV4Metadata(value as z.ZodSchema);
+      const propertyMetadata = extractZodV4Metadata(value as z.ZodSchema);
+      // 如果屬性的 metadata 為空物件，記錄警告
+      if (Object.keys(propertyMetadata).length === 0) {
+        console.warn(`⚠️  Property '${key}' generated empty metadata:`, value);
+      }
+      metadata.properties[key] = propertyMetadata;
     }
   } else if (schema instanceof z.ZodArray) {
     metadata.type = 'array';
@@ -110,7 +115,10 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
   } else if (schema instanceof z.ZodBoolean) {
     metadata.type = 'boolean';
   } else if (schema instanceof z.ZodLiteral) {
-    const value = (schema as any)._def.value;
+    // Zod v4 中 ZodLiteral 使用 values 陣列
+    const values = (schema as any)._def.values || [(schema as any)._def.value];
+    const value = values[0]; // 取第一個值
+    
     if (typeof value === 'string') {
       metadata.type = 'string';
       metadata.enum = [value];
@@ -120,6 +128,11 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
     } else if (typeof value === 'boolean') {
       metadata.type = 'boolean';
       metadata.enum = [value];
+    } else if (value === null) {
+      metadata.type = 'null';
+    } else {
+      // 其他類型，設定為原始值
+      metadata.const = value;
     }
   } else if (schema instanceof z.ZodOptional) {
     const innerMetadata = extractZodV4Metadata((schema as any)._def.innerType);
