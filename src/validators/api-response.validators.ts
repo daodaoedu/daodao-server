@@ -493,18 +493,28 @@ export const apiSuccessResponseExample = z.object({
   data: genericDataSchema.describe('The main response data'),
   timestamp: z.string().datetime().describe('ISO 8601 timestamp of the response'),
   meta: responseMetaSchema.optional().describe('Optional metadata about the response')
-}).describe('Standard success response format')
+}).strict()
+.describe('Standard success response format')
 .meta({
-  title: 'API Success Response',
+  title: 'API Success Response Example',
   examples: [{
     success: true,
     data: {
       id: 123,
+      _id: '550e8400-e29b-41d4-a716-446655440000',
       name: 'Example Resource',
       title: 'Sample Title',
-      status: 'active'
+      description: 'Example resource description',
+      status: 'active',
+      createdAt: '2024-01-15T10:30:00.000Z',
+      updatedAt: '2024-01-15T10:30:00.000Z'
     },
-    timestamp: '2024-01-15T10:30:00.000Z'
+    timestamp: '2024-01-15T10:30:00.000Z',
+    meta: {
+      requestId: 'req-123e4567-e89b-12d3-a456-426614174000',
+      processingTime: 23.1,
+      cacheHit: false
+    }
   }]
 });
 
