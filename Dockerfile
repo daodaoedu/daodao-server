@@ -38,8 +38,9 @@ COPY public ./public
 COPY index.js ./
 COPY ecosystem.config.js ./
 
-# 編譯 TypeScript
-RUN pnpm run build
+# 生成 OpenAPI 文檔和編譯 TypeScript
+RUN pnpm run swagger:generate && \
+    pnpm run build
 
 # 生產映像 - 最小化尺寸
 FROM base AS runtime
@@ -58,8 +59,10 @@ RUN addgroup -g 1001 -S nodejs && \
 # 複製生產依賴
 COPY --from=deps-prod /app/node_modules ./node_modules
 
-# 複製編譯後的代碼
+# 複製編譯後的代碼和 OpenAPI 文檔
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/openapi.json ./
+COPY --from=builder /app/openapi.yaml ./
 COPY --from=builder /app/ecosystem.config.js ./
 
 # 複製 Prisma 文件和生成的客戶端
