@@ -8,20 +8,162 @@ import path from 'path';
 import { z } from 'zod';
 
 /**
- * 載入從程式碼中提取的錯誤範例
+ * 從 api-response.validators.ts 源文件載入錯誤範例
+ * 使用與其他 schema 載入相同的方法
  */
 function loadErrorExamples(): Record<string, any> {
   try {
-    const errorExamplesPath = path.join(__dirname, 'error-examples.json');
-    if (fs.existsSync(errorExamplesPath)) {
-      const content = fs.readFileSync(errorExamplesPath, 'utf-8');
-      const errorData = JSON.parse(content);
-      return errorData.components || {};
+    const validatorsFilePath = path.join(__dirname, '../src/validators/api-response.validators.ts');
+    
+    if (!fs.existsSync(validatorsFilePath)) {
+      console.warn('⚠️  api-response.validators.ts 文件不存在:', validatorsFilePath);
+      return {};
     }
+
+    // 使用與其他 validators 相同的載入方式
+    delete require.cache[require.resolve(validatorsFilePath)];
+    const module = require(validatorsFilePath);
+    
+    if (!module.apiErrorResponseSchema) {
+      console.warn('⚠️  未找到 apiErrorResponseSchema 導出');
+      return {};
+    }
+
+    const errorSchema = module.apiErrorResponseSchema;
+    
+    // 嘗試多種方式提取範例
+    let examples: any[] = [];
+    
+    // 方式1: 檢查 _def.meta.examples
+    if (errorSchema._def?.meta?.examples) {
+      examples = errorSchema._def.meta.examples;
+    }
+    
+    // 方式2: 檢查是否有 toJsonSchema 方法並且包含 examples
+    if (examples.length === 0 && typeof (errorSchema as any).toJsonSchema === 'function') {
+      try {
+        const jsonSchema = (errorSchema as any).toJsonSchema();
+        if (jsonSchema.examples) {
+          examples = jsonSchema.examples;
+        }
+      } catch (error) {
+        console.warn('⚠️  無法通過 toJsonSchema 提取範例:', error);
+      }
+    }
+    
+    // 方式3: 使用自定義的 metadata 提取
+    if (examples.length === 0) {
+      const metadata = extractZodV4Metadata(errorSchema);
+      if (metadata.examples) {
+        examples = metadata.examples;
+      }
+    }
+
+    // 方式4: 回退到硬編碼的標準範例（基於 TypeScript 源代碼中的實際範例）
+    if (examples.length === 0) {
+      console.warn('⚠️  無法從 schema 提取範例，使用硬編碼範例');
+      examples = [
+        {
+          success: false,
+          data: null,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message: '用戶不存在',
+            details: {
+              userId: '123',
+              reason: '資料庫中找不到指定的用戶'
+            }
+          },
+          timestamp: '2024-01-15T10:30:00.000Z'
+        },
+        {
+          success: false,
+          data: null,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: '輸入資料驗證失敗',
+            details: {
+              email: '電子郵件格式無效',
+              password: '密碼長度至少需要 8 個字元'
+            }
+          },
+          timestamp: '2024-01-15T10:30:00.000Z',
+          meta: {
+            requestId: 'req-123e4567-e89b-12d3-a456-426614174001',
+            processingTime: 15.3
+          }
+        }
+      ];
+    }
+
+    // 根據錯誤代碼建立不同的錯誤回應定義
+    const createErrorResponse = (description: string, errorExamples: any[]) => ({
+      description,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/api-response.validators_apiErrorResponseSchema' },
+          examples: errorExamples.reduce((acc: any, example: any, index: number) => {
+            const exampleName = example.error?.code?.toLowerCase() || `example${index + 1}`;
+            acc[exampleName] = {
+              summary: `${example.error?.code || 'ERROR'} 範例`,
+              description: example.error?.message || description,
+              value: example
+            };
+            return acc;
+          }, {})
+        }
+      }
+    });
+
+    const errorComponents: Record<string, any> = {};
+    
+    // 按錯誤類型分類範例
+    const validationExample = examples.find((ex: any) => ex.error?.code === 'VALIDATION_ERROR');
+    const notFoundExample = examples.find((ex: any) => ex.error?.code === 'USER_NOT_FOUND');
+    
+    errorComponents.BadRequestError = createErrorResponse('請求參數錯誤', 
+      validationExample ? [validationExample] : [examples[0]].filter(Boolean)
+    );
+
+    errorComponents.UnauthorizedError = createErrorResponse('未授權，需要登入', [{
+      success: false,
+      data: null,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: '未授權存取'
+      },
+      timestamp: '2024-01-15T10:30:00.000Z',
+      meta: {
+        requestId: 'req-unauthorized-001',
+        processingTime: 12.5
+      }
+    }]);
+    
+    errorComponents.NotFoundError = createErrorResponse('資源不存在', 
+      notFoundExample ? [notFoundExample] : [examples[0]].filter(Boolean)
+    );
+
+    errorComponents.InternalServerError = createErrorResponse('服務器內部錯誤', [{
+      success: false,
+      data: null,
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: '服務器內部錯誤'
+      },
+      timestamp: '2024-01-15T10:30:00.000Z',
+      meta: {
+        requestId: 'req-internal-error-001',
+        processingTime: 25.6
+      }
+    }]);
+
+    console.log(`✅ 從 api-response.validators.ts 提取到 ${examples.length} 個範例，生成 ${Object.keys(errorComponents).length} 個錯誤組件`);
+    return errorComponents;
+    
   } catch (error) {
-    console.warn('⚠️  無法載入錯誤範例文件:', error);
+    console.error('❌ 從 api-response.validators.ts 提取錯誤範例失敗:', error);
+    return {};
   }
-  return {};
 }
 
 /**
@@ -40,6 +182,11 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
   // 提取 metadata（從 .meta() 方法）
   if (def?.metadata) {
     Object.assign(metadata, def.metadata);
+    
+    // 如果有 examples，將第一個 example 設為 schema 的 example
+    if (def.metadata.examples && Array.isArray(def.metadata.examples) && def.metadata.examples.length > 0) {
+      metadata.example = def.metadata.examples[0];
+    }
   }
 
   // 處理不同類型的 schema
@@ -129,7 +276,10 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
       metadata.type = 'boolean';
       metadata.enum = [value];
     } else if (value === null) {
-      metadata.type = 'null';
+      // 在 OpenAPI 3.0 中，null 值應該表示為 nullable
+      metadata.type = 'object';
+      metadata.nullable = true;
+      metadata.enum = [null];
     } else {
       // 其他類型，設定為原始值
       metadata.const = value;
@@ -428,8 +578,12 @@ const routeResponseMapping: Record<string, string> = {
   'POST:/api/v1/auth/refresh': 'auth.validators_refreshTokenResponseSchema',
   'GET:/api/v1/auth/google/callback': 'auth.validators_loginSuccessResponseSchema',
   
-  // 通用分頁路由模式 - 用於判斷是否為分頁 API
-  'GET:/api/v1/resources/': 'paginated',
+  // Cursor 分頁路由 - 使用游標分頁 (cursor, limit)
+  'GET:/api/v1/resources/': 'cursor_paginated',
+  'GET:/api/v1/resources/:resourceId/reviews/': 'cursor_paginated',
+  'GET:/api/v1/me/resources': 'cursor_paginated',
+  
+  // 標準分頁路由 - 使用頁碼分頁 (page, limit) 
   'GET:/api/v1/reviews/': 'paginated',
   'GET:/api/v1/projects/': 'paginated', 
   'GET:/api/v1/practices/': 'paginated',
@@ -438,10 +592,8 @@ const routeResponseMapping: Record<string, string> = {
   'GET:/api/v1/notes/': 'paginated',
   'GET:/api/v1/outcomes/': 'paginated',
   'GET:/api/v1/tags/': 'paginated',
-  'GET:/api/v1/me/resources/': 'paginated',
   'GET:/api/v1/me/reviews/': 'paginated',
   'GET:/api/v1/me/projects/': 'paginated',
-  'GET:/api/v1/resources/{resourceId}/reviews/': 'paginated',
   'GET:/api/v1/projects/{projectId}/milestones/': 'paginated'
 };
 
@@ -458,7 +610,15 @@ function getResponseSchemaForRoute(path: string, method: string): string | null 
  */
 function isPaginatedRoute(path: string, method: string): boolean {
   const schema = getResponseSchemaForRoute(path, method);
-  return schema === 'paginated';
+  return schema === 'paginated' || schema === 'cursor_paginated';
+}
+
+/**
+ * 判斷路由是否使用 cursor 分頁
+ */
+function isCursorPaginatedRoute(path: string, method: string): boolean {
+  const schema = getResponseSchemaForRoute(path, method);
+  return schema === 'cursor_paginated';
 }
 
 /**
@@ -584,11 +744,14 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
     
     let successResponseSchema = '{}' as any;
     
-    if (specificResponseSchema && specificResponseSchema !== 'paginated') {
+    if (specificResponseSchema && specificResponseSchema !== 'paginated' && specificResponseSchema !== 'cursor_paginated') {
       // 使用特定的回應 schema
       successResponseSchema = { $ref: `#/components/schemas/${specificResponseSchema}` };
+    } else if (isCursorPaginatedRoute(route.path, route.method)) {
+      // Cursor 分頁回應
+      successResponseSchema = { $ref: '#/components/schemas/api-response.validators_cursorPaginatedApiResponseExample' };
     } else if (isPaginated) {
-      // 分頁回應
+      // 標準分頁回應
       successResponseSchema = { $ref: '#/components/schemas/api-response.validators_paginatedApiResponseExample' };
     } else if (route.method === 'delete') {
       // 刪除操作通常返回簡單訊息
