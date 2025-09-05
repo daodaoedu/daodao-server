@@ -27,6 +27,7 @@ RUN pnpm run prisma:generate && \
 FROM prisma AS builder
 COPY tsconfig*.json ./
 COPY src ./src
+COPY scripts ./scripts
 COPY controllers ./controllers
 COPY models ./models
 COPY routes ./routes
