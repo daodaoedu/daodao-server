@@ -96,17 +96,22 @@ export function setupTypescriptRoutes(app: express.Application) {
 
   // 載入 Zod v4 自動生成的 OpenAPI 規範
   let swaggerDocument;
-  const openapiPath = path.join(__dirname, '../openapi.json');
+  // 在開發環境中，__dirname 是 src/，查找 ../openapi.json
+  // 在生產環境中，__dirname 是 dist/src/，需要查找 ../../openapi.json
+  const isDist = __dirname.includes('/dist/src');
+  const openapiPath = isDist 
+    ? path.join(__dirname, '../../openapi.json')  // 生產環境: /app/dist/src -> /app/openapi.json
+    : path.join(__dirname, '../openapi.json');    // 開發環境: /src -> /openapi.json
   
   if (!fs.existsSync(openapiPath)) {
-    console.error('❌ OpenAPI 文檔不存在，請先執行 npm run openapi:generate 生成文檔');
+    console.error('❌ OpenAPI 文檔不存在，請先執行 pnpm run types:generate 生成文檔');
     console.warn('⚠️  Swagger UI 將無法正常顯示');
     swaggerDocument = {
       openapi: '3.0.0',
       info: {
         title: 'API Documentation Not Available',
         version: '1.0.0',
-        description: '請執行 npm run openapi:generate 生成 API 文檔'
+        description: '請執行 pnpm run types:generate 生成 API 文檔'
       },
       paths: {}
     };
