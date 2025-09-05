@@ -30,7 +30,7 @@
     "openapi:export": "ts-node -r tsconfig-paths/register scripts/generate-openapi.ts",
     "swagger:generate": "ts-node -r tsconfig-paths/register scripts/generate-swagger.ts",
     "swagger:watch": "nodemon --watch src/validators --exec pnpm run swagger:generate",
-    "types:generate": "pnpm run prisma:generate",
+    "types:generate": "pnpm run prisma:generate && pnpm run swagger:generate",
     "db:introspect": "prisma db pull",
     "db:seed": "prisma db seed"
   },
