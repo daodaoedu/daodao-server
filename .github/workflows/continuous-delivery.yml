@@ -264,10 +264,12 @@ jobs:
             # - 遵循 compose 文件中的映像設定
             # =======================
             echo "=== Pulling new image with progress display ==="
-            echo "Pulling ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}-${COMMIT_SHA}..."
+            echo "Image to pull: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG}-${COMMIT_SHA}"
+            echo "Using IMAGE_TAG=${IMAGE_TAG}, COMMIT_SHA=${COMMIT_SHA}"
             
             # 直接執行 pull，讓它有足夠時間完成下載
-            if docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE pull ${APP_SERVICE}; then
+            if DOCKER_HUB_USERNAME=${DOCKER_HUB_USERNAME} IMAGE_TAG=${IMAGE_TAG} COMMIT_SHA=${COMMIT_SHA} \
+               docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE pull ${APP_SERVICE}; then
               echo "✅ Successfully pulled image"
             else
               echo "❌ Failed to pull image"
@@ -277,6 +279,7 @@ jobs:
 
             # 啟動新容器
             echo "Starting new container..."
+            DOCKER_HUB_USERNAME=${DOCKER_HUB_USERNAME} IMAGE_TAG=${IMAGE_TAG} COMMIT_SHA=${COMMIT_SHA} \
             docker compose --env-file .env.${APP_ENV} -f $COMPOSE_FILE up -d --no-deps --scale ${APP_SERVICE}=2 ${APP_SERVICE}
 
             # ===== 健康檢查流程 =====
