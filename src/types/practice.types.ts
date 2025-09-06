@@ -36,7 +36,7 @@ import { UserBasicInfo } from './common.types';
 
 // Core practice entity interface
 export interface PracticeEntity {
-  id: number;
+  id: string;
   title: string;
   contentType: ContentType;
   customContentType?: string;
@@ -81,7 +81,7 @@ export interface CheckInEntity {
 }
 
 // 從統一響應類型文件導入
-import type { 
+import type {
   PaginationInfo
 } from './api-response.types';
 
@@ -384,7 +384,7 @@ export interface EventControllerInterface {
 }
 
 // Error types
-export type PracticeErrorType = 
+export type PracticeErrorType =
   | 'PRACTICE_NOT_FOUND'
   | 'CHECKIN_NOT_FOUND'
   | 'DUPLICATE_CHECKIN'

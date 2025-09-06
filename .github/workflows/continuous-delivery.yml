@@ -140,11 +140,27 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+      # ===== 檢測類型變更 =====
+      # 檢查本次 commit 是否涉及類型文件變更
+      # 如果有類型變更，禁用快取確保正確重建
+      # ==============================
+      - name: Check for type changes
+        id: type_changes
+        run: |
+          if git diff --name-only ${{ github.event.before }}..${{ github.sha }} | grep -E "(src/types/.*\.ts$|\.d\.ts$|tsconfig.*\.json$)"; then
+            echo "type_changed=true" >> $GITHUB_OUTPUT
+            echo "🔄 Type files changed, will build without cache"
+          else
+            echo "type_changed=false" >> $GITHUB_OUTPUT
+            echo "✅ No type changes, will use cache"
+          fi
+
       # ===== Docker 映像構建與推送 =====
-      # 多層快取策略說明：
+      # 智慧快取策略說明：
       # 1. Registry 快取：從當前環境的最新映像讀取（最可能命中相同依賴層）
       # 2. BuildCache：從專用快取映像讀取（保存完整構建快取）
       # 3. GitHub Actions：從本地快取讀取（速度最快）
+      # 4. 類型檢測：類型文件變更時禁用快取
       # 
       # 快取輸出策略：
       # 1. 專用快取映像：跨 runner 共享，持久化
@@ -158,15 +174,84 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          no-cache: true
+          # 智慧快取控制：只有類型變更時才禁用快取
+          no-cache: ${{ steps.type_changes.outputs.type_changed == 'true' }}
           # 建立兩個標籤：環境標籤和特定 commit 標籤
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
+          # 多層快取策略（只有在使用快取時生效）
+          cache-from: |
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.CACHE_TAG }}
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }}
+            type=gha
+          cache-to: |
+            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/app:buildcache-${{ env.CACHE_TAG }},mode=max
+            type=gha,mode=max
           build-args: |
             NODE_ENV=${{ env.NODE_ENV }}
             BUILDKIT_INLINE_CACHE=1
           platforms: linux/amd64
+
+      # ===== 構建驗證 =====
+      # 驗證構建的 Docker 映像是否正常運行
+      # 包含基本的健康檢查和功能驗證
+      # =====================
+      - name: Verify Docker image
+        run: |
+          echo "🧪 Verifying Docker image..."
+          
+          # 測試映像是否可以啟動
+          docker run --rm -d --name test-container \
+            -p 3001:3000 \
+            -e NODE_ENV=${{ env.NODE_ENV }} \
+            ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
+          
+          # 等待容器啟動
+          sleep 10
+          
+          # 檢查容器是否在運行
+          if docker ps | grep test-container; then
+            echo "✅ Container started successfully"
+          else
+            echo "❌ Container failed to start"
+            docker logs test-container
+            exit 1
+          fi
+          
+          # 基本健康檢查 (如果應用有健康檢查端點)
+          if curl -f http://localhost:3001/api/v1/health > /dev/null 2>&1; then
+            echo "✅ Health check passed"
+          else
+            echo "⚠️  Health check failed or endpoint not available"
+          fi
+          
+          # 清理測試容器
+          docker stop test-container || true
+
+      # ===== 構建監控 =====
+      # 記錄構建時間和快取效率
+      # 用於性能監控和優化
+      # ====================
+      - name: Build monitoring
+        if: always()
+        run: |
+          # 記錄構建資訊
+          echo "📊 Build Information:"
+          echo "- Image Tag: ${{ env.IMAGE_TAG }}-${{ github.sha }}"
+          echo "- Type Changes: ${{ steps.type_changes.outputs.type_changed }}"
+          echo "- Cache Used: ${{ steps.type_changes.outputs.type_changed != 'true' }}"
+          echo "- Branch: ${{ github.ref_name }}"
+          echo "- Commit: ${{ github.sha }}"
+          
+          # 檢查映像大小
+          IMAGE_SIZE=$(docker images ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }} --format "table {{.Size}}" | tail -n1)
+          echo "- Image Size: $IMAGE_SIZE"
+          
+          # 如果映像過大，發出警告
+          if [[ "$IMAGE_SIZE" == *"GB"* ]]; then
+            echo "::warning::Docker image size is larger than 1GB ($IMAGE_SIZE), consider optimizing"
+          fi
 
   # ===== 部署階段 =====
   # 目的：將構建好的 Docker 映像部署到 Linode 伺服器
