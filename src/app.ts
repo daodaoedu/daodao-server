@@ -99,19 +99,39 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 在開發環境中，__dirname 是 src/，查找 ../openapi.json
   // 在生產環境中，__dirname 是 dist/src/，需要查找 ../../openapi.json
   const isDist = __dirname.includes('/dist/src');
-  const openapiPath = isDist 
+  let openapiPath = isDist 
     ? path.join(__dirname, '../../openapi.json')  // 生產環境: /app/dist/src -> /app/openapi.json
     : path.join(__dirname, '../openapi.json');    // 開發環境: /src -> /openapi.json
+  
+  // 額外的備用路徑檢查 - 適應不同的部署環境
+  const fallbackPaths = [
+    path.resolve(process.cwd(), 'openapi.json'),           // 工作目錄
+    path.join(process.cwd(), 'openapi.json'),             // 當前目錄
+    path.resolve(__dirname, '../../openapi.json'),        // 相對於 dist/src
+    path.resolve(__dirname, '../../../openapi.json'),     // 適應更深層的結構
+    '/app/openapi.json'                                   // Docker 容器固定路徑
+  ];
+  
+  // 如果主要路徑不存在，嘗試備用路徑
+  if (!fs.existsSync(openapiPath)) {
+    for (const fallbackPath of fallbackPaths) {
+      if (fs.existsSync(fallbackPath)) {
+        openapiPath = fallbackPath;
+        break;
+      }
+    }
+  }
   
   // 調試日誌
   console.log(`🔍 OpenAPI 路徑調試:
     __dirname: ${__dirname}
+    process.cwd(): ${process.cwd()}
     isDist: ${isDist}
     openapiPath: ${openapiPath}
     文件存在: ${fs.existsSync(openapiPath)}`);
   
   if (!fs.existsSync(openapiPath)) {
-    console.error('❌ OpenAPI 文檔不存在，請先執行 pnpm run types:generate 生成文檔');
+    console.error('❌ OpenAPI 文檔不存在，請先執行 pnpm run openapi:generate 生成文檔');
     console.warn('⚠️  Swagger UI 將無法正常顯示');
     swaggerDocument = {
       openapi: '3.0.0',
