@@ -277,6 +277,32 @@ Key environment variables:
 - Global limiter: 1000 requests/minute
 - Strict limiter: 60 requests/minute (applied to emails/images)
 
+## CI/CD 和 Docker 構建策略
+
+### Docker 構建最佳實踐
+- **分層策略**: Dockerfile 針對類型變更進行了優化，確保類型檔案變更時觸發正確的重建
+- **智慧快取**: CI/CD 自動檢測類型變更，只在必要時禁用快取
+- **構建驗證**: 每次構建後自動驗證 Docker 映像和健康檢查
+
+### 類型變更處理
+當修改 TypeScript 類型檔案（`src/types/*.ts`、`*.d.ts`、`tsconfig*.json`）時：
+1. **Dockerfile 分層**: 類型檔案被單獨複製，確保變更觸發正確重建
+2. **自動檢測**: CI/CD 自動檢測類型變更並禁用快取
+3. **快取策略**: 非類型變更時使用多層快取提升構建速度
+
+### 緊急修復流程
+如果遇到快取相關的構建問題：
+1. **手動觸發**: 使用 "Emergency Rebuild" workflow
+2. **完全重建**: 清除所有快取，強制重新構建
+3. **分支選擇**: 支援 main 和 dev 分支
+4. **驗證機制**: 包含完整的構建驗證和通知
+
+### 構建監控
+- **快取效率**: 自動記錄快取使用情況
+- **映像大小**: 監控映像大小，超過 1GB 時發出警告
+- **構建時間**: 追蹤構建性能
+- **Discord 通知**: 構建狀態實時通知團隊
+
 ### Important File Patterns
 - TypeScript models use Prisma-generated types and client from `generated/prisma`
 - Routes use comprehensive Swagger documentation

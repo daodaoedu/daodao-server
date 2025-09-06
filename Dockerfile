@@ -25,8 +25,13 @@ RUN pnpm run prisma:generate && \
 
 # 構建層 - 編譯 TypeScript
 FROM prisma AS builder
+
+# 第一步：複製 TypeScript 配置和類型文件 (類型變更時觸發重建)
 COPY tsconfig*.json ./
-COPY src ./src
+COPY src/types/ ./src/types/
+
+# 第二步：複製其餘源碼文件 (源碼變更時觸發重建)
+COPY src/ ./src/
 COPY scripts ./scripts
 COPY controllers ./controllers
 COPY models ./models
@@ -38,7 +43,10 @@ COPY public ./public
 COPY index.js ./
 COPY ecosystem.config.js ./
 
-# 編譯 TypeScript (包含 OpenAPI 文檔生成)
+# 第三步：TypeScript 類型檢查 (確保類型正確)
+RUN pnpm run typecheck
+
+# 第四步：編譯 TypeScript (包含 OpenAPI 文檔生成)
 RUN pnpm run build
 
 # 生產映像 - 最小化尺寸
