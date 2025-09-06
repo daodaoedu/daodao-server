@@ -5,7 +5,7 @@
 
 // Practice response types (extending from existing practice.types.ts)
 export interface MyPracticeItem {
-  id: number;
+  id: string;
   title: string;
   contentType: 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom';
   customContentType?: string;
