@@ -331,6 +331,16 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
         content: data.content,
         status: 'active',
         has_resources: data.resources ? data.resources.length > 0 : false
+      },
+      select: {
+        id: true,
+        external_id: true,
+        user_id: true,
+        content: true,
+        status: true,
+        has_resources: true,
+        created_at: true,
+        updated_at: true
       }
     });
 

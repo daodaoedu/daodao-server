@@ -110,7 +110,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 轉換為 API 格式
     const practiceEntities: PracticeEntity[] = practices.map(practice => ({
-      id: practice.id,
+      id: practice.external_id || '',
       title: practice.title,
       contentType: practice.content_type as ContentType,
       customContentType: practice.custom_content_type || undefined,
@@ -221,7 +221,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     const comments = await getCommentCounts([id]);
 
     const practiceEntity: PracticeEntity = {
-      id: practice.id,
+      id: practice.external_id || '',
       title: practice.title,
       contentType: practice.content_type as ContentType,
       customContentType: practice.custom_content_type || undefined,
@@ -293,7 +293,27 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         status: 'active', // CreatePracticeRequest doesn't have status field
         has_resources: Boolean(data.resources && data.resources.length > 0)
       },
-      include: {
+      select: {
+        id: true,
+        external_id: true,
+        title: true,
+        content_type: true,
+        custom_content_type: true,
+        total_amount: true,
+        current_progress: true,
+        start_date: true,
+        daily_goal_type: true,
+        daily_goal_time_minutes: true,
+        daily_goal_amount: true,
+        daily_goal_unit: true,
+        practice_action: true,
+        status: true,
+        has_resources: true,
+        streak: true,
+        max_streak: true,
+        last_checkin_date: true,
+        created_at: true,
+        updated_at: true,
         users: {
           select: {
             id: true,
@@ -329,7 +349,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     }
 
     const practiceEntity: PracticeEntity = {
-      id: practice.id,
+      id: practice.external_id || '',
       title: practice.title,
       contentType: practice.content_type as ContentType,
       customContentType: practice.custom_content_type || undefined,
@@ -462,7 +482,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     const comments = await getCommentCounts([id]);
 
     const practiceEntity: PracticeEntity = {
-      id: practice.id,
+      id: practice.external_id || '',
       title: practice.title,
       contentType: practice.content_type as ContentType,
       customContentType: practice.custom_content_type || undefined,
@@ -564,7 +584,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
   try {
     const [practiceStats, checkInStats] = await Promise.all([
       prismaClient.practices.aggregate({
-        where: { 
+        where: {
           user_id: userId,
           status: { not: 'archived' }
         },
@@ -579,7 +599,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
         }
       }),
       prismaClient.practice_checkins.aggregate({
-        where: { 
+        where: {
           user_id: userId,
           practices: {
             status: { not: 'archived' }
@@ -593,7 +613,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
 
     const statusCounts = await prismaClient.practices.groupBy({
       by: ['status'],
-      where: { 
+      where: {
         user_id: userId,
         status: { not: 'archived' }
       },
@@ -724,7 +744,7 @@ async function updateResources(practiceId: number, resources: Array<{ name: stri
     // 注意：這裡需要根據實際的資源關聯表結構來實作
     // 目前 resources 表沒有直接的 practice 關聯字段
     // 可能需要通過其他方式關聯，或者建立新的關聯表
-    
+
     // 暫時只記錄日誌，實際實作需要根據資源關聯的具體設計
     loggerService.info('Resources update - needs proper relation design', { practiceId, resources });
   } catch (error) {
@@ -737,7 +757,7 @@ async function updateResources(practiceId: number, resources: Array<{ name: stri
  */
 async function getCommentCounts(practiceIds: number[]): Promise<Record<number, number>> {
   if (!practiceIds.length) return {};
-  
+
   try {
     const comments = await prismaClient.comments.groupBy({
       by: ['target_id'],

@@ -507,6 +507,24 @@ export async function createResource(data: Record<string, unknown>, userId: numb
         sub_category_id: dbData.sub_category_id,
         created_by: userId,
         status: 'active'
+      },
+      select: {
+        id: true,
+        external_id: true,
+        name: true,
+        url: true,
+        image_url: true,
+        description: true,
+        video_url: true,
+        type: true,
+        cost: true,
+        level: true,
+        major_category_id: true,
+        sub_category_id: true,
+        created_by: true,
+        status: true,
+        created_at: true,
+        updated_at: true
       }
     });
 

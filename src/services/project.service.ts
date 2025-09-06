@@ -200,6 +200,32 @@ export const createProject = async (
           interval: projectData.interval,
           created_by: userId,
           updated_by: userId
+        },
+        select: {
+          id: true,
+          external_id: true,
+          user_id: true,
+          img_url: true,
+          title: true,
+          description: true,
+          motivation: true,
+          motivation_description: true,
+          goal: true,
+          content: true,
+          strategy: true,
+          strategy_description: true,
+          resource: true,
+          outcome: true,
+          outcome_description: true,
+          is_public: true,
+          status: true,
+          start_date: true,
+          end_date: true,
+          interval: true,
+          created_by: true,
+          updated_by: true,
+          created_at: true,
+          updated_at: true
         }
       });
 
