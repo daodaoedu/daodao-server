@@ -160,10 +160,11 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceId = parseInt(req.params.id);
-    if (isNaN(practiceId)) {
-      throw new BadRequestError('無效的實踐 ID');
-    }
+    const practiceExternalId = req.params.id;
+    
+    // 使用 id-converter 服務將 UUID 轉換為內部 ID
+    const { externalToInternalId } = await import('../services/id-converter.service');
+    const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const checkInData: CreateCheckInRequest = req.body;
     const result = await practiceCheckInService.createCheckIn(practiceId, checkInData, req.user.id);
@@ -175,10 +176,11 @@ export class PracticeController {
    * GET /api/v1/practices/:id/checkins
    */
   getCheckIns = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const practiceId = parseInt(req.params.id);
-    if (isNaN(practiceId)) {
-      throw new BadRequestError('無效的實踐 ID');
-    }
+    const practiceExternalId = req.params.id;
+    
+    // 使用 id-converter 服務將 UUID 轉換為內部 ID
+    const { externalToInternalId } = await import('../services/id-converter.service');
+    const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const queryParams: CheckInQueryParams = {
       page: parseInt(req.query.page as string) || 1,

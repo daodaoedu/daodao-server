@@ -492,7 +492,7 @@ export async function createResource(data: Record<string, unknown>, userId: numb
     // 轉換數據
     const dbData = await transformResourceToDb(validatedData, userId);
 
-    // 創建資源
+    // 創建資源並獲取完整信息
     const resource = await tx.resources.create({
       data: {
         name: dbData.name || '',
@@ -508,34 +508,73 @@ export async function createResource(data: Record<string, unknown>, userId: numb
         created_by: userId,
         status: 'active'
       },
-      select: {
-        id: true,
-        external_id: true,
-        name: true,
-        url: true,
-        image_url: true,
-        description: true,
-        video_url: true,
-        type: true,
-        cost: true,
-        level: true,
-        major_category_id: true,
-        sub_category_id: true,
-        created_by: true,
-        status: true,
-        created_at: true,
-        updated_at: true
+      include: {
+        users: {
+          select: {
+            id: true,
+            nickname: true,
+            contacts: {
+              select: {
+                photo_url: true
+              }
+            }
+          }
+        },
+        categories_resources_major_category_idTocategories: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        categories_resources_sub_category_idTocategories: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       }
     });
 
     // 處理標籤
+    let tags: Array<{ id: number; name: string }> = [];
     if (validatedData.tags && validatedData.tags.length > 0) {
       await tagService.setEntityTags('resource', resource.id, validatedData.tags, userId, tx);
+      
+      // 查詢剛創建的標籤
+      interface TagResult {
+        tag_id: number;
+        tag_name: string;
+      }
+      
+      const tagResults = await tx.$queryRaw<TagResult[]>`
+        SELECT 
+          t.id as tag_id,
+          t.name as tag_name
+        FROM entity_tags et
+        INNER JOIN tags t ON et.tag_id = t.id
+        WHERE et.entity_type = 'resource'
+        AND et.entity_id::integer = ${resource.id}
+      `;
+      
+      tags = tagResults.map(row => ({
+        id: row.tag_id,
+        name: row.tag_name
+      }));
     }
 
-    const createdResource = await getResourceById(resource.external_id || '');
-    // getResourceById now returns ApiResponse, we need to extract the data
-    return createdResource;
+    // 處理嵌套評論（如果提供）
+    if (validatedData.review) {
+      // 這裡可以添加創建評論的邏輯，但需要先確認評論服務是否支持事務
+      // 暫時跳過，專注於修復主要的資源創建問題
+    }
+
+    // 在事務內轉換為 API 格式
+    const transformedResource = await transformResourceToApi({
+      ...resource,
+      tags
+    });
+
+    return createSuccessResponse(transformedResource);
   });
 }
 

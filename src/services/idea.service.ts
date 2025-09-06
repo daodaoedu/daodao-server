@@ -358,7 +358,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
             name: resourceData.name,
             url: resourceData.url,
             description: resourceData.description || '',
-            type: 'link', // 預設類型
+            type: 'article', // 預設類型
             cost: 'free', // 預設成本
             level: 'all_levels', // 預設難度
             created_by: userId,
@@ -440,7 +440,7 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
             name: resourceData.name,
             url: resourceData.url,
             description: resourceData.description || '',
-            type: 'link', // 預設類型
+            type: 'article', // 預設類型
             cost: 'free', // 預設成本
             level: 'all_levels', // 預設難度
             created_by: userId,

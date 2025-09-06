@@ -96,7 +96,7 @@ export async function getReviewById(id: number): Promise<ApiSuccessResponse<Reso
   // 查詢標籤
   const tags = await prisma.entity_tags.findMany({
     where: {
-      entity_type: 'resource_review',
+      entity_type: 'resource',
       entity_id: review.id
     },
     include: {
@@ -195,7 +195,7 @@ export async function getReviews(
     // 由於 resource_review 沒有直接的 entity_tags 關聯，我們需要通過 id 查詢
     const taggedReviewIds = await prisma.entity_tags.findMany({
       where: {
-        entity_type: 'resource_review',
+        entity_type: 'resource',
         tags: {
           name: {
             in: filters.tags
@@ -261,7 +261,7 @@ export async function getReviews(
   const reviewIds = reviewsData.map(review => review.id);
   const allTags = await prisma.entity_tags.findMany({
     where: {
-      entity_type: 'resource_review',
+      entity_type: 'resource',
       entity_id: { in: reviewIds }
     },
     include: {
@@ -370,7 +370,7 @@ export async function createReview(
     // 處理標籤
     if (data.tags && data.tags.length > 0) {
       await tagService.setEntityTags(
-        'resource_review',
+        'resource',
         review.id,
         data.tags,
         userId,
@@ -437,7 +437,7 @@ export async function updateReview(
     // 處理標籤
     if (data.tags !== undefined) {
       await tagService.setEntityTags(
-        'resource_review',
+        'resource',
         id,
         data.tags,
         userId,

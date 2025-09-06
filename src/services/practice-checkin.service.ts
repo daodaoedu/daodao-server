@@ -200,7 +200,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       updatedAt: checkIn.updated_at?.toISOString()
     }));
 
-    const paginationInfo = calculatePagination(total, page, take);
+    const paginationInfo = calculatePagination(page, take, total);
 
     loggerService.info('Check-ins retrieved', {
       practiceId,

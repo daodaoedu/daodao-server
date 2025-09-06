@@ -61,7 +61,7 @@ export const responseMetaSchema = z.object({
 /**
  * Success response schema for single data items
  */
-export const apiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const apiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T): z.ZodSchema =>
   z.object({
     success: z.literal(true)
       .describe('Indicates successful API response'),
@@ -285,7 +285,7 @@ export const cursorPaginationInfoSchema = z.object({
 /**
  * Paginated response schema for page-based pagination
  */
-export const paginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const paginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T): z.ZodSchema =>
   z.object({
     success: z.literal(true)
       .describe('Indicates successful API response'),
@@ -343,7 +343,7 @@ export const paginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T
 /**
  * Cursor-based paginated response schema
  */
-export const cursorPaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const cursorPaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T): z.ZodSchema =>
   z.object({
     success: z.literal(true)
       .describe('Indicates successful API response'),
@@ -396,7 +396,7 @@ export const cursorPaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSch
 /**
  * Generic API response union type (success or error)
  */
-export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T): z.ZodSchema =>
   z.union([
     apiSuccessResponseSchema(dataSchema),
     apiErrorResponseSchema
@@ -431,7 +431,7 @@ export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 /**
  * Paginated response union type (success or error)
  */
-export const paginatedResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const paginatedResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T): z.ZodSchema =>
   z.union([
     paginatedApiResponseSchema(dataSchema),
     apiErrorResponseSchema
@@ -473,7 +473,7 @@ export const paginatedResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =
 /**
  * Cursor paginated response union type (success or error)
  */
-export const cursorPaginatedResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const cursorPaginatedResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T): z.ZodSchema =>
   z.union([
     cursorPaginatedApiResponseSchema(dataSchema),
     apiErrorResponseSchema

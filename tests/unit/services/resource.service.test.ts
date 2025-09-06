@@ -523,6 +523,11 @@ describe('Resource Service', () => {
           level: resourceData.level,
           created_by: userId,
           status: 'active'
+        }),
+        include: expect.objectContaining({
+          users: expect.any(Object),
+          categories_resources_major_category_idTocategories: expect.any(Object),
+          categories_resources_sub_category_idTocategories: expect.any(Object)
         })
       });
       

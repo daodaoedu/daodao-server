@@ -151,7 +151,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       }
     }));
 
-    const paginationInfo = calculatePagination(total, page, take);
+    const paginationInfo = calculatePagination(page, take, total);
 
     loggerService.info('Practice list retrieved', {
       count: practiceEntities.length,
