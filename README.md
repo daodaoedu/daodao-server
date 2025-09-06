@@ -214,68 +214,76 @@ daodao-server/
 │   │   ├── resource-review.service.ts # 資源評價業務邏輯
 │   │   ├── practice.service.ts    # 學習實踐核心服務
 │   │   ├── practice-checkin.service.ts # 實踐打卡記錄服務
-│   │   ├── practice-event.service.ts # 實踐事件管理服務
-│   │   ├── practice-interaction.service.ts # 實踐互動服務
 │   │   ├── mentor.service.ts      # 導師管理服務
 │   │   ├── milestone.service.ts   # 里程碑管理服務
 │   │   ├── note.service.ts        # 筆記管理服務
 │   │   ├── outcome.service.ts     # 學習成果管理服務
 │   │   ├── review.service.ts      # 評價管理服務
-│   │   ├── r2.service.ts          # Cloudflare R2 儲存服務
-│   │   ├── jwt.service.ts         # JWT 令牌管理
-│   │   ├── transform.service.ts   # 資料轉換服務
-│   │   ├── id-converter.service.ts # ID 轉換服務
+│   │   ├── me.service.ts          # 個人資料管理服務
 │   │   └── index.ts               # 服務層匯出
 │   ├── types/                     # TypeScript 型別定義
+│   │   ├── api-response.types.ts  # API 回應格式型別
 │   │   ├── auth.types.ts          # 身份驗證型別
 │   │   ├── user.types.ts          # 使用者型別
 │   │   ├── resource.types.ts      # 資源型別
 │   │   ├── project.types.ts       # 專案型別
 │   │   ├── comment.types.ts       # 評論型別
 │   │   ├── idea.types.ts          # 想法型別
+│   │   ├── practice.types.ts      # 實踐系統型別
+│   │   ├── me.types.ts            # 個人資料型別
+│   │   ├── mentor.types.ts        # 導師系統型別
+│   │   ├── milestone.types.ts     # 里程碑型別
+│   │   ├── note.types.ts          # 筆記型別
+│   │   ├── outcome.types.ts       # 學習成果型別
+│   │   ├── review.types.ts        # 評價型別
 │   │   ├── email.types.ts         # 郵件型別
 │   │   ├── common.types.ts        # 通用型別
-│   │   ├── transform.types.ts     # 資料轉換型別
-│   │   ├── logging.types.ts       # 日誌型別
 │   │   ├── resource-review.types.ts # 資源評價型別
 │   │   ├── global.d.ts            # 全域型別聲明
-│   │   └── declarations/
-│   │       └── express.d.ts       # Express 請求擴展
+│   │   └── express.d.ts           # Express 請求擴展
 │   ├── validators/                # Zod 驗證架構
+│   │   ├── api-response.validators.ts # API 回應驗證器
 │   │   ├── auth.validators.ts     # 身份驗證驗證器
 │   │   ├── user.validators.ts     # 使用者驗證器
+│   │   ├── user-custom-id.validators.ts # 使用者自訂ID驗證器
 │   │   ├── resource.validator.ts  # 資源驗證器
 │   │   ├── project.validators.ts  # 專案驗證器
+│   │   ├── practice.validators.ts # 實踐系統驗證器
 │   │   ├── comment.validators.ts  # 評論驗證器
 │   │   ├── idea.validators.ts     # 想法驗證器
+│   │   ├── mentor.validators.ts   # 導師系統驗證器
+│   │   ├── milestone.validators.ts # 里程碑驗證器
+│   │   ├── note.validators.ts     # 筆記驗證器
+│   │   ├── outcome.validators.ts  # 學習成果驗證器
+│   │   ├── review.validators.ts   # 評價驗證器
+│   │   ├── me.validators.ts       # 個人資料驗證器
 │   │   ├── email.validators.ts    # 郵件驗證器
+│   │   ├── image.validators.ts    # 圖片上傳驗證器
+│   │   ├── tag.validators.ts      # 標籤驗證器
 │   │   ├── resource-review.validator.ts # 資源評價驗證器
-│   │   ├── request-params.validator.ts # 請求參數驗證器
-│   │   └── validation.middleware.ts # 驗證中間件
+│   │   └── request-params.validator.ts # 請求參數驗證器
 │   ├── utils/                     # 工具函數
-│   │   ├── error-handler.ts       # 錯誤處理工具
-│   │   ├── prisma-error-handler.ts # Prisma 錯誤處理
-│   │   ├── data-transform.ts      # 資料轉換工具
-│   │   ├── transform-utils.ts     # 轉換工具
-│   │   └── user-type-detection.ts # 使用者類型檢測
+│   │   ├── response-helper.ts     # API 回應輔助工具
+│   │   ├── error-factory.ts       # 錯誤工廠函數
+│   │   ├── async-wrapper.ts       # 異步處理包裝器
+│   │   └── model-bridge.ts        # JavaScript/TypeScript 模型橋接
 │   ├── swagger/                   # API 文檔定義
-│   │   ├── paths/                 # API 路徑定義
-│   │   │   ├── auth.paths.ts      # 身份驗證 API 路徑
-│   │   │   ├── user.paths.ts      # 使用者 API 路徑
-│   │   │   ├── resource.paths.ts  # 資源 API 路徑
-│   │   │   ├── comment.paths.ts   # 評論 API 路徑
-│   │   │   ├── tag.paths.ts       # 標籤 API 路徑
-│   │   │   ├── monitor.paths.ts   # 監控 API 路徑
-│   │   │   ├── db-info.paths.ts   # 資料庫資訊 API 路徑
-│   │   │   ├── resource-review.paths.ts # 資源評價 API 路徑
-│   │   │   └── common.paths.ts    # 通用 API 路徑
-│   │   └── schemas/               # API 模式定義
+│   │   └── schemas/               # Swagger 模式定義
 │   │       ├── auth.schemas.ts    # 身份驗證模式
 │   │       ├── user.schemas.ts    # 使用者模式
 │   │       ├── resource.schemas.ts # 資源模式
 │   │       ├── project.schemas.ts # 專案模式
+│   │       ├── practice.schemas.ts # 實踐系統模式
 │   │       ├── comment.schemas.ts # 評論模式
 │   │       ├── idea.schemas.ts    # 想法模式
+│   │       ├── mentor.schemas.ts  # 導師系統模式
+│   │       ├── milestone.schemas.ts # 里程碑模式
+│   │       ├── note.schemas.ts    # 筆記模式
+│   │       ├── outcome.schemas.ts # 學習成果模式
+│   │       ├── review.schemas.ts  # 評價模式
+│   │       ├── me.schemas.ts      # 個人資料模式
+│   │       ├── email.schemas.ts   # 郵件模式
+│   │       ├── image.schemas.ts   # 圖片模式
 │   │       ├── tag.schemas.ts     # 標籤模式
 │   │       ├── monitor.schemas.ts # 監控模式
 │   │       ├── db-info.schemas.ts # 資料庫資訊模式
@@ -728,26 +736,118 @@ npm test -- --onlyFailures
 
 ## CI/CD 流程
 
-本專案使用 GitHub Actions 實現持續整合和持續部署，工作流程定義於 `.github/workflows/main.yml`。
+本專案採用 **現代化 CI/CD 管道**，使用 GitHub Actions 實現智慧化的持續整合和持續部署，確保程式碼品質和部署穩定性。
 
-### 主要階段
+### 工作流程架構
 
-1. **測試階段**：運行所有測試，確保程式碼品質
-2. **構建與部署階段**：
-   - 根據分支（main 或 dev）決定部署環境
-   - 使用 SSH 連接到 Linode 伺服器
-   - 部署應用並重啟服務
-3. **驗證階段**：
-   - 檢查 Docker 容器狀態
-   - 檢查系統資源使用情況
-   - 檢查應用日誌
-4. **通知階段**：
-   - 使用 Discord Webhook 發送部署結果通知
+#### 持續整合 (CI) - `continuous-integration.yml`
+- **觸發條件**: PR 提交到 main/dev 分支，手動觸發，或被 CD 工作流程調用
+- **核心功能**: 
+  - 依賴管理和快取優化
+  - Prisma 和 OpenAPI 類型自動生成
+  - 並行執行 TypeScript 類型檢查、ESLint 和 Jest 測試
+  - 生成文件上傳為 artifact 供 CD 使用
+- **通知機制**: 成功/失敗狀態自動通知團隊 Discord 頻道
 
-### 部署環境
+#### 持續部署 (CD) - `continuous-delivery.yml`
+- **觸發條件**: 推送到 main/dev 分支，支援手動觸發和強制部署選項
+- **智慧構建策略**: 
+  - 自動檢測 TypeScript 類型文件變更
+  - 類型變更時禁用 Docker 快取，確保正確重建
+  - 多層快取策略：Registry、GitHub Actions、BuildKit
+- **Docker 優化**: 
+  - 分層構建策略，類型文件獨立層確保變更觸發
+  - 構建驗證：容器運行測試、健康檢查、映像大小監控
+- **部署環境**: 
+  - main 分支 → 生產環境 (需要審核)
+  - dev 分支 → 開發環境
 
-- **主分支 (main)**: 生產環境
-- **開發分支 (dev)**: 開發環境
+#### 緊急修復 (Emergency Rebuild) - `emergency-rebuild.yml`
+- **觸發條件**: 手動觸發，用於解決快取相關的構建問題
+- **特殊功能**:
+  - 完全清除所有快取 (pnpm、Docker system、builder)
+  - 強制重新構建，確保無快取干擾
+  - 支援跳過測試的緊急部署選項
+  - 詳細的構建驗證和狀態通知
+
+### Docker 構建優化
+
+#### 智慧分層策略 (Dockerfile)
+```dockerfile
+# 第一步：TypeScript 配置和類型文件 (類型變更觸發重建)
+COPY tsconfig*.json ./
+COPY src/types/ ./src/types/
+
+# 第二步：其餘源碼文件 (源碼變更觸發重建)  
+COPY src/ ./src/
+# ... 其他文件
+
+# 第三步：TypeScript 類型檢查 (確保類型正確)
+RUN pnpm run typecheck
+
+# 第四步：構建編譯
+RUN pnpm run build
+```
+
+#### 快取最佳化策略
+- **依賴層快取**: package.json 變更才重新安裝依賴
+- **Prisma 快取**: schema.prisma 變更才重新生成客戶端
+- **類型感知快取**: 類型文件變更時自動重建相關層
+- **多源快取**: Registry、GitHub Actions、BuildKit 三重快取
+
+### API 一致性保證
+
+#### External ID 統一架構
+為確保前端 API 一致性，所有對外 API 均使用 UUID 格式的 `external_id`：
+
+- **Idea API**: 創建/查詢想法時返回 UUID 格式的 `id`
+- **Practice API**: 學習實踐記錄使用 UUID 識別
+- **Project API**: 專案管理採用 UUID 路由
+- **Resource API**: 資源管理統一 UUID 格式
+- **安全優勢**: 防止 ID 猜測攻擊，提升 API 安全性
+
+#### 類型安全更新流程
+1. **自動檢測**: CI/CD 自動識別 TypeScript 類型變更
+2. **快取控制**: 類型變更時禁用 Docker 快取確保正確重建
+3. **類型驗證**: 構建前執行完整 TypeScript 類型檢查
+4. **API 測試**: 構建後驗證 API 回應格式正確性
+
+### 監控和告警
+
+#### 構建監控
+- **快取效率**: 自動記錄快取命中率和構建時間
+- **映像大小**: 監控 Docker 映像大小，超過 1GB 發出警告  
+- **構建狀態**: 即時通知構建成功/失敗狀態
+- **性能追蹤**: 追蹤不同階段的構建時間
+
+#### Discord 整合通知
+- **CI 狀態**: 測試通過/失敗即時通知
+- **部署狀態**: 部署成功/失敗詳細報告
+- **緊急重建**: 緊急修復操作狀態追蹤
+- **系統警告**: 映像大小、構建時間異常警告
+
+### 部署環境管理
+
+#### 環境分離策略
+- **Production (main 分支)**:
+  - 需要手動審核通過才能部署
+  - 完整的構建驗證和測試
+  - 藍綠部署確保零停機時間
+- **Development (dev 分支)**:
+  - 自動部署，快速疊代
+  - 相同的構建流程確保環境一致性
+
+#### 部署驗證機制
+- **容器健康檢查**: 驗證應用正常啟動
+- **API 端點測試**: 驗證關鍵 API 功能
+- **資料庫連接**: 確認資料庫服務正常
+- **系統資源**: 監控記憶體、CPU 使用情況
+
+這個現代化的 CI/CD 系統確保了：
+- **品質保證**: 完整的測試覆蓋和類型檢查
+- **部署穩定**: 智慧快取和構建優化  
+- **問題解決**: 緊急修復機制和詳細監控
+- **團隊協作**: 即時通知和狀態追蹤
 
 ## 貢獻指南
 

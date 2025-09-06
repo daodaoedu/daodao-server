@@ -3,7 +3,7 @@
  */
 
 interface SwaggerOptions {
-  definition: any;
+  definition: Record<string, unknown>;
   apis: string[];
 }
 

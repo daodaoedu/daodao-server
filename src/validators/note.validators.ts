@@ -291,13 +291,13 @@ export const noteProjectParamsSchema = z.object({
  * 公開便利貼查詢參數驗證模式
  */
 export const publicNotesQuerySchema = z.object({
-  page: z.string().regex(/^\d+$/, '頁數必須是正整數').transform(Number).optional().default(1 as any)
+  page: z.string().regex(/^\d+$/, '頁數必須是正整數').transform(Number).optional().default(1)
     .describe("公開便利貼列表的頁碼")
     .meta({
       title: "頁碼",
       examples: ["1", "2", "3"]
     }),
-  pageSize: z.string().regex(/^\d+$/, '每頁數量必須是正整數').transform(Number).optional().default(10 as any)
+  pageSize: z.string().regex(/^\d+$/, '每頁數量必須是正整數').transform(Number).optional().default(10)
     .describe("每頁顯示的公開便利貼數量")
     .meta({
       title: "每頁數量",

@@ -307,17 +307,16 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
 /**
  * Update user preferences
  */
-const updateMyPreferences = async (userId: number, request: UpdatePreferencesRequest): Promise<ApiSuccessResponse<{ updated: number; created: number; deleted: number }>> => {
+const updateMyPreferences = async (userId: number, request: UpdatePreferencesRequest): Promise<ApiSuccessResponse<{ processed: number; deleted: number }>> => {
   try {
-    let updated = 0;
-    let created = 0;
+    let processed = 0;
     let deleted = 0;
 
     // Process each preference update
     for (const pref of request.preferences) {
       if (pref.isSelected) {
         // Create or update preference
-        const result = await prisma.user_preferences.upsert({
+        await prisma.user_preferences.upsert({
           where: {
             user_id_preference_option_id: {
               user_id: userId,
@@ -338,11 +337,7 @@ const updateMyPreferences = async (userId: number, request: UpdatePreferencesReq
           }
         });
 
-        if (result.created_at?.getTime() === result.updated_at?.getTime()) {
-          created++;
-        } else {
-          updated++;
-        }
+        processed++;
       } else {
         // Delete preference if not selected
         const deleteResult = await prisma.user_preferences.deleteMany({
@@ -357,15 +352,14 @@ const updateMyPreferences = async (userId: number, request: UpdatePreferencesReq
 
     loggerService.info('User preferences updated', { 
       userId, 
-      updated, 
-      created, 
+      processed, 
       deleted 
     });
 
     return createSuccessResponse(
-      { updated, created, deleted },
+      { processed, deleted },
       {
-        message: `偏好設定已更新：新增 ${created} 項，更新 ${updated} 項，刪除 ${deleted} 項`
+        message: `偏好設定已更新：處理 ${processed} 項，刪除 ${deleted} 項`
       }
     );
 
