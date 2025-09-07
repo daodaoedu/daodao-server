@@ -315,27 +315,36 @@ const updateMyPreferences = async (userId: number, request: UpdatePreferencesReq
     // Process each preference update
     for (const pref of request.preferences) {
       if (pref.isSelected) {
-        // Create or update preference
-        await prisma.user_preferences.upsert({
+        // Check if preference exists
+        const existing = await prisma.user_preferences.findFirst({
           where: {
-            user_id_preference_option_id: {
-              user_id: userId,
-              preference_option_id: pref.optionId
-            }
-          },
-          update: {
-            is_selected: pref.isSelected,
-            preference_weight: pref.weight || 1.0,
-            updated_at: new Date()
-          },
-          create: {
             user_id: userId,
-            preference_option_id: pref.optionId,
-            is_selected: pref.isSelected,
-            preference_weight: pref.weight || 1.0,
-            access_count: 0
+            preference_option_id: pref.optionId
           }
         });
+
+        if (existing) {
+          // Update existing preference
+          await prisma.user_preferences.update({
+            where: { id: existing.id },
+            data: {
+              is_selected: pref.isSelected,
+              preference_weight: pref.weight || 1.0,
+              updated_at: new Date()
+            }
+          });
+        } else {
+          // Create new preference
+          await prisma.user_preferences.create({
+            data: {
+              user_id: userId,
+              preference_option_id: pref.optionId,
+              is_selected: pref.isSelected,
+              preference_weight: pref.weight || 1.0,
+              access_count: 0
+            }
+          });
+        }
 
         processed++;
       } else {
