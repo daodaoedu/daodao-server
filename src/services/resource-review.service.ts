@@ -36,6 +36,9 @@ import {
 import { DEFAULT_REVIEW_PAGE_LIMIT, MAX_REVIEW_PAGE_LIMIT } from '@/constants/mappings';
 import tagService from '@/services/tag.service';
 
+// 事務客戶端類型定義
+type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+
 // 定義篩選參數介面
 interface ReviewFilterParams {
   resourceId?: string; // resourceId 是 external_id (UUID)
@@ -57,11 +60,17 @@ interface PaginationParams {
 /**
  * 根據 ID 獲取心得評價
  * @param id - 心得評價 ID
+ * @param transaction - 可選的事務客戶端
  * @returns 心得評價詳情
  */
-export async function getReviewById(id: number): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
+export async function getReviewById(
+  id: number, 
+  transaction?: TransactionClient | typeof prisma
+): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
+  const tx = transaction || prisma;
+  
   // 查詢心得評價，包含關聯資料
-  const review = await prisma.resource_review.findUnique({
+  const review = await tx.resource_review.findUnique({
     where: { 
       id,
       deleted_at: null
@@ -94,7 +103,7 @@ export async function getReviewById(id: number): Promise<ApiSuccessResponse<Reso
   }
 
   // 查詢標籤
-  const tags = await prisma.entity_tags.findMany({
+  const tags = await tx.entity_tags.findMany({
     where: {
       entity_type: 'resource',
       entity_id: review.id
@@ -379,7 +388,7 @@ export async function createReview(
     }
 
     // 查詢完整的心得評價數據（包含關聯數據）
-    const reviewResponse = await getReviewById(review.id);
+    const reviewResponse = await getReviewById(review.id, tx);
     return reviewResponse;
   });
 }
@@ -446,7 +455,7 @@ export async function updateReview(
     }
 
     // 查詢更新後的心得評價
-    return await getReviewById(id);
+    return await getReviewById(id, tx);
   });
 }
 
