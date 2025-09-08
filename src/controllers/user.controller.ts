@@ -11,6 +11,10 @@ import {
   UpdateUserRequest,
   SetCustomIdRequest
 } from '../types/user.types';
+import type {
+  PreferencesQueryParams,
+  UpdatePreferencesData
+} from '../validators/me.validators';
 import {
   NotFoundError
 } from '../middleware/error.middleware';
@@ -188,11 +192,13 @@ export const getUserByCustomId = asyncHandler(async (req: Request, res: Response
 export const getUserPreferences = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
-  if (!currentUser) {
-    throw new NotFoundError('User not found');
+  if (!currentUser || !currentUser.id) {
+    throw new Error('需要登入才能查看個人偏好設定');
   }
 
-  const result = await userService.getUserPreferences(currentUser.id);
+  // 查詢參數已經在 routes 層級驗證過
+  const params = req.query as unknown as PreferencesQueryParams;
+  const result = await userService.getUserPreferences(currentUser.id, params);
 
   res.json(result);
 });
@@ -203,13 +209,14 @@ export const getUserPreferences = asyncHandler(async (req: Request, res: Respons
  */
 export const updateUserPreferences = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
-  const preferences = req.body.preferences as Record<string, string[]>;
 
-  if (!currentUser) {
-    throw new NotFoundError('User not found');
+  if (!currentUser || !currentUser.id) {
+    throw new Error('需要登入才能更新個人偏好設定');
   }
 
-  const result = await userService.updateUserPreferences(currentUser.id, preferences);
+  // 請求資料已經在 routes 層級驗證過
+  const requestData = req.body as UpdatePreferencesData;
+  const result = await userService.updateUserPreferences(currentUser.id, requestData);
 
   res.json(result);
 });

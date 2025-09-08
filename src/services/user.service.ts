@@ -14,6 +14,13 @@ import {
   CompletenessWeights
 } from '../types/user.types';
 import {
+  UserPreference
+} from '../types/me.types';
+import {
+  PreferencesQueryParams,
+  UpdatePreferencesRequest
+} from '../validators/me.validators';
+import {
   ApiSuccessResponse,
   PaginatedApiResponse
 } from '../types/api-response.types';
@@ -1135,42 +1142,47 @@ const removeCustomId = async (userId: number): Promise<ApiSuccessResponse<{ mess
 /**
  * 獲取用戶偏好設定
  */
-const getUserPreferences = async (userId: number): Promise<ApiSuccessResponse<Record<string, Array<{ name: string; value: string }>>>> => {
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: {
-      user_preferences: {
-        where: {
-          is_selected: true
-        },
-        include: {
-          preference_options: {
-            include: {
-              preference_types: true
-            }
+const getUserPreferences = async (userId: number, _params: PreferencesQueryParams): Promise<ApiSuccessResponse<{ preferences: UserPreference[]; categories: unknown[] }>> => {
+  try {
+    const where: Record<string, unknown> = { user_id: userId };
+
+    const userPreferences = await prisma.user_preferences.findMany({
+      where,
+      include: {
+        preference_options: {
+          include: {
+            preference_types: true
           }
         }
       }
-    }
-  });
-
-  if (!user) {
-    throw new NotFoundError('用戶不存在');
-  }
-
-  const preferences = user.user_preferences?.reduce((acc, pref) => {
-    const typeValue = pref.preference_options.preference_types.value;
-    if (!acc[typeValue]) {
-      acc[typeValue] = [];
-    }
-    acc[typeValue].push({
-      name: pref.preference_options.name,
-      value: pref.preference_options.value
     });
-    return acc;
-  }, {} as Record<string, Array<{ name: string; value: string }>>);
 
-  return createSuccessResponse(preferences || {});
+    const preferences: UserPreference[] = userPreferences.map(pref => ({
+      id: pref.id,
+      userId: pref.user_id,
+      preferenceTypeId: pref.preference_option_id,
+      optionId: pref.preference_option_id,
+      isSelected: pref.is_selected,
+      weight: pref.weight || 1.0,
+      preferenceTypeName: pref.preference_options.preference_types.name,
+      optionName: pref.preference_options.name,
+      optionValue: pref.preference_options.value,
+      category: pref.preference_options.preference_types.category || 'default',
+      createdAt: pref.created_at,
+      updatedAt: pref.updated_at
+    }));
+
+    // Get categories (for now, return empty array to match interface)
+    const categories: unknown[] = [];
+
+    return createSuccessResponse({
+      preferences,
+      categories
+    });
+
+  } catch (error) {
+    throw new Error('獲取個人偏好設定失敗');
+  }
 };
 
 /**
