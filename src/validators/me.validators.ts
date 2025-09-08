@@ -272,19 +272,12 @@ export const updatePreferencesSchema = z.object({
         title: "選擇狀態",
         examples: [true, false]
       }),
-    weight: z.number().min(0).max(10).default(1.0).optional()
-      .describe("偏好權重，用於優先級排序")
-      .meta({
-        title: "偏好權重",
-        examples: [1.0, 2.5, 5.0, 8.0, 10.0]
-      })
   }).describe("單個偏好設定項目").meta({
     title: "偏好設定項目",
     examples: [{
       preferenceTypeId: 1,
       optionId: 101,
-      isSelected: true,
-      weight: 5.0
+      isSelected: true
     }]
   })).min(1, 'At least one preference must be provided').max(50, 'Too many preferences in one request')
     .describe("偏好設定更新的項目列表")
@@ -294,14 +287,12 @@ export const updatePreferencesSchema = z.object({
         {
           preferenceTypeId: 1,
           optionId: 101,
-          isSelected: true,
-          weight: 5.0
+          isSelected: true
         },
         {
           preferenceTypeId: 2,
           optionId: 202,
-          isSelected: false,
-          weight: 3.0
+          isSelected: false
         }
       ]]
     })
@@ -312,14 +303,12 @@ export const updatePreferencesSchema = z.object({
       {
         preferenceTypeId: 1,
         optionId: 101,
-        isSelected: true,
-        weight: 5.0
+        isSelected: true
       },
       {
         preferenceTypeId: 2,
         optionId: 202,
-        isSelected: false,
-        weight: 3.0
+        isSelected: false
       }
     ]
   }]
@@ -328,5 +317,3 @@ export const updatePreferencesSchema = z.object({
 // 額外的類型導出
 export type UpdatePreferencesData = z.infer<typeof updatePreferencesSchema>;
 
-// 保留舊的類型名稱以保持向後兼容
-export type UpdatePreferencesRequest = UpdatePreferencesData;

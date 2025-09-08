@@ -17,8 +17,7 @@ import {
   UserPreference
 } from '../types/me.types';
 import {
-  PreferencesQueryParams,
-  UpdatePreferencesRequest
+  PreferencesQueryParams
 } from '../validators/me.validators';
 import {
   ApiSuccessResponse,
@@ -1157,19 +1156,25 @@ const getUserPreferences = async (userId: number, _params: PreferencesQueryParam
       }
     });
 
-    const preferences: UserPreference[] = userPreferences.map(pref => ({
+    const preferences = userPreferences.map(pref => ({
       id: pref.id,
-      userId: pref.user_id,
-      preferenceTypeId: pref.preference_option_id,
+      preferenceTypeId: pref.preference_options.preference_type_id,
       optionId: pref.preference_option_id,
-      isSelected: pref.is_selected,
-      weight: pref.weight || 1.0,
-      preferenceTypeName: pref.preference_options.preference_types.name,
-      optionName: pref.preference_options.name,
-      optionValue: pref.preference_options.value,
-      category: pref.preference_options.preference_types.category || 'default',
-      createdAt: pref.created_at,
-      updatedAt: pref.updated_at
+      isSelected: pref.is_selected || false,
+      preferenceType: {
+        id: pref.preference_options.preference_types.id,
+        name: pref.preference_options.preference_types.name,
+        value: pref.preference_options.preference_types.value,
+        description: pref.preference_options.preference_types.description || undefined,
+        maxSelections: pref.preference_options.preference_types.max_selections || undefined,
+        options: []
+      },
+      option: {
+        id: pref.preference_options.id,
+        value: pref.preference_options.value,
+        name: pref.preference_options.name,
+        description: pref.preference_options.description || undefined
+      }
     }));
 
     // Get categories (for now, return empty array to match interface)
@@ -1190,8 +1195,8 @@ const getUserPreferences = async (userId: number, _params: PreferencesQueryParam
  */
 const updateUserPreferences = async (
   userId: number, 
-  preferences: Record<string, string[]>
-): Promise<ApiSuccessResponse<{ message: string; preferences: Record<string, Array<{ name: string; value: string }>> }>> => {
+  requestData: { preferences: Array<{ preferenceTypeId: number; optionId: number; isSelected: boolean }> }
+): Promise<ApiSuccessResponse<{ updated: number; created: number; deleted: number; message: string }>> => {
   return await prisma.$transaction(async (tx) => {
     const user = await tx.users.findUnique({
       where: { id: userId }
@@ -1201,43 +1206,75 @@ const updateUserPreferences = async (
       throw new NotFoundError('用戶不存在');
     }
 
-    // Handle preferences
-    await handleUserPreferences(userId, preferences, tx);
+    // 處理偏好設定
+    let updated = 0;
+    let created = 0;
+    let deleted = 0;
 
-    // Get updated preferences
-    const updatedUser = await tx.users.findUnique({
-      where: { id: userId },
-      include: {
-        user_preferences: {
-          where: {
-            is_selected: true
-          },
-          include: {
-            preference_options: {
-              include: {
-                preference_types: true
-              }
-            }
+    for (const pref of requestData.preferences) {
+      // 檢查選項是否存在
+      const option = await tx.preference_options.findUnique({
+        where: { id: pref.optionId },
+        include: { preference_types: true }
+      });
+
+      if (!option) {
+        throw new Error(`偏好選項不存在: ${pref.optionId}`);
+      }
+
+      if (option.preference_type_id !== pref.preferenceTypeId) {
+        throw new Error('偏好類型與選項不匹配');
+      }
+
+      // 查找現有的偏好設定
+      const existingPref = await tx.user_preferences.findUnique({
+        where: {
+          user_id_preference_option_id: {
+            user_id: userId,
+            preference_option_id: pref.optionId
           }
         }
-      }
-    });
-
-    const formattedPreferences = updatedUser?.user_preferences?.reduce((acc, pref) => {
-      const typeValue = pref.preference_options.preference_types.value;
-      if (!acc[typeValue]) {
-        acc[typeValue] = [];
-      }
-      acc[typeValue].push({
-        name: pref.preference_options.name,
-        value: pref.preference_options.value
       });
-      return acc;
-    }, {} as Record<string, Array<{ name: string; value: string }>>);
 
-    return createSuccessResponse({ 
-      message: '偏好設定已成功更新',
-      preferences: formattedPreferences || {}
+      if (pref.isSelected) {
+        // 如果選擇此選項
+        if (existingPref) {
+          // 更新現有記錄
+          await tx.user_preferences.update({
+            where: { id: existingPref.id },
+            data: {
+              is_selected: true,
+              updated_at: new Date()
+            }
+          });
+          updated++;
+        } else {
+          // 創建新記錄
+          await tx.user_preferences.create({
+            data: {
+              user_id: userId,
+              preference_option_id: pref.optionId,
+              is_selected: true
+            }
+          });
+          created++;
+        }
+      } else {
+        // 如果不選擇此選項，刪除現有記錄
+        if (existingPref) {
+          await tx.user_preferences.delete({
+            where: { id: existingPref.id }
+          });
+          deleted++;
+        }
+      }
+    }
+
+    return createSuccessResponse({
+      updated,
+      created,
+      deleted,
+      message: '偏好設定更新成功'
     });
   });
 };
