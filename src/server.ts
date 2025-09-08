@@ -49,7 +49,8 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:4000',
-      'https://www.daoedu.tw'
+      'https://www.daoedu.tw',
+      'https://staging-daodao-f2e.daoedu.workers.dev'
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
     const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
@@ -59,11 +60,11 @@ const corsOptions = {
     // 允許已配置的來源
     // 允許 Chrome 擴充功能
     // 允許本地開發
-    if (!origin || 
-        allowedOrigins.includes(origin) || 
-        daodaoTestPattern.test(origin) ||
-        localhostPattern.test(origin) ||
-        chromeExtensionPattern.test(origin)) {
+    if (!origin ||
+      allowedOrigins.includes(origin) ||
+      daodaoTestPattern.test(origin) ||
+      localhostPattern.test(origin) ||
+      chromeExtensionPattern.test(origin)) {
       callback(null, true);
     } else {
       // 對於靜態資源（如 favicon），允許所有來源
@@ -117,10 +118,10 @@ async function startServer() {
     // 初始化資料庫連線
     await prismaService.connect();
     console.log('🗄️ 資料庫連線已建立');
-    
+
     // 設置 TypeScript 路由
     setupTypescriptRoutes(app);
-    
+
     // 404 處理 (必須在路由設置之後)
     app.use('*', (req, res) => {
       res.status(404).json({
@@ -137,7 +138,7 @@ async function startServer() {
         message: 'Internal server error'
       });
     });
-    
+
     // 啟動服務器
     app.listen(PORT, () => {
       console.log(`🚀 TypeScript Server running on port ${PORT}`);

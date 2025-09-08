@@ -17,13 +17,16 @@ import {
   createUserSchema,
   updateUserSchema,
   getUserParamsSchema,
-  getUserQuerySchema,
-  userPreferencesSchema
+  getUserQuerySchema
 } from '../validators/user.validators';
 import {
   customIdSchema,
   customIdParamsSchema
 } from '../validators/user-custom-id.validators';
+import {
+  preferencesQuerySchema,
+  updatePreferencesSchema
+} from '../validators/me.validators';
 
 const router = Router();
 
@@ -94,22 +97,24 @@ router.delete('/me/custom-id',
 /**
  * GET /users/me/preferences
  * 獲取當前用戶的偏好設定
+ * 查詢參數：category, includeSystem
  * 需要身份驗證
  */
 router.get('/me/preferences',
   authenticate,
+  validate(preferencesQuerySchema, 'query'),
   userController.getUserPreferences as RequestHandler
 );
 
 /**
  * PUT /users/me/preferences
  * 更新當前用戶的偏好設定
- * 請求體：{ preferences: Record<string, string[]> }
+ * 請求體：preferences array with preferenceTypeId, optionId, isSelected, weight
  * 需要身份驗證
  */
 router.put('/me/preferences',
   authenticate,
-  validate(userPreferencesSchema, 'body'),
+  validate(updatePreferencesSchema, 'body'),
   userController.updateUserPreferences as RequestHandler
 );
 

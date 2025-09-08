@@ -63,7 +63,7 @@ export const createUserSchema = z.object({
         "other": "其他"
       }
     }),
-  birthDate: z.string().or(z.date())
+  birthDay: z.string().or(z.date())
     .optional()
     .describe("出生日期")
     .meta({
@@ -205,7 +205,7 @@ export const updateUserSchema = z.object({
       title: "電子郵件",
       examples: ["john@example.com", "alice.smith@company.com", "user123@gmail.com"]
     }),
-  photoUrl: z.string()
+  photoURL: z.string()
     .url("無效的 URL 格式")
     .optional()
     .describe("個人大頭照 URL")
@@ -225,7 +225,7 @@ export const updateUserSchema = z.object({
         "other": "其他"
       }
     }),
-  birthDate: z.string().or(z.date())
+  birthDay: z.string().or(z.date())
     .optional()
     .describe("出生日期")
     .meta({
@@ -442,11 +442,11 @@ const formattedUserResponseSchema = z.object({
     .describe("用戶姓名"),
   email: z.string().email()
     .describe("電子郵件地址"),
-  photoUrl: z.string().url().nullable()
+  photoURL: z.string().url().nullable()
     .describe("個人大頭照 URL"),
   gender: z.enum(['male', 'female', 'other']).nullable()
     .describe("性別"),
-  birthDate: z.string().nullable()
+  birthDay: z.string().nullable()
     .describe("出生日期"),
   educationStage: z.enum(['university', 'high', 'other']).nullable()
     .describe("教育階段"),
@@ -458,8 +458,6 @@ const formattedUserResponseSchema = z.object({
     .describe("是否訂閱電子郵件"),
   location: z.string().nullable()
     .describe("地區代碼"),
-  roleList: z.array(z.string()).nullable()
-    .describe("角色清單"),
   selfIntroduction: z.string().nullable()
     .describe("自我介紹"),
   share: z.union([z.string(), z.array(z.string())]).nullable()
@@ -488,6 +486,31 @@ const formattedUserResponseSchema = z.object({
           { "name": "影片教學", "value": "video" },
           { "name": "文章閱讀", "value": "article" }
         ]
+      }]
+    }),
+  role: z.number().int().nullable()
+    .describe("角色 ID"),
+  roleList: z.array(z.string()).nullable()
+    .describe("角色清單")
+    .meta({
+      title: "角色清單", 
+      examples: [["工程師", "學生"], ["設計師"], ["產品經理", "創業家"]]
+    }),
+  basicInfo: z.object({
+    selfIntroduction: z.string().nullable()
+      .describe("自我介紹"),
+    shareList: z.union([z.string(), z.array(z.string())]).nullable()
+      .describe("分享內容"),
+    wantToDoList: z.array(z.string()).nullable()
+      .describe("想做的事情清單")
+  }).nullable()
+    .describe("基本資訊物件")
+    .meta({
+      title: "基本資訊",
+      examples: [{
+        selfIntroduction: "我是一名前端工程師，熱愛學習新技術",
+        shareList: "我的學習筆記",
+        wantToDoList: ["學習 React", "開發個人網站"]
       }]
     }),
   contactList: z.object({
@@ -520,9 +543,9 @@ const formattedUserResponseSchema = z.object({
       title: "自訂 ID 建立時間",
       examples: ["2024-01-15T10:30:00.000Z"]
     }),
-  createdAt: z.string().datetime()
+  createdDate: z.string().datetime()
     .describe("建立時間"),
-  updatedAt: z.string().datetime()
+  updatedDate: z.string().datetime()
     .describe("最後更新時間")
 }).describe("格式化的用戶資料").meta({
   title: "用戶資料",
@@ -582,11 +605,17 @@ export const userSuccessResponseSchema = apiSuccessResponseSchema(formattedUserR
         _id: "123e4567-e89b-12d3-a456-426614174000",
         name: "王小明",
         email: "wang.xiaoming@example.com",
-        photoUrl: "https://example.com/avatar/wang.jpg",
+        photoURL: "https://example.com/avatar/wang.jpg",
         gender: "male",
         educationStage: "university",
         location: "taipei",
-        roleList: ["工程師", "學生"]
+        roleList: ["工程師", "學生"],
+        role: 2,
+        basicInfo: {
+          selfIntroduction: "我是一名前端工程師，熱愛學習新技術",
+          shareList: "我的學習筆記",
+          wantToDoList: ["學習 React", "開發個人網站"]
+        }
       },
       timestamp: "2024-01-15T10:30:00.000Z"
     }]
