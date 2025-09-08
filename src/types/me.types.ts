@@ -137,11 +137,6 @@ export interface UserPreference {
   preferenceTypeId: number;
   optionId: number;
   isSelected: boolean;
-  weight: number;
-  lastAccessedAt?: string;
-  accessCount: number;
-  createdAt: string;
-  updatedAt?: string;
   preferenceType: PreferenceType;
   option: PreferenceOption;
 }
@@ -155,7 +150,6 @@ export interface MyPreferencesResponse {
       userSelections: Array<{
         optionId: number;
         isSelected: boolean;
-        weight: number;
       }>;
     }>;
   };

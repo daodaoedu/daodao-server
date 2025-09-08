@@ -27,8 +27,7 @@ import {
   PracticeQueryParams,
   PracticeStatsQueryParams,
   ResourcesQueryParams,
-  PreferencesQueryParams,
-  UpdatePreferencesRequest
+  PreferencesQueryParams
 } from '../validators/me.validators';
 
 /**
@@ -245,11 +244,6 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
       preferenceTypeId: pref.preference_options.preference_types.id,
       optionId: pref.preference_option_id,
       isSelected: pref.is_selected || false,
-      weight: Number(pref.preference_weight) || 1.0,
-      lastAccessedAt: pref.last_accessed_at?.toISOString(),
-      accessCount: pref.access_count || 0,
-      createdAt: pref.created_at?.toISOString() || '',
-      updatedAt: pref.updated_at?.toISOString(),
       preferenceType: {
         id: pref.preference_options.preference_types.id,
         name: pref.preference_options.preference_types.name,
@@ -261,8 +255,8 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
       option: {
         id: pref.preference_options.id,
         value: pref.preference_options.value,
-        name: pref.preference_options.value, // Assuming value is display name
-        description: undefined // Not available in current schema
+        name: pref.preference_options.name,
+        description: pref.preference_options.description || undefined
       }
     }));
 
@@ -279,7 +273,6 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
       categoriesMap.get(typeId).userSelections.push({
         optionId: pref.optionId,
         isSelected: pref.isSelected,
-        weight: pref.weight
       });
     });
 
@@ -288,7 +281,7 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
     const stats = {
       totalPreferences: preferences.length,
       activeSelections: preferences.filter(p => p.isSelected).length,
-      lastUpdated: preferences[0]?.updatedAt
+      lastUpdated: undefined
     };
 
     loggerService.info('User preferences retrieved', { userId, count: preferences.length });
@@ -307,7 +300,7 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
 /**
  * Update user preferences
  */
-const updateMyPreferences = async (userId: number, request: UpdatePreferencesRequest): Promise<ApiSuccessResponse<{ processed: number; deleted: number }>> => {
+const updateMyPreferences = async (userId: number, request: { preferences: Array<{ preferenceTypeId: number; optionId: number; isSelected: boolean }> }): Promise<ApiSuccessResponse<{ processed: number; deleted: number }>> => {
   try {
     let processed = 0;
     let deleted = 0;
@@ -329,7 +322,6 @@ const updateMyPreferences = async (userId: number, request: UpdatePreferencesReq
             where: { id: existing.id },
             data: {
               is_selected: pref.isSelected,
-              preference_weight: pref.weight || 1.0,
               updated_at: new Date()
             }
           });
@@ -340,7 +332,6 @@ const updateMyPreferences = async (userId: number, request: UpdatePreferencesReq
               user_id: userId,
               preference_option_id: pref.optionId,
               is_selected: pref.isSelected,
-              preference_weight: pref.weight || 1.0,
               access_count: 0
             }
           });
