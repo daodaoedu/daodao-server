@@ -4,8 +4,8 @@
  */
 
 import { z } from 'zod';
-import { 
-  apiSuccessResponseSchema, 
+import {
+  apiSuccessResponseSchema,
   paginatedApiResponseSchema
 } from './api-response.validators';
 
@@ -174,7 +174,7 @@ export const createUserSchema = z.object({
   title: "創建用戶",
   examples: [{
     gender: "male",
-    birthDate: "1995-06-15",
+    birthDay: "1995-06-15",
     educationStage: "university",
     isOpenLocation: true,
     isOpenProfile: true,
@@ -323,7 +323,7 @@ export const updateUserSchema = z.object({
   examples: [{
     name: "王小明",
     email: "wang.xiaoming@example.com",
-    photoUrl: "https://example.com/avatar/wang.jpg",
+    photoURL: "https://example.com/avatar/wang.jpg",
     selfIntroduction: "更新後的自我介紹，我是一名全端工程師",
     tagList: ["JavaScript", "Python", "全窯開發"]
   }]
@@ -408,7 +408,7 @@ export const getUserQuerySchema = z.object({
 export const userPreferencesSchema = z.object({
   preferences: z.record(z.string(), z.array(z.string()))
     .refine(
-      (data) => Object.keys(data).length > 0, 
+      (data) => Object.keys(data).length > 0,
       { message: "至少需要一個偏好設定" }
     )
     .describe("用戶個人偏好設定")
@@ -493,7 +493,7 @@ const formattedUserResponseSchema = z.object({
   roleList: z.array(z.string()).nullable()
     .describe("角色清單")
     .meta({
-      title: "角色清單", 
+      title: "角色清單",
       examples: [["工程師", "學生"], ["設計師"], ["產品經理", "創業家"]]
     }),
   basicInfo: z.object({
@@ -515,7 +515,7 @@ const formattedUserResponseSchema = z.object({
     }),
   contactList: z.object({
     email: z.string().nullable(),
-    photoUrl: z.string().nullable(), 
+    photoURL: z.string().nullable(),
     isSubscribeEmail: z.boolean().nullable(),
     instagram: z.string().nullable(),
     discord: z.string().nullable(),
@@ -554,9 +554,9 @@ const formattedUserResponseSchema = z.object({
     _id: "123e4567-e89b-12d3-a456-426614174000",
     name: "王小明",
     email: "wang.xiaoming@example.com",
-    photoUrl: "https://example.com/avatar/wang.jpg",
+    photoURL: "https://example.com/avatar/wang.jpg",
     gender: "male",
-    birthDate: "1995-06-15",
+    birthDay: "1995-06-15",
     educationStage: "university",
     isOpenLocation: true,
     isOpenProfile: true,
@@ -578,7 +578,7 @@ const formattedUserResponseSchema = z.object({
     },
     contactList: {
       email: "wang.xiaoming@example.com",
-      photoUrl: "https://example.com/avatar/wang.jpg",
+      photoURL: "https://example.com/avatar/wang.jpg",
       isSubscribeEmail: true,
       instagram: "@wang_xiaoming",
       discord: "WangXM#1234",
@@ -669,22 +669,22 @@ export const createUserResponseSchema = apiSuccessResponseSchema(
     token: z.string().describe("JWT 認證 token")
   })
 ).describe("創建用戶成功回應")
-.meta({
-  title: "創建用戶回應",
-  examples: [{
-    success: true,
-    data: {
-      user: {
-        id: 125,
-        _id: "789e0123-e89b-12d3-a456-426614174002",
-        name: "新用戶",
-        email: "new.user@example.com"
+  .meta({
+    title: "創建用戶回應",
+    examples: [{
+      success: true,
+      data: {
+        user: {
+          id: 125,
+          _id: "789e0123-e89b-12d3-a456-426614174002",
+          name: "新用戶",
+          email: "new.user@example.com"
+        },
+        token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       },
-      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 // 刪除用戶成功回應 schema
 export const deleteUserResponseSchema = apiSuccessResponseSchema(
@@ -692,16 +692,16 @@ export const deleteUserResponseSchema = apiSuccessResponseSchema(
     message: z.string().describe("成功訊息")
   })
 ).describe("刪除用戶成功回應")
-.meta({
-  title: "刪除用戶回應",
-  examples: [{
-    success: true,
-    data: {
-      message: "用戶已成功刪除"
-    },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "刪除用戶回應",
+    examples: [{
+      success: true,
+      data: {
+        message: "用戶已成功刪除"
+      },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 // 偏好設定選項 schema
 const preferenceOptionSchema = z.object({
@@ -716,23 +716,23 @@ const preferenceOptionSchema = z.object({
 export const userPreferencesResponseSchema = apiSuccessResponseSchema(
   z.record(z.string(), z.array(preferenceOptionSchema))
 ).describe("用戶偏好設定回應")
-.meta({
-  title: "用戶偏好設定回應",
-  examples: [{
-    success: true,
-    data: {
-      "learningStyle": [
-        { name: "實作導向", value: "hands_on" },
-        { name: "理論學習", value: "theoretical" }
-      ],
-      "contentType": [
-        { name: "影片教學", value: "video" },
-        { name: "文章閱讀", value: "article" }
-      ]
-    },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "用戶偏好設定回應",
+    examples: [{
+      success: true,
+      data: {
+        "learningStyle": [
+          { name: "實作導向", value: "hands_on" },
+          { name: "理論學習", value: "theoretical" }
+        ],
+        "contentType": [
+          { name: "影片教學", value: "video" },
+          { name: "文章閱讀", value: "article" }
+        ]
+      },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 // 更新偏好設定回應 schema
 export const updateUserPreferencesResponseSchema = apiSuccessResponseSchema(
@@ -741,52 +741,52 @@ export const updateUserPreferencesResponseSchema = apiSuccessResponseSchema(
     preferences: z.record(z.string(), z.array(preferenceOptionSchema)).describe("更新後的偏好設定")
   })
 ).describe("更新偏好設定回應")
-.meta({
-  title: "更新偏好設定回應",
-  examples: [{
-    success: true,
-    data: {
-      message: "偏好設定已成功更新",
-      preferences: {
-        "learningStyle": [
-          { name: "實作導向", value: "hands_on" }
-        ],
-        "contentType": [
-          { name: "影片教學", value: "video" }
-        ]
-      }
-    },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "更新偏好設定回應",
+    examples: [{
+      success: true,
+      data: {
+        message: "偏好設定已成功更新",
+        preferences: {
+          "learningStyle": [
+            { name: "實作導向", value: "hands_on" }
+          ],
+          "contentType": [
+            { name: "影片教學", value: "video" }
+          ]
+        }
+      },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 // 可用偏好選項回應 schema
 export const availablePreferencesResponseSchema = apiSuccessResponseSchema(
   z.record(z.string(), z.array(preferenceOptionSchema))
 ).describe("可用偏好選項回應")
-.meta({
-  title: "可用偏好選項回應",
-  examples: [{
-    success: true,
-    data: {
-      "learningStyle": [
-        { name: "實作導向", value: "hands_on" },
-        { name: "理論學習", value: "theoretical" },
-        { name: "小組討論", value: "group_discussion" }
-      ],
-      "contentType": [
-        { name: "影片教學", value: "video" },
-        { name: "文章閱讀", value: "article" },
-        { name: "實際操作", value: "hands_on_practice" }
-      ],
-      "difficulty": [
-        { name: "初學者友善", value: "beginner_friendly" },
-        { name: "按部就班", value: "step_by_step" }
-      ]
-    },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "可用偏好選項回應",
+    examples: [{
+      success: true,
+      data: {
+        "learningStyle": [
+          { name: "實作導向", value: "hands_on" },
+          { name: "理論學習", value: "theoretical" },
+          { name: "小組討論", value: "group_discussion" }
+        ],
+        "contentType": [
+          { name: "影片教學", value: "video" },
+          { name: "文章閱讀", value: "article" },
+          { name: "實際操作", value: "hands_on_practice" }
+        ],
+        "difficulty": [
+          { name: "初學者友善", value: "beginner_friendly" },
+          { name: "按部就班", value: "step_by_step" }
+        ]
+      },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 // 自訂 ID 相關回應 schema
 export const customIdAvailabilityResponseSchema = apiSuccessResponseSchema(
@@ -794,42 +794,42 @@ export const customIdAvailabilityResponseSchema = apiSuccessResponseSchema(
     available: z.boolean().describe("是否可用")
   })
 ).describe("自訂 ID 可用性檢查回應")
-.meta({
-  title: "自訂 ID 可用性檢查回應",
-  examples: [{
-    success: true,
-    data: { available: true },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "自訂 ID 可用性檢查回應",
+    examples: [{
+      success: true,
+      data: { available: true },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 export const setCustomIdResponseSchema = apiSuccessResponseSchema(
   z.object({
     customId: z.string().describe("設置的自訂 ID")
   })
 ).describe("設置自訂 ID 回應")
-.meta({
-  title: "設置自訂 ID 回應",
-  examples: [{
-    success: true,
-    data: { customId: "my_custom_id" },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "設置自訂 ID 回應",
+    examples: [{
+      success: true,
+      data: { customId: "my_custom_id" },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 export const removeCustomIdResponseSchema = apiSuccessResponseSchema(
   z.object({
     message: z.string().describe("成功訊息")
   })
 ).describe("移除自訂 ID 回應")
-.meta({
-  title: "移除自訂 ID 回應",
-  examples: [{
-    success: true,
-    data: { message: "自訂 ID 已成功移除" },
-    timestamp: "2024-01-15T10:30:00.000Z"
-  }]
-});
+  .meta({
+    title: "移除自訂 ID 回應",
+    examples: [{
+      success: true,
+      data: { message: "自訂 ID 已成功移除" },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
 
 // 導出型別
 export type CreateUserDto = z.infer<typeof createUserSchema>;
