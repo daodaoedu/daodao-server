@@ -43,7 +43,6 @@ export interface CreateUserRequest {
 // 用戶更新請求介面
 export interface UpdateUserRequest {
   name?: string;
-  email?: string;
   photoUrl?: string;
   gender?: string;
   birthDate?: Date | string;

@@ -759,7 +759,6 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
 
     const {
       name: nickname,
-      email,
       photoUrl,
       gender,
       birthDate,
@@ -783,7 +782,6 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         data: {
           photo_url: photoUrl,
           is_subscribe_email: isSubscribeEmail,
-          email,
           ig: contactList?.instagram,
           discord: contactList?.discord,
           line: contactList?.line,

@@ -197,14 +197,6 @@ export const updateUserSchema = z.object({
       title: "姓名",
       examples: ["王小明", "李大華", "John Doe"]
     }),
-  email: z.string()
-    .email("無效的電子郵件格式")
-    .optional()
-    .describe("電子郵件地址")
-    .meta({
-      title: "電子郵件",
-      examples: ["john@example.com", "alice.smith@company.com", "user123@gmail.com"]
-    }),
   photoURL: z.string()
     .url("無效的 URL 格式")
     .optional()
