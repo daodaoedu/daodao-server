@@ -1912,11 +1912,6 @@
                 },
                 "isSelected": {
                   "type": "boolean"
-                },
-                "weight": {
-                  "type": "number",
-                  "default": 1,
-                  "nullable": true
                 }
               }
             }
@@ -4404,7 +4399,7 @@
             ],
             "nullable": true
           },
-          "birthDate": {
+          "birthDay": {
             "type": "string",
             "nullable": true
           },
@@ -4519,11 +4514,7 @@
             "type": "string",
             "nullable": true
           },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "photoUrl": {
+          "photoURL": {
             "type": "string",
             "nullable": true
           },
@@ -4536,7 +4527,7 @@
             ],
             "nullable": true
           },
-          "birthDate": {
+          "birthDay": {
             "type": "string",
             "nullable": true
           },
@@ -4708,7 +4699,7 @@
               "email": {
                 "type": "string"
               },
-              "photoUrl": {
+              "photoURL": {
                 "type": "string",
                 "nullable": true
               },
@@ -4721,7 +4712,7 @@
                 ],
                 "nullable": true
               },
-              "birthDate": {
+              "birthDay": {
                 "type": "string",
                 "nullable": true
               },
@@ -4745,13 +4736,6 @@
               },
               "location": {
                 "type": "string",
-                "nullable": true
-              },
-              "roleList": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
                 "nullable": true
               },
               "selfIntroduction": {
@@ -4798,6 +4782,48 @@
                 "additionalProperties": true,
                 "nullable": true
               },
+              "role": {
+                "type": "number",
+                "nullable": true
+              },
+              "roleList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              "basicInfo": {
+                "type": "object",
+                "properties": {
+                  "selfIntroduction": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "shareList": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ],
+                    "nullable": true
+                  },
+                  "wantToDoList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "nullable": true
+                  }
+                },
+                "nullable": true
+              },
               "contactList": {
                 "type": "object",
                 "properties": {
@@ -4805,7 +4831,7 @@
                     "type": "string",
                     "nullable": true
                   },
-                  "photoUrl": {
+                  "photoURL": {
                     "type": "string",
                     "nullable": true
                   },
@@ -4844,10 +4870,10 @@
                 "type": "string",
                 "nullable": true
               },
-              "createdAt": {
+              "createdDate": {
                 "type": "string"
               },
-              "updatedAt": {
+              "updatedDate": {
                 "type": "string"
               }
             }
@@ -4924,7 +4950,7 @@
                 "email": {
                   "type": "string"
                 },
-                "photoUrl": {
+                "photoURL": {
                   "type": "string",
                   "nullable": true
                 },
@@ -4937,7 +4963,7 @@
                   ],
                   "nullable": true
                 },
-                "birthDate": {
+                "birthDay": {
                   "type": "string",
                   "nullable": true
                 },
@@ -4961,13 +4987,6 @@
                 },
                 "location": {
                   "type": "string",
-                  "nullable": true
-                },
-                "roleList": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
                   "nullable": true
                 },
                 "selfIntroduction": {
@@ -5014,6 +5033,48 @@
                   "additionalProperties": true,
                   "nullable": true
                 },
+                "role": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "roleList": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "nullable": true
+                },
+                "basicInfo": {
+                  "type": "object",
+                  "properties": {
+                    "selfIntroduction": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "shareList": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "wantToDoList": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "nullable": true
+                    }
+                  },
+                  "nullable": true
+                },
                 "contactList": {
                   "type": "object",
                   "properties": {
@@ -5021,7 +5082,7 @@
                       "type": "string",
                       "nullable": true
                     },
-                    "photoUrl": {
+                    "photoURL": {
                       "type": "string",
                       "nullable": true
                     },
@@ -5060,10 +5121,10 @@
                   "type": "string",
                   "nullable": true
                 },
-                "createdAt": {
+                "createdDate": {
                   "type": "string"
                 },
-                "updatedAt": {
+                "updatedDate": {
                   "type": "string"
                 }
               }
@@ -5165,7 +5226,7 @@
                   "email": {
                     "type": "string"
                   },
-                  "photoUrl": {
+                  "photoURL": {
                     "type": "string",
                     "nullable": true
                   },
@@ -5178,7 +5239,7 @@
                     ],
                     "nullable": true
                   },
-                  "birthDate": {
+                  "birthDay": {
                     "type": "string",
                     "nullable": true
                   },
@@ -5202,13 +5263,6 @@
                   },
                   "location": {
                     "type": "string",
-                    "nullable": true
-                  },
-                  "roleList": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
                     "nullable": true
                   },
                   "selfIntroduction": {
@@ -5255,6 +5309,48 @@
                     "additionalProperties": true,
                     "nullable": true
                   },
+                  "role": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "roleList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "nullable": true
+                  },
+                  "basicInfo": {
+                    "type": "object",
+                    "properties": {
+                      "selfIntroduction": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "shareList": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ],
+                        "nullable": true
+                      },
+                      "wantToDoList": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "nullable": true
+                      }
+                    },
+                    "nullable": true
+                  },
                   "contactList": {
                     "type": "object",
                     "properties": {
@@ -5262,7 +5358,7 @@
                         "type": "string",
                         "nullable": true
                       },
-                      "photoUrl": {
+                      "photoURL": {
                         "type": "string",
                         "nullable": true
                       },
@@ -5301,10 +5397,10 @@
                     "type": "string",
                     "nullable": true
                   },
-                  "createdAt": {
+                  "createdDate": {
                     "type": "string"
                   },
-                  "updatedAt": {
+                  "updatedDate": {
                     "type": "string"
                   }
                 }
@@ -5798,138 +5894,7 @@
         }
       }
     },
-    "parameters": {
-      "idParam": {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "description": "資源的唯一識別碼 (UUID)",
-        "example": "123e4567-e89b-12d3-a456-426614174000"
-      },
-      "reviewIdParam": {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "pattern": "^[1-9]\\d*$"
-        },
-        "description": "評論的唯一識別碼（字串格式的數字）",
-        "example": "1"
-      },
-      "resourceIdParam": {
-        "in": "path",
-        "name": "resourceId",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "description": "資源的唯一識別碼 (UUID)",
-        "example": "123e4567-e89b-12d3-a456-426614174000"
-      },
-      "cursorParam": {
-        "in": "query",
-        "name": "cursor",
-        "required": false,
-        "schema": {
-          "type": "string"
-        },
-        "description": "游標，用於游標分頁"
-      },
-      "limitParam": {
-        "in": "query",
-        "name": "limit",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100,
-          "default": 20
-        },
-        "description": "每頁返回的記錄數"
-      },
-      "resourceLimitParam": {
-        "in": "query",
-        "name": "limit",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 20,
-          "default": 5
-        },
-        "description": "每頁返回的資源數"
-      },
-      "reviewLimitParam": {
-        "in": "query",
-        "name": "limit",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 10,
-          "default": 2
-        },
-        "description": "每頁返回的評論數"
-      },
-      "sortParam": {
-        "in": "query",
-        "name": "sort",
-        "required": false,
-        "schema": {
-          "type": "string",
-          "enum": [
-            "id",
-            "name",
-            "created_at",
-            "updated_at"
-          ]
-        },
-        "description": "排序欄位"
-      },
-      "orderParam": {
-        "in": "query",
-        "name": "order",
-        "required": false,
-        "schema": {
-          "type": "string",
-          "enum": [
-            "asc",
-            "desc"
-          ],
-          "default": "desc"
-        },
-        "description": "排序方向"
-      },
-      "pageParam": {
-        "in": "query",
-        "name": "page",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 1
-        },
-        "description": "頁數"
-      },
-      "pageSizeParam": {
-        "in": "query",
-        "name": "pageSize",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100,
-          "default": 10
-        },
-        "description": "每頁項目數"
-      }
-    },
+    "parameters": {},
     "responses": {
       "BadRequestError": {
         "description": "請求參數錯誤",
@@ -5993,16 +5958,6 @@
           }
         }
       },
-      "ForbiddenError": {
-        "description": "禁止訪問，權限不足",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ApiErrorResponse"
-            }
-          }
-        }
-      },
       "NotFoundError": {
         "description": "資源不存在",
         "content": {
@@ -6028,16 +5983,6 @@
                   "timestamp": "2024-01-15T10:30:00.000Z"
                 }
               }
-            }
-          }
-        }
-      },
-      "ConflictError": {
-        "description": "資源衝突",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/ApiErrorResponse"
             }
           }
         }
@@ -12355,7 +12300,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema, userPreferencesSchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容）",
+        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容）",
         "security": [
           {
             "bearerAuth": []
@@ -12392,7 +12337,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema, userPreferencesSchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
+        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
         "requestBody": {
           "required": true,
           "content": {
@@ -12738,7 +12683,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/user.validators_userPreferencesSchema"
+                "$ref": "#/components/schemas/me.validators_updatePreferencesSchema"
               }
             }
           }
