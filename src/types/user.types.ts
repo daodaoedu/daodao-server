@@ -85,41 +85,43 @@ export interface CustomIdSetResponse {
 export interface FormattedUserResponse {
   id: number;
   _id: string; // external_id
-  name?: string; // nickname
-  gender?: string;
-  email?: string;
-  photoURL?: string;
-  birthDay?: Date | string;
-  isOpenLocation?: boolean;
-  isOpenProfile?: boolean;
-  role?: number;
-  location?: string;
-  tagList?: string[];
-  wantToDoList?: string[];
-  educationStage?: string;
-  selfIntroduction?: string;
-  share?: string | string[];
-  preferences?: Record<string, Array<{ name: string; value: string }>>;
-  contactList?: {
-    email?: string;
-    photoUrl?: string;
-    isSubscribeEmail?: boolean;
-    instagram?: string;
-    discord?: string;
-    line?: string;
-    facebook?: string;
-  };
-  basicInfo?: {
-    selfIntroduction?: string;
-    shareList?: string | string[];
-    wantToDoList?: string[];
-  };
-  roleList?: string[];
-  customId?: string;
-  customIdVerified?: boolean;
-  customIdCreatedAt?: string;
-  createdDate?: string;
-  updatedDate?: string;
+  name: string | null; // nickname
+  gender: 'male' | 'female' | 'other' | null;
+  email: string | null;
+  photoURL: string | null;
+  birthDay: string | null;
+  isOpenLocation: boolean;
+  isOpenProfile: boolean;
+  isSubscribeEmail: boolean;
+  role: number | null;
+  location: string | null;
+  tagList: string[] | null;
+  wantToDoList: string[] | null;
+  educationStage: 'university' | 'high' | 'other' | null;
+  selfIntroduction: string | null;
+  share: string | string[] | null;
+  interestList: string[] | null;
+  preferences: Record<string, Array<{ name: string; value: string }>> | null;
+  contactList: {
+    email: string | null;
+    photoURL: string | null;
+    isSubscribeEmail: boolean | null;
+    instagram: string | null;
+    discord: string | null;
+    line: string | null;
+    facebook: string | null;
+  } | null;
+  basicInfo: {
+    selfIntroduction: string | null;
+    shareList: string | string[] | null;
+    wantToDoList: string[] | null;
+  } | null;
+  roleList: string[] | null;
+  customId: string | null;
+  customIdVerified: boolean | null;
+  customIdCreatedAt: string | null;
+  createdDate: string;
+  updatedDate: string;
 }
 
 // 用戶完整度計算配置介面

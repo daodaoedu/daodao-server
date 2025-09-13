@@ -430,11 +430,11 @@ const formattedUserResponseSchema = z.object({
     .describe("用戶數字 ID"),
   _id: z.string()
     .describe("用戶 UUID"),
-  name: z.string()
+  name: z.string().nullable()
     .describe("用戶姓名"),
-  email: z.string().email()
+  email: z.string().nullable()
     .describe("電子郵件地址"),
-  photoURL: z.string().url().nullable()
+  photoURL: z.string().nullable()
     .describe("個人大頭照 URL"),
   gender: z.enum(['male', 'female', 'other']).nullable()
     .describe("性別"),
@@ -528,16 +528,16 @@ const formattedUserResponseSchema = z.object({
       title: "自訂 ID 驗證狀態",
       examples: [true, false]
     }),
-  customIdCreatedAt: z.string().datetime()
+  customIdCreatedAt: z.string()
     .nullable()
     .describe("自訂 ID 建立時間")
     .meta({
       title: "自訂 ID 建立時間",
       examples: ["2024-01-15T10:30:00.000Z"]
     }),
-  createdDate: z.string().datetime()
+  createdDate: z.string()
     .describe("建立時間"),
-  updatedDate: z.string().datetime()
+  updatedDate: z.string()
     .describe("最後更新時間")
 }).describe("格式化的用戶資料").meta({
   title: "用戶資料",

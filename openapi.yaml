@@ -3517,8 +3517,10 @@ components:
               type: string
             name:
               type: string
+              nullable: true
             email:
               type: string
+              nullable: true
             photoURL:
               type: string
               nullable: true
@@ -3693,8 +3695,10 @@ components:
                 type: string
               name:
                 type: string
+                nullable: true
               email:
                 type: string
+                nullable: true
               photoURL:
                 type: string
                 nullable: true
@@ -3879,8 +3883,10 @@ components:
                   type: string
                 name:
                   type: string
+                  nullable: true
                 email:
                   type: string
+                  nullable: true
                 photoURL:
                   type: string
                   nullable: true

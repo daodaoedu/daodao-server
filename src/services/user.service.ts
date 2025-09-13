@@ -256,44 +256,61 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     return acc;
   }, {} as Record<string, Array<{ name: string; value: string }>>);
 
+  // 格式化日期為字符串
+  const formatBirthDay = (date: Date | null | undefined): string | null => {
+    if (!date) return null;
+    return moment(date).format('YYYY-MM-DD');
+  };
+
+  // 格式化為 ISO 字符串
+  const formatToISOString = (date: Date | null | undefined): string => {
+    if (!date) return new Date().toISOString();
+    return moment(date).toISOString();
+  };
+
   return {
     id: user.id,
     _id: user.external_id || '',
-    name: user.nickname || undefined,
-    gender: user.gender || undefined,
-    email: user.contacts?.email || undefined,
-    photoURL: user.contacts?.photo_url || undefined,
-    birthDay: user.birth_date || undefined,
-    isOpenLocation: user.is_open_location || undefined,
-    isOpenProfile: user.is_open_profile || undefined,
-    role: user.roles?.id,
-    location: user.location?.city?.name || '',
-    tagList: await getUserTags(user.id),
-    wantToDoList: (user.basic_info?.want_to_do_list || []).map(item => String(item)),
-    educationStage: user.education_stage || undefined,
-    selfIntroduction: user.basic_info?.self_introduction || undefined,
-    share: user.basic_info?.share_list || undefined,
-    preferences: preferences || undefined,
+    name: user.nickname || null,
+    gender: (user.gender as 'male' | 'female' | 'other') || null,
+    email: user.contacts?.email || null,
+    photoURL: user.contacts?.photo_url || null,
+    birthDay: formatBirthDay(user.birth_date),
+    isOpenLocation: user.is_open_location ?? false,
+    isOpenProfile: user.is_open_profile ?? false,
+    isSubscribeEmail: user.contacts?.is_subscribe_email ?? false,
+    role: user.roles?.id || null,
+    location: user.location?.city?.name || null,
+    tagList: await getUserTags(user.id) || null,
+    wantToDoList: user.basic_info?.want_to_do_list ?
+      user.basic_info.want_to_do_list.map(item => String(item)) : null,
+    educationStage: (user.education_stage as 'university' | 'high' | 'other') || null,
+    selfIntroduction: user.basic_info?.self_introduction || null,
+    share: user.basic_info?.share_list || null,
+    interestList: null, // Add missing interestList field
+    preferences: preferences || null,
     contactList: {
-      email: user.contacts?.email || undefined,
-      photoUrl: user.contacts?.photo_url || undefined,
-      isSubscribeEmail: user.contacts?.is_subscribe_email || undefined,
-      instagram: user.contacts?.ig || undefined,
-      discord: user.contacts?.discord || undefined,
-      line: user.contacts?.line || undefined,
-      facebook: user.contacts?.fb || undefined
+      email: user.contacts?.email || null,
+      photoURL: user.contacts?.photo_url || null,
+      isSubscribeEmail: user.contacts?.is_subscribe_email || null,
+      instagram: user.contacts?.ig || null,
+      discord: user.contacts?.discord || null,
+      line: user.contacts?.line || null,
+      facebook: user.contacts?.fb || null
     },
     basicInfo: {
-      selfIntroduction: user.basic_info?.self_introduction || undefined,
-      shareList: user.basic_info?.share_list || undefined,
-      wantToDoList: (user.basic_info?.want_to_do_list || []).map(item => String(item))
+      selfIntroduction: user.basic_info?.self_introduction || null,
+      shareList: user.basic_info?.share_list || null,
+      wantToDoList: user.basic_info?.want_to_do_list ?
+        user.basic_info.want_to_do_list.map(item => String(item)) : null
     },
-    roleList: user.user_positions?.map((up) => up.position.name) || [],
-    customId: user.custom_id || undefined,
-    customIdVerified: user.custom_id_verified || undefined,
-    customIdCreatedAt: formatToTaipeiTime(user.custom_id_created_at) || undefined,
-    createdDate: formatToTaipeiTime(user.created_at) || '',
-    updatedDate: formatToTaipeiTime(user.updated_at) || ''
+    roleList: user.user_positions?.map((up) => up.position.name) || null,
+    customId: user.custom_id || null,
+    customIdVerified: user.custom_id_verified || null,
+    customIdCreatedAt: user.custom_id_created_at ?
+      moment(user.custom_id_created_at).toISOString() : null,
+    createdDate: formatToISOString(user.created_at),
+    updatedDate: formatToISOString(user.updated_at)
   };
 };
 
