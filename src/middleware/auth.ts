@@ -36,6 +36,7 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
   try {
     // 驗證 token
     const secret = process.env.JWT_SECRET || process.env.JWT_SECURITY;
+    console.log('🔑 JWT secret being used:', secret ? `${secret.substring(0, 10)}...` : 'undefined');
     if (!secret) {
       throw new Error('JWT secret not configured');
     }

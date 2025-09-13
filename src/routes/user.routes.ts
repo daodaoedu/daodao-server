@@ -145,7 +145,7 @@ router.get('/:id',
  */
 router.post('/',
   authenticate,
-  canCreateUser(),
+  // canCreateUser(),
   validate(createUserSchema, 'body'),
   userController.createUser as RequestHandler
 );

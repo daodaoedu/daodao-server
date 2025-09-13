@@ -58,7 +58,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         ]
       }),
       ...(contentType && { content_type: contentType }),
-      ...(status && { status }),
+      ...(status && status !== 'all' && { status }),
       ...(userId && { user_id: userId })
     };
 

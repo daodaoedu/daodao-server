@@ -3,6 +3,7 @@ export interface IdeaEntity {
   content: string;
   user: UserBasicInfo;
   tags: string[];
+  resources: IdeaResource[];
   likeCount: number;
   commentCount: number;
   viewCount: number;
@@ -34,13 +35,13 @@ export interface IdeaResource {
   type?: string;
   cost?: string;
   level?: string;
-  status: ResourceStatus;
+  status?: ResourceStatus;
   majorCategory?: string;
   subCategory?: string;
   relationshipType?: string;
   createdFromType?: 'idea';
   createdFromId?: string;
-  createdAt: string;
+  createdAt?: string;
   publishedAt?: string;
 }
 

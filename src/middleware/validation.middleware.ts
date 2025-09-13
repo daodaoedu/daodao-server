@@ -28,6 +28,7 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        console.log('❌ Validation failed:', formatZodErrors(error));
         res.status(400).json({
           success: false,
           error: {

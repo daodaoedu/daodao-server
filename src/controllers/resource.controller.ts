@@ -88,13 +88,13 @@ export const getResources = asyncHandler(async (req: Request, res: Response) => 
 
 /**
  * 獲取單個資源
- * GET /resources/:id
+ * GET /resources/:resourceId
  */
 export const getResourceById = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { resourceId } = req.params;
   
   // 查詢資源
-  const resource = await resourceService.getResourceById(id); // 直接傳遞字串 ID
+  const resource = await resourceService.getResourceById(resourceId); // 直接傳遞字串 ID
 
   // 記錄查看次數（非阻塞） - 暫時註解，可在需要時實作
   // resourceService.incrementViewCount(parseInt(id)).catch(err => {
@@ -112,6 +112,7 @@ export const getResourceById = asyncHandler(async (req: Request, res: Response) 
 export const createResource = asyncHandler(async (req: Request, res: Response) => {
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
+  console.log(`創建資源: userId=${userId}, req.user=${JSON.stringify(req.user)}`);
 
   // 驗證請求數據
   const validatedData = validateCreateResource(req.body);
@@ -125,22 +126,33 @@ export const createResource = asyncHandler(async (req: Request, res: Response) =
 
 /**
  * 更新資源
- * PATCH /resources/:id
+ * PATCH /resources/:resourceId
  */
 export const updateResource = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  console.log('🚀 updateResource called');
+  console.log('Request params:', req.params);
+  console.log('Request body:', req.body);
+  
+  const { resourceId } = req.params;  // 使用路由中定義的參數名稱
+  console.log('Resource ID:', resourceId);
+  
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
+  console.log('User ID:', userId);
 
   // 驗證請求數據
+  console.log('Validating request data...');
   const validatedData = validateUpdateResource(req.body);
+  console.log('Validated data:', validatedData);
 
   // 更新資源
+  console.log('Calling resource service...');
   const resource = await resourceService.updateResource(
-    id, // 直接傳遞 UUID 字串
+    resourceId, // 使用正確的參數名稱
     validatedData,
     userId
   );
+  console.log('Resource service completed');
 
   // 直接透傳 Service 回應
   res.json(resource);
@@ -148,10 +160,10 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
 
 /**
  * 更新資源狀態
- * PATCH /resources/:id/status
+ * PATCH /resources/:resourceId/status
  */
 export const updateResourceStatus = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { resourceId } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
 
@@ -160,7 +172,7 @@ export const updateResourceStatus = asyncHandler(async (req: Request, res: Respo
 
   // 更新資源狀態
   const resource = await resourceService.updateResource(
-    id, // 直接傳遞 UUID 字串
+    resourceId, // 直接傳遞 UUID 字串
     { status },
     userId
   );
@@ -171,15 +183,15 @@ export const updateResourceStatus = asyncHandler(async (req: Request, res: Respo
 
 /**
  * 刪除資源
- * DELETE /resources/:id
+ * DELETE /resources/:resourceId
  */
 export const deleteResource = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { resourceId } = req.params;
   // 獲取用戶 ID（開發環境下使用測試用戶）
   const userId = getUserIdOrTestUser(req);
 
   // 刪除資源
-  const result = await resourceService.deleteResource(id, userId); // 直接傳遞 UUID 字串
+  const result = await resourceService.deleteResource(resourceId, userId); // 直接傳遞 UUID 字串
 
   // 直接透傳 Service 回應
   res.json(result);
@@ -225,16 +237,16 @@ export const getResourceStats = asyncHandler(async (req: Request, res: Response)
 
 /**
  * 獲取資源標籤
- * GET /resources/:id/tags
+ * GET /resources/:resourceId/tags
  */
 export const getResourceTags = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params; // UUID
+  const { resourceId } = req.params; // UUID
   
   // 直接查詢資源的數字 ID
   const { prisma } = await import('../services/database/prisma.service');
   const resource = await prisma.resources.findFirst({
     where: { 
-      external_id: id,
+      external_id: resourceId,
       deleted_at: null 
     },
     select: {

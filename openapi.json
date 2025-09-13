@@ -12710,7 +12710,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_authUserUpdateResponseExample"
+                  "$ref": "#/components/schemas/user.validators_userSuccessResponseSchema"
                 }
               }
             }
@@ -12833,7 +12833,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_authUserUpdateResponseExample"
+                  "$ref": "#/components/schemas/user.validators_userSuccessResponseSchema"
                 }
               }
             }
@@ -13088,7 +13088,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_authUserUpdateResponseExample"
+                  "$ref": "#/components/schemas/user.validators_userSuccessResponseSchema"
                 }
               }
             }
@@ -13135,7 +13135,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_authUserUpdateResponseExample"
+                  "$ref": "#/components/schemas/user.validators_userSuccessResponseSchema"
                 }
               }
             }

@@ -16,6 +16,11 @@ import type {
   UpdatePreferencesData
 } from '../validators/me.validators';
 import {
+  createUserResponseSchema,
+  userSuccessResponseSchema,
+  usersListResponseSchema
+} from '../validators/user.validators';
+import {
   NotFoundError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
@@ -27,7 +32,11 @@ import { asyncHandler } from '../middleware/error.middleware';
 export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   const params = req.query as UserQueryParams;
   const result = await userService.getAllUsers(params);
-  res.json(result);
+  
+  // 驗證響應格式
+  const validatedResponse = usersListResponseSchema.parse(result);
+  
+  res.json(validatedResponse);
 });
 
 /**
@@ -47,7 +56,10 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  res.json(user);
+  // 驗證響應格式
+  const validatedResponse = userSuccessResponseSchema.parse(user);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -63,7 +75,10 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  res.json(user);
+  // 驗證響應格式
+  const validatedResponse = userSuccessResponseSchema.parse(user);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -80,7 +95,10 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await userService.createUser(requestData, currentUser._id);
 
-  res.status(201).json(result);
+  // 驗證響應格式確保符合 OpenAPI schema
+  const validatedResponse = createUserResponseSchema.parse(result);
+
+  res.status(201).json(validatedResponse);
 });
 
 /**
