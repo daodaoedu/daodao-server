@@ -631,6 +631,127 @@ export const cursorPaginatedApiResponseExample = z.object({
   }]
 });
 
+/**
+ * 用戶資料 schema（用於認證響應）
+ */
+export const authUserDataSchema = z.object({
+  id: z.number().int().describe("用戶數字 ID"),
+  _id: z.string().describe("用戶外部 ID (UUID)"),
+  name: z.string().nullable().describe("用戶姓名"),
+  email: z.string().email().nullable().describe("電子郵件地址"),
+  photoUrl: z.string().url().nullable().describe("個人大頭照 URL"),
+  roleId: z.number().int().nullable().describe("角色 ID"),
+  gender: z.string().nullable().describe("性別"),
+  birthDay: z.string().nullable().describe("生日"),
+  isOpenLocation: z.boolean().nullable().describe("是否公開位置"),
+  isOpenProfile: z.boolean().nullable().describe("是否公開個人資料"),
+  tagList: z.array(z.string()).optional().describe("標籤列表"),
+  roleList: z.array(z.string()).optional().describe("角色列表"),
+  customId: z.string().nullable().describe("自訂 ID"),
+  customIdVerified: z.boolean().optional().describe("自訂 ID 是否已驗證"),
+  createdDate: z.string().datetime().optional().describe("建立時間"),
+  updatedDate: z.string().datetime().optional().describe("更新時間")
+}).describe("認證用戶資料").meta({
+  title: "用戶資料",
+  examples: [{
+    id: 123,
+    _id: "123e4567-e89b-12d3-a456-426614174000",
+    name: "王小明",
+    email: "wang.xiaoming@example.com",
+    photoUrl: "https://example.com/avatar/wang.jpg",
+    roleId: 1,
+    gender: "male",
+    birthDay: "1990-01-01",
+    isOpenLocation: true,
+    isOpenProfile: true,
+    tagList: ["開發者", "學習者"],
+    roleList: ["user", "mentor"],
+    customId: "xiaoming_wang",
+    customIdVerified: true,
+    createdDate: "2024-01-15T10:30:00.000Z",
+    updatedDate: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
+/**
+ * 登入/創建用戶成功響應 schema
+ */
+export const authLoginResponseExample = z.object({
+  success: z.literal(true).describe('Indicates successful API response'),
+  data: z.object({
+    user: authUserDataSchema,
+    token: z.string().describe("JWT 認證 token")
+  }),
+  timestamp: z.string().datetime().describe('ISO 8601 timestamp of the response'),
+  meta: responseMetaSchema.optional().describe('Optional metadata about the response')
+}).describe('登入/創建用戶成功響應格式')
+.meta({
+  title: 'Authentication Login Response',
+  examples: [{
+    success: true,
+    data: {
+      user: {
+        id: 123,
+        _id: "123e4567-e89b-12d3-a456-426614174000",
+        name: "王小明",
+        email: "wang.xiaoming@example.com",
+        photoUrl: "https://example.com/avatar/wang.jpg",
+        roleId: 1,
+        gender: "male",
+        birthDay: "1990-01-01",
+        isOpenLocation: true,
+        isOpenProfile: true,
+        tagList: ["開發者", "學習者"],
+        roleList: ["user", "mentor"],
+        customId: "xiaoming_wang",
+        customIdVerified: true,
+        createdDate: "2024-01-15T10:30:00.000Z",
+        updatedDate: "2024-01-15T10:30:00.000Z"
+      },
+      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiX2lkIjoiNThiOTE1YWYtYzM2MS00OTAwLWE2YWYtNTNiMDgyYTdmNjJjIiwidXNlcm5hbWUiOiIiLCJpc1RlbXAiOmZhbHNlLCJyb2xlcyI6WyJNZW50b3IiLCJjaXRpemVuIiwiZXhwZXJpbWVudGFsLWVkdWNhdG9yIiwib3RoZXIiXSwicGVybWlzc2lvbnMiOltdLCJpYXQiOjE3NTc1MTg5MDIsImV4cCI6MTc1ODEyMzcwMn0.xaAFg2IYtlnLPxx3QpDqkW1RVmWsuWsZpW8wonefYJw"
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
+/**
+ * 用戶更新響應 schema
+ */
+export const authUserUpdateResponseExample = z.object({
+  success: z.literal(true).describe('Indicates successful API response'),
+  data: z.object({
+    user: authUserDataSchema
+  }),
+  timestamp: z.string().datetime().describe('ISO 8601 timestamp of the response'),
+  meta: responseMetaSchema.optional().describe('Optional metadata about the response')
+}).describe('用戶更新成功響應格式').meta({
+  title: 'User Update Response',
+  examples: [{
+    success: true,
+    data: {
+      user: {
+        id: 123,
+        _id: "123e4567-e89b-12d3-a456-426614174000",
+        name: "王小明",
+        email: "wang.xiaoming@example.com",
+        photoUrl: "https://example.com/avatar/wang.jpg",
+        roleId: 1,
+        gender: "male",
+        birthDay: "1990-01-01",
+        isOpenLocation: true,
+        isOpenProfile: true,
+        tagList: ["開發者", "學習者"],
+        roleList: ["user", "mentor"],
+        customId: "xiaoming_wang",
+        customIdVerified: true,
+        createdDate: "2024-01-15T10:30:00.000Z",
+        updatedDate: "2024-01-15T10:30:00.000Z"
+      }
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
 // Export types inferred from schemas for TypeScript usage
 export type ResponseMeta = z.infer<typeof responseMetaSchema>;
 export type ApiSuccessResponse<T> = z.infer<ReturnType<typeof apiSuccessResponseSchema<z.ZodSchema<T>>>>;

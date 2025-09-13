@@ -13,6 +13,7 @@ import type {
   CreatePracticeRequest,
   UpdatePracticeRequest,
   PracticeQueryParams,
+  CheckInRequest,
   CreateCheckInRequest,
   CheckInQueryParams,
   ContentType,
@@ -168,7 +169,14 @@ export class PracticeController {
     const { externalToInternalId } = await import('../services/id-converter.service');
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
-    const checkInData: CreateCheckInRequest = req.body;
+    const requestBody: CheckInRequest = req.body;
+    const checkInData: CreateCheckInRequest = {
+      progressAmount: requestBody.progress,
+      note: requestBody.note,
+      mood: requestBody.mood,
+      reflectionText: requestBody.reflectionText,
+      relatedResourceId: requestBody.relatedResourceId
+    };
     const result = await practiceCheckInService.createCheckIn(practiceId, checkInData, req.user.id);
     res.status(201).json(result);
   });

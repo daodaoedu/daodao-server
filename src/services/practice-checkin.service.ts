@@ -8,6 +8,7 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
+import { ConflictError, NotFoundError } from '../middleware/error.middleware';
 import {
   CheckInEntity,
   CreateCheckInRequest,
@@ -40,7 +41,7 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
     });
 
     if (!practice) {
-      throw new Error('實踐不存在或沒有權限');
+      throw new NotFoundError('實踐不存在或沒有權限');
     }
 
     // 檢查當日是否已簽到
@@ -59,7 +60,7 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
     });
 
     if (existingCheckIn) {
-      throw new Error('今日已完成簽到');
+      throw new ConflictError('今日已完成簽到');
     }
 
     // 計算新的累積進度

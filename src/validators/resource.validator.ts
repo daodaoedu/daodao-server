@@ -244,27 +244,72 @@ export const createResourceSchema = resourceBaseSchema.extend({
   }]
 });
 
-// 更新資源 schema - 所有欄位都是可選的，用於部分更新
-export const updateResourceSchema = resourceBaseSchema.partial().extend({
+// 更新資源 schema - 重新定義所有欄位為真正的可選，用於部分更新
+export const updateResourceSchema = z.object({
+  name: z.string()
+    .min(1, { message: "資源名稱不能為空" })
+    .max(255, { message: "資源名稱最多 255 字符" })
+    .optional()
+    .describe("資源名稱"),
+  url: z.string()
+    .min(1, { message: "資源 URL 不能為空" })
+    .max(1000, { message: "資源 URL 最多 1000 字符" })
+    .url({ message: "URL 格式不正確" })
+    .optional()
+    .describe("資源連結 URL"),
+  imageUrl: z.string()
+    .max(1000, { message: "圖片 URL 最多 1000 字符" })
+    .url({ message: "URL 格式不正確" })
+    .nullable()
+    .optional()
+    .describe("資源縮圖 URL"),
+  description: z.string()
+    .min(1, { message: "資源描述不能為空" })
+    .optional()
+    .describe("資源的詳細描述"),
+  videoUrl: z.string()
+    .max(1000, { message: "影片 URL 最多 1000 字符" })
+    .url({ message: "URL 格式不正確" })
+    .nullable()
+    .optional()
+    .describe("相關影片 URL"),
+  type: z.enum(resourceTypeValues as [string, ...string[]], "無效的資源類型")
+    .optional()
+    .describe("資源類型"),
+  cost: z.enum(costTypeValues as [string, ...string[]], "無效的費用類型")
+    .optional()
+    .describe("費用類型"),
+  level: z.enum(levelTypeValues as [string, ...string[]], "無效的難度等級")
+    .optional()
+    .describe("難度等級"),
+  majorCategory: z.string()
+    .min(1, { message: "主分類名稱不能為空" })
+    .nullable()
+    .optional()
+    .describe("主要分類"),
+  subCategory: z.string()
+    .min(1, { message: "子分類名稱不能為空" })
+    .nullable()
+    .optional()
+    .describe("子分類"),
+  tags: z.array(z.string())
+    .nullable()
+    .optional()
+    .describe("資源標籤"),
   status: z.enum(statusValues as [string, ...string[]], "無效的資源狀態")
     .optional()
     .describe("資源狀態")
-    .meta({
-      title: "資源狀態",
-      examples: statusValues,
-      enumDescriptions: {
-        "draft": "草稿",
-        "active": "啟用中",
-        "archived": "已封存",
-        "reported": "已被檢舉"
-      }
-    })
 }).describe("更新資源的請求資料（部分更新）").meta({
   title: "更新資源",
   examples: [{
     name: "React 官方文檔 (更新版)",
     description: "React 官方文檔，包含最新的 React 18 功能介紹",
     tags: ["JavaScript", "React", "React 18"]
+  }, {
+    description: "Updated description only"
+  }, {
+    name: "New resource name",
+    status: "active"
   }]
 });
 

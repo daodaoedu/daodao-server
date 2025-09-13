@@ -5,26 +5,26 @@
 
 import { prisma } from '@/services/database/prisma.service';
 import type { Prisma } from '../../generated/prisma';
-import { 
-  IdeaEntity, 
-  IdeaFilters, 
+import {
+  IdeaEntity,
+  IdeaFilters,
   IdeaStats,
   IdeaStatus
 } from '@/types/idea.types';
-import { 
-  ApiSuccessResponse, 
-  PaginatedApiResponse 
+import {
+  ApiSuccessResponse,
+  PaginatedApiResponse
 } from '@/types/api-response.types';
-import { 
-  createSuccessResponse, 
-  createPaginatedResponse 
+import {
+  createSuccessResponse,
+  createPaginatedResponse
 } from '@/utils/response-helper';
-import { 
-  CreateIdeaRequest, 
+import {
+  CreateIdeaRequest,
   UpdateIdeaRequest
 } from '@/validators/idea.validators';
-import { 
-  NotFoundError, 
+import {
+  NotFoundError,
   ForbiddenError
 } from '@/middleware/error.middleware';
 import tagService from '@/services/tag.service';
@@ -109,6 +109,11 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
       photoUrl: idea.users.contacts?.photo_url || undefined
     },
     tags: tags.map(tag => tag.tags.name),
+    resources: resources.map(entityResource => ({
+      id: entityResource.resources.external_id || '',
+      name: entityResource.resources.name,
+      url: entityResource.resources.url
+    })),
     likeCount: 0, // 可以後續實現
     commentCount: 0, // 可以後續實現
     viewCount: 0, // 可以後續實現
@@ -156,7 +161,7 @@ export async function getIdeas(
         entity_id: true
       }
     });
-    
+
     ideaInternalIds = taggedIdeaIds.map(tag => tag.entity_id);
     if (ideaInternalIds.length === 0) {
       // 如果沒有找到任何標籤匹配的想法，返回空結果
@@ -280,6 +285,7 @@ export async function getIdeas(
       photoUrl: idea.users.contacts?.photo_url || undefined
     },
     tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
+    resources: [],
     likeCount: 0,
     commentCount: 0,
     viewCount: 0,
@@ -292,7 +298,7 @@ export async function getIdeas(
   }));
 
   const totalPages = Math.ceil(totalCount / limit);
-  
+
   return createPaginatedResponse(
     ideaEntities,
     {
@@ -324,7 +330,7 @@ export async function getIdeas(
  */
 export async function createIdea(data: CreateIdeaRequest, userId: number): Promise<ApiSuccessResponse<IdeaEntity>> {
   return await prisma.$transaction(async (tx) => {
-    // 創建想法
+    // 創建想法，並包含用戶信息
     const idea = await tx.ideas.create({
       data: {
         user_id: userId,
@@ -332,24 +338,30 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
         status: 'active',
         has_resources: data.resources ? data.resources.length > 0 : false
       },
-      select: {
-        id: true,
-        external_id: true,
-        user_id: true,
-        content: true,
-        status: true,
-        has_resources: true,
-        created_at: true,
-        updated_at: true
+      include: {
+        users: {
+          select: {
+            id: true,
+            nickname: true,
+            contacts: {
+              select: {
+                photo_url: true
+              }
+            }
+          }
+        }
       }
     });
 
     // 處理標籤
+    let tagList: string[] = [];
     if (data.tags && data.tags.length > 0) {
       await tagService.setEntityTags('idea', idea.id, data.tags, userId, tx);
+      tagList = data.tags;
     }
 
     // 處理資源 - 創建新資源並關聯到想法
+    const createdResources: { id: string; name: string; url: string; }[] = [];
     if (data.resources && data.resources.length > 0) {
       for (const resourceData of data.resources) {
         // 先創建資源
@@ -375,13 +387,43 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
             created_by: userId
           }
         });
+
+        // 記錄創建的資源（簡化格式）
+        createdResources.push({
+          id: resource.external_id || '',
+          name: resource.name,
+          url: resource.url
+        });
       }
     }
 
-    // 獲取完整的想法詳情（內部調用不需要包裝）
-    const fullIdea = await getIdeaById(idea.external_id || '', userId);
-    
-    return fullIdea;
+    // 直接構建返回的想法實體，避免重新查詢
+    const ideaEntity: IdeaEntity = {
+      id: idea.external_id || '',
+      content: idea.content,
+      status: (idea.status || 'active') as IdeaStatus,
+      hasResources: idea.has_resources || false,
+      user: {
+        id: idea.users.id.toString(),
+        name: idea.users.nickname || '',
+        photoUrl: idea.users.contacts?.photo_url || undefined
+      },
+      tags: tagList,
+      resources: createdResources,
+      likeCount: 0,
+      commentCount: 0,
+      viewCount: 0,
+      shareCount: 0,
+      resourceCount: createdResources.length,
+      isLiked: false,
+      isFavorited: false,
+      createdAt: idea.created_at?.toISOString() || new Date().toISOString(),
+      updatedAt: idea.updated_at?.toISOString() || new Date().toISOString()
+    };
+
+    return createSuccessResponse(ideaEntity, {
+      cacheHit: false
+    });
   });
 }
 
@@ -514,11 +556,11 @@ export async function getIdeaStats(userId?: number): Promise<ApiSuccessResponse<
 
   const [/* totalCount */, /* activeCount */, withResourcesCount] = await Promise.all([
     prisma.ideas.count({ where }),
-    prisma.ideas.count({ 
-      where: { ...where, status: 'active' } 
+    prisma.ideas.count({
+      where: { ...where, status: 'active' }
     }),
-    prisma.ideas.count({ 
-      where: { ...where, has_resources: true } 
+    prisma.ideas.count({
+      where: { ...where, has_resources: true }
     })
   ]);
 

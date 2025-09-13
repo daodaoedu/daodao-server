@@ -15,7 +15,8 @@ import {
 import { 
   NotFoundError, 
   ConflictError, 
-  ForbiddenError 
+  ForbiddenError,
+  BadRequestError 
 } from '@/middleware/error.middleware';
 import { 
   ApiSuccessResponse,
@@ -49,6 +50,16 @@ interface ReviewFilterParams {
   maxScore?: number;
 }
 
+/**
+ * 驗證UUID格式
+ * @param uuid - 要驗證的UUID字串
+ * @returns 是否為有效的UUID
+ */
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
 // 定義分頁參數介面
 interface PaginationParams {
   cursor?: string;
@@ -70,7 +81,7 @@ export async function getReviewById(
   const tx = transaction || prisma;
   
   // 查詢心得評價，包含關聯資料
-  const review = await tx.resource_review.findUnique({
+  const review = await tx.resource_review.findFirst({
     where: { 
       id,
       deleted_at: null
@@ -180,11 +191,30 @@ export async function getReviews(
     where.score_impact = scoreCondition;
   }
 
-  // 如果有 resourceId 篩選
+  // 如果有 resourceId 篩選，先查詢資源的數字 ID
   if (filters.resourceId) {
-    where.resources = {
-      external_id: filters.resourceId
-    };
+    // 驗證UUID格式
+    if (!isValidUUID(filters.resourceId)) {
+      throw new BadRequestError('無效的資源ID格式');
+    }
+    
+    // 通過 external_id 查詢資源的數字 ID
+    const resource = await prisma.resources.findFirst({
+      where: { 
+        external_id: filters.resourceId,
+        deleted_at: null 
+      },
+      select: { id: true }
+    });
+    
+    if (!resource) {
+      throw new NotFoundError(`找不到 ID 為 ${filters.resourceId} 的資源`);
+    }
+    
+    where.resource_id = resource.id;
+    
+    // 調試：輸出映射結果
+    console.log(`🔍 資源映射: UUID ${filters.resourceId} -> 數字ID ${resource.id}`);
   }
 
   // 處理游標分頁
@@ -232,6 +262,24 @@ export async function getReviews(
     orderBy.created_at = sortDirection as 'asc' | 'desc';
   } else if (sortField === 'updatedAt') {
     orderBy.updated_at = sortDirection as 'asc' | 'desc';
+  }
+
+
+  // 調試：查詢所有評價（包括已刪除）
+  const testQuery = await prisma.resource_review.findMany({
+    select: { id: true, resource_id: true, status: true, user_id: true, deleted_at: true },
+    take: 10,
+    orderBy: { id: 'desc' }
+  });
+
+  // 臨時調試信息
+  if (filters.resourceId === '074d9c9d-313d-4246-bec6-665798acf53f') {
+    const debugInfo = {
+      allReviewsInDb: testQuery,
+      whereCondition: where,
+      resourceIdFilter: filters.resourceId
+    };
+    console.log('🔍 調試信息:', JSON.stringify(debugInfo, null, 2));
   }
 
   // 查詢心得評價列表
@@ -308,11 +356,8 @@ export async function getReviews(
     hasMore
   );
 
-  return createCursorPaginatedResponse(reviewList, {
-    cursors: pagination_meta.cursors,
-    hasMore: pagination_meta.hasMore,
-    count: pagination_meta.count
-  }, {
+  // 臨時調試：為特定資源返回調試信息
+  const metaData: any = {
     searchQuery: filters.tags?.join(','),
     filters: {
       resourceId: filters.resourceId,
@@ -321,7 +366,21 @@ export async function getReviews(
       minScore: filters.minScore,
       maxScore: filters.maxScore
     }
-  });
+  };
+
+  if (filters.resourceId === '074d9c9d-313d-4246-bec6-665798acf53f') {
+    metaData.debug = {
+      allReviewsInDb: testQuery,
+      finalWhereCondition: where,
+      reviewsFoundCount: reviews.length
+    };
+  }
+
+  return createCursorPaginatedResponse(reviewList, {
+    cursors: pagination_meta.cursors,
+    hasMore: pagination_meta.hasMore,
+    count: pagination_meta.count
+  }, metaData);
 }
 
 /**
@@ -336,6 +395,11 @@ export async function createReview(
   data: ResourceReviewSchema,
   userId: number
 ): Promise<ApiSuccessResponse<ResourceReviewResponse>> {
+  // 驗證UUID格式
+  if (!isValidUUID(resourceExternalId)) {
+    throw new BadRequestError('無效的資源ID格式');
+  }
+
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在（使用 external_id）
     const resource = await tx.resources.findUnique({
@@ -372,7 +436,8 @@ export async function createReview(
         score_problems: reviewData.score_problems ?? 0,
         score_perspectives: reviewData.score_perspectives ?? 0,
         score_goals: reviewData.score_goals ?? 0,
-        status: reviewData.status || 'published'
+        status: reviewData.status || 'published',
+        deleted_at: null // 明確設置為未刪除
       }
     });
 
@@ -388,8 +453,65 @@ export async function createReview(
     }
 
     // 查詢完整的心得評價數據（包含關聯數據）
-    const reviewResponse = await getReviewById(review.id, tx);
-    return reviewResponse;
+    const fullReview = await tx.resource_review.findFirst({
+      where: { 
+        id: review.id,
+        deleted_at: null 
+      },
+      include: {
+        users: {
+          select: {
+            id: true,
+            nickname: true,
+            contacts: {
+              select: {
+                photo_url: true
+              }
+            }
+          }
+        },
+        resources: {
+          select: {
+            id: true,
+            external_id: true,
+            name: true,
+            url: true
+          }
+        }
+      }
+    });
+
+    if (!fullReview) {
+      throw new NotFoundError(`創建後找不到心得評價 ${review.id}`);
+    }
+
+    // 查詢標籤
+    const tags = await tx.entity_tags.findMany({
+      where: {
+        entity_type: 'resource',
+        entity_id: review.id
+      },
+      include: {
+        tags: true
+      }
+    });
+
+    // 統計資料
+    const stats = {
+      likes_count: 0
+    };
+
+    // 轉換為 API 格式
+    const result = await transformReviewToApi({
+      ...fullReview,
+      tags: tags.map(tag => tag.tags),
+      stats
+    });
+
+    return createSuccessResponse(result, {
+      requestId: `review_create_${review.id}`,
+      processingTime: Date.now() - Date.now()
+    });
   });
 }
 

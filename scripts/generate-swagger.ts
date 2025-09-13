@@ -552,18 +552,25 @@ async function scanRouteDefinitions(): Promise<any[]> {
  * 路由與回應 schema 的對映表
  */
 const routeResponseMapping: Record<string, string> = {
+  // 認證相關路由 - 使用新的專用響應格式
+  'POST:/api/v1/auth/login': 'api-response.validators_authLoginResponseExample',
+  'POST:/api/v1/auth/register': 'api-response.validators_authLoginResponseExample',
+  'GET:/api/v1/auth/google/callback': 'api-response.validators_authLoginResponseExample',
+  'POST:/api/v1/auth/logout': 'auth.validators_logoutResponseSchema',
+  'POST:/api/v1/auth/refresh': 'auth.validators_refreshTokenResponseSchema',
+  
   // 用戶相關路由
+  'POST:/api/v1/users/': 'user.validators_createUserResponseSchema', // 創建用戶返回 user + token
   'GET:/api/v1/users/': 'user.validators_usersListResponseSchema',
-  'GET:/api/v1/users/me': 'user.validators_userSuccessResponseSchema',
-  'GET:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema',
-  'POST:/api/v1/users': 'user.validators_createUserResponseSchema',
-  'PUT:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema',
+  'GET:/api/v1/users/me': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
+  'GET:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
+  'PUT:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
   'DELETE:/api/v1/users/me': 'user.validators_deleteUserResponseSchema',
   'DELETE:/api/v1/users/:id': 'user.validators_deleteUserResponseSchema',
   
   // 用戶自訂 ID 相關
   'GET:/api/v1/users/custom-id/check/:customId': 'user.validators_customIdAvailabilityResponseSchema',
-  'GET:/api/v1/users/custom-id/:customId': 'user.validators_userSuccessResponseSchema',
+  'GET:/api/v1/users/custom-id/:customId': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
   'POST:/api/v1/users/me/custom-id': 'user.validators_setCustomIdResponseSchema',
   'DELETE:/api/v1/users/me/custom-id': 'user.validators_removeCustomIdResponseSchema',
   
@@ -571,12 +578,6 @@ const routeResponseMapping: Record<string, string> = {
   'GET:/api/v1/users/me/preferences': 'user.validators_userPreferencesResponseSchema',
   'PUT:/api/v1/users/me/preferences': 'user.validators_updateUserPreferencesResponseSchema',
   'GET:/api/v1/users/preferences/available': 'user.validators_availablePreferencesResponseSchema',
-  
-  // 認證相關路由
-  'POST:/api/v1/auth/login': 'auth.validators_loginSuccessResponseSchema',
-  'POST:/api/v1/auth/logout': 'auth.validators_logoutResponseSchema',
-  'POST:/api/v1/auth/refresh': 'auth.validators_refreshTokenResponseSchema',
-  'GET:/api/v1/auth/google/callback': 'auth.validators_loginSuccessResponseSchema',
   
   // Cursor 分頁路由 - 使用游標分頁 (cursor, limit)
   'GET:/api/v1/resources/': 'cursor_paginated',

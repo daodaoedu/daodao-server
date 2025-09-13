@@ -235,7 +235,7 @@ export async function transformReviewToApi(
       tagList: [],
       selfIntroduction: null
     },
-    resourceId: String(dbReview.resource_id || ''),
+    resourceId: String((dbReview.resources as any)?.external_id || dbReview.resource_id || ''),
     tags: [],
     createdAt: (dbReview.created_at instanceof Date) ? dbReview.created_at.toISOString() : new Date().toISOString(),
     updatedAt: (dbReview.updated_at instanceof Date) ? dbReview.updated_at.toISOString() : new Date().toISOString()
