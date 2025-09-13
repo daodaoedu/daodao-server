@@ -83,8 +83,7 @@ export interface CustomIdSetResponse {
 
 // 格式化後的用戶回應介面
 export interface FormattedUserResponse {
-  id: number;
-  _id: string; // external_id
+  id: string; // external_id (UUID)
   name: string | null; // nickname
   gender: 'male' | 'female' | 'other' | null;
   email: string | null;

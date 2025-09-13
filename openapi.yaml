@@ -3512,8 +3512,6 @@ components:
           type: object
           properties:
             id:
-              type: number
-            _id:
               type: string
             name:
               type: string
@@ -3690,8 +3688,6 @@ components:
             type: object
             properties:
               id:
-                type: number
-              _id:
                 type: string
               name:
                 type: string
@@ -3878,8 +3874,6 @@ components:
               type: object
               properties:
                 id:
-                  type: number
-                _id:
                   type: string
                 name:
                   type: string

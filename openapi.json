@@ -5030,9 +5030,6 @@
             "type": "object",
             "properties": {
               "id": {
-                "type": "number"
-              },
-              "_id": {
                 "type": "string"
               },
               "name": {
@@ -5283,9 +5280,6 @@
               "type": "object",
               "properties": {
                 "id": {
-                  "type": "number"
-                },
-                "_id": {
                   "type": "string"
                 },
                 "name": {
@@ -5561,9 +5555,6 @@
                 "type": "object",
                 "properties": {
                   "id": {
-                    "type": "number"
-                  },
-                  "_id": {
                     "type": "string"
                   },
                   "name": {
