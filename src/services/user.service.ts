@@ -269,8 +269,7 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
   };
 
   return {
-    id: user.id,
-    _id: user.external_id || '',
+    id: user.external_id || '',
     name: user.nickname || null,
     gender: (user.gender as 'male' | 'female' | 'other') || null,
     email: user.contacts?.email || null,

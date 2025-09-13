@@ -426,9 +426,7 @@ export const userPreferencesSchema = z.object({
 
 // 用戶回應資料 schema（對應 FormattedUserResponse type）
 const formattedUserResponseSchema = z.object({
-  id: z.number().int()
-    .describe("用戶數字 ID"),
-  _id: z.string()
+  id: z.string()
     .describe("用戶 UUID"),
   name: z.string().nullable()
     .describe("用戶姓名"),
@@ -542,8 +540,7 @@ const formattedUserResponseSchema = z.object({
 }).describe("格式化的用戶資料").meta({
   title: "用戶資料",
   examples: [{
-    id: 123,
-    _id: "123e4567-e89b-12d3-a456-426614174000",
+    id: "123e4567-e89b-12d3-a456-426614174000",
     name: "王小明",
     email: "wang.xiaoming@example.com",
     photoURL: "https://example.com/avatar/wang.jpg",
@@ -593,8 +590,7 @@ export const userSuccessResponseSchema = apiSuccessResponseSchema(formattedUserR
     examples: [{
       success: true,
       data: {
-        id: 123,
-        _id: "123e4567-e89b-12d3-a456-426614174000",
+        id: "123e4567-e89b-12d3-a456-426614174000",
         name: "王小明",
         email: "wang.xiaoming@example.com",
         photoURL: "https://example.com/avatar/wang.jpg",
@@ -622,16 +618,14 @@ export const usersListResponseSchema = paginatedApiResponseSchema(formattedUserR
       success: true,
       data: [
         {
-          id: 123,
-          _id: "123e4567-e89b-12d3-a456-426614174000",
+          id: "123e4567-e89b-12d3-a456-426614174000",
           name: "王小明",
           email: "wang.xiaoming@example.com",
           location: "taipei",
           roleList: ["工程師"]
         },
         {
-          id: 124,
-          _id: "456e7890-e89b-12d3-a456-426614174001",
+          id: "456e7890-e89b-12d3-a456-426614174001",
           name: "李小華",
           email: "li.xiaohua@example.com",
           location: "taichung",
@@ -667,8 +661,7 @@ export const createUserResponseSchema = apiSuccessResponseSchema(
       success: true,
       data: {
         user: {
-          id: 125,
-          _id: "789e0123-e89b-12d3-a456-426614174002",
+          id: "789e0123-e89b-12d3-a456-426614174002",
           name: "新用戶",
           email: "new.user@example.com"
         },
