@@ -205,7 +205,7 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
 
   const response = createSuccessResponse({
     user: {
-      id: user.id,
+      id: isTemporary ? user.id.toString() : ((user as { external_id?: string }).external_id || ''),
       nickname: isTemporary ? undefined : (user as { nickname?: string }).nickname,
       email: contact?.email || (user as { email?: string }).email,
       name: (user as { name?: string; nickname?: string }).name || (user as { nickname?: string }).nickname,
