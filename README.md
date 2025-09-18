@@ -1,6 +1,7 @@
 # DaoDao Server
 
-DaoDao Server 是一個基於 Node.js 和 Express 的後端服務，用於支持 DaoDao 平台的各種功能。該平台主要提供學習計畫、馬拉松活動、社群揪團等功能，幫助使用者規劃和追蹤學習進度。
+DaoDao Server 是一個基於 Node.js 和 Express 的後端服務，用於支持 DaoDao 平台的各種功能。
+該平台主要提供學習計畫、馬拉松活動、社群揪團等功能，幫助使用者規劃和追蹤學習進度。
 
 ## 目錄
 - [技術架構](#技術架構)
