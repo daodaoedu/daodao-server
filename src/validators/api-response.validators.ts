@@ -26,7 +26,7 @@ export const responseMetaSchema = z.object({
     .describe('Aggregated statistical data'),
   
   // System metadata
-  requestId: z.string().uuid('請提供有效的請求ID').optional()
+  requestId: z.string().optional()
     .describe('Unique identifier for request tracking'),
   cacheHit: z.boolean().optional()
     .describe('Whether the response was served from cache'),

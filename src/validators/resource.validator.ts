@@ -376,29 +376,6 @@ const userBasicInfoSchema = z.object({
   selfIntroduction: z.string().nullable().describe('自我介紹')
 }).describe('用戶基本資訊');
 
-// 分類基本資訊 schema
-const categoryBasicInfoSchema = z.object({
-  id: z.number().int().describe('分類 ID'),
-  name: z.string().describe('分類名稱')
-}).describe('分類基本資訊');
-
-// 標籤基本資訊 schema
-const tagBasicInfoSchema = z.object({
-  id: z.number().int().describe('標籤 ID'),
-  name: z.string().describe('標籤名稱')
-}).describe('標籤基本資訊');
-
-// 評價統計 schema
-const reviewStatsSchema = z.object({
-  totalReviews: z.number().int().min(0).describe('總評價數'),
-  averageScores: z.object({
-    impact: z.number().min(0).max(5).describe('影響力評分'),
-    mindset: z.number().min(0).max(5).describe('心態評分'),
-    problems: z.number().min(0).max(5).describe('問題解決評分'),
-    perspectives: z.number().min(0).max(5).describe('視角評分'),
-    goals: z.number().min(0).max(5).describe('目標評分')
-  }).describe('平均評分')
-}).describe('評價統計資訊');
 
 // 資源回應 schema - 匹配 transformResourceToApi 格式
 export const resourceResponseSchema = z.object({
@@ -700,10 +677,10 @@ export const validateUpdateResource = (data: unknown): UpdateResourceSchema => u
 export const validateUpdateResourceStatus = (data: unknown): UpdateResourceStatusSchema => updateResourceStatusSchema.parse(data);
 
 // 導出回應驗證函數
-export const validateGetResourceByIdResponse = (data: unknown) => getResourceByIdResponseSchema.parse(data);
-export const validateGetResourcesListResponse = (data: unknown) => getResourcesListResponseSchema.parse(data);
-export const validateCreateResourceResponse = (data: unknown) => createResourceResponseSchema.parse(data);
-export const validateUpdateResourceResponse = (data: unknown) => updateResourceResponseSchema.parse(data);
-export const validateGetResourceStatsResponse = (data: unknown) => getResourceStatsResponseSchema.parse(data);
-export const validateGetResourceTagsResponse = (data: unknown) => getResourceTagsResponseSchema.parse(data);
-export const validateDeleteResourceResponse = (data: unknown) => deleteResourceResponseSchema.parse(data);
+export const validateGetResourceByIdResponse = (data: unknown): z.infer<typeof getResourceByIdResponseSchema> => getResourceByIdResponseSchema.parse(data);
+export const validateGetResourcesListResponse = (data: unknown): z.infer<typeof getResourcesListResponseSchema> => getResourcesListResponseSchema.parse(data);
+export const validateCreateResourceResponse = (data: unknown): z.infer<typeof createResourceResponseSchema> => createResourceResponseSchema.parse(data);
+export const validateUpdateResourceResponse = (data: unknown): z.infer<typeof updateResourceResponseSchema> => updateResourceResponseSchema.parse(data);
+export const validateGetResourceStatsResponse = (data: unknown): z.infer<typeof getResourceStatsResponseSchema> => getResourceStatsResponseSchema.parse(data);
+export const validateGetResourceTagsResponse = (data: unknown): z.infer<typeof getResourceTagsResponseSchema> => getResourceTagsResponseSchema.parse(data);
+export const validateDeleteResourceResponse = (data: unknown): z.infer<typeof deleteResourceResponseSchema> => deleteResourceResponseSchema.parse(data);

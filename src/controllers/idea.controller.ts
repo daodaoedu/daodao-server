@@ -130,8 +130,11 @@ export const updateIdea = asyncHandler(async (req: Request, res: Response) => {
   
   // 更新想法
   const result = await ideaService.updateIdea(id, data, userId);
-  
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = updateIdeaResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -149,8 +152,11 @@ export const deleteIdea = asyncHandler(async (req: Request, res: Response) => {
   
   // 刪除想法
   const result = await ideaService.deleteIdea(id, userId);
-  
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = deleteIdeaResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**

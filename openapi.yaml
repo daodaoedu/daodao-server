@@ -3543,7 +3543,7 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: string
         resourceId:
           type: string
         content:
@@ -3620,25 +3620,36 @@ components:
             - published
             - archived
             - reported
-        author:
+        user:
           type: object
           properties:
             id:
               type: number
-            nickname:
+            name:
               type: string
-            photoUrl:
+            _id:
+              type: string
+            roleList:
+              type: array
+              items:
+                type: string
+            photoURL:
+              type: string
+              nullable: true
+            educationStage:
+              type: string
+              nullable: true
+            tagList:
+              type: array
+              items:
+                type: string
+            selfIntroduction:
               type: string
               nullable: true
         tags:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: number
-              name:
-                type: string
+            type: string
         likeCount:
           type: number
         createdAt:
@@ -3656,7 +3667,7 @@ components:
           type: object
           properties:
             id:
-              type: number
+              type: string
             resourceId:
               type: string
             content:
@@ -3729,25 +3740,36 @@ components:
             status:
               type: string
               enum: *ref_12
-            author:
+            user:
               type: object
               properties:
                 id:
                   type: number
-                nickname:
+                name:
                   type: string
-                photoUrl:
+                _id:
+                  type: string
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                photoURL:
+                  type: string
+                  nullable: true
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             tags:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
+                type: string
             likeCount:
               type: number
             createdAt:
@@ -3800,7 +3822,7 @@ components:
             type: object
             properties:
               id:
-                type: number
+                type: string
               resourceId:
                 type: string
               content:
@@ -3873,25 +3895,36 @@ components:
               status:
                 type: string
                 enum: *ref_12
-              author:
+              user:
                 type: object
                 properties:
                   id:
                     type: number
-                  nickname:
+                  name:
                     type: string
-                  photoUrl:
+                  _id:
+                    type: string
+                  roleList:
+                    type: array
+                    items:
+                      type: string
+                  photoURL:
+                    type: string
+                    nullable: true
+                  educationStage:
+                    type: string
+                    nullable: true
+                  tagList:
+                    type: array
+                    items:
+                      type: string
+                  selfIntroduction:
                     type: string
                     nullable: true
               tags:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: number
-                    name:
-                      type: string
+                  type: string
               likeCount:
                 type: number
               createdAt:
@@ -3976,7 +4009,7 @@ components:
           type: object
           properties:
             id:
-              type: number
+              type: string
             resourceId:
               type: string
             content:
@@ -4049,25 +4082,36 @@ components:
             status:
               type: string
               enum: *ref_12
-            author:
+            user:
               type: object
               properties:
                 id:
                   type: number
-                nickname:
+                name:
                   type: string
-                photoUrl:
+                _id:
+                  type: string
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                photoURL:
+                  type: string
+                  nullable: true
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             tags:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
+                type: string
             likeCount:
               type: number
             createdAt:
@@ -4118,7 +4162,7 @@ components:
           type: object
           properties:
             id:
-              type: number
+              type: string
             resourceId:
               type: string
             content:
@@ -4191,25 +4235,36 @@ components:
             status:
               type: string
               enum: *ref_12
-            author:
+            user:
               type: object
               properties:
                 id:
                   type: number
-                nickname:
+                name:
                   type: string
-                photoUrl:
+                _id:
+                  type: string
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                photoURL:
+                  type: string
+                  nullable: true
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             tags:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
+                type: string
             likeCount:
               type: number
             createdAt:
