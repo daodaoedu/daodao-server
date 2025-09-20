@@ -671,6 +671,34 @@ export const createUserResponseSchema = apiSuccessResponseSchema(
     }]
   });
 
+// 更新用戶成功回應 schema
+export const updateUserResponseSchema = apiSuccessResponseSchema(formattedUserResponseSchema)
+  .describe("更新用戶成功回應")
+  .meta({
+    title: "更新用戶回應",
+    examples: [{
+      success: true,
+      data: {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        name: "王小明（已更新）",
+        email: "wang.xiaoming.updated@example.com",
+        photoUrl: "https://example.com/avatar/wang_new.jpg",
+        roleId: 1,
+        gender: "male",
+        birthDay: "1990-01-01",
+        isOpenLocation: false,
+        isOpenProfile: true,
+        tagList: ["開發者", "學習者", "新標籤"],
+        roleList: ["user", "mentor"],
+        customId: "xiaoming_wang_updated",
+        customIdVerified: true,
+        createdDate: "2024-01-15T10:30:00.000Z",
+        updatedDate: "2024-01-16T14:20:00.000Z"
+      },
+      timestamp: "2024-01-16T14:20:00.000Z"
+    }]
+  });
+
 // 刪除用戶成功回應 schema
 export const deleteUserResponseSchema = apiSuccessResponseSchema(
   z.object({

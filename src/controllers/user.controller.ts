@@ -18,7 +18,15 @@ import type {
 import {
   createUserResponseSchema,
   userSuccessResponseSchema,
-  usersListResponseSchema
+  usersListResponseSchema,
+  updateUserResponseSchema,
+  deleteUserResponseSchema,
+  customIdAvailabilityResponseSchema,
+  setCustomIdResponseSchema,
+  removeCustomIdResponseSchema,
+  userPreferencesResponseSchema,
+  updateUserPreferencesResponseSchema,
+  availablePreferencesResponseSchema
 } from '../validators/user.validators';
 import {
   NotFoundError
@@ -111,7 +119,10 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await userService.updateUser(id, requestData);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = updateUserResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -127,7 +138,10 @@ export const deleteMe = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await userService.deleteMe(currentUser._id);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = deleteUserResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -139,7 +153,10 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await userService.deleteUser(userId);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = deleteUserResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -151,7 +168,10 @@ export const checkCustomIdAvailability = asyncHandler(async (req: Request, res: 
 
   const result = await userService.checkCustomIdAvailability(customId);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = customIdAvailabilityResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -168,7 +188,10 @@ export const setCustomId = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await userService.setCustomId(currentUser.id, customId);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = setCustomIdResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -184,7 +207,10 @@ export const removeCustomId = asyncHandler(async (req: Request, res: Response) =
 
   const result = await userService.removeCustomId(currentUser.id);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = removeCustomIdResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -200,7 +226,10 @@ export const getUserByCustomId = asyncHandler(async (req: Request, res: Response
     throw new NotFoundError('User not found');
   }
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = userSuccessResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -218,7 +247,10 @@ export const getUserPreferences = asyncHandler(async (req: Request, res: Respons
   const params = req.query as unknown as PreferencesQueryParams;
   const result = await userService.getUserPreferences(currentUser.id, params);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = userPreferencesResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -236,7 +268,10 @@ export const updateUserPreferences = asyncHandler(async (req: Request, res: Resp
   const requestData = req.body as UpdatePreferencesData;
   const result = await userService.updateUserPreferences(currentUser.id, requestData);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = updateUserPreferencesResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -246,7 +281,10 @@ export const updateUserPreferences = asyncHandler(async (req: Request, res: Resp
 export const getAvailablePreferences = asyncHandler(async (_req: Request, res: Response) => {
   const result = await userService.getAvailablePreferences();
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = availablePreferencesResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 export const userController = {
