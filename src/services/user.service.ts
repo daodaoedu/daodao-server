@@ -169,10 +169,10 @@ const validateWantToDoList = (items: unknown[]): want_to_do_list_t[] => {
 /**
  * 格式化為台北時間
  */
-const formatToTaipeiTime = (date: Date | null | undefined): string | null => {
-  if (!date) return null;
-  return moment(date).tz('Asia/Taipei').format('YYYY-MM-DD HH:mm:ss');
-};
+// const formatToTaipeiTime = (date: Date | null | undefined): string | null => {
+//   if (!date) return null;
+//   return moment(date).tz('Asia/Taipei').format('YYYY-MM-DD HH:mm:ss');
+// };
 
 /**
  * 計算完整度分數

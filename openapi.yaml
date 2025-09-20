@@ -927,6 +927,128 @@ components:
               type: number
               nullable: true
           nullable: true
+    auth.validators_getCurrentUserResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                nickname:
+                  type: string
+                  nullable: true
+                email:
+                  type: string
+                  nullable: true
+                name:
+                  type: string
+                  nullable: true
+                photo_url:
+                  type: string
+                  nullable: true
+                is_active:
+                  type: boolean
+                email_verified:
+                  type: boolean
+                email_verified_at:
+                  type: string
+                  nullable: true
+                roles:
+                  type: array
+                  items:
+                    type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+            isTemporary:
+              type: boolean
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    auth.validators_verifyEmailResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
     comment.validators_createCommentSchema:
       type: object
       properties:
@@ -2935,6 +3057,852 @@ components:
             - published
             - archived
             - reported
+    resource-review.validator_resourceReviewResponseSchema:
+      type: object
+      properties:
+        id:
+          type: number
+        resourceId:
+          type: string
+        content:
+          type: string
+        overallImpact:
+          type: number
+        changeMindset:
+          type: number
+        solveProblems:
+          type: number
+        gainPerspectives:
+          type: number
+        achieveGoals:
+          type: number
+        timeUsage:
+          type: string
+          enum: *ref_9
+          nullable: true
+        contentFeatures:
+          type: object
+          properties:
+            wellStructured:
+              type: boolean
+              default: false
+            practiceFocused:
+              type: boolean
+              default: false
+            wellRoundedConcepts:
+              type: boolean
+              default: false
+            thoughtProvoking:
+              type: boolean
+              default: false
+            progressiveLearning:
+              type: boolean
+              default: false
+            problemBased:
+              type: boolean
+              default: false
+            realWorldExamples:
+              type: boolean
+              default: false
+            interactive:
+              type: boolean
+              default: false
+            visuallyRich:
+              type: boolean
+              default: false
+        resourceUsage:
+          type: object
+          properties:
+            withOnlineCourses:
+              type: boolean
+              default: false
+            withBooks:
+              type: boolean
+              default: false
+            withOtherTools:
+              type: boolean
+              default: false
+            withCommunity:
+              type: boolean
+              default: false
+            onlyThisResource:
+              type: boolean
+              default: false
+            notApplicableResource:
+              type: boolean
+              default: false
+        status:
+          type: string
+          enum: &ref_11
+            - draft
+            - published
+            - archived
+            - reported
+        author:
+          type: object
+          properties:
+            id:
+              type: number
+            nickname:
+              type: string
+            photoUrl:
+              type: string
+              nullable: true
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              name:
+                type: string
+        likeCount:
+          type: number
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    resource-review.validator_getReviewByIdResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: number
+            resourceId:
+              type: string
+            content:
+              type: string
+            overallImpact:
+              type: number
+            changeMindset:
+              type: number
+            solveProblems:
+              type: number
+            gainPerspectives:
+              type: number
+            achieveGoals:
+              type: number
+            timeUsage:
+              type: string
+              enum: *ref_9
+              nullable: true
+            contentFeatures:
+              type: object
+              properties:
+                wellStructured:
+                  type: boolean
+                  default: false
+                practiceFocused:
+                  type: boolean
+                  default: false
+                wellRoundedConcepts:
+                  type: boolean
+                  default: false
+                thoughtProvoking:
+                  type: boolean
+                  default: false
+                progressiveLearning:
+                  type: boolean
+                  default: false
+                problemBased:
+                  type: boolean
+                  default: false
+                realWorldExamples:
+                  type: boolean
+                  default: false
+                interactive:
+                  type: boolean
+                  default: false
+                visuallyRich:
+                  type: boolean
+                  default: false
+            resourceUsage:
+              type: object
+              properties:
+                withOnlineCourses:
+                  type: boolean
+                  default: false
+                withBooks:
+                  type: boolean
+                  default: false
+                withOtherTools:
+                  type: boolean
+                  default: false
+                withCommunity:
+                  type: boolean
+                  default: false
+                onlyThisResource:
+                  type: boolean
+                  default: false
+                notApplicableResource:
+                  type: boolean
+                  default: false
+            status:
+              type: string
+              enum: *ref_11
+            author:
+              type: object
+              properties:
+                id:
+                  type: number
+                nickname:
+                  type: string
+                photoUrl:
+                  type: string
+                  nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+            likeCount:
+              type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource-review.validator_getReviewsListResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              resourceId:
+                type: string
+              content:
+                type: string
+              overallImpact:
+                type: number
+              changeMindset:
+                type: number
+              solveProblems:
+                type: number
+              gainPerspectives:
+                type: number
+              achieveGoals:
+                type: number
+              timeUsage:
+                type: string
+                enum: *ref_9
+                nullable: true
+              contentFeatures:
+                type: object
+                properties:
+                  wellStructured:
+                    type: boolean
+                    default: false
+                  practiceFocused:
+                    type: boolean
+                    default: false
+                  wellRoundedConcepts:
+                    type: boolean
+                    default: false
+                  thoughtProvoking:
+                    type: boolean
+                    default: false
+                  progressiveLearning:
+                    type: boolean
+                    default: false
+                  problemBased:
+                    type: boolean
+                    default: false
+                  realWorldExamples:
+                    type: boolean
+                    default: false
+                  interactive:
+                    type: boolean
+                    default: false
+                  visuallyRich:
+                    type: boolean
+                    default: false
+              resourceUsage:
+                type: object
+                properties:
+                  withOnlineCourses:
+                    type: boolean
+                    default: false
+                  withBooks:
+                    type: boolean
+                    default: false
+                  withOtherTools:
+                    type: boolean
+                    default: false
+                  withCommunity:
+                    type: boolean
+                    default: false
+                  onlyThisResource:
+                    type: boolean
+                    default: false
+                  notApplicableResource:
+                    type: boolean
+                    default: false
+              status:
+                type: string
+                enum: *ref_11
+              author:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  nickname:
+                    type: string
+                  photoUrl:
+                    type: string
+                    nullable: true
+              tags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: number
+                    name:
+                      type: string
+              likeCount:
+                type: number
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+        pagination:
+          type: object
+          properties:
+            cursors:
+              type: object
+              properties:
+                start:
+                  type: string
+                  nullable: true
+                end:
+                  type: string
+                  nullable: true
+            hasMore:
+              type: boolean
+            count:
+              type: number
+            limit:
+              type: number
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+            nextCursor:
+              type: string
+              nullable: true
+            prevCursor:
+              type: string
+              nullable: true
+            totalEstimate:
+              type: number
+              nullable: true
+            parentTotalEstimate:
+              type: number
+              nullable: true
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource-review.validator_createReviewResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: number
+            resourceId:
+              type: string
+            content:
+              type: string
+            overallImpact:
+              type: number
+            changeMindset:
+              type: number
+            solveProblems:
+              type: number
+            gainPerspectives:
+              type: number
+            achieveGoals:
+              type: number
+            timeUsage:
+              type: string
+              enum: *ref_9
+              nullable: true
+            contentFeatures:
+              type: object
+              properties:
+                wellStructured:
+                  type: boolean
+                  default: false
+                practiceFocused:
+                  type: boolean
+                  default: false
+                wellRoundedConcepts:
+                  type: boolean
+                  default: false
+                thoughtProvoking:
+                  type: boolean
+                  default: false
+                progressiveLearning:
+                  type: boolean
+                  default: false
+                problemBased:
+                  type: boolean
+                  default: false
+                realWorldExamples:
+                  type: boolean
+                  default: false
+                interactive:
+                  type: boolean
+                  default: false
+                visuallyRich:
+                  type: boolean
+                  default: false
+            resourceUsage:
+              type: object
+              properties:
+                withOnlineCourses:
+                  type: boolean
+                  default: false
+                withBooks:
+                  type: boolean
+                  default: false
+                withOtherTools:
+                  type: boolean
+                  default: false
+                withCommunity:
+                  type: boolean
+                  default: false
+                onlyThisResource:
+                  type: boolean
+                  default: false
+                notApplicableResource:
+                  type: boolean
+                  default: false
+            status:
+              type: string
+              enum: *ref_11
+            author:
+              type: object
+              properties:
+                id:
+                  type: number
+                nickname:
+                  type: string
+                photoUrl:
+                  type: string
+                  nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+            likeCount:
+              type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource-review.validator_updateReviewResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: number
+            resourceId:
+              type: string
+            content:
+              type: string
+            overallImpact:
+              type: number
+            changeMindset:
+              type: number
+            solveProblems:
+              type: number
+            gainPerspectives:
+              type: number
+            achieveGoals:
+              type: number
+            timeUsage:
+              type: string
+              enum: *ref_9
+              nullable: true
+            contentFeatures:
+              type: object
+              properties:
+                wellStructured:
+                  type: boolean
+                  default: false
+                practiceFocused:
+                  type: boolean
+                  default: false
+                wellRoundedConcepts:
+                  type: boolean
+                  default: false
+                thoughtProvoking:
+                  type: boolean
+                  default: false
+                progressiveLearning:
+                  type: boolean
+                  default: false
+                problemBased:
+                  type: boolean
+                  default: false
+                realWorldExamples:
+                  type: boolean
+                  default: false
+                interactive:
+                  type: boolean
+                  default: false
+                visuallyRich:
+                  type: boolean
+                  default: false
+            resourceUsage:
+              type: object
+              properties:
+                withOnlineCourses:
+                  type: boolean
+                  default: false
+                withBooks:
+                  type: boolean
+                  default: false
+                withOtherTools:
+                  type: boolean
+                  default: false
+                withCommunity:
+                  type: boolean
+                  default: false
+                onlyThisResource:
+                  type: boolean
+                  default: false
+                notApplicableResource:
+                  type: boolean
+                  default: false
+            status:
+              type: string
+              enum: *ref_11
+            author:
+              type: object
+              properties:
+                id:
+                  type: number
+                nickname:
+                  type: string
+                photoUrl:
+                  type: string
+                  nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+            likeCount:
+              type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource-review.validator_deleteReviewResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource-review.validator_likeReviewResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            likeCount:
+              type: number
+            isLiked:
+              type: boolean
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource-review.validator_getReviewTagsResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
     resource.validator_createResourceSchema:
       type: object
       properties:
@@ -3091,9 +4059,910 @@ components:
             - active
             - archived
             - reported
+    resource.validator_resourceResponseSchema:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+        videoUrl:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: &ref_12
+            - learning_platform_app
+            - learning_tools
+            - books_articles
+            - video_content
+            - podcast_content
+            - workshops_courses
+            - professional_certificates
+            - community_organization
+            - other
+        cost:
+          type: string
+          enum: &ref_13
+            - free
+            - paid
+            - partial_free
+        level:
+          type: string
+          enum: &ref_14
+            - beginner
+            - intermediate
+            - expert
+            - all_levels
+        status:
+          type: string
+          enum: &ref_15
+            - draft
+            - active
+            - archived
+            - reported
+        author:
+          type: object
+          properties:
+            id:
+              type: number
+            nickname:
+              type: string
+            photoUrl:
+              type: string
+              nullable: true
+        majorCategory:
+          type: object
+          properties:
+            id:
+              type: number
+            name:
+              type: string
+          nullable: true
+        subCategory:
+          type: object
+          properties:
+            id:
+              type: number
+            name:
+              type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              name:
+                type: string
+        reviewStats:
+          type: object
+          properties:
+            totalReviews:
+              type: number
+            averageScores:
+              type: object
+              properties:
+                impact:
+                  type: number
+                mindset:
+                  type: number
+                problems:
+                  type: number
+                perspectives:
+                  type: number
+                goals:
+                  type: number
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    resource.validator_resourceListItemSchema:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+        type:
+          type: string
+          enum: &ref_16
+            - learning_platform_app
+            - learning_tools
+            - books_articles
+            - video_content
+            - podcast_content
+            - workshops_courses
+            - professional_certificates
+            - community_organization
+            - other
+        cost:
+          type: string
+          enum: &ref_17
+            - free
+            - paid
+            - partial_free
+        level:
+          type: string
+          enum: &ref_18
+            - beginner
+            - intermediate
+            - expert
+            - all_levels
+        status:
+          type: string
+          enum: &ref_19
+            - draft
+            - active
+            - archived
+            - reported
+        author:
+          type: object
+          properties:
+            id:
+              type: number
+            nickname:
+              type: string
+            photoUrl:
+              type: string
+              nullable: true
+        majorCategory:
+          type: object
+          properties:
+            id:
+              type: number
+            name:
+              type: string
+          nullable: true
+        subCategory:
+          type: object
+          properties:
+            id:
+              type: number
+            name:
+              type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              name:
+                type: string
+        reviewStats:
+          type: object
+          properties:
+            totalReviews:
+              type: number
+            averageScores:
+              type: object
+              properties:
+                impact:
+                  type: number
+                mindset:
+                  type: number
+                problems:
+                  type: number
+                perspectives:
+                  type: number
+                goals:
+                  type: number
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    resource.validator_resourceStatsResponseSchema:
+      type: object
+      properties:
+        totalResources:
+          type: number
+        activeResources:
+          type: number
+        categoryStats:
+          type: object
+          additionalProperties: true
+        typeStats:
+          type: object
+          additionalProperties: true
+    resource.validator_getResourceByIdResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            url:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            description:
+              type: string
+            videoUrl:
+              type: string
+              nullable: true
+            type:
+              type: string
+              enum: *ref_12
+            cost:
+              type: string
+              enum: *ref_13
+            level:
+              type: string
+              enum: *ref_14
+            status:
+              type: string
+              enum: *ref_15
+            author:
+              type: object
+              properties:
+                id:
+                  type: number
+                nickname:
+                  type: string
+                photoUrl:
+                  type: string
+                  nullable: true
+            majorCategory:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+              nullable: true
+            subCategory:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+              nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+            reviewStats:
+              type: object
+              properties:
+                totalReviews:
+                  type: number
+                averageScores:
+                  type: object
+                  properties:
+                    impact:
+                      type: number
+                    mindset:
+                      type: number
+                    problems:
+                      type: number
+                    perspectives:
+                      type: number
+                    goals:
+                      type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource.validator_getResourcesListResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              url:
+                type: string
+              imageUrl:
+                type: string
+                nullable: true
+              description:
+                type: string
+              type:
+                type: string
+                enum: *ref_16
+              cost:
+                type: string
+                enum: *ref_17
+              level:
+                type: string
+                enum: *ref_18
+              status:
+                type: string
+                enum: *ref_19
+              author:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  nickname:
+                    type: string
+                  photoUrl:
+                    type: string
+                    nullable: true
+              majorCategory:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                nullable: true
+              subCategory:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                nullable: true
+              tags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: number
+                    name:
+                      type: string
+              reviewStats:
+                type: object
+                properties:
+                  totalReviews:
+                    type: number
+                  averageScores:
+                    type: object
+                    properties:
+                      impact:
+                        type: number
+                      mindset:
+                        type: number
+                      problems:
+                        type: number
+                      perspectives:
+                        type: number
+                      goals:
+                        type: number
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+        pagination:
+          type: object
+          properties:
+            cursors:
+              type: object
+              properties:
+                start:
+                  type: string
+                  nullable: true
+                end:
+                  type: string
+                  nullable: true
+            hasMore:
+              type: boolean
+            count:
+              type: number
+            limit:
+              type: number
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+            nextCursor:
+              type: string
+              nullable: true
+            prevCursor:
+              type: string
+              nullable: true
+            totalEstimate:
+              type: number
+              nullable: true
+            parentTotalEstimate:
+              type: number
+              nullable: true
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource.validator_createResourceResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            url:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            description:
+              type: string
+            videoUrl:
+              type: string
+              nullable: true
+            type:
+              type: string
+              enum: *ref_12
+            cost:
+              type: string
+              enum: *ref_13
+            level:
+              type: string
+              enum: *ref_14
+            status:
+              type: string
+              enum: *ref_15
+            author:
+              type: object
+              properties:
+                id:
+                  type: number
+                nickname:
+                  type: string
+                photoUrl:
+                  type: string
+                  nullable: true
+            majorCategory:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+              nullable: true
+            subCategory:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+              nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+            reviewStats:
+              type: object
+              properties:
+                totalReviews:
+                  type: number
+                averageScores:
+                  type: object
+                  properties:
+                    impact:
+                      type: number
+                    mindset:
+                      type: number
+                    problems:
+                      type: number
+                    perspectives:
+                      type: number
+                    goals:
+                      type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource.validator_updateResourceResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            url:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            description:
+              type: string
+            videoUrl:
+              type: string
+              nullable: true
+            type:
+              type: string
+              enum: *ref_12
+            cost:
+              type: string
+              enum: *ref_13
+            level:
+              type: string
+              enum: *ref_14
+            status:
+              type: string
+              enum: *ref_15
+            author:
+              type: object
+              properties:
+                id:
+                  type: number
+                nickname:
+                  type: string
+                photoUrl:
+                  type: string
+                  nullable: true
+            majorCategory:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+              nullable: true
+            subCategory:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+              nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+            reviewStats:
+              type: object
+              properties:
+                totalReviews:
+                  type: number
+                averageScores:
+                  type: object
+                  properties:
+                    impact:
+                      type: number
+                    mindset:
+                      type: number
+                    problems:
+                      type: number
+                    perspectives:
+                      type: number
+                    goals:
+                      type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource.validator_getResourceStatsResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            totalResources:
+              type: number
+            activeResources:
+              type: number
+            categoryStats:
+              type: object
+              additionalProperties: true
+            typeStats:
+              type: object
+              additionalProperties: true
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource.validator_getResourceTagsResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    resource.validator_deleteResourceResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
     review.validators_moodSchema:
       type: string
-      enum: &ref_11
+      enum: &ref_20
         - excellent
         - good
         - neutral
@@ -3107,7 +4976,7 @@ components:
       type: number
     review.validators_visibilitySchema:
       type: string
-      enum: &ref_12
+      enum: &ref_21
         - private
         - public
     review.validators_createReviewSchema:
@@ -3120,7 +4989,7 @@ components:
           nullable: true
         mood:
           type: string
-          enum: *ref_11
+          enum: *ref_20
         stressLevel:
           type: number
         moodDescription:
@@ -3136,7 +5005,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: *ref_12
+          enum: *ref_21
           nullable: true
           default: private
     review.validators_updateReviewSchema:
@@ -3147,7 +5016,7 @@ components:
           nullable: true
         mood:
           type: string
-          enum: *ref_11
+          enum: *ref_20
           nullable: true
         stressLevel:
           type: number
@@ -3172,7 +5041,7 @@ components:
           nullable: true
         mood:
           type: string
-          enum: *ref_11
+          enum: *ref_20
           nullable: true
         stressLevel:
           type: number
@@ -3213,7 +5082,7 @@ components:
           additionalProperties: true
         entityType:
           type: string
-          enum: &ref_13
+          enum: &ref_22
             - resource
             - project
             - idea
@@ -3229,7 +5098,7 @@ components:
             - type: number
         entityType:
           type: string
-          enum: *ref_13
+          enum: *ref_22
         tagName:
           type: string
     tag.validators_removeEntityTagSchema:
@@ -3242,7 +5111,7 @@ components:
             - type: number
         entityType:
           type: string
-          enum: *ref_13
+          enum: *ref_22
         tagName:
           type: string
     tag.validators_batchTagOperationSchema:
@@ -3260,7 +5129,7 @@ components:
             - type: number
         entityType:
           type: string
-          enum: *ref_13
+          enum: *ref_22
         tagNames:
           type: array
           items:
@@ -3270,7 +5139,7 @@ components:
       properties:
         entityType:
           type: string
-          enum: *ref_13
+          enum: *ref_22
           nullable: true
         timeRange:
           type: string
@@ -3524,7 +5393,7 @@ components:
               nullable: true
             gender:
               type: string
-              enum: &ref_14
+              enum: &ref_23
                 - male
                 - female
                 - other
@@ -3534,7 +5403,7 @@ components:
               nullable: true
             educationStage:
               type: string
-              enum: &ref_15
+              enum: &ref_24
                 - university
                 - high
                 - other
@@ -3700,14 +5569,14 @@ components:
                 nullable: true
               gender:
                 type: string
-                enum: *ref_14
+                enum: *ref_23
                 nullable: true
               birthDay:
                 type: string
                 nullable: true
               educationStage:
                 type: string
-                enum: *ref_15
+                enum: *ref_24
                 nullable: true
               isOpenLocation:
                 type: boolean
@@ -3886,14 +5755,14 @@ components:
                   nullable: true
                 gender:
                   type: string
-                  enum: *ref_14
+                  enum: *ref_23
                   nullable: true
                 birthDay:
                   type: string
                   nullable: true
                 educationStage:
                   type: string
-                  enum: *ref_15
+                  enum: *ref_24
                   nullable: true
                 isOpenLocation:
                   type: boolean
@@ -3999,6 +5868,174 @@ components:
                 updatedDate:
                   type: string
             token:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    user.validators_updateUserResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+              nullable: true
+            email:
+              type: string
+              nullable: true
+            photoURL:
+              type: string
+              nullable: true
+            gender:
+              type: string
+              enum: *ref_23
+              nullable: true
+            birthDay:
+              type: string
+              nullable: true
+            educationStage:
+              type: string
+              enum: *ref_24
+              nullable: true
+            isOpenLocation:
+              type: boolean
+            isOpenProfile:
+              type: boolean
+            isSubscribeEmail:
+              type: boolean
+            location:
+              type: string
+              nullable: true
+            selfIntroduction:
+              type: string
+              nullable: true
+            share:
+              oneOf:
+                - type: string
+                - type: array
+                  items:
+                    type: string
+              nullable: true
+            wantToDoList:
+              type: array
+              items:
+                type: string
+              nullable: true
+            tagList:
+              type: array
+              items:
+                type: string
+              nullable: true
+            interestList:
+              type: array
+              items:
+                type: string
+              nullable: true
+            preferences:
+              type: object
+              additionalProperties: true
+              nullable: true
+            role:
+              type: number
+              nullable: true
+            roleList:
+              type: array
+              items:
+                type: string
+              nullable: true
+            basicInfo:
+              type: object
+              properties:
+                selfIntroduction:
+                  type: string
+                  nullable: true
+                shareList:
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+                  nullable: true
+                wantToDoList:
+                  type: array
+                  items:
+                    type: string
+                  nullable: true
+              nullable: true
+            contactList:
+              type: object
+              properties:
+                email:
+                  type: string
+                  nullable: true
+                photoURL:
+                  type: string
+                  nullable: true
+                isSubscribeEmail:
+                  type: boolean
+                  nullable: true
+                instagram:
+                  type: string
+                  nullable: true
+                discord:
+                  type: string
+                  nullable: true
+                line:
+                  type: string
+                  nullable: true
+                facebook:
+                  type: string
+                  nullable: true
+              nullable: true
+            customId:
+              type: string
+              nullable: true
+            customIdVerified:
+              type: boolean
+              nullable: true
+            customIdCreatedAt:
+              type: string
+              nullable: true
+            createdDate:
+              type: string
+            updatedDate:
               type: string
         timestamp:
           type: string
@@ -8677,7 +10714,7 @@ paths:
         定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express';
         import { userController } from '../controllers/user.controller'; import
         { authenticate, optionalAuth } from '../middleware/auth'; import {
-        canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from
+        canUpdateUser, // canDeleteUser, requireAdmin } from
         '../middleware/permission.middleware'; import { validate } from
         '../middleware/validation.middleware'; import { createUserSchema,
         updateUserSchema, getUserParamsSchema, getUserQuerySchema } from
@@ -8713,7 +10750,7 @@ paths:
         定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express';
         import { userController } from '../controllers/user.controller'; import
         { authenticate, optionalAuth } from '../middleware/auth'; import {
-        canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from
+        canUpdateUser, // canDeleteUser, requireAdmin } from
         '../middleware/permission.middleware'; import { validate } from
         '../middleware/validation.middleware'; import { createUserSchema,
         updateUserSchema, getUserParamsSchema, getUserQuerySchema } from

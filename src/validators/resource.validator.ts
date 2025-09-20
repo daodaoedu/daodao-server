@@ -12,8 +12,7 @@ import {
 } from '@/constants/mappings';
 import {
   apiSuccessResponseSchema,
-  cursorPaginatedApiResponseSchema,
-  responseMetaSchema
+  cursorPaginatedApiResponseSchema
 } from './api-response.validators';
 
 // 將物件值轉換為字串陣列，用於 enum 驗證

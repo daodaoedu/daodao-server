@@ -11,7 +11,8 @@ import { apiSuccessResponseSchema } from './api-response.validators';
  */
 export const loginValidator = z.object({
   email: z
-    .string('電子郵件為必填欄位')
+    .string()
+    .min(1, '電子郵件為必填欄位')
     .email('請輸入有效的電子郵件格式')
     .max(254, '電子郵件長度不能超過 254 個字符')
     .trim()
@@ -22,7 +23,8 @@ export const loginValidator = z.object({
       examples: ['user@example.com', 'john.doe@company.com', 'student@university.edu']
     }),
   password: z
-    .string('密碼為必填欄位')
+    .string()
+    .min(1, '密碼為必填欄位')
     .min(1, '密碼不能為空')
     .describe('登入密碼')
     .meta({
@@ -31,13 +33,13 @@ export const loginValidator = z.object({
     }),
   rememberMe: z
     .boolean()
-    .optional()
-    .default(false)
     .describe('是否記住我')
     .meta({
       title: '記住我',
       examples: [true, false]
     })
+    .optional()
+    .default(false)
 }).describe('用戶登入請求資料').meta({
   title: '用戶登入',
   examples: [{
@@ -52,7 +54,8 @@ export const loginValidator = z.object({
  */
 export const registerValidator = z.object({
   username: z
-    .string('用戶名為必填欄位')
+    .string()
+    .min(1, '用戶名為必填欄位')
     .min(3, '用戶名至少需要 3 個字符')
     .max(50, '用戶名不能超過 50 個字符')
     .regex(/^[a-zA-Z0-9_-]+$/, '用戶名只能包含字母、數字、底線和連字符')
@@ -63,7 +66,8 @@ export const registerValidator = z.object({
       examples: ['john_doe', 'alice123', 'user-name', 'developer2024']
     }),
   email: z
-    .string('電子郵件為必填欄位')
+    .string()
+    .min(1, '電子郵件為必填欄位')
     .email('請輸入有效的電子郵件格式')
     .max(254, '電子郵件長度不能超過 254 個字符')
     .trim()
@@ -74,7 +78,8 @@ export const registerValidator = z.object({
       examples: ['newuser@example.com', 'signup@company.com', 'register@university.edu']
     }),
   password: z
-    .string('密碼為必填欄位')
+    .string()
+    .min(1, '密碼為必填欄位')
     .min(8, '密碼至少需要 8 個字符')
     .max(128, '密碼不能超過 128 個字符')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, '密碼必須包含至少一個小寫字母、一個大寫字母和一個數字')
@@ -84,7 +89,8 @@ export const registerValidator = z.object({
       examples: ['MyNewPassword123', 'SecurePass456', 'StrongPwd789']
     }),
   confirmPassword: z
-    .string('確認密碼為必填欄位')
+    .string()
+    .min(1, '確認密碼為必填欄位')
     .describe('確認密碼（必須與密碼相同）')
     .meta({
       title: '確認密碼',
@@ -94,12 +100,12 @@ export const registerValidator = z.object({
     .string()
     .max(100, '顯示名稱不能超過 100 個字符')
     .trim()
-    .optional()
     .describe('顯示名稱（可選）')
     .meta({
       title: '顯示名稱',
       examples: ['王小明', 'John Doe', 'Alice Chen', '李大華']
     })
+    .optional()
 }).describe('用戶註冊請求資料').meta({
   title: '用戶註冊',
   examples: [{
@@ -119,7 +125,8 @@ export const registerValidator = z.object({
  */
 export const forgotPasswordValidator = z.object({
   email: z
-    .string('電子郵件為必填欄位')
+    .string()
+    .min(1, '電子郵件為必填欄位')
     .email('請輸入有效的電子郵件格式')
     .max(254, '電子郵件長度不能超過 254 個字符')
     .trim()
@@ -141,7 +148,8 @@ export const forgotPasswordValidator = z.object({
  */
 export const resetPasswordValidator = z.object({
   token: z
-    .string('重設令牌為必填欄位')
+    .string()
+    .min(1, '重設令牌為必填欄位')
     .min(1, '重設令牌不能為空')
     .describe('密碼重設令牌')
     .meta({
@@ -149,7 +157,8 @@ export const resetPasswordValidator = z.object({
       examples: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', 'reset_token_123456789']
     }),
   newPassword: z
-    .string('新密碼為必填欄位')
+    .string()
+    .min(1, '新密碼為必填欄位')
     .min(8, '密碼至少需要 8 個字符')
     .max(128, '密碼不能超過 128 個字符')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, '密碼必須包含至少一個小寫字母、一個大寫字母和一個數字')
@@ -159,7 +168,8 @@ export const resetPasswordValidator = z.object({
       examples: ['NewSecurePassword123', 'MyStrongPwd456', 'ResetPass789']
     }),
   confirmPassword: z
-    .string('確認密碼為必填欄位')
+    .string()
+    .min(1, '確認密碼為必填欄位')
     .describe('確認新密碼（必須與新密碼相同）')
     .meta({
       title: '確認密碼',
@@ -182,7 +192,8 @@ export const resetPasswordValidator = z.object({
  */
 export const verifyEmailValidator = z.object({
   token: z
-    .string('驗證令牌為必填欄位')
+    .string()
+    .min(1, '驗證令牌為必填欄位')
     .min(1, '驗證令牌不能為空')
     .describe('電子郵件驗證令牌')
     .meta({
@@ -190,7 +201,8 @@ export const verifyEmailValidator = z.object({
       examples: ['verify_token_123456789', 'email_verification_abc']
     }),
   email: z
-    .string('電子郵件為必填欄位')
+    .string()
+    .min(1, '電子郵件為必填欄位')
     .email('請輸入有效的電子郵件格式')
     .max(254, '電子郵件長度不能超過 254 個字符')
     .trim()
@@ -213,7 +225,8 @@ export const verifyEmailValidator = z.object({
  */
 export const changePasswordValidator = z.object({
   currentPassword: z
-    .string('當前密碼為必填欄位')
+    .string()
+    .min(1, '當前密碼為必填欄位')
     .min(1, '當前密碼不能為空')
     .describe('當前的密碼')
     .meta({
@@ -221,7 +234,8 @@ export const changePasswordValidator = z.object({
       examples: ['CurrentPassword123', 'OldPassword456']
     }),
   newPassword: z
-    .string('新密碼為必填欄位')
+    .string()
+    .min(1, '新密碼為必填欄位')
     .min(8, '密碼至少需要 8 個字符')
     .max(128, '密碼不能超過 128 個字符')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, '密碼必須包含至少一個小寫字母、一個大寫字母和一個數字')
@@ -231,7 +245,8 @@ export const changePasswordValidator = z.object({
       examples: ['NewPassword123', 'UpdatedPwd456', 'ChangedPass789']
     }),
   confirmPassword: z
-    .string('確認密碼為必填欄位')
+    .string()
+    .min(1, '確認密碼為必填欄位')
     .describe('確認新密碼（必須與新密碼相同）')
     .meta({
       title: '確認密碼',
@@ -260,46 +275,46 @@ export const updateProfileValidator = z.object({
     .string()
     .max(100, '顯示名稱不能超過 100 個字符')
     .trim()
-    .optional()
     .describe('顯示名稱')
     .meta({
       title: '顯示名稱',
       examples: ['李小明', 'John Smith', 'Alice Chen', '王大華']
-    }),
+    })
+    .optional(),
   username: z
     .string()
     .min(3, '用戶名至少需要 3 個字符')
     .max(50, '用戶名不能超過 50 個字符')
     .regex(/^[a-zA-Z0-9_-]+$/, '用戶名只能包含字母、數字、底線和連字符')
     .trim()
-    .optional()
     .describe('用戶名')
     .meta({
       title: '用戶名',
       examples: ['new_username', 'updated-name', 'user2024']
-    }),
+    })
+    .optional(),
   photoUrl: z
     .string()
     .url('請輸入有效的 URL 格式')
     .max(2048, 'URL 長度不能超過 2048 個字符')
-    .optional()
-    .nullable()
     .describe('個人大頭照 URL')
     .meta({
       title: '個人大頭照',
       examples: ['https://example.com/avatar/user.jpg', 'https://cdn.example.com/photos/profile.png']
-    }),
+    })
+    .optional()
+    .nullable(),
   bio: z
     .string()
     .max(500, '個人簡介不能超過 500 個字符')
     .trim()
-    .optional()
-    .nullable()
     .describe('個人簡介')
     .meta({
       title: '個人簡介',
       examples: ['我是一名全端開發工程師，熱愛學習新技術', 'Passionate about creating great user experiences', '專業 UI/UX 設計師，專長於使用者研究']
     })
+    .optional()
+    .nullable()
 }).describe('更新個人資料請求資料').meta({
   title: '更新個人資料',
   examples: [{
@@ -315,7 +330,8 @@ export const updateProfileValidator = z.object({
  */
 export const tokenValidator = z.object({
   token: z
-    .string('Token 為必填欄位')
+    .string()
+    .min(1, 'Token 為必填欄位')
     .min(1, 'Token 不能為空')
     .regex(/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$/, '無效的 JWT Token 格式')
     .describe('JWT 認證令牌')
@@ -335,7 +351,8 @@ export const tokenValidator = z.object({
  */
 export const revokeAllSessionsValidator = z.object({
   password: z
-    .string('密碼為必填欄位')
+    .string()
+    .min(1, '密碼為必填欄位')
     .min(1, '密碼不能為空')
     .describe('當前密碼用於確認身份')
     .meta({
@@ -356,21 +373,21 @@ export const oauthStateValidator = z.object({
   state: z
     .string()
     .min(1, '狀態參數不能為空')
-    .optional()
     .describe('OAuth 狀態參數')
     .meta({
       title: 'OAuth 狀態',
       examples: ['random_state_123456', 'oauth_state_abc']
-    }),
+    })
+    .optional(),
   code: z
     .string()
     .min(1, '授權碼不能為空')
-    .optional()
     .describe('OAuth 授權碼')
     .meta({
       title: '授權碼',
       examples: ['auth_code_123456789', 'oauth_authorization_code']
-    }),
+    })
+    .optional(),
   error: z
     .string()
     .optional()

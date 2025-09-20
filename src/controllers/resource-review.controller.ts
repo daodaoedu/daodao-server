@@ -9,10 +9,17 @@ import { BadRequestError } from '@/middleware/error.middleware';
 import resourceReviewService from '@/services/resource-review.service';
 import tagService from '@/services/tag.service';
 import type { tags } from '../../generated/prisma';
-import { 
-  validateCreateResourceReview, 
-  validateUpdateResourceReview, 
-  validateUpdateReviewStatus 
+import {
+  validateCreateResourceReview,
+  validateUpdateResourceReview,
+  validateUpdateReviewStatus,
+  validateGetReviewByIdResponse,
+  validateGetReviewsListResponse,
+  validateCreateReviewResponse,
+  validateUpdateReviewResponse,
+  validateDeleteReviewResponse,
+  validateLikeReviewResponse,
+  validateGetReviewTagsResponse
 } from '@/validators/resource-review.validator';
 
 /**
@@ -21,10 +28,10 @@ import {
  */
 export const getReviewsByResource = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
-  const { 
-    cursor, 
-    limit, 
-    tags, 
+  const {
+    cursor,
+    limit,
+    tags,
     sort,
     order,
     minScore,
@@ -56,8 +63,9 @@ export const getReviewsByResource = asyncHandler(async (req: Request, res: Respo
   // 查詢心得評價列表
   const result = await resourceReviewService.getReviews(filters, pagination);
 
-  // 直接透傳結果
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateGetReviewsListResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -66,10 +74,10 @@ export const getReviewsByResource = asyncHandler(async (req: Request, res: Respo
  */
 export const getReviewsByUser = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const { 
-    cursor, 
-    limit, 
-    tags, 
+  const {
+    cursor,
+    limit,
+    tags,
     sort,
     order
   } = req.query;
@@ -99,8 +107,9 @@ export const getReviewsByUser = asyncHandler(async (req: Request, res: Response)
   // 查詢心得評價列表
   const result = await resourceReviewService.getReviews(filters, pagination);
 
-  // 直接透傳結果
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateGetReviewsListResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -109,12 +118,13 @@ export const getReviewsByUser = asyncHandler(async (req: Request, res: Response)
  */
 export const getReviewById = asyncHandler(async (req: Request, res: Response) => {
   const { reviewId } = req.params;
-  
+
   // 查詢心得評價
   const review = await resourceReviewService.getReviewById(parseInt(reviewId, 10));
 
-  // 直接透傳結果
-  res.json(review);
+  // 驗證並回傳回應
+  const validatedReview = validateGetReviewByIdResponse(review);
+  res.json(validatedReview);
 });
 
 /**
@@ -140,8 +150,9 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
     userId
   );
 
-  // 直接透傳結果
-  res.status(201).json(review);
+  // 驗證並回傳回應
+  const validatedReview = validateCreateReviewResponse(review);
+  res.status(201).json(validatedReview);
 });
 
 /**
@@ -167,8 +178,9 @@ export const updateReview = asyncHandler(async (req: Request, res: Response) => 
     userId
   );
 
-  // 直接透傳結果
-  res.json(review);
+  // 驗證並回傳回應
+  const validatedReview = validateUpdateReviewResponse(review);
+  res.json(validatedReview);
 });
 
 /**
@@ -194,8 +206,9 @@ export const updateReviewStatus = asyncHandler(async (req: Request, res: Respons
     userId
   );
 
-  // 直接透傳結果
-  res.json(review);
+  // 驗證並回傳回應
+  const validatedReview = validateUpdateReviewResponse(review);
+  res.json(validatedReview);
 });
 
 /**
@@ -214,8 +227,9 @@ export const deleteReview = asyncHandler(async (req: Request, res: Response) => 
   // 刪除心得評價
   const result = await resourceReviewService.deleteReview(parseInt(reviewId, 10), userId);
 
-  // 直接透傳結果
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateDeleteReviewResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -234,8 +248,9 @@ export const likeReview = asyncHandler(async (req: Request, res: Response) => {
   // 點讚心得評價
   const result = await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
 
-  // 直接透傳結果
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateLikeReviewResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -254,8 +269,9 @@ export const unlikeReview = asyncHandler(async (req: Request, res: Response) => 
   // 取消點讚心得評價
   const result = await resourceReviewService.toggleLikeReview(parseInt(reviewId, 10));
 
-  // 直接透傳結果
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateLikeReviewResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -268,11 +284,16 @@ export const getReviewTags = asyncHandler(async (req: Request, res: Response) =>
   // 獲取心得評價標籤 - reviewId 是數字 ID 的字串形式
   const tags = await tagService.getEntityTags('resource_review', parseInt(reviewId, 10));
 
-  // 返回結果
-  res.json({
+  // 構建回應資料
+  const response = {
     success: true,
-    data: tags.map((tag: tags) => tag.name)
-  });
+    data: tags.map((tag: tags) => tag.name),
+    timestamp: new Date().toISOString()
+  };
+
+  // 驗證並回傳回應
+  const validatedResponse = validateGetReviewTagsResponse(response);
+  res.json(validatedResponse);
 });
 
 /**
@@ -280,10 +301,10 @@ export const getReviewTags = asyncHandler(async (req: Request, res: Response) =>
  * GET /reviews
  */
 export const getReviews = asyncHandler(async (req: Request, res: Response) => {
-  const { 
-    cursor, 
-    limit, 
-    tags, 
+  const {
+    cursor,
+    limit,
+    tags,
     sort,
     order,
     status,
@@ -293,11 +314,11 @@ export const getReviews = asyncHandler(async (req: Request, res: Response) => {
 
   // 處理過濾條件
   const filters: Record<string, unknown> = {};
-  
+
   if (status) filters.status = status as string;
   if (minScore) filters.minScore = parseFloat(minScore as string);
   if (maxScore) filters.maxScore = parseFloat(maxScore as string);
-  
+
   // 處理標籤過濾
   if (tags) {
     filters.tags = (tags as string).split(',').map(tag => tag.trim());
@@ -313,8 +334,9 @@ export const getReviews = asyncHandler(async (req: Request, res: Response) => {
   // 查詢心得評價列表
   const result = await resourceReviewService.getReviews(filters, pagination);
 
-  // 直接透傳結果
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateGetReviewsListResponse(result);
+  res.json(validatedResult);
 });
 
 // 導出所有控制器函數

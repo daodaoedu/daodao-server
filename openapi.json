@@ -1302,6 +1302,178 @@
           }
         }
       },
+      "auth.validators_getCurrentUserResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "email": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "photo_url": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  },
+                  "email_verified": {
+                    "type": "boolean"
+                  },
+                  "email_verified_at": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "isTemporary": {
+                "type": "boolean"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "auth.validators_verifyEmailResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
       "comment.validators_createCommentSchema": {
         "type": "object",
         "properties": {
@@ -4173,6 +4345,1248 @@
           }
         }
       },
+      "resource-review.validator_resourceReviewResponseSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "overallImpact": {
+            "type": "number"
+          },
+          "changeMindset": {
+            "type": "number"
+          },
+          "solveProblems": {
+            "type": "number"
+          },
+          "gainPerspectives": {
+            "type": "number"
+          },
+          "achieveGoals": {
+            "type": "number"
+          },
+          "timeUsage": {
+            "type": "string",
+            "enum": [
+              "1_2_hours_daily",
+              "few_intensive_days_week",
+              "spare_moments",
+              "not_applicable_time"
+            ],
+            "nullable": true
+          },
+          "contentFeatures": {
+            "type": "object",
+            "properties": {
+              "wellStructured": {
+                "type": "boolean",
+                "default": false
+              },
+              "practiceFocused": {
+                "type": "boolean",
+                "default": false
+              },
+              "wellRoundedConcepts": {
+                "type": "boolean",
+                "default": false
+              },
+              "thoughtProvoking": {
+                "type": "boolean",
+                "default": false
+              },
+              "progressiveLearning": {
+                "type": "boolean",
+                "default": false
+              },
+              "problemBased": {
+                "type": "boolean",
+                "default": false
+              },
+              "realWorldExamples": {
+                "type": "boolean",
+                "default": false
+              },
+              "interactive": {
+                "type": "boolean",
+                "default": false
+              },
+              "visuallyRich": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "resourceUsage": {
+            "type": "object",
+            "properties": {
+              "withOnlineCourses": {
+                "type": "boolean",
+                "default": false
+              },
+              "withBooks": {
+                "type": "boolean",
+                "default": false
+              },
+              "withOtherTools": {
+                "type": "boolean",
+                "default": false
+              },
+              "withCommunity": {
+                "type": "boolean",
+                "default": false
+              },
+              "onlyThisResource": {
+                "type": "boolean",
+                "default": false
+              },
+              "notApplicableResource": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived",
+              "reported"
+            ]
+          },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "nickname": {
+                "type": "string"
+              },
+              "photoUrl": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "resource-review.validator_getReviewByIdResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "resourceId": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "overallImpact": {
+                "type": "number"
+              },
+              "changeMindset": {
+                "type": "number"
+              },
+              "solveProblems": {
+                "type": "number"
+              },
+              "gainPerspectives": {
+                "type": "number"
+              },
+              "achieveGoals": {
+                "type": "number"
+              },
+              "timeUsage": {
+                "type": "string",
+                "enum": [
+                  "1_2_hours_daily",
+                  "few_intensive_days_week",
+                  "spare_moments",
+                  "not_applicable_time"
+                ],
+                "nullable": true
+              },
+              "contentFeatures": {
+                "type": "object",
+                "properties": {
+                  "wellStructured": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "practiceFocused": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "wellRoundedConcepts": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "thoughtProvoking": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "progressiveLearning": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "problemBased": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "realWorldExamples": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "interactive": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "visuallyRich": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "resourceUsage": {
+                "type": "object",
+                "properties": {
+                  "withOnlineCourses": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withBooks": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withOtherTools": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withCommunity": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "onlyThisResource": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "notApplicableResource": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "archived",
+                  "reported"
+                ]
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "likeCount": {
+                "type": "number"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource-review.validator_getReviewsListResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "resourceId": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "overallImpact": {
+                  "type": "number"
+                },
+                "changeMindset": {
+                  "type": "number"
+                },
+                "solveProblems": {
+                  "type": "number"
+                },
+                "gainPerspectives": {
+                  "type": "number"
+                },
+                "achieveGoals": {
+                  "type": "number"
+                },
+                "timeUsage": {
+                  "type": "string",
+                  "enum": [
+                    "1_2_hours_daily",
+                    "few_intensive_days_week",
+                    "spare_moments",
+                    "not_applicable_time"
+                  ],
+                  "nullable": true
+                },
+                "contentFeatures": {
+                  "type": "object",
+                  "properties": {
+                    "wellStructured": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "practiceFocused": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "wellRoundedConcepts": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "thoughtProvoking": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "progressiveLearning": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "problemBased": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "realWorldExamples": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "interactive": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "visuallyRich": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  }
+                },
+                "resourceUsage": {
+                  "type": "object",
+                  "properties": {
+                    "withOnlineCourses": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "withBooks": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "withOtherTools": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "withCommunity": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "onlyThisResource": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "notApplicableResource": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  }
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "published",
+                    "archived",
+                    "reported"
+                  ]
+                },
+                "author": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "photoUrl": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "number"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "likeCount": {
+                  "type": "number"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "cursors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "end": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "count": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "hasNext": {
+                "type": "boolean"
+              },
+              "hasPrev": {
+                "type": "boolean"
+              },
+              "nextCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "prevCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "totalEstimate": {
+                "type": "number",
+                "nullable": true
+              },
+              "parentTotalEstimate": {
+                "type": "number",
+                "nullable": true
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource-review.validator_createReviewResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "resourceId": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "overallImpact": {
+                "type": "number"
+              },
+              "changeMindset": {
+                "type": "number"
+              },
+              "solveProblems": {
+                "type": "number"
+              },
+              "gainPerspectives": {
+                "type": "number"
+              },
+              "achieveGoals": {
+                "type": "number"
+              },
+              "timeUsage": {
+                "type": "string",
+                "enum": [
+                  "1_2_hours_daily",
+                  "few_intensive_days_week",
+                  "spare_moments",
+                  "not_applicable_time"
+                ],
+                "nullable": true
+              },
+              "contentFeatures": {
+                "type": "object",
+                "properties": {
+                  "wellStructured": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "practiceFocused": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "wellRoundedConcepts": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "thoughtProvoking": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "progressiveLearning": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "problemBased": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "realWorldExamples": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "interactive": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "visuallyRich": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "resourceUsage": {
+                "type": "object",
+                "properties": {
+                  "withOnlineCourses": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withBooks": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withOtherTools": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withCommunity": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "onlyThisResource": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "notApplicableResource": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "archived",
+                  "reported"
+                ]
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "likeCount": {
+                "type": "number"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource-review.validator_updateReviewResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "resourceId": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "overallImpact": {
+                "type": "number"
+              },
+              "changeMindset": {
+                "type": "number"
+              },
+              "solveProblems": {
+                "type": "number"
+              },
+              "gainPerspectives": {
+                "type": "number"
+              },
+              "achieveGoals": {
+                "type": "number"
+              },
+              "timeUsage": {
+                "type": "string",
+                "enum": [
+                  "1_2_hours_daily",
+                  "few_intensive_days_week",
+                  "spare_moments",
+                  "not_applicable_time"
+                ],
+                "nullable": true
+              },
+              "contentFeatures": {
+                "type": "object",
+                "properties": {
+                  "wellStructured": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "practiceFocused": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "wellRoundedConcepts": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "thoughtProvoking": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "progressiveLearning": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "problemBased": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "realWorldExamples": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "interactive": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "visuallyRich": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "resourceUsage": {
+                "type": "object",
+                "properties": {
+                  "withOnlineCourses": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withBooks": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withOtherTools": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "withCommunity": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "onlyThisResource": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "notApplicableResource": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "archived",
+                  "reported"
+                ]
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "likeCount": {
+                "type": "number"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource-review.validator_deleteReviewResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource-review.validator_likeReviewResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "likeCount": {
+                "type": "number"
+              },
+              "isLiked": {
+                "type": "boolean"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource-review.validator_getReviewTagsResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
       "resource.validator_createResourceSchema": {
         "type": "object",
         "properties": {
@@ -4378,6 +5792,1399 @@
               "archived",
               "reported"
             ]
+          }
+        }
+      },
+      "resource.validator_resourceResponseSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "videoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "learning_platform_app",
+              "learning_tools",
+              "books_articles",
+              "video_content",
+              "podcast_content",
+              "workshops_courses",
+              "professional_certificates",
+              "community_organization",
+              "other"
+            ]
+          },
+          "cost": {
+            "type": "string",
+            "enum": [
+              "free",
+              "paid",
+              "partial_free"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "intermediate",
+              "expert",
+              "all_levels"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "archived",
+              "reported"
+            ]
+          },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "nickname": {
+                "type": "string"
+              },
+              "photoUrl": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "majorCategory": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "subCategory": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "reviewStats": {
+            "type": "object",
+            "properties": {
+              "totalReviews": {
+                "type": "number"
+              },
+              "averageScores": {
+                "type": "object",
+                "properties": {
+                  "impact": {
+                    "type": "number"
+                  },
+                  "mindset": {
+                    "type": "number"
+                  },
+                  "problems": {
+                    "type": "number"
+                  },
+                  "perspectives": {
+                    "type": "number"
+                  },
+                  "goals": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "resource.validator_resourceListItemSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "learning_platform_app",
+              "learning_tools",
+              "books_articles",
+              "video_content",
+              "podcast_content",
+              "workshops_courses",
+              "professional_certificates",
+              "community_organization",
+              "other"
+            ]
+          },
+          "cost": {
+            "type": "string",
+            "enum": [
+              "free",
+              "paid",
+              "partial_free"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "intermediate",
+              "expert",
+              "all_levels"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "archived",
+              "reported"
+            ]
+          },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "nickname": {
+                "type": "string"
+              },
+              "photoUrl": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "majorCategory": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "subCategory": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "reviewStats": {
+            "type": "object",
+            "properties": {
+              "totalReviews": {
+                "type": "number"
+              },
+              "averageScores": {
+                "type": "object",
+                "properties": {
+                  "impact": {
+                    "type": "number"
+                  },
+                  "mindset": {
+                    "type": "number"
+                  },
+                  "problems": {
+                    "type": "number"
+                  },
+                  "perspectives": {
+                    "type": "number"
+                  },
+                  "goals": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "resource.validator_resourceStatsResponseSchema": {
+        "type": "object",
+        "properties": {
+          "totalResources": {
+            "type": "number"
+          },
+          "activeResources": {
+            "type": "number"
+          },
+          "categoryStats": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "typeStats": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "resource.validator_getResourceByIdResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "imageUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string"
+              },
+              "videoUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "learning_platform_app",
+                  "learning_tools",
+                  "books_articles",
+                  "video_content",
+                  "podcast_content",
+                  "workshops_courses",
+                  "professional_certificates",
+                  "community_organization",
+                  "other"
+                ]
+              },
+              "cost": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "paid",
+                  "partial_free"
+                ]
+              },
+              "level": {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "intermediate",
+                  "expert",
+                  "all_levels"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "archived",
+                  "reported"
+                ]
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "majorCategory": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "subCategory": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "reviewStats": {
+                "type": "object",
+                "properties": {
+                  "totalReviews": {
+                    "type": "number"
+                  },
+                  "averageScores": {
+                    "type": "object",
+                    "properties": {
+                      "impact": {
+                        "type": "number"
+                      },
+                      "mindset": {
+                        "type": "number"
+                      },
+                      "problems": {
+                        "type": "number"
+                      },
+                      "perspectives": {
+                        "type": "number"
+                      },
+                      "goals": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource.validator_getResourcesListResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "imageUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "description": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "learning_platform_app",
+                    "learning_tools",
+                    "books_articles",
+                    "video_content",
+                    "podcast_content",
+                    "workshops_courses",
+                    "professional_certificates",
+                    "community_organization",
+                    "other"
+                  ]
+                },
+                "cost": {
+                  "type": "string",
+                  "enum": [
+                    "free",
+                    "paid",
+                    "partial_free"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "beginner",
+                    "intermediate",
+                    "expert",
+                    "all_levels"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "active",
+                    "archived",
+                    "reported"
+                  ]
+                },
+                "author": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "nickname": {
+                      "type": "string"
+                    },
+                    "photoUrl": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                },
+                "majorCategory": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "nullable": true
+                },
+                "subCategory": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "nullable": true
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "number"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "reviewStats": {
+                  "type": "object",
+                  "properties": {
+                    "totalReviews": {
+                      "type": "number"
+                    },
+                    "averageScores": {
+                      "type": "object",
+                      "properties": {
+                        "impact": {
+                          "type": "number"
+                        },
+                        "mindset": {
+                          "type": "number"
+                        },
+                        "problems": {
+                          "type": "number"
+                        },
+                        "perspectives": {
+                          "type": "number"
+                        },
+                        "goals": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "cursors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "end": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "count": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "hasNext": {
+                "type": "boolean"
+              },
+              "hasPrev": {
+                "type": "boolean"
+              },
+              "nextCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "prevCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "totalEstimate": {
+                "type": "number",
+                "nullable": true
+              },
+              "parentTotalEstimate": {
+                "type": "number",
+                "nullable": true
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource.validator_createResourceResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "imageUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string"
+              },
+              "videoUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "learning_platform_app",
+                  "learning_tools",
+                  "books_articles",
+                  "video_content",
+                  "podcast_content",
+                  "workshops_courses",
+                  "professional_certificates",
+                  "community_organization",
+                  "other"
+                ]
+              },
+              "cost": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "paid",
+                  "partial_free"
+                ]
+              },
+              "level": {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "intermediate",
+                  "expert",
+                  "all_levels"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "archived",
+                  "reported"
+                ]
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "majorCategory": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "subCategory": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "reviewStats": {
+                "type": "object",
+                "properties": {
+                  "totalReviews": {
+                    "type": "number"
+                  },
+                  "averageScores": {
+                    "type": "object",
+                    "properties": {
+                      "impact": {
+                        "type": "number"
+                      },
+                      "mindset": {
+                        "type": "number"
+                      },
+                      "problems": {
+                        "type": "number"
+                      },
+                      "perspectives": {
+                        "type": "number"
+                      },
+                      "goals": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource.validator_updateResourceResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "imageUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string"
+              },
+              "videoUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "learning_platform_app",
+                  "learning_tools",
+                  "books_articles",
+                  "video_content",
+                  "podcast_content",
+                  "workshops_courses",
+                  "professional_certificates",
+                  "community_organization",
+                  "other"
+                ]
+              },
+              "cost": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "paid",
+                  "partial_free"
+                ]
+              },
+              "level": {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "intermediate",
+                  "expert",
+                  "all_levels"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "archived",
+                  "reported"
+                ]
+              },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "majorCategory": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "subCategory": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "reviewStats": {
+                "type": "object",
+                "properties": {
+                  "totalReviews": {
+                    "type": "number"
+                  },
+                  "averageScores": {
+                    "type": "object",
+                    "properties": {
+                      "impact": {
+                        "type": "number"
+                      },
+                      "mindset": {
+                        "type": "number"
+                      },
+                      "problems": {
+                        "type": "number"
+                      },
+                      "perspectives": {
+                        "type": "number"
+                      },
+                      "goals": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource.validator_getResourceStatsResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "totalResources": {
+                "type": "number"
+              },
+              "activeResources": {
+                "type": "number"
+              },
+              "categoryStats": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "typeStats": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource.validator_getResourceTagsResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "resource.validator_deleteResourceResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
           }
         }
       },
@@ -5745,6 +8552,254 @@
                 }
               },
               "token": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        }
+      },
+      "user.validators_updateUserResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "photoURL": {
+                "type": "string",
+                "nullable": true
+              },
+              "gender": {
+                "type": "string",
+                "enum": [
+                  "male",
+                  "female",
+                  "other"
+                ],
+                "nullable": true
+              },
+              "birthDay": {
+                "type": "string",
+                "nullable": true
+              },
+              "educationStage": {
+                "type": "string",
+                "enum": [
+                  "university",
+                  "high",
+                  "other"
+                ],
+                "nullable": true
+              },
+              "isOpenLocation": {
+                "type": "boolean"
+              },
+              "isOpenProfile": {
+                "type": "boolean"
+              },
+              "isSubscribeEmail": {
+                "type": "boolean"
+              },
+              "location": {
+                "type": "string",
+                "nullable": true
+              },
+              "selfIntroduction": {
+                "type": "string",
+                "nullable": true
+              },
+              "share": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "nullable": true
+              },
+              "wantToDoList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              "tagList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              "interestList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              "preferences": {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              "role": {
+                "type": "number",
+                "nullable": true
+              },
+              "roleList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              "basicInfo": {
+                "type": "object",
+                "properties": {
+                  "selfIntroduction": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "shareList": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ],
+                    "nullable": true
+                  },
+                  "wantToDoList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "nullable": true
+                  }
+                },
+                "nullable": true
+              },
+              "contactList": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "photoURL": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "isSubscribeEmail": {
+                    "type": "boolean",
+                    "nullable": true
+                  },
+                  "instagram": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "discord": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "line": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "facebook": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "nullable": true
+              },
+              "customId": {
+                "type": "string",
+                "nullable": true
+              },
+              "customIdVerified": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "customIdCreatedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdDate": {
+                "type": "string"
+              },
+              "updatedDate": {
                 "type": "string"
               }
             }
@@ -12639,7 +15694,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容）",
+        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容）",
         "security": [
           {
             "bearerAuth": []
@@ -12676,7 +15731,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateUser, canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
+        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
         "requestBody": {
           "required": true,
           "content": {
