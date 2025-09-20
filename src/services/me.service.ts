@@ -473,18 +473,18 @@ const getResourceStatsFromService = async (userId: number): Promise<{ totalResou
     // Check if it's a success response and has data
     if ('success' in serviceStats && serviceStats.success && serviceStats.data) {
       return {
-        totalResources: serviceStats.data.totalCount || 0,
+        totalResources: serviceStats.data.totalResources || 0,
         draftCount: 0, // Current service doesn't provide status breakdown
-        publishedCount: serviceStats.data.activeCount || 0,
+        publishedCount: serviceStats.data.activeResources || 0,
         byCategory: serviceStats.data.typeStats || {}
       };
     }
     
     // Fallback for non-standard response
     return {
-      totalResources: (serviceStats as unknown as Record<string, unknown>).totalCount as number || 0,
+      totalResources: (serviceStats as unknown as Record<string, unknown>).totalResources as number || 0,
       draftCount: 0,
-      publishedCount: (serviceStats as unknown as Record<string, unknown>).activeCount as number || 0,
+      publishedCount: (serviceStats as unknown as Record<string, unknown>).activeResources as number || 0,
       byCategory: (serviceStats as unknown as Record<string, unknown>).typeStats as Record<string, number> || {}
     };
   } catch (error) {

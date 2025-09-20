@@ -354,22 +354,10 @@ export type UpdateReviewStatusSchema = z.infer<typeof updateReviewStatusSchema>;
 export type ContentFeaturesSchema = z.infer<typeof contentFeaturesSchema>;
 export type ResourceUsageSchema = z.infer<typeof resourceUsageSchema>;
 
-// 用戶基本資訊 schema
-const reviewAuthorSchema = z.object({
-  id: z.number().int().describe('用戶 ID'),
-  nickname: z.string().describe('用戶暱稱'),
-  photoUrl: z.string().url().nullable().describe('用戶頭像 URL')
-}).describe('評論作者基本資訊');
-
-// 標籤基本資訊 schema
-const reviewTagSchema = z.object({
-  id: z.number().int().describe('標籤 ID'),
-  name: z.string().describe('標籤名稱')
-}).describe('評論標籤基本資訊');
 
 // 心得評價回應 schema
 export const resourceReviewResponseSchema = z.object({
-  id: z.number().int().describe('評論 ID'),
+  id: z.string().describe('評論 ID'),
   resourceId: z.string().uuid().describe('資源外部 ID (UUID)'),
   content: z.string().describe('評論內容'),
   overallImpact: scoreSchema.describe('整體影響力評分'),
@@ -381,8 +369,17 @@ export const resourceReviewResponseSchema = z.object({
   contentFeatures: contentFeaturesSchema.describe('內容特色'),
   resourceUsage: resourceUsageSchema.describe('資源使用方式'),
   status: reviewStatusSchema.describe('評論狀態'),
-  author: reviewAuthorSchema.describe('評論作者'),
-  tags: z.array(reviewTagSchema).describe('評論標籤'),
+  user: z.object({
+    id: z.number().int().describe('用戶 ID'),
+    name: z.string().describe('用戶名稱'),
+    _id: z.string().describe('用戶外部 ID'),
+    roleList: z.array(z.string()).describe('用戶角色列表'),
+    photoURL: z.string().nullable().describe('用戶頭像 URL'),
+    educationStage: z.string().nullable().describe('教育階段'),
+    tagList: z.array(z.string()).describe('用戶標籤列表'),
+    selfIntroduction: z.string().nullable().describe('自我介紹')
+  }).describe('評論作者'),
+  tags: z.array(z.string()).describe('評論標籤'),
   likeCount: z.number().int().min(0).describe('點讚數'),
   createdAt: z.string().datetime().describe('創建時間'),
   updatedAt: z.string().datetime().describe('更新時間')
@@ -570,10 +567,10 @@ export const validateUpdateResourceReview = (data: unknown): UpdateResourceRevie
 export const validateUpdateReviewStatus = (data: unknown): UpdateReviewStatusSchema => updateReviewStatusSchema.parse(data);
 
 // 導出回應驗證函數
-export const validateGetReviewByIdResponse = (data: unknown) => getReviewByIdResponseSchema.parse(data);
-export const validateGetReviewsListResponse = (data: unknown) => getReviewsListResponseSchema.parse(data);
-export const validateCreateReviewResponse = (data: unknown) => createReviewResponseSchema.parse(data);
-export const validateUpdateReviewResponse = (data: unknown) => updateReviewResponseSchema.parse(data);
-export const validateDeleteReviewResponse = (data: unknown) => deleteReviewResponseSchema.parse(data);
-export const validateLikeReviewResponse = (data: unknown) => likeReviewResponseSchema.parse(data);
-export const validateGetReviewTagsResponse = (data: unknown) => getReviewTagsResponseSchema.parse(data);
+export const validateGetReviewByIdResponse = (data: unknown): z.infer<typeof getReviewByIdResponseSchema> => getReviewByIdResponseSchema.parse(data);
+export const validateGetReviewsListResponse = (data: unknown): z.infer<typeof getReviewsListResponseSchema> => getReviewsListResponseSchema.parse(data);
+export const validateCreateReviewResponse = (data: unknown): z.infer<typeof createReviewResponseSchema> => createReviewResponseSchema.parse(data);
+export const validateUpdateReviewResponse = (data: unknown): z.infer<typeof updateReviewResponseSchema> => updateReviewResponseSchema.parse(data);
+export const validateDeleteReviewResponse = (data: unknown): z.infer<typeof deleteReviewResponseSchema> => deleteReviewResponseSchema.parse(data);
+export const validateLikeReviewResponse = (data: unknown): z.infer<typeof likeReviewResponseSchema> => likeReviewResponseSchema.parse(data);
+export const validateGetReviewTagsResponse = (data: unknown): z.infer<typeof getReviewTagsResponseSchema> => getReviewTagsResponseSchema.parse(data);

@@ -41,12 +41,19 @@ export interface PaginationInfo {
 
 // Cursor pagination interface
 export interface CursorPaginationInfo {
-  cursors: { 
-    start: string | null; 
-    end: string | null; 
+  cursors: {
+    start: string | null;
+    end: string | null;
   };
   hasMore: boolean;
   count: number;
+  limit: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+  nextCursor: string | null;
+  prevCursor: string | null;
+  totalEstimate: number | null;
+  parentTotalEstimate: number | null;
 }
 
 // Page-based pagination response (success only)

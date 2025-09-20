@@ -113,23 +113,6 @@ export async function getResourceById(id: string): Promise<ApiResponse<import('.
     }
   }));
 
-  // 查詢評價統計
-  const reviewStats = await prisma.resource_review.aggregate({
-    where: {
-      resource_id: resource.id,
-      deleted_at: null
-    },
-    _avg: {
-      score_impact: true,
-      score_mindset: true,
-      score_problems: true,
-      score_perspectives: true,
-      score_goals: true
-    },
-    _count: {
-      id: true
-    }
-  });
 
   // 準備資料庫記錄格式以供轉換
   const dbResourceForTransform = {
@@ -183,7 +166,14 @@ export async function getResources(
         {
           cursors: { start: null, end: null },
           hasMore: false,
-          count: 0
+          count: 0,
+          limit: limit,
+          hasNext: false,
+          hasPrev: false,
+          nextCursor: null,
+          prevCursor: null,
+          totalEstimate: 0,
+          parentTotalEstimate: null
         }
       );
     }
@@ -705,7 +695,7 @@ export async function updateResource(externalId: string, data: Record<string, un
  * @param id - 資源 ID
  * @param userId - 當前使用者 ID
  */
-export async function deleteResource(id: string, userId: number): Promise<ApiResponse<{ success: boolean }>> {
+export async function deleteResource(id: string, userId: number): Promise<ApiResponse<{ message: string }>> {
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在
     const existingResource = await tx.resources.findFirst({
@@ -735,7 +725,7 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
       }
     });
 
-    return createSuccessResponse({ success: true });
+    return createSuccessResponse({ message: '資源已成功刪除' });
   });
 }
 

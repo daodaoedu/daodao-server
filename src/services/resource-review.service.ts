@@ -379,7 +379,14 @@ export async function getReviews(
   return createCursorPaginatedResponse(reviewList, {
     cursors: pagination_meta.cursors,
     hasMore: pagination_meta.hasMore,
-    count: pagination_meta.count
+    count: pagination_meta.count,
+    limit: pagination_meta.limit,
+    hasNext: pagination_meta.hasNext,
+    hasPrev: pagination_meta.hasPrev,
+    nextCursor: pagination_meta.nextCursor,
+    prevCursor: pagination_meta.prevCursor,
+    totalEstimate: pagination_meta.totalEstimate,
+    parentTotalEstimate: pagination_meta.parentTotalEstimate
   }, metaData);
 }
 
@@ -628,7 +635,7 @@ export async function updateReviewStatus(
 export async function deleteReview(
   id: number,
   userId: number
-): Promise<ApiSuccessResponse<{ success: boolean }>> {
+): Promise<ApiSuccessResponse<{ message: string }>> {
   return await prisma.$transaction(async (tx) => {
     // 查詢心得評價
     const review = await tx.resource_review.findUnique({
@@ -654,7 +661,7 @@ export async function deleteReview(
       }
     });
 
-    return createSuccessResponse({ success: true }, {
+    return createSuccessResponse({ message: '資源評價已成功刪除' }, {
       requestId: `delete_review_${id}`,
       processingTime: Date.now() - Date.now()
     });

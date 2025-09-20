@@ -42,6 +42,13 @@ export const createCursorInfo = (
       end: end ? btoa(end.toString()) : null
     },
     hasMore,
-    count: data.length
+    count: data.length,
+    limit: data.length, // Use actual data length as limit fallback
+    hasNext: hasMore,
+    hasPrev: false, // Simple fallback, would need more context for accurate value
+    nextCursor: end ? btoa(end.toString()) : null,
+    prevCursor: start ? btoa(start.toString()) : null,
+    totalEstimate: data.length,
+    parentTotalEstimate: null
   };
 };

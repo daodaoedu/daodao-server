@@ -5049,7 +5049,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "number"
+            "type": "string"
           },
           "resourceId": {
             "type": "string"
@@ -5161,16 +5161,39 @@
               "reported"
             ]
           },
-          "author": {
+          "user": {
             "type": "object",
             "properties": {
               "id": {
                 "type": "number"
               },
-              "nickname": {
+              "name": {
                 "type": "string"
               },
-              "photoUrl": {
+              "_id": {
+                "type": "string"
+              },
+              "roleList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "photoURL": {
+                "type": "string",
+                "nullable": true
+              },
+              "educationStage": {
+                "type": "string",
+                "nullable": true
+              },
+              "tagList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "selfIntroduction": {
                 "type": "string",
                 "nullable": true
               }
@@ -5179,15 +5202,7 @@
           "tags": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "number"
-                },
-                "name": {
-                  "type": "string"
-                }
-              }
+              "type": "string"
             }
           },
           "likeCount": {
@@ -5214,7 +5229,7 @@
             "type": "object",
             "properties": {
               "id": {
-                "type": "number"
+                "type": "string"
               },
               "resourceId": {
                 "type": "string"
@@ -5326,16 +5341,39 @@
                   "reported"
                 ]
               },
-              "author": {
+              "user": {
                 "type": "object",
                 "properties": {
                   "id": {
                     "type": "number"
                   },
-                  "nickname": {
+                  "name": {
                     "type": "string"
                   },
-                  "photoUrl": {
+                  "_id": {
+                    "type": "string"
+                  },
+                  "roleList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "photoURL": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "educationStage": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "tagList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfIntroduction": {
                     "type": "string",
                     "nullable": true
                   }
@@ -5344,15 +5382,7 @@
               "tags": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "number"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  }
+                  "type": "string"
                 }
               },
               "likeCount": {
@@ -5427,7 +5457,7 @@
               "type": "object",
               "properties": {
                 "id": {
-                  "type": "number"
+                  "type": "string"
                 },
                 "resourceId": {
                   "type": "string"
@@ -5539,16 +5569,39 @@
                     "reported"
                   ]
                 },
-                "author": {
+                "user": {
                   "type": "object",
                   "properties": {
                     "id": {
                       "type": "number"
                     },
-                    "nickname": {
+                    "name": {
                       "type": "string"
                     },
-                    "photoUrl": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "roleList": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "photoURL": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "educationStage": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "tagList": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "selfIntroduction": {
                       "type": "string",
                       "nullable": true
                     }
@@ -5557,15 +5610,7 @@
                 "tags": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "number"
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    }
+                    "type": "string"
                   }
                 },
                 "likeCount": {
@@ -5688,7 +5733,7 @@
             "type": "object",
             "properties": {
               "id": {
-                "type": "number"
+                "type": "string"
               },
               "resourceId": {
                 "type": "string"
@@ -5800,16 +5845,39 @@
                   "reported"
                 ]
               },
-              "author": {
+              "user": {
                 "type": "object",
                 "properties": {
                   "id": {
                     "type": "number"
                   },
-                  "nickname": {
+                  "name": {
                     "type": "string"
                   },
-                  "photoUrl": {
+                  "_id": {
+                    "type": "string"
+                  },
+                  "roleList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "photoURL": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "educationStage": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "tagList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfIntroduction": {
                     "type": "string",
                     "nullable": true
                   }
@@ -5818,15 +5886,7 @@
               "tags": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "number"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  }
+                  "type": "string"
                 }
               },
               "likeCount": {
@@ -5899,7 +5959,7 @@
             "type": "object",
             "properties": {
               "id": {
-                "type": "number"
+                "type": "string"
               },
               "resourceId": {
                 "type": "string"
@@ -6011,16 +6071,39 @@
                   "reported"
                 ]
               },
-              "author": {
+              "user": {
                 "type": "object",
                 "properties": {
                   "id": {
                     "type": "number"
                   },
-                  "nickname": {
+                  "name": {
                     "type": "string"
                   },
-                  "photoUrl": {
+                  "_id": {
+                    "type": "string"
+                  },
+                  "roleList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "photoURL": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "educationStage": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "tagList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfIntroduction": {
                     "type": "string",
                     "nullable": true
                   }
@@ -6029,15 +6112,7 @@
               "tags": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "number"
-                    },
-                    "name": {
-                      "type": "string"
-                    }
-                  }
+                  "type": "string"
                 }
               },
               "likeCount": {
