@@ -195,8 +195,11 @@ export const getMyIdeas = asyncHandler(async (req: Request, res: Response) => {
   
   // 查詢我的想法列表
   const result = await ideaService.getIdeas(filters, pagination, userId);
-  
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = ideasListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 export default {

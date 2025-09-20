@@ -360,12 +360,6 @@ export const ideaDataSchema = z.object({
       title: "想法ID",
       examples: ["123e4567-e89b-12d3-a456-426614174000"]
     }),
-  _id: z.string()
-    .describe("MongoDB 物件ID")
-    .meta({
-      title: "MongoDB ID",
-      examples: ["507f1f77bcf86cd799439011"]
-    }),
   content: z.string()
     .describe("想法的主要內容")
     .meta({
@@ -394,17 +388,24 @@ export const ideaDataSchema = z.object({
       title: "想法狀態",
       examples: ["active"]
     }),
-  userId: z.number().int()
-    .describe("創建者的用戶ID")
-    .meta({
-      title: "創建者ID",
-      examples: [123]
-    }),
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    photoUrl: z.string().optional()
+  }).describe("創建者資訊"),
+  hasResources: z.boolean().describe("是否有相關資源"),
+  resourceCount: z.number().int().min(0).describe("資源數量"),
   likeCount: z.number().int().min(0).default(0)
     .describe("點讚數量")
     .meta({
       title: "點讚數",
       examples: [5, 23, 0]
+    }),
+  commentCount: z.number().int().min(0).default(0)
+    .describe("評論數量")
+    .meta({
+      title: "評論數",
+      examples: [5, 12, 0]
     }),
   viewCount: z.number().int().min(0).default(0)
     .describe("查看次數")
@@ -533,31 +534,24 @@ export const ideasListResponseSchema = paginatedApiResponseSchema(ideaDataSchema
 /**
  * 創建想法回應 Schema
  */
-export const createIdeaResponseSchema = apiSuccessResponseSchema(
-  z.object({
-    idea: ideaDataSchema,
-    message: z.string().describe("操作成功訊息")
-  })
-).describe("創建想法的成功回應")
+export const createIdeaResponseSchema = apiSuccessResponseSchema(ideaDataSchema)
+.describe("創建想法的成功回應")
 .meta({
   title: "創建想法回應",
   examples: [{
     success: true,
     data: {
-      idea: {
-        id: "123e4567-e89b-12d3-a456-426614174000",
-        _id: "507f1f77bcf86cd799439011",
-        content: "我想要開發一個幫助學習者追蹤進度的應用程式",
-        tags: ["前端", "React", "學習"],
-        status: "draft",
-        userId: 123,
-        likeCount: 0,
-        viewCount: 0,
-        shareCount: 0,
-        createdAt: "2024-01-15T10:30:00.000Z",
-        updatedAt: "2024-01-15T10:30:00.000Z"
-      },
-      message: "想法創建成功"
+      id: "123e4567-e89b-12d3-a456-426614174000",
+      _id: "507f1f77bcf86cd799439011",
+      content: "我想要開發一個幫助學習者追蹤進度的應用程式",
+      tags: ["前端", "React", "學習"],
+      status: "draft",
+      userId: 123,
+      likeCount: 0,
+      viewCount: 0,
+      shareCount: 0,
+      createdAt: "2024-01-15T10:30:00.000Z",
+      updatedAt: "2024-01-15T10:30:00.000Z"
     },
     timestamp: "2024-01-15T10:30:00.000Z"
   }]
@@ -594,8 +588,7 @@ export const updateIdeaResponseSchema = apiSuccessResponseSchema(ideaDataSchema)
  */
 export const deleteIdeaResponseSchema = apiSuccessResponseSchema(
   z.object({
-    message: z.string().describe("刪除成功訊息"),
-    deletedId: z.string().uuid().describe("被刪除想法的ID")
+    message: z.string().describe("刪除成功訊息")
   })
 ).describe("刪除想法的成功回應")
 .meta({
@@ -603,8 +596,7 @@ export const deleteIdeaResponseSchema = apiSuccessResponseSchema(
   examples: [{
     success: true,
     data: {
-      message: "想法刪除成功",
-      deletedId: "123e4567-e89b-12d3-a456-426614174000"
+      message: "想法已刪除"
     },
     timestamp: "2024-01-15T10:30:00.000Z"
   }]

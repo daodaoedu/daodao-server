@@ -44,9 +44,12 @@ interface PaginationParams {
  * @returns 想法詳情
  */
 export async function getIdeaById(externalId: string, _userId?: number): Promise<ApiSuccessResponse<IdeaEntity>> {
-  // 查詢想法，使用 external_id
-  const idea = await prisma.ideas.findUnique({
-    where: { external_id: externalId },
+  // 查詢想法，使用 external_id，並確保未被軟刪除
+  const idea = await prisma.ideas.findFirst({
+    where: {
+      external_id: externalId,
+      deleted_at: null
+    },
     include: {
       users: {
         select: {
@@ -436,9 +439,12 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
  */
 export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId: number): Promise<ApiSuccessResponse<IdeaEntity>> {
   return await prisma.$transaction(async (tx) => {
-    // 檢查想法是否存在
-    const existingIdea = await tx.ideas.findUnique({
-      where: { external_id: ideaId }
+    // 檢查想法是否存在且未被軟刪除
+    const existingIdea = await tx.ideas.findFirst({
+      where: {
+        external_id: ideaId,
+        deleted_at: null
+      }
     });
 
     if (!existingIdea) {
@@ -450,13 +456,22 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
       throw new ForbiddenError('無權限修改此想法');
     }
 
+    // 構建更新數據
+    const updateData: any = {};
+    if (data.content !== undefined) {
+      updateData.content = data.content;
+    }
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+    }
+    if (data.resources !== undefined) {
+      updateData.has_resources = data.resources.length > 0;
+    }
+
     // 更新想法
     await tx.ideas.update({
       where: { external_id: ideaId },
-      data: {
-        content: data.content,
-        has_resources: data.resources ? data.resources.length > 0 : false
-      }
+      data: updateData
     });
 
     // 更新標籤
@@ -514,9 +529,12 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
  */
 export async function deleteIdea(ideaId: string, userId: number): Promise<ApiSuccessResponse<{ message: string }>> {
   await prisma.$transaction(async (tx) => {
-    // 檢查想法是否存在
-    const existingIdea = await tx.ideas.findUnique({
-      where: { external_id: ideaId }
+    // 檢查想法是否存在且未被軟刪除
+    const existingIdea = await tx.ideas.findFirst({
+      where: {
+        external_id: ideaId,
+        deleted_at: null
+      }
     });
 
     if (!existingIdea) {
