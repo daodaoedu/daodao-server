@@ -494,6 +494,62 @@ export const refreshTokenResponseSchema = apiSuccessResponseSchema(
   }]
 });
 
+// 獲取當前用戶資訊回應 schema
+export const getCurrentUserResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    user: z.object({
+      id: z.string().describe("用戶外部 ID"),
+      nickname: z.string().optional().describe("用戶暱稱"),
+      email: z.string().email().nullable().describe("電子郵件地址"),
+      name: z.string().nullable().describe("用戶姓名"),
+      photo_url: z.string().nullable().describe("個人大頭照 URL"),
+      is_active: z.boolean().describe("是否啟用"),
+      email_verified: z.boolean().describe("電子郵件是否已驗證"),
+      email_verified_at: z.string().datetime().nullable().describe("電子郵件驗證時間"),
+      roles: z.array(z.string()).describe("用戶角色列表"),
+      permissions: z.array(z.string()).describe("用戶權限列表")
+    }).describe("完整的用戶資訊"),
+    isTemporary: z.boolean().describe("是否為臨時用戶")
+  })
+).describe("獲取當前用戶資訊回應").meta({
+  title: "獲取當前用戶資訊回應",
+  examples: [{
+    success: true,
+    data: {
+      user: {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        nickname: "王小明",
+        email: "wang.xiaoming@example.com",
+        name: "王小明",
+        photo_url: "https://example.com/avatar/wang.jpg",
+        is_active: true,
+        email_verified: true,
+        email_verified_at: "2024-01-15T10:30:00.000Z",
+        roles: ["user", "mentor"],
+        permissions: ["read_resources", "create_comments"]
+      },
+      isTemporary: false
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
+// 電子郵件驗證回應 schema
+export const verifyEmailResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    message: z.string().describe("驗證結果訊息")
+  })
+).describe("電子郵件驗證回應").meta({
+  title: "電子郵件驗證回應",
+  examples: [{
+    success: true,
+    data: {
+      message: "郵件驗證成功"
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
 // 統一導出
 export const authValidators = {
   loginValidator,

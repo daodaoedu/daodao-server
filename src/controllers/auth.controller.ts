@@ -9,12 +9,18 @@ import { emailService } from '../services/auth/email.service';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import { 
-  BadRequestError, 
-  UnauthorizedError, 
+import {
+  BadRequestError,
+  UnauthorizedError,
   NotFoundError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
+import {
+  logoutResponseSchema,
+  refreshTokenResponseSchema,
+  getCurrentUserResponseSchema,
+  verifyEmailResponseSchema
+} from '../validators/auth.validators';
 
 /**
  * 用戶登入
@@ -104,12 +110,14 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   // JWT 是無狀態的，客戶端只需要刪除本地 token
   // 如果需要服務端登出，可以實現 token 黑名單機制
-  
-  const response = createSuccessResponse(null, {
+
+  const response = createSuccessResponse({
     message: '登出成功'
   });
 
-  res.json(response);
+  // 驗證與回傳響應
+  const validatedResponse = logoutResponseSchema.parse(response);
+  res.json(validatedResponse);
 });
 
 /**
@@ -125,16 +133,16 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
   }
 
   const newToken = jwtService.refreshToken(currentToken);
-  
+
   if (!newToken) {
     throw new UnauthorizedError('令牌刷新失敗');
   }
 
-  const response = createSuccessResponse({ token: newToken }, {
-    message: '令牌刷新成功'
-  });
+  const response = createSuccessResponse({ token: newToken });
 
-  res.json(response);
+  // 驗證與回傳響應
+  const validatedResponse = refreshTokenResponseSchema.parse(response);
+  res.json(validatedResponse);
 });
 
 /**
@@ -212,16 +220,16 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
       photo_url: (user as { photo_url?: string }).photo_url || contact?.photo_url || '',
       is_active: isTemporary ? true : ((user as { is_active?: boolean }).is_active || true),
       email_verified: isTemporary ? false : ((user as { email_verified?: boolean }).email_verified || false),
-      email_verified_at: isTemporary ? null : ((user as { email_verified_at?: Date | null }).email_verified_at || null),
+      email_verified_at: isTemporary ? null : ((user as { email_verified_at?: Date | null }).email_verified_at?.toISOString() || null),
       roles: userRoles.map(role => role.name),
       permissions: userPermissions.map(permission => permission.name)
     },
     isTemporary
-  }, {
-    message: '獲取用戶資訊成功'
   });
 
-  res.json(response);
+  // 驗證與回傳響應
+  const validatedResponse = getCurrentUserResponseSchema.parse(response);
+  res.json(validatedResponse);
 });
 
 /**
@@ -295,11 +303,13 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
       await emailService.sendWelcomeEmail(contact.email, user.nickname || 'User');
     }
 
-    const response = createSuccessResponse(null, {
+    const response = createSuccessResponse({
       message: '郵件驗證成功'
     });
-    
-    res.json(response);
+
+    // 驗證與回傳響應
+    const validatedResponse = verifyEmailResponseSchema.parse(response);
+    res.json(validatedResponse);
   } catch (err) {
     console.error("verifyEmail error:", err);
     throw err;
