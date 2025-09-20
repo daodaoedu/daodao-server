@@ -33,10 +33,17 @@ const getUserIdOrTestUser = (req: Request): number => {
   
   return userId;
 };
-import { 
-  validateCreateResource, 
-  validateUpdateResource, 
-  validateUpdateResourceStatus 
+import {
+  validateCreateResource,
+  validateUpdateResource,
+  validateUpdateResourceStatus,
+  validateGetResourceByIdResponse,
+  validateGetResourcesListResponse,
+  validateCreateResourceResponse,
+  validateUpdateResourceResponse,
+  validateGetResourceStatsResponse,
+  validateGetResourceTagsResponse,
+  validateDeleteResourceResponse
 } from '../validators/resource.validator';
 
 /**
@@ -82,8 +89,9 @@ export const getResources = asyncHandler(async (req: Request, res: Response) => 
   // 查詢資源列表
   const result = await resourceService.getResources(filters, pagination);
 
-  // 直接透傳 Service 回應
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateGetResourcesListResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -101,8 +109,9 @@ export const getResourceById = asyncHandler(async (req: Request, res: Response) 
   //   console.error('Failed to increment view count:', err);
   // });
 
-  // 直接透傳 Service 回應
-  res.json(resource);
+  // 驗證並回傳回應
+  const validatedResource = validateGetResourceByIdResponse(resource);
+  res.json(validatedResource);
 });
 
 /**
@@ -120,8 +129,9 @@ export const createResource = asyncHandler(async (req: Request, res: Response) =
   // 創建資源
   const resource = await resourceService.createResource(validatedData, userId);
 
-  // 直接透傳 Service 回應
-  res.status(201).json(resource);
+  // 驗證並回傳回應
+  const validatedResource = validateCreateResourceResponse(resource);
+  res.status(201).json(validatedResource);
 });
 
 /**
@@ -154,8 +164,9 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
   );
   console.log('Resource service completed');
 
-  // 直接透傳 Service 回應
-  res.json(resource);
+  // 驗證並回傳回應
+  const validatedResource = validateUpdateResourceResponse(resource);
+  res.json(validatedResource);
 });
 
 /**
@@ -177,8 +188,9 @@ export const updateResourceStatus = asyncHandler(async (req: Request, res: Respo
     userId
   );
 
-  // 直接透傳 Service 回應
-  res.json(resource);
+  // 驗證並回傳回應
+  const validatedResource = validateUpdateResourceResponse(resource);
+  res.json(validatedResource);
 });
 
 /**
@@ -193,8 +205,9 @@ export const deleteResource = asyncHandler(async (req: Request, res: Response) =
   // 刪除資源
   const result = await resourceService.deleteResource(resourceId, userId); // 直接傳遞 UUID 字串
 
-  // 直接透傳 Service 回應
-  res.json(result);
+  // 驗證並回傳回應
+  const validatedResult = validateDeleteResourceResponse(result);
+  res.json(validatedResult);
 });
 
 /**
@@ -231,8 +244,9 @@ export const getResourceStats = asyncHandler(async (req: Request, res: Response)
   // 獲取資源統計
   const stats = await resourceService.getResourceStats(userId);
 
-  // 直接透傳 Service 回應
-  res.json(stats);
+  // 驗證並回傳回應
+  const validatedStats = validateGetResourceStatsResponse(stats);
+  res.json(validatedStats);
 });
 
 /**
@@ -261,11 +275,16 @@ export const getResourceTags = asyncHandler(async (req: Request, res: Response) 
   // 使用資源的數字 ID 獲取標籤
   const tags = await tagService.getEntityTags('resource', resource.id);
 
-  // 返回結果
-  res.json({
+  // 構建回應資料
+  const response = {
     success: true,
-    data: tags.map((tag: tags) => tag.name)
-  });
+    data: tags.map((tag: tags) => tag.name),
+    timestamp: new Date().toISOString()
+  };
+
+  // 驗證並回傳回應
+  const validatedResponse = validateGetResourceTagsResponse(response);
+  res.json(validatedResponse);
 });
 
 // 導出所有控制器函數
