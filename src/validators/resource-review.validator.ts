@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod';
+import { apiSuccessResponseSchema, cursorPaginatedApiResponseSchema } from './api-response.validators';
 
 // 時間使用選項驗證
 export const timeUsageSchema = z.enum([
@@ -353,7 +354,226 @@ export type UpdateReviewStatusSchema = z.infer<typeof updateReviewStatusSchema>;
 export type ContentFeaturesSchema = z.infer<typeof contentFeaturesSchema>;
 export type ResourceUsageSchema = z.infer<typeof resourceUsageSchema>;
 
+// 用戶基本資訊 schema
+const reviewAuthorSchema = z.object({
+  id: z.number().int().describe('用戶 ID'),
+  nickname: z.string().describe('用戶暱稱'),
+  photoUrl: z.string().url().nullable().describe('用戶頭像 URL')
+}).describe('評論作者基本資訊');
+
+// 標籤基本資訊 schema
+const reviewTagSchema = z.object({
+  id: z.number().int().describe('標籤 ID'),
+  name: z.string().describe('標籤名稱')
+}).describe('評論標籤基本資訊');
+
+// 心得評價回應 schema
+export const resourceReviewResponseSchema = z.object({
+  id: z.number().int().describe('評論 ID'),
+  resourceId: z.string().uuid().describe('資源外部 ID (UUID)'),
+  content: z.string().describe('評論內容'),
+  overallImpact: scoreSchema.describe('整體影響力評分'),
+  changeMindset: scoreSchema.describe('改變思維評分'),
+  solveProblems: scoreSchema.describe('解決問題評分'),
+  gainPerspectives: scoreSchema.describe('獲得新觀點評分'),
+  achieveGoals: scoreSchema.describe('達成目標評分'),
+  timeUsage: timeUsageSchema.nullable().describe('時間使用方式'),
+  contentFeatures: contentFeaturesSchema.describe('內容特色'),
+  resourceUsage: resourceUsageSchema.describe('資源使用方式'),
+  status: reviewStatusSchema.describe('評論狀態'),
+  author: reviewAuthorSchema.describe('評論作者'),
+  tags: z.array(reviewTagSchema).describe('評論標籤'),
+  likeCount: z.number().int().min(0).describe('點讚數'),
+  createdAt: z.string().datetime().describe('創建時間'),
+  updatedAt: z.string().datetime().describe('更新時間')
+}).describe('心得評價詳情回應').meta({
+  title: '心得評價詳情',
+  examples: [{
+    id: 123,
+    resourceId: '550e8400-e29b-41d4-a716-446655440000',
+    content: '這個資源真的很棒，幫助我學到了很多實用的技能。',
+    overallImpact: 4.5,
+    changeMindset: 4.0,
+    solveProblems: 4.5,
+    gainPerspectives: 5.0,
+    achieveGoals: 4.0,
+    timeUsage: '1_2_hours_daily',
+    contentFeatures: {
+      wellStructured: true,
+      practiceFocused: true,
+      wellRoundedConcepts: false,
+      thoughtProvoking: true,
+      progressiveLearning: false,
+      problemBased: false,
+      realWorldExamples: true,
+      interactive: false,
+      visuallyRich: false
+    },
+    resourceUsage: {
+      withOnlineCourses: false,
+      withMentorship: false,
+      withPeerGroup: true,
+      asComplementaryMaterial: false
+    },
+    status: 'published',
+    author: {
+      id: 456,
+      nickname: '學習者小王',
+      photoUrl: 'https://example.com/avatar/wang.jpg'
+    },
+    tags: [
+      { id: 1, name: '實用' },
+      { id: 2, name: '初學者友善' }
+    ],
+    likeCount: 15,
+    createdAt: '2024-01-15T10:30:00.000Z',
+    updatedAt: '2024-01-15T11:00:00.000Z'
+  }]
+});
+
+// 建立具體的回應 schemas
+export const getReviewByIdResponseSchema = apiSuccessResponseSchema(resourceReviewResponseSchema)
+  .describe('獲取單個心得評價的回應')
+  .meta({
+    title: '獲取心得評價詳情回應',
+    examples: [{
+      success: true,
+      data: {
+        id: 123,
+        resourceId: '550e8400-e29b-41d4-a716-446655440000',
+        content: '非常實用的學習資源',
+        overallImpact: 4.5,
+        changeMindset: 4.0,
+        solveProblems: 4.5,
+        gainPerspectives: 5.0,
+        achieveGoals: 4.0,
+        timeUsage: '1_2_hours_daily',
+        status: 'published',
+        author: { id: 456, nickname: '學習者小王', photoUrl: 'https://example.com/avatar.jpg' },
+        tags: [{ id: 1, name: '實用' }],
+        likeCount: 15,
+        createdAt: '2024-01-15T10:30:00.000Z',
+        updatedAt: '2024-01-15T11:00:00.000Z'
+      },
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
+export const getReviewsListResponseSchema = cursorPaginatedApiResponseSchema(resourceReviewResponseSchema)
+  .describe('獲取心得評價列表的回應')
+  .meta({
+    title: '獲取心得評價列表回應',
+    examples: [{
+      success: true,
+      data: [
+        {
+          id: 123,
+          resourceId: '550e8400-e29b-41d4-a716-446655440000',
+          content: '很棒的學習資源',
+          overallImpact: 4.5,
+          changeMindset: 4.0,
+          solveProblems: 4.5,
+          gainPerspectives: 5.0,
+          achieveGoals: 4.0,
+          timeUsage: '1_2_hours_daily',
+          status: 'published',
+          author: { id: 456, nickname: '學習者小王', photoUrl: 'https://example.com/avatar.jpg' },
+          tags: [{ id: 1, name: '實用' }],
+          likeCount: 15,
+          createdAt: '2024-01-15T10:30:00.000Z',
+          updatedAt: '2024-01-15T11:00:00.000Z'
+        }
+      ],
+      pagination: {
+        cursors: { start: 'cursor1', end: 'cursor2' },
+        hasMore: true,
+        count: 1,
+        limit: 10,
+        hasNext: true,
+        hasPrev: false,
+        nextCursor: 'cursor2',
+        prevCursor: null,
+        totalEstimate: 25,
+        parentTotalEstimate: null
+      },
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
+export const createReviewResponseSchema = apiSuccessResponseSchema(resourceReviewResponseSchema)
+  .describe('創建心得評價的回應')
+  .meta({
+    title: '創建心得評價回應',
+    examples: [{
+      success: true,
+      data: {
+        id: 124,
+        resourceId: '550e8400-e29b-41d4-a716-446655440001',
+        content: '剛創建的心得評價',
+        overallImpact: 4.0,
+        changeMindset: 3.5,
+        solveProblems: 4.0,
+        gainPerspectives: 4.5,
+        achieveGoals: 3.5,
+        timeUsage: 'spare_moments',
+        status: 'published',
+        author: { id: 789, nickname: '新用戶', photoUrl: null },
+        tags: [{ id: 3, name: '新手適用' }],
+        likeCount: 0,
+        createdAt: '2024-01-16T12:00:00.000Z',
+        updatedAt: '2024-01-16T12:00:00.000Z'
+      },
+      timestamp: '2024-01-16T12:00:00.000Z'
+    }]
+  });
+
+export const updateReviewResponseSchema = apiSuccessResponseSchema(resourceReviewResponseSchema)
+  .describe('更新心得評價的回應');
+
+export const deleteReviewResponseSchema = apiSuccessResponseSchema(z.object({
+  message: z.string().describe('刪除成功訊息')
+})).describe('刪除心得評價的回應').meta({
+  title: '刪除心得評價回應',
+  examples: [{
+    success: true,
+    data: { message: '心得評價已成功刪除' },
+    timestamp: '2024-01-15T10:30:00.000Z'
+  }]
+});
+
+export const likeReviewResponseSchema = apiSuccessResponseSchema(z.object({
+  likeCount: z.number().int().min(0).describe('更新後的點讚數'),
+  isLiked: z.boolean().describe('當前用戶是否已點讚')
+})).describe('點讚/取消點讚心得評價的回應').meta({
+  title: '點讚心得評價回應',
+  examples: [{
+    success: true,
+    data: { likeCount: 16, isLiked: true },
+    timestamp: '2024-01-15T10:30:00.000Z'
+  }]
+});
+
+export const getReviewTagsResponseSchema = apiSuccessResponseSchema(z.array(z.string()))
+  .describe('獲取心得評價標籤的回應')
+  .meta({
+    title: '獲取心得評價標籤回應',
+    examples: [{
+      success: true,
+      data: ['實用', '初學者友善', '內容豐富'],
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
 // 匯出驗證中間件
 export const validateCreateResourceReview = (data: unknown): ResourceReviewSchema => resourceReviewSchema.parse(data);
 export const validateUpdateResourceReview = (data: unknown): UpdateResourceReviewSchema => updateResourceReviewSchema.parse(data);
 export const validateUpdateReviewStatus = (data: unknown): UpdateReviewStatusSchema => updateReviewStatusSchema.parse(data);
+
+// 導出回應驗證函數
+export const validateGetReviewByIdResponse = (data: unknown) => getReviewByIdResponseSchema.parse(data);
+export const validateGetReviewsListResponse = (data: unknown) => getReviewsListResponseSchema.parse(data);
+export const validateCreateReviewResponse = (data: unknown) => createReviewResponseSchema.parse(data);
+export const validateUpdateReviewResponse = (data: unknown) => updateReviewResponseSchema.parse(data);
+export const validateDeleteReviewResponse = (data: unknown) => deleteReviewResponseSchema.parse(data);
+export const validateLikeReviewResponse = (data: unknown) => likeReviewResponseSchema.parse(data);
+export const validateGetReviewTagsResponse = (data: unknown) => getReviewTagsResponseSchema.parse(data);

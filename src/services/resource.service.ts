@@ -633,8 +633,6 @@ export async function updateResource(externalId: string, data: Record<string, un
     const validatedData = validationResult.data;
 
     // 驗證分類 - 改為可選驗證，允許跳過不存在的分類
-    let majorCategoryExists = true;
-    let subCategoryExists = true;
     
     if (validatedData.majorCategory) {
       const majorCategory = await tx.categories.findUnique({
@@ -642,7 +640,6 @@ export async function updateResource(externalId: string, data: Record<string, un
       });
       if (!majorCategory) {
         console.warn(`主分類不存在: ${validatedData.majorCategory}，將設為 null`);
-        majorCategoryExists = false;
         // 移除不存在的分類
         validatedData.majorCategory = undefined;
       }
@@ -654,7 +651,6 @@ export async function updateResource(externalId: string, data: Record<string, un
       });
       if (!subCategory) {
         console.warn(`子分類不存在: ${validatedData.subCategory}，將設為 null`);
-        subCategoryExists = false;
         // 移除不存在的分類
         validatedData.subCategory = undefined;
       }
@@ -664,7 +660,7 @@ export async function updateResource(externalId: string, data: Record<string, un
     const dbData = await transformResourceToDb(validatedData, userId);
 
     // 構建更新數據，排除 undefined 值
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (dbData.name !== undefined) updateData.name = dbData.name;
     if (dbData.url !== undefined) updateData.url = dbData.url;
     if (dbData.image_url !== undefined) updateData.image_url = dbData.image_url;

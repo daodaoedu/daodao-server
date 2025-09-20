@@ -357,7 +357,7 @@ export async function getReviews(
   );
 
   // 臨時調試：為特定資源返回調試信息
-  const metaData: any = {
+  const metaData: Record<string, unknown> = {
     searchQuery: filters.tags?.join(','),
     filters: {
       resourceId: filters.resourceId,

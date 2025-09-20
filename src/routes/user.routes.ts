@@ -7,7 +7,6 @@ import { Router, RequestHandler } from 'express';
 import { userController } from '../controllers/user.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import {
-  canCreateUser,
   canUpdateUser,
   // canDeleteUser,
   requireAdmin
