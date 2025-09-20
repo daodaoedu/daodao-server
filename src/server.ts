@@ -37,8 +37,8 @@ app.use(helmet({
 }));
 
 // 基本中間件設置
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // 設置 trust proxy
 app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);

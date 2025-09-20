@@ -19,8 +19,9 @@ const redis = new Redis({
   port: parseInt(REDIS_PORT, 10),
   password: REDIS_PASSWORD,
   db: parseInt(REDIS_DB, 10),
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: 5,
   lazyConnect: true,
+  connectTimeout: 10000,
 });
 
 // 設定 Redis 事件監聽器

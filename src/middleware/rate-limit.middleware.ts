@@ -11,7 +11,7 @@ import { Request, Response } from 'express';
  */
 export const globalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 分鐘
-  max: 1000, // 限制每個 IP 每分鐘最多 1000 個請求
+  max: 300, // 限制每個 IP 每分鐘最多 300 個請求
   message: {
     success: false,
     message: '請求過於頻繁，請稍後再試',
@@ -119,7 +119,7 @@ export const createLimiter = rateLimit({
  */
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 分鐘
-  max: 10, // 限制每個 IP 每分鐘最多 10 個檔案上傳請求
+  max: 5, // 限制每個 IP 每分鐘最多 5 個檔案上傳請求
   message: {
     success: false,
     message: '檔案上傳過於頻繁，請稍後再試',
