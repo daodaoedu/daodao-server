@@ -23,7 +23,14 @@ mongoose.connection.on('error', (err) => {
 // MongoDB 連接函數
 const mongoConnect = async (retries = 5): Promise<void> => {
   try {
-    await mongoose.connect(MONGO_URL);
+    await mongoose.connect(MONGO_URL, {
+      // 連接池配置
+      maxPoolSize: 50, // 最大連接數
+      minPoolSize: 5,  // 最小連接數
+      maxIdleTimeMS: 30000, // 連接空閒超時
+      serverSelectionTimeoutMS: 5000, // 服務器選擇超時
+      socketTimeoutMS: 45000, // Socket 超時
+    });
   } catch (error) {
     if (retries > 0) {
       console.log(`MongoDB 連接失敗，正在重試... (剩餘 ${retries} 次嘗試)`);
