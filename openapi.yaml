@@ -1501,6 +1501,488 @@ components:
       properties:
         id:
           type: string
+    idea.validators_ideaDataSchema:
+      type: object
+      properties:
+        id:
+          type: string
+        _id:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        resources:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              url:
+                type: string
+              description:
+                type: string
+                nullable: true
+          nullable: true
+        status:
+          type: string
+          enum: &ref_1
+            - active
+            - draft
+            - archived
+        userId:
+          type: number
+        likeCount:
+          type: number
+          default: 0
+        viewCount:
+          type: number
+          default: 0
+        shareCount:
+          type: number
+          default: 0
+        isLiked:
+          type: boolean
+          nullable: true
+        isFavorited:
+          type: boolean
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    idea.validators_ideaSuccessResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            _id:
+              type: string
+            content:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+            resources:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  url:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+              nullable: true
+            status:
+              type: string
+              enum: *ref_1
+            userId:
+              type: number
+            likeCount:
+              type: number
+              default: 0
+            viewCount:
+              type: number
+              default: 0
+            shareCount:
+              type: number
+              default: 0
+            isLiked:
+              type: boolean
+              nullable: true
+            isFavorited:
+              type: boolean
+              nullable: true
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    idea.validators_ideasListResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              _id:
+                type: string
+              content:
+                type: string
+              tags:
+                type: array
+                items:
+                  type: string
+              resources:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                nullable: true
+              status:
+                type: string
+                enum: *ref_1
+              userId:
+                type: number
+              likeCount:
+                type: number
+                default: 0
+              viewCount:
+                type: number
+                default: 0
+              shareCount:
+                type: number
+                default: 0
+              isLiked:
+                type: boolean
+                nullable: true
+              isFavorited:
+                type: boolean
+                nullable: true
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+        pagination:
+          type: object
+          properties:
+            currentPage:
+              type: number
+            totalPages:
+              type: number
+            totalItems:
+              type: number
+            itemsPerPage:
+              type: number
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    idea.validators_createIdeaResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            idea:
+              type: object
+              properties:
+                id:
+                  type: string
+                _id:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                resources:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      url:
+                        type: string
+                      description:
+                        type: string
+                        nullable: true
+                  nullable: true
+                status:
+                  type: string
+                  enum: *ref_1
+                userId:
+                  type: number
+                likeCount:
+                  type: number
+                  default: 0
+                viewCount:
+                  type: number
+                  default: 0
+                shareCount:
+                  type: number
+                  default: 0
+                isLiked:
+                  type: boolean
+                  nullable: true
+                isFavorited:
+                  type: boolean
+                  nullable: true
+                createdAt:
+                  type: string
+                updatedAt:
+                  type: string
+            message:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    idea.validators_updateIdeaResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            _id:
+              type: string
+            content:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+            resources:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  url:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+              nullable: true
+            status:
+              type: string
+              enum: *ref_1
+            userId:
+              type: number
+            likeCount:
+              type: number
+              default: 0
+            viewCount:
+              type: number
+              default: 0
+            shareCount:
+              type: number
+              default: 0
+            isLiked:
+              type: boolean
+              nullable: true
+            isFavorited:
+              type: boolean
+              nullable: true
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+    idea.validators_deleteIdeaResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+            deletedId:
+              type: string
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties: true
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
     image.validators_fileSchema:
       type: object
       properties:
@@ -1864,7 +2346,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: &ref_1
+          enum: &ref_2
             - private
             - public
           nullable: true
@@ -1896,7 +2378,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: *ref_1
+          enum: *ref_2
           nullable: true
     note.validators_noteQuerySchema:
       type: object
@@ -1911,7 +2393,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: *ref_1
+          enum: *ref_2
           nullable: true
         week:
           type: object
@@ -1966,7 +2448,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: &ref_2
+          enum: &ref_3
             - private
             - public
           nullable: true
@@ -1998,7 +2480,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: *ref_2
+          enum: *ref_3
           nullable: true
     outcome.validators_outcomeQuerySchema:
       type: object
@@ -2013,7 +2495,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: *ref_2
+          enum: *ref_3
           nullable: true
         week:
           type: object
@@ -2047,14 +2529,14 @@ components:
           default: 10
     practice.validators_practiceStatusSchema:
       type: string
-      enum: &ref_5
+      enum: &ref_6
         - active
         - paused
         - completed
         - archived
     practice.validators_contentTypeSchema:
       type: string
-      enum: &ref_4
+      enum: &ref_5
         - book
         - video
         - articles
@@ -2063,7 +2545,7 @@ components:
         - custom
     practice.validators_dailyGoalTypeSchema:
       type: string
-      enum: &ref_3
+      enum: &ref_4
         - time
         - completion
     practice.validators_dailyGoalSchema:
@@ -2071,7 +2553,7 @@ components:
       properties:
         type:
           type: string
-          enum: *ref_3
+          enum: *ref_4
         timeMinutes:
           type: number
           nullable: true
@@ -2105,7 +2587,7 @@ components:
           type: string
         contentType:
           type: string
-          enum: *ref_4
+          enum: *ref_5
         customContentType:
           type: string
           nullable: true
@@ -2119,7 +2601,7 @@ components:
           properties:
             type:
               type: string
-              enum: *ref_3
+              enum: *ref_4
             timeMinutes:
               type: number
               nullable: true
@@ -2164,7 +2646,7 @@ components:
           properties:
             type:
               type: string
-              enum: *ref_3
+              enum: *ref_4
             timeMinutes:
               type: number
               nullable: true
@@ -2195,7 +2677,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: *ref_5
+          enum: *ref_6
           nullable: true
     practice.validators_checkInSchema:
       type: object
@@ -2260,14 +2742,14 @@ components:
           default: active
         sort:
           type: string
-          enum: &ref_6
+          enum: &ref_7
             - createdAt
             - updatedAt
             - likeCount
           default: createdAt
         order:
           type: string
-          enum: &ref_7
+          enum: &ref_8
             - asc
             - desc
           default: desc
@@ -2387,11 +2869,11 @@ components:
           default: all
         sort:
           type: string
-          enum: *ref_6
+          enum: *ref_7
           default: createdAt
         order:
           type: string
-          enum: *ref_7
+          enum: *ref_8
           default: desc
         include:
           type: string
@@ -2440,7 +2922,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: &ref_8
+          enum: &ref_9
             - Not Started
             - Ongoing
             - Completed
@@ -2502,7 +2984,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: *ref_8
+          enum: *ref_9
           nullable: true
         startDate:
           type: string
@@ -2534,7 +3016,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: *ref_8
+          enum: *ref_9
           nullable: true
         isPublic:
           type: object
@@ -2593,7 +3075,7 @@ components:
           properties:
             status:
               type: string
-              enum: *ref_8
+              enum: *ref_9
               nullable: true
             isPublic:
               type: boolean
@@ -2690,7 +3172,7 @@ components:
           type: string
     resource-review.validator_timeUsageSchema:
       type: string
-      enum: &ref_9
+      enum: &ref_10
         - 1_2_hours_daily
         - few_intensive_days_week
         - spare_moments
@@ -2699,7 +3181,7 @@ components:
       type: number
     resource-review.validator_reviewStatusSchema:
       type: string
-      enum: &ref_10
+      enum: &ref_11
         - draft
         - published
         - archived
@@ -2772,7 +3254,7 @@ components:
           type: number
         timeUsage:
           type: string
-          enum: *ref_9
+          enum: *ref_10
           nullable: true
         contentFeatures:
           type: object
@@ -2866,7 +3348,7 @@ components:
           type: number
         timeUsage:
           type: string
-          enum: *ref_9
+          enum: *ref_10
           nullable: true
         contentFeatures:
           type: object
@@ -2966,7 +3448,7 @@ components:
           nullable: true
         timeUsage:
           type: string
-          enum: *ref_9
+          enum: *ref_10
           nullable: true
         contentFeatures:
           type: object
@@ -3045,7 +3527,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: *ref_10
+          enum: *ref_11
           nullable: true
     resource-review.validator_updateReviewStatusSchema:
       type: object
@@ -3078,7 +3560,7 @@ components:
           type: number
         timeUsage:
           type: string
-          enum: *ref_9
+          enum: *ref_10
           nullable: true
         contentFeatures:
           type: object
@@ -3133,7 +3615,7 @@ components:
               default: false
         status:
           type: string
-          enum: &ref_11
+          enum: &ref_12
             - draft
             - published
             - archived
@@ -3191,7 +3673,7 @@ components:
               type: number
             timeUsage:
               type: string
-              enum: *ref_9
+              enum: *ref_10
               nullable: true
             contentFeatures:
               type: object
@@ -3246,7 +3728,7 @@ components:
                   default: false
             status:
               type: string
-              enum: *ref_11
+              enum: *ref_12
             author:
               type: object
               properties:
@@ -3335,7 +3817,7 @@ components:
                 type: number
               timeUsage:
                 type: string
-                enum: *ref_9
+                enum: *ref_10
                 nullable: true
               contentFeatures:
                 type: object
@@ -3390,7 +3872,7 @@ components:
                     default: false
               status:
                 type: string
-                enum: *ref_11
+                enum: *ref_12
               author:
                 type: object
                 properties:
@@ -3511,7 +3993,7 @@ components:
               type: number
             timeUsage:
               type: string
-              enum: *ref_9
+              enum: *ref_10
               nullable: true
             contentFeatures:
               type: object
@@ -3566,7 +4048,7 @@ components:
                   default: false
             status:
               type: string
-              enum: *ref_11
+              enum: *ref_12
             author:
               type: object
               properties:
@@ -3653,7 +4135,7 @@ components:
               type: number
             timeUsage:
               type: string
-              enum: *ref_9
+              enum: *ref_10
               nullable: true
             contentFeatures:
               type: object
@@ -3708,7 +4190,7 @@ components:
                   default: false
             status:
               type: string
-              enum: *ref_11
+              enum: *ref_12
             author:
               type: object
               properties:
@@ -4078,7 +4560,7 @@ components:
           nullable: true
         type:
           type: string
-          enum: &ref_12
+          enum: &ref_13
             - learning_platform_app
             - learning_tools
             - books_articles
@@ -4090,81 +4572,77 @@ components:
             - other
         cost:
           type: string
-          enum: &ref_13
+          enum: &ref_14
             - free
             - paid
             - partial_free
         level:
           type: string
-          enum: &ref_14
+          enum: &ref_15
             - beginner
             - intermediate
             - expert
             - all_levels
         status:
           type: string
-          enum: &ref_15
+          enum: &ref_16
             - draft
             - active
             - archived
             - reported
-        author:
+        avgRating:
+          type: number
+          nullable: true
+        user:
           type: object
           properties:
             id:
               type: number
-            nickname:
+            name:
               type: string
-            photoUrl:
+            _id:
+              type: string
+            roleList:
+              type: array
+              items:
+                type: string
+            photoURL:
+              type: string
+              nullable: true
+            educationStage:
+              type: string
+              nullable: true
+            tagList:
+              type: array
+              items:
+                type: string
+            selfIntroduction:
               type: string
               nullable: true
         majorCategory:
-          type: object
-          properties:
-            id:
-              type: number
-            name:
-              type: string
+          type: string
           nullable: true
         subCategory:
-          type: object
-          properties:
-            id:
-              type: number
-            name:
-              type: string
+          type: string
           nullable: true
         tags:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: number
-              name:
-                type: string
-        reviewStats:
-          type: object
-          properties:
-            totalReviews:
-              type: number
-            averageScores:
-              type: object
-              properties:
-                impact:
-                  type: number
-                mindset:
-                  type: number
-                problems:
-                  type: number
-                perspectives:
-                  type: number
-                goals:
-                  type: number
+            type: string
         createdAt:
           type: string
         updatedAt:
           type: string
+        viewCount:
+          type: number
+        favoriteCount:
+          type: number
+        shareCount:
+          type: number
+        reviewCount:
+          type: number
+        likeCount:
+          type: number
     resource.validator_resourceListItemSchema:
       type: object
       properties:
@@ -4179,95 +4657,74 @@ components:
           nullable: true
         description:
           type: string
+        videoUrl:
+          type: string
+          nullable: true
         type:
           type: string
-          enum: &ref_16
-            - learning_platform_app
-            - learning_tools
-            - books_articles
-            - video_content
-            - podcast_content
-            - workshops_courses
-            - professional_certificates
-            - community_organization
-            - other
+          enum: *ref_13
         cost:
           type: string
-          enum: &ref_17
-            - free
-            - paid
-            - partial_free
+          enum: *ref_14
         level:
           type: string
-          enum: &ref_18
-            - beginner
-            - intermediate
-            - expert
-            - all_levels
+          enum: *ref_15
         status:
           type: string
-          enum: &ref_19
-            - draft
-            - active
-            - archived
-            - reported
-        author:
+          enum: *ref_16
+        avgRating:
+          type: number
+          nullable: true
+        user:
           type: object
           properties:
             id:
               type: number
-            nickname:
+            name:
               type: string
-            photoUrl:
+            _id:
+              type: string
+            roleList:
+              type: array
+              items:
+                type: string
+            photoURL:
+              type: string
+              nullable: true
+            educationStage:
+              type: string
+              nullable: true
+            tagList:
+              type: array
+              items:
+                type: string
+            selfIntroduction:
               type: string
               nullable: true
         majorCategory:
-          type: object
-          properties:
-            id:
-              type: number
-            name:
-              type: string
+          type: string
           nullable: true
         subCategory:
-          type: object
-          properties:
-            id:
-              type: number
-            name:
-              type: string
+          type: string
           nullable: true
         tags:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: number
-              name:
-                type: string
-        reviewStats:
-          type: object
-          properties:
-            totalReviews:
-              type: number
-            averageScores:
-              type: object
-              properties:
-                impact:
-                  type: number
-                mindset:
-                  type: number
-                problems:
-                  type: number
-                perspectives:
-                  type: number
-                goals:
-                  type: number
+            type: string
         createdAt:
           type: string
         updatedAt:
           type: string
+        viewCount:
+          type: number
+        favoriteCount:
+          type: number
+        shareCount:
+          type: number
+        reviewCount:
+          type: number
+        likeCount:
+          type: number
     resource.validator_resourceStatsResponseSchema:
       type: object
       properties:
@@ -4307,73 +4764,69 @@ components:
               nullable: true
             type:
               type: string
-              enum: *ref_12
+              enum: *ref_13
             cost:
               type: string
-              enum: *ref_13
+              enum: *ref_14
             level:
               type: string
-              enum: *ref_14
+              enum: *ref_15
             status:
               type: string
-              enum: *ref_15
-            author:
+              enum: *ref_16
+            avgRating:
+              type: number
+              nullable: true
+            user:
               type: object
               properties:
                 id:
                   type: number
-                nickname:
+                name:
                   type: string
-                photoUrl:
+                _id:
+                  type: string
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                photoURL:
+                  type: string
+                  nullable: true
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             majorCategory:
-              type: object
-              properties:
-                id:
-                  type: number
-                name:
-                  type: string
+              type: string
               nullable: true
             subCategory:
-              type: object
-              properties:
-                id:
-                  type: number
-                name:
-                  type: string
+              type: string
               nullable: true
             tags:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
-            reviewStats:
-              type: object
-              properties:
-                totalReviews:
-                  type: number
-                averageScores:
-                  type: object
-                  properties:
-                    impact:
-                      type: number
-                    mindset:
-                      type: number
-                    problems:
-                      type: number
-                    perspectives:
-                      type: number
-                    goals:
-                      type: number
+                type: string
             createdAt:
               type: string
             updatedAt:
               type: string
+            viewCount:
+              type: number
+            favoriteCount:
+              type: number
+            shareCount:
+              type: number
+            reviewCount:
+              type: number
+            likeCount:
+              type: number
         timestamp:
           type: string
         meta:
@@ -4430,75 +4883,74 @@ components:
                 nullable: true
               description:
                 type: string
+              videoUrl:
+                type: string
+                nullable: true
               type:
                 type: string
-                enum: *ref_16
+                enum: *ref_13
               cost:
                 type: string
-                enum: *ref_17
+                enum: *ref_14
               level:
                 type: string
-                enum: *ref_18
+                enum: *ref_15
               status:
                 type: string
-                enum: *ref_19
-              author:
+                enum: *ref_16
+              avgRating:
+                type: number
+                nullable: true
+              user:
                 type: object
                 properties:
                   id:
                     type: number
-                  nickname:
+                  name:
                     type: string
-                  photoUrl:
+                  _id:
+                    type: string
+                  roleList:
+                    type: array
+                    items:
+                      type: string
+                  photoURL:
+                    type: string
+                    nullable: true
+                  educationStage:
+                    type: string
+                    nullable: true
+                  tagList:
+                    type: array
+                    items:
+                      type: string
+                  selfIntroduction:
                     type: string
                     nullable: true
               majorCategory:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
+                type: string
                 nullable: true
               subCategory:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
+                type: string
                 nullable: true
               tags:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: number
-                    name:
-                      type: string
-              reviewStats:
-                type: object
-                properties:
-                  totalReviews:
-                    type: number
-                  averageScores:
-                    type: object
-                    properties:
-                      impact:
-                        type: number
-                      mindset:
-                        type: number
-                      problems:
-                        type: number
-                      perspectives:
-                        type: number
-                      goals:
-                        type: number
+                  type: string
               createdAt:
                 type: string
               updatedAt:
                 type: string
+              viewCount:
+                type: number
+              favoriteCount:
+                type: number
+              shareCount:
+                type: number
+              reviewCount:
+                type: number
+              likeCount:
+                type: number
         pagination:
           type: object
           properties:
@@ -4592,73 +5044,69 @@ components:
               nullable: true
             type:
               type: string
-              enum: *ref_12
+              enum: *ref_13
             cost:
               type: string
-              enum: *ref_13
+              enum: *ref_14
             level:
               type: string
-              enum: *ref_14
+              enum: *ref_15
             status:
               type: string
-              enum: *ref_15
-            author:
+              enum: *ref_16
+            avgRating:
+              type: number
+              nullable: true
+            user:
               type: object
               properties:
                 id:
                   type: number
-                nickname:
+                name:
                   type: string
-                photoUrl:
+                _id:
+                  type: string
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                photoURL:
+                  type: string
+                  nullable: true
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             majorCategory:
-              type: object
-              properties:
-                id:
-                  type: number
-                name:
-                  type: string
+              type: string
               nullable: true
             subCategory:
-              type: object
-              properties:
-                id:
-                  type: number
-                name:
-                  type: string
+              type: string
               nullable: true
             tags:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
-            reviewStats:
-              type: object
-              properties:
-                totalReviews:
-                  type: number
-                averageScores:
-                  type: object
-                  properties:
-                    impact:
-                      type: number
-                    mindset:
-                      type: number
-                    problems:
-                      type: number
-                    perspectives:
-                      type: number
-                    goals:
-                      type: number
+                type: string
             createdAt:
               type: string
             updatedAt:
               type: string
+            viewCount:
+              type: number
+            favoriteCount:
+              type: number
+            shareCount:
+              type: number
+            reviewCount:
+              type: number
+            likeCount:
+              type: number
         timestamp:
           type: string
         meta:
@@ -4718,73 +5166,69 @@ components:
               nullable: true
             type:
               type: string
-              enum: *ref_12
+              enum: *ref_13
             cost:
               type: string
-              enum: *ref_13
+              enum: *ref_14
             level:
               type: string
-              enum: *ref_14
+              enum: *ref_15
             status:
               type: string
-              enum: *ref_15
-            author:
+              enum: *ref_16
+            avgRating:
+              type: number
+              nullable: true
+            user:
               type: object
               properties:
                 id:
                   type: number
-                nickname:
+                name:
                   type: string
-                photoUrl:
+                _id:
+                  type: string
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                photoURL:
+                  type: string
+                  nullable: true
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             majorCategory:
-              type: object
-              properties:
-                id:
-                  type: number
-                name:
-                  type: string
+              type: string
               nullable: true
             subCategory:
-              type: object
-              properties:
-                id:
-                  type: number
-                name:
-                  type: string
+              type: string
               nullable: true
             tags:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: number
-                  name:
-                    type: string
-            reviewStats:
-              type: object
-              properties:
-                totalReviews:
-                  type: number
-                averageScores:
-                  type: object
-                  properties:
-                    impact:
-                      type: number
-                    mindset:
-                      type: number
-                    problems:
-                      type: number
-                    perspectives:
-                      type: number
-                    goals:
-                      type: number
+                type: string
             createdAt:
               type: string
             updatedAt:
               type: string
+            viewCount:
+              type: number
+            favoriteCount:
+              type: number
+            shareCount:
+              type: number
+            reviewCount:
+              type: number
+            likeCount:
+              type: number
         timestamp:
           type: string
         meta:
@@ -4962,7 +5406,7 @@ components:
           nullable: true
     review.validators_moodSchema:
       type: string
-      enum: &ref_20
+      enum: &ref_17
         - excellent
         - good
         - neutral
@@ -4976,7 +5420,7 @@ components:
       type: number
     review.validators_visibilitySchema:
       type: string
-      enum: &ref_21
+      enum: &ref_18
         - private
         - public
     review.validators_createReviewSchema:
@@ -4989,7 +5433,7 @@ components:
           nullable: true
         mood:
           type: string
-          enum: *ref_20
+          enum: *ref_17
         stressLevel:
           type: number
         moodDescription:
@@ -5005,7 +5449,7 @@ components:
           nullable: true
         visibility:
           type: string
-          enum: *ref_21
+          enum: *ref_18
           nullable: true
           default: private
     review.validators_updateReviewSchema:
@@ -5016,7 +5460,7 @@ components:
           nullable: true
         mood:
           type: string
-          enum: *ref_20
+          enum: *ref_17
           nullable: true
         stressLevel:
           type: number
@@ -5041,7 +5485,7 @@ components:
           nullable: true
         mood:
           type: string
-          enum: *ref_20
+          enum: *ref_17
           nullable: true
         stressLevel:
           type: number
@@ -5082,7 +5526,7 @@ components:
           additionalProperties: true
         entityType:
           type: string
-          enum: &ref_22
+          enum: &ref_19
             - resource
             - project
             - idea
@@ -5098,7 +5542,7 @@ components:
             - type: number
         entityType:
           type: string
-          enum: *ref_22
+          enum: *ref_19
         tagName:
           type: string
     tag.validators_removeEntityTagSchema:
@@ -5111,7 +5555,7 @@ components:
             - type: number
         entityType:
           type: string
-          enum: *ref_22
+          enum: *ref_19
         tagName:
           type: string
     tag.validators_batchTagOperationSchema:
@@ -5129,7 +5573,7 @@ components:
             - type: number
         entityType:
           type: string
-          enum: *ref_22
+          enum: *ref_19
         tagNames:
           type: array
           items:
@@ -5139,7 +5583,7 @@ components:
       properties:
         entityType:
           type: string
-          enum: *ref_22
+          enum: *ref_19
           nullable: true
         timeRange:
           type: string
@@ -5393,7 +5837,7 @@ components:
               nullable: true
             gender:
               type: string
-              enum: &ref_23
+              enum: &ref_20
                 - male
                 - female
                 - other
@@ -5403,7 +5847,7 @@ components:
               nullable: true
             educationStage:
               type: string
-              enum: &ref_24
+              enum: &ref_21
                 - university
                 - high
                 - other
@@ -5569,14 +6013,14 @@ components:
                 nullable: true
               gender:
                 type: string
-                enum: *ref_23
+                enum: *ref_20
                 nullable: true
               birthDay:
                 type: string
                 nullable: true
               educationStage:
                 type: string
-                enum: *ref_24
+                enum: *ref_21
                 nullable: true
               isOpenLocation:
                 type: boolean
@@ -5755,14 +6199,14 @@ components:
                   nullable: true
                 gender:
                   type: string
-                  enum: *ref_23
+                  enum: *ref_20
                   nullable: true
                 birthDay:
                   type: string
                   nullable: true
                 educationStage:
                   type: string
-                  enum: *ref_24
+                  enum: *ref_21
                   nullable: true
                 isOpenLocation:
                   type: boolean
@@ -5925,14 +6369,14 @@ components:
               nullable: true
             gender:
               type: string
-              enum: *ref_23
+              enum: *ref_20
               nullable: true
             birthDay:
               type: string
               nullable: true
             educationStage:
               type: string
-              enum: *ref_24
+              enum: *ref_21
               nullable: true
             isOpenLocation:
               type: boolean

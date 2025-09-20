@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  apiSuccessResponseSchema,
+  paginatedApiResponseSchema
+} from './api-response.validators';
 
 // 基礎枚舉
 export const ideaStatusSchema = z.enum(['active', 'draft', 'archived'])
@@ -347,6 +351,264 @@ export type EventViewRequest = z.infer<typeof eventViewSchema>;
 export type EventClickRequest = z.infer<typeof eventClickSchema>;
 export type EventShareRequest = z.infer<typeof eventShareSchema>;
 export type EventFavoriteRequest = z.infer<typeof eventFavoriteSchema>;
+
+// 想法資料格式 Schema (用於回應)
+export const ideaDataSchema = z.object({
+  id: z.string().uuid()
+    .describe("想法的唯一識別ID")
+    .meta({
+      title: "想法ID",
+      examples: ["123e4567-e89b-12d3-a456-426614174000"]
+    }),
+  _id: z.string()
+    .describe("MongoDB 物件ID")
+    .meta({
+      title: "MongoDB ID",
+      examples: ["507f1f77bcf86cd799439011"]
+    }),
+  content: z.string()
+    .describe("想法的主要內容")
+    .meta({
+      title: "想法內容",
+      examples: ["我想要開發一個幫助學習者追蹤進度的應用程式"]
+    }),
+  tags: z.array(z.string())
+    .describe("想法的標籤列表")
+    .meta({
+      title: "標籤列表",
+      examples: [["前端", "React", "學習"]]
+    }),
+  resources: z.array(ideaResourceSchema).optional()
+    .describe("相關學習資源列表")
+    .meta({
+      title: "相關資源",
+      examples: [[{
+        name: "React 官方文檔",
+        url: "https://reactjs.org/docs",
+        description: "官方文檔，包含完整的API參考"
+      }]]
+    }),
+  status: ideaStatusSchema
+    .describe("想法的當前狀態")
+    .meta({
+      title: "想法狀態",
+      examples: ["active"]
+    }),
+  userId: z.number().int()
+    .describe("創建者的用戶ID")
+    .meta({
+      title: "創建者ID",
+      examples: [123]
+    }),
+  likeCount: z.number().int().min(0).default(0)
+    .describe("點讚數量")
+    .meta({
+      title: "點讚數",
+      examples: [5, 23, 0]
+    }),
+  viewCount: z.number().int().min(0).default(0)
+    .describe("查看次數")
+    .meta({
+      title: "查看次數",
+      examples: [100, 250, 0]
+    }),
+  shareCount: z.number().int().min(0).default(0)
+    .describe("分享次數")
+    .meta({
+      title: "分享次數",
+      examples: [3, 15, 0]
+    }),
+  isLiked: z.boolean().optional()
+    .describe("當前用戶是否已點讚")
+    .meta({
+      title: "是否已點讚",
+      examples: [true, false]
+    }),
+  isFavorited: z.boolean().optional()
+    .describe("當前用戶是否已收藏")
+    .meta({
+      title: "是否已收藏",
+      examples: [true, false]
+    }),
+  createdAt: z.string().datetime()
+    .describe("創建時間")
+    .meta({
+      title: "創建時間",
+      examples: ["2024-01-15T10:30:00.000Z"]
+    }),
+  updatedAt: z.string().datetime()
+    .describe("最後更新時間")
+    .meta({
+      title: "更新時間",
+      examples: ["2024-01-15T15:45:00.000Z"]
+    }),
+}).describe("想法資料結構").meta({
+  title: "想法資料",
+  examples: [{
+    id: "123e4567-e89b-12d3-a456-426614174000",
+    _id: "507f1f77bcf86cd799439011",
+    content: "我想要開發一個幫助學習者追蹤進度的應用程式",
+    tags: ["前端", "React", "學習"],
+    resources: [{
+      name: "React 官方文檔",
+      url: "https://reactjs.org/docs",
+      description: "官方文檔，包含完整的API參考"
+    }],
+    status: "active",
+    userId: 123,
+    likeCount: 5,
+    viewCount: 100,
+    shareCount: 3,
+    isLiked: false,
+    isFavorited: true,
+    createdAt: "2024-01-15T10:30:00.000Z",
+    updatedAt: "2024-01-15T15:45:00.000Z"
+  }]
+});
+
+// Response Schemas
+
+/**
+ * 單個想法回應 Schema
+ */
+export const ideaSuccessResponseSchema = apiSuccessResponseSchema(ideaDataSchema)
+  .describe("取得單個想法的成功回應")
+  .meta({
+    title: "想法詳情回應",
+    examples: [{
+      success: true,
+      data: {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        _id: "507f1f77bcf86cd799439011",
+        content: "我想要開發一個幫助學習者追蹤進度的應用程式",
+        tags: ["前端", "React", "學習"],
+        status: "active",
+        userId: 123,
+        likeCount: 5,
+        viewCount: 100,
+        shareCount: 3,
+        isLiked: false,
+        isFavorited: true,
+        createdAt: "2024-01-15T10:30:00.000Z",
+        updatedAt: "2024-01-15T15:45:00.000Z"
+      },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
+
+/**
+ * 想法列表回應 Schema
+ */
+export const ideasListResponseSchema = paginatedApiResponseSchema(ideaDataSchema)
+  .describe("想法列表的分頁回應")
+  .meta({
+    title: "想法列表回應",
+    examples: [{
+      success: true,
+      data: [{
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        _id: "507f1f77bcf86cd799439011",
+        content: "我想要開發一個幫助學習者追蹤進度的應用程式",
+        tags: ["前端", "React", "學習"],
+        status: "active",
+        userId: 123,
+        likeCount: 5,
+        viewCount: 100,
+        shareCount: 3,
+        createdAt: "2024-01-15T10:30:00.000Z",
+        updatedAt: "2024-01-15T15:45:00.000Z"
+      }],
+      pagination: {
+        currentPage: 1,
+        totalPages: 5,
+        totalItems: 50,
+        itemsPerPage: 10,
+        hasNext: true,
+        hasPrev: false
+      },
+      timestamp: "2024-01-15T10:30:00.000Z"
+    }]
+  });
+
+/**
+ * 創建想法回應 Schema
+ */
+export const createIdeaResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    idea: ideaDataSchema,
+    message: z.string().describe("操作成功訊息")
+  })
+).describe("創建想法的成功回應")
+.meta({
+  title: "創建想法回應",
+  examples: [{
+    success: true,
+    data: {
+      idea: {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        _id: "507f1f77bcf86cd799439011",
+        content: "我想要開發一個幫助學習者追蹤進度的應用程式",
+        tags: ["前端", "React", "學習"],
+        status: "draft",
+        userId: 123,
+        likeCount: 0,
+        viewCount: 0,
+        shareCount: 0,
+        createdAt: "2024-01-15T10:30:00.000Z",
+        updatedAt: "2024-01-15T10:30:00.000Z"
+      },
+      message: "想法創建成功"
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
+
+/**
+ * 更新想法回應 Schema
+ */
+export const updateIdeaResponseSchema = apiSuccessResponseSchema(ideaDataSchema)
+  .describe("更新想法的成功回應")
+  .meta({
+    title: "更新想法回應",
+    examples: [{
+      success: true,
+      data: {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        _id: "507f1f77bcf86cd799439011",
+        content: "更新：增加了使用者介面的設計考量",
+        tags: ["前端", "React", "學習", "UI設計"],
+        status: "active",
+        userId: 123,
+        likeCount: 8,
+        viewCount: 150,
+        shareCount: 5,
+        createdAt: "2024-01-15T10:30:00.000Z",
+        updatedAt: "2024-01-15T16:45:00.000Z"
+      },
+      timestamp: "2024-01-15T16:45:00.000Z"
+    }]
+  });
+
+/**
+ * 刪除想法回應 Schema
+ */
+export const deleteIdeaResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    message: z.string().describe("刪除成功訊息"),
+    deletedId: z.string().uuid().describe("被刪除想法的ID")
+  })
+).describe("刪除想法的成功回應")
+.meta({
+  title: "刪除想法回應",
+  examples: [{
+    success: true,
+    data: {
+      message: "想法刪除成功",
+      deletedId: "123e4567-e89b-12d3-a456-426614174000"
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }]
+});
 
 // 保留舊的類型名稱以保持向後兼容
 export type CreateIdeaRequest = CreateIdeaData;

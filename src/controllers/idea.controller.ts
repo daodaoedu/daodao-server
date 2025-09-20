@@ -7,6 +7,13 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '@/middleware/error.middleware';
 import ideaService from '@/services/idea.service';
 import type { IdeaQueryParams, IdeaParams, CreateIdeaData, UpdateIdeaData } from '@/validators/idea.validators';
+import {
+  ideaSuccessResponseSchema,
+  ideasListResponseSchema,
+  createIdeaResponseSchema,
+  updateIdeaResponseSchema,
+  deleteIdeaResponseSchema
+} from '@/validators/idea.validators';
 
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
@@ -59,8 +66,11 @@ export const getIdeas = asyncHandler(async (req: Request, res: Response) => {
   
   // 查詢想法列表
   const result = await ideaService.getIdeas(filters, pagination, userId);
-  
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = ideasListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -75,8 +85,11 @@ export const getIdeaById = asyncHandler(async (req: Request, res: Response) => {
   
   // 查詢想法詳情
   const result = await ideaService.getIdeaById(id, userId);
-  
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = ideaSuccessResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -94,8 +107,11 @@ export const createIdea = asyncHandler(async (req: Request, res: Response) => {
   
   // 創建想法
   const result = await ideaService.createIdea(data, userId);
-  
-  res.status(201).json(result);
+
+  // 驗證響應格式
+  const validatedResponse = createIdeaResponseSchema.parse(result);
+
+  res.status(201).json(validatedResponse);
 });
 
 /**
