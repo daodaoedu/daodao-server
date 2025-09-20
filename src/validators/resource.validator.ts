@@ -364,11 +364,16 @@ export type ResourceSchema = UpdateResourceSchema & {
   avgRating?: number | null;
 };
 
-// 用戶基本資訊 schema
+// 用戶基本資訊 schema - 匹配 transformResourceToApi 的 user 格式
 const userBasicInfoSchema = z.object({
   id: z.number().int().describe('用戶 ID'),
-  nickname: z.string().describe('用戶暱稱'),
-  photoUrl: z.string().url().nullable().describe('用戶頭像 URL')
+  name: z.string().describe('用戶名稱'),
+  _id: z.string().describe('用戶外部 ID'),
+  roleList: z.array(z.string()).describe('用戶角色列表'),
+  photoURL: z.string().url().nullable().describe('用戶頭像 URL'),
+  educationStage: z.string().nullable().describe('教育階段'),
+  tagList: z.array(z.string()).describe('用戶標籤列表'),
+  selfIntroduction: z.string().nullable().describe('自我介紹')
 }).describe('用戶基本資訊');
 
 // 分類基本資訊 schema
@@ -395,9 +400,9 @@ const reviewStatsSchema = z.object({
   }).describe('平均評分')
 }).describe('評價統計資訊');
 
-// 資源回應 schema
+// 資源回應 schema - 匹配 transformResourceToApi 格式
 export const resourceResponseSchema = z.object({
-  id: z.string().uuid().describe('資源外部 ID (UUID)'),
+  id: z.string().describe('資源 ID'),
   name: z.string().describe('資源名稱'),
   url: z.string().url().describe('資源 URL'),
   imageUrl: z.string().url().nullable().describe('資源縮圖 URL'),
@@ -407,13 +412,18 @@ export const resourceResponseSchema = z.object({
   cost: z.enum(costTypeValues as [string, ...string[]]).describe('費用類型'),
   level: z.enum(levelTypeValues as [string, ...string[]]).describe('難度等級'),
   status: z.enum(statusValues as [string, ...string[]]).describe('資源狀態'),
-  author: userBasicInfoSchema.describe('作者資訊'),
-  majorCategory: categoryBasicInfoSchema.nullable().describe('主分類'),
-  subCategory: categoryBasicInfoSchema.nullable().describe('子分類'),
-  tags: z.array(tagBasicInfoSchema).describe('標籤列表'),
-  reviewStats: reviewStatsSchema.describe('評價統計'),
+  avgRating: z.number().nullable().describe('平均評分'),
+  user: userBasicInfoSchema.describe('用戶資訊'),
+  majorCategory: z.string().nullable().describe('主分類名稱'),
+  subCategory: z.string().nullable().describe('子分類名稱'),
+  tags: z.array(z.string()).describe('標籤名稱列表'),
   createdAt: z.string().datetime().describe('創建時間'),
-  updatedAt: z.string().datetime().describe('更新時間')
+  updatedAt: z.string().datetime().describe('更新時間'),
+  viewCount: z.number().int().min(0).describe('瀏覽次數'),
+  favoriteCount: z.number().int().min(0).describe('收藏次數'),
+  shareCount: z.number().int().min(0).describe('分享次數'),
+  reviewCount: z.number().int().min(0).describe('評價次數'),
+  likeCount: z.number().int().min(0).describe('按讚次數')
 }).describe('資源詳情回應').meta({
   title: '資源詳情',
   examples: [{
@@ -460,25 +470,8 @@ export const resourceResponseSchema = z.object({
   }]
 });
 
-// 資源列表項目 schema (簡化版本)
-export const resourceListItemSchema = z.object({
-  id: z.string().uuid().describe('資源外部 ID (UUID)'),
-  name: z.string().describe('資源名稱'),
-  url: z.string().url().describe('資源 URL'),
-  imageUrl: z.string().url().nullable().describe('資源縮圖 URL'),
-  description: z.string().describe('資源描述'),
-  type: z.enum(resourceTypeValues as [string, ...string[]]).describe('資源類型'),
-  cost: z.enum(costTypeValues as [string, ...string[]]).describe('費用類型'),
-  level: z.enum(levelTypeValues as [string, ...string[]]).describe('難度等級'),
-  status: z.enum(statusValues as [string, ...string[]]).describe('資源狀態'),
-  author: userBasicInfoSchema.describe('作者資訊'),
-  majorCategory: categoryBasicInfoSchema.nullable().describe('主分類'),
-  subCategory: categoryBasicInfoSchema.nullable().describe('子分類'),
-  tags: z.array(tagBasicInfoSchema).describe('標籤列表'),
-  reviewStats: reviewStatsSchema.describe('評價統計'),
-  createdAt: z.string().datetime().describe('創建時間'),
-  updatedAt: z.string().datetime().describe('更新時間')
-}).describe('資源列表項目').meta({
+// 資源列表項目 schema - 匹配 transformResourceToApi 格式
+export const resourceListItemSchema = resourceResponseSchema.describe('資源列表項目').meta({
   title: '資源列表項目',
   examples: [{
     id: '550e8400-e29b-41d4-a716-446655440001',

@@ -131,63 +131,16 @@ export async function getResourceById(id: string): Promise<ApiResponse<import('.
     }
   });
 
-  // 構建返回的資源詳情
-  const resourceDetail = {
-    id: resource.external_id,
-    name: resource.name,
-    url: resource.url,
-    imageUrl: resource.image_url,
-    description: resource.description,
-    videoUrl: resource.video_url,
-    type: resource.type,
-    cost: resource.cost,
-    level: resource.level,
-    status: resource.status,
-    author: resource.users ? {
-      id: resource.users.id,
-      nickname: resource.users.nickname || '',
-      photoUrl: resource.users.contacts?.photo_url || null
-    } : {
-      id: 0,
-      nickname: 'Unknown User',
-      photoUrl: null
-    },
-    majorCategory: resource.categories_resources_major_category_idTocategories ? {
-      id: resource.categories_resources_major_category_idTocategories.id,
-      name: resource.categories_resources_major_category_idTocategories.name
-    } : null,
-    subCategory: resource.categories_resources_sub_category_idTocategories ? {
-      id: resource.categories_resources_sub_category_idTocategories.id,
-      name: resource.categories_resources_sub_category_idTocategories.name
-    } : null,
-    tags: tags ? tags.map(tag => ({
-      id: tag.tags.id,
-      name: tag.tags.name
-    })) : [],
-    reviewStats: reviewStats ? {
-      totalReviews: reviewStats._count.id,
-      averageScores: {
-        impact: reviewStats._avg.score_impact || 0,
-        mindset: reviewStats._avg.score_mindset || 0,
-        problems: reviewStats._avg.score_problems || 0,
-        perspectives: reviewStats._avg.score_perspectives || 0,
-        goals: reviewStats._avg.score_goals || 0
-      }
-    } : {
-      totalReviews: 0,
-      averageScores: {
-        impact: 0,
-        mindset: 0,
-        problems: 0,
-        perspectives: 0,
-        goals: 0
-      }
-    },
-    createdAt: resource.created_at,
-    updatedAt: resource.updated_at
+  // 準備資料庫記錄格式以供轉換
+  const dbResourceForTransform = {
+    ...resource,
+    User: resource.users,
+    majorCategory: resource.categories_resources_major_category_idTocategories,
+    subCategory: resource.categories_resources_sub_category_idTocategories,
+    tags: tags.map(tag => ({ name: tag.tags.name }))
   };
 
-  const transformedResource = await transformResourceToApi(resourceDetail);
+  const transformedResource = await transformResourceToApi(dbResourceForTransform);
   return createSuccessResponse(transformedResource);
 }
 
@@ -354,7 +307,7 @@ export async function getResources(
   const resourceIds = resourcesData
     .map(resource => resource.id)
     .filter((id): id is number => id !== null && id !== undefined);
-  
+
   interface TagQueryResult {
     entity_id: string;
     entity_type: string;
@@ -364,7 +317,7 @@ export async function getResources(
     updated_at: Date;
     created_by: number | null;
   }
-  
+
   interface TagWithEntity {
     entity_id: string;
     resource_id: number;
@@ -373,12 +326,12 @@ export async function getResources(
       name: string;
     };
   }
-  
+
   let allTags: TagWithEntity[] = [];
   if (resourceIds.length > 0) {
     // 使用原生 SQL 查詢，entity_id 實際儲存的是資源的數字 ID
     const rawTags = await prisma.$queryRaw<TagQueryResult[]>`
-      SELECT 
+      SELECT
         et.*,
         t.id as tag_id,
         t.name as tag_name
@@ -387,7 +340,7 @@ export async function getResources(
       WHERE et.entity_type = 'resource'
       AND et.entity_id::integer = ANY(${resourceIds}::integer[])
     `;
-    
+
     // 轉換為預期的格式
     allTags = rawTags.map(row => ({
       entity_id: row.entity_id,
@@ -412,6 +365,51 @@ export async function getResources(
     return acc;
   }, {} as Record<string, Array<{ id: number; name: string }>>);
 
+  // 批量查詢評價統計
+  const reviewStatsData = await prisma.resource_review.groupBy({
+    by: ['resource_id'],
+    where: {
+      resource_id: {
+        in: resourceIds
+      },
+      deleted_at: null
+    },
+    _avg: {
+      score_impact: true,
+      score_mindset: true,
+      score_problems: true,
+      score_perspectives: true,
+      score_goals: true
+    },
+    _count: {
+      id: true
+    }
+  });
+
+  // 將評價統計按資源 ID 分組
+  const reviewStatsByResourceId = reviewStatsData.reduce((acc, stats) => {
+    acc[stats.resource_id.toString()] = {
+      totalReviews: stats._count.id,
+      averageScores: {
+        impact: Number(stats._avg.score_impact) || 0,
+        mindset: Number(stats._avg.score_mindset) || 0,
+        problems: Number(stats._avg.score_problems) || 0,
+        perspectives: Number(stats._avg.score_perspectives) || 0,
+        goals: Number(stats._avg.score_goals) || 0
+      }
+    };
+    return acc;
+  }, {} as Record<string, {
+    totalReviews: number;
+    averageScores: {
+      impact: number;
+      mindset: number;
+      problems: number;
+      perspectives: number;
+      goals: number;
+    };
+  }>);
+
   // 構建資源列表
   const resourceList = resourcesData.map(resource => ({
     id: resource.external_id,
@@ -419,13 +417,15 @@ export async function getResources(
     url: resource.url,
     imageUrl: resource.image_url,
     description: resource.description,
+    videoUrl: null, // 添加缺少的欄位
     type: resource.type,
     cost: resource.cost,
     level: resource.level,
     status: resource.status,
     author: {
       id: resource.users.id,
-      nickname: resource.users.nickname || ''
+      nickname: resource.users.nickname || '',
+      photoUrl: resource.users.contacts?.photo_url || null // 添加 photoUrl 欄位
     },
     majorCategory: resource.categories_resources_major_category_idTocategories ? {
       id: resource.categories_resources_major_category_idTocategories.id,
@@ -436,8 +436,18 @@ export async function getResources(
       name: resource.categories_resources_sub_category_idTocategories.name
     } : null,
     tags: tagsByResourceId[resource.id.toString()] || [],
-    createdAt: resource.created_at,
-    updatedAt: resource.updated_at
+    reviewStats: reviewStatsByResourceId[resource.id.toString()] || {
+      totalReviews: 0,
+      averageScores: {
+        impact: 0,
+        mindset: 0,
+        problems: 0,
+        perspectives: 0,
+        goals: 0
+      }
+    },
+    createdAt: resource.created_at?.toISOString(), // 轉換為 ISO 字串
+    updatedAt: resource.updated_at?.toISOString()  // 轉換為 ISO 字串
   }));
 
   // 生成分頁資訊
@@ -450,7 +460,7 @@ export async function getResources(
   );
 
   const transformedResources = await Promise.all(resourceList.map((resource) => transformResourceToApi(resource)));
-  
+
   return createCursorPaginatedResponse(
     transformedResources,
     paginationMetadata,
@@ -698,10 +708,10 @@ export async function updateResource(externalId: string, data: Record<string, un
 export async function deleteResource(id: string, userId: number): Promise<ApiResponse<{ success: boolean }>> {
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在
-    const existingResource = await tx.resources.findUnique({
-      where: { 
+    const existingResource = await tx.resources.findFirst({
+      where: {
         external_id: id,
-        deleted_at: null 
+        deleted_at: null
       }
     });
 
@@ -716,7 +726,10 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
 
     // 軟刪除資源
     await tx.resources.update({
-      where: { external_id: id },
+      where: {
+        external_id: id,
+        deleted_at: null
+      },
       data: {
         deleted_at: new Date()
       }
@@ -732,8 +745,9 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
  * @returns 統計資訊
  */
 export async function getResourceStats(userId?: number): Promise<ApiResponse<{
-  totalCount: number;
-  activeCount: number;
+  totalResources: number;
+  activeResources: number;
+  categoryStats: Record<string, number>;
   typeStats: Record<string, number>;
 }>> {
   const baseWhere: Prisma.resourcesWhereInput = {};
@@ -746,10 +760,10 @@ export async function getResourceStats(userId?: number): Promise<ApiResponse<{
     activeWhere.created_by = userId;
   }
 
-  const [totalCount, activeCount, typeStats] = await Promise.all([
+  const [totalCount, activeCount, typeStats, categoryStats] = await Promise.all([
     prisma.resources.count({ where: baseWhere }), // 包含所有資源（含軟刪除）
-    prisma.resources.count({ 
-      where: { ...activeWhere, status: 'active' } 
+    prisma.resources.count({
+      where: { ...activeWhere, status: 'active' }
     }),
     prisma.resources.groupBy({
       by: ['type'],
@@ -757,12 +771,46 @@ export async function getResourceStats(userId?: number): Promise<ApiResponse<{
       _count: {
         type: true
       }
+    }),
+    // 添加分類統計查詢
+    prisma.resources.groupBy({
+      by: ['major_category_id'],
+      where: activeWhere,
+      _count: {
+        major_category_id: true
+      }
     })
   ]);
 
+  // 獲取分類名稱映射
+  const categoryIds = categoryStats.map(stat => stat.major_category_id).filter(id => id !== null);
+  const categories = await prisma.categories.findMany({
+    where: {
+      id: {
+        in: categoryIds
+      }
+    },
+    select: {
+      id: true,
+      name: true
+    }
+  });
+
+  const categoryNameMap = categories.reduce((acc, cat) => {
+    acc[cat.id] = cat.name;
+    return acc;
+  }, {} as Record<number, string>);
+
   const stats = {
-    totalCount,
-    activeCount,
+    totalResources: totalCount,
+    activeResources: activeCount,
+    categoryStats: categoryStats.reduce((acc, stat) => {
+      if (stat.major_category_id !== null) {
+        const categoryName = categoryNameMap[stat.major_category_id] || `Category ${stat.major_category_id}`;
+        acc[categoryName] = stat._count.major_category_id;
+      }
+      return acc;
+    }, {} as Record<string, number>),
     typeStats: typeStats.reduce((acc, stat) => {
       acc[stat.type] = stat._count.type;
       return acc;
