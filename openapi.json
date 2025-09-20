@@ -2130,9 +2130,6 @@
           "id": {
             "type": "string"
           },
-          "_id": {
-            "type": "string"
-          },
           "content": {
             "type": "string"
           },
@@ -2169,10 +2166,32 @@
               "archived"
             ]
           },
-          "userId": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "photoUrl": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "hasResources": {
+            "type": "boolean"
+          },
+          "resourceCount": {
             "type": "number"
           },
           "likeCount": {
+            "type": "number",
+            "default": 0
+          },
+          "commentCount": {
             "type": "number",
             "default": 0
           },
@@ -2215,9 +2234,6 @@
               "id": {
                 "type": "string"
               },
-              "_id": {
-                "type": "string"
-              },
               "content": {
                 "type": "string"
               },
@@ -2254,10 +2270,32 @@
                   "archived"
                 ]
               },
-              "userId": {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "hasResources": {
+                "type": "boolean"
+              },
+              "resourceCount": {
                 "type": "number"
               },
               "likeCount": {
+                "type": "number",
+                "default": 0
+              },
+              "commentCount": {
                 "type": "number",
                 "default": 0
               },
@@ -2348,9 +2386,6 @@
                 "id": {
                   "type": "string"
                 },
-                "_id": {
-                  "type": "string"
-                },
                 "content": {
                   "type": "string"
                 },
@@ -2387,10 +2422,32 @@
                     "archived"
                   ]
                 },
-                "userId": {
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "photoUrl": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                },
+                "hasResources": {
+                  "type": "boolean"
+                },
+                "resourceCount": {
                   "type": "number"
                 },
                 "likeCount": {
+                  "type": "number",
+                  "default": 0
+                },
+                "commentCount": {
                   "type": "number",
                   "default": 0
                 },
@@ -2500,83 +2557,94 @@
           "data": {
             "type": "object",
             "properties": {
-              "idea": {
+              "id": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "resources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                },
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "draft",
+                  "archived"
+                ]
+              },
+              "user": {
                 "type": "object",
                 "properties": {
                   "id": {
                     "type": "string"
                   },
-                  "_id": {
+                  "name": {
                     "type": "string"
                   },
-                  "content": {
-                    "type": "string"
-                  },
-                  "tags": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "resources": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "description": {
-                          "type": "string",
-                          "nullable": true
-                        }
-                      }
-                    },
-                    "nullable": true
-                  },
-                  "status": {
+                  "photoUrl": {
                     "type": "string",
-                    "enum": [
-                      "active",
-                      "draft",
-                      "archived"
-                    ]
-                  },
-                  "userId": {
-                    "type": "number"
-                  },
-                  "likeCount": {
-                    "type": "number",
-                    "default": 0
-                  },
-                  "viewCount": {
-                    "type": "number",
-                    "default": 0
-                  },
-                  "shareCount": {
-                    "type": "number",
-                    "default": 0
-                  },
-                  "isLiked": {
-                    "type": "boolean",
                     "nullable": true
-                  },
-                  "isFavorited": {
-                    "type": "boolean",
-                    "nullable": true
-                  },
-                  "createdAt": {
-                    "type": "string"
-                  },
-                  "updatedAt": {
-                    "type": "string"
                   }
                 }
               },
-              "message": {
+              "hasResources": {
+                "type": "boolean"
+              },
+              "resourceCount": {
+                "type": "number"
+              },
+              "likeCount": {
+                "type": "number",
+                "default": 0
+              },
+              "commentCount": {
+                "type": "number",
+                "default": 0
+              },
+              "viewCount": {
+                "type": "number",
+                "default": 0
+              },
+              "shareCount": {
+                "type": "number",
+                "default": 0
+              },
+              "isLiked": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "isFavorited": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
                 "type": "string"
               }
             }
@@ -2642,9 +2710,6 @@
               "id": {
                 "type": "string"
               },
-              "_id": {
-                "type": "string"
-              },
               "content": {
                 "type": "string"
               },
@@ -2681,10 +2746,32 @@
                   "archived"
                 ]
               },
-              "userId": {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "hasResources": {
+                "type": "boolean"
+              },
+              "resourceCount": {
                 "type": "number"
               },
               "likeCount": {
+                "type": "number",
+                "default": 0
+              },
+              "commentCount": {
                 "type": "number",
                 "default": 0
               },
@@ -2771,9 +2858,6 @@
             "type": "object",
             "properties": {
               "message": {
-                "type": "string"
-              },
-              "deletedId": {
                 "type": "string"
               }
             }
