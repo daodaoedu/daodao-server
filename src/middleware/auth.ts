@@ -30,7 +30,8 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
-    return next(new UnauthorizedError('缺少認證令牌'));
+    next(new UnauthorizedError('缺少認證令牌'));
+    return;
   }
   
   try {
@@ -54,11 +55,14 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      return next(new UnauthorizedError('認證令牌已過期'));
+      next(new UnauthorizedError('認證令牌已過期'));
+      return;
     } else if (error instanceof jwt.JsonWebTokenError) {
-      return next(new UnauthorizedError('無效的認證令牌'));
+      next(new UnauthorizedError('無效的認證令牌'));
+      return;
     } else {
-      return next(new UnauthorizedError('認證失敗'));
+      next(new UnauthorizedError('認證失敗'));
+      return;
     }
   }
 };
@@ -82,7 +86,8 @@ export const optionalAuth: RequestHandler = (req: Request, res: Response, next: 
   
   if (!token) {
     // 沒有 token，直接繼續
-    return next();
+    next();
+    return;
   }
   
   try {
@@ -107,15 +112,17 @@ export const optionalAuth: RequestHandler = (req: Request, res: Response, next: 
 export const authorizeRoles = (roles: string[]): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return next(new UnauthorizedError('未經授權的訪問'));
+      next(new UnauthorizedError('未經授權的訪問'));
+      return;
     }
-    
+
     // 檢查用戶是否擁有任一所需角色
     const userRoles = req.user.roles || [];
     const hasRequiredRole = roles.some(role => userRoles.includes(role));
-    
+
     if (!hasRequiredRole) {
-      return next(new UnauthorizedError('沒有權限執行此操作'));
+      next(new UnauthorizedError('沒有權限執行此操作'));
+      return;
     }
     
     next();
@@ -149,9 +156,11 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
 
     if (!token) {
       if (required) {
-        return next(new UnauthorizedError('缺少認證令牌'));
+        next(new UnauthorizedError('缺少認證令牌'));
+        return;
       } else {
-        return next();
+        next();
+        return;
       }
     }
 
@@ -170,7 +179,8 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
 
         // 檢查是否允許臨時用戶
         if (payload.isTemp && !allowTemp) {
-          return next(new ForbiddenError('此操作需要正式用戶身份'));
+          next(new ForbiddenError('此操作需要正式用戶身份'));
+          return;
         }
 
         // 檢查角色權限
@@ -178,18 +188,20 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
           const userRoles = payload.roles || [];
           const hasRequiredRole = roles.some(role => userRoles.includes(role));
           if (!hasRequiredRole) {
-            return next(new ForbiddenError('缺少必要的角色權限'));
+            next(new ForbiddenError('缺少必要的角色權限'));
+            return;
           }
         }
 
         // 檢查具體權限
         if (permissions.length > 0) {
           const userPermissions = payload.permissions || [];
-          const hasAllPermissions = permissions.every(perm => 
+          const hasAllPermissions = permissions.every(perm =>
             userPermissions.includes(`${perm.resource}:${perm.action}`)
           );
           if (!hasAllPermissions) {
-            return next(new ForbiddenError('缺少必要的操作權限'));
+            next(new ForbiddenError('缺少必要的操作權限'));
+            return;
           }
         }
       }
@@ -198,15 +210,19 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
     } catch (error) {
       if (required) {
         if (error instanceof jwt.TokenExpiredError) {
-          return next(new UnauthorizedError('認證令牌已過期'));
+          next(new UnauthorizedError('認證令牌已過期'));
+          return;
         } else if (error instanceof jwt.JsonWebTokenError) {
-          return next(new UnauthorizedError('無效的認證令牌'));
+          next(new UnauthorizedError('無效的認證令牌'));
+          return;
         } else {
-          return next(new UnauthorizedError('認證失敗'));
+          next(new UnauthorizedError('認證失敗'));
+          return;
         }
       } else {
         // 非必需認證時忽略錯誤
         next();
+        return;
       }
     }
   };
@@ -220,7 +236,8 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
 export const requirePermissions = (permissions: PermissionOptions[]): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return next(new UnauthorizedError('未經授權的訪問'));
+      next(new UnauthorizedError('未經授權的訪問'));
+      return;
     }
 
     const userPermissions = req.user.permissions || [];
@@ -233,7 +250,8 @@ export const requirePermissions = (permissions: PermissionOptions[]): RequestHan
     });
 
     if (!hasAllPermissions) {
-      return next(new ForbiddenError('缺少必要的操作權限'));
+      next(new ForbiddenError('缺少必要的操作權限'));
+      return;
     }
 
     next();
@@ -250,7 +268,8 @@ export const requireFormalUser = (req: Request, res: Response, next: NextFunctio
   }
 
   if (req.isTemporary) {
-    return next(new ForbiddenError('此操作僅限正式註冊用戶'));
+    next(new ForbiddenError('此操作僅限正式註冊用戶'));
+    return;
   }
 
   next();
@@ -266,11 +285,13 @@ export const requireEmailVerified = (req: Request, res: Response, next: NextFunc
   }
 
   if (req.isTemporary) {
-    return next(new ForbiddenError('此操作需要正式用戶身份'));
+    next(new ForbiddenError('此操作需要正式用戶身份'));
+    return;
   }
 
   if (!req.user.email_verified) {
-    return next(new ForbiddenError('此操作需要驗證電子郵件'));
+    next(new ForbiddenError('此操作需要驗證電子郵件'));
+    return;
   }
 
   next();
@@ -286,7 +307,8 @@ export const requireActiveUser = (req: Request, res: Response, next: NextFunctio
   }
 
   if (req.user.is_active === false) {
-    return next(new ForbiddenError('帳戶已被停用'));
+    next(new ForbiddenError('帳戶已被停用'));
+    return;
   }
 
   next();
@@ -303,7 +325,8 @@ export const requireCompleteProfile = (req: Request, res: Response, next: NextFu
   }
 
   if (req.isTemporary || req.user.isTemp) {
-    return next(new ForbiddenError('請完成個人資料註冊'));
+    next(new ForbiddenError('請完成個人資料註冊'));
+    return;
   }
 
   next();
@@ -318,7 +341,7 @@ export const authenticateSession = (req: Request, res: Response, next: NextFunct
     // 檢查是否為臨時用戶 - 使用新的類型檢測邏輯
     const user = req.user as AnyUser;
     req.isTemporary = isTemporaryUser(user);
-    
+
     next();
   } else {
     next(new UnauthorizedError('未經授權的訪問'));
@@ -335,12 +358,14 @@ export const authenticateAny = (req: Request, res: Response, next: NextFunction)
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token) {
-    return authenticateJWT(req, res, next);
+    authenticateJWT(req, res, next);
+    return;
   }
 
   // 如果沒有 JWT，嘗試 Session 認證
   if (req.isAuthenticated && req.isAuthenticated()) {
-    return authenticateSession(req, res, next);
+    authenticateSession(req, res, next);
+    return;
   }
 
   next(new UnauthorizedError('未經授權的訪問'));

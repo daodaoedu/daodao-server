@@ -39,9 +39,9 @@ const getUserIdOrTestUser = (user?: Request['user']): number | undefined => {
 export const getIdeas = asyncHandler(async (req: Request, res: Response) => {
   // 查詢參數已經在 routes 層級驗證過
   const queryParams = req.query as unknown as IdeaQueryParams;
-  
+
   // 解析標籤
-  const tags = queryParams.tags ? queryParams.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined;
+  const tags = queryParams.tags ? queryParams.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : undefined;
   
   // 構建篩選器
   const filters = {
@@ -171,9 +171,9 @@ export const getMyIdeas = asyncHandler(async (req: Request, res: Response) => {
   if (!userId) {
     throw new Error('需要登入才能查看我的想法');
   }
-  
+
   // 解析標籤
-  const tags = queryParams.tags ? queryParams.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined;
+  const tags = queryParams.tags ? queryParams.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : undefined;
   
   // 構建篩選器，強制設定 userId
   const filters = {

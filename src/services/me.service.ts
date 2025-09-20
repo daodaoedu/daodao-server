@@ -165,7 +165,7 @@ const getMyResources = async (userId: number, params: ResourcesQueryParams): Pro
         type: type,
         status: status || 'draft', // Default to drafts for personal resources
         query: search,
-        tags: tags ? tags.split(',').map(tag => tag.trim()) : undefined
+        tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : undefined
       },
       {
         limit: Math.min(limit, 100),
