@@ -4,12 +4,17 @@
  */
 
 import { z } from 'zod';
-import { 
-  RESOURCE_TYPES, 
-  COST_TYPES, 
-  LEVEL_TYPES, 
-  RESOURCE_STATUS 
+import {
+  RESOURCE_TYPES,
+  COST_TYPES,
+  LEVEL_TYPES,
+  RESOURCE_STATUS
 } from '@/constants/mappings';
+import {
+  apiSuccessResponseSchema,
+  cursorPaginatedApiResponseSchema,
+  responseMetaSchema
+} from './api-response.validators';
 
 // 將物件值轉換為字串陣列，用於 enum 驗證
 const resourceTypeValues = Object.values(RESOURCE_TYPES);
@@ -360,7 +365,353 @@ export type ResourceSchema = UpdateResourceSchema & {
   avgRating?: number | null;
 };
 
+// 用戶基本資訊 schema
+const userBasicInfoSchema = z.object({
+  id: z.number().int().describe('用戶 ID'),
+  nickname: z.string().describe('用戶暱稱'),
+  photoUrl: z.string().url().nullable().describe('用戶頭像 URL')
+}).describe('用戶基本資訊');
+
+// 分類基本資訊 schema
+const categoryBasicInfoSchema = z.object({
+  id: z.number().int().describe('分類 ID'),
+  name: z.string().describe('分類名稱')
+}).describe('分類基本資訊');
+
+// 標籤基本資訊 schema
+const tagBasicInfoSchema = z.object({
+  id: z.number().int().describe('標籤 ID'),
+  name: z.string().describe('標籤名稱')
+}).describe('標籤基本資訊');
+
+// 評價統計 schema
+const reviewStatsSchema = z.object({
+  totalReviews: z.number().int().min(0).describe('總評價數'),
+  averageScores: z.object({
+    impact: z.number().min(0).max(5).describe('影響力評分'),
+    mindset: z.number().min(0).max(5).describe('心態評分'),
+    problems: z.number().min(0).max(5).describe('問題解決評分'),
+    perspectives: z.number().min(0).max(5).describe('視角評分'),
+    goals: z.number().min(0).max(5).describe('目標評分')
+  }).describe('平均評分')
+}).describe('評價統計資訊');
+
+// 資源回應 schema
+export const resourceResponseSchema = z.object({
+  id: z.string().uuid().describe('資源外部 ID (UUID)'),
+  name: z.string().describe('資源名稱'),
+  url: z.string().url().describe('資源 URL'),
+  imageUrl: z.string().url().nullable().describe('資源縮圖 URL'),
+  description: z.string().describe('資源描述'),
+  videoUrl: z.string().url().nullable().describe('影片 URL'),
+  type: z.enum(resourceTypeValues as [string, ...string[]]).describe('資源類型'),
+  cost: z.enum(costTypeValues as [string, ...string[]]).describe('費用類型'),
+  level: z.enum(levelTypeValues as [string, ...string[]]).describe('難度等級'),
+  status: z.enum(statusValues as [string, ...string[]]).describe('資源狀態'),
+  author: userBasicInfoSchema.describe('作者資訊'),
+  majorCategory: categoryBasicInfoSchema.nullable().describe('主分類'),
+  subCategory: categoryBasicInfoSchema.nullable().describe('子分類'),
+  tags: z.array(tagBasicInfoSchema).describe('標籤列表'),
+  reviewStats: reviewStatsSchema.describe('評價統計'),
+  createdAt: z.string().datetime().describe('創建時間'),
+  updatedAt: z.string().datetime().describe('更新時間')
+}).describe('資源詳情回應').meta({
+  title: '資源詳情',
+  examples: [{
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    name: 'React 官方文檔',
+    url: 'https://react.dev/',
+    imageUrl: 'https://example.com/react-logo.png',
+    description: 'React 官方文檔，提供完整的 API 參考和開發指南',
+    videoUrl: null,
+    type: 'website',
+    cost: 'free',
+    level: 'intermediate',
+    status: 'active',
+    author: {
+      id: 123,
+      nickname: '前端開發者',
+      photoUrl: 'https://example.com/avatar.jpg'
+    },
+    majorCategory: {
+      id: 1,
+      name: '前端開發'
+    },
+    subCategory: {
+      id: 10,
+      name: 'React'
+    },
+    tags: [
+      { id: 1, name: 'JavaScript' },
+      { id: 2, name: 'React' },
+      { id: 3, name: '前端框架' }
+    ],
+    reviewStats: {
+      totalReviews: 25,
+      averageScores: {
+        impact: 4.8,
+        mindset: 4.5,
+        problems: 4.6,
+        perspectives: 4.4,
+        goals: 4.7
+      }
+    },
+    createdAt: '2024-01-15T10:30:00.000Z',
+    updatedAt: '2024-01-15T11:00:00.000Z'
+  }]
+});
+
+// 資源列表項目 schema (簡化版本)
+export const resourceListItemSchema = z.object({
+  id: z.string().uuid().describe('資源外部 ID (UUID)'),
+  name: z.string().describe('資源名稱'),
+  url: z.string().url().describe('資源 URL'),
+  imageUrl: z.string().url().nullable().describe('資源縮圖 URL'),
+  description: z.string().describe('資源描述'),
+  type: z.enum(resourceTypeValues as [string, ...string[]]).describe('資源類型'),
+  cost: z.enum(costTypeValues as [string, ...string[]]).describe('費用類型'),
+  level: z.enum(levelTypeValues as [string, ...string[]]).describe('難度等級'),
+  status: z.enum(statusValues as [string, ...string[]]).describe('資源狀態'),
+  author: userBasicInfoSchema.describe('作者資訊'),
+  majorCategory: categoryBasicInfoSchema.nullable().describe('主分類'),
+  subCategory: categoryBasicInfoSchema.nullable().describe('子分類'),
+  tags: z.array(tagBasicInfoSchema).describe('標籤列表'),
+  reviewStats: reviewStatsSchema.describe('評價統計'),
+  createdAt: z.string().datetime().describe('創建時間'),
+  updatedAt: z.string().datetime().describe('更新時間')
+}).describe('資源列表項目').meta({
+  title: '資源列表項目',
+  examples: [{
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'Vue.js 入門教學',
+    url: 'https://vuejs.org/guide/',
+    imageUrl: 'https://example.com/vue-logo.png',
+    description: 'Vue.js 官方入門教學',
+    type: 'website',
+    cost: 'free',
+    level: 'beginner',
+    status: 'active',
+    author: {
+      id: 124,
+      nickname: 'Vue 愛好者',
+      photoUrl: 'https://example.com/avatar2.jpg'
+    },
+    majorCategory: {
+      id: 1,
+      name: '前端開發'
+    },
+    subCategory: {
+      id: 11,
+      name: 'Vue.js'
+    },
+    tags: [
+      { id: 4, name: 'JavaScript' },
+      { id: 5, name: 'Vue.js' }
+    ],
+    reviewStats: {
+      totalReviews: 18,
+      averageScores: {
+        impact: 4.5,
+        mindset: 4.2,
+        problems: 4.3,
+        perspectives: 4.1,
+        goals: 4.4
+      }
+    },
+    createdAt: '2024-01-14T09:15:00.000Z',
+    updatedAt: '2024-01-14T09:15:00.000Z'
+  }]
+});
+
+// 資源統計回應 schema
+export const resourceStatsResponseSchema = z.object({
+  totalResources: z.number().int().min(0).describe('總資源數'),
+  activeResources: z.number().int().min(0).describe('啟用資源數'),
+  categoryStats: z.record(z.string(), z.number().int().min(0)).describe('分類統計'),
+  typeStats: z.record(z.string(), z.number().int().min(0)).describe('類型統計')
+}).describe('資源統計回應').meta({
+  title: '資源統計',
+  examples: [{
+    totalResources: 150,
+    activeResources: 142,
+    categoryStats: {
+      '前端開發': 45,
+      '後端開發': 32,
+      '資料科學': 28,
+      '設計': 15
+    },
+    typeStats: {
+      'website': 65,
+      'video_content': 35,
+      'books_articles': 25,
+      'learning_tools': 20,
+      'other': 5
+    }
+  }]
+});
+
+// 建立具體的回應 schema
+export const getResourceByIdResponseSchema = apiSuccessResponseSchema(resourceResponseSchema)
+  .describe('獲取單個資源的回應')
+  .meta({
+    title: '獲取資源詳情回應',
+    examples: [{
+      success: true,
+      data: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'React 官方文檔',
+        url: 'https://react.dev/',
+        imageUrl: 'https://example.com/react-logo.png',
+        description: 'React 官方文檔，提供完整的 API 參考和開發指南',
+        videoUrl: null,
+        type: 'website',
+        cost: 'free',
+        level: 'intermediate',
+        status: 'active',
+        author: {
+          id: 123,
+          nickname: '前端開發者',
+          photoUrl: 'https://example.com/avatar.jpg'
+        },
+        majorCategory: { id: 1, name: '前端開發' },
+        subCategory: { id: 10, name: 'React' },
+        tags: [
+          { id: 1, name: 'JavaScript' },
+          { id: 2, name: 'React' }
+        ],
+        reviewStats: {
+          totalReviews: 25,
+          averageScores: { impact: 4.8, mindset: 4.5, problems: 4.6, perspectives: 4.4, goals: 4.7 }
+        },
+        createdAt: '2024-01-15T10:30:00.000Z',
+        updatedAt: '2024-01-15T11:00:00.000Z'
+      },
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
+export const getResourcesListResponseSchema = cursorPaginatedApiResponseSchema(resourceListItemSchema)
+  .describe('獲取資源列表的回應')
+  .meta({
+    title: '獲取資源列表回應',
+    examples: [{
+      success: true,
+      data: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          name: 'React 官方文檔',
+          url: 'https://react.dev/',
+          imageUrl: 'https://example.com/react-logo.png',
+          description: 'React 官方文檔',
+          type: 'website',
+          cost: 'free',
+          level: 'intermediate',
+          status: 'active',
+          author: { id: 123, nickname: '前端開發者', photoUrl: 'https://example.com/avatar.jpg' },
+          majorCategory: { id: 1, name: '前端開發' },
+          subCategory: { id: 10, name: 'React' },
+          tags: [{ id: 1, name: 'JavaScript' }],
+          reviewStats: { totalReviews: 25, averageScores: { impact: 4.8, mindset: 4.5, problems: 4.6, perspectives: 4.4, goals: 4.7 } },
+          createdAt: '2024-01-15T10:30:00.000Z',
+          updatedAt: '2024-01-15T11:00:00.000Z'
+        }
+      ],
+      pagination: {
+        cursors: { start: 'cursor1', end: 'cursor2' },
+        hasMore: true,
+        count: 1,
+        limit: 10,
+        hasNext: true,
+        hasPrev: false,
+        nextCursor: 'cursor2',
+        prevCursor: null,
+        totalEstimate: 150,
+        parentTotalEstimate: null
+      },
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
+export const createResourceResponseSchema = apiSuccessResponseSchema(resourceResponseSchema)
+  .describe('創建資源的回應')
+  .meta({
+    title: '創建資源回應',
+    examples: [{
+      success: true,
+      data: {
+        id: '550e8400-e29b-41d4-a716-446655440002',
+        name: 'TypeScript 學習指南',
+        url: 'https://typescript.example.com',
+        imageUrl: null,
+        description: 'TypeScript 完整學習指南',
+        videoUrl: null,
+        type: 'website',
+        cost: 'free',
+        level: 'intermediate',
+        status: 'active',
+        author: { id: 125, nickname: 'TS 專家', photoUrl: null },
+        majorCategory: { id: 1, name: '前端開發' },
+        subCategory: { id: 12, name: 'TypeScript' },
+        tags: [{ id: 6, name: 'TypeScript' }],
+        reviewStats: { totalReviews: 0, averageScores: { impact: 0, mindset: 0, problems: 0, perspectives: 0, goals: 0 } },
+        createdAt: '2024-01-15T12:00:00.000Z',
+        updatedAt: '2024-01-15T12:00:00.000Z'
+      },
+      timestamp: '2024-01-15T12:00:00.000Z'
+    }]
+  });
+
+export const updateResourceResponseSchema = apiSuccessResponseSchema(resourceResponseSchema)
+  .describe('更新資源的回應');
+
+export const getResourceStatsResponseSchema = apiSuccessResponseSchema(resourceStatsResponseSchema)
+  .describe('獲取資源統計的回應')
+  .meta({
+    title: '獲取資源統計回應',
+    examples: [{
+      success: true,
+      data: {
+        totalResources: 150,
+        activeResources: 142,
+        categoryStats: { '前端開發': 45, '後端開發': 32 },
+        typeStats: { 'website': 65, 'video_content': 35 }
+      },
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
+export const getResourceTagsResponseSchema = apiSuccessResponseSchema(z.array(z.string()))
+  .describe('獲取資源標籤的回應')
+  .meta({
+    title: '獲取資源標籤回應',
+    examples: [{
+      success: true,
+      data: ['JavaScript', 'React', '前端框架'],
+      timestamp: '2024-01-15T10:30:00.000Z'
+    }]
+  });
+
+export const deleteResourceResponseSchema = apiSuccessResponseSchema(z.object({
+  message: z.string().describe('刪除成功訊息')
+})).describe('刪除資源的回應').meta({
+  title: '刪除資源回應',
+  examples: [{
+    success: true,
+    data: { message: '資源已成功刪除' },
+    timestamp: '2024-01-15T10:30:00.000Z'
+  }]
+});
+
 // 導出驗證函數
 export const validateCreateResource = (data: unknown): CreateResourceSchema => createResourceSchema.parse(data);
 export const validateUpdateResource = (data: unknown): UpdateResourceSchema => updateResourceSchema.parse(data);
 export const validateUpdateResourceStatus = (data: unknown): UpdateResourceStatusSchema => updateResourceStatusSchema.parse(data);
+
+// 導出回應驗證函數
+export const validateGetResourceByIdResponse = (data: unknown) => getResourceByIdResponseSchema.parse(data);
+export const validateGetResourcesListResponse = (data: unknown) => getResourcesListResponseSchema.parse(data);
+export const validateCreateResourceResponse = (data: unknown) => createResourceResponseSchema.parse(data);
+export const validateUpdateResourceResponse = (data: unknown) => updateResourceResponseSchema.parse(data);
+export const validateGetResourceStatsResponse = (data: unknown) => getResourceStatsResponseSchema.parse(data);
+export const validateGetResourceTagsResponse = (data: unknown) => getResourceTagsResponseSchema.parse(data);
+export const validateDeleteResourceResponse = (data: unknown) => deleteResourceResponseSchema.parse(data);
