@@ -100,7 +100,7 @@ export const createProjectSchema = z.object({
       title: "執行策略",
       examples: ["每週 20 小時的學習時間，先理論後實作", "按照敏捷開發模式，每兩週一個迭代"]
     }),
-  resource: z.string()
+  resources: z.string()
     .max(2000, '資源描述不能超過 2000 字元')
     .optional()
     .describe("專案所需資源")
@@ -237,7 +237,7 @@ export const updateProjectSchema = z.object({
       title: "執行策略",
       examples: ["每週 20 小時的學習時間，先理論後實作", "按照敏捷開發模式，每兩週一個迭代"]
     }),
-  resource: z.string()
+  resources: z.string()
     .max(2000, '資源描述不能超過 2000 字元')
     .optional()
     .describe("專案所需資源")

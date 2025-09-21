@@ -9971,7 +9971,7 @@
             "type": "string",
             "nullable": true
           },
-          "resource": {
+          "resources": {
             "type": "string",
             "nullable": true
           },
@@ -10053,7 +10053,7 @@
             "type": "string",
             "nullable": true
           },
-          "resource": {
+          "resources": {
             "type": "string",
             "nullable": true
           },
@@ -14570,11 +14570,11 @@
       "review.validators_moodSchema": {
         "type": "string",
         "enum": [
-          "excellent",
-          "good",
-          "neutral",
-          "poor",
-          "terrible"
+          "happy",
+          "calm",
+          "anxious",
+          "tired",
+          "frustrated"
         ]
       },
       "review.validators_stressLevelSchema": {
@@ -14606,11 +14606,11 @@
           "mood": {
             "type": "string",
             "enum": [
-              "excellent",
-              "good",
-              "neutral",
-              "poor",
-              "terrible"
+              "happy",
+              "calm",
+              "anxious",
+              "tired",
+              "frustrated"
             ]
           },
           "stressLevel": {
@@ -14652,11 +14652,11 @@
           "mood": {
             "type": "string",
             "enum": [
-              "excellent",
-              "good",
-              "neutral",
-              "poor",
-              "terrible"
+              "happy",
+              "calm",
+              "anxious",
+              "tired",
+              "frustrated"
             ],
             "nullable": true
           },
@@ -14692,11 +14692,11 @@
           "mood": {
             "type": "string",
             "enum": [
-              "excellent",
-              "good",
-              "neutral",
-              "poor",
-              "terrible"
+              "happy",
+              "calm",
+              "anxious",
+              "tired",
+              "frustrated"
             ],
             "nullable": true
           },
@@ -15959,6 +15959,302 @@
               }
             },
             "nullable": true
+          }
+        }
+      },
+      "task.validators_createTaskSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "number",
+            "nullable": true
+          },
+          "isCompleted": {
+            "type": "boolean",
+            "default": false,
+            "nullable": true
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ]
+            },
+            "nullable": true
+          }
+        }
+      },
+      "task.validators_updateTaskSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "number",
+            "nullable": true
+          },
+          "isCompleted": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ]
+            },
+            "nullable": true
+          }
+        }
+      },
+      "task.validators_taskParamsSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "milestoneId": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "taskId": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "task.validators_taskMilestoneParamsSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "milestoneId": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "task.validators_taskDataSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "number",
+            "nullable": true
+          },
+          "isCompleted": {
+            "type": "boolean"
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ]
+            },
+            "nullable": true
+          },
+          "milestoneId": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "task.validators_singleTaskResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "position": {
+                "type": "number",
+                "nullable": true
+              },
+              "isCompleted": {
+                "type": "boolean"
+              },
+              "daysOfWeek": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday"
+                  ]
+                },
+                "nullable": true
+              },
+              "milestoneId": {
+                "type": "number"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "task.validators_taskListResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "position": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "isCompleted": {
+                  "type": "boolean"
+                },
+                "daysOfWeek": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                      "Sunday"
+                    ]
+                  },
+                  "nullable": true
+                },
+                "milestoneId": {
+                  "type": "number"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "task.validators_deleteTaskResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
           }
         }
       },
@@ -20301,260 +20597,6 @@
         ]
       }
     },
-    "/api/v1/projects/{projectId}/milestones/": {
-      "get": {
-        "tags": [
-          "Milestones"
-        ],
-        "summary": "里程碑路由",
-        "operationId": "get_api_v1_projects__projectId__milestones_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "description": "處理里程碑相關的路由定義 / import { Router, RequestHandler } from 'express'; import { milestoneController } from '../controllers/milestone.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate } from '../middleware/auth'; import { createMilestoneSchema, updateMilestoneSchema, milestoneParamsSchema } from '../validators/milestone.validators'; const router = Router({ mergeParams: true }); /** GET /projects/:projectId/milestones 獲取專案的里程碑列表 路徑參數：projectId - 專案 ID 支援可選身份驗證（用於個人化內容）",
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Milestones"
-        ],
-        "summary": "里程碑路由",
-        "operationId": "post_api_v1_projects__projectId__milestones_",
-        "responses": {
-          "201": {
-            "description": "資源創建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "description": "處理里程碑相關的路由定義 / import { Router, RequestHandler } from 'express'; import { milestoneController } from '../controllers/milestone.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate } from '../middleware/auth'; import { createMilestoneSchema, updateMilestoneSchema, milestoneParamsSchema } from '../validators/milestone.validators'; const router = Router({ mergeParams: true }); /** GET /projects/:projectId/milestones 獲取專案的里程碑列表 路徑參數：projectId - 專案 ID 支援可選身份驗證（用於個人化內容） / router.get('/', milestoneController.getMilestones as RequestHandler); /** POST /projects/:projectId/milestones 創建新里程碑 路徑參數：projectId - 專案 ID 需要身份驗證",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/milestone.validators_createMilestoneSchema"
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/projects/{projectId}/milestones/{milestoneId}": {
-      "put": {
-        "tags": [
-          "Milestones"
-        ],
-        "summary": "PUT /:milestoneId",
-        "operationId": "put_api_v1_projects__projectId__milestones__milestoneId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/milestone.validators_milestoneParamsSchema"
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "milestoneId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "milestoneId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Milestones"
-        ],
-        "summary": "DELETE /:milestoneId",
-        "operationId": "delete_api_v1_projects__projectId__milestones__milestoneId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "資源已成功刪除"
-                        }
-                      }
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "milestoneId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "milestoneId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
     "/api/v1/monitor/": {
       "get": {
         "tags": [
@@ -20586,370 +20628,6 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/notes/public": {
-      "get": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "GET /public",
-        "operationId": "get_api_v1_notes_public",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/notes/my": {
-      "get": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "GET /my",
-        "operationId": "get_api_v1_notes_my",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/notes/projects/{projectId}": {
-      "post": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "POST /projects/:projectId",
-        "operationId": "post_api_v1_notes_projects__projectId_",
-        "responses": {
-          "201": {
-            "description": "資源創建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "get": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "GET /projects/:projectId",
-        "operationId": "get_api_v1_notes_projects__projectId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/notes/projects/{projectId}/{noteId}": {
-      "get": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "GET /projects/:projectId/:noteId",
-        "operationId": "get_api_v1_notes_projects__projectId___noteId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "noteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "noteId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "PUT /projects/:projectId/:noteId",
-        "operationId": "put_api_v1_notes_projects__projectId___noteId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "noteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "noteId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Notes"
-        ],
-        "summary": "DELETE /projects/:projectId/:noteId",
-        "operationId": "delete_api_v1_notes_projects__projectId___noteId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "資源已成功刪除"
-                        }
-                      }
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "noteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "noteId 參數"
-          }
-        ],
         "security": [
           {
             "bearerAuth": []
@@ -22245,7 +21923,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "處理專案相關的路由定義 / import { Router, RequestHandler } from 'express'; import { createProjectController, getProjectController, getProjectsController, updateProjectController, deleteProjectController, getProjectStatsController, getMyProjectsController, duplicateProjectController } from '../controllers/project.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateProject, canUpdateProject, canDeleteProject // requireOwnership } from '../middleware/permission.middleware'; import { createProjectSchema, updateProjectSchema, projectParamsSchema, projectQuerySchema, duplicateProjectSchema, projectStatsQuerySchema } from '../validators/project.validators'; import milestoneRoutes from './milestone.routes'; const router = Router(); /** GET /projects 獲取專案列表 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order 支援可選身份驗證（用於個人化內容）",
+        "description": "處理專案相關的路由定義 / import { Router, RequestHandler } from 'express'; import { createProjectController, getProjectController, getProjectsController, updateProjectController, deleteProjectController, getProjectStatsController, getMyProjectsController, getPublicProjectsController, duplicateProjectController } from '../controllers/project.controller'; import { createNote, getNotes, getMyNotes, getNoteDetail, updateNote, getPublicNotes, deleteNote } from '../controllers/note.controller'; import { createReview, getReviews, getReviewDetail, updateReview, deleteReview } from '../controllers/review.controller'; import { createOutcome, getOutcomes, getMyOutcomes, getOutcomeDetail, updateOutcome, deleteOutcome } from '../controllers/outcome.controller'; import { createTaskController, getTasksController, getTaskController, updateTaskController, deleteTaskController } from '../controllers/task.controller'; import { createMilestoneController, getMilestonesController, updateMilestoneController, deleteMilestoneController } from '../controllers/milestone.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate, optionalAuth } from '../middleware/auth'; // import { //   canCreateProject, //   canUpdateProject, //   canDeleteProject // } from '../middleware/permission.middleware'; import { createProjectSchema, updateProjectSchema, projectParamsSchema, projectQuerySchema, duplicateProjectSchema, projectStatsQuerySchema } from '../validators/project.validators'; import { createNoteSchema, updateNoteSchema, noteParamsSchema, noteProjectParamsSchema, publicNotesQuerySchema } from '../validators/note.validators'; import { createReviewSchema, updateReviewSchema, reviewParamsSchema, reviewQuerySchema } from '../validators/review.validators'; import { createOutcomeSchema, updateOutcomeSchema, outcomeParamsSchema } from '../validators/outcome.validators'; import { createTaskSchema, updateTaskSchema, taskParamsSchema, taskMilestoneParamsSchema } from '../validators/task.validators'; import { createMilestoneSchema, updateMilestoneSchema, milestoneParamsSchema } from '../validators/milestone.validators'; const router = Router(); /** GET /projects 獲取專案列表 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order 支援可選身份驗證（用於個人化內容）",
         "security": [
           {
             "bearerAuth": []
@@ -22282,7 +21960,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "處理專案相關的路由定義 / import { Router, RequestHandler } from 'express'; import { createProjectController, getProjectController, getProjectsController, updateProjectController, deleteProjectController, getProjectStatsController, getMyProjectsController, duplicateProjectController } from '../controllers/project.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canCreateProject, canUpdateProject, canDeleteProject // requireOwnership } from '../middleware/permission.middleware'; import { createProjectSchema, updateProjectSchema, projectParamsSchema, projectQuerySchema, duplicateProjectSchema, projectStatsQuerySchema } from '../validators/project.validators'; import milestoneRoutes from './milestone.routes'; const router = Router(); /** GET /projects 獲取專案列表 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(projectQuerySchema, 'query'), getProjectsController as RequestHandler); /** GET /projects/my 獲取我的專案列表 查詢參數：page, limit, status, search, sort_by, sort_order 需要身份驗證 / router.get('/my', authenticate, validate(projectQuerySchema, 'query'), getMyProjectsController as RequestHandler); /** GET /projects/stats 獲取專案統計資訊 查詢參數：user_id（可選） 支援可選身份驗證 / router.get('/stats', optionalAuth, validate(projectStatsQuerySchema, 'query'), getProjectStatsController as RequestHandler); /** GET /projects/:id 獲取專案詳情 路徑參數：id - 專案 ID 支援可選身份驗證（用於個人化內容） / router.get('/:id', optionalAuth, validate(projectParamsSchema, 'params'), getProjectController as RequestHandler); /** POST /projects 創建新專案 需要身份驗證和創建專案權限",
+        "description": "處理專案相關的路由定義 / import { Router, RequestHandler } from 'express'; import { createProjectController, getProjectController, getProjectsController, updateProjectController, deleteProjectController, getProjectStatsController, getMyProjectsController, getPublicProjectsController, duplicateProjectController } from '../controllers/project.controller'; import { createNote, getNotes, getMyNotes, getNoteDetail, updateNote, getPublicNotes, deleteNote } from '../controllers/note.controller'; import { createReview, getReviews, getReviewDetail, updateReview, deleteReview } from '../controllers/review.controller'; import { createOutcome, getOutcomes, getMyOutcomes, getOutcomeDetail, updateOutcome, deleteOutcome } from '../controllers/outcome.controller'; import { createTaskController, getTasksController, getTaskController, updateTaskController, deleteTaskController } from '../controllers/task.controller'; import { createMilestoneController, getMilestonesController, updateMilestoneController, deleteMilestoneController } from '../controllers/milestone.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate, optionalAuth } from '../middleware/auth'; // import { //   canCreateProject, //   canUpdateProject, //   canDeleteProject // } from '../middleware/permission.middleware'; import { createProjectSchema, updateProjectSchema, projectParamsSchema, projectQuerySchema, duplicateProjectSchema, projectStatsQuerySchema } from '../validators/project.validators'; import { createNoteSchema, updateNoteSchema, noteParamsSchema, noteProjectParamsSchema, publicNotesQuerySchema } from '../validators/note.validators'; import { createReviewSchema, updateReviewSchema, reviewParamsSchema, reviewQuerySchema } from '../validators/review.validators'; import { createOutcomeSchema, updateOutcomeSchema, outcomeParamsSchema } from '../validators/outcome.validators'; import { createTaskSchema, updateTaskSchema, taskParamsSchema, taskMilestoneParamsSchema } from '../validators/task.validators'; import { createMilestoneSchema, updateMilestoneSchema, milestoneParamsSchema } from '../validators/milestone.validators'; const router = Router(); /** GET /projects 獲取專案列表 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(projectQuerySchema, 'query'), getProjectsController as RequestHandler); /** GET /projects/my 獲取我的專案列表 查詢參數：page, limit, status, search, sort_by, sort_order 需要身份驗證 / router.get('/my', authenticate, validate(projectQuerySchema, 'query'), getMyProjectsController as RequestHandler); /** GET /projects/public 獲取公開專案列表 查詢參數：page, limit, status, search, sort_by, sort_order 支援可選身份驗證（用於個人化內容） / router.get('/public', optionalAuth, validate(projectQuerySchema, 'query'), getPublicProjectsController as RequestHandler); /** GET /projects/stats 獲取專案統計資訊 查詢參數：user_id（可選） 支援可選身份驗證 / router.get('/stats', optionalAuth, validate(projectStatsQuerySchema, 'query'), getProjectStatsController as RequestHandler); /** GET /projects/:id 獲取專案詳情 路徑參數：id - 專案 ID 支援可選身份驗證（用於個人化內容） / router.get('/:id', optionalAuth, validate(projectParamsSchema, 'params'), getProjectController as RequestHandler); /** POST /projects 創建新專案 需要身份驗證和創建專案權限",
         "requestBody": {
           "required": true,
           "content": {
@@ -22307,6 +21985,44 @@
         ],
         "summary": "GET /my",
         "operationId": "get_api_v1_projects_my",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/public": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /public",
+        "operationId": "get_api_v1_projects_public",
         "responses": {
           "200": {
             "description": "成功回應",
@@ -22601,6 +22317,1651 @@
               "type": "string"
             },
             "description": "id 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/outcomes/me": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /outcomes/me",
+        "operationId": "get_api_v1_projects_outcomes_me",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/notes/me": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /notes/me",
+        "operationId": "get_api_v1_projects_notes_me",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/notes/public": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /notes/public",
+        "operationId": "get_api_v1_projects_notes_public",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "POST /:projectId/milestones",
+        "operationId": "post_api_v1_projects__projectId__milestones",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/milestones",
+        "operationId": "get_api_v1_projects__projectId__milestones",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}": {
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "PUT /:projectId/milestones/:milestoneId",
+        "operationId": "put_api_v1_projects__projectId__milestones__milestoneId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/milestone.validators_milestoneParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "DELETE /:projectId/milestones/:milestoneId",
+        "operationId": "delete_api_v1_projects__projectId__milestones__milestoneId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "資源已成功刪除"
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/tasks": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "POST /:projectId/milestones/:milestoneId/tasks",
+        "operationId": "post_api_v1_projects__projectId__milestones__milestoneId__tasks",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/task.validators_taskMilestoneParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/milestones/:milestoneId/tasks",
+        "operationId": "get_api_v1_projects__projectId__milestones__milestoneId__tasks",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/milestones/{milestoneId}/tasks/{taskId}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/milestones/:milestoneId/tasks/:taskId",
+        "operationId": "get_api_v1_projects__projectId__milestones__milestoneId__tasks__taskId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "taskId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "PUT /:projectId/milestones/:milestoneId/tasks/:taskId",
+        "operationId": "put_api_v1_projects__projectId__milestones__milestoneId__tasks__taskId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/task.validators_taskParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "taskId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "DELETE /:projectId/milestones/:milestoneId/tasks/:taskId",
+        "operationId": "delete_api_v1_projects__projectId__milestones__milestoneId__tasks__taskId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "資源已成功刪除"
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "milestoneId 參數"
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "taskId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/notes": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "POST /:projectId/notes",
+        "operationId": "post_api_v1_projects__projectId__notes",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/notes/": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/notes/",
+        "operationId": "get_api_v1_projects__projectId__notes_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/notes/{noteId}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/notes/:noteId",
+        "operationId": "get_api_v1_projects__projectId__notes__noteId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "noteId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "PUT /:projectId/notes/:noteId",
+        "operationId": "put_api_v1_projects__projectId__notes__noteId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/note.validators_noteParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "noteId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "DELETE /:projectId/notes/:noteId",
+        "operationId": "delete_api_v1_projects__projectId__notes__noteId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "資源已成功刪除"
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "noteId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/outcomes": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "POST /:projectId/outcomes",
+        "operationId": "post_api_v1_projects__projectId__outcomes",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/outcomes",
+        "operationId": "get_api_v1_projects__projectId__outcomes",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/outcomes/{outcomeId}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/outcomes/:outcomeId",
+        "operationId": "get_api_v1_projects__projectId__outcomes__outcomeId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "outcomeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "outcomeId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "PUT /:projectId/outcomes/:outcomeId",
+        "operationId": "put_api_v1_projects__projectId__outcomes__outcomeId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/outcome.validators_outcomeParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "outcomeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "outcomeId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "DELETE /:projectId/outcomes/:outcomeId",
+        "operationId": "delete_api_v1_projects__projectId__outcomes__outcomeId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "資源已成功刪除"
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "outcomeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "outcomeId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/reviews": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "POST /:projectId/reviews",
+        "operationId": "post_api_v1_projects__projectId__reviews",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/reviews",
+        "operationId": "get_api_v1_projects__projectId__reviews",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{projectId}/reviews/{reviewId}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "GET /:projectId/reviews/:reviewId",
+        "operationId": "get_api_v1_projects__projectId__reviews__reviewId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "reviewId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "PUT /:projectId/reviews/:reviewId",
+        "operationId": "put_api_v1_projects__projectId__reviews__reviewId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/review.validators_reviewParamsSchema"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "reviewId 參數"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "DELETE /:projectId/reviews/:reviewId",
+        "operationId": "delete_api_v1_projects__projectId__reviews__reviewId_",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "資源已成功刪除"
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "projectId 參數"
+          },
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "reviewId 參數"
           }
         ],
         "security": [
@@ -23522,332 +24883,6 @@
               "type": "string"
             },
             "description": "resourceId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/reviews/stats": {
-      "get": {
-        "tags": [
-          "Reviews"
-        ],
-        "summary": "GET /stats",
-        "operationId": "get_api_v1_reviews_stats",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/reviews/projects/{projectId}": {
-      "post": {
-        "tags": [
-          "Reviews"
-        ],
-        "summary": "POST /projects/:projectId",
-        "operationId": "post_api_v1_reviews_projects__projectId_",
-        "responses": {
-          "201": {
-            "description": "資源創建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "get": {
-        "tags": [
-          "Reviews"
-        ],
-        "summary": "GET /projects/:projectId",
-        "operationId": "get_api_v1_reviews_projects__projectId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/v1/reviews/projects/{projectId}/{reviewId}": {
-      "get": {
-        "tags": [
-          "Reviews"
-        ],
-        "summary": "GET /projects/:projectId/:reviewId",
-        "operationId": "get_api_v1_reviews_projects__projectId___reviewId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "reviewId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "reviewId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "Reviews"
-        ],
-        "summary": "PUT /projects/:projectId/:reviewId",
-        "operationId": "put_api_v1_reviews_projects__projectId___reviewId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "reviewId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "reviewId 參數"
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Reviews"
-        ],
-        "summary": "DELETE /projects/:projectId/:reviewId",
-        "operationId": "delete_api_v1_reviews_projects__projectId___reviewId_",
-        "responses": {
-          "200": {
-            "description": "成功回應",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "message": {
-                          "type": "string",
-                          "example": "資源已成功刪除"
-                        }
-                      }
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/api-response.validators_responseMetaSchema"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "projectId 參數"
-          },
-          {
-            "name": "reviewId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "reviewId 參數"
           }
         ],
         "security": [

@@ -1,17 +1,45 @@
-# 專案里程碑任務便利貼覆盤 CRUD 操作測試範本
+# 專案里程碑任務便利貼覆盤學習成果 CRUD 操作測試範本
 
 ## 概述
 
-此測試範本用於驗證專案生態系統中里程碑、任務、便利貼、覆盤的完整 CRUD 操作。系統採用嵌套層次結構：
+此測試範本用於驗證專案生態系統中里程碑、任務、便利貼、覆盤、學習成果的完整 CRUD 操作。系統採用嵌套層次結構：
 - 專案 (Projects) → 里程碑 (Milestones) → 任務 (Tasks)
 - 專案 (Projects) → 便利貼 (Notes)
 - 專案 (Projects) → 覆盤 (Reviews)
+- 專案 (Projects) → 學習成果 (Outcomes)
 
 ### API 層次結構
 ```
+# 專案相關
+/api/v1/projects/
+/api/v1/projects/my
+/api/v1/projects/public
+/api/v1/projects/stats
+/api/v1/projects/:id
+/api/v1/projects/:id/duplicate
+
+# 里程碑相關
+/api/v1/projects/:projectId/milestones
 /api/v1/projects/:projectId/milestones/:milestoneId
-/api/v1/notes/projects/:projectId
-/api/v1/reviews/projects/:projectId
+
+# 任務相關
+/api/v1/projects/:projectId/milestones/:milestoneId/tasks
+/api/v1/projects/:projectId/milestones/:milestoneId/tasks/:taskId
+
+# 便利貼相關
+/api/v1/projects/:projectId/notes
+/api/v1/projects/:projectId/notes/:noteId
+/api/v1/projects/notes/me
+/api/v1/projects/notes/public
+
+# 覆盤相關
+/api/v1/projects/:projectId/reviews
+/api/v1/projects/:projectId/reviews/:reviewId
+
+# 學習成果相關
+/api/v1/projects/:projectId/outcomes
+/api/v1/projects/:projectId/outcomes/:outcomeId
+/api/v1/projects/outcomes/me
 ```
 
 ## 前置準備
@@ -152,13 +180,103 @@ curl -X DELETE http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones/$MIL
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## 第二部分：便利貼 (Notes) CRUD 測試
+## 第二部分：任務 (Tasks) CRUD 測試
+
+### 前置條件
+需要先創建里程碑才能創建任務。
+
+### 1. CREATE - 創建任務
+
+#### 測試指令
+```bash
+# 先創建里程碑
+MILESTONE_RESPONSE=$(curl -s -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "position": 1,
+    "name": "測試里程碑",
+    "description": "用於任務測試的里程碑",
+    "startDate": "2025-01-01",
+    "endDate": "2025-03-31",
+    "isCompleted": false
+  }')
+
+MILESTONE_ID=$(echo $MILESTONE_RESPONSE | jq -r '.data.id')
+
+# 創建任務
+curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones/$MILESTONE_ID/tasks \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "第一個任務",
+    "description": "測試任務創建功能",
+    "priority": "high",
+    "status": "pending",
+    "dueDate": "2025-02-15"
+  }'
+```
+
+#### 預期回應
+```json
+{
+  "success": true,
+  "data": {
+    "id": 456,
+    "title": "第一個任務",
+    "description": "測試任務創建功能",
+    "priority": "high",
+    "status": "pending",
+    "dueDate": "2025-02-15",
+    "createdAt": "2025-09-21T10:00:00.000Z",
+    "updatedAt": "2025-09-21T10:00:00.000Z"
+  },
+  "timestamp": "2025-09-21T10:00:00.000Z"
+}
+```
+
+### 2. READ - 讀取任務
+
+#### 2.1 獲取里程碑的任務列表
+```bash
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones/$MILESTONE_ID/tasks"
+```
+
+#### 2.2 獲取任務詳情
+```bash
+TASK_ID="從創建步驟獲得的 ID"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones/$MILESTONE_ID/tasks/$TASK_ID"
+```
+
+### 3. UPDATE - 更新任務
+
+#### 測試指令
+```bash
+curl -X PUT http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones/$MILESTONE_ID/tasks/$TASK_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "已更新的任務",
+    "status": "in_progress",
+    "priority": "medium"
+  }'
+```
+
+### 4. DELETE - 刪除任務
+
+#### 測試指令
+```bash
+curl -X DELETE http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones/$MILESTONE_ID/tasks/$TASK_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 第三部分：便利貼 (Notes) CRUD 測試
 
 ### 1. CREATE - 創建便利貼
 
 #### 測試指令
 ```bash
-curl -X POST http://localhost:4000/api/v1/notes/projects/$PROJECT_ID \
+curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/notes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -207,26 +325,31 @@ curl -X POST http://localhost:4000/api/v1/notes/projects/$PROJECT_ID \
 
 #### 2.1 獲取專案的便利貼列表
 ```bash
-curl -X GET "http://localhost:4000/api/v1/notes/projects/$PROJECT_ID"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/notes"
 ```
 
 #### 2.2 獲取便利貼詳情
 ```bash
 NOTE_ID="從創建步驟獲得的 ID"
-curl -X GET "http://localhost:4000/api/v1/notes/projects/$PROJECT_ID/$NOTE_ID"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/notes/$NOTE_ID"
 ```
 
 #### 2.3 獲取個人便利貼列表
 ```bash
-curl -X GET "http://localhost:4000/api/v1/notes/my" \
+curl -X GET "http://localhost:4000/api/v1/projects/notes/me" \
   -H "Authorization: Bearer $TOKEN"
+```
+
+#### 2.4 獲取公開便利貼列表
+```bash
+curl -X GET "http://localhost:4000/api/v1/projects/notes/public"
 ```
 
 ### 3. UPDATE - 更新便利貼
 
 #### 測試指令
 ```bash
-curl -X PUT http://localhost:4000/api/v1/notes/projects/$PROJECT_ID/$NOTE_ID \
+curl -X PUT http://localhost:4000/api/v1/projects/$PROJECT_ID/notes/$NOTE_ID \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -240,17 +363,106 @@ curl -X PUT http://localhost:4000/api/v1/notes/projects/$PROJECT_ID/$NOTE_ID \
 
 #### 測試指令
 ```bash
-curl -X DELETE http://localhost:4000/api/v1/notes/projects/$PROJECT_ID/$NOTE_ID \
+curl -X DELETE http://localhost:4000/api/v1/projects/$PROJECT_ID/notes/$NOTE_ID \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## 第三部分：覆盤 (Reviews) CRUD 測試
+## 第四部分：學習成果 (Outcomes) CRUD 測試
+
+### 1. CREATE - 創建學習成果
+
+#### 測試指令
+```bash
+curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/outcomes \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "week": 1,
+    "title": "第一週學習成果",
+    "content": "本週完成了基礎概念的學習，掌握了核心技能",
+    "date": "2025-01-07",
+    "learningScore": 8,
+    "satisfactionScore": 9,
+    "tags": ["JavaScript", "API設計", "測試"],
+    "visibility": "public"
+  }'
+```
+
+#### 預期回應
+```json
+{
+  "success": true,
+  "data": {
+    "id": 999,
+    "week": 1,
+    "title": "第一週學習成果",
+    "content": "本週完成了基礎概念的學習，掌握了核心技能",
+    "date": "2025-01-07",
+    "learningScore": 8,
+    "satisfactionScore": 9,
+    "tags": ["JavaScript", "API設計", "測試"],
+    "visibility": "public",
+    "createdAt": "2025-09-21T10:00:00.000Z",
+    "user": {
+      "id": 2,
+      "name": "",
+      "_id": "58b915af-c361-4900-a6af-53b082a7f62c"
+    }
+  },
+  "timestamp": "2025-09-21T10:00:00.000Z"
+}
+```
+
+### 2. READ - 讀取學習成果
+
+#### 2.1 獲取專案的學習成果列表
+```bash
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/outcomes"
+```
+
+#### 2.2 獲取學習成果詳情
+```bash
+OUTCOME_ID="從創建步驟獲得的 ID"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/outcomes/$OUTCOME_ID"
+```
+
+#### 2.3 獲取個人學習成果列表
+```bash
+curl -X GET "http://localhost:4000/api/v1/projects/outcomes/me" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 3. UPDATE - 更新學習成果
+
+#### 測試指令
+```bash
+curl -X PUT http://localhost:4000/api/v1/projects/$PROJECT_ID/outcomes/$OUTCOME_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "已更新的學習成果",
+    "content": "更新後的學習成果內容，包含新的見解和進步",
+    "learningScore": 9,
+    "satisfactionScore": 10,
+    "visibility": "private"
+  }'
+```
+
+### 4. DELETE - 刪除學習成果
+
+#### 測試指令
+```bash
+curl -X DELETE http://localhost:4000/api/v1/projects/$PROJECT_ID/outcomes/$OUTCOME_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 第五部分：覆盤 (Reviews) CRUD 測試
 
 ### 1. CREATE - 創建覆盤
 
 #### 測試指令
 ```bash
-curl -X POST http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID \
+curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -297,20 +509,14 @@ curl -X POST http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID \
 
 #### 2.1 獲取專案的覆盤列表
 ```bash
-curl -X GET "http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID" \
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 #### 2.2 獲取覆盤詳情
 ```bash
 REVIEW_ID="從創建步驟獲得的 ID"
-curl -X GET "http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID/$REVIEW_ID" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-#### 2.3 獲取覆盤統計
-```bash
-curl -X GET "http://localhost:4000/api/v1/reviews/stats" \
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews/$REVIEW_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -318,7 +524,7 @@ curl -X GET "http://localhost:4000/api/v1/reviews/stats" \
 
 #### 測試指令
 ```bash
-curl -X PUT http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID/$REVIEW_ID \
+curl -X PUT http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews/$REVIEW_ID \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -334,11 +540,11 @@ curl -X PUT http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID/$REVIEW_ID
 
 #### 測試指令
 ```bash
-curl -X DELETE http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID/$REVIEW_ID \
+curl -X DELETE http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews/$REVIEW_ID \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## 第四部分：進階測試案例
+## 第六部分：進階測試案例
 
 ### 1. 權限和驗證測試
 
@@ -406,7 +612,7 @@ curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/milestones \
 # 創建多個不同週數的便利貼和覆盤
 for week in {1..4}; do
   # 創建便利貼
-  curl -s -X POST http://localhost:4000/api/v1/notes/projects/$PROJECT_ID \
+  curl -s -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/notes \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $TOKEN" \
     -d "{
@@ -418,7 +624,7 @@ for week in {1..4}; do
     }"
 
   # 創建覆盤
-  curl -s -X POST http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID \
+  curl -s -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $TOKEN" \
     -d "{
@@ -437,23 +643,23 @@ done
 #### 3.1 便利貼分頁測試
 ```bash
 # 測試分頁
-curl -X GET "http://localhost:4000/api/v1/notes/projects/$PROJECT_ID?page=1&pageSize=2"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/notes?page=1&pageSize=2"
 
 # 測試週數過濾
-curl -X GET "http://localhost:4000/api/v1/notes/projects/$PROJECT_ID?week=1"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/notes?week=1"
 
 # 測試可見性過濾
-curl -X GET "http://localhost:4000/api/v1/notes/projects/$PROJECT_ID?visibility=public"
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/notes?visibility=public"
 ```
 
 #### 3.2 覆盤過濾測試
 ```bash
 # 測試心情過濾
-curl -X GET "http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID?mood=good" \
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews?mood=good" \
   -H "Authorization: Bearer $TOKEN"
 
 # 測試壓力等級過濾
-curl -X GET "http://localhost:4000/api/v1/reviews/projects/$PROJECT_ID?stressLevel=3" \
+curl -X GET "http://localhost:4000/api/v1/projects/$PROJECT_ID/reviews?stressLevel=3" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -518,7 +724,7 @@ curl -s -X PUT $BASE_URL/projects/$PROJECT_ID/milestones/$MILESTONE_ID \
 echo "📝 3. 測試便利貼功能..."
 
 # 3.1 創建便利貼
-NOTE_RESPONSE=$(curl -s -X POST $BASE_URL/notes/projects/$PROJECT_ID \
+NOTE_RESPONSE=$(curl -s -X POST $BASE_URL/projects/$PROJECT_ID/notes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -533,10 +739,10 @@ NOTE_ID=$(echo $NOTE_RESPONSE | jq -r '.data.id')
 echo "✅ 便利貼已創建，ID: $NOTE_ID"
 
 # 3.2 讀取便利貼
-curl -s -X GET "$BASE_URL/notes/projects/$PROJECT_ID" | jq '.success'
+curl -s -X GET "$BASE_URL/projects/$PROJECT_ID/notes" | jq '.success'
 
 # 3.3 更新便利貼
-curl -s -X PUT $BASE_URL/notes/projects/$PROJECT_ID/$NOTE_ID \
+curl -s -X PUT $BASE_URL/projects/$PROJECT_ID/notes/$NOTE_ID \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -548,7 +754,7 @@ curl -s -X PUT $BASE_URL/notes/projects/$PROJECT_ID/$NOTE_ID \
 echo "🔄 4. 測試覆盤功能..."
 
 # 4.1 創建覆盤
-REVIEW_RESPONSE=$(curl -s -X POST $BASE_URL/reviews/projects/$PROJECT_ID \
+REVIEW_RESPONSE=$(curl -s -X POST $BASE_URL/projects/$PROJECT_ID/reviews \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -564,11 +770,11 @@ REVIEW_ID=$(echo $REVIEW_RESPONSE | jq -r '.data.id')
 echo "✅ 覆盤已創建，ID: $REVIEW_ID"
 
 # 4.2 讀取覆盤
-curl -s -X GET "$BASE_URL/reviews/projects/$PROJECT_ID" \
+curl -s -X GET "$BASE_URL/projects/$PROJECT_ID/reviews" \
   -H "Authorization: Bearer $TOKEN" | jq '.success'
 
 # 4.3 更新覆盤
-curl -s -X PUT $BASE_URL/reviews/projects/$PROJECT_ID/$REVIEW_ID \
+curl -s -X PUT $BASE_URL/projects/$PROJECT_ID/reviews/$REVIEW_ID \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -580,11 +786,11 @@ curl -s -X PUT $BASE_URL/reviews/projects/$PROJECT_ID/$REVIEW_ID \
 echo "🗑️ 5. 測試刪除功能..."
 
 # 刪除覆盤
-curl -s -X DELETE $BASE_URL/reviews/projects/$PROJECT_ID/$REVIEW_ID \
+curl -s -X DELETE $BASE_URL/projects/$PROJECT_ID/reviews/$REVIEW_ID \
   -H "Authorization: Bearer $TOKEN" | jq '.success'
 
 # 刪除便利貼
-curl -s -X DELETE $BASE_URL/notes/projects/$PROJECT_ID/$NOTE_ID \
+curl -s -X DELETE $BASE_URL/projects/$PROJECT_ID/notes/$NOTE_ID \
   -H "Authorization: Bearer $TOKEN" | jq '.success'
 
 # 刪除里程碑
