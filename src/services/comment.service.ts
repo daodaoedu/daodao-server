@@ -542,9 +542,8 @@ export class CommentService implements CommentServiceInterface {
    */
   private async formatCommentResponse(comment: DatabaseComment): Promise<CommentResponse> {
     const user: CommentUser = {
-      id: comment.users.id,
+      id: comment.users.external_id || '',
       name: comment.users.nickname || '',
-      _id: comment.users.external_id || '',
       roleList: comment.users.user_positions?.map((up) => up.position.name) || [],
       photoURL: comment.users.contacts?.photo_url || null
     };

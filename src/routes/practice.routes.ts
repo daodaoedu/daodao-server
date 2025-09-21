@@ -15,8 +15,8 @@ import {
   updatePracticeSchema,
   checkInSchema,
   checkInQuerySchema,
-  eventViewSchema,
-  eventShareSchema
+  practiceEventViewSchema,
+  practiceEventShareSchema
 } from '../validators/practice.validators';
 import { z } from 'zod';
 
@@ -192,7 +192,7 @@ router.post('/:id/favorite',
 router.post('/:id/share',
   authenticate,
   validate(practiceParamsSchema, 'params'),
-  validate(eventShareSchema, 'body'),
+  validate(practiceEventShareSchema, 'body'),
   practiceController.recordShare as RequestHandler);
 
 /**
@@ -205,7 +205,7 @@ router.post('/:id/share',
 router.post('/:id/view',
   authenticate,
   validate(practiceParamsSchema, 'params'),
-  validate(eventViewSchema, 'body'),
+  validate(practiceEventViewSchema, 'body'),
   practiceController.recordView as RequestHandler);
 
 /**

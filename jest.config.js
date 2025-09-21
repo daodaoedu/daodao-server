@@ -10,21 +10,23 @@ module.exports = {
     '/dist/',
     '/coverage/'
   ],
-  
+
   // ES modules support
   extensionsToTreatAsEsm: ['.ts'],
-  
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
+  },
+
   // Transform configuration
   transform: {
-    '^.+\\.(mt|t|cj|j)s$': [
-      'ts-jest',
-      {
-        useESM: true
-      }
-    ]
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      useESM: true
+    }]
   },
-  
-  // Allow transforming @faker-js/faker ES modules
+
+  // Allow transforming ES modules in faker
   transformIgnorePatterns: [
     'node_modules/(?!@faker-js/faker)'
   ],

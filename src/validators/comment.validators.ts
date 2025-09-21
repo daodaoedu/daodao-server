@@ -4,6 +4,9 @@
  */
 
 import { z } from 'zod';
+import {
+  apiSuccessResponseSchema
+} from './api-response.validators';
 
 // Comment target type enum values for validation
 const COMMENT_TARGET_TYPES = [
@@ -365,3 +368,46 @@ export const commentValidators = {
 };
 
 export default commentValidators;
+
+// ===== RESPONSE VALIDATION SCHEMAS =====
+// Based on comment.service.ts return types and comment.types.ts interfaces
+
+// Comment user schema (nested in comment responses)
+export const commentUserSchema = z.object({
+  id: z.string().describe("用戶外部 ID"),
+  name: z.string().describe("用戶名稱"),
+  roleList: z.array(z.string()).describe("用戶角色列表"),
+  photoURL: z.string().url().nullable().describe("用戶頭像 URL")
+});
+
+// Comment response schema (recursive for replies)
+export const commentResponseSchema: z.ZodType<unknown> = z.lazy(() => z.object({
+  id: z.number().describe("留言 ID"),
+  userId: z.number().describe("用戶 ID"),
+  targetId: z.string().describe("目標對象外部 ID"),
+  targetType: z.enum(COMMENT_TARGET_TYPES).describe("目標對象類型"),
+  content: z.string().describe("留言內容"),
+  visibility: z.enum(COMMENT_VISIBILITY_OPTIONS).describe("可見性"),
+  createdAt: z.date().describe("創建時間"),
+  updatedAt: z.date().describe("更新時間"),
+  parent_id: z.number().nullable().describe("父留言 ID"),
+  user: commentUserSchema.describe("用戶資訊"),
+  replies: z.array(commentResponseSchema).describe("回覆列表")
+}));
+
+// Delete comment response schema
+export const deleteCommentResponseSchema = z.object({
+  message: z.string().describe("刪除成功訊息")
+});
+
+// API Response schemas based on comment service return types
+export const createCommentApiResponseSchema = apiSuccessResponseSchema(commentResponseSchema);
+export const getCommentsApiResponseSchema = apiSuccessResponseSchema(z.array(commentResponseSchema));
+export const getCommentDetailApiResponseSchema = apiSuccessResponseSchema(commentResponseSchema);
+export const updateCommentApiResponseSchema = apiSuccessResponseSchema(commentResponseSchema);
+export const deleteCommentApiResponseSchema = apiSuccessResponseSchema(deleteCommentResponseSchema);
+
+// Response type exports
+export type CommentUser = z.infer<typeof commentUserSchema>;
+export type CommentResponseType = z.infer<typeof commentResponseSchema>;
+export type DeleteCommentResponse = z.infer<typeof deleteCommentResponseSchema>;

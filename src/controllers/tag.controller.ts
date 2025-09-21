@@ -16,6 +16,14 @@ import {
 } from '../services/tag.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { tags } from '../../generated/prisma';
+import {
+  getPopularTagsApiResponseSchema,
+  searchTagsApiResponseSchema,
+  getTagStatsApiResponseSchema,
+  addEntityTagApiResponseSchema,
+  removeEntityTagApiResponseSchema,
+  getEntityTagsApiResponseSchema
+} from '../validators/tag.validators';
 
 /**
  * 獲取熱門標籤
@@ -23,11 +31,11 @@ import type { tags } from '../../generated/prisma';
  */
 export const getPopularTags = asyncHandler(async (req: Request, res: Response) => {
   const { limit } = req.query;
-  
+
   const result = await getPopularTagsApi(
     limit ? parseInt(limit as string, 10) : 20
   );
-  
+
   // 格式化回應資料
   const formattedResult = {
     ...result,
@@ -37,8 +45,9 @@ export const getPopularTags = asyncHandler(async (req: Request, res: Response) =
       count: tag.usageCount
     }))
   };
-  
-  res.json(formattedResult);
+
+  const validatedResponse = getPopularTagsApiResponseSchema.parse(formattedResult);
+  res.json(validatedResponse);
 });
 
 /**
@@ -47,7 +56,7 @@ export const getPopularTags = asyncHandler(async (req: Request, res: Response) =
  */
 export const searchTags = asyncHandler(async (req: Request, res: Response) => {
   const { query, limit } = req.query;
-  
+
   if (!query) {
     throw new BadRequestError('必須提供搜索關鍵詞');
   }
@@ -56,7 +65,7 @@ export const searchTags = asyncHandler(async (req: Request, res: Response) => {
     query as string,
     limit ? parseInt(limit as string, 10) : 10
   );
-  
+
   // 格式化回應資料
   const formattedResult = {
     ...result,
@@ -65,8 +74,9 @@ export const searchTags = asyncHandler(async (req: Request, res: Response) => {
       name: tag.name
     }))
   };
-  
-  res.json(formattedResult);
+
+  const validatedResponse = searchTagsApiResponseSchema.parse(formattedResult);
+  res.json(validatedResponse);
 });
 
 /**
@@ -85,7 +95,7 @@ export const getTagStats = asyncHandler(async (req: Request, res: Response) => {
     popularTags: popularTagsResult.data.map(item => ({
       id: item.tag.id,
       name: item.tag.name,
-      usageCount: item.usageCount
+      count: item.usageCount
     }))
   }, {
     aggregateData: {
@@ -93,8 +103,9 @@ export const getTagStats = asyncHandler(async (req: Request, res: Response) => {
       topTagsCount: popularTagsResult.data.length
     }
   });
-  
-  res.json(result);
+
+  const validatedResponse = getTagStatsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -103,7 +114,7 @@ export const getTagStats = asyncHandler(async (req: Request, res: Response) => {
  */
 export const addEntityTag = asyncHandler(async (req: Request, res: Response) => {
   const { entityId, entityType, tagName } = req.body;
-  
+
   // 驗證請求數據
   if (!entityId || !entityType || !tagName) {
     throw new BadRequestError('必須提供實體ID、實體類型和標籤名稱');
@@ -130,8 +141,9 @@ export const addEntityTag = asyncHandler(async (req: Request, res: Response) => 
   }, {
     message: '標籤已成功添加到實體'
   });
-  
-  res.status(201).json(result);
+
+  const validatedResponse = addEntityTagApiResponseSchema.parse(result);
+  res.status(201).json(validatedResponse);
 });
 
 /**
@@ -140,7 +152,7 @@ export const addEntityTag = asyncHandler(async (req: Request, res: Response) => 
  */
 export const removeEntityTag = asyncHandler(async (req: Request, res: Response) => {
   const { entityId, entityType, tagName } = req.body;
-  
+
   // 驗證請求數據
   if (!entityId || !entityType || !tagName) {
     throw new BadRequestError('必須提供實體ID、實體類型和標籤名稱');
@@ -151,7 +163,7 @@ export const removeEntityTag = asyncHandler(async (req: Request, res: Response) 
   if (!tag) {
     throw new BadRequestError('標籤不存在');
   }
-  
+
   await removeEntityTagInternal(
     entityType as string,
     parseInt(entityId as string),
@@ -161,8 +173,9 @@ export const removeEntityTag = asyncHandler(async (req: Request, res: Response) 
   const result = createSuccessResponse(undefined, {
     message: '標籤已成功移除'
   });
-  
-  res.json(result);
+
+  const validatedResponse = removeEntityTagApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -171,7 +184,7 @@ export const removeEntityTag = asyncHandler(async (req: Request, res: Response) 
  */
 export const getEntityTags = asyncHandler(async (req: Request, res: Response) => {
   const { entityId, entityType } = req.query;
-  
+
   // 驗證請求數據
   if (!entityId || !entityType) {
     throw new BadRequestError('必須提供實體ID和實體類型');
@@ -181,7 +194,7 @@ export const getEntityTags = asyncHandler(async (req: Request, res: Response) =>
     entityType as string,
     parseInt(entityId as string)
   );
-  
+
   // 格式化回應資料
   const formattedResult = {
     ...result,
@@ -190,8 +203,9 @@ export const getEntityTags = asyncHandler(async (req: Request, res: Response) =>
       name: tag.name
     }))
   };
-  
-  res.json(formattedResult);
+
+  const validatedResponse = getEntityTagsApiResponseSchema.parse(formattedResult);
+  res.json(validatedResponse);
 });
 
 // 導出所有控制器函數

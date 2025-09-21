@@ -457,7 +457,7 @@ export async function updateIdea(ideaId: string, data: UpdateIdeaRequest, userId
     }
 
     // 構建更新數據
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (data.content !== undefined) {
       updateData.content = data.content;
     }

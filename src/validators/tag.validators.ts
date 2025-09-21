@@ -4,6 +4,9 @@
  */
 
 import { z } from 'zod';
+import {
+  apiSuccessResponseSchema
+} from './api-response.validators';
 
 // 標籤名稱基礎驗證
 const tagNameSchema = z.string()
@@ -219,6 +222,65 @@ export const tagStatsQuerySchema = z.object({
   }]
 });
 
+// ===== RESPONSE VALIDATION SCHEMAS =====
+// Based on tag.service.ts return types and API response structures
+
+// Base tag entity schema (matches Prisma generated type)
+export const tagEntitySchema = z.object({
+  id: z.number().describe("標籤 ID"),
+  name: z.string().describe("標籤名稱"),
+  created_at: z.string().optional().describe("創建時間"),
+  updated_at: z.string().optional().describe("更新時間")
+});
+
+// Formatted tag schema (used in controller responses)
+export const formattedTagSchema = z.object({
+  id: z.number().describe("標籤 ID"),
+  name: z.string().describe("標籤名稱")
+});
+
+// Popular tag item schema
+export const popularTagItemSchema = z.object({
+  id: z.number().describe("標籤 ID"),
+  name: z.string().describe("標籤名稱"),
+  count: z.number().describe("使用次數")
+});
+
+// Tag usage statistics schema
+export const tagUsageStatsSchema = z.object({
+  totalUsage: z.number().describe("總使用次數"),
+  resourceCount: z.number().describe("資源使用次數"),
+  ideaCount: z.number().describe("想法使用次數")
+});
+
+// Tag stats response schema
+export const tagStatsDataSchema = z.object({
+  totalTags: z.number().describe("總標籤數量"),
+  popularTags: z.array(popularTagItemSchema).describe("熱門標籤列表")
+});
+
+// Entity tag operation schema
+export const entityTagOperationSchema = z.object({
+  entityId: z.number().describe("實體 ID"),
+  entityType: z.string().describe("實體類型"),
+  tagName: z.string().describe("標籤名稱")
+});
+
+// Tag cleanup result schema
+export const tagCleanupResultSchema = z.object({
+  deletedCount: z.number().describe("刪除的標籤數量")
+});
+
+// API Response schemas based on tag controller usage
+export const getPopularTagsApiResponseSchema = apiSuccessResponseSchema(z.array(popularTagItemSchema));
+export const searchTagsApiResponseSchema = apiSuccessResponseSchema(z.array(formattedTagSchema));
+export const getTagStatsApiResponseSchema = apiSuccessResponseSchema(tagStatsDataSchema);
+export const addEntityTagApiResponseSchema = apiSuccessResponseSchema(entityTagOperationSchema);
+export const removeEntityTagApiResponseSchema = apiSuccessResponseSchema(z.undefined());
+export const getEntityTagsApiResponseSchema = apiSuccessResponseSchema(z.array(formattedTagSchema));
+export const getTagUsageStatsApiResponseSchema = apiSuccessResponseSchema(tagUsageStatsSchema);
+export const tagCleanupApiResponseSchema = apiSuccessResponseSchema(tagCleanupResultSchema);
+
 // 類型導出
 export type TagSearchQuery = z.infer<typeof tagSearchQuerySchema>;
 export type PopularTagsQuery = z.infer<typeof popularTagsQuerySchema>;
@@ -227,3 +289,12 @@ export type AddEntityTagData = z.infer<typeof addEntityTagSchema>;
 export type RemoveEntityTagData = z.infer<typeof removeEntityTagSchema>;
 export type BatchTagOperationData = z.infer<typeof batchTagOperationSchema>;
 export type TagStatsQuery = z.infer<typeof tagStatsQuerySchema>;
+
+// Response type exports
+export type TagEntity = z.infer<typeof tagEntitySchema>;
+export type FormattedTag = z.infer<typeof formattedTagSchema>;
+export type PopularTagItem = z.infer<typeof popularTagItemSchema>;
+export type TagUsageStats = z.infer<typeof tagUsageStatsSchema>;
+export type TagStatsData = z.infer<typeof tagStatsDataSchema>;
+export type EntityTagOperation = z.infer<typeof entityTagOperationSchema>;
+export type TagCleanupResult = z.infer<typeof tagCleanupResultSchema>;

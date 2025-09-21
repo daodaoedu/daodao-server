@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { apiErrorResponseSchema, responseMetaSchema } from './api-response.validators';
 
 // 心情類型驗證
 export const moodSchema = z.enum([
@@ -247,6 +248,92 @@ export const reviewParamsSchema = z.object({
 export type CreateReviewSchema = z.infer<typeof createReviewSchema>;
 export type UpdateReviewSchema = z.infer<typeof updateReviewSchema>;
 export type ReviewQuerySchema = z.infer<typeof reviewQuerySchema>;
+
+// =====================================
+// Response Validation Schemas
+// =====================================
+
+// 基於 ReviewResponse 接口的覆盤響應驗證
+export const reviewResponseSchema = z.object({
+  id: z.number(),
+  week: z.number(),
+  title: z.string(),
+  mood: z.string(),
+  stressLevel: z.number(),
+  moodDescription: z.string().optional(),
+  learningReview: z.string().optional(),
+  learningFeedback: z.string().optional(),
+  adjustmentPlan: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string().optional()
+});
+
+// 基於 ReviewStats 接口的覆盤統計響應驗證
+export const reviewStatsResponseSchema = z.object({
+  total: z.number(),
+  averageStressLevel: z.number(),
+  averageLearningReview: z.number(),
+  moodDistribution: z.record(z.string(), z.number()),
+  weeklyProgress: z.record(z.string(), reviewResponseSchema)
+});
+
+// API 成功響應基礎驗證
+const baseSuccessResponseSchema = z.object({
+  success: z.literal(true),
+  timestamp: z.string(),
+  meta: responseMetaSchema.optional()
+});
+
+// 單一覆盤成功響應驗證（基於 ApiSuccessResponse<ReviewResponse>）
+export const singleReviewResponseSchema = baseSuccessResponseSchema.extend({
+  data: reviewResponseSchema
+});
+
+// 覆盤列表成功響應驗證（基於 ApiSuccessResponse<ReviewResponse[]>）
+export const reviewListResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.array(reviewResponseSchema)
+});
+
+// 覆盤統計成功響應驗證（基於 ApiSuccessResponse<ReviewStats>）
+export const reviewStatsSuccessResponseSchema = baseSuccessResponseSchema.extend({
+  data: reviewStatsResponseSchema
+});
+
+// 刪除覆盤成功響應驗證（基於 ApiSuccessResponse<{message: string}>）
+export const deleteReviewApiResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.object({
+    message: z.string()
+  })
+});
+
+// 覆盤 API 響應聯合類型
+export const reviewApiResponseSchema = z.union([
+  singleReviewResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const reviewListApiResponseSchema = z.union([
+  reviewListResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const reviewStatsApiResponseSchema = z.union([
+  reviewStatsSuccessResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const deleteReviewUnionResponseSchema = z.union([
+  deleteReviewApiResponseSchema,
+  apiErrorResponseSchema
+]);
+
+// Response validation TypeScript 類型導出
+export type ReviewResponseValidated = z.infer<typeof reviewResponseSchema>;
+export type ReviewStatsResponseValidated = z.infer<typeof reviewStatsResponseSchema>;
+export type SingleReviewResponseValidated = z.infer<typeof singleReviewResponseSchema>;
+export type ReviewListResponseValidated = z.infer<typeof reviewListResponseSchema>;
+export type ReviewStatsSuccessResponseValidated = z.infer<typeof reviewStatsSuccessResponseSchema>;
+export type DeleteReviewResponseValidated = z.infer<typeof deleteReviewApiResponseSchema>;
 export type ReviewParamsSchema = z.infer<typeof reviewParamsSchema>;
 
 // 匯出驗證中間件

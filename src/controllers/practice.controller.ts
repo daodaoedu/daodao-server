@@ -22,6 +22,25 @@ import type {
   SortOrder,
   CheckInMood
 } from '../types/practice.types';
+import {
+  // Response validation schemas
+  practiceApiResponseSchema,
+  practicesListApiResponseSchema,
+  checkInApiResponseSchema,
+  checkInsListApiResponseSchema,
+  practiceStatsApiResponseSchema,
+  checkInStatsApiResponseSchema,
+  monthlyCalendarApiResponseSchema,
+  toggleLikeApiResponseSchema,
+  toggleFavoriteApiResponseSchema,
+  recordShareApiResponseSchema,
+  recordViewApiResponseSchema,
+  interactionStatsApiResponseSchema,
+  userInteractionStatusApiResponseSchema,
+  createPracticeApiResponseSchema,
+  updatePracticeApiResponseSchema,
+  operationSuccessApiResponseSchema
+} from '../validators/practice.validators';
 
 export class PracticeController {
   /**
@@ -41,7 +60,11 @@ export class PracticeController {
     };
 
     const result = await practiceService.findAll(queryParams);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = practicesListApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -65,7 +88,11 @@ export class PracticeController {
     };
 
     const result = await practiceService.findUserPractices(req.user.id, queryParams);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = practicesListApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -81,7 +108,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceService.findById(practiceId, userId);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = practiceApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -95,7 +126,11 @@ export class PracticeController {
 
     const practiceData: CreatePracticeRequest = req.body;
     const result = await practiceService.create(practiceData, req.user.id);
-    res.status(201).json(result);
+
+    // 驗證響應格式
+    const validatedResponse = createPracticeApiResponseSchema.parse(result);
+
+    res.status(201).json(validatedResponse);
   });
 
   /**
@@ -115,7 +150,11 @@ export class PracticeController {
 
     const updateData: UpdatePracticeRequest = req.body;
     const result = await practiceService.update(practiceId, updateData, req.user.id);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = updatePracticeApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -134,7 +173,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceService.deleteFunction(practiceId, req.user.id);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = operationSuccessApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -151,7 +194,11 @@ export class PracticeController {
     }
 
     const result = await practiceService.getUserStats(userId);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = practiceStatsApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -159,7 +206,7 @@ export class PracticeController {
    * POST /api/v1/practices/:id/checkins
    */
   createCheckIn = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user || typeof req.user.id !== 'number') {
+    if (!req.user?.id) {
       throw new UnauthorizedError('未授權存取');
     }
 
@@ -178,7 +225,11 @@ export class PracticeController {
       relatedResourceId: requestBody.relatedResourceId
     };
     const result = await practiceCheckInService.createCheckIn(practiceId, checkInData, req.user.id);
-    res.status(201).json(result);
+
+    // 驗證響應格式
+    const validatedResponse = checkInApiResponseSchema.parse(result);
+
+    res.status(201).json(validatedResponse);
   });
 
   /**
@@ -202,7 +253,11 @@ export class PracticeController {
 
     const userId = req.user?.id;
     const result = await practiceCheckInService.getCheckIns(practiceId, queryParams, userId);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = checkInsListApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -221,7 +276,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const stats = await practiceCheckInService.getCheckInStats(practiceId, req.user.id);
-    res.json(stats);
+
+    // 驗證響應格式
+    const validatedResponse = checkInStatsApiResponseSchema.parse({ success: true, data: stats, timestamp: new Date().toISOString() });
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -251,7 +310,11 @@ export class PracticeController {
       year,
       month
     );
-    res.json(calendar);
+
+    // 驗證響應格式
+    const validatedResponse = monthlyCalendarApiResponseSchema.parse({ success: true, data: calendar, timestamp: new Date().toISOString() });
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -270,7 +333,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceInteractionService.toggleLike(practiceId, req.user.id);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = toggleLikeApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -289,7 +356,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceInteractionService.toggleFavorite(practiceId, req.user.id);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = toggleFavoriteApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -309,7 +380,11 @@ export class PracticeController {
 
     const shareData = req.body;
     const result = await practiceInteractionService.recordShare(practiceId, req.user.id, shareData);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = recordShareApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -329,7 +404,11 @@ export class PracticeController {
 
     const viewData = req.body;
     const result = await practiceInteractionService.recordView(practiceId, req.user.id, viewData);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = recordViewApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -344,7 +423,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceInteractionService.getInteractionStats(practiceId);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = interactionStatsApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -363,7 +446,11 @@ export class PracticeController {
     const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceInteractionService.getUserInteractionStatus(practiceId, req.user.id);
-    res.json(result);
+
+    // 驗證響應格式
+    const validatedResponse = userInteractionStatusApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 }
 

@@ -131,6 +131,7 @@ describe('Practice Service', () => {
     it('should retrieve practice by ID successfully', async () => {
       const mockPractice = {
         id: 1,
+        external_id: 'test-practice-uuid',
         title: 'Test Practice',
         content_type: 'book',
         total_amount: 100,
@@ -153,7 +154,7 @@ describe('Practice Service', () => {
       const result = await findById(1);
 
       expect(result.success).toBe(true);
-      expect(result.data.id).toBe(1);
+      expect(result.data.id).toBe('test-practice-uuid');
       expect(result.data.title).toBe('Test Practice');
     });
 

@@ -12,6 +12,17 @@ import type {
   MentorMarathonUpdateRequest,
   MentorParticipantAssignRequest
 } from '../types/mentor.types';
+import {
+  assignMentorToMarathonApiResponseSchema,
+  updateMentorMarathonApiResponseSchema,
+  deleteMentorFromMarathonApiResponseSchema,
+  getMentorMarathonsApiResponseSchema,
+  assignParticipantToMentorApiResponseSchema,
+  updateMentorParticipantApiResponseSchema,
+  removeMentorParticipantApiResponseSchema,
+  getMentorParticipantsByMarathonApiResponseSchema,
+  getReviewsForMentorParticipantsApiResponseSchema
+} from '../validators/mentor.validators';
 import type { UserJwtPayload } from '../types/auth.types';
 
 /**
@@ -20,9 +31,10 @@ import type { UserJwtPayload } from '../types/auth.types';
  */
 export const assignMentorToMarathon = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const assignData: MentorMarathonAssignRequest = req.body;
-  
+
   const result = await mentorService.assignMentorToMarathon(assignData);
-  res.status(HTTP_STATUS.CREATED).json(result);
+  const validatedResponse = assignMentorToMarathonApiResponseSchema.parse(result);
+  res.status(HTTP_STATUS.CREATED).json(validatedResponse);
 });
 
 /**
@@ -32,9 +44,10 @@ export const assignMentorToMarathon = asyncHandler(async (req: Request, res: Res
 export const updateMentorMarathon = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const assignmentId = parseInt(req.params.assignmentId);
   const updateData: MentorMarathonUpdateRequest = req.body;
-  
+
   const result = await mentorService.updateMentorMarathon(assignmentId, updateData);
-  res.json(result);
+  const validatedResponse = updateMentorMarathonApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -43,9 +56,10 @@ export const updateMentorMarathon = asyncHandler(async (req: Request, res: Respo
  */
 export const deleteMentorFromMarathon = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const assignmentId = parseInt(req.params.assignmentId);
-  
+
   const result = await mentorService.deleteMentorFromMarathon(assignmentId);
-  res.json(result);
+  const validatedResponse = deleteMentorFromMarathonApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -53,15 +67,16 @@ export const deleteMentorFromMarathon = asyncHandler(async (req: Request, res: R
  */
 export const getMentorMarathons = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
-  
-  if (!user || typeof user.id !== 'number') {
+
+  if (!user || !user.id) {
     throw new UnauthorizedError('未授權的請求');
   }
-  
+
   const mentorId = user.id;
-  
+
   const result = await mentorService.getMentorMarathons(mentorId);
-  res.json(result);
+  const validatedResponse = getMentorMarathonsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -70,15 +85,16 @@ export const getMentorMarathons = asyncHandler(async (req: Request, res: Respons
 export const assignParticipantToMentor = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
   const assignData: MentorParticipantAssignRequest = req.body;
-  
-  if (!user || typeof user.id !== 'number') {
+
+  if (!user || !user.id) {
     throw new UnauthorizedError('未授權的請求');
   }
-  
+
   const mentorId = user.id;
-  
+
   const result = await mentorService.assignParticipantToMentor(mentorId, assignData);
-  res.status(HTTP_STATUS.CREATED).json(result);
+  const validatedResponse = assignParticipantToMentorApiResponseSchema.parse(result);
+  res.status(HTTP_STATUS.CREATED).json(validatedResponse);
 });
 
 /**
@@ -90,7 +106,7 @@ export const updateMentorParticipant = asyncHandler(async (req: Request, res: Re
   const participantId = parseInt(req.params.participantId);
   const updateData = req.body as { eventId?: string };
 
-  if (!user || typeof user.id !== 'number') {
+  if (!user || !user.id) {
     throw new UnauthorizedError('未授權的請求');
   }
 
@@ -98,12 +114,15 @@ export const updateMentorParticipant = asyncHandler(async (req: Request, res: Re
     throw new BadRequestError('無效的參與者 ID');
   }
 
+  const mentorId = user.id;
+
   const result = await mentorService.updateMentorParticipant(
-    user.id,
+    mentorId,
     participantId,
     updateData
   );
-  res.json(result);
+  const validatedResponse = updateMentorParticipantApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -112,15 +131,16 @@ export const updateMentorParticipant = asyncHandler(async (req: Request, res: Re
 export const removeMentorParticipant = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
   const participantId = parseInt(req.params.participantId);
-  
-  if (!user || typeof user.id !== 'number') {
+
+  if (!user || !user.id) {
     throw new UnauthorizedError('未授權的請求');
   }
-  
+
   const mentorId = user.id;
-  
+
   const result = await mentorService.removeMentorParticipant(mentorId, participantId);
-  res.json(result);
+  const validatedResponse = removeMentorParticipantApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -129,15 +149,16 @@ export const removeMentorParticipant = asyncHandler(async (req: Request, res: Re
 export const getMentorParticipantsByMarathon = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
   const { eventId } = req.params;
-  
-  if (!user || typeof user.id !== 'number') {
+
+  if (!user || !user.id) {
     throw new UnauthorizedError('未授權的請求');
   }
-  
+
   const mentorId = user.id;
-  
+
   const result = await mentorService.getMentorParticipantsByMarathon(mentorId, eventId);
-  res.json(result);
+  const validatedResponse = getMentorParticipantsByMarathonApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -146,13 +167,14 @@ export const getMentorParticipantsByMarathon = asyncHandler(async (req: Request,
 export const getReviewsForMentorParticipants = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
   const { eventId } = req.params;
-  
-  if (!user || typeof user.id !== 'number') {
+
+  if (!user || !user.id) {
     throw new UnauthorizedError('未授權的請求');
   }
-  
+
   const mentorId = user.id;
-  
+
   const result = await mentorService.getReviewsForMentorParticipants(mentorId, eventId);
-  res.json(result);
+  const validatedResponse = getReviewsForMentorParticipantsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });

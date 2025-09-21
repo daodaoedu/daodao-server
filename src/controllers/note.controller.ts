@@ -7,11 +7,16 @@ import { Request, Response } from 'express';
 import { noteService } from '../services/note.service';
 import { HTTP_STATUS } from '../constants/index';
 import { asyncHandler, UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
-import type { 
+import type {
   NoteCreateRequest,
   NoteUpdateRequest
 } from '../types/note.types';
 import type { UserJwtPayload } from '../types/auth.types';
+import {
+  singleNoteResponseSchema,
+  noteListResponseSchema,
+  deleteNoteResponseSchema
+} from '../validators/note.validators';
 
 /**
  * 創建便利貼
@@ -31,7 +36,11 @@ export const createNote = asyncHandler(async (req: Request, res: Response): Prom
     user.id,
     noteData
   );
-  res.status(HTTP_STATUS.CREATED).json(result);
+
+  // 驗證響應格式
+  const validatedResponse = singleNoteResponseSchema.parse(result);
+
+  res.status(HTTP_STATUS.CREATED).json(validatedResponse);
 });
 
 /**
@@ -41,7 +50,11 @@ export const createNote = asyncHandler(async (req: Request, res: Response): Prom
 export const getNotes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { projectId } = req.params;
   const result = await noteService.getNotes(projectId);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = noteListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -55,7 +68,11 @@ export const getMyNotes = asyncHandler(async (req: Request, res: Response): Prom
   }
 
   const result = await noteService.getMyNotes(user.id);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = noteListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -71,7 +88,11 @@ export const getNoteDetail = asyncHandler(async (req: Request, res: Response): P
   }
 
   const result = await noteService.getNoteDetail(projectId, noteIdNum);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = singleNoteResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -97,7 +118,11 @@ export const updateNote = asyncHandler(async (req: Request, res: Response): Prom
     noteIdNum,
     updateData
   );
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = singleNoteResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -109,7 +134,11 @@ export const getPublicNotes = asyncHandler(async (req: Request, res: Response): 
   const pageSize = parseInt(req.query.pageSize as string) || 10;
 
   const result = await noteService.getPublicNotes(page, pageSize);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = noteListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -130,5 +159,9 @@ export const deleteNote = asyncHandler(async (req: Request, res: Response): Prom
   }
 
   const result = await noteService.deleteNote(projectId, noteIdNum);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = deleteNoteResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });

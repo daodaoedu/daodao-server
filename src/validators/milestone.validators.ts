@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { apiErrorResponseSchema, responseMetaSchema } from './api-response.validators';
 
 // 里程碑創建驗證
 export const createMilestoneSchema = z.object({
@@ -237,3 +238,76 @@ export type UpdateMilestoneData = z.infer<typeof updateMilestoneSchema>;
 export type MilestoneParams = z.infer<typeof milestoneParamsSchema>;
 export type MilestoneProjectParams = z.infer<typeof milestoneProjectParamsSchema>;
 export type MilestoneQuery = z.infer<typeof milestoneQuerySchema>;
+
+// =====================================
+// Response Validation Schemas
+// =====================================
+
+// 基於 TaskResponse 接口的任務響應驗證
+const taskResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  position: z.number(),
+  description: z.string(),
+  daysOfWeek: z.unknown(),
+  isCompleted: z.boolean()
+});
+
+// 基於 MilestoneResponse 接口的里程碑響應驗證
+export const milestoneResponseSchema = z.object({
+  id: z.number(),
+  position: z.number(),
+  name: z.string(),
+  description: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  isCompleted: z.boolean(),
+  tasks: z.array(taskResponseSchema)
+});
+
+// API 成功響應基礎驗證
+const baseSuccessResponseSchema = z.object({
+  success: z.literal(true),
+  timestamp: z.string(),
+  meta: responseMetaSchema.optional()
+});
+
+// 單一里程碑成功響應驗證（基於 ApiSuccessResponse<MilestoneResponse>）
+export const singleMilestoneResponseSchema = baseSuccessResponseSchema.extend({
+  data: milestoneResponseSchema
+});
+
+// 里程碑列表成功響應驗證（基於 ApiSuccessResponse<MilestoneResponse[]>）
+export const milestoneListResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.array(milestoneResponseSchema)
+});
+
+// 刪除里程碑成功響應驗證（基於 ApiSuccessResponse<{message: string}>）
+export const deleteMilestoneResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.object({
+    message: z.string()
+  }).optional()
+});
+
+// 里程碑 API 響應聯合類型
+export const milestoneApiResponseSchema = z.union([
+  singleMilestoneResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const milestoneListApiResponseSchema = z.union([
+  milestoneListResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const deleteMilestoneApiResponseSchema = z.union([
+  deleteMilestoneResponseSchema,
+  apiErrorResponseSchema
+]);
+
+// Response validation TypeScript 類型導出
+export type MilestoneResponseValidated = z.infer<typeof milestoneResponseSchema>;
+export type TaskResponseValidated = z.infer<typeof taskResponseSchema>;
+export type SingleMilestoneResponseValidated = z.infer<typeof singleMilestoneResponseSchema>;
+export type MilestoneListResponseValidated = z.infer<typeof milestoneListResponseSchema>;
+export type DeleteMilestoneResponseValidated = z.infer<typeof deleteMilestoneResponseSchema>;

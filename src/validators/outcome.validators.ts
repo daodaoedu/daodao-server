@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { apiErrorResponseSchema, responseMetaSchema } from './api-response.validators';
 
 // 可見性選項
 const VISIBILITY_OPTIONS = ['private', 'public'] as const;
@@ -318,3 +319,63 @@ export type OutcomeQueryParams = z.infer<typeof outcomeQuerySchema>;
 export type OutcomeParamsData = z.infer<typeof outcomeParamsSchema>;
 export type OutcomeProjectParamsData = z.infer<typeof outcomeProjectParamsSchema>;
 export type PublicOutcomesQueryData = z.infer<typeof publicOutcomesQuerySchema>;
+
+// =====================================
+// Response Validation Schemas
+// =====================================
+
+// 基於 OutcomeResponse 接口的成果響應驗證
+export const outcomeResponseSchema = z.object({
+  id: z.number(),
+  week: z.number(),
+  title: z.string(),
+  content: z.string(),
+  date: z.string(),
+  imgUrls: z.array(z.string()).optional(),
+  videoUrls: z.array(z.string()).optional(),
+  visibility: z.string()
+});
+
+// API 成功響應基礎驗證
+const baseSuccessResponseSchema = z.object({
+  success: z.literal(true),
+  timestamp: z.string(),
+  meta: responseMetaSchema.optional()
+});
+
+// 單一成果成功響應驗證（基於 ApiSuccessResponse<OutcomeResponse>）
+export const singleOutcomeResponseSchema = baseSuccessResponseSchema.extend({
+  data: outcomeResponseSchema
+});
+
+// 成果列表成功響應驗證（基於 ApiSuccessResponse<OutcomeResponse[]>）
+export const outcomeListResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.array(outcomeResponseSchema)
+});
+
+// 刪除成果成功響應驗證（基於 ApiSuccessResponse<undefined>）
+export const deleteOutcomeResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.undefined()
+});
+
+// 成果 API 響應聯合類型
+export const outcomeApiResponseSchema = z.union([
+  singleOutcomeResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const outcomeListApiResponseSchema = z.union([
+  outcomeListResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const deleteOutcomeApiResponseSchema = z.union([
+  deleteOutcomeResponseSchema,
+  apiErrorResponseSchema
+]);
+
+// Response validation TypeScript 類型導出
+export type OutcomeResponseValidated = z.infer<typeof outcomeResponseSchema>;
+export type SingleOutcomeResponseValidated = z.infer<typeof singleOutcomeResponseSchema>;
+export type OutcomeListResponseValidated = z.infer<typeof outcomeListResponseSchema>;
+export type DeleteOutcomeResponseValidated = z.infer<typeof deleteOutcomeResponseSchema>;

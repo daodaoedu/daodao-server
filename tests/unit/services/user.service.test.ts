@@ -131,8 +131,7 @@ describe('User Service', () => {
       // Verify response format
       expect(result.success).toBe(true);
       expect(result.data.user).toMatchObject({
-        id: newUser.id,
-        _id: newUser.external_id,
+        id: newUser.external_id,
         name: newUser.nickname,
         gender: newUser.gender,
         educationStage: newUser.education_stage
@@ -523,7 +522,7 @@ describe('User Service', () => {
         const result = await userService.getOneUser(user.external_id);
 
         expect(result?.data).toHaveProperty('name');
-        expect(result?.data).toHaveProperty('_id');
+        expect(result?.data).toHaveProperty('id');
         expect(result?.data).toHaveProperty('createdDate');
         expect(result?.data).toHaveProperty('tagList');
         expect(result?.data).not.toHaveProperty('password');

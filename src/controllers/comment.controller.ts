@@ -25,7 +25,12 @@ import {
   validateCreateComment,
   validateUpdateComment,
   validateGetCommentsQuery,
-  validateCommentParams
+  validateCommentParams,
+  createCommentApiResponseSchema,
+  getCommentsApiResponseSchema,
+  getCommentDetailApiResponseSchema,
+  updateCommentApiResponseSchema,
+  deleteCommentApiResponseSchema
 } from '../validators/comment.validators';
 
 /**
@@ -62,8 +67,9 @@ export class CommentController implements CommentControllerInterface {
     // Create comment through service
     const result = await commentService.createComment(createParams);
 
-    // Send success response
-    res.status(201).json(result);
+    // Validate and send success response
+    const validatedResponse = createCommentApiResponseSchema.parse(result);
+    res.status(201).json(validatedResponse);
   }
 
   /**
@@ -92,8 +98,9 @@ export class CommentController implements CommentControllerInterface {
     // Get comments through service
     const result = await commentService.getComments(getParams);
 
-    // Send success response
-    res.json(result);
+    // Validate and send success response
+    const validatedResponse = getCommentsApiResponseSchema.parse(result);
+    res.json(validatedResponse);
   }
 
   /**
@@ -119,8 +126,9 @@ export class CommentController implements CommentControllerInterface {
       currentUser
     );
 
-    // Send success response
-    res.json(result);
+    // Validate and send success response
+    const validatedResponse = getCommentDetailApiResponseSchema.parse(result);
+    res.json(validatedResponse);
   }
 
   /**
@@ -151,8 +159,9 @@ export class CommentController implements CommentControllerInterface {
     // Update comment through service
     const result = await commentService.updateComment(updateParams);
 
-    // Send success response
-    res.json(result);
+    // Validate and send success response
+    const validatedResponse = updateCommentApiResponseSchema.parse(result);
+    res.json(validatedResponse);
   }
 
   /**
@@ -179,8 +188,9 @@ export class CommentController implements CommentControllerInterface {
     // Delete comment through service
     const result = await commentService.deleteComment(deleteParams);
 
-    // Send success response
-    res.json(result);
+    // Validate and send success response
+    const validatedResponse = deleteCommentApiResponseSchema.parse(result);
+    res.json(validatedResponse);
   }
 }
 

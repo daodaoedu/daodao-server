@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { apiErrorResponseSchema, responseMetaSchema } from './api-response.validators';
 
 // 可見性選項
 const VISIBILITY_OPTIONS = ['private', 'public'] as const;
@@ -318,3 +319,72 @@ export type NoteQueryParams = z.infer<typeof noteQuerySchema>;
 export type NoteParamsData = z.infer<typeof noteParamsSchema>;
 export type NoteProjectParamsData = z.infer<typeof noteProjectParamsSchema>;
 export type PublicNotesQueryData = z.infer<typeof publicNotesQuerySchema>;
+
+// =====================================
+// Response Validation Schemas
+// =====================================
+
+// 基於 UserBasicInfo 的使用者資訊驗證
+const userBasicInfoSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
+  _id: z.string().nullable()
+}).nullable();
+
+// 基於 NoteResponse 接口的便利貼響應驗證
+export const noteResponseSchema = z.object({
+  id: z.number(),
+  week: z.number(),
+  title: z.string(),
+  content: z.string(),
+  date: z.string(),
+  imgUrls: z.array(z.string()).optional(),
+  videoUrls: z.array(z.string()).optional(),
+  visibility: z.string(),
+  user: userBasicInfoSchema
+});
+
+// API 成功響應基礎驗證
+const baseSuccessResponseSchema = z.object({
+  success: z.literal(true),
+  timestamp: z.string(),
+  meta: responseMetaSchema.optional()
+});
+
+// 單一便利貼成功響應驗證（基於 ApiSuccessResponse<NoteResponse>）
+export const singleNoteResponseSchema = baseSuccessResponseSchema.extend({
+  data: noteResponseSchema
+});
+
+// 便利貼列表成功響應驗證（基於 ApiSuccessResponse<NoteResponse[]>）
+export const noteListResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.array(noteResponseSchema)
+});
+
+// 刪除便利貼成功響應驗證（基於 ApiSuccessResponse<undefined>）
+export const deleteNoteResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.undefined()
+});
+
+// 便利貼 API 響應聯合類型
+export const noteApiResponseSchema = z.union([
+  singleNoteResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const noteListApiResponseSchema = z.union([
+  noteListResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const deleteNoteApiResponseSchema = z.union([
+  deleteNoteResponseSchema,
+  apiErrorResponseSchema
+]);
+
+// Response validation TypeScript 類型導出
+export type NoteResponseValidated = z.infer<typeof noteResponseSchema>;
+export type UserBasicInfoValidated = z.infer<typeof userBasicInfoSchema>;
+export type SingleNoteResponseValidated = z.infer<typeof singleNoteResponseSchema>;
+export type NoteListResponseValidated = z.infer<typeof noteListResponseSchema>;
+export type DeleteNoteResponseValidated = z.infer<typeof deleteNoteResponseSchema>;
