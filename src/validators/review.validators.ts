@@ -6,24 +6,24 @@
 import { z } from 'zod';
 import { apiErrorResponseSchema, responseMetaSchema } from './api-response.validators';
 
-// 心情類型驗證
+// 心情類型驗證 - 與資料庫約束一致
 export const moodSchema = z.enum([
-  'excellent',
-  'good', 
-  'neutral',
-  'poor',
-  'terrible'
-], '心情必須是以下之一: excellent, good, neutral, poor, terrible')
+  'happy',
+  'calm',
+  'anxious',
+  'tired',
+  'frustrated'
+], '心情必須是以下之一: happy, calm, anxious, tired, frustrated')
   .describe('心情評估等級')
   .meta({
     title: '心情狀態',
-    examples: ['excellent', 'good', 'neutral', 'poor', 'terrible'],
+    examples: ['happy', 'calm', 'anxious', 'tired', 'frustrated'],
     enumDescriptions: {
-      'excellent': '非常好',
-      'good': '良好',
-      'neutral': '普通',
-      'poor': '不好',
-      'terrible': '很糟'
+      'happy': '開心',
+      'calm': '平靜',
+      'anxious': '焦慮',
+      'tired': '疲倦',
+      'frustrated': '沮喪'
     }
   });
 

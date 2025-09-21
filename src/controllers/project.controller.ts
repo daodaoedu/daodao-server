@@ -77,13 +77,20 @@ export const getProjectsController = asyncHandler(async (req: Request, res: Resp
     page: req.query.page ? parseInt(req.query.page as string) : 1,
     limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
     status: req.query.status as 'Ongoing' | 'Completed' | 'Not Started' | 'Canceled' | undefined,
-    is_public: req.query.is_public ? req.query.is_public === 'true' : undefined,
-    user_id: req.query.user_id ? parseInt(req.query.user_id as string) : undefined,
+    is_public: req.query.isPublic ? req.query.isPublic === 'true' : undefined,
+    user_id: req.query.userId ? parseInt(req.query.userId as string) : undefined,
     search: req.query.search as string,
-    sort_by: (['created_at', 'updated_at', 'title', 'start_date', 'end_date'].includes(req.query.sort_by as string)) 
-      ? (req.query.sort_by as 'created_at' | 'updated_at' | 'title' | 'start_date' | 'end_date') 
-      : 'created_at',
-    sort_order: (req.query.sort_order as 'asc' | 'desc') || 'desc'
+    sort_by: req.query.sortBy ? (() => {
+      const sortByMap = {
+        'createdAt': 'created_at',
+        'updatedAt': 'updated_at',
+        'title': 'title',
+        'startDate': 'start_date',
+        'endDate': 'end_date'
+      } as const;
+      return sortByMap[req.query.sortBy as keyof typeof sortByMap] || 'created_at';
+    })() : 'created_at',
+    sort_order: (req.query.sortOrder as 'asc' | 'desc') || 'desc'
   };
 
   const userId = req.user?.id;
@@ -188,14 +195,54 @@ export const getMyProjectsController = asyncHandler(async (req: Request, res: Re
     limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
     status: req.query.status as 'Ongoing' | 'Completed' | 'Not Started' | 'Canceled' | undefined,
     search: req.query.search as string,
-    sort_by: (['created_at', 'updated_at', 'title', 'start_date', 'end_date'].includes(req.query.sort_by as string)) 
-      ? (req.query.sort_by as 'created_at' | 'updated_at' | 'title' | 'start_date' | 'end_date') 
-      : 'updated_at',
-    sort_order: (req.query.sort_order as 'asc' | 'desc') || 'desc',
+    sort_by: req.query.sortBy ? (() => {
+      const sortByMap = {
+        'createdAt': 'created_at',
+        'updatedAt': 'updated_at',
+        'title': 'title',
+        'startDate': 'start_date',
+        'endDate': 'end_date'
+      } as const;
+      return sortByMap[req.query.sortBy as keyof typeof sortByMap] || 'updated_at';
+    })() : 'updated_at',
+    sort_order: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
     user_id: req.user.id
   };
 
   const result = await getProjects(queryParams, req.user.id);
+
+  // 驗證響應格式
+  const validatedResponse = projectListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
+});
+
+/**
+ * 獲取公開專案列表
+ * GET /api/projects/public
+ */
+export const getPublicProjectsController = asyncHandler(async (req: Request, res: Response) => {
+  const queryParams: ProjectQueryParams = {
+    page: req.query.page ? parseInt(req.query.page as string) : 1,
+    limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
+    status: req.query.status as 'Ongoing' | 'Completed' | 'Not Started' | 'Canceled' | undefined,
+    search: req.query.search as string,
+    sort_by: req.query.sortBy ? (() => {
+      const sortByMap = {
+        'createdAt': 'created_at',
+        'updatedAt': 'updated_at',
+        'title': 'title',
+        'startDate': 'start_date',
+        'endDate': 'end_date'
+      } as const;
+      return sortByMap[req.query.sortBy as keyof typeof sortByMap] || 'created_at';
+    })() : 'created_at',
+    sort_order: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+    is_public: true // 強制只顯示公開專案
+  };
+
+  const userId = req.user?.id;
+  const result = await getProjects(queryParams, userId);
 
   // 驗證響應格式
   const validatedResponse = projectListResponseSchema.parse(result);

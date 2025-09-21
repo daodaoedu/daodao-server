@@ -12,6 +12,7 @@ import {
   deleteProjectController,
   getProjectStatsController,
   getMyProjectsController,
+  getPublicProjectsController,
   duplicateProjectController
 } from '../controllers/project.controller';
 import {
@@ -119,6 +120,17 @@ router.get('/my',
   authenticate,
   validate(projectQuerySchema, 'query'),
   getMyProjectsController as RequestHandler);
+
+/**
+ * GET /projects/public
+ * 獲取公開專案列表
+ * 查詢參數：page, limit, status, search, sort_by, sort_order
+ * 支援可選身份驗證（用於個人化內容）
+ */
+router.get('/public',
+  optionalAuth,
+  validate(projectQuerySchema, 'query'),
+  getPublicProjectsController as RequestHandler);
 
 /**
  * GET /projects/stats

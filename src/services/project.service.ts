@@ -143,8 +143,7 @@ export const createProject = async (
     try {
       // 檢查用戶是否存在
       const user = await tx.users.findUnique({
-        where: { id: userId },
-        include: { roles: true }
+        where: { id: userId }
       });
 
       if (!user) {
@@ -184,14 +183,14 @@ export const createProject = async (
           img_url: projectData.imgUrl,
           title: projectData.title,
           description: projectData.description,
-          motivation: projectData.motivation ? { set: projectData.motivation as motivation_t[] } : undefined,
+          motivation: projectData.motivation as motivation_t[] || [],
           motivation_description: projectData.motivationDescription,
           goal: projectData.goal,
           content: projectData.content,
-          strategy: projectData.strategy ? { set: projectData.strategy as strategy_t[] } : undefined,
+          strategy: projectData.strategy as strategy_t[] || [],
           strategy_description: projectData.strategyDescription,
           resource: projectData.resources,
-          outcome: projectData.outcome ? { set: projectData.outcome as outcome_t[] } : undefined,
+          outcome: projectData.outcome as outcome_t[] || [],
           outcome_description: projectData.outcomeDescription,
           is_public: projectData.isPublic ?? true,
           status: projectData.status || 'Not Started',
@@ -201,31 +200,27 @@ export const createProject = async (
           created_by: userId,
           updated_by: userId
         },
-        select: {
-          id: true,
-          external_id: true,
-          user_id: true,
-          img_url: true,
-          title: true,
-          description: true,
-          motivation: true,
-          motivation_description: true,
-          goal: true,
-          content: true,
-          strategy: true,
-          strategy_description: true,
-          resource: true,
-          outcome: true,
-          outcome_description: true,
-          is_public: true,
-          status: true,
-          start_date: true,
-          end_date: true,
-          interval: true,
-          created_by: true,
-          updated_by: true,
-          created_at: true,
-          updated_at: true
+        include: {
+          users: {
+            include: {
+              contacts: true,
+              user_positions: {
+                include: {
+                  position: true
+                }
+              }
+            }
+          },
+          milestone: {
+            where: { is_deleted: false },
+            orderBy: { position: 'asc' },
+            include: {
+              task: {
+                where: { is_deleted: false },
+                orderBy: { position: 'asc' }
+              }
+            }
+          }
         }
       });
 
@@ -260,14 +255,10 @@ export const createProject = async (
         }
       }
 
-      // 獲取完整的專案資料
-      const createdProject = await getProjectById(project.external_id || '', userId);
+      // 直接使用創建後的專案資料（包含所有關聯）
+      const formattedProject = formatProjectResponse(project);
 
-      if (!createdProject.success || !createdProject.data) {
-        throw new Error('創建後無法獲取專案資料');
-      }
-
-      return createSuccessResponse(createdProject.data, {
+      return createSuccessResponse(formattedProject, {
         message: '專案創建成功'
       });
     } catch (error) {
@@ -285,17 +276,15 @@ export const getProjectById = async (
 ): Promise<ApiSuccessResponse<ProjectResponse>> => {
   try {
     // 構建查詢條件
-    const whereClause: Record<string, unknown> = { external_id: projectId };
-
-    // 如果不是專案擁有者，只能查看公開專案
-    if (userId) {
-      whereClause.OR = [
+    const whereClause: Record<string, unknown> = {
+      external_id: projectId,
+      OR: userId ? [
         { user_id: userId },
         { is_public: true }
-      ];
-    } else {
-      whereClause.is_public = true;
-    }
+      ] : [
+        { is_public: true }
+      ]
+    };
 
     const project = await prisma.project.findFirst({
       where: whereClause,
