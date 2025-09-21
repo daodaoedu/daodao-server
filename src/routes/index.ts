@@ -14,11 +14,7 @@ import ideaRoutes from './idea.routes';
 import meRoutes from './me.routes';
 import commentRoutes from './comment.routes';
 import imageRoutes from './image.routes';
-import noteRoutes from './note.routes';
-import outcomeRoutes from './outcome.routes';
-import reviewRoutes from './review.routes';
 import mentorRoutes from './mentor.routes';
-import milestoneRoutes from './milestone.routes';
 import practiceRoutes from './practice.routes';
 
 const router = Router({ mergeParams: true });
@@ -126,34 +122,6 @@ router.use('/comments', commentRoutes);
 // DELETE /api/v1/images/:filename
 router.use('/images', imageRoutes);
 
-// 便利貼路由
-// GET    /api/v1/notes/public
-// GET    /api/v1/notes/my
-// POST   /api/v1/notes/projects/:projectId
-// GET    /api/v1/notes/projects/:projectId
-// GET    /api/v1/notes/projects/:projectId/:noteId
-// PUT    /api/v1/notes/projects/:projectId/:noteId
-// DELETE /api/v1/notes/projects/:projectId/:noteId
-router.use('/notes', noteRoutes);
-
-// 成果路由
-// GET    /api/v1/outcomes/public
-// GET    /api/v1/outcomes/my
-// POST   /api/v1/outcomes/projects/:projectId
-// GET    /api/v1/outcomes/projects/:projectId
-// GET    /api/v1/outcomes/projects/:projectId/:outcomeId
-// PUT    /api/v1/outcomes/projects/:projectId/:outcomeId
-// DELETE /api/v1/outcomes/projects/:projectId/:outcomeId
-router.use('/outcomes', outcomeRoutes);
-
-// 覆盤路由
-// GET    /api/v1/reviews/stats
-// POST   /api/v1/reviews/projects/:projectId
-// GET    /api/v1/reviews/projects/:projectId
-// GET    /api/v1/reviews/projects/:projectId/:reviewId
-// PUT    /api/v1/reviews/projects/:projectId/:reviewId
-// DELETE /api/v1/reviews/projects/:projectId/:reviewId
-router.use('/reviews', reviewRoutes);
 
 // 導師路由
 // POST   /api/v1/mentor/marathon
@@ -167,12 +135,6 @@ router.use('/reviews', reviewRoutes);
 // GET    /api/v1/mentor/marathon/:eventId/reviews
 router.use('/mentor', mentorRoutes);
 
-// 里程碑路由（作為專案的子路由）
-// GET    /api/v1/projects/:projectId/milestones
-// POST   /api/v1/projects/:projectId/milestones
-// PUT    /api/v1/projects/:projectId/milestones/:milestoneId
-// DELETE /api/v1/projects/:projectId/milestones/:milestoneId
-router.use('/projects/:projectId/milestones', milestoneRoutes);
 
 // 實踐路由
 // GET    /api/v1/practices
@@ -229,11 +191,7 @@ router.get('/info', (req, res) => {
         me: '/api/v1/me',
         comments: '/api/v1/comments',
         images: '/api/v1/images',
-        notes: '/api/v1/notes',
-        outcomes: '/api/v1/outcomes',
-        reviews: '/api/v1/reviews',
         mentor: '/api/v1/mentor',
-        milestones: '/api/v1/projects/:projectId/milestones',
         practices: '/api/v1/practices',
         health: '/api/v1/health'
       },

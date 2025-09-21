@@ -30,16 +30,8 @@ import emailRoutes from './routes/email.routes';
 import commentRoutes from './routes/comment.routes';
 // 引入圖片路由
 import imageRoutes from './routes/image.routes';
-// 引入便利貼路由
-import noteRoutes from './routes/note.routes';
-// 引入成果路由
-import outcomeRoutes from './routes/outcome.routes';
-// 引入覆盤路由
-import reviewRoutes from './routes/review.routes';
 // 引入導師路由
 import mentorRoutes from './routes/mentor.routes';
-// 引入里程碑路由
-import milestoneRoutes from './routes/milestone.routes';
 // 引入實踐路由
 import practiceRoutes from './routes/practice.routes';
 // 引入 OAuth 服務初始化
@@ -225,25 +217,11 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/email', emailRoutes);
   console.log('📧 v1 郵件路由已註冊 - 可在 /api/v1/email 訪問');
 
-  // 註冊便利貼路由
-  app.use('/api/v1/notes', noteRoutes);
-  console.log('📝 v1 便利貼路由已註冊 - 可在 /api/v1/notes 訪問');
-
-  // 註冊成果路由
-  app.use('/api/v1/outcomes', outcomeRoutes);
-  console.log('🎯 v1 成果路由已註冊 - 可在 /api/v1/outcomes 訪問');
-
-  // 註冊覆盤路由
-  app.use('/api/v1/reviews', reviewRoutes);
-  console.log('📊 v1 覆盤路由已註冊 - 可在 /api/v1/reviews 訪問');
 
   // 註冊導師路由
   app.use('/api/v1/mentor', mentorRoutes);
   console.log('👨‍🏫 v1 導師路由已註冊 - 可在 /api/v1/mentor 訪問');
 
-  // 註冊里程碑路由（作為專案的子路由）
-  app.use('/api/v1/projects/:projectId/milestones', milestoneRoutes);
-  console.log('🎯 v1 里程碑路由已註冊 - 可在 /api/v1/projects/:projectId/milestones 訪問');
 
   // 註冊實踐路由
   app.use('/api/v1/practices', practiceRoutes);
