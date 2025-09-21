@@ -2,6 +2,18 @@
  * 導出所有驗證器和中間件
  */
 
+// Export common API response schemas from the central location
+export * from './api-response.validators';
+
+// Export auth validators
+export * from './auth.validators';
+export * from './email.validators';
+export * from './idea.validators';
+export * from './image.validators';
+export * from './user.validators';
+export * from './user-custom-id.validators';
+
+// Export module-specific validators
 export * from './resource.validator';
 export * from './resource-review.validator';
 export * from './comment.validators';

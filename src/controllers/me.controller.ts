@@ -14,6 +14,13 @@ import type {
   PreferencesQueryParams,
   UpdatePreferencesData
 } from '../validators/me.validators';
+import {
+  myPracticesApiResponseSchema,
+  myPracticeStatsApiResponseSchema,
+  myResourcesApiResponseSchema,
+  myPreferencesApiResponseSchema,
+  updatePreferencesApiResponseSchema
+} from '../validators/me.validators';
 
 /**
  * GET /api/v1/me/practices
@@ -29,7 +36,8 @@ export const getMyPractices = asyncHandler(async (req: Request, res: Response) =
   const params = req.query as unknown as PracticeQueryParams;
   const result = await meService.getMyPractices(currentUser.id, params);
 
-  res.json(result);
+  const validatedResponse = myPracticesApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -46,7 +54,8 @@ export const getMyPracticeStats = asyncHandler(async (req: Request, res: Respons
   const params = req.query as unknown as PracticeStatsQueryParams;
   const result = await meService.getMyPracticeStats(currentUser.id, params);
 
-  res.json(result);
+  const validatedResponse = myPracticeStatsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -63,7 +72,8 @@ export const getMyResources = asyncHandler(async (req: Request, res: Response) =
   const params = req.query as unknown as ResourcesQueryParams;
   const result = await meService.getMyResources(currentUser.id, params);
 
-  res.json(result);
+  const validatedResponse = myResourcesApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -80,7 +90,8 @@ export const getMyPreferences = asyncHandler(async (req: Request, res: Response)
   const params = req.query as unknown as PreferencesQueryParams;
   const result = await meService.getMyPreferences(currentUser.id, params);
 
-  res.json(result);
+  const validatedResponse = myPreferencesApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -97,7 +108,8 @@ export const updateMyPreferences = asyncHandler(async (req: Request, res: Respon
   const requestData = req.body as UpdatePreferencesData;
   const result = await meService.updateMyPreferences(currentUser.id, requestData);
 
-  res.json(result);
+  const validatedResponse = updatePreferencesApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 // Export all controller functions

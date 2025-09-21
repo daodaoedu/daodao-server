@@ -11,11 +11,17 @@ import {
   UnauthorizedError,
   BadRequestError
 } from '../middleware/error.middleware';
-import type { 
+import type {
   ReviewCreateRequest,
   ReviewUpdateRequest
 } from '../types/review.types';
 import type { UserJwtPayload } from '../types/auth.types';
+import {
+  singleReviewResponseSchema,
+  reviewListResponseSchema,
+  deleteReviewApiResponseSchema,
+  reviewStatsSuccessResponseSchema
+} from '../validators/review.validators';
 
 /**
  * 創建覆盤
@@ -36,7 +42,10 @@ export const createReview = asyncHandler(async (req: Request, res: Response): Pr
     reviewData
   );
 
-  res.status(HTTP_STATUS.CREATED).json(result);
+  // 驗證響應格式
+  const validatedResponse = singleReviewResponseSchema.parse(result);
+
+  res.status(HTTP_STATUS.CREATED).json(validatedResponse);
 });
 
 /**
@@ -47,7 +56,10 @@ export const getReviews = asyncHandler(async (req: Request, res: Response): Prom
   const { projectId } = req.params;
   const result = await reviewService.getReviews(projectId);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = reviewListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -64,7 +76,10 @@ export const getReviewDetail = asyncHandler(async (req: Request, res: Response):
 
   const result = await reviewService.getReviewDetail(projectId, reviewIdNum);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = singleReviewResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -91,7 +106,10 @@ export const updateReview = asyncHandler(async (req: Request, res: Response): Pr
     updateData
   );
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = singleReviewResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -113,7 +131,10 @@ export const deleteReview = asyncHandler(async (req: Request, res: Response): Pr
 
   const result = await reviewService.deleteReview(projectId, reviewIdNum);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = deleteReviewApiResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -128,5 +149,8 @@ export const getReviewStats = asyncHandler(async (req: Request, res: Response): 
 
   const result = await reviewService.getReviewStats(user.id);
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = reviewStatsSuccessResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });

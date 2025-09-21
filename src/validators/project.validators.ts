@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { apiErrorResponseSchema } from './api-response.validators';
 
 // 專案動機驗證
 const motivationSchema = z.unknown()
@@ -485,3 +486,158 @@ export type ProjectQuery = z.infer<typeof projectQuerySchema>;
 export type DuplicateProjectData = z.infer<typeof duplicateProjectSchema>;
 export type ProjectStatsQuery = z.infer<typeof projectStatsQuerySchema>;
 export type BatchProjectOperation = z.infer<typeof batchProjectOperationSchema>;
+
+// =====================================
+// Response Validation Schemas
+// =====================================
+
+// 基於 ProjectResponse 接口的使用者資訊驗證
+const userResponseSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
+  _id: z.string().nullable(),
+  roleList: z.array(z.string()),
+  photoURL: z.string().nullable()
+}).nullable();
+
+// 基於 ProjectResponse 接口的任務響應驗證
+const taskResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  position: z.number(),
+  description: z.string(),
+  daysOfWeek: z.unknown(),
+  isCompleted: z.boolean()
+});
+
+// 基於 ProjectResponse 接口的里程碑響應驗證
+const milestoneResponseSchema = z.object({
+  id: z.number(),
+  position: z.number(),
+  name: z.string(),
+  description: z.string(),
+  startDate: z.date().nullable(),
+  endDate: z.date().nullable(),
+  isCompleted: z.boolean(),
+  tasks: z.array(taskResponseSchema)
+});
+
+// 基於 ProjectResponse 接口的專案響應驗證
+export const projectResponseSchema = z.object({
+  id: z.string(),
+  userId: z.number(),
+  imgUrl: z.string().nullable(),
+  title: z.string(),
+  description: z.string(),
+  motivation: z.unknown(),
+  motivationDescription: z.string().nullable(),
+  goal: z.string().nullable(),
+  content: z.string().nullable(),
+  strategy: z.unknown(),
+  strategyDescription: z.string().nullable(),
+  resources: z.string().nullable(),
+  outcome: z.unknown(),
+  outcomeDescription: z.string().nullable(),
+  isPublic: z.boolean(),
+  status: z.string(),
+  startDate: z.date().nullable(),
+  endDate: z.date().nullable(),
+  interval: z.number().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  version: z.number(),
+  user: userResponseSchema,
+  milestones: z.array(milestoneResponseSchema)
+});
+
+// 基於 ProjectStats 接口的統計響應驗證
+export const projectStatsResponseSchema = z.object({
+  total_projects: z.number(),
+  ongoing_projects: z.number(),
+  completed_projects: z.number(),
+  not_started_projects: z.number(),
+  canceled_projects: z.number()
+});
+
+// 分頁資訊驗證（基於 api-response.types.ts）
+const paginationSchema = z.object({
+  currentPage: z.number(),
+  totalPages: z.number(),
+  totalItems: z.number(),
+  itemsPerPage: z.number(),
+  hasNext: z.boolean(),
+  hasPrev: z.boolean()
+});
+
+// 響應元數據驗證（基於 api-response.types.ts）
+const responseMetaSchema = z.object({
+  searchQuery: z.string().optional(),
+  searchTime: z.number().optional(),
+  filters: z.record(z.string(), z.unknown()).optional(),
+  categoryCounts: z.record(z.string(), z.number()).optional(),
+  aggregateData: z.record(z.string(), z.unknown()).optional(),
+  requestId: z.string().optional(),
+  cacheHit: z.boolean().optional(),
+  processingTime: z.number().optional(),
+  message: z.string().optional()
+}).catchall(z.unknown());
+
+// API 成功響應基礎驗證（基於 ApiSuccessResponse）
+const baseSuccessResponseSchema = z.object({
+  success: z.literal(true),
+  timestamp: z.string(),
+  meta: responseMetaSchema.optional()
+});
+
+// API 錯誤響應驗證 - using imported schema
+
+// 單一專案成功響應驗證（基於 ApiSuccessResponse<ProjectResponse>）
+export const singleProjectResponseSchema = baseSuccessResponseSchema.extend({
+  data: projectResponseSchema
+});
+
+// 專案列表成功響應驗證（基於 PaginatedApiResponse<ProjectResponse>）
+export const projectListResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.array(projectResponseSchema),
+  pagination: paginationSchema
+});
+
+// 專案統計成功響應驗證（基於 ApiSuccessResponse<ProjectStats>）
+export const projectStatsSuccessResponseSchema = baseSuccessResponseSchema.extend({
+  data: projectStatsResponseSchema
+});
+
+// 刪除專案成功響應驗證（基於 ApiSuccessResponse<void>）
+export const deleteProjectResponseSchema = baseSuccessResponseSchema.extend({
+  data: z.undefined()
+});
+
+// 專案 API 響應聯合類型
+export const projectApiResponseSchema = z.union([
+  singleProjectResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const projectListApiResponseSchema = z.union([
+  projectListResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const projectStatsApiResponseSchema = z.union([
+  projectStatsSuccessResponseSchema,
+  apiErrorResponseSchema
+]);
+
+export const deleteProjectApiResponseSchema = z.union([
+  deleteProjectResponseSchema,
+  apiErrorResponseSchema
+]);
+
+// Response validation TypeScript 類型導出
+export type ProjectResponseValidated = z.infer<typeof projectResponseSchema>;
+export type ProjectStatsResponseValidated = z.infer<typeof projectStatsResponseSchema>;
+export type ApiErrorResponseValidated = z.infer<typeof apiErrorResponseSchema>;
+export type SingleProjectResponseValidated = z.infer<typeof singleProjectResponseSchema>;
+export type ProjectListResponseValidated = z.infer<typeof projectListResponseSchema>;
+export type ProjectStatsSuccessResponseValidated = z.infer<typeof projectStatsSuccessResponseSchema>;
+export type DeleteProjectResponseValidated = z.infer<typeof deleteProjectResponseSchema>;

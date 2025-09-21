@@ -6,11 +6,16 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/error.middleware';
 import { createMilestone, getMilestones, updateMilestone, deleteMilestone } from '../services/milestone.service';
-import type { 
-  MilestoneCreateRequestData, 
-  MilestoneUpdateRequest 
+import type {
+  MilestoneCreateRequestData,
+  MilestoneUpdateRequest
 } from '../types/milestone.types';
 import type { UserJwtPayload } from '../types/auth.types';
+import {
+  singleMilestoneResponseSchema,
+  milestoneListResponseSchema,
+  deleteMilestoneResponseSchema
+} from '../validators/milestone.validators';
 
 /**
  * 創建里程碑
@@ -40,7 +45,10 @@ export const createMilestoneController = asyncHandler(async (req: Request, res: 
     milestoneData
   );
 
-  res.status(201).json(result);
+  // 驗證響應格式
+  const validatedResponse = singleMilestoneResponseSchema.parse(result);
+
+  res.status(201).json(validatedResponse);
 });
 
 /**
@@ -50,8 +58,11 @@ export const createMilestoneController = asyncHandler(async (req: Request, res: 
 export const getMilestonesController = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { projectId } = req.params;
   const result = await getMilestones(projectId);
-  
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = milestoneListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -83,7 +94,10 @@ export const updateMilestoneController = asyncHandler(async (req: Request, res: 
     updateData
   );
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = singleMilestoneResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -113,7 +127,10 @@ export const deleteMilestoneController = asyncHandler(async (req: Request, res: 
     user.id
   );
 
-  res.json(result);
+  // 驗證響應格式
+  const validatedResponse = deleteMilestoneResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 // Legacy controller instance for backward compatibility

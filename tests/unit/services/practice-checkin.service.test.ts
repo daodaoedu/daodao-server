@@ -281,14 +281,11 @@ describe('Practice CheckIn Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
-      // The service has a bug in parameter order for calculatePagination
-      // It calls calculatePagination(total, page, take) instead of (page, limit, totalItems)
-      // So we expect the incorrect but actual behavior until the service is fixed
       expect(result.pagination).toMatchObject({
-        currentPage: 1, // page parameter (correctly positioned as 2nd arg)
-        totalPages: 20, // calculated from totalItems(20) / itemsPerPage(1) = 20 -> ceil -> 20
-        totalItems: 20, // take parameter (incorrectly positioned as 3rd arg)
-        itemsPerPage: 1 // total parameter (incorrectly positioned as 1st arg)
+        currentPage: 1,
+        totalPages: 1, // Math.ceil(1 / 20) = 1
+        totalItems: 1, // actual count from mock
+        itemsPerPage: 20 // limit parameter
       });
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Check-ins retrieved',

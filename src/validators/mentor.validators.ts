@@ -4,6 +4,9 @@
  */
 
 import { z } from 'zod';
+import {
+  apiSuccessResponseSchema
+} from './api-response.validators';
 
 /**
  * 指定導師參與馬拉松驗證模式
@@ -156,3 +159,111 @@ export type AssignmentIdParamsData = z.infer<typeof assignmentIdParamsSchema>;
 export type ParticipantIdParamsData = z.infer<typeof participantIdParamsSchema>;
 export type EventIdParamsData = z.infer<typeof eventIdParamsSchema>;
 export type PaginationQueryData = z.infer<typeof paginationQuerySchema>;
+
+// ===== RESPONSE VALIDATION SCHEMAS =====
+// Based on mentor.service.ts return types and mentor.types.ts interfaces
+
+// Mentor marathon assignment response schema
+export const mentorMarathonAssignmentResponseSchema = z.object({
+  id: z.number().describe("指派記錄 ID"),
+  mentorId: z.number().describe("導師 ID"),
+  marathonId: z.number().describe("馬拉松 ID"),
+  eventId: z.string().describe("活動外部 ID"),
+  assignedAt: z.string().describe("指派時間")
+});
+
+// Mentor participant response schema
+export const mentorParticipantResponseSchema = z.object({
+  mentorId: z.number().describe("導師 ID"),
+  participantId: z.number().describe("參與者 ID"),
+  assignedAt: z.string().describe("指派時間")
+});
+
+// Mentor marathon response schema
+export const mentorMarathonResponseSchema = z.object({
+  id: z.number().describe("馬拉松 ID"),
+  eventId: z.string().describe("活動外部 ID"),
+  title: z.string().describe("馬拉松標題"),
+  startDate: z.string().describe("開始日期"),
+  endDate: z.string().describe("結束日期"),
+  participantCount: z.number().describe("參與者數量")
+});
+
+// Participant detail response schema
+export const participantDetailResponseSchema = z.object({
+  id: z.number().describe("參與者 ID"),
+  name: z.string().describe("參與者姓名"),
+  _id: z.string().describe("參與者外部 ID"),
+  roleList: z.array(z.string()).describe("角色列表"),
+  photoURL: z.string().nullable().describe("頭像 URL"),
+  educationStage: z.string().nullable().describe("教育階段"),
+  tagList: z.array(z.string()).describe("標籤列表"),
+  selfIntroduction: z.string().nullable().describe("自我介紹"),
+  location: z.string().describe("地理位置"),
+  wantToDoList: z.array(z.string()).describe("想做的事情列表"),
+  share: z.string().describe("分享內容"),
+  updatedDate: z.string().describe("更新日期"),
+  projectId: z.string().describe("專案外部 ID"),
+  projectTitle: z.string().describe("專案標題")
+});
+
+// Mentor marathon participants response schema
+export const mentorMarathonParticipantsResponseSchema = z.object({
+  id: z.number().describe("馬拉松 ID"),
+  eventId: z.string().describe("活動外部 ID"),
+  title: z.string().describe("馬拉松標題"),
+  startDate: z.string().describe("開始日期"),
+  endDate: z.string().describe("結束日期"),
+  participants: z.array(participantDetailResponseSchema).describe("參與者列表")
+});
+
+// Review response schema (nested in mentor participant reviews)
+export const mentorReviewResponseSchema = z.object({
+  id: z.number().describe("覆盤 ID"),
+  week: z.number().describe("週次"),
+  title: z.string().describe("覆盤標題"),
+  mood: z.number().describe("心情評分"),
+  stressLevel: z.number().describe("壓力等級"),
+  moodDescription: z.string().optional().describe("心情描述"),
+  learningReview: z.string().optional().describe("學習反思"),
+  learningFeedback: z.string().optional().describe("學習回饋"),
+  adjustmentPlan: z.string().optional().describe("調整計畫"),
+  createdAt: z.string().describe("創建日期"),
+  updatedAt: z.string().optional().describe("更新日期")
+});
+
+// Marathon info schema (nested in participant reviews response)
+export const marathonInfoSchema = z.object({
+  id: z.number().describe("馬拉松 ID"),
+  eventId: z.string().describe("活動外部 ID"),
+  title: z.string().describe("馬拉松標題"),
+  startDate: z.string().describe("開始日期"),
+  endDate: z.string().describe("結束日期")
+});
+
+// Mentor participant reviews response schema
+export const mentorParticipantReviewsResponseSchema = z.object({
+  marathon: marathonInfoSchema.describe("馬拉松資訊"),
+  reviews: z.array(mentorReviewResponseSchema).describe("覆盤列表")
+});
+
+// API Response schemas based on mentor service return types
+export const assignMentorToMarathonApiResponseSchema = apiSuccessResponseSchema(mentorMarathonAssignmentResponseSchema);
+export const updateMentorMarathonApiResponseSchema = apiSuccessResponseSchema(mentorMarathonAssignmentResponseSchema);
+export const deleteMentorFromMarathonApiResponseSchema = apiSuccessResponseSchema(z.undefined());
+export const getMentorMarathonsApiResponseSchema = apiSuccessResponseSchema(z.array(mentorMarathonResponseSchema));
+export const assignParticipantToMentorApiResponseSchema = apiSuccessResponseSchema(mentorParticipantResponseSchema);
+export const updateMentorParticipantApiResponseSchema = apiSuccessResponseSchema(z.undefined());
+export const removeMentorParticipantApiResponseSchema = apiSuccessResponseSchema(z.undefined());
+export const getMentorParticipantsByMarathonApiResponseSchema = apiSuccessResponseSchema(mentorMarathonParticipantsResponseSchema);
+export const getReviewsForMentorParticipantsApiResponseSchema = apiSuccessResponseSchema(mentorParticipantReviewsResponseSchema);
+
+// Response type exports
+export type MentorMarathonAssignmentResponse = z.infer<typeof mentorMarathonAssignmentResponseSchema>;
+export type MentorParticipantResponse = z.infer<typeof mentorParticipantResponseSchema>;
+export type MentorMarathonResponse = z.infer<typeof mentorMarathonResponseSchema>;
+export type ParticipantDetailResponse = z.infer<typeof participantDetailResponseSchema>;
+export type MentorMarathonParticipantsResponse = z.infer<typeof mentorMarathonParticipantsResponseSchema>;
+export type ReviewResponse = z.infer<typeof mentorReviewResponseSchema>;
+export type MarathonInfo = z.infer<typeof marathonInfoSchema>;
+export type MentorParticipantReviewsResponse = z.infer<typeof mentorParticipantReviewsResponseSchema>;

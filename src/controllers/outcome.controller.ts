@@ -12,6 +12,11 @@ import type {
   OutcomeUpdateRequest
 } from '../types/outcome.types';
 import type { UserJwtPayload } from '../types/auth.types';
+import {
+  singleOutcomeResponseSchema,
+  outcomeListResponseSchema,
+  deleteOutcomeResponseSchema
+} from '../validators/outcome.validators';
 
 /**
  * 創建成果
@@ -31,7 +36,11 @@ export const createOutcome = asyncHandler(async (req: Request, res: Response): P
     user.id,
     outcomeData
   );
-  res.status(HTTP_STATUS.CREATED).json(result);
+
+  // 驗證響應格式
+  const validatedResponse = singleOutcomeResponseSchema.parse(result);
+
+  res.status(HTTP_STATUS.CREATED).json(validatedResponse);
 });
 
 /**
@@ -41,7 +50,11 @@ export const createOutcome = asyncHandler(async (req: Request, res: Response): P
 export const getOutcomes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { projectId } = req.params;
   const result = await outcomeService.getOutcomes(projectId);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = outcomeListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -55,7 +68,11 @@ export const getMyOutcomes = asyncHandler(async (req: Request, res: Response): P
   }
 
   const result = await outcomeService.getMyOutcomes(user.id);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = outcomeListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -71,7 +88,11 @@ export const getOutcomeDetail = asyncHandler(async (req: Request, res: Response)
   }
 
   const result = await outcomeService.getOutcomeDetail(projectId, outcomeIdNum);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = singleOutcomeResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -97,7 +118,11 @@ export const updateOutcome = asyncHandler(async (req: Request, res: Response): P
     outcomeIdNum,
     updateData
   );
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = singleOutcomeResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -109,7 +134,11 @@ export const getPublicOutcomes = asyncHandler(async (req: Request, res: Response
   const pageSize = parseInt(req.query.pageSize as string) || 10;
 
   const result = await outcomeService.getPublicOutcomes(page, pageSize);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = outcomeListResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });
 
 /**
@@ -130,5 +159,9 @@ export const deleteOutcome = asyncHandler(async (req: Request, res: Response): P
   }
 
   const result = await outcomeService.deleteOutcome(projectId, outcomeIdNum);
-  res.json(result);
+
+  // 驗證響應格式
+  const validatedResponse = deleteOutcomeResponseSchema.parse(result);
+
+  res.json(validatedResponse);
 });

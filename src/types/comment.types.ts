@@ -37,9 +37,8 @@ export interface Comment {
 
 // User information interface for comment responses
 export interface CommentUser {
-  id: number;
+  id: string; // Using external_id as string
   name: string;
-  _id: string;
   roleList: string[];
   photoURL: string | null;
 }

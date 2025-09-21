@@ -4,6 +4,11 @@
   token\
 "PRIVATE_RUNTIME_AUTH_TOKEN_REQUIRED"
 
+
+db
+
+87d8f2f3d0ef   postgres:14     "docker-entrypoint.s…"   2 weeks ago   Up About an hour (healthy)   5432/tcp                                      pg-dev
+
 本文件包含 User、Idea、Practice、Project、Resource、Resource Review 相關的 POST 請求測試資料，符合專案 API 回應格式規範。
 
 ## User 服務測試資料

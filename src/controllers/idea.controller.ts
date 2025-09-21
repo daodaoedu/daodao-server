@@ -16,24 +16,6 @@ import {
 } from '@/validators/idea.validators';
 
 /**
- * 獲取用戶 ID，開發環境下提供測試用戶
- */
-const getUserIdOrTestUser = (user?: Request['user']): number | undefined => {
-  const userId = user?.id;
-  
-  if (!userId) {
-    // 為 Swagger UI 測試提供預設用戶 ID（僅在開發環境）
-    if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === undefined) {
-      console.log('⚠️  Using test user ID for dev/testing');
-      return 1; // 測試用戶 ID
-    }
-    return undefined;
-  }
-  
-  return userId;
-};
-
-/**
  * 獲取想法列表
  */
 export const getIdeas = asyncHandler(async (req: Request, res: Response) => {
@@ -62,7 +44,7 @@ export const getIdeas = asyncHandler(async (req: Request, res: Response) => {
   };
   
   // 獲取當前使用者 ID（如果已登入）
-  const userId = getUserIdOrTestUser(req.user);
+  const userId = req.user?.id;
   
   // 查詢想法列表
   const result = await ideaService.getIdeas(filters, pagination, userId);
@@ -81,7 +63,7 @@ export const getIdeaById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params as IdeaParams;
   
   // 獲取當前使用者 ID（如果已登入）
-  const userId = getUserIdOrTestUser(req.user);
+  const userId = req.user?.id;
   
   // 查詢想法詳情
   const result = await ideaService.getIdeaById(id, userId);
@@ -100,7 +82,7 @@ export const createIdea = asyncHandler(async (req: Request, res: Response) => {
   const data = req.body as CreateIdeaData;
   
   // 獲取當前使用者 ID
-  const userId = getUserIdOrTestUser(req.user);
+  const userId = req.user?.id;
   if (!userId) {
     throw new Error('需要登入才能創建想法');
   }
@@ -123,7 +105,7 @@ export const updateIdea = asyncHandler(async (req: Request, res: Response) => {
   const data = req.body as UpdateIdeaData;
   
   // 獲取當前使用者 ID
-  const userId = getUserIdOrTestUser(req.user);
+  const userId = req.user?.id;
   if (!userId) {
     throw new Error('需要登入才能更新想法');
   }
@@ -145,7 +127,7 @@ export const deleteIdea = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params as IdeaParams;
   
   // 獲取當前使用者 ID
-  const userId = getUserIdOrTestUser(req.user);
+  const userId = req.user?.id;
   if (!userId) {
     throw new Error('需要登入才能刪除想法');
   }
@@ -167,7 +149,7 @@ export const getMyIdeas = asyncHandler(async (req: Request, res: Response) => {
   const queryParams = req.query as unknown as IdeaQueryParams;
   
   // 獲取當前使用者 ID
-  const userId = getUserIdOrTestUser(req.user);
+  const userId = req.user?.id;
   if (!userId) {
     throw new Error('需要登入才能查看我的想法');
   }
