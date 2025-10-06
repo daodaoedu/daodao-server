@@ -9,7 +9,8 @@ import {
   IdeaEntity,
   IdeaFilters,
   IdeaStats,
-  IdeaStatus
+  IdeaStatus,
+  ResourceStatus
 } from '@/types/idea.types';
 import {
   ApiSuccessResponse,
@@ -264,6 +265,26 @@ export async function getIdeas(
     }
   });
 
+  // 批量查詢資源
+  const allResources = await prisma.entity_resources.findMany({
+    where: {
+      entity_type: 'idea',
+      entity_id: { in: ideaIds }
+    },
+    include: {
+      resources: {
+        include: {
+          users: {
+            select: {
+              id: true,
+              nickname: true
+            }
+          }
+        }
+      }
+    }
+  });
+
   // 將標籤按想法 ID 分組
   const tagsByIdeaId = allTags.reduce((acc, tag) => {
     if (!acc[tag.entity_id]) {
@@ -276,29 +297,66 @@ export async function getIdeas(
     return acc;
   }, {} as Record<number, Array<{ id: number; name: string }>>);
 
+  // 將資源按想法 ID 分組
+  const resourcesByIdeaId = allResources.reduce((acc, entityResource) => {
+    if (!acc[entityResource.entity_id]) {
+      acc[entityResource.entity_id] = [];
+    }
+    acc[entityResource.entity_id].push({
+      id: entityResource.resources.external_id || '',
+      name: entityResource.resources.name,
+      url: entityResource.resources.url,
+      description: entityResource.resources.description || undefined,
+      type: entityResource.resources.type,
+      cost: entityResource.resources.cost,
+      level: entityResource.resources.level,
+      status: entityResource.resources.status as ResourceStatus,
+      majorCategory: undefined, // 需要透過 major_category_id 查詢
+      subCategory: undefined, // 需要透過 sub_category_id 查詢
+      createdAt: entityResource.resources.created_at?.toISOString(),
+    });
+    return acc;
+  }, {} as Record<number, Array<{
+    id: string;
+    name: string;
+    url: string;
+    description?: string;
+    type: string;
+    cost: string;
+    level: string;
+    status: ResourceStatus;
+    majorCategory?: string;
+    subCategory?: string;
+    createdAt?: string;
+    publishedAt?: string;
+  }>>);
+
   // 構建想法實體列表
-  const ideaEntities: IdeaEntity[] = ideas.map(idea => ({
-    id: idea.external_id || '',
-    content: idea.content,
-    status: (idea.status || 'active') as IdeaStatus,
-    hasResources: idea.has_resources || false,
-    user: {
-      id: idea.users.id.toString(),
-      name: idea.users.nickname || '',
-      photoUrl: idea.users.contacts?.photo_url || undefined
-    },
-    tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
-    resources: [],
-    likeCount: 0,
-    commentCount: 0,
-    viewCount: 0,
-    shareCount: 0,
-    resourceCount: 0,
-    isLiked: false,
-    isFavorited: false,
-    createdAt: (idea.created_at || new Date()).toISOString(),
-    updatedAt: (idea.updated_at || new Date()).toISOString()
-  }));
+  const ideaEntities: IdeaEntity[] = ideas.map(idea => {
+    const ideaResources = resourcesByIdeaId[idea.id] || [];
+    return {
+      id: idea.external_id || '',
+      content: idea.content,
+      status: (idea.status || 'active') as IdeaStatus,
+      hasResources: idea.has_resources || false,
+      user: {
+        id: idea.users.id.toString(),
+        name: idea.users.nickname || '',
+        photoUrl: idea.users.contacts?.photo_url || undefined
+      },
+      tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
+      resources: ideaResources,
+      likeCount: 0,
+      commentCount: 0,
+      viewCount: 0,
+      shareCount: 0,
+      resourceCount: ideaResources.length,
+      isLiked: false,
+      isFavorited: false,
+      createdAt: (idea.created_at || new Date()).toISOString(),
+      updatedAt: (idea.updated_at || new Date()).toISOString()
+    };
+  });
 
   const totalPages = Math.ceil(totalCount / limit);
 
