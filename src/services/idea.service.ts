@@ -110,7 +110,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     user: {
       id: idea.users.id.toString(),
       name: idea.users.nickname || '',
-      photoUrl: idea.users.contacts?.photo_url || undefined
+      photoURL: idea.users.contacts?.photo_url || undefined
     },
     tags: tags.map(tag => tag.tags.name),
     resources: resources.map(entityResource => ({
@@ -342,7 +342,7 @@ export async function getIdeas(
       user: {
         id: idea.users.id.toString(),
         name: idea.users.nickname || '',
-        photoUrl: idea.users.contacts?.photo_url || undefined
+        photoURL: idea.users.contacts?.photo_url || undefined
       },
       tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
       resources: ideaResources,
@@ -467,7 +467,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
       user: {
         id: idea.users.id.toString(),
         name: idea.users.nickname || '',
-        photoUrl: idea.users.contacts?.photo_url || undefined
+        photoURL: idea.users.contacts?.photo_url || undefined
       },
       tags: tagList,
       resources: createdResources,
