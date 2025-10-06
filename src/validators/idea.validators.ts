@@ -389,9 +389,14 @@ export const ideaDataSchema = z.object({
       examples: ["active"]
     }),
   user: z.object({
-    id: z.string(),
+    id: z.number(),
+    _id: z.string(),
     name: z.string(),
-    photoUrl: z.string().optional()
+    photoURL: z.string().nullable(),
+    roleList: z.array(z.string()),
+    educationStage: z.string().nullable(),
+    tagList: z.array(z.string()),
+    selfIntroduction: z.string().nullable()
   }).describe("創建者資訊"),
   hasResources: z.boolean().describe("是否有相關資源"),
   resourceCount: z.number().int().min(0).describe("資源數量"),

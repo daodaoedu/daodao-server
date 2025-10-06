@@ -55,6 +55,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
       users: {
         select: {
           id: true,
+          external_id: true,
           nickname: true,
           contacts: {
             select: {
@@ -108,9 +109,14 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     status: (idea.status || 'active') as IdeaStatus,
     hasResources: idea.has_resources || false,
     user: {
-      id: idea.users.id.toString(),
+      id: idea.users.id,
+      _id: idea.users.external_id || '',
       name: idea.users.nickname || '',
-      photoURL: idea.users.contacts?.photo_url || undefined
+      photoURL: idea.users.contacts?.photo_url || null,
+      roleList: [], // TODO: 實作角色列表
+      educationStage: null,
+      tagList: [],
+      selfIntroduction: null
     },
     tags: tags.map(tag => tag.tags.name),
     resources: resources.map(entityResource => ({
@@ -237,6 +243,7 @@ export async function getIdeas(
         users: {
           select: {
             id: true,
+            external_id: true,
             nickname: true,
             contacts: {
               select: {
@@ -340,9 +347,14 @@ export async function getIdeas(
       status: (idea.status || 'active') as IdeaStatus,
       hasResources: idea.has_resources || false,
       user: {
-        id: idea.users.id.toString(),
+        id: idea.users.id,
+        _id: idea.users.external_id || '',
         name: idea.users.nickname || '',
-        photoURL: idea.users.contacts?.photo_url || undefined
+        photoURL: idea.users.contacts?.photo_url || null,
+        roleList: [],
+        educationStage: null,
+        tagList: [],
+        selfIntroduction: null
       },
       tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
       resources: ideaResources,
@@ -403,6 +415,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
         users: {
           select: {
             id: true,
+            external_id: true,
             nickname: true,
             contacts: {
               select: {
@@ -465,9 +478,14 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
       status: (idea.status || 'active') as IdeaStatus,
       hasResources: idea.has_resources || false,
       user: {
-        id: idea.users.id.toString(),
+        id: idea.users.id,
+        _id: idea.users.external_id || '',
         name: idea.users.nickname || '',
-        photoURL: idea.users.contacts?.photo_url || undefined
+        photoURL: idea.users.contacts?.photo_url || null,
+        roleList: [],
+        educationStage: null,
+        tagList: [],
+        selfIntroduction: null
       },
       tags: tagList,
       resources: createdResources,
