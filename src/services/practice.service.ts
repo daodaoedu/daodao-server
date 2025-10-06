@@ -106,7 +106,37 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 取得統計數據 - 暫時只查詢存在的表格
     const practiceIds: number[] = practices.map(p => p.id);
-    const comments = await getCommentCounts(practiceIds);
+    const [comments, allTags] = await Promise.all([
+      getCommentCounts(practiceIds),
+      // 批量查詢標籤
+      prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: { in: practiceIds }
+        },
+        include: {
+          tags: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      })
+    ]);
+
+    // 將標籤按實踐 ID 分組
+    const tagsByPracticeId = allTags.reduce((acc, tag) => {
+      if (!acc[tag.entity_id]) {
+        acc[tag.entity_id] = [];
+      }
+      acc[tag.entity_id].push({
+        id: tag.tags.id,
+        name: tag.tags.name
+      });
+      return acc;
+    }, {} as Record<number, Array<{ id: number; name: string }>>);
+
 
     // 轉換為 API 格式
     const practiceEntities: PracticeEntity[] = practices.map(practice => ({
@@ -136,12 +166,9 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         _id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
-        educationStage: null,
-        tagList: [],
-        selfIntroduction: null
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
       },
-      tags: [],
+      tags: tagsByPracticeId[practice.id]?.map(tag => tag.name) || [],
       stats: {
         likeCount: 0, // TODO: 待實作 reaction 表格
         viewCount: 0, // TODO: 待實作 view 表格
@@ -217,8 +244,26 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       loggerService.info('Practice view recorded', { practiceId: id, userId });
     }
 
-    // 取得統計數據 - 暫時只查詢存在的表格
-    const comments = await getCommentCounts([id]);
+    // 取得統計數據和標籤 - 暫時只查詢存在的表格
+    const [comments, tags] = await Promise.all([
+      getCommentCounts([id]),
+      // 查詢標籤
+      prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: id
+        },
+        include: {
+          tags: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      })
+    ]);
+
 
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
@@ -247,12 +292,9 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         _id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
-        educationStage: null,
-        tagList: [],
-        selfIntroduction: null
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
       },
-      tags: [], // TODO: Implement entity_tags relation
+      tags: tags.map(tag => tag.tags.name),
       stats: {
         likeCount: 0, // TODO: 待實作 reaction 表格
         viewCount: 0, // TODO: 待實作 view 表格
@@ -348,6 +390,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       await linkResources(practice.id, data.resources, userId);
     }
 
+
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
@@ -375,10 +418,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         _id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
-        educationStage: null,
-        tagList: [],
-        selfIntroduction: null
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
       },
       tags: data.tags || [],
       stats: {
@@ -478,8 +518,26 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       });
     }
 
-    // 取得統計數據 - 暫時只查詢存在的表格
-    const comments = await getCommentCounts([id]);
+    // 取得統計數據和標籤 - 暫時只查詢存在的表格
+    const [comments, updatedTags] = await Promise.all([
+      getCommentCounts([id]),
+      // 查詢更新後的標籤
+      prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: id
+        },
+        include: {
+          tags: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      })
+    ]);
+
 
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
@@ -508,12 +566,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         _id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
-        educationStage: null,
-        tagList: [],
-        selfIntroduction: null
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
       },
-      tags: [], // TODO: Implement entity_tags relation
+      tags: updatedTags.map(tag => tag.tags.name),
       stats: {
         likeCount: 0, // TODO: 待實作 reaction 表格
         viewCount: 0, // TODO: 待實作 view 表格
