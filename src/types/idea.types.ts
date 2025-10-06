@@ -1,7 +1,7 @@
 export interface IdeaEntity {
   id: string; // external_id UUID 格式
   content: string;
-  user: UserBasicInfo;
+  user: UserSimpleInfo;
   tags: string[];
   resources: IdeaResource[];
   likeCount: number;
@@ -18,8 +18,8 @@ export interface IdeaEntity {
   deletedAt?: string;
 }
 
-// 使用 common types 中的 UserBasicInfo
-import { UserBasicInfo } from './common.types';
+// 使用 common types 中的 UserSimpleInfo
+import { UserSimpleInfo } from './common.types';
 
 export type IdeaStatus = 'active' | 'draft' | 'archived';
 
@@ -71,7 +71,7 @@ export interface CommentEntity {
   content: string;
   visibility: 'public' | 'private';
   parentId: number | null;
-  user: UserBasicInfo;
+  user: UserSimpleInfo;
   createdAt: string;
   updatedAt: string;
   replies: CommentEntity[];

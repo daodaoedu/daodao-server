@@ -32,7 +32,7 @@ export interface PracticeResource {
   url?: string;
 }
 
-import { UserBasicInfo } from './common.types';
+import { UserSimpleInfo } from './common.types';
 
 // Core practice entity interface
 export interface PracticeEntity {
@@ -52,7 +52,7 @@ export interface PracticeEntity {
   lastCheckInDate?: string;
   createdAt: string;
   updatedAt?: string;
-  user: UserBasicInfo;
+  user: UserSimpleInfo;
   tags: string[];
   stats: {
     likeCount: number;

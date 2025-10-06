@@ -369,11 +369,11 @@ const userBasicInfoSchema = z.object({
   id: z.number().int().describe('用戶 ID'),
   name: z.string().describe('用戶名稱'),
   _id: z.string().describe('用戶外部 ID'),
-  roleList: z.array(z.string()).describe('用戶角色列表'),
+  roleList: z.array(z.string()).optional().describe('用戶角色列表'),
   photoURL: z.string().url().nullable().describe('用戶頭像 URL'),
-  educationStage: z.string().nullable().describe('教育階段'),
-  tagList: z.array(z.string()).describe('用戶標籤列表'),
-  selfIntroduction: z.string().nullable().describe('自我介紹')
+  educationStage: z.string().nullable().optional().describe('教育階段'),
+  tagList: z.array(z.string()).optional().describe('用戶標籤列表'),
+  selfIntroduction: z.string().nullable().optional().describe('自我介紹')
 }).describe('用戶基本資訊');
 
 

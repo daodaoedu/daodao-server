@@ -30,6 +30,7 @@ import {
 } from '@/middleware/error.middleware';
 import tagService from '@/services/tag.service';
 
+
 // 定義分頁參數介面
 interface PaginationParams {
   page: number;
@@ -60,6 +61,15 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
           contacts: {
             select: {
               photo_url: true
+            }
+          },
+          user_positions: {
+            select: {
+              position: {
+                select: {
+                  name: true
+                }
+              }
             }
           }
         }
@@ -113,10 +123,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
       _id: idea.users.external_id || '',
       name: idea.users.nickname || '',
       photoURL: idea.users.contacts?.photo_url || null,
-      roleList: [], // TODO: 實作角色列表
-      educationStage: null,
-      tagList: [],
-      selfIntroduction: null
+      roleList: idea.users.user_positions?.map((up: any) => up.position.name) || []
     },
     tags: tags.map(tag => tag.tags.name),
     resources: resources.map(entityResource => ({
@@ -245,9 +252,24 @@ export async function getIdeas(
             id: true,
             external_id: true,
             nickname: true,
+            education_stage: true,
             contacts: {
               select: {
                 photo_url: true
+              }
+            },
+            user_positions: {
+              select: {
+                position: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            },
+            basic_info: {
+              select: {
+                self_introduction: true
               }
             }
           }
@@ -338,6 +360,7 @@ export async function getIdeas(
     publishedAt?: string;
   }>>);
 
+
   // 構建想法實體列表
   const ideaEntities: IdeaEntity[] = ideas.map(idea => {
     const ideaResources = resourcesByIdeaId[idea.id] || [];
@@ -351,10 +374,7 @@ export async function getIdeas(
         _id: idea.users.external_id || '',
         name: idea.users.nickname || '',
         photoURL: idea.users.contacts?.photo_url || null,
-        roleList: [],
-        educationStage: null,
-        tagList: [],
-        selfIntroduction: null
+        roleList: idea.users.user_positions?.map((up: any) => up.position.name) || []
       },
       tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
       resources: ideaResources,
@@ -417,9 +437,24 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
             id: true,
             external_id: true,
             nickname: true,
+            education_stage: true,
             contacts: {
               select: {
                 photo_url: true
+              }
+            },
+            user_positions: {
+              select: {
+                position: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            },
+            basic_info: {
+              select: {
+                self_introduction: true
               }
             }
           }
@@ -482,10 +517,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
         _id: idea.users.external_id || '',
         name: idea.users.nickname || '',
         photoURL: idea.users.contacts?.photo_url || null,
-        roleList: [],
-        educationStage: null,
-        tagList: [],
-        selfIntroduction: null
+        roleList: idea.users.user_positions?.map((up: any) => up.position.name) || []
       },
       tags: tagList,
       resources: createdResources,

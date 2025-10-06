@@ -5,7 +5,7 @@
 // 時間使用選項
 export type TimeUsage = '1_2_hours_daily' | 'few_intensive_days_week' | 'spare_moments' | 'not_applicable_time';
 
-// 使用者基本資訊
+// 使用者基本資訊（完整版本）
 export interface UserBasicInfo {
   id: number;
   name: string;
@@ -15,6 +15,15 @@ export interface UserBasicInfo {
   educationStage: string | null;
   tagList: string[];
   selfIntroduction: string | null;
+}
+
+// 使用者簡化資訊（用於 idea, practice, project 等服務）
+export interface UserSimpleInfo {
+  id: number;
+  name: string;
+  _id: string;
+  roleList: string[];
+  photoURL: string | null;
 }
 
 // Resource status enumeration
