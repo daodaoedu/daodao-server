@@ -18,12 +18,8 @@ export interface IdeaEntity {
   deletedAt?: string;
 }
 
-export interface UserBasicInfo {
-  id: string; // user external_id UUID 格式
-  name: string;
-  photoURL?: string;
-  role?: string;
-}
+// 使用 common types 中的 UserBasicInfo
+import { UserBasicInfo } from './common.types';
 
 export type IdeaStatus = 'active' | 'draft' | 'archived';
 

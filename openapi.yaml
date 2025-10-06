@@ -1776,10 +1776,26 @@ components:
           type: object
           properties:
             id:
+              type: number
+            _id:
               type: string
             name:
               type: string
-            photoUrl:
+            photoURL:
+              type: string
+              nullable: true
+            roleList:
+              type: array
+              items:
+                type: string
+            educationStage:
+              type: string
+              nullable: true
+            tagList:
+              type: array
+              items:
+                type: string
+            selfIntroduction:
               type: string
               nullable: true
         hasResources:
@@ -1846,10 +1862,26 @@ components:
               type: object
               properties:
                 id:
+                  type: number
+                _id:
                   type: string
                 name:
                   type: string
-                photoUrl:
+                photoURL:
+                  type: string
+                  nullable: true
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             hasResources:
@@ -1951,10 +1983,26 @@ components:
                 type: object
                 properties:
                   id:
+                    type: number
+                  _id:
                     type: string
                   name:
                     type: string
-                  photoUrl:
+                  photoURL:
+                    type: string
+                    nullable: true
+                  roleList:
+                    type: array
+                    items:
+                      type: string
+                  educationStage:
+                    type: string
+                    nullable: true
+                  tagList:
+                    type: array
+                    items:
+                      type: string
+                  selfIntroduction:
                     type: string
                     nullable: true
               hasResources:
@@ -2069,10 +2117,26 @@ components:
               type: object
               properties:
                 id:
+                  type: number
+                _id:
                   type: string
                 name:
                   type: string
-                photoUrl:
+                photoURL:
+                  type: string
+                  nullable: true
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             hasResources:
@@ -2172,10 +2236,26 @@ components:
               type: object
               properties:
                 id:
+                  type: number
+                _id:
                   type: string
                 name:
                   type: string
-                photoUrl:
+                photoURL:
+                  type: string
+                  nullable: true
+                roleList:
+                  type: array
+                  items:
+                    type: string
+                educationStage:
+                  type: string
+                  nullable: true
+                tagList:
+                  type: array
+                  items:
+                    type: string
+                selfIntroduction:
                   type: string
                   nullable: true
             hasResources:
