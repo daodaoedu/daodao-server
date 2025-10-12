@@ -413,11 +413,26 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
     
     while ((match = routeRegex.exec(content)) !== null) {
       const [, method, path, middlewareAndHandler] = match;
-      
+
       // 提取 validate 中間件使用的 validator
       const validateMatch = middlewareAndHandler.match(/validate\s*\(\s*([^,\s]+)/);
       const validatorName = validateMatch ? validateMatch[1] : null;
-      
+
+      // 檢測 multer 文件上傳中間件
+      const uploadSingleMatch = middlewareAndHandler.match(/upload\.single\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
+      const uploadArrayMatch = middlewareAndHandler.match(/upload\.array\s*\(\s*['"`]([^'"`]+)['"`]\s*,?\s*(\d+)?\s*\)/);
+
+      let fileUpload: { type: 'single' | 'array'; fieldName: string; maxCount?: number } | null = null;
+      if (uploadSingleMatch) {
+        fileUpload = { type: 'single', fieldName: uploadSingleMatch[1] };
+      } else if (uploadArrayMatch) {
+        fileUpload = {
+          type: 'array',
+          fieldName: uploadArrayMatch[1],
+          maxCount: uploadArrayMatch[2] ? parseInt(uploadArrayMatch[2]) : undefined
+        };
+      }
+
       // 從註解中提取描述
       const commentRegex = new RegExp(`\\/\\*\\*[\\s\\S]*?${method.toUpperCase()}\\s+${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?\\*\\/`, 'i');
       const commentMatch = content.match(commentRegex);
@@ -464,13 +479,14 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
       };
       
       basePath = routeMapping[routeName] || `/api/v1/${routeName.replace('.routes.ts', '').replace('.routes', '')}`;
-      
+
       paths.push({
         path: `${basePath}${path}`,
         method: method.toLowerCase(),
         summary: summary || `${method.toUpperCase()} ${path}`,
         description,
         validatorName,
+        fileUpload,
         tags: [getTagFromRouteName(routeName.replace('.ts', ''))]
       });
     }
@@ -818,10 +834,10 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
     // 如果有 validator，添加 requestBody
     if (route.validatorName && (route.method === 'post' || route.method === 'put' || route.method === 'patch')) {
       // 尋找對應的 schema
-      const schemaKey = Object.keys(openApiSpec.components.schemas).find(key => 
+      const schemaKey = Object.keys(openApiSpec.components.schemas).find(key =>
         key.includes(route.validatorName)
       );
-      
+
       if (schemaKey) {
         operation.requestBody = {
           required: true,
@@ -832,6 +848,45 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
           }
         };
       }
+    }
+
+    // 如果有文件上傳，添加 multipart/form-data requestBody
+    if (route.fileUpload && (route.method === 'post' || route.method === 'put' || route.method === 'patch')) {
+      const fileSchema = route.fileUpload.type === 'single'
+        ? {
+            type: 'object',
+            required: [route.fileUpload.fieldName],
+            properties: {
+              [route.fileUpload.fieldName]: {
+                type: 'string',
+                format: 'binary',
+                description: '上傳的圖片檔案 (支援 JPEG, PNG, WebP，最大 500KB)'
+              }
+            }
+          }
+        : {
+            type: 'object',
+            required: [route.fileUpload.fieldName],
+            properties: {
+              [route.fileUpload.fieldName]: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  format: 'binary'
+                },
+                description: `上傳的圖片檔案 (支援 JPEG, PNG, WebP，最大 500KB${route.fileUpload.maxCount ? `，最多 ${route.fileUpload.maxCount} 個檔案` : ''})`
+              }
+            }
+          };
+
+      operation.requestBody = {
+        required: true,
+        content: {
+          'multipart/form-data': {
+            schema: fileSchema
+          }
+        }
+      };
     }
     
     // 處理路徑參數
