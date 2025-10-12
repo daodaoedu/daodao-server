@@ -18,6 +18,13 @@ services:
         condition: service_healthy
       redis_prod:
         condition: service_healthy
+    # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   dev_app:
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-dev}${COMMIT_SHA:+-}${COMMIT_SHA}
@@ -40,6 +47,13 @@ services:
         condition: service_healthy
       redis_dev:
         condition: service_healthy
+    # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   mongo_prod:
     image: mongo:4.4
