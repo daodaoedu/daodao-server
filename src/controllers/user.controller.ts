@@ -54,14 +54,26 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
+  // 臨時用戶或未登入：返回 200 + null
   if (!currentUser || !currentUser._id) {
-    throw new NotFoundError('User not found');
+    res.status(200).json({
+      success: true,
+      data: null,
+      timestamp: new Date().toISOString()
+    });
+    return;
   }
 
   const user = await userService.getMe(currentUser._id);
 
+  // 查無用戶資料：返回 200 + null
   if (!user) {
-    throw new NotFoundError('User not found');
+    res.status(200).json({
+      success: true,
+      data: null,
+      timestamp: new Date().toISOString()
+    });
+    return;
   }
 
   // 驗證響應格式
