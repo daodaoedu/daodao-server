@@ -53,6 +53,7 @@ const corsOptions = {
       'https://staging-daodao-f2e.daoedu.workers.dev'
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
+    const devPattern = /^https:\/\/[\w-]+\.daoedu\.workers\.dev$/;
     const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
     const chromeExtensionPattern = /^chrome-extension:\/\//;
 
@@ -63,6 +64,7 @@ const corsOptions = {
     if (!origin ||
       allowedOrigins.includes(origin) ||
       daodaoTestPattern.test(origin) ||
+      devPattern.test(origin) ||
       localhostPattern.test(origin) ||
       chromeExtensionPattern.test(origin)) {
       callback(null, true);
