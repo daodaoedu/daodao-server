@@ -5,6 +5,36 @@
 import type { users } from '../../generated/prisma';
 import type { ApiSuccessResponse, PaginatedApiResponse } from './api-response.types';
 
+// ESCO 專業領域常數定義 (使用 snake_case 格式,對應 categories 命名規則)
+export const PROFESSIONAL_FIELDS = [
+  'information_and_communication_technologies_icts',  // 資訊與通訊技術
+  'business_administration_and_law',                  // 商業、行政與法律
+  'arts_and_humanities',                              // 藝術與人文
+  'natural_sciences_mathematics_and_statistics',      // 自然科學、數學與統計
+  'engineering_manufacturing_and_construction',       // 工程、製造與營造
+  'health_and_welfare',                               // 健康與福祉
+  'education',                                        // 教育
+  'social_sciences_journalism_and_information',       // 社會科學、新聞與資訊
+  'language_skills_and_knowledge',                    // 語言技能與知識
+  'services',                                         // 服務
+  'agriculture_forestry_fisheries_and_veterinary',    // 農業、林業、漁業與獸醫
+  'others',                                           // 其他
+] as const;
+
+export type ProfessionalField = typeof PROFESSIONAL_FIELDS[number];
+
+// 資訊來源選項 (建議前端下拉選單)
+export const REFERRAL_SOURCES = [
+  'instagram',            // Instagram
+  'facebook',             // Facebook
+  'discord',              // Discord
+  'linkedin',             // LinkedIn
+  'friend_referral',      // 朋友介紹
+  'others',               // 其他
+] as const;
+
+export type ReferralSource = typeof REFERRAL_SOURCES[number];
+
 // 分頁查詢參數介面
 export interface UserQueryParams {
   page?: string | number;
@@ -35,9 +65,15 @@ export interface CreateUserRequest {
   share?: string | string[];
   wantToDoList?: string[];
   tagList?: string[];
-  interestList?: string[];
+  interestList?: string[]; // category names 陣列 (例如: ["education_learning", "nature_environment"])
   preferences?: Record<string, string[]>; // e.g. { "learning_style": ["visual", "audio"] }
   isSendEmail?: boolean;
+
+  // 新增欄位
+  professionalField?: ProfessionalField;
+  personalSlogan?: string;
+  referralSource?: ReferralSource | string; // 允許自定義輸入
+  customId?: string; // 自訂 ID (可在創建時設置)
 }
 
 // 用戶更新請求介面
@@ -61,9 +97,14 @@ export interface UpdateUserRequest {
   wantToDoList?: string[];
   tagList?: string[];
   roleList?: string[];
-  interestList?: string[];
+  interestList?: string[]; // category names 陣列 (例如: ["education_learning", "nature_environment"])
   preferences?: Record<string, string[]>; // e.g. { "learning_style": ["visual", "audio"] }
   customId?: string;
+
+  // 新增欄位
+  professionalField?: ProfessionalField;
+  personalSlogan?: string;
+  referralSource?: ReferralSource | string; // 允許自定義輸入
 }
 
 // 自訂 ID 相關請求介面
@@ -99,7 +140,7 @@ export interface FormattedUserResponse {
   educationStage: 'university' | 'high' | 'other' | null;
   selfIntroduction: string | null;
   share: string | string[] | null;
-  interestList: string[] | null;
+  interestList: string[] | null; // 返回 category names 陣列 (例如: ["education_learning", "nature_environment"])
   preferences: Record<string, Array<{ name: string; value: string }>> | null;
   contactList: {
     email: string | null;
@@ -119,6 +160,12 @@ export interface FormattedUserResponse {
   customId: string | null;
   customIdVerified: boolean | null;
   customIdCreatedAt: string | null;
+
+  // 新增欄位
+  professionalField: ProfessionalField | null;
+  personalSlogan: string | null;
+  referralSource: ReferralSource | string | null;
+
   createdDate: string;
   updatedDate: string;
 }

@@ -240,32 +240,15 @@ export class PermissionService {
 
   /**
    * 檢查資源擁有權
+   * @deprecated 請使用 isResourceOwner 方法代替
    */
   async checkResourceOwnership(
-    userId: number, 
-    resourceType: string, 
-    resourceId: number
+    userId: number,
+    resourceType: string,
+    resourceId: number | string
   ): Promise<boolean> {
-    try {
-      switch (resourceType) {
-        case 'resource':
-          // 檢查是否為資源創建者
-          const resource = await prisma.resources.findUnique({
-            where: { id: resourceId }
-          });
-          return resource?.created_by === userId;
-        
-        case 'user':
-          // 檢查是否為用戶本人
-          return resourceId === userId;
-        
-        default:
-          return false;
-      }
-    } catch (error) {
-      console.error('Error checking resource ownership:', error);
-      return false;
-    }
+    // 直接調用新的 isResourceOwner 方法
+    return this.isResourceOwner(userId, resourceType, resourceId);
   }
 
   /**
@@ -323,13 +306,84 @@ export class PermissionService {
   async isResourceOwner(
     userId: number,
     resourceType: string,
-    resourceId: number
+    resourceId: number | string
   ): Promise<boolean> {
     try {
-      // 這裡需要根據不同的資源類型來檢查擁有權
-      // 暫時返回 false，需要根據具體業務邏輯實現
       console.log('Checking resource ownership for user:', userId, 'resource:', resourceType, 'id:', resourceId);
-      return false;
+
+      switch (resourceType) {
+        case 'user': {
+          // 對於用戶資源，檢查是否為用戶本人
+          // resourceId 可能是 external_id (UUID) 或內部 id (數字)
+          if (typeof resourceId === 'string') {
+            // 如果是字符串（UUID），通過 external_id 查找
+            const user = await prisma.users.findUnique({
+              where: { external_id: resourceId },
+              select: { id: true }
+            });
+            return user?.id === userId;
+          } else {
+            // 如果是數字，直接比較內部 ID
+            return resourceId === userId;
+          }
+        }
+
+        case 'resource': {
+          // 檢查是否為資源創建者
+          if (typeof resourceId === 'number') {
+            const resource = await prisma.resources.findUnique({
+              where: { id: resourceId },
+              select: { created_by: true }
+            });
+            return resource?.created_by === userId;
+          }
+          return false;
+        }
+
+        case 'project': {
+          // 檢查是否為專案創建者或成員
+          if (typeof resourceId === 'number') {
+            const project = await prisma.project.findUnique({
+              where: { id: resourceId },
+              select: { user_id: true }
+            });
+            return project?.user_id === userId;
+          }
+          return false;
+        }
+
+        case 'review': {
+          // 檢查是否為心得評價創建者（通過 post 關聯）
+          if (typeof resourceId === 'number') {
+            const review = await prisma.review.findUnique({
+              where: { id: resourceId },
+              select: {
+                post: {
+                  select: { user_id: true }
+                }
+              }
+            });
+            return review?.post.user_id === userId;
+          }
+          return false;
+        }
+
+        case 'idea': {
+          // 檢查是否為想法創建者
+          if (typeof resourceId === 'number') {
+            const idea = await prisma.ideas.findUnique({
+              where: { id: resourceId },
+              select: { user_id: true }
+            });
+            return idea?.user_id === userId;
+          }
+          return false;
+        }
+
+        default:
+          console.warn(`Unknown resource type: ${resourceType}`);
+          return false;
+      }
     } catch (error) {
       console.error('Error checking resource ownership:', error);
       return false;
