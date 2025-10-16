@@ -98,7 +98,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   };
   
   const token = jwtService.generateToken(payload);
-  const url = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+  const url = `${process.env.FRONTEND_URL}/api/auth/callback?token=${token}`;
 
   res.redirect(url);
 });
