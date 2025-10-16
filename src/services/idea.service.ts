@@ -123,7 +123,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
       _id: idea.users.external_id || '',
       name: idea.users.nickname || '',
       photoURL: idea.users.contacts?.photo_url || null,
-      roleList: idea.users.user_positions?.map((up: any) => up.position.name) || []
+      roleList: idea.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
     },
     tags: tags.map(tag => tag.tags.name),
     resources: resources.map(entityResource => ({
@@ -374,7 +374,7 @@ export async function getIdeas(
         _id: idea.users.external_id || '',
         name: idea.users.nickname || '',
         photoURL: idea.users.contacts?.photo_url || null,
-        roleList: idea.users.user_positions?.map((up: any) => up.position.name) || []
+        roleList: idea.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
       },
       tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
       resources: ideaResources,
@@ -517,7 +517,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
         _id: idea.users.external_id || '',
         name: idea.users.nickname || '',
         photoURL: idea.users.contacts?.photo_url || null,
-        roleList: idea.users.user_positions?.map((up: any) => up.position.name) || []
+        roleList: idea.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
       },
       tags: tagList,
       resources: createdResources,

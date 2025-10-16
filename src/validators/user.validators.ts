@@ -234,7 +234,7 @@ export const createUserSchema = z.object({
   customId: z.string()
     .min(3, 'Custom ID 至少 3 個字元')
     .max(50, 'Custom ID 不可超過 50 個字元')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Custom ID 只能包含英數字、底線和連字符')
+    .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/, 'Custom ID 只能包含英數字、底線和連字符,且不能以底線或連字符開頭/結尾')
     .optional()
     .describe("自訂 ID (可選)")
     .meta({

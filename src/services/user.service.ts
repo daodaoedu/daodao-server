@@ -60,16 +60,12 @@ const setUserInterests = async (
 
   // 如果有提供 category names
   if (categoryNames && categoryNames.length > 0) {
-    // 轉換 category names 為 IDs
-    const categoryIds: number[] = [];
-    for (const name of categoryNames) {
-      const category = await tx.categories.findFirst({
-        where: { name }
-      });
-      if (category) {
-        categoryIds.push(category.id);
-      }
-    }
+    // 轉換 category names 為 IDs - 使用單一查詢避免 N+1 問題
+    const categories = await tx.categories.findMany({
+      where: { name: { in: categoryNames } },
+      select: { id: true }
+    });
+    const categoryIds = categories.map((c) => c.id);
 
     // 批量新增 interests
     if (categoryIds.length > 0) {
@@ -675,12 +671,10 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
 
     // 檢查 customId 是否已被使用(如果有提供)
     if (customId) {
-      // 檢查格式
-      const isValidFormat = /^[a-zA-Z0-9_-]{3,50}$/.test(customId) &&
-                           !customId.startsWith('_') &&
-                           !customId.startsWith('-') &&
-                           !customId.endsWith('_') &&
-                           !customId.endsWith('-');
+      // 檢查格式 - 使用改進的正則表達式
+      const isValidFormat = /^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(customId) &&
+                           customId.length >= 3 &&
+                           customId.length <= 50;
 
       if (!isValidFormat) {
         throw new ConflictError('自訂 ID 格式不正確：需3-50個字符,只能包含英文字母、數字、底線和連字符,且不能以底線或連字符開頭/結尾');
@@ -1133,12 +1127,10 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
  * 檢查自訂 ID 可用性
  */
 const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessResponse<{ available: boolean }>> => {
-  // 基本格式檢查
-  const isValidFormat = /^[a-zA-Z0-9_-]{3,50}$/.test(customId) &&
-                       !customId.startsWith('_') && 
-                       !customId.startsWith('-') &&
-                       !customId.endsWith('_') && 
-                       !customId.endsWith('-');
+  // 基本格式檢查 - 使用改進的正則表達式
+  const isValidFormat = /^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(customId) &&
+                       customId.length >= 3 &&
+                       customId.length <= 50;
 
   if (!isValidFormat) {
     return createSuccessResponse({ available: false });
@@ -1156,12 +1148,10 @@ const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessRe
  * 設置用戶自訂 ID
  */
 const setCustomId = async (userId: number, customId: string): Promise<ApiSuccessResponse<{ customId: string }>> => {
-  // 檢查格式
-  const isValidFormat = /^[a-zA-Z0-9_-]{3,50}$/.test(customId) &&
-                       !customId.startsWith('_') && 
-                       !customId.startsWith('-') &&
-                       !customId.endsWith('_') && 
-                       !customId.endsWith('-');
+  // 檢查格式 - 使用改進的正則表達式
+  const isValidFormat = /^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(customId) &&
+                       customId.length >= 3 &&
+                       customId.length <= 50;
 
   if (!isValidFormat) {
     throw new ConflictError('自訂 ID 格式不正確：需3-50個字符，只能包含英文字母、數字、底線和連字符，且不能以底線或連字符開頭/結尾');
