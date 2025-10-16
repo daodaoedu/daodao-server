@@ -67,11 +67,13 @@ export const requirePermission = (
 
       // 檢查自有資源權限
       if (!hasPermission && options.allowSelf && options.resourceParam && options.resourceType) {
-        const resourceId = parseInt(req.params[options.resourceParam]);
-        if (resourceId && !isNaN(resourceId)) {
+        const resourceIdParam = req.params[options.resourceParam];
+        if (resourceIdParam) {
+          // 尝试解析为数字，如果失败则保持为字符串（可能是 UUID）
+          const resourceId = !isNaN(Number(resourceIdParam)) ? parseInt(resourceIdParam) : resourceIdParam;
           hasPermission = await permissionService.isResourceOwner(
-            user.id, 
-            options.resourceType, 
+            user.id,
+            options.resourceType,
             resourceId
           );
         }
@@ -360,7 +362,7 @@ export const checkPermission = {
   /**
    * 檢查用戶是否為資源所有者
    */
-  async isOwner(user: AuthUser, resourceType: string, resourceId: number): Promise<boolean> {
+  async isOwner(user: AuthUser, resourceType: string, resourceId: number | string): Promise<boolean> {
     if (!user) return false;
     return await permissionService.isResourceOwner(user.id, resourceType, resourceId);
   }

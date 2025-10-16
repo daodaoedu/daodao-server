@@ -8,6 +8,68 @@ import {
   apiSuccessResponseSchema,
   paginatedApiResponseSchema
 } from './api-response.validators';
+import { PROFESSIONAL_FIELDS, REFERRAL_SOURCES } from '../types/user.types';
+
+// 專業領域驗證 schema
+const professionalFieldSchema = z.enum(PROFESSIONAL_FIELDS)
+  .optional()
+  .describe("ESCO 專業領域分類")
+  .meta({
+    title: "專業領域",
+    examples: [
+      'information_and_communication_technologies_icts',
+      'education',
+      'business_administration_and_law'
+    ]
+  });
+
+// 興趣清單驗證 schema (接受 category name 陣列)
+const interestListSchema = z
+  .array(z.string())
+  .max(5, '最多選擇 5 個興趣')
+  .optional()
+  .describe("興趣分類清單 (category names)")
+  .meta({
+    title: "興趣清單",
+    examples: [
+      ["information_and_computer_science", "education_learning"],
+      ["nature_environment", "arts_and_design"]
+    ]
+  });
+
+// 個人標語驗證 schema
+const personalSloganSchema = z
+  .string()
+  .min(1, '標語不可為空')
+  .max(200, '標語長度不可超過 200 字')
+  .optional()
+  .describe("個人標語 (一句話介紹自己)")
+  .meta({
+    title: "個人標語",
+    examples: [
+      "終身學習者,熱愛程式設計與教育",
+      "用教育改變世界",
+      "探索未知,分享知識"
+    ]
+  });
+
+// 資訊來源驗證 schema
+const referralSourceSchema = z
+  .union([
+    z.enum(REFERRAL_SOURCES),
+    z.string().min(1).max(100) // 允許自定義輸入
+  ])
+  .optional()
+  .describe("資訊來源 (如何得知島島阿學)")
+  .meta({
+    title: "資訊來源",
+    examples: [
+      'instagram',
+      'facebook',
+      'friend_referral',
+      'others'
+    ]
+  });
 
 // 聯絡資訊 schema
 const contactListSchema = z.object({
@@ -146,13 +208,7 @@ export const createUserSchema = z.object({
       title: "標籤",
       examples: [["JavaScript", "React", "前端"], ["設計", "UI/UX", "產品"]]
     }),
-  interestList: z.array(z.string())
-    .optional()
-    .describe("興趣清單")
-    .meta({
-      title: "興趣領域",
-      examples: [["程式設計", "人工智慧"], ["產品設計", "用戶體驗"]]
-    }),
+  interestList: interestListSchema,
   preferences: z.record(z.string(), z.array(z.string()))
     .optional()
     .describe("個人偏好設定")
@@ -169,6 +225,21 @@ export const createUserSchema = z.object({
     .meta({
       title: "接收郵件",
       examples: [true, false]
+    }),
+
+  // 新增欄位
+  professionalField: professionalFieldSchema,
+  personalSlogan: personalSloganSchema,
+  referralSource: referralSourceSchema,
+  customId: z.string()
+    .min(3, 'Custom ID 至少 3 個字元')
+    .max(50, 'Custom ID 不可超過 50 個字元')
+    .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/, 'Custom ID 只能包含英數字、底線和連字符,且不能以底線或連字符開頭/結尾')
+    .optional()
+    .describe("自訂 ID (可選)")
+    .meta({
+      title: "自訂 ID",
+      examples: ["my_custom_id", "user123", "john_doe"]
     })
 }).describe("創建用戶的請求資料").meta({
   title: "創建用戶",
@@ -293,13 +364,7 @@ export const updateUserSchema = z.object({
       title: "角色清單",
       examples: [["學生", "工程師"], ["設計師"], ["產品經理", "創業家"]]
     }),
-  interestList: z.array(z.string())
-    .optional()
-    .describe("興趣清單")
-    .meta({
-      title: "興趣領域",
-      examples: [["程式設計", "人工智慧"], ["產品設計", "用戶體驗"]]
-    }),
+  interestList: interestListSchema,
   preferences: z.record(z.string(), z.array(z.string()))
     .optional()
     .describe("個人偏好設定")
@@ -309,7 +374,12 @@ export const updateUserSchema = z.object({
         "learningStyle": ["實作導向", "理論學習"],
         "contentType": ["影片", "文章"]
       }]
-    })
+    }),
+
+  // 新增欄位
+  professionalField: professionalFieldSchema,
+  personalSlogan: personalSloganSchema,
+  referralSource: referralSourceSchema
 }).describe("更新用戶的請求資料").meta({
   title: "更新用戶資料",
   examples: [{
@@ -533,6 +603,42 @@ const formattedUserResponseSchema = z.object({
       title: "自訂 ID 建立時間",
       examples: ["2024-01-15T10:30:00.000Z"]
     }),
+
+  // 新增欄位
+  professionalField: z.enum(PROFESSIONAL_FIELDS)
+    .nullable()
+    .describe("ESCO 專業領域分類")
+    .meta({
+      title: "專業領域",
+      examples: [
+        'information_and_communication_technologies_icts',
+        'education',
+        null
+      ]
+    }),
+  personalSlogan: z.string()
+    .nullable()
+    .describe("個人標語")
+    .meta({
+      title: "個人標語",
+      examples: [
+        "終身學習者,熱愛程式設計與教育",
+        "用教育改變世界",
+        null
+      ]
+    }),
+  referralSource: z.union([z.enum(REFERRAL_SOURCES), z.string()])
+    .nullable()
+    .describe("資訊來源")
+    .meta({
+      title: "資訊來源",
+      examples: [
+        'instagram',
+        'friend_referral',
+        null
+      ]
+    }),
+
   createdDate: z.string()
     .describe("建立時間"),
   updatedDate: z.string()
