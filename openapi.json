@@ -16564,6 +16564,36 @@
           "isSendEmail": {
             "type": "boolean",
             "nullable": true
+          },
+          "professionalField": {
+            "type": "string",
+            "enum": [
+              "information_and_communication_technologies_icts",
+              "business_administration_and_law",
+              "arts_and_humanities",
+              "natural_sciences_mathematics_and_statistics",
+              "engineering_manufacturing_and_construction",
+              "health_and_welfare",
+              "education",
+              "social_sciences_journalism_and_information",
+              "language_skills_and_knowledge",
+              "services",
+              "agriculture_forestry_fisheries_and_veterinary",
+              "others"
+            ],
+            "nullable": true
+          },
+          "personalSlogan": {
+            "type": "string",
+            "nullable": true
+          },
+          "referralSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "customId": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -16683,6 +16713,32 @@
           "preferences": {
             "type": "object",
             "additionalProperties": true,
+            "nullable": true
+          },
+          "professionalField": {
+            "type": "string",
+            "enum": [
+              "information_and_communication_technologies_icts",
+              "business_administration_and_law",
+              "arts_and_humanities",
+              "natural_sciences_mathematics_and_statistics",
+              "engineering_manufacturing_and_construction",
+              "health_and_welfare",
+              "education",
+              "social_sciences_journalism_and_information",
+              "language_skills_and_knowledge",
+              "services",
+              "agriculture_forestry_fisheries_and_veterinary",
+              "others"
+            ],
+            "nullable": true
+          },
+          "personalSlogan": {
+            "type": "string",
+            "nullable": true
+          },
+          "referralSource": {
+            "type": "string",
             "nullable": true
           }
         }
@@ -16926,6 +16982,32 @@
                 "nullable": true
               },
               "customIdCreatedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "professionalField": {
+                "type": "string",
+                "enum": [
+                  "information_and_communication_technologies_icts",
+                  "business_administration_and_law",
+                  "arts_and_humanities",
+                  "natural_sciences_mathematics_and_statistics",
+                  "engineering_manufacturing_and_construction",
+                  "health_and_welfare",
+                  "education",
+                  "social_sciences_journalism_and_information",
+                  "language_skills_and_knowledge",
+                  "services",
+                  "agriculture_forestry_fisheries_and_veterinary",
+                  "others"
+                ],
+                "nullable": true
+              },
+              "personalSlogan": {
+                "type": "string",
+                "nullable": true
+              },
+              "referralSource": {
                 "type": "string",
                 "nullable": true
               },
@@ -17176,6 +17258,32 @@
                   "nullable": true
                 },
                 "customIdCreatedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "professionalField": {
+                  "type": "string",
+                  "enum": [
+                    "information_and_communication_technologies_icts",
+                    "business_administration_and_law",
+                    "arts_and_humanities",
+                    "natural_sciences_mathematics_and_statistics",
+                    "engineering_manufacturing_and_construction",
+                    "health_and_welfare",
+                    "education",
+                    "social_sciences_journalism_and_information",
+                    "language_skills_and_knowledge",
+                    "services",
+                    "agriculture_forestry_fisheries_and_veterinary",
+                    "others"
+                  ],
+                  "nullable": true
+                },
+                "personalSlogan": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "referralSource": {
                   "type": "string",
                   "nullable": true
                 },
@@ -17454,6 +17562,32 @@
                     "type": "string",
                     "nullable": true
                   },
+                  "professionalField": {
+                    "type": "string",
+                    "enum": [
+                      "information_and_communication_technologies_icts",
+                      "business_administration_and_law",
+                      "arts_and_humanities",
+                      "natural_sciences_mathematics_and_statistics",
+                      "engineering_manufacturing_and_construction",
+                      "health_and_welfare",
+                      "education",
+                      "social_sciences_journalism_and_information",
+                      "language_skills_and_knowledge",
+                      "services",
+                      "agriculture_forestry_fisheries_and_veterinary",
+                      "others"
+                    ],
+                    "nullable": true
+                  },
+                  "personalSlogan": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "referralSource": {
+                    "type": "string",
+                    "nullable": true
+                  },
                   "createdDate": {
                     "type": "string"
                   },
@@ -17704,6 +17838,32 @@
                 "nullable": true
               },
               "customIdCreatedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "professionalField": {
+                "type": "string",
+                "enum": [
+                  "information_and_communication_technologies_icts",
+                  "business_administration_and_law",
+                  "arts_and_humanities",
+                  "natural_sciences_mathematics_and_statistics",
+                  "engineering_manufacturing_and_construction",
+                  "health_and_welfare",
+                  "education",
+                  "social_sciences_journalism_and_information",
+                  "language_skills_and_knowledge",
+                  "services",
+                  "agriculture_forestry_fisheries_and_veterinary",
+                  "others"
+                ],
+                "nullable": true
+              },
+              "personalSlogan": {
+                "type": "string",
+                "nullable": true
+              },
+              "referralSource": {
                 "type": "string",
                 "nullable": true
               },

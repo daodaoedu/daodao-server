@@ -46,6 +46,65 @@ const getUserTags = async (userId: number): Promise<string[]> => {
 };
 
 /**
+ * 設置用戶興趣 (接收 category names,儲存 category IDs)
+ */
+const setUserInterests = async (
+  userId: number,
+  categoryNames: string[],
+  tx: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+): Promise<void> => {
+  // 先刪除現有的 interests
+  await tx.user_interests.deleteMany({
+    where: { user_id: userId }
+  });
+
+  // 如果有提供 category names
+  if (categoryNames && categoryNames.length > 0) {
+    // 轉換 category names 為 IDs
+    const categoryIds: number[] = [];
+    for (const name of categoryNames) {
+      const category = await tx.categories.findFirst({
+        where: { name }
+      });
+      if (category) {
+        categoryIds.push(category.id);
+      }
+    }
+
+    // 批量新增 interests
+    if (categoryIds.length > 0) {
+      await tx.user_interests.createMany({
+        data: categoryIds.map(categoryId => ({
+          user_id: userId,
+          category_id: categoryId
+        }))
+      });
+    }
+  }
+};
+
+/**
+ * 獲取用戶興趣 (返回 category names 陣列)
+ */
+const getUserInterests = async (userId: number): Promise<string[] | null> => {
+  const interests = await prisma.user_interests.findMany({
+    where: { user_id: userId },
+    include: {
+      categories: {
+        select: {
+          name: true
+        }
+      }
+    }
+  });
+
+  if (interests.length === 0) return null;
+
+  // 返回 category names 陣列
+  return interests.map(interest => interest.categories.name);
+};
+
+/**
  * 處理用戶偏好設定
  */
 const handleUserPreferences = async (
@@ -201,6 +260,9 @@ interface PrismaUserWithRelations {
   custom_id?: string | null;
   custom_id_verified?: boolean | null;
   custom_id_created_at?: Date | null;
+  professional_field?: string | null;
+  personal_slogan?: string | null;
+  referral_source?: string | null;
   user_preferences?: Array<{
     preference_option_id: number;
     is_selected: boolean | null;
@@ -286,7 +348,7 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     educationStage: (user.education_stage as 'university' | 'high' | 'other') || null,
     selfIntroduction: user.basic_info?.self_introduction || null,
     share: user.basic_info?.share_list || null,
-    interestList: null, // Add missing interestList field
+    interestList: await getUserInterests(user.id),
     preferences: preferences || null,
     contactList: {
       email: user.contacts?.email || null,
@@ -308,6 +370,12 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     customIdVerified: user.custom_id_verified || null,
     customIdCreatedAt: user.custom_id_created_at ?
       moment(user.custom_id_created_at).toISOString() : null,
+
+    // 新增欄位
+    professionalField: (user.professional_field as import('../types/user.types').ProfessionalField) || null,
+    personalSlogan: user.personal_slogan || null,
+    referralSource: user.referral_source || null,
+
     createdDate: formatToISOString(user.created_at),
     updatedDate: formatToISOString(user.updated_at)
   };
@@ -578,7 +646,13 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       wantToDoList,
       tagList,
       preferences,
-      isSendEmail
+      isSendEmail,
+      // 新增欄位
+      professionalField,
+      personalSlogan,
+      referralSource,
+      interestList,
+      customId
     } = userData;
 
     // 查找臨時用戶
@@ -597,6 +671,28 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
 
     if (existingUser) {
       throw new ConflictError(`使用者名稱 ${tempUser.name} 已存在`);
+    }
+
+    // 檢查 customId 是否已被使用(如果有提供)
+    if (customId) {
+      // 檢查格式
+      const isValidFormat = /^[a-zA-Z0-9_-]{3,50}$/.test(customId) &&
+                           !customId.startsWith('_') &&
+                           !customId.startsWith('-') &&
+                           !customId.endsWith('_') &&
+                           !customId.endsWith('-');
+
+      if (!isValidFormat) {
+        throw new ConflictError('自訂 ID 格式不正確：需3-50個字符,只能包含英文字母、數字、底線和連字符,且不能以底線或連字符開頭/結尾');
+      }
+
+      const existingCustomId = await tx.users.findUnique({
+        where: { custom_id: customId }
+      });
+
+      if (existingCustomId) {
+        throw new ConflictError(`自訂 ID "${customId}" 已被使用`);
+      }
     }
 
     // 處理地區
@@ -662,6 +758,14 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         is_open_profile: isOpenProfile ?? true,
         birth_date: birthDate ? new Date(birthDate) : null,
         basic_info_id: basicInfo.id,
+
+        // 新增欄位
+        professional_field: professionalField,
+        personal_slogan: personalSlogan,
+        referral_source: referralSource,
+        custom_id: customId,
+        custom_id_verified: customId ? true : false, // 如果在創建時設置,直接驗證
+        custom_id_created_at: customId ? new Date() : null,
       }
     });
 
@@ -714,6 +818,11 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     // Handle tags via entity_tags table
     if (tagList && tagList.length > 0) {
       await tagService.setEntityTags('user', createdUser.id, tagList, createdUser.id, tx);
+    }
+
+    // Handle interests (interestList)
+    if (interestList && interestList.length > 0) {
+      await setUserInterests(createdUser.id, interestList, tx);
     }
 
     // 生成新 token
@@ -788,7 +897,12 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       wantToDoList,
       tagList,
       roleList,
-      preferences
+      preferences,
+      // 新增欄位
+      professionalField,
+      personalSlogan,
+      referralSource,
+      interestList
     } = userData;
 
     // 更新聯絡方式
@@ -829,7 +943,12 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         is_open_location: isOpenLocation,
         is_open_profile: isOpenProfile,
         birth_date: birthDate ? new Date(birthDate) : undefined,
-        updated_at: new Date()
+        updated_at: new Date(),
+
+        // 新增欄位
+        professional_field: professionalField,
+        personal_slogan: personalSlogan,
+        referral_source: referralSource,
       }
     });
 
@@ -865,6 +984,11 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
     // Handle preferences
     if (preferences !== undefined) {
       await handleUserPreferences(user.id, preferences, tx);
+    }
+
+    // Handle interests (interestList)
+    if (interestList !== undefined) {
+      await setUserInterests(user.id, interestList || [], tx);
     }
 
     // 獲取更新後的完整用戶資訊
