@@ -18,16 +18,17 @@ model basic_info {
 }
 
 model categories {
-  id                                                Int          @id @default(autoincrement())
-  name                                              String       @unique @db.VarChar(100)
+  id                                                Int              @id @default(autoincrement())
+  name                                              String           @unique @db.VarChar(100)
   parent_id                                         Int?
   description                                       String?
-  created_at                                        DateTime?    @default(now()) @db.Timestamptz(6)
-  updated_at                                        DateTime?    @default(now()) @db.Timestamptz(6)
-  categories                                        categories?  @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  other_categories                                  categories[] @relation("categoriesTocategories")
-  resources_resources_major_category_idTocategories resources[]  @relation("resources_major_category_idTocategories")
-  resources_resources_sub_category_idTocategories   resources[]  @relation("resources_sub_category_idTocategories")
+  created_at                                        DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at                                        DateTime?        @default(now()) @db.Timestamptz(6)
+  categories                                        categories?      @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_categories                                  categories[]     @relation("categoriesTocategories")
+  resources_resources_major_category_idTocategories resources[]      @relation("resources_major_category_idTocategories")
+  resources_resources_sub_category_idTocategories   resources[]      @relation("resources_sub_category_idTocategories")
+  user_interests                                    user_interests[]
 
   @@index([name], map: "idx_categories_name")
   @@index([parent_id], map: "idx_categories_parent_id")
@@ -758,6 +759,9 @@ model users {
   custom_id                                                     String?               @unique @db.VarChar(50)
   custom_id_verified                                            Boolean?              @default(false)
   custom_id_created_at                                          DateTime?             @db.Timestamptz(6)
+  professional_field                                            String?               @db.VarChar(100)
+  personal_slogan                                               String?               @db.VarChar(200)
+  referral_source                                               String?               @db.VarChar(100)
   comments                                                      comments[]
   entity_resources                                              entity_resources[]
   entity_tags                                                   entity_tags[]
@@ -775,6 +779,7 @@ model users {
   resource_review                                               resource_review[]
   resources                                                     resources[]
   store                                                         store?
+  user_interests                                                user_interests[]
   user_join_group                                               user_join_group[]
   user_permissions                                              user_permissions[]
   user_positions                                                user_positions[]
@@ -979,6 +984,20 @@ model rating_detail {
 /// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
 // model old_resource {
 // }
+
+model user_interests {
+  id          Int        @id @default(autoincrement())
+  user_id     Int
+  category_id Int
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  categories  categories @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, category_id], map: "user_interests_unique")
+  @@index([category_id], map: "idx_user_interests_category_id")
+  @@index([user_id], map: "idx_user_interests_user_id")
+}
 
 enum age_t {
   preschool
