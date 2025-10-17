@@ -52,6 +52,18 @@ router.get('/me',
 );
 
 /**
+ * PUT /users/me
+ * 更新當前用戶資訊
+ * 請求體：UpdateUserRequest
+ * 需要身份驗證
+ */
+router.put('/me',
+  authenticate,
+  validate(updateUserSchema, 'body'),
+  userController.updateMe as RequestHandler
+);
+
+/**
  * GET /users/custom-id/check/:customId
  * 檢查自訂 ID 可用性
  * 路徑參數：customId - 要檢查的自訂 ID

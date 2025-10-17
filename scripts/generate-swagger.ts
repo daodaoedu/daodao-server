@@ -193,16 +193,37 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
   if (schema instanceof z.ZodObject) {
     metadata.type = 'object';
     metadata.properties = {};
-    
+
+    // 提取 required 字段列表（不是 optional 的字段）
+    const requiredFields: string[] = [];
+
     // 遍歷物件屬性
     const shape = schema.shape;
     for (const [key, value] of Object.entries(shape)) {
+      const valueDef = (value as any)._def;
+
+      // 檢查是否為 optional 或 nullable
+      const isOptional = value instanceof z.ZodOptional ||
+                        value instanceof z.ZodNullable ||
+                        (valueDef?.typeName === 'ZodOptional') ||
+                        (valueDef?.typeName === 'ZodNullable');
+
+      // 如果不是 optional，則為 required
+      if (!isOptional) {
+        requiredFields.push(key);
+      }
+
       const propertyMetadata = extractZodV4Metadata(value as z.ZodSchema);
       // 如果屬性的 metadata 為空物件，記錄警告
       if (Object.keys(propertyMetadata).length === 0) {
         console.warn(`⚠️  Property '${key}' generated empty metadata:`, value);
       }
       metadata.properties[key] = propertyMetadata;
+    }
+
+    // 只有在有 required 字段時才添加 required 陣列
+    if (requiredFields.length > 0) {
+      metadata.required = requiredFields;
     }
   } else if (schema instanceof z.ZodArray) {
     metadata.type = 'array';
@@ -414,9 +435,14 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
     while ((match = routeRegex.exec(content)) !== null) {
       const [, method, path, middlewareAndHandler] = match;
 
-      // 提取 validate 中間件使用的 validator
-      const validateMatch = middlewareAndHandler.match(/validate\s*\(\s*([^,\s]+)/);
-      const validatorName = validateMatch ? validateMatch[1] : null;
+      // 提取所有 validate 中間件，區分 body、params、query
+      const validateBodyMatch = middlewareAndHandler.match(/validate\s*\(\s*([^,\s]+)\s*,\s*['"`]body['"`]\s*\)/);
+      const validateParamsMatch = middlewareAndHandler.match(/validate\s*\(\s*([^,\s]+)\s*,\s*['"`]params['"`]\s*\)/);
+      const validateQueryMatch = middlewareAndHandler.match(/validate\s*\(\s*([^,\s]+)\s*,\s*['"`]query['"`]\s*\)/);
+
+      const validatorName = validateBodyMatch ? validateBodyMatch[1] : null;
+      const paramsValidatorName = validateParamsMatch ? validateParamsMatch[1] : null;
+      const queryValidatorName = validateQueryMatch ? validateQueryMatch[1] : null;
 
       // 檢測 multer 文件上傳中間件
       const uploadSingleMatch = middlewareAndHandler.match(/upload\.single\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
@@ -486,6 +512,8 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
         summary: summary || `${method.toUpperCase()} ${path}`,
         description,
         validatorName,
+        paramsValidatorName,
+        queryValidatorName,
         fileUpload,
         tags: [getTagFromRouteName(routeName.replace('.ts', ''))]
       });
@@ -579,8 +607,9 @@ const routeResponseMapping: Record<string, string> = {
   'POST:/api/v1/users/': 'user.validators_createUserResponseSchema', // 創建用戶返回 user + token
   'GET:/api/v1/users/': 'user.validators_usersListResponseSchema',
   'GET:/api/v1/users/me': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
+  'PUT:/api/v1/users/me': 'user.validators_updateUserResponseSchema', // 更新當前用戶
   'GET:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
-  'PUT:/api/v1/users/:id': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
+  'PUT:/api/v1/users/:id': 'user.validators_updateUserResponseSchema', // 包含完整 contactList
   'DELETE:/api/v1/users/me': 'user.validators_deleteUserResponseSchema',
   'DELETE:/api/v1/users/:id': 'user.validators_deleteUserResponseSchema',
   
@@ -900,7 +929,34 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
         description: `${param.slice(1)} 參數`
       }));
     }
-    
+
+    // 處理 query 參數（從 queryValidatorName 提取）
+    if (route.queryValidatorName) {
+      const querySchemaKey = Object.keys(openApiSpec.components.schemas).find(key =>
+        key.includes(route.queryValidatorName)
+      );
+
+      if (querySchemaKey) {
+        const querySchema = openApiSpec.components.schemas[querySchemaKey];
+        if (querySchema.properties) {
+          operation.parameters = operation.parameters || [];
+          // 從 Zod schema 中提取 required 欄位列表
+          const requiredFields = querySchema.required || [];
+
+          // 將 query schema 的屬性轉換為 query 參數
+          for (const [paramName, paramSchema] of Object.entries(querySchema.properties as Record<string, any>)) {
+            operation.parameters.push({
+              name: paramName,
+              in: 'query',
+              required: requiredFields.includes(paramName),
+              schema: paramSchema,
+              description: paramSchema.description || `${paramName} 查詢參數`
+            });
+          }
+        }
+      }
+    }
+
     // 添加認證要求（除了登入註冊等公開 API）
     if (!route.path.includes('login') && !route.path.includes('register') && !route.path.includes('health')) {
       operation.security = [{ bearerAuth: [] }];
