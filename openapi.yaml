@@ -1092,7 +1092,7 @@ components:
     comment.validators_getCommentsQuerySchema:
       type: object
       properties:
-        targetType:
+        targetType: &ref_35
           type: string
           enum:
             - post
@@ -1103,7 +1103,7 @@ components:
             - circle
             - idea
             - portfolio
-        targetId:
+        targetId: &ref_36
           type: string
     comment.validators_commentParamsSchema:
       type: object
@@ -1657,22 +1657,22 @@ components:
     idea.validators_ideaQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_37
           type: number
           default: 1
-        limit:
+        limit: &ref_38
           type: number
           default: 20
-        query:
+        query: &ref_39
           type: string
           nullable: true
-        tags:
+        tags: &ref_40
           type: string
           nullable: true
-        userId:
+        userId: &ref_41
           type: string
           nullable: true
-        status:
+        status: &ref_42
           type: string
           enum:
             - active
@@ -1680,14 +1680,14 @@ components:
             - archived
             - all
           nullable: true
-        sort:
+        sort: &ref_43
           type: string
           enum:
             - createdAt
             - updatedAt
             - likeCount
           default: createdAt
-        order:
+        order: &ref_44
           type: string
           enum:
             - asc
@@ -2460,13 +2460,13 @@ components:
     me.validators_practiceQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_45
           type: number
           default: 1
-        limit:
+        limit: &ref_46
           type: number
           default: 20
-        status:
+        status: &ref_47
           type: string
           enum:
             - active
@@ -2474,7 +2474,7 @@ components:
             - completed
             - archived
           nullable: true
-        contentType:
+        contentType: &ref_48
           type: string
           enum:
             - book
@@ -2484,10 +2484,10 @@ components:
             - course
             - custom
           nullable: true
-        search:
+        search: &ref_49
           type: string
           nullable: true
-        sortBy:
+        sortBy: &ref_50
           type: string
           enum:
             - createdAt
@@ -2495,22 +2495,22 @@ components:
             - title
             - progress
           default: createdAt
-        sortOrder:
+        sortOrder: &ref_51
           type: string
           enum:
             - asc
             - desc
           default: desc
-        dateFrom:
+        dateFrom: &ref_52
           type: string
           nullable: true
-        dateTo:
+        dateTo: &ref_53
           type: string
           nullable: true
     me.validators_practiceStatsQuerySchema:
       type: object
       properties:
-        timeRange:
+        timeRange: &ref_54
           type: string
           enum:
             - 7d
@@ -2519,22 +2519,22 @@ components:
             - 1y
             - all
           default: 30d
-        includeArchived:
+        includeArchived: &ref_55
           type: boolean
           default: false
     me.validators_resourcesQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_56
           type: number
           default: 1
-        limit:
+        limit: &ref_57
           type: number
           default: 20
-        category:
+        category: &ref_58
           type: string
           nullable: true
-        type:
+        type: &ref_59
           type: string
           enum:
             - link
@@ -2542,39 +2542,39 @@ components:
             - note
             - draft
           nullable: true
-        status:
+        status: &ref_60
           type: string
           enum:
             - draft
             - published
             - archived
           default: draft
-        search:
+        search: &ref_61
           type: string
           nullable: true
-        sortBy:
+        sortBy: &ref_62
           type: string
           enum:
             - createdAt
             - updatedAt
             - name
           default: updatedAt
-        sortOrder:
+        sortOrder: &ref_63
           type: string
           enum:
             - asc
             - desc
           default: desc
-        tags:
+        tags: &ref_64
           type: string
           nullable: true
     me.validators_preferencesQuerySchema:
       type: object
       properties:
-        category:
+        category: &ref_65
           type: string
           nullable: true
-        includeSystem:
+        includeSystem: &ref_66
           type: boolean
           default: false
     me.validators_updatePreferencesSchema:
@@ -4525,12 +4525,12 @@ components:
     note.validators_publicNotesQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_92
           type: object
           additionalProperties: true
           nullable: true
           default: 1
-        pageSize:
+        pageSize: &ref_93
           type: object
           additionalProperties: true
           nullable: true
@@ -5317,22 +5317,22 @@ components:
     practice.validators_checkInQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_77
           type: number
           default: 1
-        limit:
+        limit: &ref_78
           type: number
           default: 20
-        startDate:
+        startDate: &ref_79
           type: string
           nullable: true
-        endDate:
+        endDate: &ref_80
           type: string
           nullable: true
-        mood:
+        mood: &ref_81
           type: string
           nullable: true
-        include:
+        include: &ref_82
           type: string
           nullable: true
     practice.validators_practiceEventViewSchema:
@@ -5398,25 +5398,25 @@ components:
     practice.validators_myPracticesQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_67
           type: number
           default: 1
-        limit:
+        limit: &ref_68
           type: number
           default: 20
-        query:
+        query: &ref_69
           type: string
           nullable: true
-        contentType:
+        contentType: &ref_70
           type: string
           nullable: true
-        tags:
+        tags: &ref_71
           type: string
           nullable: true
-        userId:
+        userId: &ref_72
           type: string
           nullable: true
-        status:
+        status: &ref_73
           type: string
           enum:
             - active
@@ -5425,15 +5425,15 @@ components:
             - archived
             - all
           default: all
-        sort:
+        sort: &ref_74
           type: string
           enum: *ref_14
           default: createdAt
-        order:
+        order: &ref_75
           type: string
           enum: *ref_15
           default: desc
-        include:
+        include: &ref_76
           type: string
           nullable: true
     practice.validators_userBasicInfoResponseSchema:
@@ -7095,30 +7095,30 @@ components:
     project.validators_projectQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_83
           type: object
           additionalProperties: true
           nullable: true
-        limit:
+        limit: &ref_84
           type: object
           additionalProperties: true
           nullable: true
-        status:
+        status: &ref_85
           type: string
           enum: *ref_19
           nullable: true
-        isPublic:
+        isPublic: &ref_86
           type: object
           additionalProperties: true
           nullable: true
-        userId:
+        userId: &ref_87
           type: object
           additionalProperties: true
           nullable: true
-        search:
+        search: &ref_88
           type: string
           nullable: true
-        sortBy:
+        sortBy: &ref_89
           type: string
           enum:
             - createdAt
@@ -7127,7 +7127,7 @@ components:
             - startDate
             - endDate
           nullable: true
-        sortOrder:
+        sortOrder: &ref_90
           type: string
           enum:
             - asc
@@ -7142,7 +7142,7 @@ components:
     project.validators_projectStatsQuerySchema:
       type: object
       properties:
-        userId:
+        userId: &ref_91
           type: object
           additionalProperties: true
           nullable: true
@@ -7771,21 +7771,21 @@ components:
     request-params.validator_paginationSchema:
       type: object
       properties:
-        cursor:
+        cursor: &ref_99
           type: string
           nullable: true
-        limit:
+        limit: &ref_100
           type: object
           additionalProperties: true
           nullable: true
-        sort:
+        sort: &ref_101
           type: string
           enum:
             - createdAt
             - updatedAt
             - name
           nullable: true
-        order:
+        order: &ref_102
           type: string
           enum:
             - asc
@@ -10244,20 +10244,20 @@ components:
     review.validators_reviewQuerySchema:
       type: object
       properties:
-        week:
+        week: &ref_94
           type: number
           nullable: true
-        mood:
+        mood: &ref_95
           type: string
           enum: *ref_27
           nullable: true
-        stressLevel:
+        stressLevel: &ref_96
           type: number
           nullable: true
-        page:
+        page: &ref_97
           type: object
           additionalProperties: true
-        pageSize:
+        pageSize: &ref_98
           type: object
           additionalProperties: true
     review.validators_reviewParamsSchema:
@@ -10566,24 +10566,24 @@ components:
     tag.validators_tagSearchQuerySchema:
       type: object
       properties:
-        query:
+        query: &ref_104
           type: string
-        limit:
+        limit: &ref_105
           type: object
           additionalProperties: true
     tag.validators_popularTagsQuerySchema:
       type: object
       properties:
-        limit:
+        limit: &ref_103
           type: object
           additionalProperties: true
     tag.validators_entityTagsQuerySchema:
       type: object
       properties:
-        entityId:
+        entityId: &ref_106
           type: object
           additionalProperties: true
-        entityType:
+        entityType: &ref_107
           type: string
           enum: &ref_29
             - resource
@@ -11538,24 +11538,24 @@ components:
     user.validators_getUserQuerySchema:
       type: object
       properties:
-        page:
+        page: &ref_108
           type: object
           additionalProperties: true
           nullable: true
-        pageSize:
+        pageSize: &ref_109
           type: object
           additionalProperties: true
           nullable: true
-        educationStage:
+        educationStage: &ref_110
           type: string
           nullable: true
-        roleList:
+        roleList: &ref_111
           type: string
           nullable: true
-        location:
+        location: &ref_112
           type: string
           nullable: true
-        search:
+        search: &ref_113
           type: string
           nullable: true
     user.validators_userPreferencesSchema:
@@ -13076,6 +13076,17 @@ paths:
         (required) - type of target entity - targetId: number (required) - ID of
         target entity Supports optional authentication for personalized
         visibility
+      parameters:
+        - name: targetType
+          in: query
+          required: false
+          schema: *ref_35
+          description: targetType 查詢參數
+        - name: targetId
+          in: query
+          required: false
+          schema: *ref_36
+          description: targetId 查詢參數
       security:
         - bearerAuth: []
   /api/v1/comments/{commentId}:
@@ -13135,7 +13146,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/comment.validators_commentParamsSchema'
+              $ref: '#/components/schemas/comment.validators_updateCommentSchema'
       parameters:
         - name: commentId
           in: path
@@ -13561,6 +13572,47 @@ paths:
         '@/controllers/idea.controller'; const router = Router(); /** GET /ideas
         獲取想法列表 查詢參數：page, limit, query, tags, userId, status, sort, order
         支援可選身份驗證（用於個人化內容）
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_37
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_38
+          description: limit 查詢參數
+        - name: query
+          in: query
+          required: false
+          schema: *ref_39
+          description: query 查詢參數
+        - name: tags
+          in: query
+          required: false
+          schema: *ref_40
+          description: tags 查詢參數
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_41
+          description: userId 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_42
+          description: status 查詢參數
+        - name: sort
+          in: query
+          required: false
+          schema: *ref_43
+          description: sort 查詢參數
+        - name: order
+          in: query
+          required: false
+          schema: *ref_44
+          description: order 查詢參數
       security:
         - bearerAuth: []
     post:
@@ -13663,7 +13715,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/idea.validators_ideaParamsSchema'
+              $ref: '#/components/schemas/idea.validators_updateIdeaSchema'
       parameters:
         - name: id
           in: path
@@ -13949,6 +14001,47 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_37
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_38
+          description: limit 查詢參數
+        - name: query
+          in: query
+          required: false
+          schema: *ref_39
+          description: query 查詢參數
+        - name: tags
+          in: query
+          required: false
+          schema: *ref_40
+          description: tags 查詢參數
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_41
+          description: userId 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_42
+          description: status 查詢參數
+        - name: sort
+          in: query
+          required: false
+          schema: *ref_43
+          description: sort 查詢參數
+        - name: order
+          in: query
+          required: false
+          schema: *ref_44
+          description: order 查詢參數
       security:
         - bearerAuth: []
   /api/v1/me/practices:
@@ -13973,6 +14066,52 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_45
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_46
+          description: limit 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_47
+          description: status 查詢參數
+        - name: contentType
+          in: query
+          required: false
+          schema: *ref_48
+          description: contentType 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_49
+          description: search 查詢參數
+        - name: sortBy
+          in: query
+          required: false
+          schema: *ref_50
+          description: sortBy 查詢參數
+        - name: sortOrder
+          in: query
+          required: false
+          schema: *ref_51
+          description: sortOrder 查詢參數
+        - name: dateFrom
+          in: query
+          required: false
+          schema: *ref_52
+          description: dateFrom 查詢參數
+        - name: dateTo
+          in: query
+          required: false
+          schema: *ref_53
+          description: dateTo 查詢參數
       security:
         - bearerAuth: []
   /api/v1/me/practice-stats:
@@ -13997,6 +14136,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: timeRange
+          in: query
+          required: false
+          schema: *ref_54
+          description: timeRange 查詢參數
+        - name: includeArchived
+          in: query
+          required: false
+          schema: *ref_55
+          description: includeArchived 查詢參數
       security:
         - bearerAuth: []
   /api/v1/me/resources:
@@ -14021,6 +14171,52 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_56
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_57
+          description: limit 查詢參數
+        - name: category
+          in: query
+          required: false
+          schema: *ref_58
+          description: category 查詢參數
+        - name: type
+          in: query
+          required: false
+          schema: *ref_59
+          description: type 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_60
+          description: status 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_61
+          description: search 查詢參數
+        - name: sortBy
+          in: query
+          required: false
+          schema: *ref_62
+          description: sortBy 查詢參數
+        - name: sortOrder
+          in: query
+          required: false
+          schema: *ref_63
+          description: sortOrder 查詢參數
+        - name: tags
+          in: query
+          required: false
+          schema: *ref_64
+          description: tags 查詢參數
       security:
         - bearerAuth: []
   /api/v1/me/preferences:
@@ -14045,6 +14241,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: *ref_65
+          description: category 查詢參數
+        - name: includeSystem
+          in: query
+          required: false
+          schema: *ref_66
+          description: includeSystem 查詢參數
       security:
         - bearerAuth: []
     put:
@@ -14657,6 +14864,52 @@ paths:
         1-12').transform(Number) }); const router = Router(); /** GET /practices
         取得實踐列表 查詢參數：page, limit, search, contentType, status, sortBy, sortOrder,
         userId 支援可選身份驗證（用於個人化內容）
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_45
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_46
+          description: limit 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_47
+          description: status 查詢參數
+        - name: contentType
+          in: query
+          required: false
+          schema: *ref_48
+          description: contentType 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_49
+          description: search 查詢參數
+        - name: sortBy
+          in: query
+          required: false
+          schema: *ref_50
+          description: sortBy 查詢參數
+        - name: sortOrder
+          in: query
+          required: false
+          schema: *ref_51
+          description: sortOrder 查詢參數
+        - name: dateFrom
+          in: query
+          required: false
+          schema: *ref_52
+          description: dateFrom 查詢參數
+        - name: dateTo
+          in: query
+          required: false
+          schema: *ref_53
+          description: dateTo 查詢參數
       security:
         - bearerAuth: []
     post:
@@ -14738,6 +14991,57 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_67
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_68
+          description: limit 查詢參數
+        - name: query
+          in: query
+          required: false
+          schema: *ref_69
+          description: query 查詢參數
+        - name: contentType
+          in: query
+          required: false
+          schema: *ref_70
+          description: contentType 查詢參數
+        - name: tags
+          in: query
+          required: false
+          schema: *ref_71
+          description: tags 查詢參數
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_72
+          description: userId 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_73
+          description: status 查詢參數
+        - name: sort
+          in: query
+          required: false
+          schema: *ref_74
+          description: sort 查詢參數
+        - name: order
+          in: query
+          required: false
+          schema: *ref_75
+          description: order 查詢參數
+        - name: include
+          in: query
+          required: false
+          schema: *ref_76
+          description: include 查詢參數
       security:
         - bearerAuth: []
   /api/v1/practices/stats:
@@ -14821,7 +15125,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/practice.validators_practiceParamsSchema'
+              $ref: '#/components/schemas/practice.validators_updatePracticeSchema'
       parameters:
         - name: id
           in: path
@@ -14903,7 +15207,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/practice.validators_practiceParamsSchema'
+              $ref: '#/components/schemas/practice.validators_checkInSchema'
       parameters:
         - name: id
           in: path
@@ -14941,6 +15245,36 @@ paths:
           schema:
             type: string
           description: id 參數
+        - name: page
+          in: query
+          required: false
+          schema: *ref_77
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_78
+          description: limit 查詢參數
+        - name: startDate
+          in: query
+          required: false
+          schema: *ref_79
+          description: startDate 查詢參數
+        - name: endDate
+          in: query
+          required: false
+          schema: *ref_80
+          description: endDate 查詢參數
+        - name: mood
+          in: query
+          required: false
+          schema: *ref_81
+          description: mood 查詢參數
+        - name: include
+          in: query
+          required: false
+          schema: *ref_82
+          description: include 查詢參數
       security:
         - bearerAuth: []
   /api/v1/practices/{id}/checkins/stats:
@@ -15039,12 +15373,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/practice.validators_practiceParamsSchema'
       parameters:
         - name: id
           in: path
@@ -15076,12 +15404,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/practice.validators_practiceParamsSchema'
       parameters:
         - name: id
           in: path
@@ -15118,7 +15440,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/practice.validators_practiceParamsSchema'
+              $ref: >-
+                #/components/schemas/practice.validators_practiceEventShareSchema
       parameters:
         - name: id
           in: path
@@ -15155,7 +15478,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/practice.validators_practiceParamsSchema'
+              $ref: '#/components/schemas/practice.validators_practiceEventViewSchema'
       parameters:
         - name: id
           in: path
@@ -15286,6 +15609,47 @@ paths:
         '../validators/milestone.validators'; const router = Router(); /** GET
         /projects 獲取專案列表 查詢參數：page, limit, status, is_public, user_id, search,
         sort_by, sort_order 支援可選身份驗證（用於個人化內容）
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_83
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_84
+          description: limit 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_85
+          description: status 查詢參數
+        - name: isPublic
+          in: query
+          required: false
+          schema: *ref_86
+          description: isPublic 查詢參數
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_87
+          description: userId 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_88
+          description: search 查詢參數
+        - name: sortBy
+          in: query
+          required: false
+          schema: *ref_89
+          description: sortBy 查詢參數
+        - name: sortOrder
+          in: query
+          required: false
+          schema: *ref_90
+          description: sortOrder 查詢參數
       security:
         - bearerAuth: []
     post:
@@ -15391,6 +15755,47 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_83
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_84
+          description: limit 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_85
+          description: status 查詢參數
+        - name: isPublic
+          in: query
+          required: false
+          schema: *ref_86
+          description: isPublic 查詢參數
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_87
+          description: userId 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_88
+          description: search 查詢參數
+        - name: sortBy
+          in: query
+          required: false
+          schema: *ref_89
+          description: sortBy 查詢參數
+        - name: sortOrder
+          in: query
+          required: false
+          schema: *ref_90
+          description: sortOrder 查詢參數
       security:
         - bearerAuth: []
   /api/v1/projects/public:
@@ -15415,6 +15820,47 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_83
+          description: page 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_84
+          description: limit 查詢參數
+        - name: status
+          in: query
+          required: false
+          schema: *ref_85
+          description: status 查詢參數
+        - name: isPublic
+          in: query
+          required: false
+          schema: *ref_86
+          description: isPublic 查詢參數
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_87
+          description: userId 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_88
+          description: search 查詢參數
+        - name: sortBy
+          in: query
+          required: false
+          schema: *ref_89
+          description: sortBy 查詢參數
+        - name: sortOrder
+          in: query
+          required: false
+          schema: *ref_90
+          description: sortOrder 查詢參數
       security:
         - bearerAuth: []
   /api/v1/projects/stats:
@@ -15439,6 +15885,12 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema: *ref_91
+          description: userId 查詢參數
       security:
         - bearerAuth: []
   /api/v1/projects/{id}:
@@ -15498,7 +15950,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/project.validators_projectParamsSchema'
+              $ref: '#/components/schemas/project.validators_updateProjectSchema'
       parameters:
         - name: id
           in: path
@@ -15580,7 +16032,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/project.validators_projectParamsSchema'
+              $ref: '#/components/schemas/project.validators_duplicateProjectSchema'
       parameters:
         - name: id
           in: path
@@ -15660,6 +16112,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_92
+          description: page 查詢參數
+        - name: pageSize
+          in: query
+          required: false
+          schema: *ref_93
+          description: pageSize 查詢參數
       security:
         - bearerAuth: []
   /api/v1/projects/{projectId}/milestones:
@@ -15689,7 +16152,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/note.validators_noteProjectParamsSchema'
+              $ref: '#/components/schemas/milestone.validators_createMilestoneSchema'
       parameters:
         - name: projectId
           in: path
@@ -15756,7 +16219,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/milestone.validators_milestoneParamsSchema'
+              $ref: '#/components/schemas/milestone.validators_updateMilestoneSchema'
       parameters:
         - name: projectId
           in: path
@@ -15850,7 +16313,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/task.validators_taskMilestoneParamsSchema'
+              $ref: '#/components/schemas/task.validators_createTaskSchema'
       parameters:
         - name: projectId
           in: path
@@ -15971,7 +16434,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/task.validators_taskParamsSchema'
+              $ref: '#/components/schemas/task.validators_updateTaskSchema'
       parameters:
         - name: projectId
           in: path
@@ -16078,7 +16541,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/note.validators_noteProjectParamsSchema'
+              $ref: '#/components/schemas/note.validators_createNoteSchema'
       parameters:
         - name: projectId
           in: path
@@ -16182,7 +16645,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/note.validators_noteParamsSchema'
+              $ref: '#/components/schemas/note.validators_updateNoteSchema'
       parameters:
         - name: projectId
           in: path
@@ -16276,7 +16739,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/note.validators_noteProjectParamsSchema'
+              $ref: '#/components/schemas/outcome.validators_createOutcomeSchema'
       parameters:
         - name: projectId
           in: path
@@ -16379,7 +16842,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/outcome.validators_outcomeParamsSchema'
+              $ref: '#/components/schemas/outcome.validators_updateOutcomeSchema'
       parameters:
         - name: projectId
           in: path
@@ -16473,7 +16936,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/note.validators_noteProjectParamsSchema'
+              $ref: '#/components/schemas/review.validators_createReviewSchema'
       parameters:
         - name: projectId
           in: path
@@ -16511,6 +16974,31 @@ paths:
           schema:
             type: string
           description: projectId 參數
+        - name: week
+          in: query
+          required: false
+          schema: *ref_94
+          description: week 查詢參數
+        - name: mood
+          in: query
+          required: false
+          schema: *ref_95
+          description: mood 查詢參數
+        - name: stressLevel
+          in: query
+          required: false
+          schema: *ref_96
+          description: stressLevel 查詢參數
+        - name: page
+          in: query
+          required: false
+          schema: *ref_97
+          description: page 查詢參數
+        - name: pageSize
+          in: query
+          required: false
+          schema: *ref_98
+          description: pageSize 查詢參數
       security:
         - bearerAuth: []
   /api/v1/projects/{projectId}/reviews/{reviewId}:
@@ -16576,7 +17064,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/review.validators_reviewParamsSchema'
+              $ref: '#/components/schemas/review.validators_updateReviewSchema'
       parameters:
         - name: projectId
           in: path
@@ -16686,6 +17174,26 @@ paths:
           schema:
             type: string
           description: resourceId 參數
+        - name: cursor
+          in: query
+          required: false
+          schema: *ref_99
+          description: cursor 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_100
+          description: limit 查詢參數
+        - name: sort
+          in: query
+          required: false
+          schema: *ref_101
+          description: sort 查詢參數
+        - name: order
+          in: query
+          required: false
+          schema: *ref_102
+          description: order 查詢參數
       security:
         - bearerAuth: []
     post:
@@ -17045,6 +17553,27 @@ paths:
         const router = Router(); /** GET /resources 獲取資源列表 查詢參數：cursor, limit,
         type, cost, level, majorCategory, subCategory, tags, query, sort, order
         支援可選身份驗證（用於個人化內容）
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: *ref_99
+          description: cursor 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_100
+          description: limit 查詢參數
+        - name: sort
+          in: query
+          required: false
+          schema: *ref_101
+          description: sort 查詢參數
+        - name: order
+          in: query
+          required: false
+          schema: *ref_102
+          description: order 查詢參數
       security:
         - bearerAuth: []
     post:
@@ -17322,6 +17851,12 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_103
+          description: limit 查詢參數
       security:
         - bearerAuth: []
   /api/v1/tags/search:
@@ -17346,6 +17881,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema: *ref_104
+          description: query 查詢參數
+        - name: limit
+          in: query
+          required: false
+          schema: *ref_105
+          description: limit 查詢參數
       security:
         - bearerAuth: []
   /api/v1/tags/stats:
@@ -17461,6 +18007,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: entityId
+          in: query
+          required: false
+          schema: *ref_106
+          description: entityId 查詢參數
+        - name: entityType
+          in: query
+          required: false
+          schema: *ref_107
+          description: entityType 查詢參數
       security:
         - bearerAuth: []
   /api/v1/users/:
@@ -17498,6 +18055,37 @@ paths:
         '../validators/me.validators'; const router = Router(); /** GET /users
         獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search
         支援可選身份驗證（用於個人化內容）
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: *ref_108
+          description: page 查詢參數
+        - name: pageSize
+          in: query
+          required: false
+          schema: *ref_109
+          description: pageSize 查詢參數
+        - name: educationStage
+          in: query
+          required: false
+          schema: *ref_110
+          description: educationStage 查詢參數
+        - name: roleList
+          in: query
+          required: false
+          schema: *ref_111
+          description: roleList 查詢參數
+        - name: location
+          in: query
+          required: false
+          schema: *ref_112
+          description: location 查詢參數
+        - name: search
+          in: query
+          required: false
+          schema: *ref_113
+          description: search 查詢參數
       security:
         - bearerAuth: []
     post:
@@ -17536,12 +18124,15 @@ paths:
         支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth,
         validate(getUserQuerySchema, 'query'), userController.getAllUsers as
         RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me',
-        authenticate, userController.getMe as RequestHandler ); /** GET
-        /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID /
-        router.get('/custom-id/check/:customId', validate(customIdParamsSchema,
-        'params'), userController.checkCustomIdAvailability as RequestHandler );
-        /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂
-        ID / router.get('/custom-id/:customId', validate(customIdParamsSchema,
+        authenticate, userController.getMe as RequestHandler ); /** PUT
+        /users/me 更新當前用戶資訊 需要身份驗證 / router.put('/me', authenticate,
+        validate(updateUserSchema, 'body'), userController.updateMe as
+        RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性
+        路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId',
+        validate(customIdParamsSchema, 'params'),
+        userController.checkCustomIdAvailability as RequestHandler ); /** GET
+        /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID /
+        router.get('/custom-id/:customId', validate(customIdParamsSchema,
         'params'), userController.getUserByCustomId as RequestHandler ); /**
         POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證
       requestBody:
@@ -17573,6 +18164,34 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      security:
+        - bearerAuth: []
+    put:
+      tags:
+        - Users
+      summary: PUT /me
+      operationId: put_api_v1_users_me
+      responses:
+        '200':
+          description: 成功回應
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user.validators_updateUserResponseSchema'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user.validators_updateUserSchema'
       security:
         - bearerAuth: []
     delete:
@@ -17732,6 +18351,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: *ref_65
+          description: category 查詢參數
+        - name: includeSystem
+          in: query
+          required: false
+          schema: *ref_66
+          description: includeSystem 查詢參數
       security:
         - bearerAuth: []
     put:
@@ -17828,7 +18458,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/user.validators_userSuccessResponseSchema'
+                $ref: '#/components/schemas/user.validators_updateUserResponseSchema'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -17842,7 +18472,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/user.validators_getUserParamsSchema'
+              $ref: '#/components/schemas/user.validators_updateUserSchema'
       parameters:
         - name: id
           in: path
