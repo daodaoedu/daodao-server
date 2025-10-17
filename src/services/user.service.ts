@@ -28,14 +28,18 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
-import { 
+import {
   NotFoundError,
-  ConflictError 
+  ConflictError
 } from '../middleware/error.middleware';
 import { city_t, want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
 import tagService from './tag.service';
+import {
+  validateCustomIdFormat,
+  CUSTOM_ID_ERROR_MESSAGES
+} from '../constants/validation';
 
 /**
  * 獲取用戶標籤
@@ -671,13 +675,9 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
 
     // 檢查 customId 是否已被使用(如果有提供)
     if (customId) {
-      // 檢查格式 - 使用改進的正則表達式
-      const isValidFormat = /^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(customId) &&
-                           customId.length >= 3 &&
-                           customId.length <= 50;
-
-      if (!isValidFormat) {
-        throw new ConflictError('自訂 ID 格式不正確：需3-50個字符,只能包含英文字母、數字、底線和連字符,且不能以底線或連字符開頭/結尾');
+      // 使用共享的驗證函數
+      if (!validateCustomIdFormat(customId)) {
+        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
       }
 
       const existingCustomId = await tx.users.findUnique({
@@ -685,7 +685,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       });
 
       if (existingCustomId) {
-        throw new ConflictError(`自訂 ID "${customId}" 已被使用`);
+        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.ALREADY_EXISTS);
       }
     }
 
@@ -1127,12 +1127,8 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
  * 檢查自訂 ID 可用性
  */
 const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessResponse<{ available: boolean }>> => {
-  // 基本格式檢查 - 使用改進的正則表達式
-  const isValidFormat = /^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(customId) &&
-                       customId.length >= 3 &&
-                       customId.length <= 50;
-
-  if (!isValidFormat) {
+  // 使用共享的驗證函數
+  if (!validateCustomIdFormat(customId)) {
     return createSuccessResponse({ available: false });
   }
 
@@ -1148,13 +1144,9 @@ const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessRe
  * 設置用戶自訂 ID
  */
 const setCustomId = async (userId: number, customId: string): Promise<ApiSuccessResponse<{ customId: string }>> => {
-  // 檢查格式 - 使用改進的正則表達式
-  const isValidFormat = /^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/.test(customId) &&
-                       customId.length >= 3 &&
-                       customId.length <= 50;
-
-  if (!isValidFormat) {
-    throw new ConflictError('自訂 ID 格式不正確：需3-50個字符，只能包含英文字母、數字、底線和連字符，且不能以底線或連字符開頭/結尾');
+  // 使用共享的驗證函數
+  if (!validateCustomIdFormat(customId)) {
+    throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
   }
 
   try {
@@ -1165,7 +1157,7 @@ const setCustomId = async (userId: number, customId: string): Promise<ApiSuccess
       });
 
       if (existingUser) {
-        throw new ConflictError('此自訂 ID 已被使用');
+        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.ALREADY_EXISTS);
       }
 
       // 檢查用戶是否存在
@@ -1179,7 +1171,7 @@ const setCustomId = async (userId: number, customId: string): Promise<ApiSuccess
 
       // 檢查用戶是否已有自訂 ID
       if (user.custom_id) {
-        throw new ConflictError('用戶已設置自訂 ID，請先移除現有 ID');
+        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.USER_HAS_CUSTOM_ID);
       }
 
       // 設置自訂 ID
@@ -1199,7 +1191,7 @@ const setCustomId = async (userId: number, customId: string): Promise<ApiSuccess
     if (error && typeof error === 'object' && 'code' in error) {
       const prismaError = error as { code: string; meta?: { target?: string[] } };
       if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('custom_id')) {
-        throw new ConflictError('此自訂 ID 已被其他用戶使用，請選擇其他 ID');
+        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.ALREADY_EXISTS);
       }
     }
     throw error;
@@ -1251,7 +1243,7 @@ const removeCustomId = async (userId: number): Promise<ApiSuccessResponse<{ mess
   }
 
   if (!user.custom_id) {
-    throw new ConflictError('用戶尚未設置自訂 ID');
+    throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.NOT_SET);
   }
 
   await prisma.users.update({
