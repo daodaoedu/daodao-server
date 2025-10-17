@@ -18983,6 +18983,36 @@
           }
         },
         "description": "Handles comment-related route definitions with middleware integration This module defines all comment API endpoints following the existing JavaScript API structure while integrating with TypeScript middleware patterns for authentication and validation. / import { Router } from 'express'; import { commentController } from '../controllers/comment.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { validate } from '../middleware/validation.middleware'; import { createCommentSchema, updateCommentSchema, getCommentsQuerySchema, commentParamsSchema } from '../validators/comment.validators'; const router = Router(); /** POST /comments Create a new comment (supports parentId for replies) Request body: CreateCommentRequest - targetType: string (post, resource, note, outcome, review, circle, idea, portfolio) - targetId: number - content: string (1-5000 characters) - visibility?: string (public, private) - defaults to private - parentId?: number (for reply comments) Requires authentication / router.post('/', authenticate, validate(createCommentSchema, 'body'), commentController.createComment ); /** GET /comments Get all comments for a specific target entity (returns tree structure) Query parameters: - targetType: string (required) - type of target entity - targetId: number (required) - ID of target entity Supports optional authentication for personalized visibility",
+        "parameters": [
+          {
+            "name": "targetType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "post",
+                "resource",
+                "note",
+                "outcome",
+                "review",
+                "circle",
+                "idea",
+                "portfolio"
+              ]
+            },
+            "description": "targetType 查詢參數"
+          },
+          {
+            "name": "targetId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "targetId 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -19073,7 +19103,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/comment.validators_commentParamsSchema"
+                "$ref": "#/components/schemas/comment.validators_updateCommentSchema"
               }
             }
           }
@@ -19738,6 +19768,103 @@
           }
         },
         "description": "處理想法相關的路由定義 / import { Router, RequestHandler } from 'express'; import { authenticate, optionalAuth } from '@/middleware/auth'; import { validate } from '@/middleware/validation.middleware'; import { createIdeaSchema, updateIdeaSchema, ideaQuerySchema, ideaParamsSchema } from '@/validators/idea.validators'; import ideaController from '@/controllers/idea.controller'; const router = Router(); /** GET /ideas 獲取想法列表 查詢參數：page, limit, query, tags, userId, status, sort, order 支援可選身份驗證（用於個人化內容）",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "query 查詢參數"
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "tags 查詢參數"
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "draft",
+                "archived",
+                "all"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "likeCount"
+              ],
+              "default": "createdAt"
+            },
+            "description": "sort 查詢參數"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "order 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -19875,7 +20002,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/idea.validators_ideaParamsSchema"
+                "$ref": "#/components/schemas/idea.validators_updateIdeaSchema"
               }
             }
           }
@@ -20312,6 +20439,103 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "query 查詢參數"
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "tags 查詢參數"
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "draft",
+                "archived",
+                "all"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "likeCount"
+              ],
+              "default": "createdAt"
+            },
+            "description": "sort 查詢參數"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "order 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -20350,6 +20574,122 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused",
+                "completed",
+                "archived"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "contentType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "book",
+                "video",
+                "articles",
+                "podcast",
+                "course",
+                "custom"
+              ],
+              "nullable": true
+            },
+            "description": "contentType 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "title",
+                "progress"
+              ],
+              "default": "createdAt"
+            },
+            "description": "sortBy 查詢參數"
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "sortOrder 查詢參數"
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "dateFrom 查詢參數"
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "dateTo 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -20388,6 +20728,35 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "timeRange",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "default": "30d"
+            },
+            "description": "timeRange 查詢參數"
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "includeArchived 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -20426,6 +20795,118 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "category 查詢參數"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "link",
+                "file",
+                "note",
+                "draft"
+              ],
+              "nullable": true
+            },
+            "description": "type 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ],
+              "default": "draft"
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name"
+              ],
+              "default": "updatedAt"
+            },
+            "description": "sortBy 查詢參數"
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "sortOrder 查詢參數"
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "tags 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -20464,6 +20945,28 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "category 查詢參數"
+          },
+          {
+            "name": "includeSystem",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "includeSystem 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -21399,6 +21902,122 @@
           }
         },
         "description": "處理實踐相關的路由定義 / import { Router, RequestHandler } from 'express'; import { practiceController } from '../controllers/practice.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { validate } from '../middleware/validation.middleware'; import { practiceQuerySchema, myPracticesQuerySchema, practiceParamsSchema, createPracticeSchema, updatePracticeSchema, checkInSchema, checkInQuerySchema, practiceEventViewSchema, practiceEventShareSchema } from '../validators/practice.validators'; import { z } from 'zod'; // 月度日曆參數 schema const monthlyCalendarParamsSchema = z.object({ id: z.string().uuid('Practice ID must be a valid UUID'), year: z.string().regex(/^\\d{4}$/, 'Year must be 4 digits').transform(Number), month: z.string().regex(/^(0?[1-9]|1[0-2])$/, 'Month must be 1-12').transform(Number) }); const router = Router(); /** GET /practices 取得實踐列表 查詢參數：page, limit, search, contentType, status, sortBy, sortOrder, userId 支援可選身份驗證（用於個人化內容）",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused",
+                "completed",
+                "archived"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "contentType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "book",
+                "video",
+                "articles",
+                "podcast",
+                "course",
+                "custom"
+              ],
+              "nullable": true
+            },
+            "description": "contentType 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "title",
+                "progress"
+              ],
+              "default": "createdAt"
+            },
+            "description": "sortBy 查詢參數"
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "sortOrder 查詢參數"
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "dateFrom 查詢參數"
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "dateTo 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -21484,6 +22103,124 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "query 查詢參數"
+          },
+          {
+            "name": "contentType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "contentType 查詢參數"
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "tags 查詢參數"
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused",
+                "completed",
+                "archived",
+                "all"
+              ],
+              "default": "all"
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "likeCount"
+              ],
+              "default": "createdAt"
+            },
+            "description": "sort 查詢參數"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "order 查詢參數"
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "include 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -21612,7 +22349,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/practice.validators_practiceParamsSchema"
+                "$ref": "#/components/schemas/practice.validators_updatePracticeSchema"
               }
             }
           }
@@ -21740,7 +22477,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/practice.validators_practiceParamsSchema"
+                "$ref": "#/components/schemas/practice.validators_checkInSchema"
               }
             }
           }
@@ -21801,6 +22538,66 @@
               "type": "string"
             },
             "description": "id 參數"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 20
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "startDate 查詢參數"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "endDate 查詢參數"
+          },
+          {
+            "name": "mood",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "mood 查詢參數"
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "include 查詢參數"
           }
         ],
         "security": [
@@ -21957,16 +22754,6 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/practice.validators_practiceParamsSchema"
-              }
-            }
-          }
-        },
         "parameters": [
           {
             "name": "id",
@@ -22014,16 +22801,6 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/practice.validators_practiceParamsSchema"
-              }
-            }
           }
         },
         "parameters": [
@@ -22080,7 +22857,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/practice.validators_practiceParamsSchema"
+                "$ref": "#/components/schemas/practice.validators_practiceEventShareSchema"
               }
             }
           }
@@ -22139,7 +22916,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/practice.validators_practiceParamsSchema"
+                "$ref": "#/components/schemas/practice.validators_practiceEventViewSchema"
               }
             }
           }
@@ -22292,6 +23069,109 @@
           }
         },
         "description": "處理專案相關的路由定義 / import { Router, RequestHandler } from 'express'; import { createProjectController, getProjectController, getProjectsController, updateProjectController, deleteProjectController, getProjectStatsController, getMyProjectsController, getPublicProjectsController, duplicateProjectController } from '../controllers/project.controller'; import { createNote, getNotes, getMyNotes, getNoteDetail, updateNote, getPublicNotes, deleteNote } from '../controllers/note.controller'; import { createReview, getReviews, getReviewDetail, updateReview, deleteReview } from '../controllers/review.controller'; import { createOutcome, getOutcomes, getMyOutcomes, getOutcomeDetail, updateOutcome, deleteOutcome } from '../controllers/outcome.controller'; import { createTaskController, getTasksController, getTaskController, updateTaskController, deleteTaskController } from '../controllers/task.controller'; import { createMilestoneController, getMilestonesController, updateMilestoneController, deleteMilestoneController } from '../controllers/milestone.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate, optionalAuth } from '../middleware/auth'; // import { //   canCreateProject, //   canUpdateProject, //   canDeleteProject // } from '../middleware/permission.middleware'; import { createProjectSchema, updateProjectSchema, projectParamsSchema, projectQuerySchema, duplicateProjectSchema, projectStatsQuerySchema } from '../validators/project.validators'; import { createNoteSchema, updateNoteSchema, noteParamsSchema, noteProjectParamsSchema, publicNotesQuerySchema } from '../validators/note.validators'; import { createReviewSchema, updateReviewSchema, reviewParamsSchema, reviewQuerySchema } from '../validators/review.validators'; import { createOutcomeSchema, updateOutcomeSchema, outcomeParamsSchema } from '../validators/outcome.validators'; import { createTaskSchema, updateTaskSchema, taskParamsSchema, taskMilestoneParamsSchema } from '../validators/task.validators'; import { createMilestoneSchema, updateMilestoneSchema, milestoneParamsSchema } from '../validators/milestone.validators'; const router = Router(); /** GET /projects 獲取專案列表 查詢參數：page, limit, status, is_public, user_id, search, sort_by, sort_order 支援可選身份驗證（用於個人化內容）",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Not Started",
+                "Ongoing",
+                "Completed",
+                "Canceled"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "isPublic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "isPublic 查詢參數"
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "title",
+                "startDate",
+                "endDate"
+              ],
+              "nullable": true
+            },
+            "description": "sortBy 查詢參數"
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "nullable": true
+            },
+            "description": "sortOrder 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -22377,6 +23257,109 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Not Started",
+                "Ongoing",
+                "Completed",
+                "Canceled"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "isPublic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "isPublic 查詢參數"
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "title",
+                "startDate",
+                "endDate"
+              ],
+              "nullable": true
+            },
+            "description": "sortBy 查詢參數"
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "nullable": true
+            },
+            "description": "sortOrder 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -22415,6 +23398,109 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Not Started",
+                "Ongoing",
+                "Completed",
+                "Canceled"
+              ],
+              "nullable": true
+            },
+            "description": "status 查詢參數"
+          },
+          {
+            "name": "isPublic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "isPublic 查詢參數"
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "title",
+                "startDate",
+                "endDate"
+              ],
+              "nullable": true
+            },
+            "description": "sortBy 查詢參數"
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "nullable": true
+            },
+            "description": "sortOrder 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -22453,6 +23539,19 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "userId 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -22543,7 +23642,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/project.validators_projectParamsSchema"
+                "$ref": "#/components/schemas/project.validators_updateProjectSchema"
               }
             }
           }
@@ -22671,7 +23770,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/project.validators_projectParamsSchema"
+                "$ref": "#/components/schemas/project.validators_duplicateProjectSchema"
               }
             }
           }
@@ -22801,6 +23900,32 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true,
+              "default": 1
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true,
+              "default": 10
+            },
+            "description": "pageSize 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -22844,7 +23969,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+                "$ref": "#/components/schemas/milestone.validators_createMilestoneSchema"
               }
             }
           }
@@ -22950,7 +24075,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/milestone.validators_milestoneParamsSchema"
+                "$ref": "#/components/schemas/milestone.validators_updateMilestoneSchema"
               }
             }
           }
@@ -23096,7 +24221,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/task.validators_taskMilestoneParamsSchema"
+                "$ref": "#/components/schemas/task.validators_createTaskSchema"
               }
             }
           }
@@ -23285,7 +24410,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/task.validators_taskParamsSchema"
+                "$ref": "#/components/schemas/task.validators_updateTaskSchema"
               }
             }
           }
@@ -23449,7 +24574,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+                "$ref": "#/components/schemas/note.validators_createNoteSchema"
               }
             }
           }
@@ -23613,7 +24738,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/note.validators_noteParamsSchema"
+                "$ref": "#/components/schemas/note.validators_updateNoteSchema"
               }
             }
           }
@@ -23759,7 +24884,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+                "$ref": "#/components/schemas/outcome.validators_createOutcomeSchema"
               }
             }
           }
@@ -23921,7 +25046,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/outcome.validators_outcomeParamsSchema"
+                "$ref": "#/components/schemas/outcome.validators_updateOutcomeSchema"
               }
             }
           }
@@ -24067,7 +25192,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/note.validators_noteProjectParamsSchema"
+                "$ref": "#/components/schemas/review.validators_createReviewSchema"
               }
             }
           }
@@ -24128,6 +25253,63 @@
               "type": "string"
             },
             "description": "projectId 參數"
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "nullable": true
+            },
+            "description": "week 查詢參數"
+          },
+          {
+            "name": "mood",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "happy",
+                "calm",
+                "anxious",
+                "tired",
+                "frustrated"
+              ],
+              "nullable": true
+            },
+            "description": "mood 查詢參數"
+          },
+          {
+            "name": "stressLevel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "nullable": true
+            },
+            "description": "stressLevel 查詢參數"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "pageSize 查詢參數"
           }
         ],
         "security": [
@@ -24229,7 +25411,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/review.validators_reviewParamsSchema"
+                "$ref": "#/components/schemas/review.validators_updateReviewSchema"
               }
             }
           }
@@ -24380,6 +25562,56 @@
               "type": "string"
             },
             "description": "resourceId 參數"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "cursor 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name"
+              ],
+              "nullable": true
+            },
+            "description": "sort 查詢參數"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "nullable": true
+            },
+            "description": "order 查詢參數"
           }
         ],
         "security": [
@@ -24885,6 +26117,58 @@
           }
         },
         "description": "處理資源相關的路由定義 / import { Router } from 'express'; import { getResources, getResourceById, createResource, updateResource, updateResourceStatus, deleteResource, getResourceStats, getResourceTags } from '../controllers/resource.controller'; import { validate } from '../middleware/validation.middleware'; import { authenticate, optionalAuth, requireRole } from '../middleware/auth'; import { createResourceSchema, updateResourceSchema, updateResourceStatusSchema } from '../validators/resource.validator'; import { paginationSchema, resourceFilterSchema } from '../validators/request-params.validator'; const router = Router(); /** GET /resources 獲取資源列表 查詢參數：cursor, limit, type, cost, level, majorCategory, subCategory, tags, query, sort, order 支援可選身份驗證（用於個人化內容）",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "cursor 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "limit 查詢參數"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "name"
+              ],
+              "nullable": true
+            },
+            "description": "sort 查詢參數"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "nullable": true
+            },
+            "description": "order 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -25291,6 +26575,18 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "limit 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -25329,6 +26625,27 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "query 查詢參數"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "limit 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -25509,6 +26826,34 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "entityId 查詢參數"
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "resource",
+                "project",
+                "idea",
+                "practice",
+                "review"
+              ]
+            },
+            "description": "entityType 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -25548,6 +26893,70 @@
           }
         },
         "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容）",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "page 查詢參數"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true,
+              "nullable": true
+            },
+            "description": "pageSize 查詢參數"
+          },
+          {
+            "name": "educationStage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "educationStage 查詢參數"
+          },
+          {
+            "name": "roleList",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "roleList 查詢參數"
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "location 查詢參數"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "search 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -25584,7 +26993,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
+        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** PUT /users/me 更新當前用戶資訊 需要身份驗證 / router.put('/me', authenticate, validate(updateUserSchema, 'body'), userController.updateMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
         "requestBody": {
           "required": true,
           "content": {
@@ -25631,6 +27040,52 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "PUT /me",
+        "operationId": "put_api_v1_users_me",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user.validators_updateUserResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/user.validators_updateUserSchema"
+              }
+            }
           }
         },
         "security": [
@@ -25889,6 +27344,28 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "category 查詢參數"
+          },
+          {
+            "name": "includeSystem",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "includeSystem 查詢參數"
+          }
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -26040,7 +27517,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/user.validators_userSuccessResponseSchema"
+                  "$ref": "#/components/schemas/user.validators_updateUserResponseSchema"
                 }
               }
             }
@@ -26063,7 +27540,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/user.validators_getUserParamsSchema"
+                "$ref": "#/components/schemas/user.validators_updateUserSchema"
               }
             }
           }
