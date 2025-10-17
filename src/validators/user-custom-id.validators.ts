@@ -3,32 +3,32 @@
  */
 
 import { z } from 'zod';
+import {
+  CUSTOM_ID_REGEX,
+  CUSTOM_ID_MIN_LENGTH,
+  CUSTOM_ID_MAX_LENGTH,
+  CUSTOM_ID_ERROR_MESSAGES,
+  validateCustomIdFormat as validateFormat
+} from '../constants/validation';
 
 /**
  * 自訂 ID 格式驗證 Schema
+ * 使用共享的驗證規則確保一致性
  */
 export const customIdSchema = z.object({
   customId: z.string()
-    .min(3, '自訂 ID 至少需要 3 個字符')
-    .max(50, '自訂 ID 不能超過 50 個字符')
-    .regex(/^[a-zA-Z0-9_-]+$/, '自訂 ID 只能包含英文字母、數字、底線和連字符')
-    .refine(
-      (val) => !val.startsWith('_') && !val.startsWith('-'), 
-      '自訂 ID 不能以底線或連字符開頭'
-    )
-    .refine(
-      (val) => !val.endsWith('_') && !val.endsWith('-'), 
-      '自訂 ID 不能以底線或連字符結尾'
-    )
+    .min(CUSTOM_ID_MIN_LENGTH, CUSTOM_ID_ERROR_MESSAGES.MIN_LENGTH)
+    .max(CUSTOM_ID_MAX_LENGTH, CUSTOM_ID_ERROR_MESSAGES.MAX_LENGTH)
+    .regex(CUSTOM_ID_REGEX, CUSTOM_ID_ERROR_MESSAGES.FORMAT)
 });
 
 /**
- * 自訂 ID 路徑參數驗證 Schema  
+ * 自訂 ID 路徑參數驗證 Schema
  */
 export const customIdParamsSchema = z.object({
   customId: z.string()
-    .min(3, '自訂 ID 至少需要 3 個字符')
-    .max(50, '自訂 ID 不能超過 50 個字符')
+    .min(CUSTOM_ID_MIN_LENGTH, CUSTOM_ID_ERROR_MESSAGES.MIN_LENGTH)
+    .max(CUSTOM_ID_MAX_LENGTH, CUSTOM_ID_ERROR_MESSAGES.MAX_LENGTH)
 });
 
 /**
@@ -38,15 +38,9 @@ export const setCustomIdRequestSchema = customIdSchema;
 
 /**
  * 驗證自訂 ID 格式的工具函數
+ * 使用共享的驗證邏輯
  */
-export const validateCustomIdFormat = (customId: string): boolean => {
-  const regex = /^[a-zA-Z0-9_-]{3,50}$/;
-  return regex.test(customId) && 
-         !customId.startsWith('_') && 
-         !customId.startsWith('-') &&
-         !customId.endsWith('_') && 
-         !customId.endsWith('-');
-};
+export const validateCustomIdFormat = validateFormat;
 
 /**
  * 匯出驗證 Schema 類型
