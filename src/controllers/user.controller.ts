@@ -122,6 +122,26 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * 更新當前用戶
+ * PUT /api/users/me
+ */
+export const updateMe = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser || !currentUser._id) {
+    throw new NotFoundError('User information not found');
+  }
+
+  const requestData = req.body as UpdateUserRequest;
+  const result = await userService.updateUser(currentUser._id, requestData);
+
+  // 驗證響應格式
+  const validatedResponse = updateUserResponseSchema.parse(result);
+
+  res.json(validatedResponse);
+});
+
+/**
  * 更新用戶
  * PUT /api/users/:id
  */
@@ -304,6 +324,7 @@ export const userController = {
   getMe,
   getOneUser,
   createUser,
+  updateMe,
   updateUser,
   deleteMe,
   deleteUser,
