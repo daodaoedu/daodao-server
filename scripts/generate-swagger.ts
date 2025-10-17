@@ -193,16 +193,37 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
   if (schema instanceof z.ZodObject) {
     metadata.type = 'object';
     metadata.properties = {};
-    
+
+    // 提取 required 字段列表（不是 optional 的字段）
+    const requiredFields: string[] = [];
+
     // 遍歷物件屬性
     const shape = schema.shape;
     for (const [key, value] of Object.entries(shape)) {
+      const valueDef = (value as any)._def;
+
+      // 檢查是否為 optional 或 nullable
+      const isOptional = value instanceof z.ZodOptional ||
+                        value instanceof z.ZodNullable ||
+                        (valueDef?.typeName === 'ZodOptional') ||
+                        (valueDef?.typeName === 'ZodNullable');
+
+      // 如果不是 optional，則為 required
+      if (!isOptional) {
+        requiredFields.push(key);
+      }
+
       const propertyMetadata = extractZodV4Metadata(value as z.ZodSchema);
       // 如果屬性的 metadata 為空物件，記錄警告
       if (Object.keys(propertyMetadata).length === 0) {
         console.warn(`⚠️  Property '${key}' generated empty metadata:`, value);
       }
       metadata.properties[key] = propertyMetadata;
+    }
+
+    // 只有在有 required 字段時才添加 required 陣列
+    if (requiredFields.length > 0) {
+      metadata.required = requiredFields;
     }
   } else if (schema instanceof z.ZodArray) {
     metadata.type = 'array';
@@ -919,12 +940,15 @@ async function generateOpenAPISpec(schemas: any, routes: any[]): Promise<any> {
         const querySchema = openApiSpec.components.schemas[querySchemaKey];
         if (querySchema.properties) {
           operation.parameters = operation.parameters || [];
+          // 從 Zod schema 中提取 required 欄位列表
+          const requiredFields = querySchema.required || [];
+
           // 將 query schema 的屬性轉換為 query 參數
           for (const [paramName, paramSchema] of Object.entries(querySchema.properties as Record<string, any>)) {
             operation.parameters.push({
               name: paramName,
               in: 'query',
-              required: false, // query 參數通常是可選的
+              required: requiredFields.includes(paramName),
               schema: paramSchema,
               description: paramSchema.description || `${paramName} 查詢參數`
             });
