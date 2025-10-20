@@ -267,7 +267,7 @@ jobs:
     needs: [build]
     if: needs.build.result == 'success'
     environment: ${{ needs.build.outputs.image-tag == 'prod' && 'production' || 'development' }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Set up SSH
         run: |
@@ -296,6 +296,69 @@ jobs:
             export COMMIT_SHA=${{ env.COMMIT_SHA }}
 
             echo "=== Starting deployment for $APP_ENV environment ==="
+
+            # ===== 部署前磁碟空間檢查與清理 =====
+            # 目的：確保有足夠的磁碟空間進行部署
+            # 策略：
+            # 1. 檢查當前磁碟使用率
+            # 2. 如果使用率 > 80%，自動清理 Docker 資源
+            # 3. 清理 build cache（最大空間回收）
+            # 4. 清理舊映像和未使用的資源
+            # 5. 確保至少有 10GB 可用空間
+            # ==========================================
+            echo "=== Pre-deployment Disk Space Check ==="
+            DISK_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
+            DISK_AVAIL=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+
+            echo "Current disk usage: ${DISK_USAGE}%"
+            echo "Available space: ${DISK_AVAIL}GB"
+
+            if [ "$DISK_USAGE" -gt 80 ] || [ "$DISK_AVAIL" -lt 10 ]; then
+              echo "⚠️  Disk space is limited (${DISK_USAGE}% used, ${DISK_AVAIL}GB available)"
+              echo "=== Starting automatic cleanup ==="
+
+              echo "📊 Docker resource usage before cleanup:"
+              docker system df || true
+
+              # 清理 build cache（通常最大）
+              echo "Cleaning build cache..."
+              docker builder prune -a -f || true
+
+              # 清理未使用的映像（保留運行中容器的映像）
+              echo "Cleaning unused images..."
+              docker image prune -a -f --filter "until=48h" || true
+
+              # 清理停止的容器
+              echo "Cleaning stopped containers..."
+              docker container prune -f || true
+
+              # 清理未使用的 volumes（保留命名的 volumes）
+              echo "Cleaning unused volumes..."
+              docker volume prune -f || true
+
+              # 清理未使用的網路
+              echo "Cleaning unused networks..."
+              docker network prune -f || true
+
+              echo "📊 Docker resource usage after cleanup:"
+              docker system df || true
+
+              # 再次檢查磁碟空間
+              DISK_USAGE_AFTER=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
+              DISK_AVAIL_AFTER=$(df -BG / | tail -1 | awk '{print $4}' | sed 's/G//')
+              echo "Disk usage after cleanup: ${DISK_USAGE_AFTER}%"
+              echo "Available space after cleanup: ${DISK_AVAIL_AFTER}GB"
+
+              if [ "$DISK_AVAIL_AFTER" -lt 5 ]; then
+                echo "❌ Insufficient disk space after cleanup (${DISK_AVAIL_AFTER}GB available)"
+                echo "⚠️  Manual intervention required - please free up more disk space"
+                exit 1
+              fi
+
+              echo "✅ Cleanup completed successfully"
+            else
+              echo "✅ Sufficient disk space available"
+            fi
             
             # 快速更新代碼（淺層克隆或增量更新）
             if [ -d $APP_DIR/.git ]; then
