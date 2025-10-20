@@ -104,16 +104,24 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
 /**
  * 創建用戶
  * POST /api/users
+ * 此端點用於將臨時用戶轉換為正式用戶
  */
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const requestData = req.body as CreateUserRequest;
   const currentUser = req.user;
 
-  if (!currentUser || !currentUser._id) {
-    throw new NotFoundError('User information not found');
+  // 檢查用戶是否為臨時用戶
+  // 臨時用戶有 id (數字) 和 isTemp=true，但沒有 _id (UUID)
+  if (!currentUser || !currentUser.id) {
+    throw new NotFoundError('用戶資訊不存在');
   }
 
-  const result = await userService.createUser(requestData, currentUser._id);
+  if (!currentUser.isTemp) {
+    throw new NotFoundError('此端點僅供臨時用戶完成註冊使用');
+  }
+
+  // 將數字 id 轉換為字串傳遞給 service
+  const result = await userService.createUser(requestData, currentUser.id.toString());
 
   // 驗證響應格式確保符合 OpenAPI schema
   const validatedResponse = createUserResponseSchema.parse(result);
