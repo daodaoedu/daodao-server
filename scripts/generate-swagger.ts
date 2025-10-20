@@ -605,6 +605,7 @@ const routeResponseMapping: Record<string, string> = {
   
   // 用戶相關路由
   'POST:/api/v1/users/': 'user.validators_createUserResponseSchema', // 創建用戶返回 user + token
+  'POST:/api/v1/users/me': 'user.validators_createUserResponseSchema', // 創建用戶返回 user + token (與 POST /users 相同)
   'GET:/api/v1/users/': 'user.validators_usersListResponseSchema',
   'GET:/api/v1/users/me': 'user.validators_userSuccessResponseSchema', // 包含完整 contactList
   'PUT:/api/v1/users/me': 'user.validators_updateUserResponseSchema', // 更新當前用戶
