@@ -10,16 +10,18 @@ import {
 } from './api-response.validators';
 import { PROFESSIONAL_FIELDS, REFERRAL_SOURCES } from '../types/user.types';
 
-// 專業領域驗證 schema
-const professionalFieldSchema = z.enum(PROFESSIONAL_FIELDS)
+// 專業領域驗證 schema (支援多選)
+const professionalFieldSchema = z
+  .array(z.enum(PROFESSIONAL_FIELDS))
+  .max(3, '最多選擇 3 個專業領域')
   .optional()
-  .describe("ESCO 專業領域分類")
+  .describe("ESCO 專業領域分類 (可複選，最多 3 個)")
   .meta({
     title: "專業領域",
     examples: [
-      'information_and_communication_technologies_icts',
-      'education',
-      'business_administration_and_law'
+      ['information_and_communication_technologies_icts'],
+      ['education', 'business_administration_and_law'],
+      ['arts_and_humanities', 'social_sciences_journalism_and_information', 'language_skills_and_knowledge']
     ]
   });
 
@@ -605,14 +607,14 @@ const formattedUserResponseSchema = z.object({
     }),
 
   // 新增欄位
-  professionalField: z.enum(PROFESSIONAL_FIELDS)
+  professionalField: z.array(z.enum(PROFESSIONAL_FIELDS))
     .nullable()
-    .describe("ESCO 專業領域分類")
+    .describe("ESCO 專業領域分類 (陣列)")
     .meta({
       title: "專業領域",
       examples: [
-        'information_and_communication_technologies_icts',
-        'education',
+        ['information_and_communication_technologies_icts'],
+        ['education', 'business_administration_and_law'],
         null
       ]
     }),

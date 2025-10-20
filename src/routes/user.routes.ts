@@ -52,6 +52,18 @@ router.get('/me',
 );
 
 /**
+ * POST /users/me
+ * 創建新用戶（與 POST /users 功能相同）
+ * 請求體：CreateUserRequest
+ * 需要身份驗證和創建用戶權限（允許臨時用戶）
+ */
+router.post('/me',
+  authenticate,
+  validate(createUserSchema, 'body'),
+  userController.createUser as RequestHandler
+);
+
+/**
  * PUT /users/me
  * 更新當前用戶資訊
  * 請求體：UpdateUserRequest
