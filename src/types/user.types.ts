@@ -70,7 +70,7 @@ export interface CreateUserRequest {
   isSendEmail?: boolean;
 
   // 新增欄位
-  professionalField?: ProfessionalField;
+  professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
   customId?: string; // 自訂 ID (可在創建時設置)
@@ -102,7 +102,7 @@ export interface UpdateUserRequest {
   customId?: string;
 
   // 新增欄位
-  professionalField?: ProfessionalField;
+  professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
 }
@@ -162,7 +162,7 @@ export interface FormattedUserResponse {
   customIdCreatedAt: string | null;
 
   // 新增欄位
-  professionalField: ProfessionalField | null;
+  professionalField: ProfessionalField[] | null; // 支援多選
   personalSlogan: string | null;
   referralSource: ReferralSource | string | null;
 

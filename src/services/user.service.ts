@@ -36,6 +36,7 @@ import { city_t, want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
 import tagService from './tag.service';
+import professionalFieldService from './professional-field.service';
 import {
   validateCustomIdFormat,
   CUSTOM_ID_ERROR_MESSAGES
@@ -330,6 +331,12 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     return moment(date).toISOString();
   };
 
+  // 獲取用戶興趣
+  const interestList = await getUserInterests(user.id);
+
+  // 獲取專業領域（新增）
+  const professionalField = await professionalFieldService.getUserProfessionalFields(user.id);
+
   return {
     id: user.external_id || '',
     name: user.nickname || null,
@@ -348,7 +355,7 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     educationStage: (user.education_stage as 'university' | 'high' | 'other') || null,
     selfIntroduction: user.basic_info?.self_introduction || null,
     share: user.basic_info?.share_list || null,
-    interestList: await getUserInterests(user.id),
+    interestList,
     preferences: preferences || null,
     contactList: {
       email: user.contacts?.email || null,
@@ -372,7 +379,7 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
       moment(user.custom_id_created_at).toISOString() : null,
 
     // 新增欄位
-    professionalField: (user.professional_field as import('../types/user.types').ProfessionalField) || null,
+    professionalField,
     personalSlogan: user.personal_slogan || null,
     referralSource: user.referral_source || null,
 
@@ -754,7 +761,6 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         basic_info_id: basicInfo.id,
 
         // 新增欄位
-        professional_field: professionalField,
         personal_slogan: personalSlogan,
         referral_source: referralSource,
         custom_id: customId,
@@ -817,6 +823,15 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     // Handle interests (interestList)
     if (interestList && interestList.length > 0) {
       await setUserInterests(createdUser.id, interestList, tx);
+    }
+
+    // 處理專業領域（新增）
+    if (professionalField && professionalField.length > 0) {
+      await professionalFieldService.setUserProfessionalFields(
+        createdUser.id,
+        professionalField,
+        tx
+      );
     }
 
     // 生成新 token
@@ -940,7 +955,6 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         updated_at: new Date(),
 
         // 新增欄位
-        professional_field: professionalField,
         personal_slogan: personalSlogan,
         referral_source: referralSource,
       }
@@ -983,6 +997,15 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
     // Handle interests (interestList)
     if (interestList !== undefined) {
       await setUserInterests(user.id, interestList || [], tx);
+    }
+
+    // 更新專業領域（新增）
+    if (professionalField !== undefined) {
+      await professionalFieldService.setUserProfessionalFields(
+        user.id,
+        professionalField || [],
+        tx
+      );
     }
 
     // 獲取更新後的完整用戶資訊

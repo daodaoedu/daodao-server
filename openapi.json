@@ -19295,21 +19295,24 @@
             "nullable": true
           },
           "professionalField": {
-            "type": "string",
-            "enum": [
-              "information_and_communication_technologies_icts",
-              "business_administration_and_law",
-              "arts_and_humanities",
-              "natural_sciences_mathematics_and_statistics",
-              "engineering_manufacturing_and_construction",
-              "health_and_welfare",
-              "education",
-              "social_sciences_journalism_and_information",
-              "language_skills_and_knowledge",
-              "services",
-              "agriculture_forestry_fisheries_and_veterinary",
-              "others"
-            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "information_and_communication_technologies_icts",
+                "business_administration_and_law",
+                "arts_and_humanities",
+                "natural_sciences_mathematics_and_statistics",
+                "engineering_manufacturing_and_construction",
+                "health_and_welfare",
+                "education",
+                "social_sciences_journalism_and_information",
+                "language_skills_and_knowledge",
+                "services",
+                "agriculture_forestry_fisheries_and_veterinary",
+                "others"
+              ]
+            },
             "nullable": true
           },
           "personalSlogan": {
@@ -19445,21 +19448,24 @@
             "nullable": true
           },
           "professionalField": {
-            "type": "string",
-            "enum": [
-              "information_and_communication_technologies_icts",
-              "business_administration_and_law",
-              "arts_and_humanities",
-              "natural_sciences_mathematics_and_statistics",
-              "engineering_manufacturing_and_construction",
-              "health_and_welfare",
-              "education",
-              "social_sciences_journalism_and_information",
-              "language_skills_and_knowledge",
-              "services",
-              "agriculture_forestry_fisheries_and_veterinary",
-              "others"
-            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "information_and_communication_technologies_icts",
+                "business_administration_and_law",
+                "arts_and_humanities",
+                "natural_sciences_mathematics_and_statistics",
+                "engineering_manufacturing_and_construction",
+                "health_and_welfare",
+                "education",
+                "social_sciences_journalism_and_information",
+                "language_skills_and_knowledge",
+                "services",
+                "agriculture_forestry_fisheries_and_veterinary",
+                "others"
+              ]
+            },
             "nullable": true
           },
           "personalSlogan": {
@@ -19721,21 +19727,24 @@
                 "nullable": true
               },
               "professionalField": {
-                "type": "string",
-                "enum": [
-                  "information_and_communication_technologies_icts",
-                  "business_administration_and_law",
-                  "arts_and_humanities",
-                  "natural_sciences_mathematics_and_statistics",
-                  "engineering_manufacturing_and_construction",
-                  "health_and_welfare",
-                  "education",
-                  "social_sciences_journalism_and_information",
-                  "language_skills_and_knowledge",
-                  "services",
-                  "agriculture_forestry_fisheries_and_veterinary",
-                  "others"
-                ],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "information_and_communication_technologies_icts",
+                    "business_administration_and_law",
+                    "arts_and_humanities",
+                    "natural_sciences_mathematics_and_statistics",
+                    "engineering_manufacturing_and_construction",
+                    "health_and_welfare",
+                    "education",
+                    "social_sciences_journalism_and_information",
+                    "language_skills_and_knowledge",
+                    "services",
+                    "agriculture_forestry_fisheries_and_veterinary",
+                    "others"
+                  ]
+                },
                 "nullable": true
               },
               "personalSlogan": {
@@ -20010,21 +20019,24 @@
                   "nullable": true
                 },
                 "professionalField": {
-                  "type": "string",
-                  "enum": [
-                    "information_and_communication_technologies_icts",
-                    "business_administration_and_law",
-                    "arts_and_humanities",
-                    "natural_sciences_mathematics_and_statistics",
-                    "engineering_manufacturing_and_construction",
-                    "health_and_welfare",
-                    "education",
-                    "social_sciences_journalism_and_information",
-                    "language_skills_and_knowledge",
-                    "services",
-                    "agriculture_forestry_fisheries_and_veterinary",
-                    "others"
-                  ],
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "information_and_communication_technologies_icts",
+                      "business_administration_and_law",
+                      "arts_and_humanities",
+                      "natural_sciences_mathematics_and_statistics",
+                      "engineering_manufacturing_and_construction",
+                      "health_and_welfare",
+                      "education",
+                      "social_sciences_journalism_and_information",
+                      "language_skills_and_knowledge",
+                      "services",
+                      "agriculture_forestry_fisheries_and_veterinary",
+                      "others"
+                    ]
+                  },
                   "nullable": true
                 },
                 "personalSlogan": {
@@ -20333,21 +20345,24 @@
                     "nullable": true
                   },
                   "professionalField": {
-                    "type": "string",
-                    "enum": [
-                      "information_and_communication_technologies_icts",
-                      "business_administration_and_law",
-                      "arts_and_humanities",
-                      "natural_sciences_mathematics_and_statistics",
-                      "engineering_manufacturing_and_construction",
-                      "health_and_welfare",
-                      "education",
-                      "social_sciences_journalism_and_information",
-                      "language_skills_and_knowledge",
-                      "services",
-                      "agriculture_forestry_fisheries_and_veterinary",
-                      "others"
-                    ],
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "information_and_communication_technologies_icts",
+                        "business_administration_and_law",
+                        "arts_and_humanities",
+                        "natural_sciences_mathematics_and_statistics",
+                        "engineering_manufacturing_and_construction",
+                        "health_and_welfare",
+                        "education",
+                        "social_sciences_journalism_and_information",
+                        "language_skills_and_knowledge",
+                        "services",
+                        "agriculture_forestry_fisheries_and_veterinary",
+                        "others"
+                      ]
+                    },
                     "nullable": true
                   },
                   "personalSlogan": {
@@ -20629,21 +20644,24 @@
                 "nullable": true
               },
               "professionalField": {
-                "type": "string",
-                "enum": [
-                  "information_and_communication_technologies_icts",
-                  "business_administration_and_law",
-                  "arts_and_humanities",
-                  "natural_sciences_mathematics_and_statistics",
-                  "engineering_manufacturing_and_construction",
-                  "health_and_welfare",
-                  "education",
-                  "social_sciences_journalism_and_information",
-                  "language_skills_and_knowledge",
-                  "services",
-                  "agriculture_forestry_fisheries_and_veterinary",
-                  "others"
-                ],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "information_and_communication_technologies_icts",
+                    "business_administration_and_law",
+                    "arts_and_humanities",
+                    "natural_sciences_mathematics_and_statistics",
+                    "engineering_manufacturing_and_construction",
+                    "health_and_welfare",
+                    "education",
+                    "social_sciences_journalism_and_information",
+                    "language_skills_and_knowledge",
+                    "services",
+                    "agriculture_forestry_fisheries_and_veterinary",
+                    "others"
+                  ]
+                },
                 "nullable": true
               },
               "personalSlogan": {
@@ -29844,7 +29862,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** PUT /users/me 更新當前用戶資訊 需要身份驗證 / router.put('/me', authenticate, validate(updateUserSchema, 'body'), userController.updateMe as RequestHandler ); /** GET /users/custom-id/check/:customId 檢查自訂 ID 可用性 路徑參數：customId - 要檢查的自訂 ID / router.get('/custom-id/check/:customId', validate(customIdParamsSchema, 'params'), userController.checkCustomIdAvailability as RequestHandler ); /** GET /users/custom-id/:customId 透過自訂 ID 獲取用戶資訊 路徑參數：customId - 用戶自訂 ID / router.get('/custom-id/:customId', validate(customIdParamsSchema, 'params'), userController.getUserByCustomId as RequestHandler ); /** POST /users/me/custom-id 設置當前用戶的自訂 ID 需要身份驗證",
+        "description": "定義用戶管理相關的 API 路由 / import { Router, RequestHandler } from 'express'; import { userController } from '../controllers/user.controller'; import { authenticate, optionalAuth } from '../middleware/auth'; import { canUpdateUser, // canDeleteUser, requireAdmin } from '../middleware/permission.middleware'; import { validate } from '../middleware/validation.middleware'; import { createUserSchema, updateUserSchema, getUserParamsSchema, getUserQuerySchema } from '../validators/user.validators'; import { customIdSchema, customIdParamsSchema } from '../validators/user-custom-id.validators'; import { preferencesQuerySchema, updatePreferencesSchema } from '../validators/me.validators'; const router = Router(); /** GET /users 獲取用戶列表 查詢參數：page, pageSize, educationStage, roleList, location, search 支援可選身份驗證（用於個人化內容） / router.get('/', optionalAuth, validate(getUserQuerySchema, 'query'), userController.getAllUsers as RequestHandler ); /** GET /users/me 獲取當前用戶資訊 需要身份驗證 / router.get('/me', authenticate, userController.getMe as RequestHandler ); /** POST /users/me 創建新用戶（與 POST /users 功能相同） 需要身份驗證和創建用戶權限（允許臨時用戶）",
         "requestBody": {
           "required": true,
           "content": {
@@ -29891,6 +29909,52 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "POST /me",
+        "operationId": "post_api_v1_users_me",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/user.validators_createUserSchema"
+              }
+            }
           }
         },
         "security": [
