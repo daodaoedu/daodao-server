@@ -493,9 +493,8 @@ export type BatchProjectOperation = z.infer<typeof batchProjectOperationSchema>;
 
 // 基於 ProjectResponse 接口的使用者資訊驗證
 const userResponseSchema = z.object({
-  id: z.number(),
-  name: z.string().nullable(),
-  _id: z.string().nullable(),
+  id: z.string(),
+  name: z.string(),
   roleList: z.array(z.string()),
   photoURL: z.string().nullable()
 }).nullable();

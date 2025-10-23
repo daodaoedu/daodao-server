@@ -78,11 +78,10 @@ export interface ProjectResponse {
   updatedAt: Date;
   version: number;
   user?: {
-    id: number;
-    name?: string | null;
-    _id?: string | null;
+    id: string;
+    name: string;
     roleList: string[];
-    photoURL?: string | null;
+    photoURL: string | null;
   } | null;
   milestones: Array<{
     id: number;

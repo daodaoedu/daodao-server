@@ -389,8 +389,7 @@ export const ideaDataSchema = z.object({
       examples: ["active"]
     }),
   user: z.object({
-    id: z.number(),
-    _id: z.string(),
+    id: z.string(),
     name: z.string(),
     photoURL: z.string().nullable(),
     roleList: z.array(z.string()).optional(),
