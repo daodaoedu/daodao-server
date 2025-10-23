@@ -461,8 +461,7 @@ import {
 
 // 用戶基本信息 Schema (based on actual UserBasicInfo from common.types.ts)
 export const userBasicInfoResponseSchema = z.object({
-  id: z.number().int().describe("用戶內部 ID"),
-  _id: z.string().describe("用戶外部 UUID"),
+  id: z.string().describe("用戶外部 UUID"),
   name: z.string().describe("用戶名稱"),
   photoURL: z.string().url().nullable().describe("用戶頭像 URL"),
   roleList: z.array(z.string()).optional().describe("用戶角色列表"),

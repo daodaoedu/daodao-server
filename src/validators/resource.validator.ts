@@ -366,9 +366,8 @@ export type ResourceSchema = UpdateResourceSchema & {
 
 // 用戶基本資訊 schema - 匹配 transformResourceToApi 的 user 格式
 const userBasicInfoSchema = z.object({
-  id: z.number().int().describe('用戶 ID'),
+  id: z.string().describe('用戶外部 ID'),
   name: z.string().describe('用戶名稱'),
-  _id: z.string().describe('用戶外部 ID'),
   roleList: z.array(z.string()).optional().describe('用戶角色列表'),
   photoURL: z.string().url().nullable().describe('用戶頭像 URL'),
   educationStage: z.string().nullable().optional().describe('教育階段'),

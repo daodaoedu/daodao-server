@@ -27,6 +27,10 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import {
+  NotFoundError,
+  ForbiddenError
+} from '../middleware/error.middleware';
 
 const prismaClient = prisma;
 
@@ -162,8 +166,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
-        id: practice.users.id,
-        _id: practice.users.external_id || '',
+        id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
         roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
@@ -288,8 +291,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
-        id: practice.users.id,
-        _id: practice.users.external_id || '',
+        id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
         roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
@@ -414,8 +416,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
-        id: practice.users.id,
-        _id: practice.users.external_id || '',
+        id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
         roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
@@ -562,8 +563,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
-        id: practice.users.id,
-        _id: practice.users.external_id || '',
+        id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
         roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []

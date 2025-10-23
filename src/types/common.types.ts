@@ -19,9 +19,8 @@ export interface UserBasicInfo {
 
 // 使用者簡化資訊（用於 idea, practice, project 等服務）
 export interface UserSimpleInfo {
-  id: number;
+  id: string;
   name: string;
-  _id: string;
   roleList: string[];
   photoURL: string | null;
 }

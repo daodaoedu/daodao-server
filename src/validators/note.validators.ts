@@ -326,9 +326,8 @@ export type PublicNotesQueryData = z.infer<typeof publicNotesQuerySchema>;
 
 // 基於 UserBasicInfo 的使用者資訊驗證
 const userBasicInfoSchema = z.object({
-  id: z.number(),
-  name: z.string().nullable(),
-  _id: z.string().nullable()
+  id: z.string(),
+  name: z.string().nullable()
 }).nullable();
 
 // 基於 NoteResponse 接口的便利貼響應驗證

@@ -119,8 +119,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     status: (idea.status || 'active') as IdeaStatus,
     hasResources: idea.has_resources || false,
     user: {
-      id: idea.users.id,
-      _id: idea.users.external_id || '',
+      id: idea.users.external_id || '',
       name: idea.users.nickname || '',
       photoURL: idea.users.contacts?.photo_url || null,
       roleList: idea.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
@@ -370,8 +369,7 @@ export async function getIdeas(
       status: (idea.status || 'active') as IdeaStatus,
       hasResources: idea.has_resources || false,
       user: {
-        id: idea.users.id,
-        _id: idea.users.external_id || '',
+        id: idea.users.external_id || '',
         name: idea.users.nickname || '',
         photoURL: idea.users.contacts?.photo_url || null,
         roleList: idea.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
@@ -513,8 +511,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
       status: (idea.status || 'active') as IdeaStatus,
       hasResources: idea.has_resources || false,
       user: {
-        id: idea.users.id,
-        _id: idea.users.external_id || '',
+        id: idea.users.external_id || '',
         name: idea.users.nickname || '',
         photoURL: idea.users.contacts?.photo_url || null,
         roleList: idea.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []

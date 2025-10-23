@@ -18,6 +18,11 @@ import type {
 import { createSuccessResponse, createPaginatedResponse } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
 import type { motivation_t, strategy_t, outcome_t, day_enum } from '../../generated/prisma';
+import {
+  NotFoundError,
+  BadRequestError,
+  ForbiddenError
+} from '../middleware/error.middleware';
 
 /**
  * 專案資料型別定義（包含關聯資料）
@@ -106,11 +111,10 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
     updatedAt: project.updated_at || new Date(),
     version: project.version || 1,
     user: project.users ? {
-      id: project.users.id,
-      name: project.users.nickname,
-      _id: project.users.external_id,
+      id: project.users.external_id || '',
+      name: project.users.nickname || '',
       roleList: project.users.user_positions?.map(up => up.position?.name) || [],
-      photoURL: project.users.contacts?.photo_url,
+      photoURL: project.users.contacts?.photo_url || null,
     } : null,
     milestones: project.milestone?.map(m => ({
       id: m.id,
@@ -147,12 +151,12 @@ export const createProject = async (
       });
 
       if (!user) {
-        throw new Error('用戶不存在');
+        throw new NotFoundError('用戶不存在');
       }
 
       // 角色和數量驗證（參考原有邏輯）
       if (user.role_id === 2) {
-        throw new Error('此角色無權新增學習計畫');
+        throw new ForbiddenError('此角色無權新增學習計畫');
       }
 
       if (user.role_id === 3) {
@@ -161,19 +165,19 @@ export const createProject = async (
         });
 
         if (projectCount >= 3) {
-          throw new Error('已達最大學習計畫數量限制（3個）');
+          throw new ForbiddenError('已達最大學習計畫數量限制（3個）');
         }
       }
 
       // 驗證必填字段
       if (!projectData.title) {
-        throw new Error('缺少必要欄位');
+        throw new BadRequestError('缺少必要欄位');
       }
 
       // 驗證日期
       if (projectData.start_date && projectData.end_date &&
         new Date(projectData.start_date) >= new Date(projectData.end_date)) {
-        throw new Error('結束日期必須晚於開始日期');
+        throw new BadRequestError('結束日期必須晚於開始日期');
       }
 
       // 創建專案
@@ -276,14 +280,15 @@ export const getProjectById = async (
 ): Promise<ApiSuccessResponse<ProjectResponse>> => {
   try {
     // 構建查詢條件
-    const whereClause: Record<string, unknown> = {
+    const whereClause = userId ? {
       external_id: projectId,
-      OR: userId ? [
+      OR: [
         { user_id: userId },
         { is_public: true }
-      ] : [
-        { is_public: true }
       ]
+    } : {
+      external_id: projectId,
+      is_public: true
     };
 
     const project = await prisma.project.findFirst({
@@ -313,13 +318,16 @@ export const getProjectById = async (
     });
 
     if (!project) {
-      throw new Error('專案不存在或無權限存取');
+      throw new NotFoundError('專案不存在或無權限存取');
     }
 
     const formattedProject = formatProjectResponse(project);
 
     return createSuccessResponse(formattedProject);
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
     throw error instanceof Error ? error : new Error('獲取專案失敗');
   }
 };
@@ -442,7 +450,7 @@ export const updateProject = async (
     });
 
     if (!project) {
-      throw new Error('專案不存在或無權限修改');
+      throw new NotFoundError('專案不存在或無權限修改');
     }
 
     const updateDataWithDates = {
@@ -490,7 +498,7 @@ export const deleteProject = async (
     });
 
     if (!project) {
-      throw new Error('專案不存在或無權限刪除');
+      throw new NotFoundError('專案不存在或無權限刪除');
     }
 
     await prisma.project.delete({
