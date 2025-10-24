@@ -61,6 +61,7 @@ export interface PracticeEntity {
     shareCount: number;
     commentCount: number;
   };
+  checkIns?: CheckInEntity[]; // Optional: included when ?include=checkIns is specified
 }
 
 // Check-in entity interface
@@ -70,6 +71,7 @@ export interface CheckInEntity {
   userId: number;
   checkInDate: string;
   progressAmount: number;
+  unit?: string;
   note?: string;
   mood?: CheckInMood;
   reflectionText?: string;

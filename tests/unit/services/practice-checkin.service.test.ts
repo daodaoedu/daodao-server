@@ -529,7 +529,7 @@ describe('Practice CheckIn Service', () => {
       
       // Verify correct date range query
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setUTCHours(0, 0, 0, 0);
       
       expect(prismaMock.practice_checkins.findFirst).toHaveBeenCalledWith({
         where: {

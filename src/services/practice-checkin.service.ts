@@ -45,8 +45,9 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
     }
 
     // 檢查當日是否已簽到
+    // 使用 UTC 時間確保跨時區一致性
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     
     const existingCheckIn = await prismaClient.practice_checkins.findFirst({
       where: {
@@ -87,7 +88,8 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
         practices: {
           select: {
             title: true,
-            total_amount: true
+            total_amount: true,
+            daily_goal_unit: true
           }
         }
       }
@@ -107,6 +109,7 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
       userId: checkIn.user_id,
       checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
       progressAmount: Number(checkIn.progress_amount),
+      unit: checkIn.practices.daily_goal_unit || undefined,
       note: checkIn.note || undefined,
       mood: checkIn.mood as CheckInMood,
       reflectionText: checkIn.reflection_text || undefined,
@@ -177,7 +180,8 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
           practices: {
             select: {
               title: true,
-              total_amount: true
+              total_amount: true,
+              daily_goal_unit: true
             }
           }
         }
@@ -191,6 +195,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       userId: checkIn.user_id,
       checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
       progressAmount: Number(checkIn.progress_amount),
+      unit: checkIn.practices.daily_goal_unit || undefined,
       note: checkIn.note || undefined,
       mood: checkIn.mood as CheckInMood,
       reflectionText: checkIn.reflection_text || undefined,
@@ -327,8 +332,9 @@ export async function updatePracticeProgress(
  */
 export async function validateDailyCheckIn(practiceId: number, userId: number): Promise<boolean> {
   try {
+    // 使用 UTC 時間確保跨時區一致性
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     const existingCheckIn = await prismaClient.practice_checkins.findFirst({
       where: {
