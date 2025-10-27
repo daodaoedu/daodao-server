@@ -264,6 +264,8 @@ export const createUserSchema = z.object({
 // 更新用戶 schema
 export const updateUserSchema = z.object({
   name: z.string()
+    .min(1, '名稱不可為空')
+    .max(100, '名稱長度不可超過 100 字')
     .optional()
     .describe("使用者姓名")
     .meta({
@@ -277,6 +279,13 @@ export const updateUserSchema = z.object({
     .meta({
       title: "個人大頭照",
       examples: ["https://example.com/avatar/john.jpg", "https://example.com/photos/user123.png"]
+    }),
+  location: z.string()
+    .optional()
+    .describe("地區代碼")
+    .meta({
+      title: "地區",
+      examples: ["taipei_city", "taichung_city", "kaohsiung_city", "tainan_city"]
     }),
   gender: z.enum(['male', 'female', 'other'], "無效的性別")
     .optional()

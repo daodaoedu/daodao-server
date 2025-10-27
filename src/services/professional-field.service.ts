@@ -78,7 +78,12 @@ export const getUserProfessionalFields = async (
  * 獲取所有可用的專業領域
  * @returns 所有啟用的專業領域列表
  */
-export const getAllProfessionalFields = async () => {
+export const getAllProfessionalFields = async (): Promise<Array<{
+  id: number;
+  name: string;
+  value: string;
+  description: string | null;
+}>> => {
   return await prisma.professional_fields.findMany({
     where: { is_active: true },
     orderBy: { display_order: 'asc' },
@@ -96,7 +101,12 @@ export const getAllProfessionalFields = async () => {
  * @param userId - 用戶 ID
  * @returns 專業領域完整資訊陣列
  */
-export const getUserProfessionalFieldsDetailed = async (userId: number) => {
+export const getUserProfessionalFieldsDetailed = async (userId: number): Promise<Array<{
+  id: number;
+  name: string;
+  value: string;
+  description: string | null;
+}>> => {
   const userFields = await prisma.user_professional_fields.findMany({
     where: { user_id: userId },
     include: {

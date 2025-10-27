@@ -27,10 +27,6 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
-import {
-  NotFoundError,
-  ForbiddenError
-} from '../middleware/error.middleware';
 
 const prismaClient = prisma;
 
