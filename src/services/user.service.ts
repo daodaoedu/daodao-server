@@ -893,7 +893,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
 
     const {
       name: nickname,
-      photoUrl,
+      photoURL,
       gender,
       birthDate,
       contactList,
@@ -901,6 +901,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       isOpenLocation,
       isOpenProfile,
       isSubscribeEmail,
+      location: areaCode,
       selfIntroduction,
       share,
       wantToDoList,
@@ -914,12 +915,41 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       interestList
     } = userData;
 
+    // 處理地區更新
+    let locationId: number | null | undefined = undefined;
+    if (areaCode !== undefined) {
+      if (areaCode === null || areaCode === '') {
+        locationId = null;
+      } else {
+        // 根據城市名稱映射獲取對應的枚舉值
+        const cityEnum = getCityNameMapping()[areaCode];
+
+        if (!cityEnum) {
+          throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
+        }
+
+        // 查找對應的 location
+        const location = await tx.location.findFirst({
+          where: {
+            city: {
+              name: cityEnum
+            }
+          }
+        });
+
+        if (!location) {
+          throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
+        }
+        locationId = location.id;
+      }
+    }
+
     // 更新聯絡方式
     if (user.contacts) {
       await tx.contacts.update({
         where: { id: user.contacts.id },
         data: {
-          photo_url: photoUrl,
+          photo_url: photoURL,
           is_subscribe_email: isSubscribeEmail,
           ig: contactList?.instagram,
           discord: contactList?.discord,
@@ -952,6 +982,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         is_open_location: isOpenLocation,
         is_open_profile: isOpenProfile,
         birth_date: birthDate ? new Date(birthDate) : undefined,
+        location_id: locationId,
         updated_at: new Date(),
 
         // 新增欄位

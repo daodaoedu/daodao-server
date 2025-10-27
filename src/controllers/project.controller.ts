@@ -80,7 +80,7 @@ export const getProjectsController = asyncHandler(async (req: Request, res: Resp
     is_public: req.query.isPublic ? req.query.isPublic === 'true' : undefined,
     user_id: req.query.userId ? parseInt(req.query.userId as string) : undefined,
     search: req.query.search as string,
-    sort_by: req.query.sortBy ? (() => {
+    sort_by: req.query.sortBy ? ((): string => {
       const sortByMap = {
         'createdAt': 'created_at',
         'updatedAt': 'updated_at',
@@ -195,7 +195,7 @@ export const getMyProjectsController = asyncHandler(async (req: Request, res: Re
     limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
     status: req.query.status as 'Ongoing' | 'Completed' | 'Not Started' | 'Canceled' | undefined,
     search: req.query.search as string,
-    sort_by: req.query.sortBy ? (() => {
+    sort_by: req.query.sortBy ? ((): string => {
       const sortByMap = {
         'createdAt': 'created_at',
         'updatedAt': 'updated_at',
@@ -227,7 +227,7 @@ export const getPublicProjectsController = asyncHandler(async (req: Request, res
     limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
     status: req.query.status as 'Ongoing' | 'Completed' | 'Not Started' | 'Canceled' | undefined,
     search: req.query.search as string,
-    sort_by: req.query.sortBy ? (() => {
+    sort_by: req.query.sortBy ? ((): string => {
       const sortByMap = {
         'createdAt': 'created_at',
         'updatedAt': 'updated_at',

@@ -79,7 +79,7 @@ export interface CreateUserRequest {
 // 用戶更新請求介面
 export interface UpdateUserRequest {
   name?: string;
-  photoUrl?: string;
+  photoURL?: string;
   gender?: string;
   birthDate?: Date | string;
   contactList?: {
@@ -92,6 +92,7 @@ export interface UpdateUserRequest {
   isOpenLocation?: boolean;
   isOpenProfile?: boolean;
   isSubscribeEmail?: boolean;
+  location?: string; // area code
   selfIntroduction?: string;
   share?: string | string[];
   wantToDoList?: string[];
