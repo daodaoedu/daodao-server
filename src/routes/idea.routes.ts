@@ -53,13 +53,13 @@ router.post('/',
 );
 
 /**
- * PATCH /ideas/:id
+ * PUT /ideas/:id
  * 更新想法
  * 路徑參數：id - 想法 ID
  * 請求體：UpdateIdeaRequest
  * 需要身份驗證和權限檢查（想法作者）
  */
-router.patch('/:id',
+router.put('/:id',
   authenticate,
   validate(ideaParamsSchema, 'params'),
   validate(updateIdeaSchema, 'body'),
