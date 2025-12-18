@@ -842,6 +842,49 @@ const preferenceOptionSchema = z.object({
   examples: [{ name: "實作導向", value: "hands_on" }]
 });
 
+// 完整的偏好選項 schema（包含 ID）
+const preferenceOptionWithIdSchema = z.object({
+  id: z.number().describe("選項 ID"),
+  name: z.string().describe("選項名稱"),
+  value: z.string().describe("選項值"),
+  description: z.string().nullable().describe("選項描述")
+}).describe("完整偏好選項").meta({
+  title: "完整偏好選項",
+  examples: [{
+    id: 101,
+    name: "實作導向",
+    value: "hands_on",
+    description: "透過實際操作學習"
+  }]
+});
+
+// 偏好類型 schema（包含選項列表）
+const preferenceTypeWithOptionsSchema = z.object({
+  id: z.number().describe("偏好類型 ID"),
+  name: z.string().describe("偏好類型名稱"),
+  value: z.string().describe("偏好類型值"),
+  maxSelections: z.number().nullable().describe("最大選擇數量"),
+  description: z.string().nullable().describe("偏好類型描述"),
+  options: z.array(preferenceOptionWithIdSchema).describe("可用選項列表")
+}).describe("偏好類型").meta({
+  title: "偏好類型",
+  examples: [{
+    id: 1,
+    name: "學習風格",
+    value: "learningStyle",
+    maxSelections: 3,
+    description: "選擇你偏好的學習方式",
+    options: [
+      {
+        id: 101,
+        name: "實作導向",
+        value: "hands_on",
+        description: "透過實際操作學習"
+      }
+    ]
+  }]
+});
+
 // 用戶偏好設定回應 schema
 export const userPreferencesResponseSchema = apiSuccessResponseSchema(
   z.record(z.string(), z.array(preferenceOptionSchema))
@@ -892,28 +935,68 @@ export const updateUserPreferencesResponseSchema = apiSuccessResponseSchema(
 
 // 可用偏好選項回應 schema
 export const availablePreferencesResponseSchema = apiSuccessResponseSchema(
-  z.record(z.string(), z.array(preferenceOptionSchema))
+  z.array(preferenceTypeWithOptionsSchema)
 ).describe("可用偏好選項回應")
   .meta({
     title: "可用偏好選項回應",
     examples: [{
       success: true,
-      data: {
-        "learningStyle": [
-          { name: "實作導向", value: "hands_on" },
-          { name: "理論學習", value: "theoretical" },
-          { name: "小組討論", value: "group_discussion" }
-        ],
-        "contentType": [
-          { name: "影片教學", value: "video" },
-          { name: "文章閱讀", value: "article" },
-          { name: "實際操作", value: "hands_on_practice" }
-        ],
-        "difficulty": [
-          { name: "初學者友善", value: "beginner_friendly" },
-          { name: "按部就班", value: "step_by_step" }
-        ]
-      },
+      data: [
+        {
+          id: 1,
+          name: "學習風格",
+          value: "learningStyle",
+          maxSelections: 3,
+          description: "選擇你偏好的學習方式",
+          options: [
+            {
+              id: 101,
+              name: "實作導向",
+              value: "hands_on",
+              description: "透過實際操作學習"
+            },
+            {
+              id: 102,
+              name: "理論學習",
+              value: "theoretical",
+              description: "透過閱讀和理論學習"
+            },
+            {
+              id: 103,
+              name: "小組討論",
+              value: "group_discussion",
+              description: "透過小組討論學習"
+            }
+          ]
+        },
+        {
+          id: 2,
+          name: "內容類型",
+          value: "contentType",
+          maxSelections: 3,
+          description: "選擇你偏好的內容類型",
+          options: [
+            {
+              id: 201,
+              name: "影片教學",
+              value: "video",
+              description: "觀看影片學習"
+            },
+            {
+              id: 202,
+              name: "文章閱讀",
+              value: "article",
+              description: "閱讀文章學習"
+            },
+            {
+              id: 203,
+              name: "實際操作",
+              value: "hands_on_practice",
+              description: "實際動手操作"
+            }
+          ]
+        }
+      ],
       timestamp: "2024-01-15T10:30:00.000Z"
     }]
   });
