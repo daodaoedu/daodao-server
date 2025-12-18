@@ -1456,20 +1456,51 @@ const updateUserPreferences = async (
 /**
  * 獲取可用的偏好選項
  */
-const getAvailablePreferences = async (): Promise<ApiSuccessResponse<Record<string, Array<{ name: string; value: string }>>>> => {
+const getAvailablePreferences = async (): Promise<ApiSuccessResponse<Array<{
+  id: number;
+  name: string;
+  value: string;
+  maxSelections: number | null;
+  description: string | null;
+  options: Array<{
+    id: number;
+    name: string;
+    value: string;
+    description: string | null;
+  }>;
+}>>> => {
   const preferenceTypes = await prisma.preference_types.findMany({
     include: {
-      preference_options: true
+      preference_options: {
+        where: {
+          is_active: true
+        },
+        orderBy: {
+          display_order: 'asc'
+        }
+      }
+    },
+    where: {
+      is_active: true
+    },
+    orderBy: {
+      display_order: 'asc'
     }
   });
 
-  const availablePreferences = preferenceTypes.reduce((acc, type) => {
-    acc[type.value] = type.preference_options.map(option => ({
+  const availablePreferences = preferenceTypes.map(type => ({
+    id: type.id,
+    name: type.name,
+    value: type.value,
+    maxSelections: type.max_selections,
+    description: type.description,
+    options: type.preference_options.map(option => ({
+      id: option.id,
       name: option.name,
-      value: option.value
-    }));
-    return acc;
-  }, {} as Record<string, Array<{ name: string; value: string }>>);
+      value: option.value,
+      description: option.description
+    }))
+  }));
 
   return createSuccessResponse(availablePreferences);
 };
