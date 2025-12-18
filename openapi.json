@@ -19096,6 +19096,181 @@
           "customId"
         ]
       },
+      "user-stats.validator_timeGroupBySchema": {
+        "type": "string",
+        "enum": [
+          "day",
+          "week",
+          "month",
+          "year"
+        ]
+      },
+      "user-stats.validator_statsGroupBySchema": {
+        "type": "string",
+        "enum": [
+          "location",
+          "role",
+          "education_stage"
+        ]
+      },
+      "user-stats.validator_allGroupBySchema": {
+        "type": "string",
+        "enum": [
+          "day",
+          "week",
+          "month",
+          "year",
+          "location",
+          "role",
+          "education_stage"
+        ]
+      },
+      "user-stats.validator_exportFormatSchema": {
+        "type": "string",
+        "enum": [
+          "csv",
+          "excel"
+        ]
+      },
+      "user-stats.validator_exportTypeSchema": {
+        "type": "string",
+        "enum": [
+          "registrations",
+          "activity",
+          "full"
+        ]
+      },
+      "user-stats.validator_registrationStatsQuerySchema": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year",
+              "location",
+              "role",
+              "education_stage"
+            ]
+          },
+          "locationId": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "roleId": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "educationStage": {
+            "type": "string",
+            "nullable": true
+          },
+          "limit": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": 100,
+            "nullable": true
+          },
+          "offset": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": 0,
+            "nullable": true
+          }
+        },
+        "required": [
+          "groupBy"
+        ]
+      },
+      "user-stats.validator_activityStatsQuerySchema": {
+        "type": "object",
+        "properties": {
+          "activeWithinDays": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": 30,
+            "nullable": true
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "location",
+              "role",
+              "education_stage"
+            ],
+            "nullable": true
+          },
+          "limit": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": 100,
+            "nullable": true
+          },
+          "offset": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": 0,
+            "nullable": true
+          }
+        }
+      },
+      "user-stats.validator_exportStatsQuerySchema": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "excel"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "registrations",
+              "activity",
+              "full"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year",
+              "location",
+              "role",
+              "education_stage"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "format",
+          "type"
+        ]
+      },
       "user.validators_createUserSchema": {
         "type": "object",
         "properties": {
@@ -20884,8 +21059,61 @@
             ]
           },
           "data": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "maxSelections": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "number"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "value"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "value",
+                "options"
+              ]
+            }
           },
           "timestamp": {
             "type": "string"
@@ -22760,12 +22988,12 @@
           }
         ]
       },
-      "patch": {
+      "put": {
         "tags": [
           "Ideas"
         ],
-        "summary": "PATCH /:id",
-        "operationId": "patch_api_v1_ideas__id_",
+        "summary": "PUT /:id",
+        "operationId": "put_api_v1_ideas__id_",
         "responses": {
           "200": {
             "description": "成功回應",

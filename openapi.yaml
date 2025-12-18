@@ -1238,7 +1238,7 @@ components:
     comment.validators_getCommentsQuerySchema:
       type: object
       properties:
-        targetType: &ref_35
+        targetType: &ref_39
           type: string
           enum:
             - post
@@ -1249,7 +1249,7 @@ components:
             - circle
             - idea
             - portfolio
-        targetId: &ref_36
+        targetId: &ref_40
           type: string
       required:
         - targetType
@@ -1889,22 +1889,22 @@ components:
     idea.validators_ideaQuerySchema:
       type: object
       properties:
-        page: &ref_37
+        page: &ref_41
           type: number
           default: 1
-        limit: &ref_38
+        limit: &ref_42
           type: number
           default: 20
-        query: &ref_39
+        query: &ref_43
           type: string
           nullable: true
-        tags: &ref_40
+        tags: &ref_44
           type: string
           nullable: true
-        userId: &ref_41
+        userId: &ref_45
           type: string
           nullable: true
-        status: &ref_42
+        status: &ref_46
           type: string
           enum:
             - active
@@ -1912,14 +1912,14 @@ components:
             - archived
             - all
           nullable: true
-        sort: &ref_43
+        sort: &ref_47
           type: string
           enum:
             - createdAt
             - updatedAt
             - likeCount
           default: createdAt
-        order: &ref_44
+        order: &ref_48
           type: string
           enum:
             - asc
@@ -2862,13 +2862,13 @@ components:
     me.validators_practiceQuerySchema:
       type: object
       properties:
-        page: &ref_45
+        page: &ref_49
           type: number
           default: 1
-        limit: &ref_46
+        limit: &ref_50
           type: number
           default: 20
-        status: &ref_47
+        status: &ref_51
           type: string
           enum:
             - active
@@ -2876,7 +2876,7 @@ components:
             - completed
             - archived
           nullable: true
-        contentType: &ref_48
+        contentType: &ref_52
           type: string
           enum:
             - book
@@ -2886,10 +2886,10 @@ components:
             - course
             - custom
           nullable: true
-        search: &ref_49
+        search: &ref_53
           type: string
           nullable: true
-        sortBy: &ref_50
+        sortBy: &ref_54
           type: string
           enum:
             - createdAt
@@ -2897,16 +2897,16 @@ components:
             - title
             - progress
           default: createdAt
-        sortOrder: &ref_51
+        sortOrder: &ref_55
           type: string
           enum:
             - asc
             - desc
           default: desc
-        dateFrom: &ref_52
+        dateFrom: &ref_56
           type: string
           nullable: true
-        dateTo: &ref_53
+        dateTo: &ref_57
           type: string
           nullable: true
       required:
@@ -2917,7 +2917,7 @@ components:
     me.validators_practiceStatsQuerySchema:
       type: object
       properties:
-        timeRange: &ref_54
+        timeRange: &ref_58
           type: string
           enum:
             - 7d
@@ -2926,7 +2926,7 @@ components:
             - 1y
             - all
           default: 30d
-        includeArchived: &ref_55
+        includeArchived: &ref_59
           type: boolean
           default: false
       required:
@@ -2935,16 +2935,16 @@ components:
     me.validators_resourcesQuerySchema:
       type: object
       properties:
-        page: &ref_56
+        page: &ref_60
           type: number
           default: 1
-        limit: &ref_57
+        limit: &ref_61
           type: number
           default: 20
-        category: &ref_58
+        category: &ref_62
           type: string
           nullable: true
-        type: &ref_59
+        type: &ref_63
           type: string
           enum:
             - link
@@ -2952,30 +2952,30 @@ components:
             - note
             - draft
           nullable: true
-        status: &ref_60
+        status: &ref_64
           type: string
           enum:
             - draft
             - published
             - archived
           default: draft
-        search: &ref_61
+        search: &ref_65
           type: string
           nullable: true
-        sortBy: &ref_62
+        sortBy: &ref_66
           type: string
           enum:
             - createdAt
             - updatedAt
             - name
           default: updatedAt
-        sortOrder: &ref_63
+        sortOrder: &ref_67
           type: string
           enum:
             - asc
             - desc
           default: desc
-        tags: &ref_64
+        tags: &ref_68
           type: string
           nullable: true
       required:
@@ -2987,10 +2987,10 @@ components:
     me.validators_preferencesQuerySchema:
       type: object
       properties:
-        category: &ref_65
+        category: &ref_69
           type: string
           nullable: true
-        includeSystem: &ref_66
+        includeSystem: &ref_70
           type: boolean
           default: false
       required:
@@ -5435,12 +5435,12 @@ components:
     note.validators_publicNotesQuerySchema:
       type: object
       properties:
-        page: &ref_92
+        page: &ref_96
           type: object
           additionalProperties: true
           nullable: true
           default: 1
-        pageSize: &ref_93
+        pageSize: &ref_97
           type: object
           additionalProperties: true
           nullable: true
@@ -6341,22 +6341,22 @@ components:
     practice.validators_checkInQuerySchema:
       type: object
       properties:
-        page: &ref_77
+        page: &ref_81
           type: number
           default: 1
-        limit: &ref_78
+        limit: &ref_82
           type: number
           default: 20
-        startDate: &ref_79
+        startDate: &ref_83
           type: string
           nullable: true
-        endDate: &ref_80
+        endDate: &ref_84
           type: string
           nullable: true
-        mood: &ref_81
+        mood: &ref_85
           type: string
           nullable: true
-        include: &ref_82
+        include: &ref_86
           type: string
           nullable: true
       required:
@@ -6444,25 +6444,25 @@ components:
     practice.validators_myPracticesQuerySchema:
       type: object
       properties:
-        page: &ref_67
+        page: &ref_71
           type: number
           default: 1
-        limit: &ref_68
+        limit: &ref_72
           type: number
           default: 20
-        query: &ref_69
+        query: &ref_73
           type: string
           nullable: true
-        contentType: &ref_70
+        contentType: &ref_74
           type: string
           nullable: true
-        tags: &ref_71
+        tags: &ref_75
           type: string
           nullable: true
-        userId: &ref_72
+        userId: &ref_76
           type: string
           nullable: true
-        status: &ref_73
+        status: &ref_77
           type: string
           enum:
             - active
@@ -6471,15 +6471,15 @@ components:
             - archived
             - all
           default: all
-        sort: &ref_74
+        sort: &ref_78
           type: string
           enum: *ref_14
           default: createdAt
-        order: &ref_75
+        order: &ref_79
           type: string
           enum: *ref_15
           default: desc
-        include: &ref_76
+        include: &ref_80
           type: string
           nullable: true
       required:
@@ -8474,30 +8474,30 @@ components:
     project.validators_projectQuerySchema:
       type: object
       properties:
-        page: &ref_83
+        page: &ref_87
           type: object
           additionalProperties: true
           nullable: true
-        limit: &ref_84
+        limit: &ref_88
           type: object
           additionalProperties: true
           nullable: true
-        status: &ref_85
+        status: &ref_89
           type: string
           enum: *ref_19
           nullable: true
-        isPublic: &ref_86
+        isPublic: &ref_90
           type: object
           additionalProperties: true
           nullable: true
-        userId: &ref_87
+        userId: &ref_91
           type: object
           additionalProperties: true
           nullable: true
-        search: &ref_88
+        search: &ref_92
           type: string
           nullable: true
-        sortBy: &ref_89
+        sortBy: &ref_93
           type: string
           enum:
             - createdAt
@@ -8506,7 +8506,7 @@ components:
             - startDate
             - endDate
           nullable: true
-        sortOrder: &ref_90
+        sortOrder: &ref_94
           type: string
           enum:
             - asc
@@ -8521,7 +8521,7 @@ components:
     project.validators_projectStatsQuerySchema:
       type: object
       properties:
-        userId: &ref_91
+        userId: &ref_95
           type: object
           additionalProperties: true
           nullable: true
@@ -9273,21 +9273,21 @@ components:
     request-params.validator_paginationSchema:
       type: object
       properties:
-        cursor: &ref_99
+        cursor: &ref_103
           type: string
           nullable: true
-        limit: &ref_100
+        limit: &ref_104
           type: object
           additionalProperties: true
           nullable: true
-        sort: &ref_101
+        sort: &ref_105
           type: string
           enum:
             - createdAt
             - updatedAt
             - name
           nullable: true
-        order: &ref_102
+        order: &ref_106
           type: string
           enum:
             - asc
@@ -12253,20 +12253,20 @@ components:
     review.validators_reviewQuerySchema:
       type: object
       properties:
-        week: &ref_94
+        week: &ref_98
           type: number
           nullable: true
-        mood: &ref_95
+        mood: &ref_99
           type: string
           enum: *ref_27
           nullable: true
-        stressLevel: &ref_96
+        stressLevel: &ref_100
           type: number
           nullable: true
-        page: &ref_97
+        page: &ref_101
           type: object
           additionalProperties: true
-        pageSize: &ref_98
+        pageSize: &ref_102
           type: object
           additionalProperties: true
       required:
@@ -12632,9 +12632,9 @@ components:
     tag.validators_tagSearchQuerySchema:
       type: object
       properties:
-        query: &ref_104
+        query: &ref_108
           type: string
-        limit: &ref_105
+        limit: &ref_109
           type: object
           additionalProperties: true
       required:
@@ -12643,7 +12643,7 @@ components:
     tag.validators_popularTagsQuerySchema:
       type: object
       properties:
-        limit: &ref_103
+        limit: &ref_107
           type: object
           additionalProperties: true
       required:
@@ -12651,10 +12651,10 @@ components:
     tag.validators_entityTagsQuerySchema:
       type: object
       properties:
-        entityId: &ref_106
+        entityId: &ref_110
           type: object
           additionalProperties: true
-        entityType: &ref_107
+        entityType: &ref_111
           type: string
           enum: &ref_29
             - resource
@@ -13550,6 +13550,119 @@ components:
           type: string
       required:
         - customId
+    user-stats.validator_timeGroupBySchema:
+      type: string
+      enum:
+        - day
+        - week
+        - month
+        - year
+    user-stats.validator_statsGroupBySchema:
+      type: string
+      enum: &ref_32
+        - location
+        - role
+        - education_stage
+    user-stats.validator_allGroupBySchema:
+      type: string
+      enum: &ref_31
+        - day
+        - week
+        - month
+        - year
+        - location
+        - role
+        - education_stage
+    user-stats.validator_exportFormatSchema:
+      type: string
+      enum: &ref_33
+        - csv
+        - excel
+    user-stats.validator_exportTypeSchema:
+      type: string
+      enum: &ref_34
+        - registrations
+        - activity
+        - full
+    user-stats.validator_registrationStatsQuerySchema:
+      type: object
+      properties:
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        groupBy:
+          type: string
+          enum: *ref_31
+        locationId:
+          type: object
+          additionalProperties: true
+          nullable: true
+        roleId:
+          type: object
+          additionalProperties: true
+          nullable: true
+        educationStage:
+          type: string
+          nullable: true
+        limit:
+          type: object
+          additionalProperties: true
+          default: 100
+          nullable: true
+        offset:
+          type: object
+          additionalProperties: true
+          default: 0
+          nullable: true
+      required:
+        - groupBy
+    user-stats.validator_activityStatsQuerySchema:
+      type: object
+      properties:
+        activeWithinDays:
+          type: object
+          additionalProperties: true
+          default: 30
+          nullable: true
+        groupBy:
+          type: string
+          enum: *ref_32
+          nullable: true
+        limit:
+          type: object
+          additionalProperties: true
+          default: 100
+          nullable: true
+        offset:
+          type: object
+          additionalProperties: true
+          default: 0
+          nullable: true
+    user-stats.validator_exportStatsQuerySchema:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: *ref_33
+        type:
+          type: string
+          enum: *ref_34
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        groupBy:
+          type: string
+          enum: *ref_31
+          nullable: true
+      required:
+        - format
+        - type
     user.validators_createUserSchema:
       type: object
       properties:
@@ -13639,7 +13752,7 @@ components:
           type: array
           items:
             type: string
-            enum: &ref_31
+            enum: &ref_35
               - information_and_communication_technologies_icts
               - business_administration_and_law
               - arts_and_humanities
@@ -13754,7 +13867,7 @@ components:
           type: array
           items:
             type: string
-            enum: *ref_31
+            enum: *ref_35
           nullable: true
         personalSlogan:
           type: string
@@ -13772,24 +13885,24 @@ components:
     user.validators_getUserQuerySchema:
       type: object
       properties:
-        page: &ref_108
+        page: &ref_112
           type: object
           additionalProperties: true
           nullable: true
-        pageSize: &ref_109
+        pageSize: &ref_113
           type: object
           additionalProperties: true
           nullable: true
-        educationStage: &ref_110
+        educationStage: &ref_114
           type: string
           nullable: true
-        roleList: &ref_111
+        roleList: &ref_115
           type: string
           nullable: true
-        location: &ref_112
+        location: &ref_116
           type: string
           nullable: true
-        search: &ref_113
+        search: &ref_117
           type: string
           nullable: true
     user.validators_userPreferencesSchema:
@@ -13823,7 +13936,7 @@ components:
               nullable: true
             gender:
               type: string
-              enum: &ref_32
+              enum: &ref_36
                 - male
                 - female
                 - other
@@ -13833,7 +13946,7 @@ components:
               nullable: true
             educationStage:
               type: string
-              enum: &ref_33
+              enum: &ref_37
                 - university
                 - high
                 - other
@@ -13941,7 +14054,7 @@ components:
               type: array
               items:
                 type: string
-                enum: &ref_34
+                enum: &ref_38
                   - information_and_communication_technologies_icts
                   - business_administration_and_law
                   - arts_and_humanities
@@ -14034,14 +14147,14 @@ components:
                 nullable: true
               gender:
                 type: string
-                enum: *ref_32
+                enum: *ref_36
                 nullable: true
               birthDay:
                 type: string
                 nullable: true
               educationStage:
                 type: string
-                enum: *ref_33
+                enum: *ref_37
                 nullable: true
               isOpenLocation:
                 type: boolean
@@ -14146,7 +14259,7 @@ components:
                 type: array
                 items:
                   type: string
-                  enum: *ref_34
+                  enum: *ref_38
                 nullable: true
               personalSlogan:
                 type: string
@@ -14251,14 +14364,14 @@ components:
                   nullable: true
                 gender:
                   type: string
-                  enum: *ref_32
+                  enum: *ref_36
                   nullable: true
                 birthDay:
                   type: string
                   nullable: true
                 educationStage:
                   type: string
-                  enum: *ref_33
+                  enum: *ref_37
                   nullable: true
                 isOpenLocation:
                   type: boolean
@@ -14363,7 +14476,7 @@ components:
                   type: array
                   items:
                     type: string
-                    enum: *ref_34
+                    enum: *ref_38
                   nullable: true
                 personalSlogan:
                   type: string
@@ -14447,14 +14560,14 @@ components:
               nullable: true
             gender:
               type: string
-              enum: *ref_32
+              enum: *ref_36
               nullable: true
             birthDay:
               type: string
               nullable: true
             educationStage:
               type: string
-              enum: *ref_33
+              enum: *ref_37
               nullable: true
             isOpenLocation:
               type: boolean
@@ -14559,7 +14672,7 @@ components:
               type: array
               items:
                 type: string
-                enum: *ref_34
+                enum: *ref_38
               nullable: true
             personalSlogan:
               type: string
@@ -14776,8 +14889,45 @@ components:
           enum:
             - true
         data:
-          type: object
-          additionalProperties: true
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+              name:
+                type: string
+              value:
+                type: string
+              maxSelections:
+                type: number
+                nullable: true
+              description:
+                type: string
+                nullable: true
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: number
+                    name:
+                      type: string
+                    value:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                  required:
+                    - id
+                    - name
+                    - value
+            required:
+              - id
+              - name
+              - value
+              - options
         timestamp:
           type: string
         meta:
@@ -15418,12 +15568,12 @@ paths:
         - name: targetType
           in: query
           required: true
-          schema: *ref_35
+          schema: *ref_39
           description: targetType 查詢參數
         - name: targetId
           in: query
           required: true
-          schema: *ref_36
+          schema: *ref_40
           description: targetId 查詢參數
       security:
         - bearerAuth: []
@@ -15914,42 +16064,42 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_37
+          schema: *ref_41
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_38
+          schema: *ref_42
           description: limit 查詢參數
         - name: query
           in: query
           required: false
-          schema: *ref_39
+          schema: *ref_43
           description: query 查詢參數
         - name: tags
           in: query
           required: false
-          schema: *ref_40
+          schema: *ref_44
           description: tags 查詢參數
         - name: userId
           in: query
           required: false
-          schema: *ref_41
+          schema: *ref_45
           description: userId 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_42
+          schema: *ref_46
           description: status 查詢參數
         - name: sort
           in: query
           required: true
-          schema: *ref_43
+          schema: *ref_47
           description: sort 查詢參數
         - name: order
           in: query
           required: true
-          schema: *ref_44
+          schema: *ref_48
           description: order 查詢參數
       security:
         - bearerAuth: []
@@ -16027,11 +16177,11 @@ paths:
           description: id 參數
       security:
         - bearerAuth: []
-    patch:
+    put:
       tags:
         - Ideas
-      summary: PATCH /:id
-      operationId: patch_api_v1_ideas__id_
+      summary: PUT /:id
+      operationId: put_api_v1_ideas__id_
       responses:
         '200':
           description: 成功回應
@@ -16343,42 +16493,42 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_37
+          schema: *ref_41
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_38
+          schema: *ref_42
           description: limit 查詢參數
         - name: query
           in: query
           required: false
-          schema: *ref_39
+          schema: *ref_43
           description: query 查詢參數
         - name: tags
           in: query
           required: false
-          schema: *ref_40
+          schema: *ref_44
           description: tags 查詢參數
         - name: userId
           in: query
           required: false
-          schema: *ref_41
+          schema: *ref_45
           description: userId 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_42
+          schema: *ref_46
           description: status 查詢參數
         - name: sort
           in: query
           required: true
-          schema: *ref_43
+          schema: *ref_47
           description: sort 查詢參數
         - name: order
           in: query
           required: true
-          schema: *ref_44
+          schema: *ref_48
           description: order 查詢參數
       security:
         - bearerAuth: []
@@ -16408,47 +16558,47 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_45
+          schema: *ref_49
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_46
+          schema: *ref_50
           description: limit 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_47
+          schema: *ref_51
           description: status 查詢參數
         - name: contentType
           in: query
           required: false
-          schema: *ref_48
+          schema: *ref_52
           description: contentType 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_49
+          schema: *ref_53
           description: search 查詢參數
         - name: sortBy
           in: query
           required: true
-          schema: *ref_50
+          schema: *ref_54
           description: sortBy 查詢參數
         - name: sortOrder
           in: query
           required: true
-          schema: *ref_51
+          schema: *ref_55
           description: sortOrder 查詢參數
         - name: dateFrom
           in: query
           required: false
-          schema: *ref_52
+          schema: *ref_56
           description: dateFrom 查詢參數
         - name: dateTo
           in: query
           required: false
-          schema: *ref_53
+          schema: *ref_57
           description: dateTo 查詢參數
       security:
         - bearerAuth: []
@@ -16478,12 +16628,12 @@ paths:
         - name: timeRange
           in: query
           required: true
-          schema: *ref_54
+          schema: *ref_58
           description: timeRange 查詢參數
         - name: includeArchived
           in: query
           required: true
-          schema: *ref_55
+          schema: *ref_59
           description: includeArchived 查詢參數
       security:
         - bearerAuth: []
@@ -16513,47 +16663,47 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_56
+          schema: *ref_60
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_57
+          schema: *ref_61
           description: limit 查詢參數
         - name: category
           in: query
           required: false
-          schema: *ref_58
+          schema: *ref_62
           description: category 查詢參數
         - name: type
           in: query
           required: false
-          schema: *ref_59
+          schema: *ref_63
           description: type 查詢參數
         - name: status
           in: query
           required: true
-          schema: *ref_60
+          schema: *ref_64
           description: status 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_61
+          schema: *ref_65
           description: search 查詢參數
         - name: sortBy
           in: query
           required: true
-          schema: *ref_62
+          schema: *ref_66
           description: sortBy 查詢參數
         - name: sortOrder
           in: query
           required: true
-          schema: *ref_63
+          schema: *ref_67
           description: sortOrder 查詢參數
         - name: tags
           in: query
           required: false
-          schema: *ref_64
+          schema: *ref_68
           description: tags 查詢參數
       security:
         - bearerAuth: []
@@ -16583,12 +16733,12 @@ paths:
         - name: category
           in: query
           required: false
-          schema: *ref_65
+          schema: *ref_69
           description: category 查詢參數
         - name: includeSystem
           in: query
           required: true
-          schema: *ref_66
+          schema: *ref_70
           description: includeSystem 查詢參數
       security:
         - bearerAuth: []
@@ -17206,47 +17356,47 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_45
+          schema: *ref_49
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_46
+          schema: *ref_50
           description: limit 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_47
+          schema: *ref_51
           description: status 查詢參數
         - name: contentType
           in: query
           required: false
-          schema: *ref_48
+          schema: *ref_52
           description: contentType 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_49
+          schema: *ref_53
           description: search 查詢參數
         - name: sortBy
           in: query
           required: true
-          schema: *ref_50
+          schema: *ref_54
           description: sortBy 查詢參數
         - name: sortOrder
           in: query
           required: true
-          schema: *ref_51
+          schema: *ref_55
           description: sortOrder 查詢參數
         - name: dateFrom
           in: query
           required: false
-          schema: *ref_52
+          schema: *ref_56
           description: dateFrom 查詢參數
         - name: dateTo
           in: query
           required: false
-          schema: *ref_53
+          schema: *ref_57
           description: dateTo 查詢參數
       security:
         - bearerAuth: []
@@ -17333,52 +17483,52 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_67
+          schema: *ref_71
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_68
+          schema: *ref_72
           description: limit 查詢參數
         - name: query
           in: query
           required: false
-          schema: *ref_69
+          schema: *ref_73
           description: query 查詢參數
         - name: contentType
           in: query
           required: false
-          schema: *ref_70
+          schema: *ref_74
           description: contentType 查詢參數
         - name: tags
           in: query
           required: false
-          schema: *ref_71
+          schema: *ref_75
           description: tags 查詢參數
         - name: userId
           in: query
           required: false
-          schema: *ref_72
+          schema: *ref_76
           description: userId 查詢參數
         - name: status
           in: query
           required: true
-          schema: *ref_73
+          schema: *ref_77
           description: status 查詢參數
         - name: sort
           in: query
           required: true
-          schema: *ref_74
+          schema: *ref_78
           description: sort 查詢參數
         - name: order
           in: query
           required: true
-          schema: *ref_75
+          schema: *ref_79
           description: order 查詢參數
         - name: include
           in: query
           required: false
-          schema: *ref_76
+          schema: *ref_80
           description: include 查詢參數
       security:
         - bearerAuth: []
@@ -17586,32 +17736,32 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_77
+          schema: *ref_81
           description: page 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_78
+          schema: *ref_82
           description: limit 查詢參數
         - name: startDate
           in: query
           required: false
-          schema: *ref_79
+          schema: *ref_83
           description: startDate 查詢參數
         - name: endDate
           in: query
           required: false
-          schema: *ref_80
+          schema: *ref_84
           description: endDate 查詢參數
         - name: mood
           in: query
           required: false
-          schema: *ref_81
+          schema: *ref_85
           description: mood 查詢參數
         - name: include
           in: query
           required: false
-          schema: *ref_82
+          schema: *ref_86
           description: include 查詢參數
       security:
         - bearerAuth: []
@@ -17951,42 +18101,42 @@ paths:
         - name: page
           in: query
           required: false
-          schema: *ref_83
+          schema: *ref_87
           description: page 查詢參數
         - name: limit
           in: query
           required: false
-          schema: *ref_84
+          schema: *ref_88
           description: limit 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_85
+          schema: *ref_89
           description: status 查詢參數
         - name: isPublic
           in: query
           required: false
-          schema: *ref_86
+          schema: *ref_90
           description: isPublic 查詢參數
         - name: userId
           in: query
           required: false
-          schema: *ref_87
+          schema: *ref_91
           description: userId 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_88
+          schema: *ref_92
           description: search 查詢參數
         - name: sortBy
           in: query
           required: false
-          schema: *ref_89
+          schema: *ref_93
           description: sortBy 查詢參數
         - name: sortOrder
           in: query
           required: false
-          schema: *ref_90
+          schema: *ref_94
           description: sortOrder 查詢參數
       security:
         - bearerAuth: []
@@ -18097,42 +18247,42 @@ paths:
         - name: page
           in: query
           required: false
-          schema: *ref_83
+          schema: *ref_87
           description: page 查詢參數
         - name: limit
           in: query
           required: false
-          schema: *ref_84
+          schema: *ref_88
           description: limit 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_85
+          schema: *ref_89
           description: status 查詢參數
         - name: isPublic
           in: query
           required: false
-          schema: *ref_86
+          schema: *ref_90
           description: isPublic 查詢參數
         - name: userId
           in: query
           required: false
-          schema: *ref_87
+          schema: *ref_91
           description: userId 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_88
+          schema: *ref_92
           description: search 查詢參數
         - name: sortBy
           in: query
           required: false
-          schema: *ref_89
+          schema: *ref_93
           description: sortBy 查詢參數
         - name: sortOrder
           in: query
           required: false
-          schema: *ref_90
+          schema: *ref_94
           description: sortOrder 查詢參數
       security:
         - bearerAuth: []
@@ -18162,42 +18312,42 @@ paths:
         - name: page
           in: query
           required: false
-          schema: *ref_83
+          schema: *ref_87
           description: page 查詢參數
         - name: limit
           in: query
           required: false
-          schema: *ref_84
+          schema: *ref_88
           description: limit 查詢參數
         - name: status
           in: query
           required: false
-          schema: *ref_85
+          schema: *ref_89
           description: status 查詢參數
         - name: isPublic
           in: query
           required: false
-          schema: *ref_86
+          schema: *ref_90
           description: isPublic 查詢參數
         - name: userId
           in: query
           required: false
-          schema: *ref_87
+          schema: *ref_91
           description: userId 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_88
+          schema: *ref_92
           description: search 查詢參數
         - name: sortBy
           in: query
           required: false
-          schema: *ref_89
+          schema: *ref_93
           description: sortBy 查詢參數
         - name: sortOrder
           in: query
           required: false
-          schema: *ref_90
+          schema: *ref_94
           description: sortOrder 查詢參數
       security:
         - bearerAuth: []
@@ -18227,7 +18377,7 @@ paths:
         - name: userId
           in: query
           required: false
-          schema: *ref_91
+          schema: *ref_95
           description: userId 查詢參數
       security:
         - bearerAuth: []
@@ -18454,12 +18604,12 @@ paths:
         - name: page
           in: query
           required: true
-          schema: *ref_92
+          schema: *ref_96
           description: page 查詢參數
         - name: pageSize
           in: query
           required: true
-          schema: *ref_93
+          schema: *ref_97
           description: pageSize 查詢參數
       security:
         - bearerAuth: []
@@ -19315,27 +19465,27 @@ paths:
         - name: week
           in: query
           required: false
-          schema: *ref_94
+          schema: *ref_98
           description: week 查詢參數
         - name: mood
           in: query
           required: false
-          schema: *ref_95
+          schema: *ref_99
           description: mood 查詢參數
         - name: stressLevel
           in: query
           required: false
-          schema: *ref_96
+          schema: *ref_100
           description: stressLevel 查詢參數
         - name: page
           in: query
           required: true
-          schema: *ref_97
+          schema: *ref_101
           description: page 查詢參數
         - name: pageSize
           in: query
           required: true
-          schema: *ref_98
+          schema: *ref_102
           description: pageSize 查詢參數
       security:
         - bearerAuth: []
@@ -19515,22 +19665,22 @@ paths:
         - name: cursor
           in: query
           required: false
-          schema: *ref_99
+          schema: *ref_103
           description: cursor 查詢參數
         - name: limit
           in: query
           required: false
-          schema: *ref_100
+          schema: *ref_104
           description: limit 查詢參數
         - name: sort
           in: query
           required: false
-          schema: *ref_101
+          schema: *ref_105
           description: sort 查詢參數
         - name: order
           in: query
           required: false
-          schema: *ref_102
+          schema: *ref_106
           description: order 查詢參數
       security:
         - bearerAuth: []
@@ -19895,22 +20045,22 @@ paths:
         - name: cursor
           in: query
           required: false
-          schema: *ref_99
+          schema: *ref_103
           description: cursor 查詢參數
         - name: limit
           in: query
           required: false
-          schema: *ref_100
+          schema: *ref_104
           description: limit 查詢參數
         - name: sort
           in: query
           required: false
-          schema: *ref_101
+          schema: *ref_105
           description: sort 查詢參數
         - name: order
           in: query
           required: false
-          schema: *ref_102
+          schema: *ref_106
           description: order 查詢參數
       security:
         - bearerAuth: []
@@ -20193,7 +20343,7 @@ paths:
         - name: limit
           in: query
           required: true
-          schema: *ref_103
+          schema: *ref_107
           description: limit 查詢參數
       security:
         - bearerAuth: []
@@ -20223,12 +20373,12 @@ paths:
         - name: query
           in: query
           required: true
-          schema: *ref_104
+          schema: *ref_108
           description: query 查詢參數
         - name: limit
           in: query
           required: true
-          schema: *ref_105
+          schema: *ref_109
           description: limit 查詢參數
       security:
         - bearerAuth: []
@@ -20349,12 +20499,12 @@ paths:
         - name: entityId
           in: query
           required: true
-          schema: *ref_106
+          schema: *ref_110
           description: entityId 查詢參數
         - name: entityType
           in: query
           required: true
-          schema: *ref_107
+          schema: *ref_111
           description: entityType 查詢參數
       security:
         - bearerAuth: []
@@ -20397,32 +20547,32 @@ paths:
         - name: page
           in: query
           required: false
-          schema: *ref_108
+          schema: *ref_112
           description: page 查詢參數
         - name: pageSize
           in: query
           required: false
-          schema: *ref_109
+          schema: *ref_113
           description: pageSize 查詢參數
         - name: educationStage
           in: query
           required: false
-          schema: *ref_110
+          schema: *ref_114
           description: educationStage 查詢參數
         - name: roleList
           in: query
           required: false
-          schema: *ref_111
+          schema: *ref_115
           description: roleList 查詢參數
         - name: location
           in: query
           required: false
-          schema: *ref_112
+          schema: *ref_116
           description: location 查詢參數
         - name: search
           in: query
           required: false
-          schema: *ref_113
+          schema: *ref_117
           description: search 查詢參數
       security:
         - bearerAuth: []
@@ -20712,12 +20862,12 @@ paths:
         - name: category
           in: query
           required: false
-          schema: *ref_65
+          schema: *ref_69
           description: category 查詢參數
         - name: includeSystem
           in: query
           required: true
-          schema: *ref_66
+          schema: *ref_70
           description: includeSystem 查詢參數
       security:
         - bearerAuth: []
