@@ -22,8 +22,9 @@ async function mongoConnect(retries = 5) {
             await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
             return mongoConnect(retries - 1);
         }
-        console.error('Could not connect to MongoDB:', error.message);
-        process.exit(1);
+        console.error('❌ Could not connect to MongoDB:', error.message);
+        console.warn('⚠️ Server will continue without MongoDB. Some features may be unavailable.');
+        // 不終止進程，讓服務器繼續運行
     }
 }
 
