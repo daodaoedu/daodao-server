@@ -237,21 +237,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 async function startServer() {
   try {
-    await mongoConnect();
-    
+    // 嘗試連接 MongoDB，但即使失敗也繼續啟動服務器
+    try {
+      await mongoConnect();
+    } catch (mongoError) {
+      console.error('⚠️ MongoDB connection failed, but server will continue:', mongoError.message);
+    }
+
     // 打印路由信息
     printRoutes();
-    
+
     app.listen(PORT, () => {
       // 記憶體監控：服務器啟動後記錄
       const currentMemUsage = process.memoryUsage();
       const memUsedMB = Math.round(currentMemUsage.heapUsed / 1024 / 1024);
       const memDiffMB = Math.round((currentMemUsage.heapUsed - startMemUsage.heapUsed) / 1024 / 1024);
-      
+
       console.log(`✅ Server running on port ${PORT}`);
       console.log(`🧠 當前記憶體使用: ${memUsedMB}MB (+${memDiffMB}MB)`);
-    
-      
+
+
       // 設置定期記憶體監控
       setInterval(() => {
         const usage = process.memoryUsage();
@@ -260,7 +265,7 @@ async function startServer() {
           console.log(`⚠️ 記憶體使用偏高: ${heapMB}MB`);
         }
       }, 600000); // 每分鐘檢查一次
-      
+
     });
   } catch (error) {
     console.error('Failed to start server:', error);
