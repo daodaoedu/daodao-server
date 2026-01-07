@@ -59,10 +59,6 @@ ENV HEALTH_CHECK_PATH=/api/v1/health
 
 # PM2 is already installed as a local dependency
 
-# 創建用戶
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
 # 複製生產依賴
 COPY --from=deps-prod /app/node_modules ./node_modules
 
@@ -82,9 +78,8 @@ RUN mkdir -p /app/logs /app/dist/generated && \
         cp -r /app/generated/* /app/dist/generated/; \
     fi
 
-# 設置權限
-RUN chown -R nodejs:nodejs /app
-USER nodejs
+# 注意：容器以 root 用戶運行，以避免權限問題
+# 適合開發和測試環境，生產環境建議使用非 root 用戶
 
 # 健康檢查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
@@ -92,5 +87,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 EXPOSE 3000
 
-# 使用 PM2 啟動
+# 使用 PM2 啟動（以 root 用戶運行）
 CMD ["./node_modules/.bin/pm2-runtime", "start", "ecosystem.config.js"]
