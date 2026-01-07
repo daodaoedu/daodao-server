@@ -68,6 +68,9 @@ COPY --from=builder /app/openapi.json ./
 COPY --from=builder /app/openapi.yaml ./
 COPY --from=builder /app/ecosystem.config.js ./
 
+# 複製靜態文件（HTML 頁面等）
+COPY --from=builder /app/public ./public
+
 # 複製 Prisma 文件和生成的客戶端
 COPY --from=prisma /app/generated ./generated
 COPY prisma ./prisma
