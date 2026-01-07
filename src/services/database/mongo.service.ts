@@ -7,8 +7,7 @@ dotenv.config();
 const MONGO_URL = process.env.MONGO_URL;
 
 if (!MONGO_URL) {
-  console.error('MONGO_URL 環境變數未設定');
-  process.exit(1);
+  console.warn('⚠️  MONGO_URL 環境變數未設定，MongoDB 功能將不可用（僅影響監控功能）');
 }
 
 // 設定 MongoDB 連接事件監聽器
@@ -22,6 +21,12 @@ mongoose.connection.on('error', (err) => {
 
 // MongoDB 連接函數
 const mongoConnect = async (retries = 5): Promise<void> => {
+  // 如果沒有配置 MONGO_URL，直接跳過連接
+  if (!MONGO_URL) {
+    console.warn('⚠️  跳過 MongoDB 連接（未配置 MONGO_URL）');
+    return;
+  }
+
   try {
     await mongoose.connect(MONGO_URL, {
       // 連接池配置
@@ -37,8 +42,9 @@ const mongoConnect = async (retries = 5): Promise<void> => {
       await new Promise(resolve => setTimeout(resolve, 5000)); // 等待 5 秒
       return mongoConnect(retries - 1);
     }
-    console.error('無法連接到 MongoDB:', error);
-    process.exit(1);
+    // 改為警告而非致命錯誤，允許服務繼續運行
+    console.warn('⚠️  無法連接到 MongoDB - 監控功能將不可用，但核心服務正常運行');
+    console.error('MongoDB 連接錯誤詳情:', error);
   }
 };
 

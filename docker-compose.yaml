@@ -14,8 +14,10 @@ services:
     volumes:
       - ./logs:/app/logs
     depends_on:
+      # MongoDB 現在是可選的，不等待健康檢查
       mongo_prod:
-        condition: service_healthy
+        condition: service_started
+      # Redis 仍然是必須的（核心業務邏輯依賴）
       redis_prod:
         condition: service_healthy
     # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
@@ -43,8 +45,10 @@ services:
       - dev-daodao-network
       - dev_network
     depends_on:
+      # MongoDB 現在是可選的，不等待健康檢查
       mongo_dev:
-        condition: service_healthy
+        condition: service_started
+      # Redis 仍然是必須的（核心業務邏輯依賴）
       redis_dev:
         condition: service_healthy
     # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
