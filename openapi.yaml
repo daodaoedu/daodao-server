@@ -35,15 +35,20 @@ components:
           nullable: true
         filters:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
         categoryCounts:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: number
           nullable: true
         aggregateData:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
         requestId:
           type: string
@@ -89,7 +94,8 @@ components:
               type: string
             details:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: string
               nullable: true
           required:
             - code
@@ -107,15 +113,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -242,15 +253,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -337,15 +353,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -452,15 +473,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -617,15 +643,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -722,15 +753,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -920,15 +956,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -971,15 +1012,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1025,15 +1071,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1115,15 +1166,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1166,15 +1222,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1400,15 +1461,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1449,15 +1515,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1496,15 +1567,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1543,15 +1619,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1594,15 +1675,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -1731,7 +1817,9 @@ components:
           nullable: true
         data:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
       required:
         - to
@@ -1759,7 +1847,9 @@ components:
                 type: string
               data:
                 type: object
-                additionalProperties: true
+                additionalProperties:
+                  type: object
+                  additionalProperties: true
             required:
               - email
               - data
@@ -1794,7 +1884,9 @@ components:
             - custom
         data:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
       required:
         - template
         - data
@@ -2215,15 +2307,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -2382,15 +2479,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -2526,15 +2628,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -2669,15 +2776,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -2720,15 +2832,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -3244,7 +3361,9 @@ components:
             - public
         metadata:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
       required:
         - id
@@ -3498,15 +3617,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -3635,15 +3759,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -3707,7 +3836,9 @@ components:
                 enum: *ref_8
               metadata:
                 type: object
-                additionalProperties: true
+                additionalProperties:
+                  type: object
+                  additionalProperties: true
                 nullable: true
             required:
               - id
@@ -3750,7 +3881,8 @@ components:
               type: number
             byCategory:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
           required:
             - totalResources
             - draftCount
@@ -3760,7 +3892,9 @@ components:
           type: string
         meta:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
       required:
         - success
@@ -3930,7 +4064,9 @@ components:
           type: string
         meta:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
       required:
         - success
@@ -3963,7 +4099,9 @@ components:
           type: string
         meta:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            additionalProperties: true
           nullable: true
       required:
         - success
@@ -3997,16 +4135,14 @@ components:
       type: object
       properties:
         assignmentId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - assignmentId
     mentor.validators_participantIdParamsSchema:
       type: object
       properties:
         participantId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - participantId
     mentor.validators_eventIdParamsSchema:
@@ -4020,13 +4156,11 @@ components:
       type: object
       properties:
         page:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
           default: 1
         limit:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
           default: 10
       required:
@@ -4371,15 +4505,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4434,15 +4573,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4481,15 +4625,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4549,15 +4698,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4606,15 +4760,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4653,15 +4812,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4700,15 +4864,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4818,15 +4987,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4926,15 +5100,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -4999,8 +5178,7 @@ components:
       type: object
       properties:
         milestoneId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - milestoneId
     milestone.validators_milestoneProjectParamsSchema:
@@ -5014,8 +5192,7 @@ components:
       type: object
       properties:
         includeCompleted:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         sortBy:
           type: string
@@ -5103,15 +5280,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5198,15 +5380,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5295,15 +5482,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5399,20 +5591,17 @@ components:
       type: object
       properties:
         page:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         pageSize:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         visibility:
           type: string
           enum: *ref_9
           nullable: true
         week:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
     note.validators_noteParamsSchema:
       type: object
@@ -5420,8 +5609,7 @@ components:
         projectId:
           type: string
         noteId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - projectId
         - noteId
@@ -5436,13 +5624,11 @@ components:
       type: object
       properties:
         page: &ref_96
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
           default: 1
         pageSize: &ref_97
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
           default: 10
       required:
@@ -5511,15 +5697,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5598,15 +5789,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5687,15 +5883,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5787,20 +5988,17 @@ components:
       type: object
       properties:
         page:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         pageSize:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         visibility:
           type: string
           enum: *ref_10
           nullable: true
         week:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
     outcome.validators_outcomeParamsSchema:
       type: object
@@ -5808,8 +6006,7 @@ components:
         projectId:
           type: string
         outcomeId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - projectId
         - outcomeId
@@ -5824,13 +6021,11 @@ components:
       type: object
       properties:
         page:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
           default: 1
         pageSize:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
           default: 10
       required:
@@ -5888,15 +6083,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -5964,15 +6164,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -6042,15 +6247,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7005,15 +7215,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7197,15 +7412,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7289,15 +7509,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7404,15 +7629,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7474,15 +7704,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7537,15 +7772,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7606,15 +7846,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7660,15 +7905,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7714,15 +7964,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7765,15 +8020,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7816,15 +8076,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7879,15 +8144,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -7933,15 +8203,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -8101,15 +8376,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -8269,15 +8549,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -8320,15 +8605,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -8475,24 +8765,20 @@ components:
       type: object
       properties:
         page: &ref_87
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         limit: &ref_88
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         status: &ref_89
           type: string
           enum: *ref_19
           nullable: true
         isPublic: &ref_90
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         userId: &ref_91
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         search: &ref_92
           type: string
@@ -8522,8 +8808,7 @@ components:
       type: object
       properties:
         userId: &ref_95
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
     project.validators_batchProjectOperationSchema:
       type: object
@@ -8743,15 +9028,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -8942,15 +9232,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -9166,15 +9461,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -9232,15 +9532,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -9270,6 +9575,201 @@ components:
       type: object
     project.validators_deleteProjectApiResponseSchema:
       type: object
+    quiz.validators_resultTypeSchema:
+      type: string
+    quiz.validators_scoresSchema:
+      type: object
+      additionalProperties:
+        type: number
+    quiz.validators_answersSchema:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          selectedAnswer:
+            type: string
+        required:
+          - selectedAnswer
+      nullable: true
+    quiz.validators_saveQuizResultSchema:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            resultType:
+              type: string
+            scores:
+              type: object
+              additionalProperties:
+                type: number
+            answers:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  selectedAnswer:
+                    type: string
+                required:
+                  - selectedAnswer
+              nullable: true
+          required:
+            - resultType
+            - scores
+      required:
+        - body
+    quiz.validators_quizResultDataSchema:
+      type: object
+      properties:
+        id:
+          type: number
+        resultType:
+          type: string
+        scores:
+          type: object
+          additionalProperties:
+            type: number
+        completedAt:
+          type: string
+      required:
+        - id
+        - resultType
+        - scores
+        - completedAt
+    quiz.validators_saveQuizResultResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: number
+            resultType:
+              type: string
+            scores:
+              type: object
+              additionalProperties:
+                type: number
+            completedAt:
+              type: string
+          required:
+            - id
+            - resultType
+            - scores
+            - completedAt
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: number
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+      required:
+        - success
+        - data
+        - timestamp
+    quiz.validators_getQuizResultResponseSchema:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            id:
+              type: number
+            resultType:
+              type: string
+            scores:
+              type: object
+              additionalProperties:
+                type: number
+            completedAt:
+              type: string
+          required:
+            - id
+            - resultType
+            - scores
+            - completedAt
+        timestamp:
+          type: string
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              nullable: true
+            searchTime:
+              type: number
+              nullable: true
+            filters:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties: true
+              nullable: true
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: number
+              nullable: true
+            aggregateData:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties: true
+              nullable: true
+            requestId:
+              type: string
+              nullable: true
+            cacheHit:
+              type: boolean
+              nullable: true
+            processingTime:
+              type: number
+              nullable: true
+          nullable: true
+      required:
+        - success
+        - data
+        - timestamp
     request-params.validator_paginationSchema:
       type: object
       properties:
@@ -9277,8 +9777,7 @@ components:
           type: string
           nullable: true
         limit: &ref_104
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         sort: &ref_105
           type: string
@@ -9312,30 +9811,25 @@ components:
           type: string
           nullable: true
         tags:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         query:
           type: string
           nullable: true
         createdBy:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
     request-params.validator_reviewFilterSchema:
       type: object
       properties:
         resourceId:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         userId:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         tags:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
     request-params.validator_tagQuerySchema:
       type: object
@@ -9344,8 +9838,7 @@ components:
           type: string
           nullable: true
         limit:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         query:
           type: string
@@ -10150,15 +10643,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -10390,15 +10888,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -10588,15 +11091,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -10785,15 +11293,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -10836,15 +11349,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -10890,15 +11408,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -10938,15 +11461,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -11369,10 +11897,12 @@ components:
           type: number
         categoryStats:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: number
         typeStats:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: number
       required:
         - totalResources
         - activeResources
@@ -11501,15 +12031,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -11691,15 +12226,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -11839,15 +12379,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -11986,15 +12531,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12026,10 +12576,12 @@ components:
               type: number
             categoryStats:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
             typeStats:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
           required:
             - totalResources
             - activeResources
@@ -12048,15 +12600,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12096,15 +12653,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12147,15 +12709,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12264,11 +12831,13 @@ components:
           type: number
           nullable: true
         page: &ref_101
-          type: object
-          additionalProperties: true
+          type: string
+          nullable: true
+          default: '1'
         pageSize: &ref_102
-          type: object
-          additionalProperties: true
+          type: string
+          nullable: true
+          default: '10'
       required:
         - page
         - pageSize
@@ -12278,8 +12847,7 @@ components:
         projectId:
           type: string
         reviewId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - projectId
         - reviewId
@@ -12331,10 +12899,47 @@ components:
           type: number
         moodDistribution:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: number
         weeklyProgress:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: object
+            properties:
+              id:
+                type: number
+              week:
+                type: number
+              title:
+                type: string
+              mood:
+                type: string
+              stressLevel:
+                type: number
+              moodDescription:
+                type: string
+                nullable: true
+              learningReview:
+                type: string
+                nullable: true
+              learningFeedback:
+                type: string
+                nullable: true
+              adjustmentPlan:
+                type: string
+                nullable: true
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+                nullable: true
+            required:
+              - id
+              - week
+              - title
+              - mood
+              - stressLevel
+              - createdAt
       required:
         - total
         - averageStressLevel
@@ -12361,15 +12966,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12442,15 +13052,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12525,15 +13140,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12556,10 +13176,47 @@ components:
               type: number
             moodDistribution:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
             weeklyProgress:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  week:
+                    type: number
+                  title:
+                    type: string
+                  mood:
+                    type: string
+                  stressLevel:
+                    type: number
+                  moodDescription:
+                    type: string
+                    nullable: true
+                  learningReview:
+                    type: string
+                    nullable: true
+                  learningFeedback:
+                    type: string
+                    nullable: true
+                  adjustmentPlan:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                    nullable: true
+                required:
+                  - id
+                  - week
+                  - title
+                  - mood
+                  - stressLevel
+                  - createdAt
           required:
             - total
             - averageStressLevel
@@ -12590,15 +13247,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12635,8 +13297,8 @@ components:
         query: &ref_108
           type: string
         limit: &ref_109
-          type: object
-          additionalProperties: true
+          type: string
+          default: '10'
       required:
         - query
         - limit
@@ -12644,16 +13306,15 @@ components:
       type: object
       properties:
         limit: &ref_107
-          type: object
-          additionalProperties: true
+          type: string
+          default: '20'
       required:
         - limit
     tag.validators_entityTagsQuerySchema:
       type: object
       properties:
         entityId: &ref_110
-          type: object
-          additionalProperties: true
+          type: string
         entityType: &ref_111
           type: string
           enum: &ref_29
@@ -12670,8 +13331,7 @@ components:
       properties:
         entityId:
           oneOf:
-            - type: object
-              additionalProperties: true
+            - type: string
             - type: number
         entityType:
           type: string
@@ -12687,8 +13347,7 @@ components:
       properties:
         entityId:
           oneOf:
-            - type: object
-              additionalProperties: true
+            - type: string
             - type: number
         entityType:
           type: string
@@ -12709,8 +13368,7 @@ components:
             - remove
         entityId:
           oneOf:
-            - type: object
-              additionalProperties: true
+            - type: string
             - type: number
         entityType:
           type: string
@@ -12873,15 +13531,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12929,15 +13592,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -12996,15 +13664,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -13053,15 +13726,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -13100,15 +13778,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -13156,15 +13839,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -13213,15 +13901,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -13264,15 +13957,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -13352,11 +14050,9 @@ components:
         projectId:
           type: string
         milestoneId:
-          type: object
-          additionalProperties: true
+          type: string
         taskId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - projectId
         - milestoneId
@@ -13367,8 +14063,7 @@ components:
         projectId:
           type: string
         milestoneId:
-          type: object
-          additionalProperties: true
+          type: string
       required:
         - projectId
         - milestoneId
@@ -13597,24 +14292,20 @@ components:
           type: string
           enum: *ref_31
         locationId:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         roleId:
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         educationStage:
           type: string
           nullable: true
         limit:
-          type: object
-          additionalProperties: true
+          type: string
           default: 100
           nullable: true
         offset:
-          type: object
-          additionalProperties: true
+          type: string
           default: 0
           nullable: true
       required:
@@ -13623,8 +14314,7 @@ components:
       type: object
       properties:
         activeWithinDays:
-          type: object
-          additionalProperties: true
+          type: string
           default: 30
           nullable: true
         groupBy:
@@ -13632,13 +14322,11 @@ components:
           enum: *ref_32
           nullable: true
         limit:
-          type: object
-          additionalProperties: true
+          type: string
           default: 100
           nullable: true
         offset:
-          type: object
-          additionalProperties: true
+          type: string
           default: 0
           nullable: true
     user-stats.validator_exportStatsQuerySchema:
@@ -13743,7 +14431,10 @@ components:
           nullable: true
         preferences:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
           nullable: true
         isSendEmail:
           type: boolean
@@ -13861,7 +14552,10 @@ components:
           nullable: true
         preferences:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
           nullable: true
         professionalField:
           type: array
@@ -13886,12 +14580,10 @@ components:
       type: object
       properties:
         page: &ref_112
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         pageSize: &ref_113
-          type: object
-          additionalProperties: true
+          type: string
           nullable: true
         educationStage: &ref_114
           type: string
@@ -13910,7 +14602,10 @@ components:
       properties:
         preferences:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
       required:
         - preferences
     user.validators_userSuccessResponseSchema:
@@ -13987,7 +14682,18 @@ components:
               nullable: true
             preferences:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                    - name
+                    - value
               nullable: true
             role:
               type: number
@@ -14098,15 +14804,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14192,7 +14903,18 @@ components:
                 nullable: true
               preferences:
                 type: object
-                additionalProperties: true
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                      - name
+                      - value
                 nullable: true
               role:
                 type: number
@@ -14313,15 +15035,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14409,7 +15136,18 @@ components:
                   nullable: true
                 preferences:
                   type: object
-                  additionalProperties: true
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: string
+                      required:
+                        - name
+                        - value
                   nullable: true
                 role:
                   type: number
@@ -14513,15 +15251,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14605,7 +15348,18 @@ components:
               nullable: true
             preferences:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                    - name
+                    - value
               nullable: true
             role:
               type: number
@@ -14704,15 +15458,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14755,15 +15514,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14788,7 +15552,18 @@ components:
             - true
         data:
           type: object
-          additionalProperties: true
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  type: string
+              required:
+                - name
+                - value
         timestamp:
           type: string
         meta:
@@ -14802,15 +15577,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14840,7 +15620,18 @@ components:
               type: string
             preferences:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                    - name
+                    - value
           required:
             - message
             - preferences
@@ -14857,15 +15648,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14941,15 +15737,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -14992,15 +15793,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -15043,15 +15849,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -15094,15 +15905,20 @@ components:
               nullable: true
             filters:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             categoryCounts:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: number
               nullable: true
             aggregateData:
               type: object
-              additionalProperties: true
+              additionalProperties:
+                type: object
+                additionalProperties: true
               nullable: true
             requestId:
               type: string
@@ -19617,6 +20433,76 @@ paths:
           schema:
             type: string
           description: reviewId 參數
+      security:
+        - bearerAuth: []
+  /api/v1/quizResults/:
+    post:
+      tags:
+        - Quiz Results
+      summary: 測驗結果路由
+      operationId: post_api_v1_quizResults_
+      responses:
+        '201':
+          description: 資源創建成功
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/api-response.validators_apiSuccessResponseExample
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      description: >-
+        定義測驗結果相關的 API 端點 / import { Router, RequestHandler } from 'express';
+        import { authenticate } from '@/middleware/auth'; import { validate }
+        from '@/middleware/validation.middleware'; import { saveQuizResultSchema
+        } from '@/validators/quiz.validators'; import { quizController } from
+        '@/controllers/quiz.controller'; const router = Router();
+        router.use(authenticate); /** POST / 保存測驗結果
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/quiz.validators_saveQuizResultSchema'
+      security:
+        - bearerAuth: []
+  /api/v1/quizResults/latest:
+    get:
+      tags:
+        - Quiz Results
+      summary: 測驗結果路由
+      operationId: get_api_v1_quizResults_latest
+      responses:
+        '200':
+          description: 成功回應
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/api-response.validators_apiSuccessResponseExample
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      description: >-
+        定義測驗結果相關的 API 端點 / import { Router, RequestHandler } from 'express';
+        import { authenticate } from '@/middleware/auth'; import { validate }
+        from '@/middleware/validation.middleware'; import { saveQuizResultSchema
+        } from '@/validators/quiz.validators'; import { quizController } from
+        '@/controllers/quiz.controller'; const router = Router();
+        router.use(authenticate); /** POST / 保存測驗結果 / router.post( '/',
+        validate(saveQuizResultSchema, 'body'), quizController.saveResult as
+        RequestHandler ); /** GET /latest 取得最新測驗結果
       security:
         - bearerAuth: []
   /api/v1/resources/{resourceId}/reviews/:

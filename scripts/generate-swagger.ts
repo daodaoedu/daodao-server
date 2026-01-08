@@ -182,7 +182,7 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
   // 提取 metadata（從 .meta() 方法）
   if (def?.metadata) {
     Object.assign(metadata, def.metadata);
-    
+
     // 如果有 examples，將第一個 example 設為 schema 的 example
     if (def.metadata.examples && Array.isArray(def.metadata.examples) && def.metadata.examples.length > 0) {
       metadata.example = def.metadata.examples[0];
@@ -190,7 +190,27 @@ function extractZodV4Metadata(schema: z.ZodSchema): any {
   }
 
   // 處理不同類型的 schema
-  if (schema instanceof z.ZodObject) {
+  // Check ZodEffects and ZodRecord FIRST (before instanceof checks)
+  // In Zod v4, check for presence of specific _def properties instead of typeName
+  if ((schema as any)._def?.type === 'pipe' && (schema as any)._def?.in) {
+    // This is a ZodPipe (created by .transform() in Zod v4)
+    // Get the input type - this is the schema before transformation
+    const innerType = (schema as any)._def.in;
+    if (innerType && typeof innerType === 'object' && innerType._def) {
+      const innerMetadata = extractZodV4Metadata(innerType);
+      // Merge: top-level metadata takes precedence over inner metadata
+      return { ...innerMetadata, ...metadata };
+    }
+  } else if ((schema as any)._def?.keyType !== undefined && (schema as any)._def?.valueType !== undefined) {
+    // This is a ZodRecord (has 'keyType' and 'valueType')
+    metadata.type = 'object';
+    const valueType = (schema as any)._def.valueType;
+    if (valueType) {
+      metadata.additionalProperties = extractZodV4Metadata(valueType);
+    } else {
+      metadata.additionalProperties = true;
+    }
+  } else if (schema instanceof z.ZodObject) {
     metadata.type = 'object';
     metadata.properties = {};
 
@@ -385,11 +405,11 @@ async function loadZodV4SchemasWithMetadata(): Promise<any> {
         if (exportValue && typeof exportValue === 'object' && (exportValue as any)._def) {
           // 這是一個 Zod schema
           console.log(`  ✓ 發現 schema: ${exportName}`);
-          
+
           try {
             // 使用 Zod v4 內建的 JSON schema 生成功能
             const zodSchema = exportValue as z.ZodSchema;
-            
+
             // 檢查 Zod v4 是否有內建的 toJsonSchema 方法
             let jsonSchema: any;
             if (typeof (zodSchema as any).toJsonSchema === 'function') {
@@ -398,7 +418,7 @@ async function loadZodV4SchemasWithMetadata(): Promise<any> {
               // 回退到手動提取 metadata
               jsonSchema = extractZodV4Metadata(zodSchema);
             }
-            
+
             fileSchemas[exportName] = jsonSchema;
           } catch (error) {
             console.warn(`  ⚠️  無法處理 schema ${exportName}:`, error);
@@ -501,7 +521,8 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
         'resource-review.routes.ts': '/api/v1/resources/:resourceId/reviews',
         'tag.routes.ts': '/api/v1/tags',
         'db-info.routes.ts': '/api/v1/db-info',
-        'monitor.routes.ts': '/api/v1/monitor'
+        'monitor.routes.ts': '/api/v1/monitor',
+        'quiz.routes.ts': '/api/v1/quizResults'
       };
       
       basePath = routeMapping[routeName] || `/api/v1/${routeName.replace('.routes.ts', '').replace('.routes', '')}`;
@@ -532,7 +553,7 @@ function parseRouteFile(filePath: string, routeName: string): any[] {
 function getTagFromRouteName(routeName: string): string {
   const mapping: Record<string, string> = {
     'auth.routes': 'Authentication',
-    'user.routes': 'Users', 
+    'user.routes': 'Users',
     'resource.routes': 'Resources',
     'practice.routes': 'Practice',
     'project.routes': 'Projects',
@@ -549,9 +570,10 @@ function getTagFromRouteName(routeName: string): string {
     'resource-review.routes': 'Resource Reviews',
     'tag.routes': 'Tags',
     'db-info.routes': 'Database Info',
-    'monitor.routes': 'System Monitor'
+    'monitor.routes': 'System Monitor',
+    'quiz.routes': 'Quiz Results'
   };
-  
+
   return mapping[routeName] || routeName.replace('.routes', '');
 }
 

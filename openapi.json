@@ -50,17 +50,25 @@
           },
           "filters": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           },
           "categoryCounts": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "number"
+            },
             "nullable": true
           },
           "aggregateData": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           },
           "requestId": {
@@ -119,7 +127,9 @@
               },
               "details": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "string"
+                },
                 "nullable": true
               }
             },
@@ -144,17 +154,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -330,17 +348,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -461,17 +487,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -619,17 +653,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -846,17 +888,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -991,17 +1041,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -1274,17 +1332,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -1345,17 +1411,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -1420,17 +1494,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -1545,17 +1627,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -1616,17 +1706,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -1935,17 +2033,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -2002,17 +2108,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -2066,17 +2180,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -2130,17 +2252,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -2201,17 +2331,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -2402,7 +2540,10 @@
           },
           "data": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           }
         },
@@ -2438,7 +2579,10 @@
                 },
                 "data": {
                   "type": "object",
-                  "additionalProperties": true
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
                 }
               },
               "required": [
@@ -2489,7 +2633,10 @@
           },
           "data": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [
@@ -3085,17 +3232,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -3319,17 +3474,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -3520,17 +3683,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -3720,17 +3891,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -3791,17 +3970,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -4511,7 +4698,10 @@
           },
           "metadata": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           }
         },
@@ -4879,17 +5069,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -5073,17 +5271,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -5183,7 +5389,10 @@
                 },
                 "metadata": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
                   "nullable": true
                 }
               },
@@ -5243,7 +5452,9 @@
               },
               "byCategory": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {
+                  "type": "number"
+                }
               }
             },
             "required": [
@@ -5258,7 +5469,10 @@
           },
           "meta": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           }
         },
@@ -5501,7 +5715,10 @@
           },
           "meta": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           }
         },
@@ -5548,7 +5765,10 @@
           },
           "meta": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            },
             "nullable": true
           }
         },
@@ -5598,8 +5818,7 @@
         "type": "object",
         "properties": {
           "assignmentId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -5610,8 +5829,7 @@
         "type": "object",
         "properties": {
           "participantId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -5633,14 +5851,12 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true,
             "default": 1
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true,
             "default": 10
           }
@@ -6122,17 +6338,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6209,17 +6433,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6273,17 +6505,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6367,17 +6607,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6446,17 +6694,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6510,17 +6766,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6574,17 +6838,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6737,17 +7009,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6887,17 +7167,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -6988,8 +7276,7 @@
         "type": "object",
         "properties": {
           "milestoneId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -7011,8 +7298,7 @@
         "type": "object",
         "properties": {
           "includeCompleted": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "sortBy": {
@@ -7132,17 +7418,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -7263,17 +7557,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -7397,17 +7699,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -7546,13 +7856,11 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "pageSize": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "visibility": {
@@ -7564,8 +7872,7 @@
             "nullable": true
           },
           "week": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           }
         }
@@ -7577,8 +7884,7 @@
             "type": "string"
           },
           "noteId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -7601,14 +7907,12 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true,
             "default": 1
           },
           "pageSize": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true,
             "default": 10
           }
@@ -7704,17 +8008,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -7825,17 +8137,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -7949,17 +8269,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -8091,13 +8419,11 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "pageSize": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "visibility": {
@@ -8109,8 +8435,7 @@
             "nullable": true
           },
           "week": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           }
         }
@@ -8122,8 +8447,7 @@
             "type": "string"
           },
           "outcomeId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -8146,14 +8470,12 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true,
             "default": 1
           },
           "pageSize": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true,
             "default": 10
           }
@@ -8233,17 +8555,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -8338,17 +8668,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -8446,17 +8784,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -9834,17 +10180,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10114,17 +10468,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10245,17 +10607,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10409,17 +10779,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10505,17 +10883,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10592,17 +10978,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10689,17 +11083,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10764,17 +11166,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10839,17 +11249,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10910,17 +11328,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -10981,17 +11407,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -11068,17 +11502,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -11143,17 +11585,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -11389,17 +11839,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -11635,17 +12093,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -11706,17 +12172,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -11920,13 +12394,11 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "status": {
@@ -11940,13 +12412,11 @@
             "nullable": true
           },
           "isPublic": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "userId": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "search": {
@@ -11987,8 +12457,7 @@
         "type": "object",
         "properties": {
           "userId": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           }
         }
@@ -12294,17 +12763,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -12564,17 +13041,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -12869,17 +13354,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -12960,17 +13453,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -13015,6 +13516,285 @@
       "project.validators_deleteProjectApiResponseSchema": {
         "type": "object"
       },
+      "quiz.validators_resultTypeSchema": {
+        "type": "string"
+      },
+      "quiz.validators_scoresSchema": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "number"
+        }
+      },
+      "quiz.validators_answersSchema": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "selectedAnswer": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "selectedAnswer"
+          ]
+        },
+        "nullable": true
+      },
+      "quiz.validators_saveQuizResultSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "properties": {
+              "resultType": {
+                "type": "string"
+              },
+              "scores": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "answers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "selectedAnswer": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "selectedAnswer"
+                  ]
+                },
+                "nullable": true
+              }
+            },
+            "required": [
+              "resultType",
+              "scores"
+            ]
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "quiz.validators_quizResultDataSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "resultType": {
+            "type": "string"
+          },
+          "scores": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "completedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "resultType",
+          "scores",
+          "completedAt"
+        ]
+      },
+      "quiz.validators_saveQuizResultResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "resultType": {
+                "type": "string"
+              },
+              "scores": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "completedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "resultType",
+              "scores",
+              "completedAt"
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "quiz.validators_getQuizResultResponseSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "resultType": {
+                "type": "string"
+              },
+              "scores": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "completedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "resultType",
+              "scores",
+              "completedAt"
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "nullable": true
+              },
+              "searchTime": {
+                "type": "number",
+                "nullable": true
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "nullable": true
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "nullable": true
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "nullable": true
+              },
+              "requestId": {
+                "type": "string",
+                "nullable": true
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "processingTime": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
       "request-params.validator_paginationSchema": {
         "type": "object",
         "properties": {
@@ -13023,8 +13803,7 @@
             "nullable": true
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "sort": {
@@ -13070,8 +13849,7 @@
             "nullable": true
           },
           "tags": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "query": {
@@ -13079,8 +13857,7 @@
             "nullable": true
           },
           "createdBy": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           }
         }
@@ -13089,18 +13866,15 @@
         "type": "object",
         "properties": {
           "resourceId": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "userId": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "tags": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           }
         }
@@ -13113,8 +13887,7 @@
             "nullable": true
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "query": {
@@ -14210,17 +14983,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -14545,17 +15326,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -14821,17 +15610,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -15096,17 +15893,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -15167,17 +15972,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -15242,17 +16055,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -15308,17 +16129,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -15909,11 +16738,15 @@
           },
           "categoryStats": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "number"
+            }
           },
           "typeStats": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "number"
+            }
           }
         },
         "required": [
@@ -16112,17 +16945,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -16396,17 +17237,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -16621,17 +17470,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -16845,17 +17702,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -16900,11 +17765,15 @@
               },
               "categoryStats": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {
+                  "type": "number"
+                }
               },
               "typeStats": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {
+                  "type": "number"
+                }
               }
             },
             "required": [
@@ -16930,17 +17799,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -16996,17 +17873,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -17067,17 +17952,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -17247,12 +18140,14 @@
             "nullable": true
           },
           "page": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string",
+            "nullable": true,
+            "default": "1"
           },
           "pageSize": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string",
+            "nullable": true,
+            "default": "10"
           }
         },
         "required": [
@@ -17267,8 +18162,7 @@
             "type": "string"
           },
           "reviewId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -17341,11 +18235,63 @@
           },
           "moodDistribution": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "number"
+            }
           },
           "weeklyProgress": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "week": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "mood": {
+                  "type": "string"
+                },
+                "stressLevel": {
+                  "type": "number"
+                },
+                "moodDescription": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "learningReview": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "learningFeedback": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "adjustmentPlan": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "week",
+                "title",
+                "mood",
+                "stressLevel",
+                "createdAt"
+              ]
+            }
           }
         },
         "required": [
@@ -17381,17 +18327,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -17492,17 +18446,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -17606,17 +18568,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -17648,11 +18618,63 @@
               },
               "moodDistribution": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {
+                  "type": "number"
+                }
               },
               "weeklyProgress": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "week": {
+                      "type": "number"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "mood": {
+                      "type": "string"
+                    },
+                    "stressLevel": {
+                      "type": "number"
+                    },
+                    "moodDescription": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "learningReview": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "learningFeedback": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "adjustmentPlan": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "week",
+                    "title",
+                    "mood",
+                    "stressLevel",
+                    "createdAt"
+                  ]
+                }
               }
             },
             "required": [
@@ -17695,17 +18717,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -17760,8 +18790,8 @@
             "type": "string"
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string",
+            "default": "10"
           }
         },
         "required": [
@@ -17773,8 +18803,8 @@
         "type": "object",
         "properties": {
           "limit": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string",
+            "default": "20"
           }
         },
         "required": [
@@ -17785,8 +18815,7 @@
         "type": "object",
         "properties": {
           "entityId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           },
           "entityType": {
             "type": "string",
@@ -17810,8 +18839,7 @@
           "entityId": {
             "oneOf": [
               {
-                "type": "object",
-                "additionalProperties": true
+                "type": "string"
               },
               {
                 "type": "number"
@@ -17844,8 +18872,7 @@
           "entityId": {
             "oneOf": [
               {
-                "type": "object",
-                "additionalProperties": true
+                "type": "string"
               },
               {
                 "type": "number"
@@ -17885,8 +18912,7 @@
           "entityId": {
             "oneOf": [
               {
-                "type": "object",
-                "additionalProperties": true
+                "type": "string"
               },
               {
                 "type": "number"
@@ -18135,17 +19161,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18213,17 +19247,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18307,17 +19349,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18386,17 +19436,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18450,17 +19508,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18528,17 +19594,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18607,17 +19681,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18678,17 +19760,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -18797,12 +19887,10 @@
             "type": "string"
           },
           "milestoneId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           },
           "taskId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -18818,8 +19906,7 @@
             "type": "string"
           },
           "milestoneId": {
-            "type": "object",
-            "additionalProperties": true
+            "type": "string"
           }
         },
         "required": [
@@ -19164,13 +20251,11 @@
             ]
           },
           "locationId": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "roleId": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "educationStage": {
@@ -19178,14 +20263,12 @@
             "nullable": true
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "default": 100,
             "nullable": true
           },
           "offset": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "default": 0,
             "nullable": true
           }
@@ -19198,8 +20281,7 @@
         "type": "object",
         "properties": {
           "activeWithinDays": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "default": 30,
             "nullable": true
           },
@@ -19213,14 +20295,12 @@
             "nullable": true
           },
           "limit": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "default": 100,
             "nullable": true
           },
           "offset": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "default": 0,
             "nullable": true
           }
@@ -19382,7 +20462,12 @@
           },
           "preferences": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "nullable": true
           },
           "isSendEmail": {
@@ -19543,7 +20628,12 @@
           },
           "preferences": {
             "type": "object",
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "nullable": true
           },
           "professionalField": {
@@ -19592,13 +20682,11 @@
         "type": "object",
         "properties": {
           "page": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "pageSize": {
-            "type": "object",
-            "additionalProperties": true,
+            "type": "string",
             "nullable": true
           },
           "educationStage": {
@@ -19624,7 +20712,12 @@
         "properties": {
           "preferences": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         },
         "required": [
@@ -19734,7 +20827,24 @@
               },
               "preferences": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ]
+                  }
+                },
                 "nullable": true
               },
               "role": {
@@ -19886,17 +20996,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -20026,7 +21144,24 @@
                 },
                 "preferences": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ]
+                    }
+                  },
                   "nullable": true
                 },
                 "role": {
@@ -20210,17 +21345,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -20352,7 +21495,24 @@
                   },
                   "preferences": {
                     "type": "object",
-                    "additionalProperties": true,
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "value"
+                        ]
+                      }
+                    },
                     "nullable": true
                   },
                   "role": {
@@ -20513,17 +21673,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -20651,7 +21819,24 @@
               },
               "preferences": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ]
+                  }
+                },
                 "nullable": true
               },
               "role": {
@@ -20803,17 +21988,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -20874,17 +22067,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -20920,7 +22121,24 @@
           },
           "data": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "value"
+                ]
+              }
+            }
           },
           "timestamp": {
             "type": "string"
@@ -20938,17 +22156,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -20990,7 +22216,24 @@
               },
               "preferences": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ]
+                  }
+                }
               }
             },
             "required": [
@@ -21014,17 +22257,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -21131,17 +22382,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -21202,17 +22461,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -21273,17 +22540,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -21344,17 +22619,25 @@
               },
               "filters": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "categoryCounts": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "number"
+                },
                 "nullable": true
               },
               "aggregateData": {
                 "type": "object",
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
                 "nullable": true
               },
               "requestId": {
@@ -26096,8 +27379,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "page 查詢參數"
@@ -26107,8 +27389,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "limit 查詢參數"
@@ -26134,8 +27415,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "isPublic 查詢參數"
@@ -26145,8 +27425,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "userId 查詢參數"
@@ -26284,8 +27563,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "page 查詢參數"
@@ -26295,8 +27573,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "limit 查詢參數"
@@ -26322,8 +27599,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "isPublic 查詢參數"
@@ -26333,8 +27609,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "userId 查詢參數"
@@ -26425,8 +27700,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "page 查詢參數"
@@ -26436,8 +27710,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "limit 查詢參數"
@@ -26463,8 +27736,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "isPublic 查詢參數"
@@ -26474,8 +27746,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "userId 查詢參數"
@@ -26566,8 +27837,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "userId 查詢參數"
@@ -26927,8 +28197,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true,
               "default": 1
             },
@@ -26939,8 +28208,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true,
               "default": 10
             },
@@ -28317,8 +29585,9 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true
+              "type": "string",
+              "nullable": true,
+              "default": "1"
             },
             "description": "page 查詢參數"
           },
@@ -28327,8 +29596,9 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true
+              "type": "string",
+              "nullable": true,
+              "default": "10"
             },
             "description": "pageSize 查詢參數"
           }
@@ -28542,6 +29812,94 @@
         ]
       }
     },
+    "/api/v1/quizResults/": {
+      "post": {
+        "tags": [
+          "Quiz Results"
+        ],
+        "summary": "測驗結果路由",
+        "operationId": "post_api_v1_quizResults_",
+        "responses": {
+          "201": {
+            "description": "資源創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "description": "定義測驗結果相關的 API 端點 / import { Router, RequestHandler } from 'express'; import { authenticate } from '@/middleware/auth'; import { validate } from '@/middleware/validation.middleware'; import { saveQuizResultSchema } from '@/validators/quiz.validators'; import { quizController } from '@/controllers/quiz.controller'; const router = Router(); router.use(authenticate); /** POST / 保存測驗結果",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/quiz.validators_saveQuizResultSchema"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/quizResults/latest": {
+      "get": {
+        "tags": [
+          "Quiz Results"
+        ],
+        "summary": "測驗結果路由",
+        "operationId": "get_api_v1_quizResults_latest",
+        "responses": {
+          "200": {
+            "description": "成功回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api-response.validators_apiSuccessResponseExample"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "description": "定義測驗結果相關的 API 端點 / import { Router, RequestHandler } from 'express'; import { authenticate } from '@/middleware/auth'; import { validate } from '@/middleware/validation.middleware'; import { saveQuizResultSchema } from '@/validators/quiz.validators'; import { quizController } from '@/controllers/quiz.controller'; const router = Router(); router.use(authenticate); /** POST / 保存測驗結果 / router.post( '/', validate(saveQuizResultSchema, 'body'), quizController.saveResult as RequestHandler ); /** GET /latest 取得最新測驗結果",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/resources/{resourceId}/reviews/": {
       "get": {
         "tags": [
@@ -28599,8 +29957,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "limit 查詢參數"
@@ -29154,8 +30511,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "limit 查詢參數"
@@ -29602,8 +30958,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true
+              "type": "string",
+              "default": "20"
             },
             "description": "limit 查詢參數"
           }
@@ -29661,8 +31017,8 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true
+              "type": "string",
+              "default": "10"
             },
             "description": "limit 查詢參數"
           }
@@ -29853,8 +31209,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "object",
-              "additionalProperties": true
+              "type": "string"
             },
             "description": "entityId 查詢參數"
           },
@@ -29920,8 +31275,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "page 查詢參數"
@@ -29931,8 +31285,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "object",
-              "additionalProperties": true,
+              "type": "string",
               "nullable": true
             },
             "description": "pageSize 查詢參數"

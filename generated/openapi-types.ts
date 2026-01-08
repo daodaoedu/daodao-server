@@ -454,14 +454,14 @@ export interface paths {
         };
         /** GET /:id */
         get: operations["get_api_v1_ideas__id_"];
-        put?: never;
+        /** PUT /:id */
+        put: operations["put_api_v1_ideas__id_"];
         post?: never;
         /** DELETE /:id */
         delete: operations["delete_api_v1_ideas__id_"];
         options?: never;
         head?: never;
-        /** PATCH /:id */
-        patch: operations["patch_api_v1_ideas__id_"];
+        patch?: never;
         trace?: never;
     };
     "/api/v1/images/{filename}": {
@@ -1441,6 +1441,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quizResults/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 測驗結果路由
+         * @description 定義測驗結果相關的 API 端點 / import { Router, RequestHandler } from 'express'; import { authenticate } from '@/middleware/auth'; import { validate } from '@/middleware/validation.middleware'; import { saveQuizResultSchema } from '@/validators/quiz.validators'; import { quizController } from '@/controllers/quiz.controller'; const router = Router(); router.use(authenticate); /** POST / 保存測驗結果
+         */
+        post: operations["post_api_v1_quizResults_"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quizResults/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 測驗結果路由
+         * @description 定義測驗結果相關的 API 端點 / import { Router, RequestHandler } from 'express'; import { authenticate } from '@/middleware/auth'; import { validate } from '@/middleware/validation.middleware'; import { saveQuizResultSchema } from '@/validators/quiz.validators'; import { quizController } from '@/controllers/quiz.controller'; const router = Router(); router.use(authenticate); /** POST / 保存測驗結果 / router.post( '/', validate(saveQuizResultSchema, 'body'), quizController.saveResult as RequestHandler ); /** GET /latest 取得最新測驗結果
+         */
+        get: operations["get_api_v1_quizResults_latest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/resources/{resourceId}/reviews/": {
         parameters: {
             query?: never;
@@ -1841,13 +1881,17 @@ export interface components {
             searchQuery?: string | null;
             searchTime?: number | null;
             filters?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
             categoryCounts?: {
-                [key: string]: unknown;
+                [key: string]: number;
             } | null;
             aggregateData?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
             requestId?: string | null;
             cacheHit?: boolean | null;
@@ -1863,7 +1907,7 @@ export interface components {
                 code: "VALIDATION_ERROR" | "INVALID_TOKEN" | "TOKEN_EXPIRED" | "DATABASE_ERROR" | "FILE_UPLOAD_ERROR" | "APP_ERROR" | "INTERNAL_SERVER_ERROR" | "USER_NOT_FOUND" | "RESOURCE_NOT_FOUND" | "UNAUTHORIZED" | "FORBIDDEN" | "CONFLICT" | "BAD_REQUEST";
                 message: string;
                 details?: {
-                    [key: string]: unknown;
+                    [key: string]: string;
                 } | null;
             };
             timestamp: string;
@@ -1871,13 +1915,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -1925,13 +1973,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -1964,13 +2016,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2010,13 +2066,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2070,13 +2130,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2111,13 +2175,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2192,13 +2260,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2216,13 +2288,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2241,13 +2317,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2277,13 +2357,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2301,13 +2385,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2396,13 +2484,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2420,13 +2512,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2444,13 +2540,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2468,13 +2568,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2492,13 +2596,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2543,7 +2651,9 @@ export interface components {
             /** @enum {string|null} */
             template?: "welcome" | "verification" | "password-reset" | "contact" | "marathon" | "custom" | null;
             data?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         "email.validators_bulkEmailSchema": {
@@ -2553,7 +2663,9 @@ export interface components {
             recipients: {
                 email: string;
                 data: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 };
             }[];
             from?: string | null;
@@ -2566,7 +2678,9 @@ export interface components {
             /** @enum {string} */
             template: "welcome" | "verification" | "password-reset" | "contact" | "marathon" | "custom";
             data: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             };
         };
         "email.validators_emailStatsQuerySchema": {
@@ -2726,13 +2840,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2790,13 +2908,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2846,13 +2968,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2902,13 +3028,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -2926,13 +3056,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3135,7 +3269,9 @@ export interface components {
             /** @enum {string} */
             visibility: "private" | "public";
             metadata?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         "me.validators_preferenceOptionSchema": {
@@ -3225,13 +3361,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3277,13 +3417,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3310,7 +3454,9 @@ export interface components {
                 /** @enum {string} */
                 visibility: "private" | "public";
                 metadata?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
             }[];
             pagination: {
@@ -3326,12 +3472,14 @@ export interface components {
                 draftCount: number;
                 publishedCount: number;
                 byCategory: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 };
             };
             timestamp: string;
             meta?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         "me.validators_myPreferencesApiResponseSchema": {
@@ -3390,7 +3538,9 @@ export interface components {
             };
             timestamp: string;
             meta?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         "me.validators_updatePreferencesApiResponseSchema": {
@@ -3404,7 +3554,9 @@ export interface components {
             message: string;
             timestamp: string;
             meta?: {
-                [key: string]: unknown;
+                [key: string]: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         "mentor.validators_assignMentorToMarathonSchema": {
@@ -3418,27 +3570,19 @@ export interface components {
             participantId: number;
         };
         "mentor.validators_assignmentIdParamsSchema": {
-            assignmentId: {
-                [key: string]: unknown;
-            };
+            assignmentId: string;
         };
         "mentor.validators_participantIdParamsSchema": {
-            participantId: {
-                [key: string]: unknown;
-            };
+            participantId: string;
         };
         "mentor.validators_eventIdParamsSchema": {
             eventId: string;
         };
         "mentor.validators_paginationQuerySchema": {
             /** @default 1 */
-            page: {
-                [key: string]: unknown;
-            } | null;
+            page: string | null;
             /** @default 10 */
-            limit: {
-                [key: string]: unknown;
-            } | null;
+            limit: string | null;
         };
         "mentor.validators_mentorMarathonAssignmentResponseSchema": {
             id: number;
@@ -3556,13 +3700,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3584,13 +3732,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3608,13 +3760,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3637,13 +3793,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3663,13 +3823,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3687,13 +3851,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3711,13 +3879,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3755,13 +3927,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3798,13 +3974,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3829,17 +4009,13 @@ export interface components {
             isCompleted?: boolean | null;
         };
         "milestone.validators_milestoneParamsSchema": {
-            milestoneId: {
-                [key: string]: unknown;
-            };
+            milestoneId: string;
         };
         "milestone.validators_milestoneProjectParamsSchema": {
             projectId: string;
         };
         "milestone.validators_milestoneQuerySchema": {
-            includeCompleted?: {
-                [key: string]: unknown;
-            } | null;
+            includeCompleted?: string | null;
             /** @enum {string|null} */
             sortBy?: "position" | "startDate" | "endDate" | "createdAt" | "name" | null;
             /** @enum {string|null} */
@@ -3872,13 +4048,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3912,13 +4092,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3952,13 +4136,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -3995,36 +4183,24 @@ export interface components {
             visibility?: "private" | "public" | null;
         };
         "note.validators_noteQuerySchema": {
-            page?: {
-                [key: string]: unknown;
-            } | null;
-            pageSize?: {
-                [key: string]: unknown;
-            } | null;
+            page?: string | null;
+            pageSize?: string | null;
             /** @enum {string|null} */
             visibility?: "private" | "public" | null;
-            week?: {
-                [key: string]: unknown;
-            } | null;
+            week?: string | null;
         };
         "note.validators_noteParamsSchema": {
             projectId: string;
-            noteId: {
-                [key: string]: unknown;
-            };
+            noteId: string;
         };
         "note.validators_noteProjectParamsSchema": {
             projectId: string;
         };
         "note.validators_publicNotesQuerySchema": {
             /** @default 1 */
-            page: {
-                [key: string]: unknown;
-            } | null;
+            page: string | null;
             /** @default 10 */
-            pageSize: {
-                [key: string]: unknown;
-            } | null;
+            pageSize: string | null;
         };
         "note.validators_noteResponseSchema": {
             id: number;
@@ -4048,13 +4224,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4083,13 +4263,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4118,13 +4302,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4161,36 +4349,24 @@ export interface components {
             visibility?: "private" | "public" | null;
         };
         "outcome.validators_outcomeQuerySchema": {
-            page?: {
-                [key: string]: unknown;
-            } | null;
-            pageSize?: {
-                [key: string]: unknown;
-            } | null;
+            page?: string | null;
+            pageSize?: string | null;
             /** @enum {string|null} */
             visibility?: "private" | "public" | null;
-            week?: {
-                [key: string]: unknown;
-            } | null;
+            week?: string | null;
         };
         "outcome.validators_outcomeParamsSchema": {
             projectId: string;
-            outcomeId: {
-                [key: string]: unknown;
-            };
+            outcomeId: string;
         };
         "outcome.validators_outcomeProjectParamsSchema": {
             projectId: string;
         };
         "outcome.validators_publicOutcomesQuerySchema": {
             /** @default 1 */
-            page: {
-                [key: string]: unknown;
-            } | null;
+            page: string | null;
             /** @default 10 */
-            pageSize: {
-                [key: string]: unknown;
-            } | null;
+            pageSize: string | null;
         };
         "outcome.validators_outcomeResponseSchema": {
             id: number;
@@ -4210,13 +4386,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4241,13 +4421,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4272,13 +4456,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4641,13 +4829,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4713,13 +4905,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4751,13 +4947,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4797,13 +4997,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4827,13 +5031,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4855,13 +5063,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4884,13 +5096,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4909,13 +5125,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4934,13 +5154,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4958,13 +5182,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -4982,13 +5210,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5010,13 +5242,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5035,13 +5271,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5099,13 +5339,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5163,13 +5407,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5187,13 +5435,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5256,20 +5508,12 @@ export interface components {
             id: string;
         };
         "project.validators_projectQuerySchema": {
-            page?: {
-                [key: string]: unknown;
-            } | null;
-            limit?: {
-                [key: string]: unknown;
-            } | null;
+            page?: string | null;
+            limit?: string | null;
             /** @enum {string|null} */
             status?: "Not Started" | "Ongoing" | "Completed" | "Canceled" | null;
-            isPublic?: {
-                [key: string]: unknown;
-            } | null;
-            userId?: {
-                [key: string]: unknown;
-            } | null;
+            isPublic?: string | null;
+            userId?: string | null;
             search?: string | null;
             /** @enum {string|null} */
             sortBy?: "createdAt" | "updatedAt" | "title" | "startDate" | "endDate" | null;
@@ -5280,9 +5524,7 @@ export interface components {
             title?: string | null;
         };
         "project.validators_projectStatsQuerySchema": {
-            userId?: {
-                [key: string]: unknown;
-            } | null;
+            userId?: string | null;
         };
         "project.validators_batchProjectOperationSchema": {
             /** @enum {string} */
@@ -5370,13 +5612,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5453,13 +5699,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5544,13 +5794,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5573,13 +5827,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -5594,11 +5852,105 @@ export interface components {
         "project.validators_projectListApiResponseSchema": Record<string, never>;
         "project.validators_projectStatsApiResponseSchema": Record<string, never>;
         "project.validators_deleteProjectApiResponseSchema": Record<string, never>;
+        "quiz.validators_resultTypeSchema": string;
+        "quiz.validators_scoresSchema": {
+            [key: string]: number;
+        };
+        "quiz.validators_answersSchema": {
+            [key: string]: {
+                selectedAnswer: string;
+            };
+        } | null;
+        "quiz.validators_saveQuizResultSchema": {
+            body: {
+                resultType: string;
+                scores: {
+                    [key: string]: number;
+                };
+                answers?: {
+                    [key: string]: {
+                        selectedAnswer: string;
+                    };
+                } | null;
+            };
+        };
+        "quiz.validators_quizResultDataSchema": {
+            id: number;
+            resultType: string;
+            scores: {
+                [key: string]: number;
+            };
+            completedAt: string;
+        };
+        "quiz.validators_saveQuizResultResponseSchema": {
+            /** @enum {boolean} */
+            success: true;
+            data: {
+                id: number;
+                resultType: string;
+                scores: {
+                    [key: string]: number;
+                };
+                completedAt: string;
+            };
+            timestamp: string;
+            meta?: {
+                searchQuery?: string | null;
+                searchTime?: number | null;
+                filters?: {
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
+                } | null;
+                categoryCounts?: {
+                    [key: string]: number;
+                } | null;
+                aggregateData?: {
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
+                } | null;
+                requestId?: string | null;
+                cacheHit?: boolean | null;
+                processingTime?: number | null;
+            } | null;
+        };
+        "quiz.validators_getQuizResultResponseSchema": {
+            /** @enum {boolean} */
+            success: true;
+            data: {
+                id: number;
+                resultType: string;
+                scores: {
+                    [key: string]: number;
+                };
+                completedAt: string;
+            };
+            timestamp: string;
+            meta?: {
+                searchQuery?: string | null;
+                searchTime?: number | null;
+                filters?: {
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
+                } | null;
+                categoryCounts?: {
+                    [key: string]: number;
+                } | null;
+                aggregateData?: {
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
+                } | null;
+                requestId?: string | null;
+                cacheHit?: boolean | null;
+                processingTime?: number | null;
+            } | null;
+        };
         "request-params.validator_paginationSchema": {
             cursor?: string | null;
-            limit?: {
-                [key: string]: unknown;
-            } | null;
+            limit?: string | null;
             /** @enum {string|null} */
             sort?: "createdAt" | "updatedAt" | "name" | null;
             /** @enum {string|null} */
@@ -5610,30 +5962,18 @@ export interface components {
             level?: string | null;
             majorCategory?: string | null;
             subCategory?: string | null;
-            tags?: {
-                [key: string]: unknown;
-            } | null;
+            tags?: string | null;
             query?: string | null;
-            createdBy?: {
-                [key: string]: unknown;
-            } | null;
+            createdBy?: string | null;
         };
         "request-params.validator_reviewFilterSchema": {
-            resourceId?: {
-                [key: string]: unknown;
-            } | null;
-            userId?: {
-                [key: string]: unknown;
-            } | null;
-            tags?: {
-                [key: string]: unknown;
-            } | null;
+            resourceId?: string | null;
+            userId?: string | null;
+            tags?: string | null;
         };
         "request-params.validator_tagQuerySchema": {
             entityType?: string | null;
-            limit?: {
-                [key: string]: unknown;
-            } | null;
+            limit?: string | null;
             query?: string | null;
         };
         "request-params.validator_tagEntitySchema": {
@@ -6022,13 +6362,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6120,13 +6464,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6203,13 +6551,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6286,13 +6638,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6310,13 +6666,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6335,13 +6695,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6357,13 +6721,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6498,10 +6866,10 @@ export interface components {
             totalResources: number;
             activeResources: number;
             categoryStats: {
-                [key: string]: unknown;
+                [key: string]: number;
             };
             typeStats: {
-                [key: string]: unknown;
+                [key: string]: number;
             };
         };
         "resource.validator_getResourceByIdResponseSchema": {
@@ -6548,13 +6916,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6620,13 +6992,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6677,13 +7053,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6734,13 +7114,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6754,10 +7138,10 @@ export interface components {
                 totalResources: number;
                 activeResources: number;
                 categoryStats: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 };
                 typeStats: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 };
             };
             timestamp: string;
@@ -6765,13 +7149,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6787,13 +7175,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6811,13 +7203,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6862,18 +7258,14 @@ export interface components {
             /** @enum {string|null} */
             mood?: "happy" | "calm" | "anxious" | "tired" | "frustrated" | null;
             stressLevel?: number | null;
-            page: {
-                [key: string]: unknown;
-            };
-            pageSize: {
-                [key: string]: unknown;
-            };
+            /** @default 1 */
+            page: string | null;
+            /** @default 10 */
+            pageSize: string | null;
         };
         "review.validators_reviewParamsSchema": {
             projectId: string;
-            reviewId: {
-                [key: string]: unknown;
-            };
+            reviewId: string;
         };
         "review.validators_reviewResponseSchema": {
             id: number;
@@ -6893,10 +7285,22 @@ export interface components {
             averageStressLevel: number;
             averageLearningReview: number;
             moodDistribution: {
-                [key: string]: unknown;
+                [key: string]: number;
             };
             weeklyProgress: {
-                [key: string]: unknown;
+                [key: string]: {
+                    id: number;
+                    week: number;
+                    title: string;
+                    mood: string;
+                    stressLevel: number;
+                    moodDescription?: string | null;
+                    learningReview?: string | null;
+                    learningFeedback?: string | null;
+                    adjustmentPlan?: string | null;
+                    createdAt: string;
+                    updatedAt?: string | null;
+                };
             };
         };
         "review.validators_singleReviewResponseSchema": {
@@ -6907,13 +7311,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6941,13 +7349,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6975,13 +7387,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -6992,10 +7408,22 @@ export interface components {
                 averageStressLevel: number;
                 averageLearningReview: number;
                 moodDistribution: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 };
                 weeklyProgress: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        id: number;
+                        week: number;
+                        title: string;
+                        mood: string;
+                        stressLevel: number;
+                        moodDescription?: string | null;
+                        learningReview?: string | null;
+                        learningFeedback?: string | null;
+                        adjustmentPlan?: string | null;
+                        createdAt: string;
+                        updatedAt?: string | null;
+                    };
                 };
             };
         };
@@ -7007,13 +7435,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7029,34 +7461,26 @@ export interface components {
         "review.validators_deleteReviewUnionResponseSchema": Record<string, never>;
         "tag.validators_tagSearchQuerySchema": {
             query: string;
-            limit: {
-                [key: string]: unknown;
-            };
+            /** @default 10 */
+            limit: string;
         };
         "tag.validators_popularTagsQuerySchema": {
-            limit: {
-                [key: string]: unknown;
-            };
+            /** @default 20 */
+            limit: string;
         };
         "tag.validators_entityTagsQuerySchema": {
-            entityId: {
-                [key: string]: unknown;
-            };
+            entityId: string;
             /** @enum {string} */
             entityType: "resource" | "project" | "idea" | "practice" | "review";
         };
         "tag.validators_addEntityTagSchema": {
-            entityId: {
-                [key: string]: unknown;
-            } | number;
+            entityId: string | number;
             /** @enum {string} */
             entityType: "resource" | "project" | "idea" | "practice" | "review";
             tagName: string;
         };
         "tag.validators_removeEntityTagSchema": {
-            entityId: {
-                [key: string]: unknown;
-            } | number;
+            entityId: string | number;
             /** @enum {string} */
             entityType: "resource" | "project" | "idea" | "practice" | "review";
             tagName: string;
@@ -7064,9 +7488,7 @@ export interface components {
         "tag.validators_batchTagOperationSchema": {
             /** @enum {string} */
             action: "add" | "remove";
-            entityId: {
-                [key: string]: unknown;
-            } | number;
+            entityId: string | number;
             /** @enum {string} */
             entityType: "resource" | "project" | "idea" | "practice" | "review";
             tagNames: string[];
@@ -7129,13 +7551,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7154,13 +7580,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7183,13 +7613,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7209,13 +7643,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7233,13 +7671,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7258,13 +7700,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7284,13 +7730,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7308,13 +7758,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7338,18 +7792,12 @@ export interface components {
         };
         "task.validators_taskParamsSchema": {
             projectId: string;
-            milestoneId: {
-                [key: string]: unknown;
-            };
-            taskId: {
-                [key: string]: unknown;
-            };
+            milestoneId: string;
+            taskId: string;
         };
         "task.validators_taskMilestoneParamsSchema": {
             projectId: string;
-            milestoneId: {
-                [key: string]: unknown;
-            };
+            milestoneId: string;
         };
         "task.validators_taskDataSchema": {
             id: number;
@@ -7411,6 +7859,49 @@ export interface components {
         "user-custom-id.validators_setCustomIdRequestSchema": {
             customId: string;
         };
+        /** @enum {string} */
+        "user-stats.validator_timeGroupBySchema": "day" | "week" | "month" | "year";
+        /** @enum {string} */
+        "user-stats.validator_statsGroupBySchema": "location" | "role" | "education_stage";
+        /** @enum {string} */
+        "user-stats.validator_allGroupBySchema": "day" | "week" | "month" | "year" | "location" | "role" | "education_stage";
+        /** @enum {string} */
+        "user-stats.validator_exportFormatSchema": "csv" | "excel";
+        /** @enum {string} */
+        "user-stats.validator_exportTypeSchema": "registrations" | "activity" | "full";
+        "user-stats.validator_registrationStatsQuerySchema": {
+            startDate?: string | null;
+            endDate?: string | null;
+            /** @enum {string} */
+            groupBy: "day" | "week" | "month" | "year" | "location" | "role" | "education_stage";
+            locationId?: string | null;
+            roleId?: string | null;
+            educationStage?: string | null;
+            /** @default 100 */
+            limit: string | null;
+            /** @default 0 */
+            offset: string | null;
+        };
+        "user-stats.validator_activityStatsQuerySchema": {
+            /** @default 30 */
+            activeWithinDays: string | null;
+            /** @enum {string|null} */
+            groupBy?: "location" | "role" | "education_stage" | null;
+            /** @default 100 */
+            limit: string | null;
+            /** @default 0 */
+            offset: string | null;
+        };
+        "user-stats.validator_exportStatsQuerySchema": {
+            /** @enum {string} */
+            format: "csv" | "excel";
+            /** @enum {string} */
+            type: "registrations" | "activity" | "full";
+            startDate?: string | null;
+            endDate?: string | null;
+            /** @enum {string|null} */
+            groupBy?: "day" | "week" | "month" | "year" | "location" | "role" | "education_stage" | null;
+        };
         "user.validators_createUserSchema": {
             /** @enum {string|null} */
             gender?: "male" | "female" | "other" | null;
@@ -7434,7 +7925,7 @@ export interface components {
             tagList?: string[] | null;
             interestList?: string[] | null;
             preferences?: {
-                [key: string]: unknown;
+                [key: string]: string[];
             } | null;
             isSendEmail?: boolean | null;
             professionalField?: ("information_and_communication_technologies_icts" | "business_administration_and_law" | "arts_and_humanities" | "natural_sciences_mathematics_and_statistics" | "engineering_manufacturing_and_construction" | "health_and_welfare" | "education" | "social_sciences_journalism_and_information" | "language_skills_and_knowledge" | "services" | "agriculture_forestry_fisheries_and_veterinary" | "others")[] | null;
@@ -7467,7 +7958,7 @@ export interface components {
             roleList?: string[] | null;
             interestList?: string[] | null;
             preferences?: {
-                [key: string]: unknown;
+                [key: string]: string[];
             } | null;
             professionalField?: ("information_and_communication_technologies_icts" | "business_administration_and_law" | "arts_and_humanities" | "natural_sciences_mathematics_and_statistics" | "engineering_manufacturing_and_construction" | "health_and_welfare" | "education" | "social_sciences_journalism_and_information" | "language_skills_and_knowledge" | "services" | "agriculture_forestry_fisheries_and_veterinary" | "others")[] | null;
             personalSlogan?: string | null;
@@ -7477,12 +7968,8 @@ export interface components {
             id: string;
         };
         "user.validators_getUserQuerySchema": {
-            page?: {
-                [key: string]: unknown;
-            } | null;
-            pageSize?: {
-                [key: string]: unknown;
-            } | null;
+            page?: string | null;
+            pageSize?: string | null;
             educationStage?: string | null;
             roleList?: string | null;
             location?: string | null;
@@ -7490,7 +7977,7 @@ export interface components {
         };
         "user.validators_userPreferencesSchema": {
             preferences: {
-                [key: string]: unknown;
+                [key: string]: string[];
             };
         };
         "user.validators_userSuccessResponseSchema": {
@@ -7516,7 +8003,10 @@ export interface components {
                 tagList?: string[] | null;
                 interestList?: string[] | null;
                 preferences?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        name: string;
+                        value: string;
+                    }[];
                 } | null;
                 role?: number | null;
                 roleList?: string[] | null;
@@ -7548,13 +8038,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7584,7 +8078,10 @@ export interface components {
                 tagList?: string[] | null;
                 interestList?: string[] | null;
                 preferences?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        name: string;
+                        value: string;
+                    }[];
                 } | null;
                 role?: number | null;
                 roleList?: string[] | null;
@@ -7624,13 +8121,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7661,7 +8162,10 @@ export interface components {
                     tagList?: string[] | null;
                     interestList?: string[] | null;
                     preferences?: {
-                        [key: string]: unknown;
+                        [key: string]: {
+                            name: string;
+                            value: string;
+                        }[];
                     } | null;
                     role?: number | null;
                     roleList?: string[] | null;
@@ -7695,13 +8199,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7731,7 +8239,10 @@ export interface components {
                 tagList?: string[] | null;
                 interestList?: string[] | null;
                 preferences?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        name: string;
+                        value: string;
+                    }[];
                 } | null;
                 role?: number | null;
                 roleList?: string[] | null;
@@ -7763,13 +8274,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7787,13 +8302,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7804,20 +8323,27 @@ export interface components {
             /** @enum {boolean} */
             success: true;
             data: {
-                [key: string]: unknown;
+                [key: string]: {
+                    name: string;
+                    value: string;
+                }[];
             };
             timestamp: string;
             meta?: {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7830,7 +8356,10 @@ export interface components {
             data: {
                 message: string;
                 preferences: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        name: string;
+                        value: string;
+                    }[];
                 };
             };
             timestamp: string;
@@ -7838,13 +8367,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7855,20 +8388,34 @@ export interface components {
             /** @enum {boolean} */
             success: true;
             data: {
-                [key: string]: unknown;
-            };
+                id: number;
+                name: string;
+                value: string;
+                maxSelections?: number | null;
+                description?: string | null;
+                options: {
+                    id: number;
+                    name: string;
+                    value: string;
+                    description?: string | null;
+                }[];
+            }[];
             timestamp: string;
             meta?: {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7886,13 +8433,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7910,13 +8461,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -7934,13 +8489,17 @@ export interface components {
                 searchQuery?: string | null;
                 searchTime?: number | null;
                 filters?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 categoryCounts?: {
-                    [key: string]: unknown;
+                    [key: string]: number;
                 } | null;
                 aggregateData?: {
-                    [key: string]: unknown;
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
                 } | null;
                 requestId?: string | null;
                 cacheHit?: boolean | null;
@@ -8825,6 +9384,37 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
+    put_api_v1_ideas__id_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description id 參數 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["idea.validators_updateIdeaSchema"];
+            };
+        };
+        responses: {
+            /** @description 成功回應 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api-response.validators_apiSuccessResponseExample"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     delete_api_v1_ideas__id_: {
         parameters: {
             query?: never;
@@ -8854,37 +9444,6 @@ export interface operations {
                         timestamp?: string;
                         meta?: components["schemas"]["api-response.validators_responseMetaSchema"];
                     };
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            401: components["responses"]["UnauthorizedError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    patch_api_v1_ideas__id_: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description id 參數 */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["idea.validators_updateIdeaSchema"];
-            };
-        };
-        responses: {
-            /** @description 成功回應 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["api-response.validators_apiSuccessResponseExample"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -10298,23 +10857,15 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description page 查詢參數 */
-                page?: {
-                    [key: string]: unknown;
-                } | null;
+                page?: string | null;
                 /** @description limit 查詢參數 */
-                limit?: {
-                    [key: string]: unknown;
-                } | null;
+                limit?: string | null;
                 /** @description status 查詢參數 */
                 status?: "Not Started" | "Ongoing" | "Completed" | "Canceled" | null;
                 /** @description isPublic 查詢參數 */
-                isPublic?: {
-                    [key: string]: unknown;
-                } | null;
+                isPublic?: string | null;
                 /** @description userId 查詢參數 */
-                userId?: {
-                    [key: string]: unknown;
-                } | null;
+                userId?: string | null;
                 /** @description search 查詢參數 */
                 search?: string | null;
                 /** @description sortBy 查詢參數 */
@@ -10375,23 +10926,15 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description page 查詢參數 */
-                page?: {
-                    [key: string]: unknown;
-                } | null;
+                page?: string | null;
                 /** @description limit 查詢參數 */
-                limit?: {
-                    [key: string]: unknown;
-                } | null;
+                limit?: string | null;
                 /** @description status 查詢參數 */
                 status?: "Not Started" | "Ongoing" | "Completed" | "Canceled" | null;
                 /** @description isPublic 查詢參數 */
-                isPublic?: {
-                    [key: string]: unknown;
-                } | null;
+                isPublic?: string | null;
                 /** @description userId 查詢參數 */
-                userId?: {
-                    [key: string]: unknown;
-                } | null;
+                userId?: string | null;
                 /** @description search 查詢參數 */
                 search?: string | null;
                 /** @description sortBy 查詢參數 */
@@ -10424,23 +10967,15 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description page 查詢參數 */
-                page?: {
-                    [key: string]: unknown;
-                } | null;
+                page?: string | null;
                 /** @description limit 查詢參數 */
-                limit?: {
-                    [key: string]: unknown;
-                } | null;
+                limit?: string | null;
                 /** @description status 查詢參數 */
                 status?: "Not Started" | "Ongoing" | "Completed" | "Canceled" | null;
                 /** @description isPublic 查詢參數 */
-                isPublic?: {
-                    [key: string]: unknown;
-                } | null;
+                isPublic?: string | null;
                 /** @description userId 查詢參數 */
-                userId?: {
-                    [key: string]: unknown;
-                } | null;
+                userId?: string | null;
                 /** @description search 查詢參數 */
                 search?: string | null;
                 /** @description sortBy 查詢參數 */
@@ -10473,9 +11008,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description userId 查詢參數 */
-                userId?: {
-                    [key: string]: unknown;
-                } | null;
+                userId?: string | null;
             };
             header?: never;
             path?: never;
@@ -10676,13 +11209,9 @@ export interface operations {
         parameters: {
             query: {
                 /** @description page 查詢參數 */
-                page: {
-                    [key: string]: unknown;
-                } | null;
+                page: string | null;
                 /** @description pageSize 查詢參數 */
-                pageSize: {
-                    [key: string]: unknown;
-                } | null;
+                pageSize: string | null;
             };
             header?: never;
             path?: never;
@@ -11332,13 +11861,9 @@ export interface operations {
                 /** @description stressLevel 查詢參數 */
                 stressLevel?: number | null;
                 /** @description page 查詢參數 */
-                page: {
-                    [key: string]: unknown;
-                };
+                page: string | null;
                 /** @description pageSize 查詢參數 */
-                pageSize: {
-                    [key: string]: unknown;
-                };
+                pageSize: string | null;
             };
             header?: never;
             path: {
@@ -11496,15 +12021,65 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
+    post_api_v1_quizResults_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["quiz.validators_saveQuizResultSchema"];
+            };
+        };
+        responses: {
+            /** @description 資源創建成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api-response.validators_apiSuccessResponseExample"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    get_api_v1_quizResults_latest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功回應 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api-response.validators_apiSuccessResponseExample"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     get_api_v1_resources__resourceId__reviews_: {
         parameters: {
             query?: {
                 /** @description cursor 查詢參數 */
                 cursor?: string | null;
                 /** @description limit 查詢參數 */
-                limit?: {
-                    [key: string]: unknown;
-                } | null;
+                limit?: string | null;
                 /** @description sort 查詢參數 */
                 sort?: "createdAt" | "updatedAt" | "name" | null;
                 /** @description order 查詢參數 */
@@ -11773,9 +12348,7 @@ export interface operations {
                 /** @description cursor 查詢參數 */
                 cursor?: string | null;
                 /** @description limit 查詢參數 */
-                limit?: {
-                    [key: string]: unknown;
-                } | null;
+                limit?: string | null;
                 /** @description sort 查詢參數 */
                 sort?: "createdAt" | "updatedAt" | "name" | null;
                 /** @description order 查詢參數 */
@@ -12011,9 +12584,7 @@ export interface operations {
         parameters: {
             query: {
                 /** @description limit 查詢參數 */
-                limit: {
-                    [key: string]: unknown;
-                };
+                limit: string;
             };
             header?: never;
             path?: never;
@@ -12042,9 +12613,7 @@ export interface operations {
                 /** @description query 查詢參數 */
                 query: string;
                 /** @description limit 查詢參數 */
-                limit: {
-                    [key: string]: unknown;
-                };
+                limit: string;
             };
             header?: never;
             path?: never;
@@ -12095,9 +12664,7 @@ export interface operations {
         parameters: {
             query: {
                 /** @description entityId 查詢參數 */
-                entityId: {
-                    [key: string]: unknown;
-                };
+                entityId: string;
                 /** @description entityType 查詢參數 */
                 entityType: "resource" | "project" | "idea" | "practice" | "review";
             };
@@ -12188,13 +12755,9 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description page 查詢參數 */
-                page?: {
-                    [key: string]: unknown;
-                } | null;
+                page?: string | null;
                 /** @description pageSize 查詢參數 */
-                pageSize?: {
-                    [key: string]: unknown;
-                } | null;
+                pageSize?: string | null;
                 /** @description educationStage 查詢參數 */
                 educationStage?: string | null;
                 /** @description roleList 查詢參數 */
