@@ -215,8 +215,8 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('⚡ v1 實踐路由已註冊 - 可在 /api/v1/practices 訪問');
 
   // 註冊測驗結果路由
-  app.use('/api/v1/quizResults', quizRoutes);
-  console.log('📝 v1 測驗結果路由已註冊 - 可在 /api/v1/quizResults 訪問');
+  app.use('/api/v1/quiz', quizRoutes);
+  console.log('📝 v1 測驗結果路由已註冊 - 可在 /api/v1/quiz 訪問');
 
   // 註冊資料庫資訊路由
   app.use('/api/v1/db-info', dbInfoRoutes);

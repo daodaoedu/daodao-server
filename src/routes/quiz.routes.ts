@@ -8,7 +8,6 @@ import { registry } from '@/config/openapi-registry';
 import { authenticate } from '@/middleware/auth';
 import { validate } from '@/middleware/validation.middleware';
 import {
-  saveQuizResultSchema,
   saveQuizResultBodySchema,
   saveQuizResultResponseSchema,
   getQuizResultResponseSchema
@@ -99,7 +98,7 @@ registry.registerPath({
  */
 router.post(
   '/',
-  validate(saveQuizResultSchema, 'body'),
+  validate(saveQuizResultBodySchema, 'body'),
   quizController.saveResult as RequestHandler
 );
 

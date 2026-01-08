@@ -33,7 +33,7 @@ export const saveResult = async (
     id: result.id,
     resultType: result.result_type,
     scores: result.scores as Record<string, number>,
-    completedAt: result.completed_at
+    completedAt: result.completed_at.toISOString()
   });
 };
 
@@ -59,7 +59,7 @@ export const getLatestResult = async (
     id: result.id,
     resultType: result.result_type,
     scores: result.scores as Record<string, number>,
-    completedAt: result.completed_at
+    completedAt: result.completed_at.toISOString()
   });
 };
 

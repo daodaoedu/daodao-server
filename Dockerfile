@@ -42,6 +42,8 @@ COPY utils ./utils
 COPY public ./public
 COPY index.js ./
 COPY ecosystem.config.js ./
+COPY openapi.json ./
+COPY openapi.yaml ./
 
 # 第三步：TypeScript 類型檢查 (確保類型正確)
 RUN pnpm run typecheck
