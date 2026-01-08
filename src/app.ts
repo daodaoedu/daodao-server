@@ -36,6 +36,8 @@ import mentorRoutes from './routes/mentor.routes';
 import practiceRoutes from './routes/practice.routes';
 // 引入測驗結果路由
 import quizRoutes from './routes/quiz.routes';
+// 引入使用者統計路由
+import userStatsRoutes from './routes/user-stats-routes';
 // 引入 OAuth 服務初始化
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
@@ -240,6 +242,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊系統監控路由
   app.use('/api/v1/monitor', monitorRoutes);
   console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
+
+  // 註冊使用者統計路由（管理員專用）
+  app.use('/api/v1/admin/userStats', userStatsRoutes);
+  console.log('📈 v1 使用者統計路由已註冊 - 可在 /api/v1/admin/userStats 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
