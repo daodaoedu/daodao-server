@@ -33,5 +33,5 @@ export interface QuizResultResponse {
   scores: Record<string, number>;
 
   /** 測驗完成時間 */
-  completedAt: Date;
+  completedAt: string;
 }
