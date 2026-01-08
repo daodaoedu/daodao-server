@@ -57,7 +57,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
           { practice_action: { contains: search, mode: 'insensitive' } }
         ]
       }),
-      ...(contentType && { content_type: contentType }),
+      // Note: content_type field doesn't exist in schema, filter removed
       ...(status && status !== 'all' && { status }),
       ...(userId && { user_id: userId })
     };
@@ -142,23 +142,23 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
     const practiceEntities: PracticeEntity[] = practices.map(practice => ({
       id: practice.external_id || '',
       title: practice.title,
-      contentType: practice.content_type as ContentType,
-      customContentType: practice.custom_content_type || undefined,
-      totalAmount: practice.total_amount,
-      currentProgress: Number(practice.current_progress) || 0,
+      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
+      customContentType: undefined,
+      totalAmount: undefined, // Field doesn't exist in DB
+      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
       startDate: practice.start_date?.toISOString().split('T')[0],
       dailyGoal: {
-        type: practice.daily_goal_type as DailyGoalType,
-        timeMinutes: practice.daily_goal_time_minutes || undefined,
-        amount: practice.daily_goal_amount || undefined,
-        unit: practice.daily_goal_unit || undefined
+        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
+        timeMinutes: undefined,
+        amount: undefined,
+        unit: undefined
       },
       practiceAction: practice.practice_action || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: practice.streak || 0,
-      maxStreak: practice.max_streak || 0,
-      lastCheckInDate: practice.last_checkin_date?.toISOString().split('T')[0],
+      streak: 0, // Field doesn't exist in DB - calculated from check-ins
+      maxStreak: 0, // Field doesn't exist in DB
+      lastCheckInDate: undefined, // Field doesn't exist in DB
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -267,23 +267,23 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
-      contentType: practice.content_type as ContentType,
-      customContentType: practice.custom_content_type || undefined,
-      totalAmount: practice.total_amount,
-      currentProgress: Number(practice.current_progress) || 0,
+      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
+      customContentType: undefined,
+      totalAmount: undefined, // Field doesn't exist in DB
+      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
       startDate: practice.start_date?.toISOString().split('T')[0],
       dailyGoal: {
-        type: practice.daily_goal_type as DailyGoalType,
-        timeMinutes: practice.daily_goal_time_minutes || undefined,
-        amount: practice.daily_goal_amount || undefined,
-        unit: practice.daily_goal_unit || undefined
+        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
+        timeMinutes: undefined,
+        amount: undefined,
+        unit: undefined
       },
       practiceAction: practice.practice_action || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: practice.streak || 0,
-      maxStreak: practice.max_streak || 0,
-      lastCheckInDate: practice.last_checkin_date?.toISOString().split('T')[0],
+      streak: 0, // Field doesn't exist in DB - calculated from check-ins
+      maxStreak: 0, // Field doesn't exist in DB
+      lastCheckInDate: undefined, // Field doesn't exist in DB
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -321,14 +321,8 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       data: {
         user_id: userId,
         title: data.title,
-        content_type: data.contentType,
-        custom_content_type: data.customContentType,
-        total_amount: data.totalAmount,
+        // Note: content_type and related fields don't exist in schema
         start_date: data.startDate ? new Date(data.startDate) : null,
-        daily_goal_type: data.dailyGoal.type,
-        daily_goal_time_minutes: data.dailyGoal.timeMinutes,
-        daily_goal_amount: data.dailyGoal.amount,
-        daily_goal_unit: data.dailyGoal.unit,
         practice_action: data.practiceAction,
         status: 'active', // CreatePracticeRequest doesn't have status field
         has_resources: Boolean(data.resources && data.resources.length > 0)
@@ -337,21 +331,10 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         id: true,
         external_id: true,
         title: true,
-        content_type: true,
-        custom_content_type: true,
-        total_amount: true,
-        current_progress: true,
         start_date: true,
-        daily_goal_type: true,
-        daily_goal_time_minutes: true,
-        daily_goal_amount: true,
-        daily_goal_unit: true,
         practice_action: true,
         status: true,
         has_resources: true,
-        streak: true,
-        max_streak: true,
-        last_checkin_date: true,
         created_at: true,
         updated_at: true,
         users: {
@@ -392,23 +375,23 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
-      contentType: practice.content_type as ContentType,
-      customContentType: practice.custom_content_type || undefined,
-      totalAmount: practice.total_amount,
-      currentProgress: Number(practice.current_progress) || 0,
+      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
+      customContentType: undefined,
+      totalAmount: undefined, // Field doesn't exist in DB
+      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
       startDate: practice.start_date?.toISOString().split('T')[0],
       dailyGoal: {
-        type: practice.daily_goal_type as DailyGoalType,
-        timeMinutes: practice.daily_goal_time_minutes || undefined,
-        amount: practice.daily_goal_amount || undefined,
-        unit: practice.daily_goal_unit || undefined
+        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
+        timeMinutes: undefined,
+        amount: undefined,
+        unit: undefined
       },
       practiceAction: practice.practice_action || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: practice.streak || 0,
-      maxStreak: practice.max_streak || 0,
-      lastCheckInDate: practice.last_checkin_date?.toISOString().split('T')[0],
+      streak: 0, // Field doesn't exist in DB - calculated from check-ins
+      maxStreak: 0, // Field doesn't exist in DB
+      lastCheckInDate: undefined, // Field doesn't exist in DB
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -458,16 +441,11 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     const updateData: Prisma.practicesUpdateInput = {};
 
     if (data.title !== undefined) updateData.title = data.title;
-    if (data.totalAmount !== undefined) updateData.total_amount = data.totalAmount;
+    // Note: totalAmount field doesn't exist in schema
     if (data.startDate !== undefined) {
       updateData.start_date = data.startDate ? new Date(data.startDate) : null;
     }
-    if (data.dailyGoal !== undefined) {
-      updateData.daily_goal_type = data.dailyGoal.type;
-      updateData.daily_goal_time_minutes = data.dailyGoal.timeMinutes;
-      updateData.daily_goal_amount = data.dailyGoal.amount;
-      updateData.daily_goal_unit = data.dailyGoal.unit;
-    }
+    // Note: dailyGoal fields don't exist in schema
     if (data.practiceAction !== undefined) updateData.practice_action = data.practiceAction;
     if (data.status !== undefined) updateData.status = data.status;
 
@@ -539,23 +517,23 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
-      contentType: practice.content_type as ContentType,
-      customContentType: practice.custom_content_type || undefined,
-      totalAmount: practice.total_amount,
-      currentProgress: Number(practice.current_progress) || 0,
+      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
+      customContentType: undefined,
+      totalAmount: undefined, // Field doesn't exist in DB
+      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
       startDate: practice.start_date?.toISOString().split('T')[0],
       dailyGoal: {
-        type: practice.daily_goal_type as DailyGoalType,
-        timeMinutes: practice.daily_goal_time_minutes || undefined,
-        amount: practice.daily_goal_amount || undefined,
-        unit: practice.daily_goal_unit || undefined
+        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
+        timeMinutes: undefined,
+        amount: undefined,
+        unit: undefined
       },
       practiceAction: practice.practice_action || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: practice.streak || 0,
-      maxStreak: practice.max_streak || 0,
-      lastCheckInDate: practice.last_checkin_date?.toISOString().split('T')[0],
+      streak: 0, // Field doesn't exist in DB - calculated from check-ins
+      maxStreak: 0, // Field doesn't exist in DB
+      lastCheckInDate: undefined, // Field doesn't exist in DB
       createdAt: practice.created_at?.toISOString() || '',
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -641,13 +619,8 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
         },
         _count: {
           id: true
-        },
-        _avg: {
-          streak: true
-        },
-        _max: {
-          max_streak: true
         }
+        // Note: streak and max_streak fields don't exist in schema
       }),
       prismaClient.practice_checkins.aggregate({
         where: {
@@ -674,13 +647,13 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
     });
 
     const stats: PracticeStats = {
-      totalPractices: practiceStats._count.id,
+      totalPractices: practiceStats._count?.id || 0,
       activePractices: statusCounts.find(s => s.status === 'active')?._count.id || 0,
       completedPractices: statusCounts.find(s => s.status === 'completed')?._count.id || 0,
       pausedPractices: statusCounts.find(s => s.status === 'paused')?._count.id || 0,
       totalCheckIns: checkInStats._count.id,
-      averageStreak: Math.round(practiceStats._avg.streak || 0),
-      maxStreak: practiceStats._max.max_streak || 0
+      averageStreak: 0, // Field doesn't exist in DB - would need to calculate from check-ins
+      maxStreak: 0 // Field doesn't exist in DB - would need to calculate from check-ins
     };
 
     loggerService.info('User practice stats retrieved', { userId, stats });

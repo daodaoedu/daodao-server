@@ -7,9 +7,9 @@
 export interface MyPracticeItem {
   id: string;
   title: string;
-  contentType: 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom';
+  contentType: 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom' | 'other';
   customContentType?: string;
-  totalAmount: number;
+  totalAmount?: number; // Optional - field doesn't exist in DB schema
   currentProgress: number;
   startDate?: string; // YYYY-MM-DD format
   status: 'active' | 'paused' | 'completed' | 'archived';
@@ -19,7 +19,7 @@ export interface MyPracticeItem {
   createdAt: string;
   updatedAt?: string;
   dailyGoal: {
-    type: 'time' | 'completion';
+    type: 'time' | 'completion' | 'amount';
     timeMinutes?: number;
     amount?: number;
     unit?: string;

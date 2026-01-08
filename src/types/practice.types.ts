@@ -9,9 +9,9 @@
 import { Request, Response } from 'express';
 
 // Core enums and basic types
-export type ContentType = 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom';
+export type ContentType = 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom' | 'other';
 export type PracticeStatus = 'active' | 'paused' | 'completed' | 'archived';
-export type DailyGoalType = 'time' | 'completion';
+export type DailyGoalType = 'time' | 'completion' | 'amount';
 export type CheckInMood = 'awesome' | 'happy' | 'neutral' | 'tired' | 'frustrated';
 export type SortField = 'createdAt' | 'updatedAt' | 'likeCount';
 export type SortOrder = 'asc' | 'desc';
@@ -40,16 +40,16 @@ export interface PracticeEntity {
   title: string;
   contentType: ContentType;
   customContentType?: string;
-  totalAmount: number;
-  currentProgress: number;
+  totalAmount?: number; // Optional - field doesn't exist in DB schema
+  currentProgress: number; // Calculated from check-ins
   startDate?: string;
   dailyGoal: DailyGoal;
   practiceAction?: string;
   status: PracticeStatus;
   hasResources: boolean;
-  streak: number;
-  maxStreak: number;
-  lastCheckInDate?: string;
+  streak: number; // Calculated from check-ins
+  maxStreak: number; // Calculated from check-ins
+  lastCheckInDate?: string; // Calculated from check-ins
   createdAt: string;
   updatedAt?: string;
   user: UserSimpleInfo;

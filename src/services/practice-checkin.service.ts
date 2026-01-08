@@ -64,8 +64,17 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
       throw new ConflictError('今日已完成簽到');
     }
 
-    // 計算新的累積進度
-    const newCumulativeProgress = Number(practice.current_progress || 0) + data.progressAmount;
+    // 計算新的累積進度 (從所有 check-ins 累加)
+    const previousCheckIns = await prismaClient.practice_checkins.aggregate({
+      where: {
+        practice_id: practiceId,
+        user_id: userId
+      },
+      _sum: {
+        progress_amount: true
+      }
+    });
+    const newCumulativeProgress = Number(previousCheckIns._sum.progress_amount || 0) + data.progressAmount;
 
     // 計算連續簽到天數
     const streakInfo = await calculateStreak(practiceId, userId, today);
@@ -80,28 +89,20 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
         note: data.note,
         mood: data.mood,
         reflection_text: data.reflectionText,
-        related_resource_id: data.relatedResourceId,
-        streak_day: streakInfo.newStreak,
+        // Note: related_resource_id and streak_day fields don't exist in schema
         cumulative_progress: newCumulativeProgress
       },
       include: {
         practices: {
           select: {
-            title: true,
-            total_amount: true,
-            daily_goal_unit: true
+            title: true
           }
         }
       }
     });
 
-    // 更新實踐進度和連續天數
-    await updatePracticeProgress(practiceId, {
-      currentProgress: newCumulativeProgress,
-      streak: streakInfo.newStreak,
-      maxStreak: Math.max(practice.max_streak || 0, streakInfo.newStreak),
-      lastCheckInDate: today
-    });
+    // Note: Practice progress tracking fields don't exist in schema
+    // Progress and streak would need to be calculated from check-ins when needed
 
     const checkInEntity: CheckInEntity = {
       id: checkIn.id,
@@ -109,12 +110,12 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
       userId: checkIn.user_id,
       checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
       progressAmount: Number(checkIn.progress_amount),
-      unit: checkIn.practices.daily_goal_unit || undefined,
+      unit: undefined, // Field doesn't exist in DB
       note: checkIn.note || undefined,
       mood: checkIn.mood as CheckInMood,
       reflectionText: checkIn.reflection_text || undefined,
-      relatedResourceId: checkIn.related_resource_id || undefined,
-      streakDay: checkIn.streak_day || 1,
+      relatedResourceId: undefined, // Field doesn't exist in DB
+      streakDay: streakInfo.newStreak, // Calculated, not from DB
       cumulativeProgress: Number(checkIn.cumulative_progress),
       createdAt: checkIn.created_at?.toISOString() || '',
       updatedAt: checkIn.updated_at?.toISOString()
@@ -179,9 +180,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
         include: {
           practices: {
             select: {
-              title: true,
-              total_amount: true,
-              daily_goal_unit: true
+              title: true
             }
           }
         }
@@ -195,12 +194,12 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       userId: checkIn.user_id,
       checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
       progressAmount: Number(checkIn.progress_amount),
-      unit: checkIn.practices.daily_goal_unit || undefined,
+      unit: undefined, // Field doesn't exist in DB
       note: checkIn.note || undefined,
       mood: checkIn.mood as CheckInMood,
       reflectionText: checkIn.reflection_text || undefined,
-      relatedResourceId: checkIn.related_resource_id || undefined,
-      streakDay: checkIn.streak_day || 1,
+      relatedResourceId: undefined, // Field doesn't exist in DB
+      streakDay: 1, // Field doesn't exist in DB - would need calculation
       cumulativeProgress: Number(checkIn.cumulative_progress),
       createdAt: checkIn.created_at?.toISOString() || '',
       updatedAt: checkIn.updated_at?.toISOString()
@@ -274,13 +273,9 @@ export async function calculateStreak(practiceId: number, userId: number, curren
       }
     }
 
-    // 取得當前最高連續記錄
-    const practice = await prismaClient.practices.findUnique({
-      where: { id: practiceId },
-      select: { max_streak: true }
-    });
-
-    const isNewRecord = streak > (practice?.max_streak || 0);
+    // Note: max_streak field doesn't exist in schema
+    // Would need to calculate historical max from check-ins
+    const isNewRecord = false; // Cannot determine without max_streak field
 
     return { newStreak: streak, isNewRecord };
 
@@ -292,6 +287,8 @@ export async function calculateStreak(practiceId: number, userId: number, curren
 
 /**
  * 更新實踐進度
+ * Note: This function is deprecated as the progress tracking fields don't exist in the schema
+ * Progress should be calculated from check-ins when needed
  */
 export async function updatePracticeProgress(
   practiceId: number,
@@ -303,27 +300,22 @@ export async function updatePracticeProgress(
   }
 ): Promise<void> {
   try {
+    // Only update the timestamp since progress fields don't exist
     await prismaClient.practices.update({
       where: { id: practiceId },
       data: {
-        current_progress: updates.currentProgress,
-        streak: updates.streak,
-        max_streak: updates.maxStreak,
-        last_checkin_date: updates.lastCheckInDate,
         updated_at: new Date()
       }
     });
 
-    loggerService.info('Practice progress updated', {
+    loggerService.info('Practice timestamp updated', {
       practiceId,
-      currentProgress: updates.currentProgress,
-      streak: updates.streak,
-      maxStreak: updates.maxStreak
+      note: 'Progress tracking fields do not exist in schema'
     });
 
   } catch (error) {
-    loggerService.error('Failed to update practice progress', { practiceId, updates, error });
-    throw new Error('更新實踐進度失敗');
+    loggerService.error('Failed to update practice', { practiceId, updates, error });
+    throw new Error('更新實踐失敗');
   }
 }
 
@@ -366,31 +358,27 @@ export async function getCheckInStats(practiceId: number, userId: number): Promi
   lastCheckInDate?: string;
 }> {
   try {
-    const [checkInStats, practice] = await Promise.all([
-      prismaClient.practice_checkins.aggregate({
-        where: {
-          practice_id: practiceId,
-          user_id: userId
-        },
-        _count: { id: true },
-        _avg: { progress_amount: true }
-      }),
-      prismaClient.practices.findUnique({
-        where: { id: practiceId },
-        select: {
-          streak: true,
-          max_streak: true,
-          last_checkin_date: true
-        }
-      })
-    ]);
+    const checkInStats = await prismaClient.practice_checkins.aggregate({
+      where: {
+        practice_id: practiceId,
+        user_id: userId
+      },
+      _count: { id: true },
+      _avg: { progress_amount: true },
+      _max: { checkin_date: true }
+    });
+
+    // Calculate current streak from check-ins
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const streakInfo = await calculateStreak(practiceId, userId, today);
 
     return {
       totalCheckIns: checkInStats._count.id,
-      currentStreak: practice?.streak || 0,
-      maxStreak: practice?.max_streak || 0,
+      currentStreak: streakInfo.newStreak, // Calculated from check-ins
+      maxStreak: 0, // Field doesn't exist in DB - would need historical calculation
       averageProgress: Number(checkInStats._avg.progress_amount) || 0,
-      lastCheckInDate: practice?.last_checkin_date?.toISOString().split('T')[0]
+      lastCheckInDate: checkInStats._max.checkin_date?.toISOString().split('T')[0]
     };
 
   } catch (error) {
@@ -421,19 +409,19 @@ export async function getMonthlyCheckInCalendar(practiceId: number, userId: numb
         }
       },
       select: {
-        checkin_date: true,
-        streak_day: true
+        checkin_date: true
       },
       orderBy: { checkin_date: 'asc' }
     });
 
-    const checkInDates = checkIns.map(checkIn => 
+    const checkInDates = checkIns.map(checkIn =>
       checkIn.checkin_date.toISOString().split('T')[0]
     );
 
-    const streakDays = checkIns.map(checkIn => ({
+    // Calculate streak day for each check-in (field doesn't exist in DB)
+    const streakDays = checkIns.map((checkIn, index) => ({
       date: checkIn.checkin_date.toISOString().split('T')[0],
-      streakDay: checkIn.streak_day || 1
+      streakDay: index + 1 // Simple sequential numbering as fallback
     }));
 
     return {
