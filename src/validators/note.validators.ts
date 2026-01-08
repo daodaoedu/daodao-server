@@ -360,9 +360,9 @@ export const noteListResponseSchema = baseSuccessResponseSchema.extend({
   data: z.array(noteResponseSchema)
 });
 
-// 刪除便利貼成功響應驗證（基於 ApiSuccessResponse<undefined>）
+// 刪除便利貼成功響應驗證（基於 ApiSuccessResponse<null>）
 export const deleteNoteResponseSchema = baseSuccessResponseSchema.extend({
-  data: z.undefined()
+  data: z.null()
 });
 
 // 便利貼 API 響應聯合類型

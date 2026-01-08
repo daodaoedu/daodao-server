@@ -2,134 +2,95 @@
  * Me endpoints validation schemas
  * Using Zod for comprehensive input validation
  * Validators for /api/v1/me endpoints
+ * Migrated to use @asteasolutions/zod-to-openapi
  */
 
 import { z } from 'zod';
 
-// Practice query parameters schema
-export const practiceQuerySchema = z.object({
+// Practice query parameters schema (for ME endpoints)
+export const mePracticesQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1)
-    .describe("分頁頁碼，從1開始")
-    .meta({
-      title: "頁碼",
-      examples: [1, 2, 5]
+    .openapi({
+      description: "分頁頁碼，從1開始",
+      example: 1,
+      examples: [1, 2, 5],
+      minimum: 1
     }),
   limit: z.coerce.number().min(1).max(100).default(20)
-    .describe("每頁顯示的練習項目數量")
-    .meta({
-      title: "每頁數量",
-      examples: [10, 20, 50]
+    .openapi({
+      description: "每頁顯示的練習項目數量",
+      example: 20,
+      examples: [10, 20, 50],
+      minimum: 1,
+      maximum: 100
     }),
   status: z.enum(['active', 'paused', 'completed', 'archived']).optional()
-    .describe("按練習狀態篩選")
-    .meta({
-      title: "練習狀態",
-      examples: ['active', 'paused', 'completed', 'archived'],
-      enumDescriptions: {
-        "active": "進行中的練習",
-        "paused": "已暫停的練習",
-        "completed": "已完成的練習",
-        "archived": "已歸檔的練習"
-      }
+    .openapi({
+      description: "按練習狀態篩選 (active: 進行中, paused: 已暫停, completed: 已完成, archived: 已歸檔)",
+      example: "active",
+      examples: ['active', 'paused', 'completed', 'archived']
     }),
   contentType: z.enum(['book', 'video', 'articles', 'podcast', 'course', 'custom']).optional()
-    .describe("按內容類型篩選練習")
-    .meta({
-      title: "內容類型",
-      examples: ['book', 'video', 'articles', 'podcast', 'course', 'custom'],
-      enumDescriptions: {
-        "book": "書籍類型",
-        "video": "影片類型",
-        "articles": "文章類型",
-        "podcast": "播客類型",
-        "course": "課程類型",
-        "custom": "自訂類型"
-      }
+    .openapi({
+      description: "按內容類型篩選練習 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自訂)",
+      example: "book",
+      examples: ['book', 'video', 'articles', 'podcast', 'course', 'custom']
     }),
   search: z.string().max(100).optional()
-    .describe("搜尋關鍵詞，用於標題或內容搜尋")
-    .meta({
-      title: "搜尋關鍵詞",
-      examples: ["React", "JavaScript", "前端開發"]
+    .openapi({
+      description: "搜尋關鍵詞，用於標題或內容搜尋",
+      example: "React",
+      examples: ["React", "JavaScript", "前端開發"],
+      maxLength: 100
     }),
   sortBy: z.enum(['createdAt', 'updatedAt', 'title', 'progress']).default('createdAt')
-    .describe("排序欄位")
-    .meta({
-      title: "排序方式",
-      examples: ['createdAt', 'updatedAt', 'title', 'progress'],
-      enumDescriptions: {
-        "createdAt": "按創建時間排序",
-        "updatedAt": "按更新時間排序",
-        "title": "按標題排序",
-        "progress": "按進度排序"
-      }
+    .openapi({
+      description: "排序欄位 (createdAt: 按創建時間, updatedAt: 按更新時間, title: 按標題, progress: 按進度)",
+      example: "createdAt",
+      examples: ['createdAt', 'updatedAt', 'title', 'progress']
     }),
   sortOrder: z.enum(['asc', 'desc']).default('desc')
-    .describe("排序方向")
-    .meta({
-      title: "排序方向",
-      examples: ['asc', 'desc'],
-      enumDescriptions: {
-        "asc": "升序排列",
-        "desc": "降序排列"
-      }
+    .openapi({
+      description: "排序方向 (asc: 升序, desc: 降序)",
+      example: "desc",
+      examples: ['asc', 'desc']
     }),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional()
-    .describe("開始日期篩選，格式為YYYY-MM-DD")
-    .meta({
-      title: "開始日期",
-      examples: ["2024-01-01", "2024-03-15", "2024-12-01"]
+    .openapi({
+      description: "開始日期篩選，格式為YYYY-MM-DD",
+      example: "2024-01-01",
+      examples: ["2024-01-01", "2024-03-15", "2024-12-01"],
+      pattern: '\\d{4}-\\d{2}-\\d{2}'
     }),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional()
-    .describe("結束日期篩選，格式為YYYY-MM-DD")
-    .meta({
-      title: "結束日期",
-      examples: ["2024-12-31", "2024-06-30", "2025-01-31"]
+    .openapi({
+      description: "結束日期篩選，格式為YYYY-MM-DD",
+      example: "2024-12-31",
+      examples: ["2024-12-31", "2024-06-30", "2025-01-31"],
+      pattern: '\\d{4}-\\d{2}-\\d{2}'
     })
-}).describe("個人練習列表查詢參數").meta({
-  title: "練習查詢參數",
-  examples: [{
-    page: 1,
-    limit: 20,
-    status: "active",
-    contentType: "book",
-    search: "React",
-    sortBy: "updatedAt",
-    sortOrder: "desc",
-    dateFrom: "2024-01-01",
-    dateTo: "2024-12-31"
-  }]
+}).openapi('MePracticesQuery', {
+  description: "個人練習列表查詢參數"
 });
 
-export type PracticeQueryParams = z.infer<typeof practiceQuerySchema>;
+export type MePracticesQueryParams = z.infer<typeof mePracticesQuerySchema>;
 
 // Practice stats query parameters schema
 export const practiceStatsQuerySchema = z.object({
   timeRange: z.enum(['7d', '30d', '90d', '1y', 'all']).default('30d')
-    .describe("統計時間範圍")
-    .meta({
-      title: "時間範圍",
-      examples: ['7d', '30d', '90d', '1y', 'all'],
-      enumDescriptions: {
-        "7d": "最近7天",
-        "30d": "最近30天",
-        "90d": "最近90天",
-        "1y": "最近1年",
-        "all": "全部時間"
-      }
+    .openapi({
+      description: "統計時間範圍 (7d: 最近7天, 30d: 最近30天, 90d: 最近90天, 1y: 最近1年, all: 全部時間)",
+      example: "30d",
+      examples: ['7d', '30d', '90d', '1y', 'all']
     }),
   includeArchived: z.coerce.boolean().default(false)
-    .describe("是否包含已歸檔的練習統計")
-    .meta({
-      title: "包含歸檔項目",
+    .openapi({
+      description: "是否包含已歸檔的練習統計",
+      example: false,
       examples: [true, false]
     })
-}).describe("個人練習統計查詢參數").meta({
-  title: "練習統計查詢參數",
-  examples: [{
-    timeRange: "30d",
-    includeArchived: false
-  }]
+}).openapi('PracticeStatsQuery', {
+  description: "個人練習統計查詢參數"
 });
 
 export type PracticeStatsQueryParams = z.infer<typeof practiceStatsQuerySchema>;
@@ -137,92 +98,66 @@ export type PracticeStatsQueryParams = z.infer<typeof practiceStatsQuerySchema>;
 // Resources query parameters schema
 export const resourcesQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1)
-    .describe("資源列表的頁碼")
-    .meta({
-      title: "頁碼",
-      examples: [1, 2, 5]
+    .openapi({
+      description: "資源列表的頁碼",
+      example: 1,
+      examples: [1, 2, 5],
+      minimum: 1
     }),
   limit: z.coerce.number().min(1).max(100).default(20)
-    .describe("每頁顯示的資源數量")
-    .meta({
-      title: "每頁數量",
-      examples: [10, 20, 50]
+    .openapi({
+      description: "每頁顯示的資源數量",
+      example: 20,
+      examples: [10, 20, 50],
+      minimum: 1,
+      maximum: 100
     }),
   category: z.string().max(50).optional()
-    .describe("按資源分類篩選")
-    .meta({
-      title: "資源分類",
-      examples: ["前端開發", "後端開發", "設計工具", "學習資源"]
+    .openapi({
+      description: "按資源分類篩選",
+      example: "前端開發",
+      examples: ["前端開發", "後端開發", "設計工具", "學習資源"],
+      maxLength: 50
     }),
   type: z.enum(['link', 'file', 'note', 'draft']).optional()
-    .describe("按資源類型篩選")
-    .meta({
-      title: "資源類型",
-      examples: ['link', 'file', 'note', 'draft'],
-      enumDescriptions: {
-        "link": "連結資源",
-        "file": "檔案資源",
-        "note": "筆記資源",
-        "draft": "草稿資源"
-      }
+    .openapi({
+      description: "按資源類型篩選 (link: 連結, file: 檔案, note: 筆記, draft: 草稿)",
+      example: "link",
+      examples: ['link', 'file', 'note', 'draft']
     }),
   status: z.enum(['draft', 'published', 'archived']).default('draft')
-    .describe("按資源狀態篩選")
-    .meta({
-      title: "資源狀態",
-      examples: ['draft', 'published', 'archived'],
-      enumDescriptions: {
-        "draft": "草稿狀態",
-        "published": "已發布",
-        "archived": "已歸檔"
-      }
+    .openapi({
+      description: "按資源狀態篩選 (draft: 草稿, published: 已發布, archived: 已歸檔)",
+      example: "published",
+      examples: ['draft', 'published', 'archived']
     }),
   search: z.string().max(100).optional()
-    .describe("搜尋關鍵詞，用於資源名稱或內容搜尋")
-    .meta({
-      title: "搜尋關鍵詞",
-      examples: ["React", "API設計", "資料庫"]
+    .openapi({
+      description: "搜尋關鍵詞，用於資源名稱或內容搜尋",
+      example: "React",
+      examples: ["React", "API設計", "資料庫"],
+      maxLength: 100
     }),
   sortBy: z.enum(['createdAt', 'updatedAt', 'name']).default('updatedAt')
-    .describe("排序欄位")
-    .meta({
-      title: "排序方式",
-      examples: ['createdAt', 'updatedAt', 'name'],
-      enumDescriptions: {
-        "createdAt": "按創建時間排序",
-        "updatedAt": "按更新時間排序",
-        "name": "按資源名稱排序"
-      }
+    .openapi({
+      description: "排序欄位 (createdAt: 按創建時間, updatedAt: 按更新時間, name: 按資源名稱)",
+      example: "updatedAt",
+      examples: ['createdAt', 'updatedAt', 'name']
     }),
   sortOrder: z.enum(['asc', 'desc']).default('desc')
-    .describe("排序方向")
-    .meta({
-      title: "排序方向",
-      examples: ['asc', 'desc'],
-      enumDescriptions: {
-        "asc": "升序排列",
-        "desc": "降序排列"
-      }
+    .openapi({
+      description: "排序方向 (asc: 升序, desc: 降序)",
+      example: "desc",
+      examples: ['asc', 'desc']
     }),
   tags: z.string().optional()
-    .describe("標籤篩選，多個標籤用逗號分隔")
-    .meta({
-      title: "標籤篩選",
+    .openapi({
+      description: "標籤篩選，多個標籤用逗號分隔",
+      example: "React,JavaScript",
       examples: ["React,JavaScript", "設計,UI", "後端,API"]
     })
-}).describe("個人資源列表查詢參數").meta({
-  title: "資源查詢參數",
-  examples: [{
-    page: 1,
-    limit: 20,
-    category: "前端開發",
-    type: "link",
-    status: "published",
-    search: "React",
-    sortBy: "updatedAt",
-    sortOrder: "desc",
-    tags: "React,JavaScript"
-  }]
+}).openapi('ResourcesQuery', {
+  description: "個人資源列表查詢參數"
 });
 
 export type ResourcesQueryParams = z.infer<typeof resourcesQuerySchema>;
@@ -230,88 +165,57 @@ export type ResourcesQueryParams = z.infer<typeof resourcesQuerySchema>;
 // Preferences query parameters schema
 export const preferencesQuerySchema = z.object({
   category: z.string().max(50).optional()
-    .describe("按偏好設定分類篩選")
-    .meta({
-      title: "偏好分類",
-      examples: ["學習偏好", "通知設定", "隱私設定", "介面設定"]
+    .openapi({
+      description: "按偏好設定分類篩選",
+      example: "學習偏好",
+      examples: ["學習偏好", "通知設定", "隱私設定", "介面設定"],
+      maxLength: 50
     }),
   includeSystem: z.coerce.boolean().default(false)
-    .describe("是否包含系統層級的偏好設定")
-    .meta({
-      title: "包含系統設定",
+    .openapi({
+      description: "是否包含系統層級的偏好設定",
+      example: false,
       examples: [true, false]
     })
-}).describe("個人偏好設定查詢參數").meta({
-  title: "偏好設定查詢參數",
-  examples: [{
-    category: "學習偏好",
-    includeSystem: false
-  }]
+}).openapi('PreferencesQuery', {
+  description: "個人偏好設定查詢參數"
 });
 
 export type PreferencesQueryParams = z.infer<typeof preferencesQuerySchema>;
 
 // Update preferences request schema
-export const updatePreferencesSchema = z.object({
-  preferences: z.array(z.object({
-    preferenceTypeId: z.number().int().positive()
-      .describe("偏好設定類型的唯一識別ID")
-      .meta({
-        title: "偏好類型ID",
-        examples: [1, 2, 5, 10]
-      }),
-    optionId: z.number().int().positive()
-      .describe("偏好選項的唯一識別ID")
-      .meta({
-        title: "偏好選項ID",
-        examples: [101, 202, 305, 410]
-      }),
-    isSelected: z.boolean()
-      .describe("是否選擇此偏好選項")
-      .meta({
-        title: "選擇狀態",
-        examples: [true, false]
-      }),
-  }).describe("單個偏好設定項目").meta({
-    title: "偏好設定項目",
-    examples: [{
-      preferenceTypeId: 1,
-      optionId: 101,
-      isSelected: true
-    }]
-  })).min(1, 'At least one preference must be provided').max(50, 'Too many preferences in one request')
-    .describe("偏好設定更新的項目列表")
-    .meta({
-      title: "偏好設定列表",
-      examples: [[
-        {
-          preferenceTypeId: 1,
-          optionId: 101,
-          isSelected: true
-        },
-        {
-          preferenceTypeId: 2,
-          optionId: 202,
-          isSelected: false
-        }
-      ]]
+const preferenceItemSchema = z.object({
+  preferenceTypeId: z.number().int().positive()
+    .openapi({
+      description: "偏好設定類型的唯一識別ID",
+      example: 1,
+      examples: [1, 2, 5, 10]
+    }),
+  optionId: z.number().int().positive()
+    .openapi({
+      description: "偏好選項的唯一識別ID",
+      example: 101,
+      examples: [101, 202, 305, 410]
+    }),
+  isSelected: z.boolean()
+    .openapi({
+      description: "是否選擇此偏好選項",
+      example: true,
+      examples: [true, false]
     })
-}).describe("更新個人偏好設定的請求資料").meta({
-  title: "更新偏好設定",
-  examples: [{
-    preferences: [
-      {
-        preferenceTypeId: 1,
-        optionId: 101,
-        isSelected: true
-      },
-      {
-        preferenceTypeId: 2,
-        optionId: 202,
-        isSelected: false
-      }
-    ]
-  }]
+}).openapi('PreferenceItem', {
+  description: "單個偏好設定項目"
+});
+
+export const updatePreferencesSchema = z.object({
+  preferences: z.array(preferenceItemSchema).min(1, 'At least one preference must be provided').max(50, 'Too many preferences in one request')
+    .openapi({
+      description: "偏好設定更新的項目列表",
+      minItems: 1,
+      maxItems: 50
+    })
+}).openapi('UpdatePreferencesRequest', {
+  description: "更新個人偏好設定的請求資料"
 });
 
 // 額外的類型導出
@@ -326,52 +230,101 @@ import {
 } from './api-response.validators';
 
 // 我的實踐項目 Schema (基於 MyPracticeItem interface)
+const dailyGoalSchema = z.object({
+  type: z.enum(['time', 'completion']).openapi({
+    description: "目標類型",
+    example: "time"
+  }),
+  timeMinutes: z.number().int().positive().optional().openapi({
+    description: "每日時間目標(分鐘)",
+    example: 60
+  }),
+  amount: z.number().positive().optional().openapi({
+    description: "每日數量目標",
+    example: 10
+  }),
+  unit: z.string().optional().openapi({
+    description: "數量單位",
+    example: "頁"
+  })
+}).openapi('DailyGoal', {
+  description: "每日目標設定"
+});
+
 export const myPracticeItemSchema = z.object({
-  id: z.string().describe("實踐項目的外部UUID"),
-  title: z.string().describe("實踐項目標題"),
-  contentType: z.enum(['book', 'video', 'articles', 'podcast', 'course', 'custom']).describe("內容類型"),
-  customContentType: z.string().optional().describe("自定義內容類型"),
-  totalAmount: z.number().int().min(1).describe("總學習量"),
-  currentProgress: z.number().min(0).describe("當前進度"),
-  startDate: z.string().optional().describe("開始日期 (YYYY-MM-DD)"),
-  status: z.enum(['active', 'paused', 'completed', 'archived']).describe("實踐狀態"),
-  streak: z.number().int().min(0).describe("當前連續天數"),
-  maxStreak: z.number().int().min(0).describe("最大連續天數"),
-  lastCheckInDate: z.string().optional().describe("最後簽到日期 (YYYY-MM-DD)"),
-  createdAt: z.string().datetime().describe("創建時間"),
-  updatedAt: z.string().datetime().optional().describe("更新時間"),
-  dailyGoal: z.object({
-    type: z.enum(['time', 'completion']).describe("目標類型"),
-    timeMinutes: z.number().int().positive().optional().describe("每日時間目標(分鐘)"),
-    amount: z.number().positive().optional().describe("每日數量目標"),
-    unit: z.string().optional().describe("數量單位")
-  }).describe("每日目標設定"),
-  tags: z.array(z.string()).describe("相關標籤"),
-  practiceAction: z.string().optional().describe("實踐行動描述"),
-  hasResources: z.boolean().describe("是否有相關資源")
-}).describe("我的實踐項目").meta({
-  title: "我的實踐項目",
-  examples: [{
-    id: "123e4567-e89b-12d3-a456-426614174000",
-    title: "學習React Hooks",
-    contentType: "course",
-    totalAmount: 20,
-    currentProgress: 8,
-    startDate: "2024-01-15",
-    status: "active",
-    streak: 5,
-    maxStreak: 12,
-    lastCheckInDate: "2024-01-20",
-    createdAt: "2024-01-15T10:30:00.000Z",
-    updatedAt: "2024-01-20T15:45:00.000Z",
-    dailyGoal: {
-      type: "time",
-      timeMinutes: 60
-    },
-    tags: ["React", "前端", "Hooks"],
-    practiceAction: "每天學習1小時React Hooks課程",
-    hasResources: true
-  }]
+  id: z.string().openapi({
+    description: "實踐項目的外部UUID",
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  }),
+  title: z.string().openapi({
+    description: "實踐項目標題",
+    example: "學習React Hooks"
+  }),
+  contentType: z.enum(['book', 'video', 'articles', 'podcast', 'course', 'custom']).openapi({
+    description: "內容類型",
+    example: "course"
+  }),
+  customContentType: z.string().optional().openapi({
+    description: "自定義內容類型",
+    example: "線上課程"
+  }),
+  totalAmount: z.number().int().min(1).openapi({
+    description: "總學習量",
+    example: 20,
+    minimum: 1
+  }),
+  currentProgress: z.number().min(0).openapi({
+    description: "當前進度",
+    example: 8,
+    minimum: 0
+  }),
+  startDate: z.string().optional().openapi({
+    description: "開始日期 (YYYY-MM-DD)",
+    example: "2024-01-15"
+  }),
+  status: z.enum(['active', 'paused', 'completed', 'archived']).openapi({
+    description: "實踐狀態",
+    example: "active"
+  }),
+  streak: z.number().int().min(0).openapi({
+    description: "當前連續天數",
+    example: 5,
+    minimum: 0
+  }),
+  maxStreak: z.number().int().min(0).openapi({
+    description: "最大連續天數",
+    example: 12,
+    minimum: 0
+  }),
+  lastCheckInDate: z.string().optional().openapi({
+    description: "最後簽到日期 (YYYY-MM-DD)",
+    example: "2024-01-20"
+  }),
+  createdAt: z.string().datetime().openapi({
+    description: "創建時間",
+    example: "2024-01-15T10:30:00.000Z",
+    format: 'date-time'
+  }),
+  updatedAt: z.string().datetime().optional().openapi({
+    description: "更新時間",
+    example: "2024-01-20T15:45:00.000Z",
+    format: 'date-time'
+  }),
+  dailyGoal: dailyGoalSchema,
+  tags: z.array(z.string()).openapi({
+    description: "相關標籤",
+    example: ["React", "前端", "Hooks"]
+  }),
+  practiceAction: z.string().optional().openapi({
+    description: "實踐行動描述",
+    example: "每天學習1小時React Hooks課程"
+  }),
+  hasResources: z.boolean().openapi({
+    description: "是否有相關資源",
+    example: true
+  })
+}).openapi('MyPracticeItem', {
+  description: "我的實踐項目"
 });
 
 // 實踐統計資料 Schema (基於 PracticeStatsData interface)
@@ -523,7 +476,9 @@ export const myResourcesApiResponseSchema = z.object({
   }),
   timestamp: z.string().datetime(),
   meta: z.record(z.string(), z.unknown()).optional()
-}).describe("我的資源列表API回應");
+}).describe("我的資源列表API回應").openapi({
+  description: "我的資源列表API回應"
+});
 
 // 我的偏好設定回應
 export const myPreferencesApiResponseSchema = z.object({
@@ -545,7 +500,9 @@ export const myPreferencesApiResponseSchema = z.object({
   }),
   timestamp: z.string().datetime(),
   meta: z.record(z.string(), z.unknown()).optional()
-}).describe("我的偏好設定API回應");
+}).describe("我的偏好設定API回應").openapi({
+  description: "我的偏好設定API回應"
+});
 
 // 更新偏好設定回應
 export const updatePreferencesApiResponseSchema = z.object({
@@ -558,5 +515,7 @@ export const updatePreferencesApiResponseSchema = z.object({
   message: z.string(),
   timestamp: z.string().datetime(),
   meta: z.record(z.string(), z.unknown()).optional()
-}).describe("更新偏好設定API回應");
+}).describe("更新偏好設定API回應").openapi({
+  description: "更新偏好設定API回應"
+});
 

@@ -6,8 +6,11 @@
 import express from 'express';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import fs from 'fs';
+import { z } from 'zod';
 // Prisma 不需要手動引入模型，在服務層中直接使用
+// 引入 OpenAPI 配置（會自動載入所有 validators）
+import { generateOpenApiDocument, registry } from './config/openapi-registry';
+import './validators'; // 載入所有 validators，觸發 schema 註冊
 // 引入實際的資源路由
 import resourceRoutes from './routes/resource.routes';
 // 引入實際的資源評價路由  
@@ -90,71 +93,51 @@ export function setupTypescriptRoutes(app: express.Application) {
     }
   });
 
-  // 載入 Zod v4 自動生成的 OpenAPI 規範
-  let swaggerDocument;
-  // 在開發環境中，__dirname 是 src/，查找 ../openapi.json
-  // 在生產環境中，__dirname 是 dist/src/，需要查找 ../../openapi.json
-  const isDist = __dirname.includes('/dist/src');
-  let openapiPath = isDist 
-    ? path.join(__dirname, '../../openapi.json')  // 生產環境: /app/dist/src -> /app/openapi.json
-    : path.join(__dirname, '../openapi.json');    // 開發環境: /src -> /openapi.json
-  
-  // 額外的備用路徑檢查 - 適應不同的部署環境
-  const fallbackPaths = [
-    path.resolve(process.cwd(), 'openapi.json'),           // 工作目錄
-    path.join(process.cwd(), 'openapi.json'),             // 當前目錄
-    path.resolve(__dirname, '../../openapi.json'),        // 相對於 dist/src
-    path.resolve(__dirname, '../../../openapi.json'),     // 適應更深層的結構
-    '/app/openapi.json'                                   // Docker 容器固定路徑
+  // 確保所有路由模組都被載入並註冊到 registry
+  console.log('📦 載入路由模組...');
+  // 強制評估所有路由模組以觸發 registry.registerPath() 調用
+  const routes = [
+    resourceRoutes, resourceReviewRoutes, ideaRoutes, meRoutes,
+    tagRoutes, authRoutes, projectRoutes, userRoutes, emailRoutes,
+    commentRoutes, imageRoutes, mentorRoutes, practiceRoutes,
+    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes
   ];
-  
-  // 如果主要路徑不存在，嘗試備用路徑
-  if (!fs.existsSync(openapiPath)) {
-    for (const fallbackPath of fallbackPaths) {
-      if (fs.existsSync(fallbackPath)) {
-        openapiPath = fallbackPath;
-        break;
+  console.log('✅ 路由模組已載入');
+
+  // 註冊健康檢查端點到 OpenAPI
+  registry.registerPath({
+    method: 'get',
+    path: '/api/v1/health',
+    tags: ['System'],
+    summary: '健康檢查',
+    description: '檢查 API 服務是否正常運行',
+    responses: {
+      200: {
+        description: '服務正常運行',
+        content: {
+          'application/json': {
+            schema: z.object({
+              status: z.string(),
+              uptime: z.number(),
+              timestamp: z.string()
+            }).openapi({
+              description: '健康檢查響應'
+            })
+          }
+        }
       }
     }
-  }
-  
-  // 調試日誌
-  console.log(`🔍 OpenAPI 路徑調試:
-    __dirname: ${__dirname}
-    process.cwd(): ${process.cwd()}
-    isDist: ${isDist}
-    openapiPath: ${openapiPath}
-    文件存在: ${fs.existsSync(openapiPath)}`);
-  
-  if (!fs.existsSync(openapiPath)) {
-    console.error('❌ OpenAPI 文檔不存在，請先執行 pnpm run openapi:generate 生成文檔');
-    console.warn('⚠️  Swagger UI 將無法正常顯示');
-    swaggerDocument = {
-      openapi: '3.0.0',
-      info: {
-        title: 'API Documentation Not Available',
-        version: '1.0.0',
-        description: '請執行 pnpm run types:generate 生成 API 文檔'
-      },
-      paths: {}
-    };
-  } else {
-    try {
-      swaggerDocument = JSON.parse(fs.readFileSync(openapiPath, 'utf-8'));
-      console.log('✅ 已載入 Zod v4 自動生成的 OpenAPI 文檔');
-    } catch (error) {
-      console.error('❌ 載入 OpenAPI 文檔失敗:', error);
-      swaggerDocument = {
-        openapi: '3.0.0',
-        info: {
-          title: 'API Documentation Error',
-          version: '1.0.0',
-          description: 'OpenAPI 文檔載入失敗，請檢查 openapi.json 格式'
-        },
-        paths: {}
-      };
-    }
-  }
+  });
+
+  // 運行時生成 OpenAPI 文檔（官方推薦用法）
+  console.log('📝 生成 OpenAPI 文檔...');
+  const swaggerDocument = generateOpenApiDocument();
+  console.log('✅ OpenAPI 文檔已生成');
+
+  // 提供 OpenAPI JSON 端點
+  app.get('/openapi.json', (_req, res) => {
+    res.json(swaggerDocument);
+  });
 
   // 設置 Swagger UI
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {

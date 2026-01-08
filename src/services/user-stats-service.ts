@@ -4,7 +4,7 @@
  * 已遷移至 Prisma ORM
  */
 
-import { Prisma } from '../../generated/prisma';
+import { Prisma, education_stage_t } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import {
   OverviewStats,
@@ -121,7 +121,7 @@ export async function getRegistrationStats(
   }
 
   if (educationStage) {
-    whereConditions.education_stage = educationStage as any;
+    whereConditions.education_stage = educationStage as education_stage_t;
   }
 
   // 根據 groupBy 執行不同的查詢
@@ -135,11 +135,11 @@ export async function getRegistrationStats(
     case 'year':
       return getYearlyStats(whereConditions);
     case 'location':
-      return getLocationStats(whereConditions, limit, offset);
+      return getLocationStats(whereConditions, limit as number, offset as number);
     case 'role':
-      return getRoleStats(whereConditions, limit, offset);
+      return getRoleStats(whereConditions, limit as number, offset as number);
     case 'education_stage':
-      return getEducationStageStats(whereConditions, limit, offset);
+      return getEducationStageStats(whereConditions, limit as number, offset as number);
     default:
       throw new Error(`不支援的 groupBy 類型: ${groupBy}`);
   }
@@ -152,15 +152,25 @@ async function getDailyStats(
   where: Prisma.usersWhereInput
 ): Promise<TimeSeriesStats[]> {
   // 使用原始 SQL 查詢進行日期分組
-  const createdAtFilter = where.created_at as any;
-  const hasDateRange = createdAtFilter && typeof createdAtFilter === 'object' && createdAtFilter.gte && createdAtFilter.lte;
+  const createdAtFilter = where.created_at;
+  let hasDateRange = false;
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (createdAtFilter && typeof createdAtFilter === 'object' && !(createdAtFilter instanceof Date)) {
+    if ('gte' in createdAtFilter && 'lte' in createdAtFilter && createdAtFilter.gte && createdAtFilter.lte) {
+      hasDateRange = true;
+      startDate = createdAtFilter.gte as Date;
+      endDate = createdAtFilter.lte as Date;
+    }
+  }
 
   const results = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
     SELECT
       DATE(created_at) as date,
       COUNT(id)::bigint as count
     FROM users
-    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${createdAtFilter.gte} AND created_at <= ${createdAtFilter.lte}` : Prisma.sql`1=1`}
+    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${startDate} AND created_at <= ${endDate}` : Prisma.sql`1=1`}
       ${where.location_id ? Prisma.sql`AND location_id = ${where.location_id}` : Prisma.empty}
       ${where.role_id ? Prisma.sql`AND role_id = ${where.role_id}` : Prisma.empty}
       ${where.education_stage ? Prisma.sql`AND education_stage = ${where.education_stage}` : Prisma.empty}
@@ -182,15 +192,25 @@ async function getWeeklyStats(
   where: Prisma.usersWhereInput
 ): Promise<TimeSeriesStats[]> {
   // 使用原始 SQL 查詢進行週分組
-  const createdAtFilter = where.created_at as any;
-  const hasDateRange = createdAtFilter && typeof createdAtFilter === 'object' && createdAtFilter.gte && createdAtFilter.lte;
+  const createdAtFilter = where.created_at;
+  let hasDateRange = false;
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (createdAtFilter && typeof createdAtFilter === 'object' && !(createdAtFilter instanceof Date)) {
+    if ('gte' in createdAtFilter && 'lte' in createdAtFilter && createdAtFilter.gte && createdAtFilter.lte) {
+      hasDateRange = true;
+      startDate = createdAtFilter.gte as Date;
+      endDate = createdAtFilter.lte as Date;
+    }
+  }
 
   const results = await prisma.$queryRaw<Array<{ week_start: Date; count: bigint }>>`
     SELECT
       DATE_TRUNC('week', created_at) as week_start,
       COUNT(id)::bigint as count
     FROM users
-    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${createdAtFilter.gte} AND created_at <= ${createdAtFilter.lte}` : Prisma.sql`1=1`}
+    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${startDate} AND created_at <= ${endDate}` : Prisma.sql`1=1`}
       ${where.location_id ? Prisma.sql`AND location_id = ${where.location_id}` : Prisma.empty}
       ${where.role_id ? Prisma.sql`AND role_id = ${where.role_id}` : Prisma.empty}
       ${where.education_stage ? Prisma.sql`AND education_stage = ${where.education_stage}` : Prisma.empty}
@@ -216,15 +236,25 @@ async function getMonthlyStats(
   where: Prisma.usersWhereInput
 ): Promise<TimeSeriesStats[]> {
   // 使用原始 SQL 查詢進行月分組
-  const createdAtFilter = where.created_at as any;
-  const hasDateRange = createdAtFilter && typeof createdAtFilter === 'object' && createdAtFilter.gte && createdAtFilter.lte;
+  const createdAtFilter = where.created_at;
+  let hasDateRange = false;
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (createdAtFilter && typeof createdAtFilter === 'object' && !(createdAtFilter instanceof Date)) {
+    if ('gte' in createdAtFilter && 'lte' in createdAtFilter && createdAtFilter.gte && createdAtFilter.lte) {
+      hasDateRange = true;
+      startDate = createdAtFilter.gte as Date;
+      endDate = createdAtFilter.lte as Date;
+    }
+  }
 
   const results = await prisma.$queryRaw<Array<{ month_start: Date; count: bigint }>>`
     SELECT
       DATE_TRUNC('month', created_at) as month_start,
       COUNT(id)::bigint as count
     FROM users
-    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${createdAtFilter.gte} AND created_at <= ${createdAtFilter.lte}` : Prisma.sql`1=1`}
+    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${startDate} AND created_at <= ${endDate}` : Prisma.sql`1=1`}
       ${where.location_id ? Prisma.sql`AND location_id = ${where.location_id}` : Prisma.empty}
       ${where.role_id ? Prisma.sql`AND role_id = ${where.role_id}` : Prisma.empty}
       ${where.education_stage ? Prisma.sql`AND education_stage = ${where.education_stage}` : Prisma.empty}
@@ -250,15 +280,25 @@ async function getYearlyStats(
   where: Prisma.usersWhereInput
 ): Promise<TimeSeriesStats[]> {
   // 使用原始 SQL 查詢進行年分組
-  const createdAtFilter = where.created_at as any;
-  const hasDateRange = createdAtFilter && typeof createdAtFilter === 'object' && createdAtFilter.gte && createdAtFilter.lte;
+  const createdAtFilter = where.created_at;
+  let hasDateRange = false;
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (createdAtFilter && typeof createdAtFilter === 'object' && !(createdAtFilter instanceof Date)) {
+    if ('gte' in createdAtFilter && 'lte' in createdAtFilter && createdAtFilter.gte && createdAtFilter.lte) {
+      hasDateRange = true;
+      startDate = createdAtFilter.gte as Date;
+      endDate = createdAtFilter.lte as Date;
+    }
+  }
 
   const results = await prisma.$queryRaw<Array<{ year_start: Date; count: bigint }>>`
     SELECT
       DATE_TRUNC('year', created_at) as year_start,
       COUNT(id)::bigint as count
     FROM users
-    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${createdAtFilter.gte} AND created_at <= ${createdAtFilter.lte}` : Prisma.sql`1=1`}
+    WHERE ${hasDateRange ? Prisma.sql`created_at >= ${startDate} AND created_at <= ${endDate}` : Prisma.sql`1=1`}
       ${where.location_id ? Prisma.sql`AND location_id = ${where.location_id}` : Prisma.empty}
       ${where.role_id ? Prisma.sql`AND role_id = ${where.role_id}` : Prisma.empty}
       ${where.education_stage ? Prisma.sql`AND education_stage = ${where.education_stage}` : Prisma.empty}
@@ -285,8 +325,18 @@ async function getLocationStats(
   offset: number
 ): Promise<LocationStats[]> {
   // 使用 Prisma groupBy 功能，但需要原始查詢來處理關聯和計數
-  const createdAtFilter = where.created_at as any;
-  const hasDateRange = createdAtFilter && typeof createdAtFilter === 'object' && createdAtFilter.gte && createdAtFilter.lte;
+  const createdAtFilter = where.created_at;
+  let hasDateRange = false;
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (createdAtFilter && typeof createdAtFilter === 'object' && !(createdAtFilter instanceof Date)) {
+    if ('gte' in createdAtFilter && 'lte' in createdAtFilter && createdAtFilter.gte && createdAtFilter.lte) {
+      hasDateRange = true;
+      startDate = createdAtFilter.gte as Date;
+      endDate = createdAtFilter.lte as Date;
+    }
+  }
 
   const results = await prisma.$queryRaw<Array<{
     location_id: number | null;
@@ -305,7 +355,7 @@ async function getLocationStats(
     LEFT JOIN location l ON u.location_id = l.id
     LEFT JOIN city ci ON l.city_id = ci.id
     LEFT JOIN country co ON l.country_id = co.id
-    WHERE ${hasDateRange ? Prisma.sql`u.created_at >= ${createdAtFilter.gte} AND u.created_at <= ${createdAtFilter.lte}` : Prisma.sql`1=1`}
+    WHERE ${hasDateRange ? Prisma.sql`u.created_at >= ${startDate} AND u.created_at <= ${endDate}` : Prisma.sql`1=1`}
       ${where.location_id ? Prisma.sql`AND u.location_id = ${where.location_id}` : Prisma.empty}
       ${where.role_id ? Prisma.sql`AND u.role_id = ${where.role_id}` : Prisma.empty}
       ${where.education_stage ? Prisma.sql`AND u.education_stage = ${where.education_stage}` : Prisma.empty}
@@ -333,8 +383,18 @@ async function getRoleStats(
   offset: number
 ): Promise<RoleStats[]> {
   // 使用原始查詢來處理關聯和計數
-  const createdAtFilter = where.created_at as any;
-  const hasDateRange = createdAtFilter && typeof createdAtFilter === 'object' && createdAtFilter.gte && createdAtFilter.lte;
+  const createdAtFilter = where.created_at;
+  let hasDateRange = false;
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (createdAtFilter && typeof createdAtFilter === 'object' && !(createdAtFilter instanceof Date)) {
+    if ('gte' in createdAtFilter && 'lte' in createdAtFilter && createdAtFilter.gte && createdAtFilter.lte) {
+      hasDateRange = true;
+      startDate = createdAtFilter.gte as Date;
+      endDate = createdAtFilter.lte as Date;
+    }
+  }
 
   const results = await prisma.$queryRaw<Array<{
     role_id: number;
@@ -347,7 +407,7 @@ async function getRoleStats(
       COUNT(u.id)::bigint as user_count
     FROM users u
     INNER JOIN roles r ON u.role_id = r.id
-    WHERE ${hasDateRange ? Prisma.sql`u.created_at >= ${createdAtFilter.gte} AND u.created_at <= ${createdAtFilter.lte}` : Prisma.sql`1=1`}
+    WHERE ${hasDateRange ? Prisma.sql`u.created_at >= ${startDate} AND u.created_at <= ${endDate}` : Prisma.sql`1=1`}
       ${where.location_id ? Prisma.sql`AND u.location_id = ${where.location_id}` : Prisma.empty}
       ${where.role_id ? Prisma.sql`AND u.role_id = ${where.role_id}` : Prisma.empty}
       ${where.education_stage ? Prisma.sql`AND u.education_stage = ${where.education_stage}` : Prisma.empty}
@@ -402,7 +462,7 @@ export async function getActivityStats(
 ): Promise<ActivityStats> {
   const { activeWithinDays = 30, groupBy } = query;
 
-  const activeThreshold = getDaysAgo(activeWithinDays);
+  const activeThreshold = getDaysAgo(activeWithinDays as number);
 
   // 活躍使用者數
   const activeUsers = await prisma.users.count({
@@ -437,7 +497,7 @@ export async function getActivityStats(
       }
     };
 
-    let breakdown: ActivityStats['breakdown'] = {};
+    const breakdown: ActivityStats['breakdown'] = {};
 
     switch (groupBy) {
       case 'role':

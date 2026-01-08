@@ -4,6 +4,8 @@
  */
 
 import { Router, RequestHandler } from 'express';
+import { z } from 'zod';
+import { registry } from '../config/openapi-registry';
 import { userController } from '../controllers/user.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import {
@@ -16,7 +18,18 @@ import {
   createUserSchema,
   updateUserSchema,
   getUserParamsSchema,
-  getUserQuerySchema
+  getUserQuerySchema,
+  userSuccessResponseSchema,
+  usersListResponseSchema,
+  createUserResponseSchema,
+  updateUserResponseSchema,
+  deleteUserResponseSchema,
+  customIdAvailabilityResponseSchema,
+  setCustomIdResponseSchema,
+  removeCustomIdResponseSchema,
+  userPreferencesResponseSchema,
+  updateUserPreferencesResponseSchema,
+  availablePreferencesResponseSchema
 } from '../validators/user.validators';
 import {
   customIdSchema,
@@ -28,6 +41,36 @@ import {
 } from '../validators/me.validators';
 
 const router = Router();
+
+// ============================================================================
+// OpenAPI 路由定義（使用 registry.registerPath）
+// ============================================================================
+
+/**
+ * GET /api/v1/users - 獲取用戶列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users',
+  tags: ['Users'],
+  summary: '獲取用戶列表',
+  description: '獲取所有用戶列表，支援分頁、過濾和搜尋。支援可選身份驗證以提供個人化內容。',
+  request: {
+    query: getUserQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取用戶列表',
+      content: {
+        'application/json': {
+          schema: usersListResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
 
 /**
  * GET /users
@@ -42,6 +85,30 @@ router.get('/',
 );
 
 /**
+ * GET /api/v1/users/me - 獲取當前用戶資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/me',
+  tags: ['Me'],
+  summary: '獲取當前用戶資訊',
+  description: '獲取當前已登入用戶的完整資料',
+  responses: {
+    200: {
+      description: '成功獲取用戶資料',
+      content: {
+        'application/json': {
+          schema: userSuccessResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * GET /users/me
  * 獲取當前用戶資訊
  * 需要身份驗證
@@ -50,6 +117,40 @@ router.get('/me',
   authenticate,
   userController.getMe as RequestHandler
 );
+
+/**
+ * POST /api/v1/users/me - 創建新用戶
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/users/me',
+  tags: ['Me'],
+  summary: '創建新用戶（當前用戶）',
+  description: '創建一個新的用戶帳號（與 POST /users 功能相同）',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createUserSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '用戶創建成功',
+      content: {
+        'application/json': {
+          schema: createUserResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
 
 /**
  * POST /users/me
@@ -64,6 +165,40 @@ router.post('/me',
 );
 
 /**
+ * PUT /api/v1/users/me - 更新當前用戶資訊
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/users/me',
+  tags: ['Me'],
+  summary: '更新當前用戶資訊',
+  description: '更新已登入用戶的個人資料',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: updateUserSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '用戶資料更新成功',
+      content: {
+        'application/json': {
+          schema: updateUserResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * PUT /users/me
  * 更新當前用戶資訊
  * 請求體：UpdateUserRequest
@@ -76,6 +211,39 @@ router.put('/me',
 );
 
 /**
+ * GET /api/v1/users/custom-id/check/{customId} - 檢查自訂 ID 可用性
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/custom-id/check/{customId}',
+  tags: ['Users'],
+  summary: '檢查自訂 ID 可用性',
+  description: '檢查指定的自訂 ID 是否可用',
+  request: {
+    params: z.object({
+      customId: z.string().openapi({
+        description: '要檢查的自訂 ID',
+        example: 'my_custom_id'
+      })
+    }).openapi({
+      description: '檢查自訂 ID 可用性的路徑參數'
+    })
+  },
+  responses: {
+    200: {
+      description: '成功檢查可用性',
+      content: {
+        'application/json': {
+          schema: customIdAvailabilityResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
  * GET /users/custom-id/check/:customId
  * 檢查自訂 ID 可用性
  * 路徑參數：customId - 要檢查的自訂 ID
@@ -86,6 +254,39 @@ router.get('/custom-id/check/:customId',
 );
 
 /**
+ * GET /api/v1/users/custom-id/{customId} - 透過自訂 ID 獲取用戶資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/custom-id/{customId}',
+  tags: ['Users'],
+  summary: '透過自訂 ID 獲取用戶',
+  description: '使用自訂 ID 查詢用戶資訊',
+  request: {
+    params: z.object({
+      customId: z.string().openapi({
+        description: '用戶自訂 ID',
+        example: 'my_custom_id'
+      })
+    }).openapi({
+      description: '透過自訂 ID 獲取用戶的路徑參數'
+    })
+  },
+  responses: {
+    200: {
+      description: '成功獲取用戶資料',
+      content: {
+        'application/json': {
+          schema: userSuccessResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
  * GET /users/custom-id/:customId
  * 透過自訂 ID 獲取用戶資訊
  * 路徑參數：customId - 用戶自訂 ID
@@ -94,6 +295,57 @@ router.get('/custom-id/:customId',
   validate(customIdParamsSchema, 'params'),
   userController.getUserByCustomId as RequestHandler
 );
+
+/**
+ * POST /api/v1/users/me/custom-id - 設置自訂 ID
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/users/me/custom-id',
+  tags: ['Me'],
+  summary: '設置當前用戶的自訂 ID',
+  description: '為當前用戶設置一個唯一的自訂 ID',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: customIdSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '自訂 ID 設置成功',
+      content: {
+        'application/json': {
+          schema: setCustomIdResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    409: {
+      description: '自訂 ID 已被使用',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.null(),
+            error: z.object({
+              code: z.string(),
+              message: z.string()
+            })
+          }).openapi({
+            description: '自訂 ID 衝突錯誤響應'
+          })
+        }
+      }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
 
 /**
  * POST /users/me/custom-id
@@ -108,6 +360,30 @@ router.post('/me/custom-id',
 );
 
 /**
+ * DELETE /api/v1/users/me/custom-id - 移除自訂 ID
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/users/me/custom-id',
+  tags: ['Me'],
+  summary: '移除當前用戶的自訂 ID',
+  description: '刪除當前用戶的自訂 ID',
+  responses: {
+    200: {
+      description: '自訂 ID 已成功移除',
+      content: {
+        'application/json': {
+          schema: removeCustomIdResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * DELETE /users/me/custom-id
  * 移除當前用戶的自訂 ID
  * 需要身份驗證
@@ -116,6 +392,33 @@ router.delete('/me/custom-id',
   authenticate,
   userController.removeCustomId as RequestHandler
 );
+
+/**
+ * GET /api/v1/users/me/preferences - 獲取用戶偏好設定
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/me/preferences',
+  tags: ['Me'],
+  summary: '獲取當前用戶的偏好設定',
+  description: '獲取當前用戶的所有偏好設定',
+  request: {
+    query: preferencesQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取偏好設定',
+      content: {
+        'application/json': {
+          schema: userPreferencesResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
 
 /**
  * GET /users/me/preferences
@@ -130,6 +433,40 @@ router.get('/me/preferences',
 );
 
 /**
+ * PUT /api/v1/users/me/preferences - 更新用戶偏好設定
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/users/me/preferences',
+  tags: ['Me'],
+  summary: '更新當前用戶的偏好設定',
+  description: '更新當前用戶的偏好設定選項',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: updatePreferencesSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '偏好設定更新成功',
+      content: {
+        'application/json': {
+          schema: updateUserPreferencesResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * PUT /users/me/preferences
  * 更新當前用戶的偏好設定
  * 請求體：preferences array with preferenceTypeId, optionId, isSelected, weight
@@ -142,6 +479,28 @@ router.put('/me/preferences',
 );
 
 /**
+ * GET /api/v1/users/preferences/available - 獲取所有可用的偏好選項
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/preferences/available',
+  tags: ['Users'],
+  summary: '獲取所有可用的偏好選項',
+  description: '獲取系統中所有可用的偏好類型和選項（公開 API）',
+  responses: {
+    200: {
+      description: '成功獲取可用偏好選項',
+      content: {
+        'application/json': {
+          schema: availablePreferencesResponseSchema
+        }
+      }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
  * GET /users/preferences/available
  * 獲取所有可用的偏好選項
  * 公開API，無需驗證
@@ -149,6 +508,32 @@ router.put('/me/preferences',
 router.get('/preferences/available',
   userController.getAvailablePreferences as RequestHandler
 );
+
+/**
+ * GET /api/v1/users/{id} - 獲取指定用戶資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/{id}',
+  tags: ['Users'],
+  summary: '獲取指定用戶資訊',
+  description: '根據用戶 UUID 獲取用戶詳細資訊',
+  request: {
+    params: getUserParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取用戶資料',
+      content: {
+        'application/json': {
+          schema: userSuccessResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
 
 /**
  * GET /users/:id
@@ -159,6 +544,40 @@ router.get('/:id',
   validate(getUserParamsSchema, 'params'),
   userController.getOneUser as RequestHandler
 );
+
+/**
+ * POST /api/v1/users - 創建新用戶
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/users',
+  tags: ['Users'],
+  summary: '創建新用戶',
+  description: '創建一個新的用戶帳號',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createUserSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '用戶創建成功',
+      content: {
+        'application/json': {
+          schema: createUserResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
 
 /**
  * POST /users
@@ -172,6 +591,43 @@ router.post('/',
   validate(createUserSchema, 'body'),
   userController.createUser as RequestHandler
 );
+
+/**
+ * PUT /api/v1/users/{id} - 更新用戶資訊
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/users/{id}',
+  tags: ['Users'],
+  summary: '更新用戶資訊',
+  description: '更新指定用戶的資料（需要權限或本人修改）',
+  request: {
+    params: getUserParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: updateUserSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '用戶資料更新成功',
+      content: {
+        'application/json': {
+          schema: updateUserResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
 
 /**
  * PUT /users/:id
@@ -189,6 +645,30 @@ router.put('/:id',
 );
 
 /**
+ * DELETE /api/v1/users/me - 刪除當前用戶
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/users/me',
+  tags: ['Me'],
+  summary: '刪除當前用戶',
+  description: '刪除當前已登入用戶的帳號',
+  responses: {
+    200: {
+      description: '用戶已成功刪除',
+      content: {
+        'application/json': {
+          schema: deleteUserResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * DELETE /users/me
  * 刪除當前用戶
  * 需要身份驗證
@@ -197,6 +677,42 @@ router.delete('/me',
   authenticate,
   userController.deleteMe as RequestHandler
 );
+
+/**
+ * DELETE /api/v1/users/{id} - 刪除指定用戶（管理員功能）
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/users/{id}',
+  tags: ['Users'],
+  summary: '刪除指定用戶（管理員）',
+  description: '刪除指定用戶的帳號（僅限管理員）',
+  request: {
+    params: z.object({
+      id: z.string().openapi({
+        description: '用戶 ID（數字）',
+        example: '123'
+      })
+    }).openapi({
+      description: '刪除用戶的路徑參數'
+    })
+  },
+  responses: {
+    200: {
+      description: '用戶已成功刪除',
+      content: {
+        'application/json': {
+          schema: deleteUserResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
 
 /**
  * DELETE /users/:id
@@ -209,5 +725,9 @@ router.delete('/:id',
   requireAdmin,
   userController.deleteUser as RequestHandler
 );
+
+// ============================================================================
+// Express 路由定義完成
+// ============================================================================
 
 export default router;

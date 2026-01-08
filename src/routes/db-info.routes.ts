@@ -1,5 +1,6 @@
-
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { registry } from '../config/openapi-registry';
 import { prismaService } from '../services/database/prisma.service';
 import { mongoClient } from '../services/database/mongo.service';
 import { redis as redisClient } from '../services/database/redis.service';
@@ -63,6 +64,52 @@ interface DatabaseInfoResponse {
   postgres: Record<string, PostgresTableInfo> | { error: string };
   redis: RedisInfo | { error: string };
 }
+
+// ============================================================================
+// OpenAPI 路由定義
+// ============================================================================
+
+/**
+ * GET /api/v1/db-info - 取得資料庫資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/db-info',
+  tags: ['Database Info'],
+  summary: '取得資料庫資訊',
+  description: '取得 MongoDB、PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等',
+  responses: {
+    200: {
+      description: '成功獲取資料庫資訊',
+      content: {
+        'application/json': {
+          schema: z.object({
+            mongo: z.record(z.string(), z.object({
+              fields: z.array(z.string())
+            })).or(z.object({ error: z.string() })),
+            postgres: z.record(z.string(), z.object({
+              columns: z.array(z.any()),
+              constraints: z.array(z.any()),
+              indexes: z.array(z.any()),
+              comment: z.string().nullable(),
+              row_count: z.number()
+            })).or(z.object({ error: z.string() })),
+            redis: z.object({
+              version: z.string(),
+              uptime_in_seconds: z.number(),
+              connected_clients: z.number(),
+              used_memory_human: z.string(),
+              total_commands_processed: z.number()
+            }).or(z.object({ error: z.string() }))
+          }).openapi({
+            description: '資料庫資訊響應'
+          })
+        }
+      }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
 
 router.get('/', async (req: Request, res: Response) => {
   try {

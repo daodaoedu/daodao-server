@@ -24,7 +24,7 @@ import {
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
 import {
-  PracticeQueryParams,
+  MePracticesQueryParams,
   PracticeStatsQueryParams,
   ResourcesQueryParams,
   PreferencesQueryParams
@@ -33,7 +33,7 @@ import {
 /**
  * Get user's practices with filtering and pagination
  */
-const getMyPractices = async (userId: number, params: PracticeQueryParams): Promise<PaginatedApiResponse<MyPracticeItem>> => {
+const getMyPractices = async (userId: number, params: MePracticesQueryParams): Promise<PaginatedApiResponse<MyPracticeItem>> => {
   try {
     // Leverage existing practice service
     const result = await practiceService.findUserPractices(userId, {
