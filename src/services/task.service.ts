@@ -26,7 +26,7 @@ function formatTaskData(task: task): TaskData {
     id: task.id,
     name: task.name || '',
     description: task.description || '',
-    position: task.position || 0,
+    position: task.display_order || 0,
     isCompleted: task.is_completed || false,
     daysOfWeek: task.days_of_week as DayEnum[],
     milestoneId: task.milestone_id,
@@ -75,7 +75,7 @@ export async function createTask(
       data: {
         name: taskData.name,
         description: taskData.description,
-        position: taskData.position,
+        display_order: taskData.position || 0,
         is_completed: taskData.isCompleted || false,
         days_of_week: taskData.daysOfWeek,
         milestone_id: milestoneId

@@ -66,7 +66,7 @@ interface ProjectWithIncludes {
   } | null;
   milestone?: Array<{
     id: number;
-    position: number | null;
+    display_order: number | null;
     name: string | null;
     description: string | null;
     start_date: Date | null;
@@ -75,7 +75,7 @@ interface ProjectWithIncludes {
     task?: Array<{
       id: number;
       name: string | null;
-      position: number;
+      display_order: number | null;
       description: string | null;
       days_of_week: unknown;
       is_completed: boolean | null;
@@ -118,7 +118,7 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
     } : null,
     milestones: project.milestone?.map(m => ({
       id: m.id,
-      position: m.position || 0,
+      position: m.display_order || 0,
       name: m.name || '',
       description: m.description || "",
       startDate: m.start_date,
@@ -127,7 +127,7 @@ const formatProjectResponse = (project: ProjectWithIncludes): ProjectResponse =>
       tasks: m.task?.map(t => ({
         id: t.id,
         name: t.name || '',
-        position: t.position,
+        position: t.display_order || 0,
         description: t.description || "",
         daysOfWeek: t.days_of_week,
         isCompleted: t.is_completed || false
@@ -217,11 +217,11 @@ export const createProject = async (
           },
           milestone: {
             where: { is_deleted: false },
-            orderBy: { position: 'asc' },
+            orderBy: { display_order: 'asc' },
             include: {
               task: {
                 where: { is_deleted: false },
-                orderBy: { position: 'asc' }
+                orderBy: { display_order: 'asc' }
               }
             }
           }
@@ -234,7 +234,7 @@ export const createProject = async (
           const milestone = await tx.milestone.create({
             data: {
               project_id: project.id,
-              position: milestoneData.position,
+              display_order: milestoneData.position || 0,
               name: milestoneData.name,
               description: milestoneData.description,
               start_date: milestoneData.startDate ? new Date(milestoneData.startDate) : new Date(),
@@ -248,7 +248,7 @@ export const createProject = async (
             await tx.task.createMany({
               data: milestoneData.tasks.map(taskData => ({
                 milestone_id: milestone.id,
-                position: taskData.position,
+                display_order: taskData.position || 0,
                 name: taskData.name,
                 description: taskData.description,
                 days_of_week: taskData.daysOfWeek ? { set: taskData.daysOfWeek as day_enum[] } : undefined,
@@ -306,11 +306,11 @@ export const getProjectById = async (
         },
         milestone: {
           where: { is_deleted: false },
-          orderBy: { position: 'asc' },
+          orderBy: { display_order: 'asc' },
           include: {
             task: {
               where: { is_deleted: false },
-              orderBy: { position: 'asc' }
+              orderBy: { display_order: 'asc' }
             }
           }
         }
@@ -399,11 +399,11 @@ export const getProjects = async (
           },
           milestone: {
             where: { is_deleted: false },
-            orderBy: { position: 'asc' },
+            orderBy: { display_order: 'asc' },
             include: {
               task: {
                 where: { is_deleted: false },
-                orderBy: { position: 'asc' }
+                orderBy: { display_order: 'asc' }
               }
             }
           }

@@ -59,13 +59,13 @@ export const findOrCreateTempUser = async (profile: {
   const { googleId, email, name, photoUrl } = profile;
 
   // 先檢查是否已存在
-  let tempUser = await prisma.temp_users.findUnique({
+  let tempUser = await prisma.temp_users.findFirst({
     where: { google_id: googleId }
   });
 
   if (!tempUser) {
     // 檢查 email 是否已存在
-    const existingByEmail = await prisma.temp_users.findUnique({
+    const existingByEmail = await prisma.temp_users.findFirst({
       where: { email }
     });
 

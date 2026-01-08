@@ -377,17 +377,18 @@ const getPracticesByCategory = async (userId: number, includeArchived: boolean):
     where.status = { not: 'archived' };
   }
 
+  // Note: content_type field doesn't exist in schema
+  // Group by status instead as a fallback
   const practices = await prisma.practices.groupBy({
-    by: ['content_type'],
+    by: ['status'],
     where,
-    _count: { id: true },
-    _avg: { current_progress: true }
+    _count: { id: true }
   });
 
   return practices.map(p => ({
-    category: p.content_type,
-    count: p._count.id,
-    avgProgress: Math.round(Number(p._avg.current_progress) || 0)
+    category: p.status || 'unknown',
+    count: p._count?.id || 0,
+    avgProgress: 0 // current_progress field doesn't exist in schema
   }));
 };
 
@@ -452,16 +453,20 @@ const getTimeStats = async (_userId: number, _timeRange: string): Promise<{ toda
 };
 
 const getProgressStats = async (userId: number): Promise<{ averageProgress: number }> => {
-  const result = await prisma.practices.aggregate({
-    where: { 
+  // Note: current_progress field doesn't exist in practices schema
+  // Progress is calculated from check-ins
+  const result = await prisma.practice_checkins.aggregate({
+    where: {
       user_id: userId,
-      status: { not: 'archived' }
+      practices: {
+        status: { not: 'archived' }
+      }
     },
-    _avg: { current_progress: true }
+    _avg: { cumulative_progress: true }
   });
 
   return {
-    averageProgress: Math.round(Number(result._avg.current_progress) || 0)
+    averageProgress: Math.round(Number(result._avg?.cumulative_progress) || 0)
   };
 };
 

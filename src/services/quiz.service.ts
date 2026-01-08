@@ -24,7 +24,7 @@ export const saveResult = async (
       user_id: userId,
       result_type: data.resultType.toUpperCase(),
       scores: data.scores,
-      answers: data.answers || null,
+      answers: data.answers || undefined,
       completed_at: new Date()
     }
   });
