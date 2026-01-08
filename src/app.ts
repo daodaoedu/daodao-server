@@ -34,6 +34,8 @@ import imageRoutes from './routes/image.routes';
 import mentorRoutes from './routes/mentor.routes';
 // 引入實踐路由
 import practiceRoutes from './routes/practice.routes';
+// 引入測驗結果路由
+import quizRoutes from './routes/quiz.routes';
 // 引入 OAuth 服務初始化
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
@@ -227,6 +229,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/practices', practiceRoutes);
   console.log('⚡ v1 實踐路由已註冊 - 可在 /api/v1/practices 訪問');
 
+  // 註冊測驗結果路由
+  app.use('/api/v1/quizResults', quizRoutes);
+  console.log('📝 v1 測驗結果路由已註冊 - 可在 /api/v1/quizResults 訪問');
+
   // 註冊資料庫資訊路由
   app.use('/api/v1/db-info', dbInfoRoutes);
   console.log('🗃️ v1 資料庫資訊路由已註冊 - 可在 /api/v1/db-info 訪問');
@@ -237,13 +243,15 @@ export function setupTypescriptRoutes(app: express.Application) {
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../public/monitor.html'));
+    const filePath = path.resolve(process.cwd(), 'public/monitor.html');
+    res.sendFile(filePath);
   });
   console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
 
   // 資料庫資訊 HTML 頁面的直接路由
   app.get('/api/v1/db-info.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../public/db-info.html'));
+    const filePath = path.resolve(process.cwd(), 'public/db-info.html');
+    res.sendFile(filePath);
   });
   console.log('🗃️ 資料庫資訊頁面路由已註冊 - 可在 /api/v1/db-info.html 訪問');
 

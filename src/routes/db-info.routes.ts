@@ -2,6 +2,7 @@
 import { Router, Request, Response } from 'express';
 import { prismaService } from '../services/database/prisma.service';
 import { mongoClient } from '../services/database/mongo.service';
+import { redis as redisClient } from '../services/database/redis.service';
 
 const router = Router();
 
@@ -49,16 +50,26 @@ interface MongoCollectionInfo {
   fields: string[];
 }
 
+interface RedisInfo {
+  version: string;
+  uptime_in_seconds: number;
+  connected_clients: number;
+  used_memory_human: string;
+  total_commands_processed: number;
+}
+
 interface DatabaseInfoResponse {
   mongo: Record<string, MongoCollectionInfo> | { error: string };
   postgres: Record<string, PostgresTableInfo> | { error: string };
+  redis: RedisInfo | { error: string };
 }
 
 router.get('/', async (req: Request, res: Response) => {
   try {
     const response: DatabaseInfoResponse = {
       mongo: {},
-      postgres: {}
+      postgres: {},
+      redis: { error: 'Redis 連線不可用' }
     };
 
     // 取得 MongoDB 各 collection 的欄位資訊
@@ -197,6 +208,49 @@ router.get('/', async (req: Request, res: Response) => {
     } catch (postgresError) {
       console.error('PostgreSQL info error:', postgresError);
       response.postgres = { error: 'PostgreSQL 查詢失敗' };
+    }
+
+    // 取得 Redis 伺服器資訊
+    try {
+      if (redisClient && redisClient.status === 'ready') {
+        const info = await redisClient.info('server');
+        const stats = await redisClient.info('stats');
+        const memory = await redisClient.info('memory');
+        const clients = await redisClient.info('clients');
+
+        // 解析 INFO 命令返回的字符串
+        const parseInfo = (infoStr: string): Record<string, string> => {
+          const result: Record<string, string> = {};
+          const lines = infoStr.split('\r\n');
+          for (const line of lines) {
+            if (line && !line.startsWith('#')) {
+              const [key, value] = line.split(':');
+              if (key && value) {
+                result[key] = value;
+              }
+            }
+          }
+          return result;
+        };
+
+        const serverInfo = parseInfo(info);
+        const statsInfo = parseInfo(stats);
+        const memoryInfo = parseInfo(memory);
+        const clientsInfo = parseInfo(clients);
+
+        response.redis = {
+          version: serverInfo.redis_version || 'unknown',
+          uptime_in_seconds: parseInt(serverInfo.uptime_in_seconds || '0', 10),
+          connected_clients: parseInt(clientsInfo.connected_clients || '0', 10),
+          used_memory_human: memoryInfo.used_memory_human || '0B',
+          total_commands_processed: parseInt(statsInfo.total_commands_processed || '0', 10)
+        };
+      } else {
+        response.redis = { error: 'Redis 連線不可用' };
+      }
+    } catch (redisError) {
+      console.error('Redis info error:', redisError);
+      response.redis = { error: 'Redis 查詢失敗' };
     }
 
     res.json(response);
