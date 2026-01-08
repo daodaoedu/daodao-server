@@ -10,6 +10,7 @@ export * from './auth.validators';
 export * from './email.validators';
 export * from './idea.validators';
 export * from './image.validators';
+export * from './me.validators';
 export * from './user.validators';
 export * from './user-custom-id.validators';
 
@@ -25,4 +26,8 @@ export * from './mentor.validators';
 export * from './milestone.validators';
 export * from './tag.validators';
 export * from './project.validators';
+export * from './quiz.validators';
+export * from './task.validators';
+export * from './user-stats.validator';
+export * from './request-params.validator';
 export { default as validate, validate as validateMiddleware } from '../middleware/validation.middleware';

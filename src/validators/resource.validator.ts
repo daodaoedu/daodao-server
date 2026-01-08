@@ -1,9 +1,10 @@
 /**
  * 資源驗證器
- * 使用 Zod 實現資源相關驗證
+ * 使用 Zod 實現資源相關驗證，支援 OpenAPI 文檔生成
  */
 
 import { z } from 'zod';
+import { registry } from '../config/openapi-registry';
 import {
   RESOURCE_TYPES,
   COST_TYPES,
@@ -26,61 +27,63 @@ const reviewSchema = z.object({
   title: z.string()
     .min(1, { message: "評價標題為必填" })
     .max(255, { message: "評價標題最多 255 字符" })
-    .describe("評價標題")
-    .meta({
-      title: "評價標題",
+    .openapi({
+      description: "評價標題",
+      example: "React 學習心得",
       examples: ["React 學習心得", "這個課程很實用", "推薦給初學者"]
     }),
   content: z.string()
     .min(1, { message: "評價內容為必填" })
-    .describe("詳細的評價內容，分享使用心得和建議")
-    .meta({
-      title: "評價內容",
-      examples: ["這個 React 課程內容豐富，從基礎到進階都有涵蓋，特別適合有 JavaScript 基礎的學習者。"]
+    .openapi({
+      description: "詳細的評價內容，分享使用心得和建議",
+      example: "這個 React 課程內容豐富，從基礎到進階都有涵蓋，特別適合有 JavaScript 基礎的學習者。"
     }),
   scoreImpact: z.number()
     .min(1, { message: "評分最小為 1" })
     .max(5, { message: "評分最大為 5" })
-    .describe("影響力評分 (1-5 分)")
-    .meta({
-      title: "影響力評分",
-      examples: [4, 5, 3]
+    .openapi({
+      description: "影響力評分 (1-5 分)",
+      example: 4,
+      minimum: 1,
+      maximum: 5
     }),
   scoreComprehensiveness: z.number()
     .min(1, { message: "評分最小為 1" })
     .max(5, { message: "評分最大為 5" })
-    .describe("完整性評分 (1-5 分)")
-    .meta({
-      title: "完整性評分",
-      examples: [4, 5, 3]
+    .openapi({
+      description: "完整性評分 (1-5 分)",
+      example: 4,
+      minimum: 1,
+      maximum: 5
     }),
   scoreImplementation: z.number()
     .min(1, { message: "評分最小為 1" })
     .max(5, { message: "評分最大為 5" })
-    .describe("實用性評分 (1-5 分)")
-    .meta({
-      title: "實用性評分",
-      examples: [4, 5, 3]
+    .openapi({
+      description: "實用性評分 (1-5 分)",
+      example: 5,
+      minimum: 1,
+      maximum: 5
     }),
   recommendation: z.string()
     .nullable()
     .optional()
-    .describe("推薦建議")
-    .meta({
-      title: "推薦建議",
+    .openapi({
+      description: "推薦建議",
+      example: "適合初學者",
       examples: ["適合初學者", "需要有基礎再學", "實戰性很強"]
     }),
   tags: z.array(z.string())
     .nullable()
     .optional()
-    .describe("評價標籤")
-    .meta({
-      title: "評價標籤",
+    .openapi({
+      description: "評價標籤",
+      example: ["實用", "易懂"],
       examples: [["實用", "易懂"], ["進階", "挑戰性"], ["基礎", "入門"]]
     })
-}).nullable().optional().describe("資源評價資訊").meta({
-  title: "資源評價",
-  examples: [{
+}).nullable().optional().openapi('ResourceReview', {
+  description: "資源評價資訊",
+  example: {
     title: "很棒的 React 教學資源",
     content: "內容豐富且實用，適合有 JavaScript 基礎的學習者",
     scoreImpact: 5,
@@ -88,7 +91,7 @@ const reviewSchema = z.object({
     scoreImplementation: 5,
     recommendation: "強烈推薦給想學 React 的朋友",
     tags: ["實用", "清楚", "完整"]
-  }]
+  }
 });
 
 // 資源基本 schema
@@ -96,140 +99,123 @@ const resourceBaseSchema = z.object({
   name: z.string()
     .min(1, { message: "資源名稱為必填" })
     .max(255, { message: "資源名稱最多 255 字符" })
-    .describe("資源名稱")
-    .meta({
-      title: "資源名稱",
-      examples: ["React 官方文檔", "Vue.js 入門教學", "JavaScript 進階課程"]
+    .openapi({
+      description: "資源名稱",
+      example: "React 官方文檔",
+      examples: ["React 官方文檔", "Vue.js 入門教學", "JavaScript 進階課程"],
+      minLength: 1,
+      maxLength: 255
     }),
   url: z.string()
     .min(1, { message: "資源 URL 為必填" })
     .max(1000, { message: "資源 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" })
-    .describe("資源連結 URL")
-    .meta({
-      title: "資源 URL",
-      examples: ["https://react.dev/", "https://vuejs.org/guide/", "https://javascript.info/"]
+    .openapi({
+      description: "資源連結 URL",
+      example: "https://react.dev/",
+      examples: ["https://react.dev/", "https://vuejs.org/guide/", "https://javascript.info/"],
+      format: "uri",
+      minLength: 1,
+      maxLength: 1000
     }),
   imageUrl: z.string()
     .max(1000, { message: "圖片 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" })
     .nullable()
     .optional()
-    .describe("資源縮圖 URL")
-    .meta({
-      title: "縮圖 URL",
-      examples: ["https://example.com/react-logo.png", "https://example.com/vue-logo.png"]
+    .openapi({
+      description: "資源縮圖 URL",
+      example: "https://example.com/react-logo.png",
+      examples: ["https://example.com/react-logo.png", "https://example.com/vue-logo.png"],
+      format: "uri",
+      maxLength: 1000
     }),
   description: z.string()
     .min(1, { message: "資源描述為必填" })
-    .describe("資源的詳細描述")
-    .meta({
-      title: "資源描述",
-      examples: ["React 官方文檔，提供完整的 API 參考和教學指南", "Vue.js 新手入門教學，從基礎概念到實作專案"]
+    .openapi({
+      description: "資源的詳細描述",
+      example: "React 官方文檔，提供完整的 API 參考和教學指南",
+      examples: ["React 官方文檔，提供完整的 API 參考和教學指南", "Vue.js 新手入門教學，從基礎概念到實作專案"],
+      minLength: 1
     }),
   videoUrl: z.string()
     .max(1000, { message: "影片 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" })
     .nullable()
     .optional()
-    .describe("相關影片 URL")
-    .meta({
-      title: "影片 URL",
-      examples: ["https://youtube.com/watch?v=abc123", "https://vimeo.com/123456789"]
+    .openapi({
+      description: "相關影片 URL",
+      example: "https://youtube.com/watch?v=abc123",
+      examples: ["https://youtube.com/watch?v=abc123", "https://vimeo.com/123456789"],
+      format: "uri",
+      maxLength: 1000
     }),
   type: z.enum(resourceTypeValues as [string, ...string[]], "無效的資源類型")
-    .describe("資源類型")
-    .meta({
-      title: "資源類型",
-      examples: resourceTypeValues,
-      enumDescriptions: {
-        "learning_platform_app": "學習平台應用",
-        "learning_tools": "學習工具",
-        "books_articles": "書籍文章",
-        "video_content": "影片內容",
-        "podcast_content": "播客內容",
-        "workshops_courses": "工作坊課程",
-        "professional_certificates": "專業證照",
-        "community_organization": "社群組織",
-        "other": "其他"
-      }
+    .openapi({
+      description: "資源類型",
+      example: "learning_platform_app",
+      enum: resourceTypeValues
     }),
   cost: z.enum(costTypeValues as [string, ...string[]], "無效的費用類型")
-    .describe("費用類型")
-    .meta({
-      title: "費用類型",
-      examples: costTypeValues,
-      enumDescriptions: {
-        "free": "免費",
-        "paid": "付費",
-        "partial_free": "部分免費"
-      }
+    .openapi({
+      description: "費用類型",
+      example: "free",
+      enum: costTypeValues
     }),
   level: z.enum(levelTypeValues as [string, ...string[]], "無效的難度等級")
-    .describe("難度等級")
-    .meta({
-      title: "難度等級",
-      examples: levelTypeValues,
-      enumDescriptions: {
-        "beginner": "初學者",
-        "intermediate": "中級",
-        "expert": "專家",
-        "all_levels": "全等級"
-      }
+    .openapi({
+      description: "難度等級",
+      example: "intermediate",
+      enum: levelTypeValues
     }),
   majorCategory: z.string()
     .min(1, { message: "主分類名稱為必填" })
     .nullable()
     .optional()
-    .describe("主要分類")
-    .meta({
-      title: "主分類",
+    .openapi({
+      description: "主要分類",
+      example: "前端開發",
       examples: ["前端開發", "後端開發", "數據科學", "設計"]
     }),
   subCategory: z.string()
     .min(1, { message: "子分類名稱為必填" })
     .nullable()
     .optional()
-    .describe("子分類")
-    .meta({
-      title: "子分類",
+    .openapi({
+      description: "子分類",
+      example: "React",
       examples: ["React", "Vue.js", "Node.js", "Python"]
     }),
   tags: z.array(z.string())
     .nullable()
     .optional()
-    .describe("資源標籤")
-    .meta({
-      title: "標籤",
+    .openapi({
+      description: "資源標籤",
+      example: ["JavaScript", "React", "前端"],
       examples: [["JavaScript", "React", "前端"], ["Python", "機器學習", "數據分析"]]
     })
-}).describe("資源基本資訊").meta({
-  title: "資源基本資訊"
+}).openapi('ResourceBase', {
+  description: "資源基本資訊"
 });
 
 // 創建資源 schema
 export const createResourceSchema = resourceBaseSchema.extend({
   status: z.enum(statusValues as [string, ...string[]], "無效的資源狀態")
     .default("active")
-    .describe("資源狀態")
-    .meta({
-      title: "資源狀態",
-      examples: statusValues,
-      enumDescriptions: {
-        "draft": "草稿",
-        "active": "啟用中",
-        "archived": "已封存",
-        "reported": "已被檢舉"
-      }
+    .openapi({
+      description: "資源狀態",
+      example: "active",
+      enum: statusValues,
+      default: "active"
     }),
   review: reviewSchema
-}).describe("建立資源的請求資料").meta({
-  title: "建立資源",
-  examples: [{
+}).openapi('CreateResourceRequest', {
+  description: "建立資源的請求資料",
+  example: {
     name: "React 官方文檔",
     url: "https://react.dev/",
     description: "React 官方文檔，提供完整的 API 參考和最新的開發指南",
-    type: "website",
+    type: "learning_platform_app",
     cost: "free",
     level: "intermediate",
     majorCategory: "前端開發",
@@ -239,13 +225,13 @@ export const createResourceSchema = resourceBaseSchema.extend({
     review: {
       title: "非常實用的官方文檔",
       content: "內容詳細且更新及時，是學習 React 必備的資源",
-      score_impact: 5,
-      score_comprehensiveness: 5,
-      score_implementation: 4,
+      scoreImpact: 5,
+      scoreComprehensiveness: 5,
+      scoreImplementation: 4,
       recommendation: "強烈推薦給所有 React 開發者",
       tags: ["官方", "完整", "實用"]
     }
-  }]
+  }
 });
 
 // 更新資源 schema - 重新定義所有欄位為真正的可選，用於部分更新
@@ -254,90 +240,137 @@ export const updateResourceSchema = z.object({
     .min(1, { message: "資源名稱不能為空" })
     .max(255, { message: "資源名稱最多 255 字符" })
     .optional()
-    .describe("資源名稱"),
+    .openapi({
+      description: "資源名稱",
+      example: "React 官方文檔 (更新版)",
+      minLength: 1,
+      maxLength: 255
+    }),
   url: z.string()
     .min(1, { message: "資源 URL 不能為空" })
     .max(1000, { message: "資源 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" })
     .optional()
-    .describe("資源連結 URL"),
+    .openapi({
+      description: "資源連結 URL",
+      example: "https://react.dev/",
+      format: "uri",
+      minLength: 1,
+      maxLength: 1000
+    }),
   imageUrl: z.string()
     .max(1000, { message: "圖片 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" })
     .nullable()
     .optional()
-    .describe("資源縮圖 URL"),
+    .openapi({
+      description: "資源縮圖 URL",
+      example: "https://example.com/react-logo.png",
+      format: "uri",
+      maxLength: 1000
+    }),
   description: z.string()
     .min(1, { message: "資源描述不能為空" })
     .optional()
-    .describe("資源的詳細描述"),
+    .openapi({
+      description: "資源的詳細描述",
+      example: "React 官方文檔，包含最新的 React 18 功能介紹",
+      minLength: 1
+    }),
   videoUrl: z.string()
     .max(1000, { message: "影片 URL 最多 1000 字符" })
     .url({ message: "URL 格式不正確" })
     .nullable()
     .optional()
-    .describe("相關影片 URL"),
+    .openapi({
+      description: "相關影片 URL",
+      example: "https://youtube.com/watch?v=abc123",
+      format: "uri",
+      maxLength: 1000
+    }),
   type: z.enum(resourceTypeValues as [string, ...string[]], "無效的資源類型")
     .optional()
-    .describe("資源類型"),
+    .openapi({
+      description: "資源類型",
+      example: "learning_platform_app",
+      enum: resourceTypeValues
+    }),
   cost: z.enum(costTypeValues as [string, ...string[]], "無效的費用類型")
     .optional()
-    .describe("費用類型"),
+    .openapi({
+      description: "費用類型",
+      example: "free",
+      enum: costTypeValues
+    }),
   level: z.enum(levelTypeValues as [string, ...string[]], "無效的難度等級")
     .optional()
-    .describe("難度等級"),
+    .openapi({
+      description: "難度等級",
+      example: "intermediate",
+      enum: levelTypeValues
+    }),
   majorCategory: z.string()
     .min(1, { message: "主分類名稱不能為空" })
     .nullable()
     .optional()
-    .describe("主要分類"),
+    .openapi({
+      description: "主要分類",
+      example: "前端開發"
+    }),
   subCategory: z.string()
     .min(1, { message: "子分類名稱不能為空" })
     .nullable()
     .optional()
-    .describe("子分類"),
+    .openapi({
+      description: "子分類",
+      example: "React"
+    }),
   tags: z.array(z.string())
     .nullable()
     .optional()
-    .describe("資源標籤"),
+    .openapi({
+      description: "資源標籤",
+      example: ["JavaScript", "React", "React 18"]
+    }),
   status: z.enum(statusValues as [string, ...string[]], "無效的資源狀態")
     .optional()
-    .describe("資源狀態")
-}).describe("更新資源的請求資料（部分更新）").meta({
-  title: "更新資源",
-  examples: [{
-    name: "React 官方文檔 (更新版)",
-    description: "React 官方文檔，包含最新的 React 18 功能介紹",
-    tags: ["JavaScript", "React", "React 18"]
-  }, {
-    description: "Updated description only"
-  }, {
-    name: "New resource name",
-    status: "active"
-  }]
+    .openapi({
+      description: "資源狀態",
+      example: "active",
+      enum: statusValues
+    })
+}).openapi('UpdateResourceRequest', {
+  description: "更新資源的請求資料（部分更新）",
+  examples: [
+    {
+      name: "React 官方文檔 (更新版)",
+      description: "React 官方文檔，包含最新的 React 18 功能介紹",
+      tags: ["JavaScript", "React", "React 18"]
+    },
+    {
+      description: "Updated description only"
+    },
+    {
+      name: "New resource name",
+      status: "active"
+    }
+  ]
 });
 
 // 更新資源狀態 schema
 export const updateResourceStatusSchema = z.object({
   status: z.enum(statusValues as [string, ...string[]], "無效的資源狀態")
-    .describe("新的資源狀態")
-    .meta({
-      title: "資源狀態",
-      examples: statusValues,
-      enumDescriptions: {
-        "draft": "草稿",
-        "active": "啟用中",
-        "archived": "已封存",
-        "reported": "已被檢舉"
-      }
+    .openapi({
+      description: "新的資源狀態",
+      example: "active",
+      enum: statusValues
     })
-}).describe("更新資源狀態的請求資料").meta({
-  title: "更新資源狀態",
-  examples: [{
-    status: "active"
-  }, {
-    status: "inactive"
-  }]
+}).openapi('UpdateResourceStatusRequest', {
+  description: "更新資源狀態的請求資料",
+  examples: [
+    { status: "active" },
+    { status: "draft" }
+  ]
 });
 
 // 使用 zod 推導型別
@@ -366,309 +399,223 @@ export type ResourceSchema = UpdateResourceSchema & {
 
 // 用戶基本資訊 schema - 匹配 transformResourceToApi 的 user 格式
 const userBasicInfoSchema = z.object({
-  id: z.string().describe('用戶外部 ID'),
-  name: z.string().describe('用戶名稱'),
-  roleList: z.array(z.string()).optional().describe('用戶角色列表'),
-  photoURL: z.string().url().nullable().describe('用戶頭像 URL'),
-  educationStage: z.string().nullable().optional().describe('教育階段'),
-  tagList: z.array(z.string()).optional().describe('用戶標籤列表'),
-  selfIntroduction: z.string().nullable().optional().describe('自我介紹')
-}).describe('用戶基本資訊');
+  id: z.string().openapi({
+    description: '用戶外部 ID',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  }),
+  name: z.string().openapi({
+    description: '用戶名稱',
+    example: '王小明'
+  }),
+  roleList: z.array(z.string()).optional().openapi({
+    description: '用戶角色列表',
+    example: ['USER', 'EDUCATOR']
+  }),
+  photoURL: z.string().url().nullable().openapi({
+    description: '用戶頭像 URL',
+    example: 'https://example.com/avatar.jpg',
+    format: 'uri'
+  }),
+  educationStage: z.string().nullable().optional().openapi({
+    description: '教育階段',
+    example: '大學'
+  }),
+  tagList: z.array(z.string()).optional().openapi({
+    description: '用戶標籤列表',
+    example: ['前端開發', '教育']
+  }),
+  selfIntroduction: z.string().nullable().optional().openapi({
+    description: '自我介紹',
+    example: '熱愛學習與分享的開發者'
+  })
+}).openapi('UserBasicInfo', {
+  description: '用戶基本資訊'
+});
 
 
 // 資源回應 schema - 匹配 transformResourceToApi 格式
 export const resourceResponseSchema = z.object({
-  id: z.string().describe('資源 ID'),
-  name: z.string().describe('資源名稱'),
-  url: z.string().url().describe('資源 URL'),
-  imageUrl: z.string().url().nullable().describe('資源縮圖 URL'),
-  description: z.string().describe('資源描述'),
-  videoUrl: z.string().url().nullable().describe('影片 URL'),
-  type: z.enum(resourceTypeValues as [string, ...string[]]).describe('資源類型'),
-  cost: z.enum(costTypeValues as [string, ...string[]]).describe('費用類型'),
-  level: z.enum(levelTypeValues as [string, ...string[]]).describe('難度等級'),
-  status: z.enum(statusValues as [string, ...string[]]).describe('資源狀態'),
-  avgRating: z.number().nullable().describe('平均評分'),
-  user: userBasicInfoSchema.describe('用戶資訊'),
-  majorCategory: z.string().nullable().describe('主分類名稱'),
-  subCategory: z.string().nullable().describe('子分類名稱'),
-  tags: z.array(z.string()).describe('標籤名稱列表'),
-  createdAt: z.string().datetime().describe('創建時間'),
-  updatedAt: z.string().datetime().describe('更新時間'),
-  viewCount: z.number().int().min(0).describe('瀏覽次數'),
-  favoriteCount: z.number().int().min(0).describe('收藏次數'),
-  shareCount: z.number().int().min(0).describe('分享次數'),
-  reviewCount: z.number().int().min(0).describe('評價次數'),
-  likeCount: z.number().int().min(0).describe('按讚次數')
-}).describe('資源詳情回應').meta({
-  title: '資源詳情',
-  examples: [{
-    id: '550e8400-e29b-41d4-a716-446655440000',
-    name: 'React 官方文檔',
-    url: 'https://react.dev/',
-    imageUrl: 'https://example.com/react-logo.png',
-    description: 'React 官方文檔，提供完整的 API 參考和開發指南',
-    videoUrl: null,
-    type: 'website',
-    cost: 'free',
-    level: 'intermediate',
-    status: 'active',
-    author: {
-      id: 123,
-      nickname: '前端開發者',
-      photoUrl: 'https://example.com/avatar.jpg'
-    },
-    majorCategory: {
-      id: 1,
-      name: '前端開發'
-    },
-    subCategory: {
-      id: 10,
-      name: 'React'
-    },
-    tags: [
-      { id: 1, name: 'JavaScript' },
-      { id: 2, name: 'React' },
-      { id: 3, name: '前端框架' }
-    ],
-    reviewStats: {
-      totalReviews: 25,
-      averageScores: {
-        impact: 4.8,
-        mindset: 4.5,
-        problems: 4.6,
-        perspectives: 4.4,
-        goals: 4.7
-      }
-    },
-    createdAt: '2024-01-15T10:30:00.000Z',
-    updatedAt: '2024-01-15T11:00:00.000Z'
-  }]
+  id: z.string().openapi({
+    description: '資源 ID',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  }),
+  name: z.string().openapi({
+    description: '資源名稱',
+    example: 'React 官方文檔'
+  }),
+  url: z.string().url().openapi({
+    description: '資源 URL',
+    example: 'https://react.dev/',
+    format: 'uri'
+  }),
+  imageUrl: z.string().url().nullable().openapi({
+    description: '資源縮圖 URL',
+    example: 'https://example.com/react-logo.png',
+    format: 'uri'
+  }),
+  description: z.string().openapi({
+    description: '資源描述',
+    example: 'React 官方文檔，提供完整的 API 參考和開發指南'
+  }),
+  videoUrl: z.string().url().nullable().openapi({
+    description: '影片 URL',
+    example: null,
+    format: 'uri'
+  }),
+  type: z.enum(resourceTypeValues as [string, ...string[]]).openapi({
+    description: '資源類型',
+    example: 'learning_platform_app',
+    enum: resourceTypeValues
+  }),
+  cost: z.enum(costTypeValues as [string, ...string[]]).openapi({
+    description: '費用類型',
+    example: 'free',
+    enum: costTypeValues
+  }),
+  level: z.enum(levelTypeValues as [string, ...string[]]).openapi({
+    description: '難度等級',
+    example: 'intermediate',
+    enum: levelTypeValues
+  }),
+  status: z.enum(statusValues as [string, ...string[]]).openapi({
+    description: '資源狀態',
+    example: 'active',
+    enum: statusValues
+  }),
+  avgRating: z.number().nullable().openapi({
+    description: '平均評分',
+    example: 4.6
+  }),
+  user: userBasicInfoSchema,
+  majorCategory: z.string().nullable().openapi({
+    description: '主分類名稱',
+    example: '前端開發'
+  }),
+  subCategory: z.string().nullable().openapi({
+    description: '子分類名稱',
+    example: 'React'
+  }),
+  tags: z.array(z.string()).openapi({
+    description: '標籤名稱列表',
+    example: ['JavaScript', 'React', '前端框架']
+  }),
+  createdAt: z.string().datetime().openapi({
+    description: '創建時間',
+    example: '2024-01-15T10:30:00.000Z',
+    format: 'date-time'
+  }),
+  updatedAt: z.string().datetime().openapi({
+    description: '更新時間',
+    example: '2024-01-15T11:00:00.000Z',
+    format: 'date-time'
+  }),
+  viewCount: z.number().int().min(0).openapi({
+    description: '瀏覽次數',
+    example: 1250,
+    minimum: 0
+  }),
+  favoriteCount: z.number().int().min(0).openapi({
+    description: '收藏次數',
+    example: 85,
+    minimum: 0
+  }),
+  shareCount: z.number().int().min(0).openapi({
+    description: '分享次數',
+    example: 42,
+    minimum: 0
+  }),
+  reviewCount: z.number().int().min(0).openapi({
+    description: '評價次數',
+    example: 25,
+    minimum: 0
+  }),
+  likeCount: z.number().int().min(0).openapi({
+    description: '按讚次數',
+    example: 320,
+    minimum: 0
+  })
+}).openapi('ResourceData', {
+  description: '資源詳情回應'
 });
 
-// 資源列表項目 schema - 匹配 transformResourceToApi 格式
-export const resourceListItemSchema = resourceResponseSchema.describe('資源列表項目').meta({
-  title: '資源列表項目',
-  examples: [{
-    id: '550e8400-e29b-41d4-a716-446655440001',
-    name: 'Vue.js 入門教學',
-    url: 'https://vuejs.org/guide/',
-    imageUrl: 'https://example.com/vue-logo.png',
-    description: 'Vue.js 官方入門教學',
-    type: 'website',
-    cost: 'free',
-    level: 'beginner',
-    status: 'active',
-    author: {
-      id: 124,
-      nickname: 'Vue 愛好者',
-      photoUrl: 'https://example.com/avatar2.jpg'
-    },
-    majorCategory: {
-      id: 1,
-      name: '前端開發'
-    },
-    subCategory: {
-      id: 11,
-      name: 'Vue.js'
-    },
-    tags: [
-      { id: 4, name: 'JavaScript' },
-      { id: 5, name: 'Vue.js' }
-    ],
-    reviewStats: {
-      totalReviews: 18,
-      averageScores: {
-        impact: 4.5,
-        mindset: 4.2,
-        problems: 4.3,
-        perspectives: 4.1,
-        goals: 4.4
-      }
-    },
-    createdAt: '2024-01-14T09:15:00.000Z',
-    updatedAt: '2024-01-14T09:15:00.000Z'
-  }]
-});
+// 資源列表項目 schema - 與資源詳情相同的格式
+export const resourceListItemSchema = resourceResponseSchema;
 
 // 資源統計回應 schema
 export const resourceStatsResponseSchema = z.object({
-  totalResources: z.number().int().min(0).describe('總資源數'),
-  activeResources: z.number().int().min(0).describe('啟用資源數'),
-  categoryStats: z.record(z.string(), z.number().int().min(0)).describe('分類統計'),
-  typeStats: z.record(z.string(), z.number().int().min(0)).describe('類型統計')
-}).describe('資源統計回應').meta({
-  title: '資源統計',
-  examples: [{
-    totalResources: 150,
-    activeResources: 142,
-    categoryStats: {
+  totalResources: z.number().int().min(0).openapi({
+    description: '總資源數',
+    example: 150,
+    minimum: 0
+  }),
+  activeResources: z.number().int().min(0).openapi({
+    description: '啟用資源數',
+    example: 142,
+    minimum: 0
+  }),
+  categoryStats: z.record(z.string(), z.number().int().min(0)).openapi({
+    description: '分類統計',
+    example: {
       '前端開發': 45,
       '後端開發': 32,
       '資料科學': 28,
       '設計': 15
-    },
-    typeStats: {
-      'website': 65,
+    }
+  }),
+  typeStats: z.record(z.string(), z.number().int().min(0)).openapi({
+    description: '類型統計',
+    example: {
+      'learning_platform_app': 65,
       'video_content': 35,
       'books_articles': 25,
       'learning_tools': 20,
       'other': 5
     }
-  }]
+  })
+}).openapi('ResourceStats', {
+  description: '資源統計回應'
 });
 
 // 建立具體的回應 schema
-export const getResourceByIdResponseSchema = apiSuccessResponseSchema(resourceResponseSchema)
-  .describe('獲取單個資源的回應')
-  .meta({
-    title: '獲取資源詳情回應',
-    examples: [{
-      success: true,
-      data: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        name: 'React 官方文檔',
-        url: 'https://react.dev/',
-        imageUrl: 'https://example.com/react-logo.png',
-        description: 'React 官方文檔，提供完整的 API 參考和開發指南',
-        videoUrl: null,
-        type: 'website',
-        cost: 'free',
-        level: 'intermediate',
-        status: 'active',
-        author: {
-          id: 123,
-          nickname: '前端開發者',
-          photoUrl: 'https://example.com/avatar.jpg'
-        },
-        majorCategory: { id: 1, name: '前端開發' },
-        subCategory: { id: 10, name: 'React' },
-        tags: [
-          { id: 1, name: 'JavaScript' },
-          { id: 2, name: 'React' }
-        ],
-        reviewStats: {
-          totalReviews: 25,
-          averageScores: { impact: 4.8, mindset: 4.5, problems: 4.6, perspectives: 4.4, goals: 4.7 }
-        },
-        createdAt: '2024-01-15T10:30:00.000Z',
-        updatedAt: '2024-01-15T11:00:00.000Z'
-      },
-      timestamp: '2024-01-15T10:30:00.000Z'
-    }]
-  });
+export const getResourceByIdResponseSchema = apiSuccessResponseSchema(resourceResponseSchema);
 
-export const getResourcesListResponseSchema = cursorPaginatedApiResponseSchema(resourceListItemSchema)
-  .describe('獲取資源列表的回應')
-  .meta({
-    title: '獲取資源列表回應',
-    examples: [{
-      success: true,
-      data: [
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'React 官方文檔',
-          url: 'https://react.dev/',
-          imageUrl: 'https://example.com/react-logo.png',
-          description: 'React 官方文檔',
-          type: 'website',
-          cost: 'free',
-          level: 'intermediate',
-          status: 'active',
-          author: { id: 123, nickname: '前端開發者', photoUrl: 'https://example.com/avatar.jpg' },
-          majorCategory: { id: 1, name: '前端開發' },
-          subCategory: { id: 10, name: 'React' },
-          tags: [{ id: 1, name: 'JavaScript' }],
-          reviewStats: { totalReviews: 25, averageScores: { impact: 4.8, mindset: 4.5, problems: 4.6, perspectives: 4.4, goals: 4.7 } },
-          createdAt: '2024-01-15T10:30:00.000Z',
-          updatedAt: '2024-01-15T11:00:00.000Z'
-        }
-      ],
-      pagination: {
-        cursors: { start: 'cursor1', end: 'cursor2' },
-        hasMore: true,
-        count: 1,
-        limit: 10,
-        hasNext: true,
-        hasPrev: false,
-        nextCursor: 'cursor2',
-        prevCursor: null,
-        totalEstimate: 150,
-        parentTotalEstimate: null
-      },
-      timestamp: '2024-01-15T10:30:00.000Z'
-    }]
-  });
+export const getResourcesListResponseSchema = cursorPaginatedApiResponseSchema(resourceListItemSchema);
 
-export const createResourceResponseSchema = apiSuccessResponseSchema(resourceResponseSchema)
-  .describe('創建資源的回應')
-  .meta({
-    title: '創建資源回應',
-    examples: [{
-      success: true,
-      data: {
-        id: '550e8400-e29b-41d4-a716-446655440002',
-        name: 'TypeScript 學習指南',
-        url: 'https://typescript.example.com',
-        imageUrl: null,
-        description: 'TypeScript 完整學習指南',
-        videoUrl: null,
-        type: 'website',
-        cost: 'free',
-        level: 'intermediate',
-        status: 'active',
-        author: { id: 125, nickname: 'TS 專家', photoUrl: null },
-        majorCategory: { id: 1, name: '前端開發' },
-        subCategory: { id: 12, name: 'TypeScript' },
-        tags: [{ id: 6, name: 'TypeScript' }],
-        reviewStats: { totalReviews: 0, averageScores: { impact: 0, mindset: 0, problems: 0, perspectives: 0, goals: 0 } },
-        createdAt: '2024-01-15T12:00:00.000Z',
-        updatedAt: '2024-01-15T12:00:00.000Z'
-      },
-      timestamp: '2024-01-15T12:00:00.000Z'
-    }]
-  });
+export const createResourceResponseSchema = apiSuccessResponseSchema(resourceResponseSchema);
 
-export const updateResourceResponseSchema = apiSuccessResponseSchema(resourceResponseSchema)
-  .describe('更新資源的回應');
+export const updateResourceResponseSchema = apiSuccessResponseSchema(resourceResponseSchema);
 
-export const getResourceStatsResponseSchema = apiSuccessResponseSchema(resourceStatsResponseSchema)
-  .describe('獲取資源統計的回應')
-  .meta({
-    title: '獲取資源統計回應',
-    examples: [{
-      success: true,
-      data: {
-        totalResources: 150,
-        activeResources: 142,
-        categoryStats: { '前端開發': 45, '後端開發': 32 },
-        typeStats: { 'website': 65, 'video_content': 35 }
-      },
-      timestamp: '2024-01-15T10:30:00.000Z'
-    }]
-  });
+export const getResourceStatsResponseSchema = apiSuccessResponseSchema(resourceStatsResponseSchema);
 
-export const getResourceTagsResponseSchema = apiSuccessResponseSchema(z.array(z.string()))
-  .describe('獲取資源標籤的回應')
-  .meta({
-    title: '獲取資源標籤回應',
-    examples: [{
-      success: true,
-      data: ['JavaScript', 'React', '前端框架'],
-      timestamp: '2024-01-15T10:30:00.000Z'
-    }]
-  });
+export const getResourceTagsResponseSchema = apiSuccessResponseSchema(
+  z.array(z.string()).openapi({
+    description: '標籤名稱列表',
+    example: ['JavaScript', 'React', '前端框架']
+  })
+);
 
-export const deleteResourceResponseSchema = apiSuccessResponseSchema(z.object({
-  message: z.string().describe('刪除成功訊息')
-})).describe('刪除資源的回應').meta({
-  title: '刪除資源回應',
-  examples: [{
-    success: true,
-    data: { message: '資源已成功刪除' },
-    timestamp: '2024-01-15T10:30:00.000Z'
-  }]
-});
+export const deleteResourceResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    message: z.string().openapi({
+      description: '刪除成功訊息',
+      example: '資源已成功刪除'
+    })
+  })
+);
+
+// ===================================
+// 🎯 註冊 schemas 到 OpenAPI registry
+// ===================================
+
+// 註冊可重用的 schema 組件
+registry.register('ResourceReview', reviewSchema);
+registry.register('ResourceBase', resourceBaseSchema);
+registry.register('CreateResourceRequest', createResourceSchema);
+registry.register('UpdateResourceRequest', updateResourceSchema);
+registry.register('UpdateResourceStatusRequest', updateResourceStatusSchema);
+registry.register('UserBasicInfo', userBasicInfoSchema);
+registry.register('ResourceData', resourceResponseSchema);
+registry.register('ResourceStats', resourceStatsResponseSchema);
 
 // 導出驗證函數
 export const validateCreateResource = (data: unknown): CreateResourceSchema => createResourceSchema.parse(data);

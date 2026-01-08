@@ -1,5 +1,6 @@
-
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { registry } from '../config/openapi-registry';
 import os from 'os';
 import { prismaService } from '../services/database/prisma.service';
 import { mongoClient } from '../services/database/mongo.service';
@@ -74,6 +75,84 @@ interface MonitorResponse {
   postgres: PostgresInfo;
   disk: DiskInfo[];
 }
+
+// ============================================================================
+// OpenAPI 路由定義
+// ============================================================================
+
+/**
+ * GET /api/v1/monitor - 取得系統監控資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/monitor',
+  tags: ['System Monitor'],
+  summary: '取得系統監控資訊',
+  description: '取得系統資源使用情況，包括 CPU、記憶體、磁碟、MongoDB 和 PostgreSQL 狀態',
+  responses: {
+    200: {
+      description: '成功獲取系統監控資訊',
+      content: {
+        'application/json': {
+          schema: z.object({
+            system: z.object({
+              hostname: z.string(),
+              platform: z.string(),
+              arch: z.string(),
+              uptime: z.number(),
+              loadAverage: z.array(z.number()),
+              totalMemory: z.number(),
+              freeMemory: z.number(),
+              release: z.string(),
+              type: z.string(),
+              userInfo: z.any(),
+              cpus: z.array(z.any()),
+              networkInterfaces: z.any(),
+              processMemory: z.any(),
+              processId: z.number(),
+              processTitle: z.string(),
+              processArgs: z.array(z.string())
+            }),
+            mongo: z.object({
+              status: z.string().optional(),
+              database: z.string().optional(),
+              collections: z.array(z.any()).optional(),
+              error: z.string().optional(),
+              details: z.string().optional()
+            }),
+            postgres: z.object({
+              version: z.string().optional(),
+              current_connections: z.number().optional(),
+              max_connections: z.number().optional(),
+              database_size: z.string().optional(),
+              start_time: z.string().optional(),
+              config: z.record(z.string(), z.string()).optional(),
+              tables: z.array(z.object({
+                table_name: z.string(),
+                size: z.string(),
+                row_count: z.number()
+              })).optional(),
+              error: z.string().optional(),
+              details: z.string().optional()
+            }),
+            disk: z.array(z.object({
+              filesystem: z.string(),
+              type: z.string(),
+              size: z.number(),
+              used: z.number(),
+              available: z.number(),
+              use: z.number(),
+              mount: z.string()
+            }))
+          }).openapi({
+            description: '系統監控資訊響應'
+          })
+        }
+      }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
 
 router.get('/', async (req: Request, res: Response) => {
   try {

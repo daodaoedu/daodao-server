@@ -8,7 +8,7 @@ import { Request, Response } from 'express';
 import { meService } from '../services/me.service';
 import { asyncHandler } from '../middleware/error.middleware';
 import type {
-  PracticeQueryParams,
+  MePracticesQueryParams,
   PracticeStatsQueryParams,
   ResourcesQueryParams,
   PreferencesQueryParams,
@@ -33,7 +33,7 @@ export const getMyPractices = asyncHandler(async (req: Request, res: Response) =
   }
 
   // 查詢參數已經在 routes 層級驗證過
-  const params = req.query as unknown as PracticeQueryParams;
+  const params = req.query as unknown as MePracticesQueryParams;
   const result = await meService.getMyPractices(currentUser.id, params);
 
   const validatedResponse = myPracticesApiResponseSchema.parse(result);

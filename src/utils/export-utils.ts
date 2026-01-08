@@ -64,7 +64,7 @@ export async function exportToExcel<T extends Record<string, unknown>>(
   data: T[],
   headers: ExcelHeader[],
   filename: string,
-  sheetName: string = 'Sheet1'
+  sheetName = 'Sheet1'
 ): Promise<string> {
   // 建立工作簿
   const workbook = new ExcelJS.Workbook();

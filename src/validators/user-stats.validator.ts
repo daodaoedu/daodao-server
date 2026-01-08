@@ -54,7 +54,7 @@ const dateStringSchema = z
 /**
  * 正整數字串轉換
  */
-const positiveIntStringSchema = (fieldName: string) =>
+const positiveIntStringSchema = (fieldName: string): z.ZodSchema =>
   z
     .string()
     .transform((val) => parseInt(val, 10))
@@ -65,7 +65,7 @@ const positiveIntStringSchema = (fieldName: string) =>
 /**
  * 非負整數字串轉換
  */
-const nonNegativeIntStringSchema = (fieldName: string, max?: number) =>
+const nonNegativeIntStringSchema = (fieldName: string, max?: number): z.ZodSchema =>
   z
     .string()
     .transform((val) => parseInt(val, 10))
@@ -179,9 +179,9 @@ export type ExportStatsQuery = z.infer<typeof exportStatsQuerySchema>;
 /**
  * 驗證函數
  */
-export const validateRegistrationStatsQuery = (data: unknown) =>
+export const validateRegistrationStatsQuery = (data: unknown): RegistrationStatsQuery =>
   registrationStatsQuerySchema.parse(data);
-export const validateActivityStatsQuery = (data: unknown) =>
+export const validateActivityStatsQuery = (data: unknown): ActivityStatsQuery =>
   activityStatsQuerySchema.parse(data);
-export const validateExportStatsQuery = (data: unknown) =>
+export const validateExportStatsQuery = (data: unknown): ExportStatsQuery =>
   exportStatsQuerySchema.parse(data);

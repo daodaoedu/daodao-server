@@ -4,6 +4,8 @@
  */
 
 import { Router, RequestHandler } from 'express';
+import { z } from 'zod';
+import { registry } from '../config/openapi-registry';
 import { practiceController } from '../controllers/practice.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
@@ -16,9 +18,24 @@ import {
   checkInSchema,
   checkInQuerySchema,
   practiceEventViewSchema,
-  practiceEventShareSchema
+  practiceEventShareSchema,
+  practiceApiResponseSchema,
+  practicesListApiResponseSchema,
+  checkInApiResponseSchema,
+  checkInsListApiResponseSchema,
+  practiceStatsApiResponseSchema,
+  checkInStatsApiResponseSchema,
+  monthlyCalendarApiResponseSchema,
+  toggleLikeApiResponseSchema,
+  toggleFavoriteApiResponseSchema,
+  recordShareApiResponseSchema,
+  recordViewApiResponseSchema,
+  interactionStatsApiResponseSchema,
+  userInteractionStatusApiResponseSchema,
+  createPracticeApiResponseSchema,
+  updatePracticeApiResponseSchema,
+  operationSuccessApiResponseSchema
 } from '../validators/practice.validators';
-import { z } from 'zod';
 
 // 月度日曆參數 schema
 const monthlyCalendarParamsSchema = z.object({
@@ -28,6 +45,527 @@ const monthlyCalendarParamsSchema = z.object({
 });
 
 const router = Router();
+
+// ============================================================================
+// OpenAPI 路由定義（使用 registry.registerPath）
+// ============================================================================
+
+/**
+ * GET /api/v1/practices - 取得實踐列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices',
+  tags: ['Practice'],
+  summary: '取得實踐列表',
+  description: '取得實踐活動列表，支援分頁、搜尋和過濾。支援可選身份驗證以提供個人化內容。',
+  request: {
+    query: practiceQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取實踐列表',
+      content: {
+        'application/json': {
+          schema: practicesListApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/me - 取得我的實踐列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/me',
+  tags: ['Practice'],
+  summary: '取得我的實踐列表',
+  description: '取得當前用戶的實踐活動列表',
+  request: {
+    query: myPracticesQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取我的實踐列表',
+      content: {
+        'application/json': {
+          schema: practicesListApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/practices/stats - 取得實踐統計資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/stats',
+  tags: ['Practice'],
+  summary: '取得實踐統計資訊',
+  description: '取得用戶的實踐統計資訊，支援可選身份驗證',
+  request: {
+    query: z.object({
+      userId: z.string().uuid().optional().openapi({
+        description: '用戶 ID（可選）',
+        example: '550e8400-e29b-41d4-a716-446655440000'
+      })
+    }).openapi({
+      description: '實踐統計查詢參數'
+    })
+  },
+  responses: {
+    200: {
+      description: '成功獲取統計資訊',
+      content: {
+        'application/json': {
+          schema: practiceStatsApiResponseSchema
+        }
+      }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/{id} - 取得實踐詳情
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/{id}',
+  tags: ['Practice'],
+  summary: '取得實踐詳情',
+  description: '取得指定實踐的詳細資訊，支援可選身份驗證以提供個人化內容',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取實踐詳情',
+      content: {
+        'application/json': {
+          schema: practiceApiResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * POST /api/v1/practices - 創建新實踐
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices',
+  tags: ['Practice'],
+  summary: '創建新實踐',
+  description: '創建一個新的實踐活動',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createPracticeSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '實踐創建成功',
+      content: {
+        'application/json': {
+          schema: createPracticeApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * PUT /api/v1/practices/{id} - 更新實踐
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/practices/{id}',
+  tags: ['Practice'],
+  summary: '更新實踐',
+  description: '更新指定實踐的資訊',
+  request: {
+    params: practiceParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: updatePracticeSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '實踐更新成功',
+      content: {
+        'application/json': {
+          schema: updatePracticeApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * DELETE /api/v1/practices/{id} - 刪除實踐
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/practices/{id}',
+  tags: ['Practice'],
+  summary: '刪除實踐',
+  description: '刪除指定的實踐活動（軟刪除）',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '實踐刪除成功',
+      content: {
+        'application/json': {
+          schema: operationSuccessApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/checkins - 創建簽到記錄
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/checkins',
+  tags: ['Practice Check-ins'],
+  summary: '創建簽到記錄',
+  description: '為指定實踐創建新的簽到記錄',
+  request: {
+    params: practiceParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: checkInSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '簽到記錄創建成功',
+      content: {
+        'application/json': {
+          schema: checkInApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/practices/{id}/checkins - 取得簽到記錄列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/{id}/checkins',
+  tags: ['Practice Check-ins'],
+  summary: '取得簽到記錄列表',
+  description: '取得指定實踐的簽到記錄列表',
+  request: {
+    params: practiceParamsSchema,
+    query: checkInQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取簽到記錄列表',
+      content: {
+        'application/json': {
+          schema: checkInsListApiResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/{id}/checkins/stats - 取得簽到統計
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/{id}/checkins/stats',
+  tags: ['Practice Check-ins'],
+  summary: '取得簽到統計',
+  description: '取得指定實踐的簽到統計資訊',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取簽到統計',
+      content: {
+        'application/json': {
+          schema: checkInStatsApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/practices/{id}/checkins/calendar/{year}/{month} - 取得月度簽到日曆
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/{id}/checkins/calendar/{year}/{month}',
+  tags: ['Practice Check-ins'],
+  summary: '取得月度簽到日曆',
+  description: '取得指定實踐的月度簽到日曆資訊',
+  request: {
+    params: monthlyCalendarParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取月度日曆',
+      content: {
+        'application/json': {
+          schema: monthlyCalendarApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/like - 點讚/取消點讚
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/like',
+  tags: ['Practice Interactions'],
+  summary: '點讚/取消點讚',
+  description: '對指定實踐進行點讚或取消點讚',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '操作成功',
+      content: {
+        'application/json': {
+          schema: toggleLikeApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/favorite - 收藏/取消收藏
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/favorite',
+  tags: ['Practice Interactions'],
+  summary: '收藏/取消收藏',
+  description: '對指定實踐進行收藏或取消收藏',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '操作成功',
+      content: {
+        'application/json': {
+          schema: toggleFavoriteApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/share - 記錄分享事件
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/share',
+  tags: ['Practice Interactions'],
+  summary: '記錄分享事件',
+  description: '記錄用戶分享實踐的事件',
+  request: {
+    params: practiceParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: practiceEventShareSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '分享事件記錄成功',
+      content: {
+        'application/json': {
+          schema: recordShareApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/view - 記錄瀏覽事件
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/view',
+  tags: ['Practice Interactions'],
+  summary: '記錄瀏覽事件',
+  description: '記錄用戶瀏覽實踐的事件',
+  request: {
+    params: practiceParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: practiceEventViewSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '瀏覽事件記錄成功',
+      content: {
+        'application/json': {
+          schema: recordViewApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/practices/{id}/stats - 取得實踐互動統計
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/{id}/stats',
+  tags: ['Practice Interactions'],
+  summary: '取得實踐互動統計',
+  description: '取得指定實踐的互動統計資訊（點讚、收藏、分享、瀏覽次數等）',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取互動統計',
+      content: {
+        'application/json': {
+          schema: interactionStatsApiResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/{id}/user-status - 取得使用者對實踐的互動狀態
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/{id}/user-status',
+  tags: ['Practice Interactions'],
+  summary: '取得使用者對實踐的互動狀態',
+  description: '取得當前用戶對指定實踐的互動狀態（是否點讚、是否收藏）',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取用戶互動狀態',
+      content: {
+        'application/json': {
+          schema: userInteractionStatusApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+// ============================================================================
+// Express 路由定義
+// ============================================================================
 
 /**
  * GET /practices
