@@ -5,9 +5,11 @@
 
 import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
+import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
+import { createOAuthState, encodeOAuthState } from '../../utils/oauth-state';
 
 interface AuthOptions {
   clientID: string;
@@ -174,14 +176,32 @@ export const initializePassportSession = () => {
 /**
  * Google 認證中間件
  * 開始 Google OAuth 流程
+ * 支援從前端傳入 state 參數，包含 redirectUrl 等資訊
  */
-export const authenticateGoogle = isOAuthConfigured()
-  ? passport.authenticate('google', {
-    scope: ['profile', 'email']
-  })
-  : (req: any, res: any, next: any) => {
+export const authenticateGoogle = (req: Request, res: Response, next: NextFunction): void => {
+  if (!isOAuthConfigured()) {
     res.status(500).json({ error: 'OAuth not configured' });
-  };
+    return;
+  }
+
+  // 從前端請求中取得 state 參數
+  // 前端可以傳入: ?state=xxx (已編碼的 state) 或 ?redirectUrl=xxx&source=xxx
+  let stateParam = req.query.state as string | undefined;
+
+  if (!stateParam) {
+    // 如果沒有 state，從 redirectUrl 和 source 建立新的 state
+    const redirectUrl = (req.query.redirectUrl as string) || '/dashboard';
+    const source = (req.query.source as 'website' | 'app') || 'app';
+    const state = createOAuthState(redirectUrl, source);
+    stateParam = encodeOAuthState(state);
+  }
+
+  // 動態呼叫 passport.authenticate 並傳入 state
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: stateParam
+  })(req, res, next);
+};
 
 /**
  * Google 認證回調中間件
