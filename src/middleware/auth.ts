@@ -14,33 +14,11 @@ import {
   AnyUser
 } from '../types/auth.types';
 import { isTemporaryUser } from '../utils/user-type-detection';
-import { AUTH_COOKIE_NAME } from '../utils/cookie-config';
+import { getAuthToken } from '../utils/cookie-config';
 
 // AuthRequest has been deprecated in favor of the augmented Express Request type
 
 // 使用統一的 UserJwtPayload 介面
-
-/**
- * 從 Request 取得認證 Token
- * 優先順序：1. Cookie  2. Authorization header
- * @param req - Express Request
- * @returns Token 或 undefined
- */
-const extractToken = (req: Request): string | undefined => {
-  // 1. 優先從 Cookie 取（使用 cookie-parser 解析的 cookies）
-  const cookieToken = req.cookies?.[AUTH_COOKIE_NAME];
-  if (cookieToken) {
-    return cookieToken;
-  }
-
-  // 2. 備援從 Authorization header 取
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.split(' ')[1];
-  }
-
-  return undefined;
-};
 
 /**
  * JWT 身份驗證中間件
@@ -51,7 +29,7 @@ const extractToken = (req: Request): string | undefined => {
  */
 export const authenticateJWT: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
   // 從 Cookie 或 Authorization header 取得 token
-  const token = extractToken(req);
+  const token = getAuthToken(req);
 
   if (!token) {
     next(new UnauthorizedError('缺少認證令牌'));
@@ -107,7 +85,7 @@ export const authenticate = authenticateJWT;
  */
 export const optionalAuth: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
   // 從 Cookie 或 Authorization header 取得 token
-  const token = extractToken(req);
+  const token = getAuthToken(req);
 
   if (!token) {
     // 沒有 token，直接繼續
@@ -182,7 +160,7 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
     } = options;
 
     // 從 Cookie 或 Authorization header 取得 token
-    const token = extractToken(req);
+    const token = getAuthToken(req);
 
     if (!token) {
       if (required) {
@@ -385,7 +363,7 @@ export const authenticateSession = (req: Request, res: Response, next: NextFunct
  */
 export const authenticateAny = (req: Request, res: Response, next: NextFunction): void => {
   // 首先嘗試從 Cookie 或 Authorization header 取得 JWT
-  const token = extractToken(req);
+  const token = getAuthToken(req);
 
   if (token) {
     authenticateJWT(req, res, next);
@@ -400,6 +378,3 @@ export const authenticateAny = (req: Request, res: Response, next: NextFunction)
 
   next(new UnauthorizedError('未經授權的訪問'));
 };
-
-// 導出 extractToken 供其他模組使用
-export { extractToken };
