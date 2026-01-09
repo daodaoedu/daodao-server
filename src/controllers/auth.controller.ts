@@ -21,6 +21,12 @@ import {
   getCurrentUserResponseSchema,
   verifyEmailResponseSchema
 } from '../validators/auth.validators';
+import { setAuthCookie, clearAuthCookie, getAuthToken } from '../utils/cookie-config';
+import {
+  createOAuthState,
+  encodeOAuthState,
+  validateOAuthState
+} from '../utils/oauth-state';
 
 /**
  * 用戶登入
@@ -47,14 +53,15 @@ export const register = asyncHandler(async (_req: Request, _res: Response) => {
 /**
  * Google OAuth 成功回調
  * GET /api/auth/google/callback
+ * 設定 HTTP-only Cookie 並重定向到前端
  */
 export const googleCallback = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user as { googleID?: string; _id?: string; id?: number; external_id?: string; roleId?: number; name?: string };
-  
+
   if (!user) {
     throw new UnauthorizedError('Google 認證失敗');
   }
-  
+
   // 參考 JavaScript 版本的邏輯
   const { id, external_id, name } = user;
   let _id: string | number = id || 0;
@@ -64,18 +71,18 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     _id = external_id;
     isUserExit = true;
   }
-  
+
   const isTemp = !isUserExit;
 
   // 獲取用戶角色和權限（如果是正式用戶）
   let userRoles: Array<{ name: string }> = [];
   let userPermissions: Array<{ name: string }> = [];
-  
+
   if (!isTemp && id) {
     try {
       const rolesResponse = await authService.getUserRoles(id);
       const permissionsResponse = await authService.getUserPermissions(id);
-      
+
       if (rolesResponse.success) {
         userRoles = rolesResponse.data;
       }
@@ -88,17 +95,38 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     }
   }
 
-  const payload = { 
-    id: id || 0, 
-    _id: typeof _id === 'string' ? _id : undefined, 
-    username: name || '', 
+  const payload = {
+    id: id || 0,
+    _id: typeof _id === 'string' ? _id : undefined,
+    username: name || '',
     isTemp,
     roles: userRoles.map(role => role.name),
     permissions: userPermissions.map(permission => permission.name)
   };
-  
+
   const token = jwtService.generateToken(payload);
-  const url = `${process.env.FRONTEND_URL}/api/auth/callback?token=${token}`;
+
+  // 設定 HTTP-only Cookie
+  setAuthCookie(res, token);
+
+  // 解析 state 參數以取得 redirectUrl
+  const stateParam = req.query.state as string | undefined;
+  let redirectUrl = '/dashboard'; // 預設跳轉位置
+
+  if (stateParam) {
+    const validationResult = validateOAuthState(stateParam, { checkExpiry: false });
+    if (validationResult.valid && validationResult.state) {
+      redirectUrl = validationResult.state.redirectUrl || '/dashboard';
+    }
+  }
+
+  // 建立新的 state 用於前端 callback（保留原始資訊）
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const callbackState = createOAuthState(redirectUrl, 'app');
+  const encodedState = encodeOAuthState(callbackState);
+
+  // 重定向到前端 callback 頁面
+  const url = `${frontendUrl}/auth/callback?state=${encodedState}`;
 
   res.redirect(url);
 });
@@ -106,9 +134,12 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 /**
  * 登出
  * POST /api/auth/logout
+ * 清除認證 Cookie
  */
 export const logout = asyncHandler(async (req: Request, res: Response) => {
-  // JWT 是無狀態的，客戶端只需要刪除本地 token
+  // 清除認證 Cookie
+  clearAuthCookie(res);
+
   // 如果需要服務端登出，可以實現 token 黑名單機制
 
   const response = createSuccessResponse({
@@ -123,10 +154,11 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 /**
  * 刷新 token
  * POST /api/auth/refresh
+ * 支援從 Cookie 或 Authorization header 取得 Token
  */
 export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  const currentToken = authHeader && authHeader.split(' ')[1];
+  // 從 Cookie 或 Authorization header 取得 token
+  const currentToken = getAuthToken(req);
 
   if (!currentToken) {
     throw new UnauthorizedError('缺少認證令牌');
@@ -138,6 +170,9 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
     throw new UnauthorizedError('令牌刷新失敗');
   }
 
+  // 更新 Cookie
+  setAuthCookie(res, newToken);
+
   const response = createSuccessResponse({ token: newToken });
 
   // 驗證與回傳響應
@@ -147,13 +182,13 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
 
 /**
  * 獲取當前用戶資訊
- * 注意：此方法現在通過 /api/v1/me/auth 提供
+ * GET /api/v1/auth/me
+ * 支援從 Cookie 或 Authorization header 取得 Token
  */
 export const getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
-  // 從 JWT 中獲取用戶信息
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
-  
+  // 從 Cookie 或 Authorization header 取得 token
+  const token = getAuthToken(req);
+
   if (!token) {
     throw new UnauthorizedError('缺少認證令牌');
   }
