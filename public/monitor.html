@@ -7,112 +7,336 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+    }
+    h2 {
+      color: #34495e;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+      margin-top: 40px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .metric-card {
+      background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .metric-card:hover {
+      transform: translateY(-5px);
+    }
+    .metric-value {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .metric-label {
+      font-size: 0.9em;
+      opacity: 0.9;
     }
     .chart-container {
-      width: 300px;
+      width: 350px;
+      height: 350px;
       margin: 20px;
       display: inline-block;
       vertical-align: top;
       text-align: center;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .status-good { color: #27ae60; font-weight: bold; }
+    .status-error { color: #e74c3c; font-weight: bold; }
+    .info-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    .table-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .table-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #3498db;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     pre {
-      background: #f4f4f4;
-      padding: 10px;
-      border-radius: 5px;
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.9em;
+    }
+    .loading {
+      text-align: center;
+      padding: 50px;
+      font-size: 1.2em;
+      color: #7f8c8d;
     }
   </style>
 </head>
 <body>
-  <h1>系統監控 Dashboard</h1>
+  <div class="container">
+    <h1>🖥️ 系統監控 Dashboard</h1>
+    
+    <div class="loading" id="loading">正在載入監控資料...</div>
+    
+    <div id="content" style="display: none;">
+      <section id="system-metrics">
+        <h2>📊 系統指標</h2>
+        <div class="metrics-grid" id="metrics-grid">
+          <!-- 系統指標卡片 -->
+        </div>
+      </section>
 
-  <section id="system-info">
-    <h2>系統基本資訊</h2>
-    <!-- 系統資訊將以列表呈現 -->
-  </section>
+      <section id="memory-section">
+        <h2>💾 記憶體使用率</h2>
+        <div class="chart-container">
+          <canvas id="memoryChart"></canvas>
+        </div>
+      </section>
 
-  <section id="disk-section">
-    <h2>磁碟資訊</h2>
-    <div id="disk-charts">
-      <!-- 每個磁碟會建立一個圖表 -->
+      <section id="disk-section">
+        <h2>💽 磁碟資訊</h2>
+        <div id="disk-charts">
+          <!-- 磁碟圖表 -->
+        </div>
+      </section>
+
+      <section id="database-section">
+        <h2>🗄️ 資料庫狀態</h2>
+        <div id="database-status">
+          <!-- 資料庫狀態 -->
+        </div>
+        <div id="postgres-tables">
+          <!-- PostgreSQL 表格資訊 -->
+        </div>
+      </section>
+
+      <section id="system-info">
+        <h2>ℹ️ 系統詳細資訊</h2>
+        <div class="info-section" id="system-details">
+          <!-- 系統詳細資訊 -->
+        </div>
+      </section>
     </div>
-  </section>
-
-  <section id="database-info">
-    <h2>資料庫資訊</h2>
-    <!-- MongoDB 與 PostgreSQL 狀態資訊 -->
-  </section>
+  </div>
 
   <script>
-    // 從 /monitor API 取得監控資料
-    fetch('/monitor')
+    // 工具函數
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatUptime(seconds) {
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${days}天 ${hours}小時 ${minutes}分鐘`;
+    }
+
+    // 從 /api/v1/monitor API 取得監控資料
+    fetch('/api/v1/monitor')
       .then(response => response.json())
       .then(data => {
-        // 顯示系統基本資訊
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+
+        // 系統指標卡片
         const sysInfo = data.system;
-        const sysInfoSection = document.getElementById('system-info');
-        sysInfoSection.innerHTML += `
-          <ul>
-            <li><strong>Hostname:</strong> ${sysInfo.hostname}</li>
-            <li><strong>Platform:</strong> ${sysInfo.platform}</li>
-            <li><strong>Architecture:</strong> ${sysInfo.arch}</li>
-            <li><strong>Uptime:</strong> ${sysInfo.uptime} 秒</li>
-            <li><strong>Total Memory:</strong> ${Math.round(sysInfo.totalMemory / (1024 * 1024))} MB</li>
-            <li><strong>Free Memory:</strong> ${Math.round(sysInfo.freeMemory / (1024 * 1024))} MB</li>
-            <li><strong>OS Version:</strong> ${sysInfo.release}</li>
-            <li><strong>OS Type:</strong> ${sysInfo.type}</li>
-          </ul>
+        const metricsGrid = document.getElementById('metrics-grid');
+        const memoryUsed = sysInfo.totalMemory - sysInfo.freeMemory;
+        const memoryPercent = ((memoryUsed / sysInfo.totalMemory) * 100).toFixed(1);
+        
+        metricsGrid.innerHTML = `
+          <div class="metric-card">
+            <div class="metric-value">${sysInfo.hostname}</div>
+            <div class="metric-label">主機名稱</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${formatUptime(sysInfo.uptime)}</div>
+            <div class="metric-label">運行時間</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${memoryPercent}%</div>
+            <div class="metric-label">記憶體使用率</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${sysInfo.cpus.length}</div>
+            <div class="metric-label">CPU 核心數</div>
+          </div>
         `;
 
-        // 依磁碟資訊建立圖表 (使用 Doughnut 圖呈現已用 vs 剩餘空間)
-        const diskChartsDiv = document.getElementById('disk-charts');
-        data.disk.forEach((disk, index) => {
-          // 建立一個容器
-          const container = document.createElement('div');
-          container.className = 'chart-container';
-          // 建立 canvas 元素
-          const canvas = document.createElement('canvas');
-          canvas.id = 'diskChart' + index;
-          container.appendChild(canvas);
-          // 顯示磁碟掛載點資訊
-          const info = document.createElement('p');
-          info.innerText = `Mount: ${disk.mount}`;
-          container.appendChild(info);
-          diskChartsDiv.appendChild(container);
-
-          // 使用 Chart.js 繪製 Doughnut 圖
-          const ctx = canvas.getContext('2d');
-          new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-              labels: ['Used', 'Free'],
-              datasets: [{
-                data: [disk.used, disk.available],
-                backgroundColor: ['#FF6384', '#36A2EB']
-              }]
-            },
-            options: {
+        // 記憶體使用圖表
+        const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+        new Chart(memoryCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['已使用', '可用'],
+            datasets: [{
+              data: [memoryUsed, sysInfo.freeMemory],
+              backgroundColor: ['#e74c3c', '#2ecc71'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
               title: {
                 display: true,
-                text: `Disk (${disk.fs})`
+                text: `記憶體使用狀況 (${formatBytes(sysInfo.totalMemory)})`
+              },
+              legend: {
+                position: 'bottom'
               }
             }
-          });
+          }
         });
 
-        // 顯示資料庫資訊 (以 JSON 格式呈現)
-        const dbInfoSection = document.getElementById('database-info');
-        dbInfoSection.innerHTML += `
-          <h3>MongoDB 狀態</h3>
-          <pre>${JSON.stringify(data.mongo, null, 2)}</pre>
-          <h3>PostgreSQL 狀態</h3>
-          <pre>${JSON.stringify(data.postgres, null, 2)}</pre>
+        // 磁碟資訊圖表
+        const diskChartsDiv = document.getElementById('disk-charts');
+        if (data.disk && data.disk.length > 0 && data.disk[0].size > 0) {
+          data.disk.forEach((disk, index) => {
+            const container = document.createElement('div');
+            container.className = 'chart-container';
+            
+            const canvas = document.createElement('canvas');
+            canvas.id = 'diskChart' + index;
+            container.appendChild(canvas);
+            diskChartsDiv.appendChild(container);
+
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+              type: 'doughnut',
+              data: {
+                labels: ['已使用', '可用'],
+                datasets: [{
+                  data: [disk.used, disk.available],
+                  backgroundColor: ['#f39c12', '#3498db'],
+                  borderWidth: 0
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                  title: {
+                    display: true,
+                    text: `${disk.mount} (${formatBytes(disk.size)})`
+                  },
+                  legend: {
+                    position: 'bottom'
+                  }
+                }
+              }
+            });
+          });
+        } else {
+          diskChartsDiv.innerHTML = '<p>磁碟資訊暫不可用</p>';
+        }
+
+        // 資料庫狀態
+        const dbStatus = document.getElementById('database-status');
+        const mongoStatus = data.mongo.error ? 
+          '<span class="status-error">❌ 連線失敗</span>' : 
+          '<span class="status-good">✅ 連線正常</span>';
+        const pgStatus = data.postgres.error ? 
+          '<span class="status-error">❌ 連線失敗</span>' : 
+          '<span class="status-good">✅ 連線正常</span>';
+
+        dbStatus.innerHTML = `
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-value">MongoDB</div>
+              <div class="metric-label">${mongoStatus}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value">PostgreSQL</div>
+              <div class="metric-label">${pgStatus}</div>
+            </div>
+          </div>
+        `;
+
+        // PostgreSQL 表格資訊
+        if (data.postgres.tables && data.postgres.tables.length > 0) {
+          const tablesDiv = document.getElementById('postgres-tables');
+          tablesDiv.innerHTML = '<h3>📊 PostgreSQL 表格資訊</h3><div class="table-info" id="table-cards"></div>';
+          const tableCards = document.getElementById('table-cards');
+          
+          data.postgres.tables.forEach(table => {
+            const card = document.createElement('div');
+            card.className = 'table-card';
+            card.innerHTML = `
+              <h4>${table.table_name}</h4>
+              <p><strong>大小:</strong> ${table.size}</p>
+              <p><strong>資料筆數:</strong> ${table.row_count.toLocaleString()}</p>
+            `;
+            tableCards.appendChild(card);
+          });
+        }
+
+        // 系統詳細資訊
+        const systemDetails = document.getElementById('system-details');
+        systemDetails.innerHTML = `
+          <div class="metrics-grid">
+            <div><strong>平台:</strong> ${sysInfo.platform} ${sysInfo.arch}</div>
+            <div><strong>OS 版本:</strong> ${sysInfo.release}</div>
+            <div><strong>Process ID:</strong> ${sysInfo.processId}</div>
+            <div><strong>Load Average:</strong> ${sysInfo.loadAverage.map(l => l.toFixed(2)).join(', ')}</div>
+          </div>
+          <h4>詳細資料庫資訊</h4>
+          <pre>${JSON.stringify({mongo: data.mongo, postgres: data.postgres}, null, 2)}</pre>
         `;
       })
       .catch(error => {
         console.error('取得監控資料失敗:', error);
+        document.getElementById('loading').innerHTML = 
+          '<div class="status-error">❌ 載入監控資料失敗: ' + error.message + '</div>';
       });
+      
+    // 每30秒自動刷新
+    setInterval(() => {
+      location.reload();
+    }, 30000);
   </script>
 </body>
 </html>

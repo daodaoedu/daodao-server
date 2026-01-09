@@ -1,0 +1,579 @@
+openapi: 3.0.3
+info:
+  title: 道道平台權限管理 API
+  description: 完整的權限管理系統 API 規範
+  version: 1.0.0
+  contact:
+    name: 道道開發團隊
+    email: dev@daodao.com
+
+servers:
+  - url: https://api.daodao.com/v1
+    description: 生產環境
+  - url: https://api-staging.daodao.com/v1
+    description: 測試環境
+
+paths:
+  /auth/permissions:
+    get:
+      summary: 取得目前使用者權限
+      description: 回傳目前登入使用者的所有權限清單
+      tags:
+        - 權限管理
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功取得權限清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPermissionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/roles:
+    get:
+      summary: 取得目前使用者角色
+      description: 回傳目前登入使用者的角色資訊
+      tags:
+        - 權限管理
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功取得角色資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRolesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/check-permission:
+    post:
+      summary: 檢查特定權限
+      description: 檢查目前使用者是否具有特定權限
+      tags:
+        - 權限管理
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionCheckRequest'
+      responses:
+        '200':
+          description: 權限檢查結果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/users/{userId}/roles:
+    get:
+      summary: 取得使用者角色
+      description: 管理員取得指定使用者的角色清單
+      tags:
+        - 使用者管理
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: 成功取得使用者角色
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRolesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      summary: 指派使用者角色
+      description: 管理員為使用者指派新角色
+      tags:
+        - 使用者管理
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRoleRequest'
+      responses:
+        '201':
+          description: 角色指派成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: 移除使用者角色
+      description: 管理員移除使用者的指定角色
+      tags:
+        - 使用者管理
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - name: roleId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 要移除的角色 ID
+      responses:
+        '200':
+          description: 角色移除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/resource-ownership:
+    get:
+      summary: 查詢資源擁有權
+      description: 管理員查詢指定資源的擁有權資訊
+      tags:
+        - 資源管理
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: resourceType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [idea, project, review, note, outcome, milestone]
+          description: 資源類型
+        - name: resourceId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: 資源 ID
+      responses:
+        '200':
+          description: 成功取得擁有權資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceOwnershipResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/audit-logs:
+    get:
+      summary: 取得審計日誌
+      description: 管理員查看系統審計日誌
+      tags:
+        - 審計管理
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 頁碼
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: 每頁筆數
+        - name: userId
+          in: query
+          schema:
+            type: integer
+          description: 篩選特定使用者
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: 篩選特定動作
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: 開始時間
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: 結束時間
+      responses:
+        '200':
+          description: 成功取得審計日誌
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: 使用者 ID
+
+  schemas:
+    # 基本回應格式
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          type: null
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    ResponseMeta:
+      type: object
+      properties:
+        requestId:
+          type: string
+        processingTime:
+          type: number
+
+    # 權限相關 Schema
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+        resource:
+          type: string
+        action:
+          type: string
+        code:
+          type: string
+          example: "project:create"
+        displayName:
+          type: string
+        description:
+          type: string
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          enum: [guest, user, editor, moderator, admin, super_admin]
+        displayName:
+          type: string
+        level:
+          type: integer
+          minimum: 0
+          maximum: 5
+        description:
+          type: string
+
+    UserPermissionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                permissions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Permission'
+                cacheVersion:
+                  type: integer
+
+    UserRolesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                roles:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Role'
+                effectiveLevel:
+                  type: integer
+                  description: 最高角色層級
+
+    PermissionCheckRequest:
+      type: object
+      required:
+        - resource
+        - action
+      properties:
+        resource:
+          type: string
+          example: "project"
+        action:
+          type: string
+          example: "create"
+        resourceId:
+          type: integer
+          description: 特定資源 ID（可選）
+
+    PermissionCheckResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                hasPermission:
+                  type: boolean
+                reason:
+                  type: string
+                  description: 權限檢查結果說明
+
+    AssignRoleRequest:
+      type: object
+      required:
+        - roleId
+      properties:
+        roleId:
+          type: string
+          enum: [guest, user, editor, moderator, admin, super_admin]
+        expiresAt:
+          type: string
+          format: date-time
+          description: 角色過期時間（可選）
+
+    ResourceOwnership:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        resourceType:
+          type: string
+        resourceId:
+          type: integer
+        ownershipType:
+          type: string
+          enum: [owner, collaborator, viewer]
+        createdAt:
+          type: string
+          format: date-time
+
+    ResourceOwnershipResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                ownership:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ResourceOwnership'
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: integer
+        result:
+          type: string
+          enum: [success, denied, error]
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        sessionId:
+          type: string
+        details:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLogsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditLog'
+            pagination:
+              type: object
+              properties:
+                currentPage:
+                  type: integer
+                totalPages:
+                  type: integer
+                totalItems:
+                  type: integer
+                itemsPerPage:
+                  type: integer
+                hasNext:
+                  type: boolean
+                hasPrev:
+                  type: boolean
+
+  responses:
+    Unauthorized:
+      description: 未授權存取
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: "UNAUTHORIZED"
+              message: "請先登入"
+            timestamp: "2024-09-21T10:00:00Z"
+
+    Forbidden:
+      description: 權限不足
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: "FORBIDDEN"
+              message: "權限不足"
+            timestamp: "2024-09-21T10:00:00Z"
+
+    NotFound:
+      description: 資源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: "NOT_FOUND"
+              message: "資源不存在"
+            timestamp: "2024-09-21T10:00:00Z"
+
+    BadRequest:
+      description: 請求參數錯誤
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            data: null
+            error:
+              code: "BAD_REQUEST"
+              message: "請求參數錯誤"
+              details:
+                field: "roleId"
+                message: "無效的角色 ID"
+            timestamp: "2024-09-21T10:00:00Z"
+
+tags:
+  - name: 權限管理
+    description: 使用者權限檢查和管理
+  - name: 使用者管理
+    description: 管理員使用者角色管理
+  - name: 資源管理
+    description: 資源擁有權管理
+  - name: 審計管理
+    description: 系統審計日誌管理

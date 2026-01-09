@@ -1,0 +1,15 @@
+# Prisma 支援
+hoist-pattern[]=*prisma*
+hoist-pattern[]=*@types/*
+
+# 引擎版本檢查
+engine-strict=true
+
+# 註冊表配置
+registry=https://registry.npmjs.org/
+
+# 對等依賴配置
+auto-install-peers=false
+
+# 允許構建腳本
+scripts-prepend-node-path=auto
