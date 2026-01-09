@@ -1,34 +1,58 @@
 /**
  * 身份驗證中間件
  * 負責驗證使用者身份
+ * 支援 Cookie 和 Authorization header 兩種認證方式
  */
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { UnauthorizedError, ForbiddenError } from '../middleware/error.middleware';
-import { 
+import {
   UserJwtPayload,
-  AuthMiddlewareOptions, 
+  AuthMiddlewareOptions,
   PermissionOptions,
   AnyUser
 } from '../types/auth.types';
 import { isTemporaryUser } from '../utils/user-type-detection';
+import { AUTH_COOKIE_NAME } from '../utils/cookie-config';
 
 // AuthRequest has been deprecated in favor of the augmented Express Request type
 
 // 使用統一的 UserJwtPayload 介面
 
 /**
+ * 從 Request 取得認證 Token
+ * 優先順序：1. Cookie  2. Authorization header
+ * @param req - Express Request
+ * @returns Token 或 undefined
+ */
+const extractToken = (req: Request): string | undefined => {
+  // 1. 優先從 Cookie 取（使用 cookie-parser 解析的 cookies）
+  const cookieToken = req.cookies?.[AUTH_COOKIE_NAME];
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  // 2. 備援從 Authorization header 取
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+
+  return undefined;
+};
+
+/**
  * JWT 身份驗證中間件
+ * 支援從 Cookie 或 Authorization header 取得 Token
  * @param req - Express 請求對象
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
 export const authenticateJWT: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
-  // 從請求頭中獲取 token
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
-  
+  // 從 Cookie 或 Authorization header 取得 token
+  const token = extractToken(req);
+
   if (!token) {
     next(new UnauthorizedError('缺少認證令牌'));
     return;
@@ -76,26 +100,32 @@ export const authenticate = authenticateJWT;
 /**
  * 可選身份驗證中間件
  * 如果有 token 則驗證，沒有則繼續執行
+ * 支援從 Cookie 或 Authorization header 取得 Token
  * @param req - Express 請求對象
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
 export const optionalAuth: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
-  
+  // 從 Cookie 或 Authorization header 取得 token
+  const token = extractToken(req);
+
   if (!token) {
     // 沒有 token，直接繼續
     next();
     return;
   }
-  
+
   try {
     // 有 token 則驗證
-    const secret = process.env.JWT_SECRET || 'your-default-secret';
+    const secret = process.env.JWT_SECRET || process.env.JWT_SECURITY;
+    if (!secret) {
+      next();
+      return;
+    }
     const decoded = jwt.verify(token, secret);
     if (typeof decoded === 'object' && decoded !== null) {
       req.user = decoded as UserJwtPayload;
+      req.isTemporary = (decoded as UserJwtPayload).isTemp || false;
     }
     next();
   } catch (error) {
@@ -138,6 +168,7 @@ export const requireRole = authorizeRoles;
 /**
  * 進階認證中間件
  * 支援更靈活的認證選項
+ * 支援從 Cookie 或 Authorization header 取得 Token
  * @param options - 認證選項
  * @returns Express 中間件
  */
@@ -150,9 +181,8 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
       roles = []
     } = options;
 
-    // 嘗試驗證 token
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    // 從 Cookie 或 Authorization header 取得 token
+    const token = extractToken(req);
 
     if (!token) {
       if (required) {
@@ -350,12 +380,12 @@ export const authenticateSession = (req: Request, res: Response, next: NextFunct
 
 /**
  * 組合認證中間件
- * 支援 JWT 和 Session 兩種認證方式
+ * 支援 Cookie、JWT Header 和 Session 三種認證方式
+ * 優先順序：1. Cookie  2. Authorization header  3. Session
  */
 export const authenticateAny = (req: Request, res: Response, next: NextFunction): void => {
-  // 首先嘗試 JWT 認證
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  // 首先嘗試從 Cookie 或 Authorization header 取得 JWT
+  const token = extractToken(req);
 
   if (token) {
     authenticateJWT(req, res, next);
@@ -370,3 +400,6 @@ export const authenticateAny = (req: Request, res: Response, next: NextFunction)
 
   next(new UnauthorizedError('未經授權的訪問'));
 };
+
+// 導出 extractToken 供其他模組使用
+export { extractToken };
