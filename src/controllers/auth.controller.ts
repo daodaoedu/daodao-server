@@ -114,7 +114,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   let redirectUrl = '/dashboard'; // 預設跳轉位置
 
   if (stateParam) {
-    const validationResult = validateOAuthState(stateParam, { checkExpiry: false });
+    const validationResult = validateOAuthState(stateParam);
     if (validationResult.valid && validationResult.state) {
       redirectUrl = validationResult.state.redirectUrl || '/dashboard';
     }
