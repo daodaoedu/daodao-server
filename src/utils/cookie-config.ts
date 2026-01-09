@@ -65,23 +65,12 @@ export const setAuthCookie = (
 
 /**
  * 清除認證 Cookie
+ * 復用 getCookieOptions 以確保 domain, path 等屬性與設定時一致
  * @param res - Express Response
  */
 export const clearAuthCookie = (res: Response): void => {
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  const clearOptions: CookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    path: '/'
-  };
-
-  // 生產環境需要設定相同的 domain 才能清除
-  if (isProduction && process.env.COOKIE_DOMAIN) {
-    clearOptions.domain = process.env.COOKIE_DOMAIN;
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { maxAge, ...clearOptions } = getCookieOptions();
   res.clearCookie(AUTH_COOKIE_NAME, clearOptions);
 };
 
