@@ -26,7 +26,8 @@ import {
   loginSuccessResponseSchema,
   logoutResponseSchema,
   refreshTokenResponseSchema,
-  verifyEmailResponseSchema
+  verifyEmailResponseSchema,
+  getCurrentUserResponseSchema
 } from '../validators/auth.validators';
 import { apiSuccessResponseSchema } from '../validators/api-response.validators';
 
@@ -199,11 +200,44 @@ registry.registerPath({
 /**
  * POST /auth/refresh
  * 刷新認證令牌
- * 需要有效的 JWT token
+ * 支援從 Cookie 或 Authorization header 取得 Token
  */
 router.post('/refresh',
-  authenticateJWT,
   authController.refreshToken
+);
+
+/**
+ * GET /api/v1/auth/me - 獲取當前用戶資訊
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/auth/me',
+  tags: ['Authentication'],
+  summary: '獲取當前用戶資訊',
+  description: '根據認證令牌獲取當前登入用戶的詳細資訊，支援從 Cookie 或 Authorization header 取得 Token',
+  responses: {
+    200: {
+      description: '成功獲取用戶資訊',
+      content: {
+        'application/json': {
+          schema: getCurrentUserResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /auth/me
+ * 獲取當前用戶資訊
+ * 支援從 Cookie 或 Authorization header 取得 Token
+ */
+router.get('/me',
+  authController.getCurrentUser
 );
 
 /**
