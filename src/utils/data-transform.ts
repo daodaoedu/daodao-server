@@ -108,7 +108,7 @@ export function transformResourceReviewDbToApi(
   user: UserBasicInfo,
   resourceExternalId: string, // 需要從外部提供 resource 的 external_id
   tags: string[] = [],
-  likeCount: number = 0
+  likeCount = 0
 ): ResourceReviewResponse {
   // 計算平均評分
   const avgRating = calculateAvgRating({

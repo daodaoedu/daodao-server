@@ -60,7 +60,7 @@ export const tagQuerySchema = z.object({
 });
 
 // 標籤實體操作參數驗證
-export const tagEntitySchema = z.object({
+export const tagEntityOperationSchema = z.object({
   entityId: z.number().int().positive(),
   entityType: z.string(),
   tagName: z.string().min(1).max(50)
@@ -71,11 +71,11 @@ export type PaginationParams = z.infer<typeof paginationSchema>;
 export type ResourceFilterParams = z.infer<typeof resourceFilterSchema>;
 export type ReviewFilterParams = z.infer<typeof reviewFilterSchema>;
 export type TagQueryParams = z.infer<typeof tagQuerySchema>;
-export type TagEntityParams = z.infer<typeof tagEntitySchema>;
+export type TagEntityParams = z.infer<typeof tagEntityOperationSchema>;
 
 // 導出驗證函數
-export const validatePagination = (data: unknown) => paginationSchema.parse(data);
-export const validateResourceFilter = (data: unknown) => resourceFilterSchema.parse(data);
-export const validateReviewFilter = (data: unknown) => reviewFilterSchema.parse(data);
-export const validateTagQuery = (data: unknown) => tagQuerySchema.parse(data);
-export const validateTagEntity = (data: unknown) => tagEntitySchema.parse(data);
+export const validatePagination = (data: unknown): PaginationParams => paginationSchema.parse(data);
+export const validateResourceFilter = (data: unknown): ResourceFilterParams => resourceFilterSchema.parse(data);
+export const validateReviewFilter = (data: unknown): ReviewFilterParams => reviewFilterSchema.parse(data);
+export const validateTagQuery = (data: unknown): TagQueryParams => tagQuerySchema.parse(data);
+export const validateTagEntity = (data: unknown): TagEntityParams => tagEntityOperationSchema.parse(data);
