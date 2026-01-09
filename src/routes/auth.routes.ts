@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { authController } from '../controllers/auth.controller';
 import {
-  authenticateJWT,
   authenticateAny
 } from '../middleware/auth';
 import {

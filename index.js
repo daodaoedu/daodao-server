@@ -3,6 +3,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { mongoConnect } = require('./services/mongo');
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 dotenv.config();
 const dashboardRoutes = require('./routes/dashboard'); 
@@ -33,6 +34,7 @@ console.log(`🧠 啟動記憶體使用: ${Math.round(startMemUsage.heapUsed / 1
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // 設置 trust proxy 以正確處理來自反向代理的請求
 // 限制為特定的代理配置，提高安全性
