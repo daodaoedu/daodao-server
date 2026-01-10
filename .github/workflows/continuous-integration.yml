@@ -1,0 +1,287 @@
+name: Continuous Integration
+
+# ===== 並發控制設定 =====
+# 目的：防止同一分支的多個 CI 檢查同時執行，避免資源浪費
+# group: 針對 PR 使用 head_ref，其他情況使用 ref
+# cancel-in-progress: 當新的 CI 檢查觸發時，自動取消舊的檢查
+# 優點：節省 CI 資源、加快回饋速度、避免過時的檢查結果
+# =======================
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# ===== 觸發條件設定 =====
+# 1. pull_request：當向 main 或 dev 分支提交 PR 時觸發
+#    - 確保代碼合併前通過品質檢查
+#    - 支援 main 和 dev 分支的不同環境需求
+# 2. workflow_call：被其他 workflow（如 CD）調用時執行
+#    - 提供 generated-files-artifact 輸出供 CD 使用
+#    - 實現 CI/CD 流程的模組化設計
+# 3. workflow_dispatch：手動觸發選項
+#    - 調試用途或特殊情況下的獨立 CI 檢查
+# =======================
+on:
+  # 只在 PR 時執行獨立的 CI 檢查
+  pull_request:
+    branches:
+      - main
+      - dev
+  # 被其他 workflow 調用時執行
+  workflow_call:
+    outputs:
+      generated-files-artifact:
+        description: "Name of the generated files artifact"
+        value: ${{ jobs.test.outputs.artifact-name }}
+  # 手動觸發 CI 檢查
+  workflow_dispatch:
+
+# ===== 全域環境變數 =====
+# NODE_VERSION: 指定 Node.js 版本，確保開發和生產環境一致
+# DOCKER_BUILDKIT: 啟用 Docker BuildKit（雖然 CI 階段不構建映像，但保持一致性）
+# ========================
+env:
+  NODE_VERSION: 20
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  # ===== 主要測試與品質檢查階段 =====
+  # 目的：執行完整的程式碼品質檢查流程
+  # 包含項目：
+  #   - TypeScript 類型檢查
+  #   - ESLint 代碼品質檢查
+  #   - Jest 單元測試
+  #   - Prisma 類型生成
+  # 輸出：generated-files artifact 供 CD workflow 使用
+  # 運行環境：ubuntu-latest（穩定且快速）
+  # =====================================
+  test:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: generated-files-${{ github.sha }}
+    steps:
+      # ===== 代碼檢出 =====
+      # 使用淺層克隆（fetch-depth: 1）加快檢出速度
+      # 對於 CI 檢查，通常不需要完整的 git 歷史
+      # actions/checkout@v4：最新穩定版本
+      # ==================
+      - name: Checkout code (shallow)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ===== Node.js 環境設定 =====
+      # 設定指定版本的 Node.js 環境
+      # 使用全域環境變數 NODE_VERSION 確保版本一致性
+      # actions/setup-node@v4：最新穩定版本
+      # 注意：不使用內建 cache，因為要使用 pnpm
+      # ===========================
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # ===== 安裝 pnpm =====
+      # 使用官方 pnpm action 安裝 pnpm
+      # version: 9 指定主版本號，自動使用最新的 9.x 版本
+      # run_install: false 因為我們要利用快取機制自行安裝
+      # =====================
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      # ===== 取得 pnpm store 路徑 =====
+      # 用於設定快取路徑
+      # pnpm store path 會返回 pnpm 的全域 store 路徑
+      # ================================
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      # ===== pnpm 依賴快取 =====
+      # 多層快取策略：
+      # 1. 優先快取：pnpm store（最快恢復）
+      # 2. 備用快取：OS 級別快取
+      # key：基於 pnpm-lock.yaml 雜湊值，確保依賴變更時重新安裝
+      # id：用於後續步驟判斷是否命中快取
+      # ==========================
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # ===== 依賴安裝 =====
+      # pnpm install --frozen-lockfile：
+      #   - 類似 npm ci，確保安裝與 lockfile 完全一致的版本
+      #   - 不修改 pnpm-lock.yaml
+      #   - 適合 CI/CD 環境
+      # ===================
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ===== Prisma 客戶端快取 =====
+      # 針對 Prisma 生成的文件進行專門快取
+      # 快取路徑：
+      #   - generated/prisma：專案自定義 Prisma 客戶端位置
+      #   - node_modules/.prisma：預設 Prisma 客戶端位置
+      # key：基於 schema.prisma 檔案雜湊值
+      # 當資料庫結構變更時自動重新生成
+      # ============================
+      - name: Cache Prisma Client
+        uses: actions/cache@v4
+        with:
+          path: |
+            generated/prisma
+            node_modules/.prisma
+          key: ${{ runner.os }}-prisma-${{ hashFiles('**/schema.prisma') }}
+          restore-keys: |
+            ${{ runner.os }}-prisma-
+
+      # ===== 類型生成 =====
+      # 執行專案的類型生成腳本
+      # pnpm run types:generate 包含：
+      #   - Prisma 客戶端生成（prisma generate）
+      #   - OpenAPI 類型生成
+      # 這些生成的文件對於 TypeScript 編譯是必需的
+      # ===================
+      - name: Generate Prisma Client and OpenAPI types
+        run: pnpm run types:generate
+
+      # ===== 並行品質檢查 =====
+      # 同時執行多個檢查項目以節省時間：
+      # 1. typecheck：TypeScript 類型檢查
+      # 2. lint：ESLint 代碼品質和風格檢查
+      # 3. test：Jest 單元測試執行
+      # 
+      # & 符號：背景執行命令
+      # wait：等待所有背景任務完成
+      # 任何一個檢查失敗都會導致整個步驟失敗
+      # ========================
+      - name: Run checks in parallel
+        run: |
+          pnpm run typecheck &
+          pnpm run lint &
+          pnpm test &
+          wait
+
+      # ===== 生成文件上傳 =====
+      # 目的：將生成的類型文件上傳為 artifact
+      # 用途：供 CD workflow 下載使用，避免重複生成
+      # 內容：
+      #   - generated/ 目錄：包含 Prisma 客戶端類型
+      #   - openapi.yaml：API 文檔規格文件
+      # retention-days: 1：只保留 1 天（節省儲存空間）
+      # name：使用 commit SHA 確保唯一性
+      # ==========================
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-files-${{ github.sha }}
+          path: |
+            generated/
+            openapi.yaml
+            openapi.json
+          retention-days: 1
+
+  # ===== CI 成功通知階段 =====
+  # 目的：向團隊 Discord 頻道發送 CI 檢查成功通知
+  # 執行條件：只在 test job 成功完成時執行
+  # 通知內容：
+  #   - 倉庫資訊、分支名稱、提交者
+  #   - 提交 SHA 和連結
+  #   - 綠色成功標識
+  # 依賴：需要 test job 完成
+  # ==============================
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: test
+    if: success()
+    steps:
+      # ===== Discord 成功通知發送 =====
+      # 收集 GitHub 上下文資訊：
+      #   - github.actor：觸發者用戶名
+      #   - github.repository：倉庫全名
+      #   - github.ref_name：分支名稱
+      #   - github.sha：完整提交 SHA
+      # 
+      # 通知格式：
+      #   - 使用 Discord Webhook 發送富文本訊息
+      #   - 綠色 embed（color: 3066993）表示成功
+      #   - 包含倉庫、分支、作者等關鍵資訊
+      #   - 提供提交連結便於查看變更
+      # ================================
+      - name: Send CI Success Notification
+        run: |
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          curl -X POST -H "Content-Type: application/json" -d "{
+            \"embeds\": [{
+              \"color\": 3066993,
+              \"thumbnail\": {
+                \"url\": \"https://img.shields.io/badge/CI-Passed-brightgreen.png?style=for-the-badge&logo=github-actions&logoColor=white\"
+              },
+              \"fields\": [
+                {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+              ],
+              \"timestamp\": \"$CURRENT_TIME\"
+            }]
+          }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  # ===== CI 失敗通知階段 =====
+  # 目的：向團隊 Discord 頻道發送 CI 檢查失敗警告
+  # 執行條件：只在 test job 失敗時執行
+  # 通知內容：
+  #   - 失敗警告訊息
+  #   - 相關倉庫和提交資訊
+  #   - 紅色警告標識
+  # 用途：及時通知團隊代碼品質問題
+  # ==============================
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: test
+    if: failure()
+    steps:
+      # ===== Discord 失敗通知發送 =====
+      # 失敗通知特點：
+      #   - 紅色 embed（color: 16711680）表示失敗
+      #   - 明確的錯誤描述和修復指引
+      #   - 包含相同的上下文資訊便於定位問題
+      #   - 使用紅色標識符號表示失敗
+      # 
+      # 觸發時機：
+      #   - TypeScript 類型檢查失敗
+      #   - ESLint 檢查不通過
+      #   - Jest 測試失敗
+      #   - 依賴安裝或類型生成失敗
+      # ================================
+      - name: Send CI Failure Notification
+        run: |
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          curl -X POST -H "Content-Type: application/json" -d "{
+            \"embeds\": [{
+              \"color\": 16711680,
+              \"thumbnail\": {
+                \"url\": \"https://img.shields.io/badge/CI-Failed-red.png?style=for-the-badge&logo=github-actions&logoColor=white\"
+              },
+              \"fields\": [
+                {\"name\": \"Commit\", \"value\": \"[\`$SHORT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)\", \"inline\": false}
+              ],
+              \"timestamp\": \"$CURRENT_TIME\"
+            }]
+          }" ${{ secrets.DISCORD_WEBHOOK_URL }}
