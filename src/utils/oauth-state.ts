@@ -45,17 +45,19 @@ export const generateNonce = (length = 16): string => {
  * 建立 OAuth State
  * @param redirectUrl - 登入後跳轉 URL
  * @param source - 來源網站
+ * @param existingNonce - 可選的現有 nonce（用於保留前端傳入的 nonce）
  * @returns OAuthState 物件
  */
 export const createOAuthState = (
   redirectUrl: string,
-  source: 'website' | 'app' = 'app'
+  source: 'website' | 'app' = 'app',
+  existingNonce?: string
 ): OAuthState => {
   return {
     redirectUrl: redirectUrl || '/dashboard',
     source,
     timestamp: Date.now(),
-    nonce: generateNonce()
+    nonce: existingNonce || generateNonce()
   };
 };
 

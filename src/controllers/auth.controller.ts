@@ -109,20 +109,25 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   // 設定 HTTP-only Cookie
   setAuthCookie(res, token);
 
-  // 解析 state 參數以取得 redirectUrl
+  // 解析 state 參數以取得 redirectUrl 和 nonce
   const stateParam = req.query.state as string | undefined;
   let redirectUrl = '/dashboard'; // 預設跳轉位置
+  let originalNonce: string | undefined;
+  let originalSource: 'website' | 'app' = 'app';
 
   if (stateParam) {
     const validationResult = validateOAuthState(stateParam);
     if (validationResult.valid && validationResult.state) {
       redirectUrl = validationResult.state.redirectUrl || '/dashboard';
+      // 保留前端傳入的 nonce，讓前端可以驗證是否為自己發出的請求
+      originalNonce = validationResult.state.nonce;
+      originalSource = validationResult.state.source;
     }
   }
 
-  // 建立新的 state 用於前端 callback（保留原始資訊）
+  // 建立新的 state 用於前端 callback（保留原始 nonce 以防止 XSS 攻擊）
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const callbackState = createOAuthState(redirectUrl, 'app');
+  const callbackState = createOAuthState(redirectUrl, originalSource, originalNonce);
   const encodedState = encodeOAuthState(callbackState);
 
   // 重定向到前端 callback 頁面
