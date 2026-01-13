@@ -12401,6 +12401,27 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: 獲取當前用戶資訊
+      description: 根據認證令牌獲取當前登入用戶的詳細資訊，支援從 Cookie 或 Authorization header 取得 Token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功獲取用戶資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/auth/forgot-password:
     post:
       tags:
