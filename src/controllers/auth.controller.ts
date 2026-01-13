@@ -109,24 +109,45 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   // 設定 HTTP-only Cookie
   setAuthCookie(res, token);
 
-  // 解析 state 參數以取得 redirectUrl
+  // 解析 state 參數以驗證並取得前端傳來的原始資訊
   const stateParam = req.query.state as string | undefined;
-  let redirectUrl = '/dashboard'; // 預設跳轉位置
+  let finalEncodedState: string;
 
   if (stateParam) {
+    // 驗證前端傳來的 state
     const validationResult = validateOAuthState(stateParam);
+
     if (validationResult.valid && validationResult.state) {
-      redirectUrl = validationResult.state.redirectUrl || '/dashboard';
+      // 驗證成功，保留前端的原始 nonce 和 source
+      // 這樣前端可以驗證 nonce 是否匹配，防止 CSRF 攻擊
+      const originalState = validationResult.state;
+
+      // 原封不動地使用前端傳來的 state（包含原始 nonce 和 source）
+      finalEncodedState = stateParam;
+
+      console.log('OAuth callback - preserving original state:', {
+        nonce: originalState.nonce,
+        source: originalState.source,
+        redirectUrl: originalState.redirectUrl
+      });
+    } else {
+      // 驗證失敗，記錄錯誤但仍創建預設 state
+      console.warn('OAuth state validation failed:', validationResult.error);
+
+      // 創建預設 state
+      const defaultState = createOAuthState('/dashboard', 'app');
+      finalEncodedState = encodeOAuthState(defaultState);
     }
+  } else {
+    // 沒有 state 參數，創建預設 state
+    console.warn('No state parameter provided in OAuth callback');
+    const defaultState = createOAuthState('/dashboard', 'app');
+    finalEncodedState = encodeOAuthState(defaultState);
   }
 
-  // 建立新的 state 用於前端 callback（保留原始資訊）
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const callbackState = createOAuthState(redirectUrl, 'app');
-  const encodedState = encodeOAuthState(callbackState);
-
   // 重定向到前端 callback 頁面
-  const url = `${frontendUrl}/auth/callback?state=${encodedState}`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const url = `${frontendUrl}/auth/callback?state=${finalEncodedState}`;
 
   res.redirect(url);
 });
@@ -136,7 +157,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
  * POST /api/auth/logout
  * 清除認證 Cookie
  */
-export const logout = asyncHandler(async (req: Request, res: Response) => {
+export const logout = asyncHandler(async (_req: Request, res: Response) => {
   // 清除認證 Cookie
   clearAuthCookie(res);
 
