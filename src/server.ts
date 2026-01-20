@@ -12,6 +12,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import session from 'express-session';
@@ -41,6 +42,7 @@ app.use(helmet({
 // 基本中間件設置
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(cookieParser()); // 解析 Cookie，用於 Cookie 認證
 
 // 設置 trust proxy
 app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
