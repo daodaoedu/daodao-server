@@ -33,14 +33,7 @@ COPY src/types/ ./src/types/
 # 第二步：複製其餘源碼文件 (源碼變更時觸發重建)
 COPY src/ ./src/
 COPY scripts ./scripts
-COPY controllers ./controllers
-COPY models ./models
-COPY routes ./routes
-COPY services ./services
-COPY middlewares ./middlewares
-COPY utils ./utils
 COPY public ./public
-COPY index.js ./
 COPY ecosystem.config.js ./
 COPY openapi.json ./
 COPY openapi.yaml ./
