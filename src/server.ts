@@ -52,9 +52,19 @@ const corsOptions = {
       process.env.FRONTEND_URL,
       'http://localhost:4000',
       'https://www.daoedu.tw',
-      'https://staging-daodao-f2e.daoedu.workers.dev'
+      'https://staging-daodao-f2e.daoedu.workers.dev',
+      // daodao.so 域名（正式環境）
+      'https://daodao.so',
+      'https://app.daodao.so',
+      // daodao.so 域名（測試環境）
+      'https://dev.daodao.so',
+      'https://app-dev.daodao.so',
+      // daodao.so 域名（Feature 環境）
+      'https://feat.daodao.so',
+      'https://app-feat.daodao.so'
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
+    const daodaoSoPattern = /^https:\/\/[\w-]+\.daodao\.so$/;
     const devPattern = /^https:\/\/[\w-]+\.daoedu\.workers\.dev$/;
     const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
     const chromeExtensionPattern = /^chrome-extension:\/\//;
@@ -63,9 +73,11 @@ const corsOptions = {
     // 允許已配置的來源
     // 允許 Chrome 擴充功能
     // 允許本地開發
+    // 允許所有 daodao.so 子域名
     if (!origin ||
       allowedOrigins.includes(origin) ||
       daodaoTestPattern.test(origin) ||
+      daodaoSoPattern.test(origin) ||
       devPattern.test(origin) ||
       localhostPattern.test(origin) ||
       chromeExtensionPattern.test(origin)) {
