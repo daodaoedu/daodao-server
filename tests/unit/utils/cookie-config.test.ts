@@ -37,28 +37,28 @@ describe('Cookie Config', () => {
   });
 
   describe('getCookieOptions', () => {
-    it('should return default options for development environment', () => {
+    it('should return cross-site cookie options for any environment', () => {
       process.env.NODE_ENV = 'development';
 
       const options = getCookieOptions();
 
       expect(options).toEqual({
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
+        secure: true,              // 總是 true（sameSite: 'none' 要求）
+        sameSite: 'none',          // 允許跨站請求
         path: '/',
         maxAge: COOKIE_MAX_AGE_MS
       });
     });
 
-    it('should return secure options for production environment', () => {
+    it('should return same options for production environment', () => {
       process.env.NODE_ENV = 'production';
 
       const options = getCookieOptions();
 
       expect(options.httpOnly).toBe(true);
       expect(options.secure).toBe(true);
-      expect(options.sameSite).toBe('lax');
+      expect(options.sameSite).toBe('none');
       expect(options.path).toBe('/');
     });
 
@@ -80,12 +80,14 @@ describe('Cookie Config', () => {
       expect(options.domain).toBeUndefined();
     });
 
-    it('should allow overriding isProduction option', () => {
+    it('should always return secure: true regardless of isProduction option', () => {
       process.env.NODE_ENV = 'development';
 
-      const options = getCookieOptions({ isProduction: true });
+      // isProduction 選項不再影響 secure，因為 sameSite: 'none' 要求 secure: true
+      const options = getCookieOptions({ isProduction: false });
 
       expect(options.secure).toBe(true);
+      expect(options.sameSite).toBe('none');
     });
 
     it('should allow overriding maxAge option', () => {
@@ -111,7 +113,8 @@ describe('Cookie Config', () => {
         token,
         expect.objectContaining({
           httpOnly: true,
-          sameSite: 'lax',
+          secure: true,
+          sameSite: 'none',
           path: '/'
         })
       );
@@ -148,7 +151,8 @@ describe('Cookie Config', () => {
         AUTH_COOKIE_NAME,
         expect.objectContaining({
           httpOnly: true,
-          sameSite: 'lax',
+          secure: true,
+          sameSite: 'none',
           path: '/'
         })
       );

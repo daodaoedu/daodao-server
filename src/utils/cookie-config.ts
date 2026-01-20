@@ -29,8 +29,8 @@ export const getCookieOptions = (options: {
 
   const cookieOptions: CookieOptions = {
     httpOnly: true,           // 防止 JavaScript 存取
-    secure: isProduction,     // 生產環境僅 HTTPS
-    sameSite: 'lax',          // CSRF 防護，允許跨站 GET
+    secure: true,             // 必須 HTTPS（sameSite: 'none' 要求）
+    sameSite: 'none',         // 允許跨站請求（前後端分離部署需要）
     path: '/',                // 全站可用
     maxAge                    // 過期時間
   };
