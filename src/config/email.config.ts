@@ -12,23 +12,30 @@ export interface EmailConfig {
       pass: string;
     };
   };
-  
+
   // 發送者配置
   sender: {
     name: string;
     email: string;
   };
-  
+
   // URL 配置
   urls: {
     frontend: string;
     backend: string;
   };
-  
+
   // 重試配置
   retry: {
     maxAttempts: number;
     backoffMs: number;
+  };
+
+  // 批量發送配置
+  bulk: {
+    delayMs: number;       // 每封郵件之間的延遲（毫秒）
+    batchSize: number;     // 批次大小
+    maxConcurrent: number; // 最大並發數
   };
 }
 
@@ -72,6 +79,12 @@ export function createEmailConfig(): EmailConfig {
     retry: {
       maxAttempts: 3,
       backoffMs: 1000
+    },
+
+    bulk: {
+      delayMs: Number(process.env.EMAIL_BULK_DELAY_MS) || 100,
+      batchSize: Number(process.env.EMAIL_BATCH_SIZE) || 10,
+      maxConcurrent: Number(process.env.EMAIL_MAX_CONCURRENT) || 3
     }
   };
 }
@@ -80,3 +93,13 @@ export function createEmailConfig(): EmailConfig {
 export function getEmailConfig(): EmailConfig {
   return createEmailConfig();
 }
+
+// 導出默認配置實例（僅在需要時使用，初始化失敗時為 null）
+export const emailConfig = (() => {
+  try {
+    return createEmailConfig();
+  } catch (error) {
+    console.warn('郵件配置初始化失敗，將在實際使用時重試:', error instanceof Error ? error.message : String(error));
+    return null;
+  }
+})();
