@@ -76,14 +76,21 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
  * POST /api/v1/email/welcome
  */
 export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response) => {
-  const { email, name } = req.body;
+  const { email, name, hasCompletedQuiz, practiceUrl, quizUrl, illustrationUrl, unsubscribeUrl } = req.body;
 
   if (!email || !name) {
     throw new BadRequestError('email 和 name 為必填項');
   }
 
-  // 使用 API 版本
-  const result = await sendWelcomeEmailApi(email, name);
+  // 使用 API 版本，傳入完整的 WelcomeEmailData 物件
+  const result = await sendWelcomeEmailApi(email, {
+    name,
+    hasCompletedQuiz: hasCompletedQuiz ?? false,
+    practiceUrl,
+    quizUrl,
+    illustrationUrl,
+    unsubscribeUrl
+  });
   res.json(result);
 });
 

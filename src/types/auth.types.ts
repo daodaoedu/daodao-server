@@ -4,6 +4,7 @@
 
 import { Request } from 'express';
 import { users, temp_users } from '../../generated/prisma';
+import type { WelcomeEmailData } from './email';
 
 // JWT Payload 介面
 export interface JwtPayload {
@@ -211,7 +212,7 @@ export interface AuthService {
 export interface EmailService {
   sendVerificationEmail(email: string, token: string): Promise<boolean>;
   sendPasswordResetEmail(email: string, token: string): Promise<boolean>;
-  sendWelcomeEmail(email: string, name: string): Promise<boolean>;
+  sendWelcomeEmail(email: string, data: WelcomeEmailData): Promise<boolean>;
 }
 
 // 所有型別都已作為具名導出，不需要預設導出
