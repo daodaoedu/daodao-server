@@ -78,6 +78,10 @@ model contacts {
   fb                 String?  @db.VarChar(50)
   discord            String?  @db.VarChar(37)
   line               String?  @db.VarChar(20)
+  threads            String?  @db.VarChar(30)
+  linkedin           String?  @db.VarChar(100)
+  github             String?  @db.VarChar(50)
+  website            String?  @db.VarChar(2048)
   users              users[]
 }
 
@@ -781,6 +785,15 @@ model users {
   is_active                                                     Boolean?                   @default(true)
   verified                                                      Boolean?                   @default(false)
   verified_at                                                   DateTime?                  @db.Timestamptz(6)
+  // 活躍狀態統計
+  last_login_at                                                 DateTime?                  @db.Timestamptz(6)
+  last_active_at                                                DateTime?                  @db.Timestamptz(6)
+  login_count                                                   Int?                       @default(0)
+  profile_views                                                 Int?                       @default(0)
+  // 最後使用裝置資訊
+  last_device_type                                              String?                    @db.VarChar(20)
+  last_os                                                       String?                    @db.VarChar(50)
+  last_browser                                                  String?                    @db.VarChar(50)
   createdDate                                                   DateTime?                  @db.Timestamptz(6)
   updatedDate                                                   DateTime?                  @db.Timestamptz(6)
   created_by                                                    String?                    @db.VarChar(50)
@@ -815,6 +828,7 @@ model users {
   user_profiles                                                 user_profiles[]
   user_project                                                  user_project[]
   user_subscription                                             user_subscription[]
+  user_login_history                                            user_login_history[]
   basic_info                                                    basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contacts                                                      contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   location                                                      location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -1001,6 +1015,24 @@ model email_logs {
   @@index([email_type], map: "idx_email_logs_type")
   @@index([entity_type, entity_id], map: "idx_email_logs_entity")
   @@index([sent_at], map: "idx_email_logs_sent_at")
+}
+
+/// 用戶登入歷史表：記錄每次登入的時間和裝置資訊
+/// 用於分析用戶活躍度、登入趨勢、裝置使用習慣
+model user_login_history {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  device_type String?   @db.VarChar(20)
+  os          String?   @db.VarChar(50)
+  browser     String?   @db.VarChar(50)
+  user_agent  String?
+  ip_address  String?   @db.Inet
+  login_at    DateTime? @default(now()) @db.Timestamptz(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_login_history_user_id")
+  @@index([login_at(sort: Desc)], map: "idx_login_history_login_at")
+  @@index([user_id, login_at(sort: Desc)], map: "idx_login_history_user_time")
 }
 
 enum age_t {

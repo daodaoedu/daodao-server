@@ -12,11 +12,20 @@ import {
   LocationStats,
   RoleStats,
   EducationStageStats,
-  ActivityStats
+  ActivityStats,
+  ActiveUsersStats,
+  DeviceAnalytics,
+  RetentionStats,
+  PopularProfilesStats,
+  UserActivitySegmentation,
+  UserActivityLabel
 } from '@/types/user-stats.types';
 import {
   RegistrationStatsQuery,
-  ActivityStatsQuery
+  ActivityStatsQuery,
+  DeviceAnalyticsQuery,
+  RetentionQuery,
+  PopularProfilesQuery
 } from '@/validators/user-stats.validator';
 import { formatDate, getMonthStart, getDaysAgo } from '@/utils/date-utils';
 
@@ -61,12 +70,13 @@ export async function getOverviewStats(): Promise<OverviewStats> {
         ? 100
         : 0;
 
-  // 活躍使用者數（使用 updated_at 作為活躍度指標）
+  // 活躍使用者數（使用 last_active_at 或 last_login_at 作為活躍度指標）
   const activeUsers = await prisma.users.count({
     where: {
-      updated_at: {
-        gte: activeThreshold
-      }
+      OR: [
+        { last_active_at: { gte: activeThreshold } },
+        { last_login_at: { gte: activeThreshold } }
+      ]
     }
   });
 
@@ -464,12 +474,13 @@ export async function getActivityStats(
 
   const activeThreshold = getDaysAgo(activeWithinDays as number);
 
-  // 活躍使用者數
+  // 活躍使用者數（使用 last_active_at 或 last_login_at）
   const activeUsers = await prisma.users.count({
     where: {
-      updated_at: {
-        gte: activeThreshold
-      }
+      OR: [
+        { last_active_at: { gte: activeThreshold } },
+        { last_login_at: { gte: activeThreshold } }
+      ]
     }
   });
 
@@ -492,9 +503,10 @@ export async function getActivityStats(
   // 如果有 groupBy，添加細分統計
   if (groupBy) {
     const activeWhere: Prisma.usersWhereInput = {
-      updated_at: {
-        gte: activeThreshold
-      }
+      OR: [
+        { last_active_at: { gte: activeThreshold } },
+        { last_login_at: { gte: activeThreshold } }
+      ]
     };
 
     const breakdown: ActivityStats['breakdown'] = {};
@@ -521,8 +533,449 @@ export async function getActivityStats(
   return baseStats;
 }
 
+/**
+ * 獲取 DAU/WAU/MAU 統計
+ */
+export async function getActiveUsersStats(): Promise<ActiveUsersStats> {
+  const now = new Date();
+  const oneDayAgo = getDaysAgo(1);
+  const oneWeekAgo = getDaysAgo(7);
+  const oneMonthAgo = getDaysAgo(30);
+  const twoDaysAgo = getDaysAgo(2);
+  const twoWeeksAgo = getDaysAgo(14);
+  const twoMonthsAgo = getDaysAgo(60);
+
+  // 總用戶數
+  const totalUsers = await prisma.users.count();
+
+  // DAU: 今天登入的不重複用戶
+  const dau = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: oneDayAgo }
+    }
+  }).then(result => result.length);
+
+  // WAU: 最近 7 天登入的不重複用戶
+  const wau = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: oneWeekAgo }
+    }
+  }).then(result => result.length);
+
+  // MAU: 最近 30 天登入的不重複用戶
+  const mau = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: oneMonthAgo }
+    }
+  }).then(result => result.length);
+
+  // 計算趨勢（與前一期比較）
+  const dauYesterday = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: twoDaysAgo, lt: oneDayAgo }
+    }
+  }).then(result => result.length);
+
+  const wauLastWeek = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: twoWeeksAgo, lt: oneWeekAgo }
+    }
+  }).then(result => result.length);
+
+  const mauLastMonth = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: twoMonthsAgo, lt: oneMonthAgo }
+    }
+  }).then(result => result.length);
+
+  const calculateTrend = (current: number, previous: number): number => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100 * 100) / 100;
+  };
+
+  return {
+    dau,
+    wau,
+    mau,
+    dauRate: totalUsers > 0 ? Math.round((dau / totalUsers) * 100 * 100) / 100 : 0,
+    wauRate: totalUsers > 0 ? Math.round((wau / totalUsers) * 100 * 100) / 100 : 0,
+    mauRate: totalUsers > 0 ? Math.round((mau / totalUsers) * 100 * 100) / 100 : 0,
+    totalUsers,
+    trend: {
+      dauTrend: calculateTrend(dau, dauYesterday),
+      wauTrend: calculateTrend(wau, wauLastWeek),
+      mauTrend: calculateTrend(mau, mauLastMonth)
+    }
+  };
+}
+
+/**
+ * 獲取裝置分析
+ */
+export async function getDeviceAnalytics(query: DeviceAnalyticsQuery): Promise<DeviceAnalytics> {
+  const { startDate, endDate, days = 30 } = query;
+
+  let dateFilter: { gte: Date; lte?: Date };
+  if (startDate && endDate) {
+    dateFilter = {
+      gte: new Date(startDate),
+      lte: new Date(endDate)
+    };
+  } else {
+    dateFilter = {
+      gte: getDaysAgo(days as number)
+    };
+  }
+
+  // 裝置類型統計
+  const deviceResults = await prisma.$queryRaw<Array<{ device_type: string | null; count: bigint }>>`
+    SELECT device_type, COUNT(*)::bigint as count
+    FROM user_login_history
+    WHERE login_at >= ${dateFilter.gte}
+      ${dateFilter.lte ? Prisma.sql`AND login_at <= ${dateFilter.lte}` : Prisma.empty}
+    GROUP BY device_type
+    ORDER BY count DESC
+  `;
+
+  // 瀏覽器統計
+  const browserResults = await prisma.$queryRaw<Array<{ browser: string | null; count: bigint }>>`
+    SELECT browser, COUNT(*)::bigint as count
+    FROM user_login_history
+    WHERE login_at >= ${dateFilter.gte}
+      ${dateFilter.lte ? Prisma.sql`AND login_at <= ${dateFilter.lte}` : Prisma.empty}
+    GROUP BY browser
+    ORDER BY count DESC
+  `;
+
+  // 作業系統統計
+  const osResults = await prisma.$queryRaw<Array<{ os: string | null; count: bigint }>>`
+    SELECT os, COUNT(*)::bigint as count
+    FROM user_login_history
+    WHERE login_at >= ${dateFilter.gte}
+      ${dateFilter.lte ? Prisma.sql`AND login_at <= ${dateFilter.lte}` : Prisma.empty}
+    GROUP BY os
+    ORDER BY count DESC
+  `;
+
+  const totalLogins = deviceResults.reduce((sum, d) => sum + Number(d.count), 0);
+
+  return {
+    devices: deviceResults.map(d => ({
+      deviceType: d.device_type,
+      count: Number(d.count),
+      percentage: totalLogins > 0 ? Math.round((Number(d.count) / totalLogins) * 100 * 100) / 100 : 0
+    })),
+    browsers: browserResults.map(b => ({
+      browser: b.browser,
+      count: Number(b.count),
+      percentage: totalLogins > 0 ? Math.round((Number(b.count) / totalLogins) * 100 * 100) / 100 : 0
+    })),
+    operatingSystems: osResults.map(o => ({
+      os: o.os,
+      count: Number(o.count),
+      percentage: totalLogins > 0 ? Math.round((Number(o.count) / totalLogins) * 100 * 100) / 100 : 0
+    })),
+    totalLogins,
+    dateRange: {
+      startDate: formatDate(dateFilter.gte),
+      endDate: dateFilter.lte ? formatDate(dateFilter.lte) : formatDate(new Date())
+    }
+  };
+}
+
+/**
+ * 獲取用戶留存率
+ */
+export async function getRetentionStats(query: RetentionQuery): Promise<RetentionStats> {
+  const { cohorts = 7, trackDays = 30, granularity = 'day' } = query;
+
+  const cohortResults: Array<{
+    cohortDate: string;
+    cohortSize: number;
+    retentionByDay: Array<{ day: number; retainedUsers: number; retentionRate: number }>;
+  }> = [];
+
+  // 獲取最近 N 個群組
+  for (let i = 0; i < (cohorts as number); i++) {
+    const cohortStart = granularity === 'day'
+      ? getDaysAgo(i + (trackDays as number))
+      : getDaysAgo((i + 1) * 7 + (trackDays as number));
+
+    const cohortEnd = granularity === 'day'
+      ? getDaysAgo(i + (trackDays as number) - 1)
+      : getDaysAgo(i * 7 + (trackDays as number));
+
+    // 該群組的新用戶
+    const cohortUsers = await prisma.users.findMany({
+      where: {
+        created_at: {
+          gte: cohortStart,
+          lt: cohortEnd
+        }
+      },
+      select: { id: true }
+    });
+
+    const cohortSize = cohortUsers.length;
+    if (cohortSize === 0) continue;
+
+    const userIds = cohortUsers.map(u => u.id);
+    const retentionByDay: Array<{ day: number; retainedUsers: number; retentionRate: number }> = [];
+
+    // 計算各天的留存
+    const daysToTrack = [1, 3, 7, 14, 30].filter(d => d <= (trackDays as number));
+
+    for (const day of daysToTrack) {
+      const checkDate = new Date(cohortStart);
+      checkDate.setDate(checkDate.getDate() + day);
+
+      const retainedCount = await prisma.user_login_history.groupBy({
+        by: ['user_id'],
+        where: {
+          user_id: { in: userIds },
+          login_at: {
+            gte: checkDate,
+            lt: new Date(checkDate.getTime() + 24 * 60 * 60 * 1000)
+          }
+        }
+      }).then(result => result.length);
+
+      retentionByDay.push({
+        day,
+        retainedUsers: retainedCount,
+        retentionRate: Math.round((retainedCount / cohortSize) * 100 * 100) / 100
+      });
+    }
+
+    cohortResults.push({
+      cohortDate: formatDate(cohortStart),
+      cohortSize,
+      retentionByDay
+    });
+  }
+
+  // 計算平均留存率
+  const calculateAverageRetention = (day: number): number => {
+    const validCohorts = cohortResults.filter(c =>
+      c.retentionByDay.some(r => r.day === day)
+    );
+    if (validCohorts.length === 0) return 0;
+
+    const sum = validCohorts.reduce((total, c) => {
+      const retention = c.retentionByDay.find(r => r.day === day);
+      return total + (retention?.retentionRate || 0);
+    }, 0);
+
+    return Math.round((sum / validCohorts.length) * 100) / 100;
+  };
+
+  return {
+    cohorts: cohortResults,
+    averageRetention: {
+      day1: calculateAverageRetention(1),
+      day7: calculateAverageRetention(7),
+      day14: calculateAverageRetention(14),
+      day30: calculateAverageRetention(30)
+    }
+  };
+}
+
+/**
+ * 獲取熱門檔案排行
+ */
+export async function getPopularProfiles(query: PopularProfilesQuery): Promise<PopularProfilesStats> {
+  const { limit = 10, offset = 0, minViews = 1 } = query;
+
+  const profiles = await prisma.users.findMany({
+    where: {
+      profile_views: { gte: minViews as number },
+      is_open_profile: true
+    },
+    select: {
+      id: true,
+      external_id: true,
+      nickname: true,
+      profile_views: true,
+      last_active_at: true,
+      contacts: {
+        select: {
+          photo_url: true
+        }
+      }
+    },
+    orderBy: {
+      profile_views: 'desc'
+    },
+    take: limit as number,
+    skip: offset as number
+  });
+
+  const totalCount = await prisma.users.count({
+    where: {
+      profile_views: { gte: minViews as number },
+      is_open_profile: true
+    }
+  });
+
+  return {
+    profiles: profiles.map(p => ({
+      userId: p.id,
+      externalId: p.external_id || '',
+      nickname: p.nickname,
+      photoUrl: p.contacts?.photo_url || null,
+      profileViews: p.profile_views || 0,
+      lastActiveAt: p.last_active_at ? formatDate(p.last_active_at) : null
+    })),
+    totalCount
+  };
+}
+
+/**
+ * 獲取用戶活躍度分類
+ */
+export async function getUserActivitySegmentation(): Promise<UserActivitySegmentation> {
+  const now = new Date();
+  const threeDaysAgo = getDaysAgo(3);
+  const sevenDaysAgo = getDaysAgo(7);
+  const thirtyDaysAgo = getDaysAgo(30);
+  const ninetyDaysAgo = getDaysAgo(90);
+
+  // 定義分類標準
+  const segments: Array<{
+    label: UserActivityLabel;
+    displayName: string;
+    description: string;
+    criteria: string;
+    where: Prisma.usersWhereInput;
+  }> = [
+    {
+      label: 'highly_active',
+      displayName: '高度活躍',
+      description: '最近 3 天內有活動',
+      criteria: 'last_active_at >= 3 days ago',
+      where: {
+        OR: [
+          { last_active_at: { gte: threeDaysAgo } },
+          { last_login_at: { gte: threeDaysAgo } }
+        ]
+      }
+    },
+    {
+      label: 'active',
+      displayName: '活躍',
+      description: '最近 7 天內有活動',
+      criteria: 'last_active_at >= 7 days ago',
+      where: {
+        AND: [
+          {
+            OR: [
+              { last_active_at: { gte: sevenDaysAgo, lt: threeDaysAgo } },
+              { last_login_at: { gte: sevenDaysAgo, lt: threeDaysAgo } }
+            ]
+          },
+          {
+            NOT: {
+              OR: [
+                { last_active_at: { gte: threeDaysAgo } },
+                { last_login_at: { gte: threeDaysAgo } }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      label: 'moderate',
+      displayName: '一般',
+      description: '最近 30 天內有活動',
+      criteria: 'last_active_at >= 30 days ago',
+      where: {
+        AND: [
+          {
+            OR: [
+              { last_active_at: { gte: thirtyDaysAgo, lt: sevenDaysAgo } },
+              { last_login_at: { gte: thirtyDaysAgo, lt: sevenDaysAgo } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      label: 'inactive',
+      displayName: '不活躍',
+      description: '最近 90 天內有活動',
+      criteria: 'last_active_at >= 90 days ago',
+      where: {
+        AND: [
+          {
+            OR: [
+              { last_active_at: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } },
+              { last_login_at: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      label: 'dormant',
+      displayName: '沉睡',
+      description: '超過 90 天無活動',
+      criteria: 'last_active_at < 90 days ago or null',
+      where: {
+        AND: [
+          {
+            OR: [
+              { last_active_at: { lt: ninetyDaysAgo } },
+              { last_active_at: null }
+            ]
+          },
+          {
+            OR: [
+              { last_login_at: { lt: ninetyDaysAgo } },
+              { last_login_at: null }
+            ]
+          }
+        ]
+      }
+    }
+  ];
+
+  const totalUsers = await prisma.users.count();
+
+  const segmentResults = await Promise.all(
+    segments.map(async (segment) => {
+      const userCount = await prisma.users.count({ where: segment.where });
+      return {
+        label: segment.label,
+        displayName: segment.displayName,
+        description: segment.description,
+        userCount,
+        percentage: totalUsers > 0 ? Math.round((userCount / totalUsers) * 100 * 100) / 100 : 0,
+        criteria: segment.criteria
+      };
+    })
+  );
+
+  return {
+    segments: segmentResults,
+    totalUsers,
+    lastUpdated: now.toISOString()
+  };
+}
+
 export default {
   getOverviewStats,
   getRegistrationStats,
-  getActivityStats
+  getActivityStats,
+  getActiveUsersStats,
+  getDeviceAnalytics,
+  getRetentionStats,
+  getPopularProfiles,
+  getUserActivitySegmentation
 };

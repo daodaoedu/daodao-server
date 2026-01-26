@@ -50,6 +50,8 @@ import { responseEnhancerMiddleware } from './middleware/response-enhancer';
 // 引入資料庫資訊和監控路由
 import dbInfoRoutes from './routes/db-info.routes';
 import monitorRoutes from './routes/monitor.routes';
+// 引入活動追蹤中間件
+import { trackActivity } from './middleware/activity-tracker.middleware';
 
 /**
  * 設置 TypeScript 路由和模型
@@ -77,6 +79,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use(initializePassport());
   app.use(initializePassportSession());
   console.log('🔐 Passport 認證系統已初始化');
+
+  // 活動追蹤中間件（自動更新 last_active_at）
+  app.use(trackActivity);
+  console.log('📊 活動追蹤中間件已初始化');
 
   // 為 Swagger UI 路徑添加特殊的 CORS 處理中間件
   // 這允許 Chrome 擴充功能和其他工具訪問 Swagger UI 的靜態資源
@@ -227,8 +233,8 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
 
   // 註冊使用者統計路由（管理員專用）
-  app.use('/api/v1/admin/userStats', userStatsRoutes);
-  console.log('📈 v1 使用者統計路由已註冊 - 可在 /api/v1/admin/userStats 訪問');
+  app.use('/api/v1/admin/user-stats', userStatsRoutes);
+  console.log('📈 v1 使用者統計路由已註冊 - 可在 /api/v1/admin/user-stats 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
