@@ -24,11 +24,11 @@ export const mePracticesQuerySchema = z.object({
       minimum: 1,
       maximum: 100
     }),
-  status: z.enum(['active', 'paused', 'completed', 'archived']).optional()
+  status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived']).optional()
     .openapi({
-      description: "按練習狀態篩選 (active: 進行中, paused: 已暫停, completed: 已完成, archived: 已歸檔)",
+      description: "按練習狀態篩選 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)",
       example: "active",
-      examples: ['active', 'paused', 'completed', 'archived']
+      examples: ['draft', 'not_started', 'active', 'completed', 'archived']
     }),
   contentType: z.enum(['book', 'video', 'articles', 'podcast', 'course', 'custom']).optional()
     .openapi({
@@ -282,7 +282,7 @@ export const myPracticeItemSchema = z.object({
     description: "開始日期 (YYYY-MM-DD)",
     example: "2024-01-15"
   }),
-  status: z.enum(['active', 'paused', 'completed', 'archived']).openapi({
+  status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived']).openapi({
     description: "實踐狀態",
     example: "active"
   }),
@@ -332,7 +332,6 @@ export const practiceStatsDataSchema = z.object({
   totalPractices: z.number().int().min(0).describe("總實踐數"),
   activePractices: z.number().int().min(0).describe("活躍實踐數"),
   completedPractices: z.number().int().min(0).describe("已完成實踐數"),
-  pausedPractices: z.number().int().min(0).describe("暫停的實踐數"),
   archivedPractices: z.number().int().min(0).describe("歸檔的實踐數"),
   totalCheckIns: z.number().int().min(0).describe("總簽到次數"),
   currentStreak: z.number().int().min(0).describe("當前連續天數"),
@@ -363,8 +362,7 @@ export const practiceStatsDataSchema = z.object({
     totalPractices: 12,
     activePractices: 3,
     completedPractices: 7,
-    pausedPractices: 2,
-    archivedPractices: 0,
+    archivedPractices: 2,
     totalCheckIns: 245,
     currentStreak: 5,
     maxStreak: 25,

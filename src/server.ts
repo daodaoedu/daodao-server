@@ -20,6 +20,24 @@ import passport from 'passport';
 import { setupTypescriptRoutes } from './app';
 import { prismaService } from './services/database/prisma.service';
 import { emailService } from './services/email/email.service';
+import { loggerService } from './services/logging/logger.service';
+// BullMQ
+import {
+  getRawConnection,
+  closeQueueConnection,
+  createPracticeEmailQueue,
+  createPracticeEmailWorker,
+  registerScheduledJobs,
+  closePracticeEmailWorker,
+  setPracticeEmailQueue
+} from './queues';
+import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
+import type { Queue, Worker } from 'bullmq';
+import type { PracticeEmailJobData } from './types/email/practice.types';
+
+// BullMQ 全域實例
+let practiceEmailQueue: Queue<PracticeEmailJobData> | null = null;
+let practiceEmailWorker: Worker<PracticeEmailJobData> | null = null;
 
 
 const app = express();
@@ -164,9 +182,45 @@ async function startServer() {
       console.log(`📖 API docs available at http://localhost:${PORT}/api-docs`);
       console.log(`📖 API docs also available at http://localhost:${PORT}/api/docs`);
     });
+
+    // 初始化 BullMQ（非阻塞）
+    initializeBullMQ().catch(error => {
+      loggerService.warn('BullMQ 初始化失敗，郵件排程功能將不可用', { error: error.message });
+    });
   } catch (error) {
     console.error('❌ 服務器啟動失敗:', error);
     process.exit(1);
+  }
+}
+
+/**
+ * 初始化 BullMQ 郵件隊列系統
+ */
+async function initializeBullMQ(): Promise<void> {
+  try {
+    // 連接 Redis
+    const connection = getRawConnection();
+    await connection.connect();
+    console.log('📬 BullMQ Redis 連線已建立');
+
+    // 建立 Queue
+    practiceEmailQueue = createPracticeEmailQueue();
+    // 設定 singleton 實例供 service 層使用
+    setPracticeEmailQueue(practiceEmailQueue);
+    console.log('📬 Practice Email Queue 已建立');
+
+    // 建立 Worker
+    practiceEmailWorker = createPracticeEmailWorker({ concurrency: 5 });
+    console.log('📬 Practice Email Worker 已啟動');
+
+    // 註冊排程任務
+    await registerScheduledJobs(practiceEmailQueue, DEFAULT_EMAIL_SCHEDULES);
+    console.log('📬 郵件排程任務已註冊');
+
+    console.log('✅ BullMQ 郵件系統初始化完成');
+  } catch (error) {
+    console.error('❌ BullMQ 初始化失敗:', error);
+    throw error;
   }
 }
 
@@ -174,6 +228,22 @@ async function startServer() {
 async function gracefulShutdown(signal: string) {
   console.log(`\n⏳ 收到 ${signal} 信號，正在關閉服務器...`);
   try {
+    // 關閉 BullMQ Worker
+    if (practiceEmailWorker) {
+      await closePracticeEmailWorker(practiceEmailWorker);
+      console.log('✅ BullMQ Worker 已關閉');
+    }
+
+    // 關閉 BullMQ Queue
+    if (practiceEmailQueue) {
+      await practiceEmailQueue.close();
+      console.log('✅ BullMQ Queue 已關閉');
+    }
+
+    // 關閉 BullMQ Redis 連線
+    await closeQueueConnection();
+    console.log('✅ BullMQ Redis 連線已關閉');
+
     // 關閉郵件服務
     await emailService.close();
     console.log('✅ 郵件服務已關閉');

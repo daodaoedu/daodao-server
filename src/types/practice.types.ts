@@ -10,7 +10,7 @@ import { Request, Response } from 'express';
 
 // Core enums and basic types
 export type ContentType = 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom' | 'other';
-export type PracticeStatus = 'active' | 'paused' | 'completed' | 'archived';
+export type PracticeStatus = 'draft' | 'not_started' | 'active' | 'completed' | 'archived';
 export type DailyGoalType = 'time' | 'completion' | 'amount';
 export type CheckInMood = 'awesome' | 'happy' | 'neutral' | 'tired' | 'frustrated';
 export type SortField = 'createdAt' | 'updatedAt' | 'likeCount';
@@ -34,6 +34,13 @@ export interface PracticeResource {
 
 import { UserSimpleInfo } from './common.types';
 
+// Practice progress configuration
+export interface PracticeProgressConfig {
+  frequencyMinDays: number;
+  frequencyMaxDays: number;
+  durationDays: number;
+}
+
 // Core practice entity interface
 export interface PracticeEntity {
   id: string;
@@ -42,7 +49,13 @@ export interface PracticeEntity {
   customContentType?: string;
   totalAmount?: number; // Optional - field doesn't exist in DB schema
   currentProgress: number; // Calculated from check-ins
+  progressPercentage?: number; // Progress as percentage (20% → 50% → 100%) - Optional until DB field exists
   startDate?: string;
+  endDate?: string;
+  firstCheckinAt?: string; // Timestamp of first check-in
+  frequencyMinDays?: number; // Min days between check-ins
+  frequencyMaxDays?: number; // Max days between check-ins
+  durationDays?: number; // Total duration in days
   dailyGoal: DailyGoal;
   practiceAction?: string;
   status: PracticeStatus;
@@ -82,6 +95,15 @@ export interface CheckInEntity {
   updatedAt?: string;
 }
 
+// Check-in response with encouragement message
+export interface CheckInResponseWithEncouragement extends CheckInEntity {
+  encouragement: string;
+  practiceProgressPercentage: number;
+  practiceStatus: PracticeStatus;
+  isFirstCheckIn: boolean;
+  hasReachedTarget: boolean;
+}
+
 // 從統一響應類型文件導入
 import type {
   PaginationInfo
@@ -92,7 +114,6 @@ export interface PracticeStats {
   totalPractices: number;
   activePractices: number;
   completedPractices: number;
-  pausedPractices: number;
   totalCheckIns: number;
   averageStreak: number;
   maxStreak: number;
@@ -200,7 +221,7 @@ export interface CheckInQueryParams {
 }
 
 export interface MyPracticesQueryParams extends PracticeQueryParams {
-  status: string; // 'all' | 'active' | 'paused' | 'completed' | 'archived'
+  status: string; // 'all' | 'draft' | 'not_started' | 'active' | 'completed' | 'archived'
 }
 
 // Event interfaces

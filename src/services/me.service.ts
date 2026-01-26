@@ -123,7 +123,6 @@ const getMyPracticeStats = async (userId: number, params: PracticeStatsQueryPara
       totalPractices: basicStats.data.totalPractices,
       activePractices: basicStats.data.activePractices,
       completedPractices: basicStats.data.completedPractices,
-      pausedPractices: basicStats.data.pausedPractices,
       archivedPractices: 0, // Will calculate separately if needed
       totalCheckIns: basicStats.data.totalCheckIns,
       currentStreak: basicStats.data.maxStreak, // Use max streak as current for now

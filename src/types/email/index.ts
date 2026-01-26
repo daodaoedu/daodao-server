@@ -56,6 +56,33 @@ export {
   AdvancedEmailOptions,
 } from './advanced.types';
 
+// 主題實踐郵件型別
+export {
+  PRACTICE_EMAIL_CODES,
+  PracticeEmailCode,
+  CheckInStats,
+  PracticeEmailBaseVariables,
+  PracticeCreatedEmailVariables,
+  FirstCheckInEmailVariables,
+  WeeklySummaryBaseVariables,
+  WeeklyActiveEmailVariables,
+  WeeklyInactiveEmailVariables,
+  WeeklyNeverCheckInEmailVariables,
+  WeeklySkipEmailVariables,
+  FinalSummaryBaseVariables,
+  FinalSuccessEmailVariables,
+  FinalIncompleteEmailVariables,
+  WeeklySummaryEmailCode,
+  FinalSummaryEmailCode,
+  WeeklySummaryEmailVariables,
+  FinalSummaryEmailVariables,
+  PracticeEmailVariables,
+  PracticeEmailJobData,
+  PracticeEmailScheduleType,
+  PracticeEmailScheduleConfig,
+  DEFAULT_EMAIL_SCHEDULES,
+} from './practice.types';
+
 // 向後相容：EmailTemplateData 重命名為 EmailTemplateDataMap
 export type { EmailTemplateDataMap as EmailTemplateData } from './template-data.types';
 

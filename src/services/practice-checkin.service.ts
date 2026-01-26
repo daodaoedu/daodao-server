@@ -11,9 +11,11 @@ import { loggerService } from './logging/logger.service';
 import { ConflictError, NotFoundError } from '../middleware/error.middleware';
 import {
   CheckInEntity,
+  CheckInResponseWithEncouragement,
   CreateCheckInRequest,
   CheckInQueryParams,
-  CheckInMood
+  CheckInMood,
+  PracticeStatus
 } from '../types/practice.types';
 import {
   ApiSuccessResponse,
@@ -24,19 +26,45 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import {
+  calculateProgress,
+  type PracticeProgressConfig
+} from '../utils/practice-progress';
+import {
+  determineNewStatus,
+  canCheckIn,
+  type PracticeStatusType
+} from '../utils/practice-status';
+import {
+  calculateDateShift
+} from '../validators/practice-business.validators';
+import { enqueuePracticeEmail } from '../queues';
 
 const prismaClient = prisma;
 
 /**
  * 建立簽到記錄
+ *
+ * 變更：
+ * 1. 移除 progressAmount 參數要求（不再從前端接收）
+ * 2. 檢查是否為首次打卡（查詢現有打卡數量）
+ * 3. 若提早打卡（今日 < start_date），執行日期位移
+ * 4. 使用 calculateProgress() 計算新進度（基於打卡次數）
+ * 5. 更新 practices.progress_percentage 和 status: 'active'
+ * 6. 首次打卡設定 first_checkin_at
+ * 7. 回傳隨機鼓勵句
  */
-export async function createCheckIn(practiceId: number, data: CreateCheckInRequest, userId: number): Promise<ApiSuccessResponse<CheckInEntity>> {
+export async function createCheckIn(
+  practiceId: number,
+  data: Omit<CreateCheckInRequest, 'progressAmount'>,
+  userId: number
+): Promise<ApiSuccessResponse<CheckInResponseWithEncouragement>> {
   try {
     // 驗證實踐存在且屬於使用者
     const practice = await prismaClient.practices.findUnique({
-      where: { 
+      where: {
         id: practiceId,
-        user_id: userId 
+        user_id: userId
       }
     });
 
@@ -44,11 +72,16 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
       throw new NotFoundError('實踐不存在或沒有權限');
     }
 
-    // 檢查當日是否已簽到
+    // 檢查狀態是否允許打卡
+    if (!canCheckIn(practice.status as PracticeStatusType)) {
+      throw new ConflictError('此實踐狀態不允許打卡');
+    }
+
     // 使用 UTC 時間確保跨時區一致性
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
-    
+
+    // 檢查當日是否已簽到
     const existingCheckIn = await prismaClient.practice_checkins.findFirst({
       where: {
         practice_id: practiceId,
@@ -64,76 +97,166 @@ export async function createCheckIn(practiceId: number, data: CreateCheckInReque
       throw new ConflictError('今日已完成簽到');
     }
 
-    // 計算新的累積進度 (從所有 check-ins 累加)
-    const previousCheckIns = await prismaClient.practice_checkins.aggregate({
+    // 查詢現有打卡數量
+    const currentCheckInCount = await prismaClient.practice_checkins.count({
       where: {
         practice_id: practiceId,
         user_id: userId
-      },
-      _sum: {
-        progress_amount: true
       }
     });
-    const newCumulativeProgress = Number(previousCheckIns._sum.progress_amount || 0) + data.progressAmount;
+
+    const isFirstCheckIn = currentCheckInCount === 0;
+    const newCheckInCount = currentCheckInCount + 1;
+
+    // 取得實踐配置用於進度計算
+    // 注意：這些欄位可能尚未存在於資料庫，使用預設值
+    const progressConfig: PracticeProgressConfig = {
+      frequencyMinDays: (practice as { frequency_min_days?: number }).frequency_min_days || 1,
+      frequencyMaxDays: (practice as { frequency_max_days?: number }).frequency_max_days || 7,
+      durationDays: (practice as { duration_days?: number }).duration_days || 30
+    };
+
+    // 計算新進度
+    const progressResult = calculateProgress(progressConfig, newCheckInCount);
+
+    // 準備更新實踐的資料
+    const practiceUpdateData: Prisma.practicesUpdateInput = {
+      progress_percentage: progressResult.percentage,
+      updated_at: new Date()
+    };
+
+    // 決定新狀態
+    const newStatus = determineNewStatus({
+      currentStatus: practice.status as PracticeStatusType,
+      hasCheckIns: true,
+      hasReachedTarget: progressResult.hasReachedMinTarget
+    });
+    practiceUpdateData.status = newStatus;
+
+    // 首次打卡：設定 first_checkin_at
+    if (isFirstCheckIn) {
+      // 檢查是否提早打卡（需要日期位移）
+      if (practice.start_date) {
+        const startDate = new Date(practice.start_date);
+        startDate.setUTCHours(0, 0, 0, 0);
+
+        if (today < startDate) {
+          // 提早打卡：執行日期位移
+          const shiftResult = calculateDateShift(
+            practice.start_date,
+            today,
+            progressConfig.durationDays
+          );
+
+          if (shiftResult.needsShift) {
+            practiceUpdateData.start_date = shiftResult.newStartDate;
+            // 如果有 end_date 欄位，也更新它
+            // practiceUpdateData.end_date = shiftResult.newEndDate;
+            loggerService.info('Practice dates shifted due to early check-in', {
+              practiceId,
+              originalStart: practice.start_date,
+              newStart: shiftResult.newStartDate,
+              shiftDays: shiftResult.shiftDays
+            });
+          }
+        }
+      }
+
+      // 設定首次打卡時間
+      practiceUpdateData.first_checkin_at = new Date();
+    }
 
     // 計算連續簽到天數
     const streakInfo = await calculateStreak(practiceId, userId, today);
 
-    // 建立簽到記錄
-    const checkIn = await prismaClient.practice_checkins.create({
-      data: {
-        practice_id: practiceId,
-        user_id: userId,
-        checkin_date: today,
-        progress_amount: data.progressAmount,
-        note: data.note,
-        mood: data.mood,
-        reflection_text: data.reflectionText,
-        // Note: related_resource_id and streak_day fields don't exist in schema
-        cumulative_progress: newCumulativeProgress
-      },
-      include: {
-        practices: {
-          select: {
-            title: true
+    // 使用交易確保資料一致性
+    const [checkIn] = await prismaClient.$transaction([
+      // 建立簽到記錄（不再需要 progress_amount）
+      prismaClient.practice_checkins.create({
+        data: {
+          practice_id: practiceId,
+          user_id: userId,
+          checkin_date: today,
+          progress_amount: 0, // 不再使用，保留為 0
+          note: data.note,
+          mood: data.mood,
+          reflection_text: data.reflectionText,
+          cumulative_progress: newCheckInCount // 使用打卡次數作為累積進度
+        },
+        include: {
+          practices: {
+            select: {
+              title: true
+            }
           }
         }
-      }
-    });
+      }),
+      // 更新實踐進度和狀態
+      prismaClient.practices.update({
+        where: { id: practiceId },
+        data: practiceUpdateData
+      })
+    ]);
 
-    // Note: Practice progress tracking fields don't exist in schema
-    // Progress and streak would need to be calculated from check-ins when needed
+    // 取得隨機鼓勵句
+    const encouragement = await getRandomEncouragement();
 
-    const checkInEntity: CheckInEntity = {
+    const response: CheckInResponseWithEncouragement = {
       id: checkIn.id,
       practiceId: checkIn.practice_id,
       userId: checkIn.user_id,
       checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
-      progressAmount: Number(checkIn.progress_amount),
-      unit: undefined, // Field doesn't exist in DB
+      progressAmount: 0, // 已移除此功能
+      unit: undefined,
       note: checkIn.note || undefined,
       mood: checkIn.mood as CheckInMood,
       reflectionText: checkIn.reflection_text || undefined,
-      relatedResourceId: undefined, // Field doesn't exist in DB
-      streakDay: streakInfo.newStreak, // Calculated, not from DB
-      cumulativeProgress: Number(checkIn.cumulative_progress),
+      relatedResourceId: undefined,
+      streakDay: streakInfo.newStreak,
+      cumulativeProgress: newCheckInCount,
       createdAt: checkIn.created_at?.toISOString() || '',
-      updatedAt: checkIn.updated_at?.toISOString()
+      updatedAt: checkIn.updated_at?.toISOString(),
+      // 新增欄位
+      encouragement,
+      practiceProgressPercentage: progressResult.percentage,
+      practiceStatus: newStatus as PracticeStatus,
+      isFirstCheckIn,
+      hasReachedTarget: progressResult.hasReachedMinTarget
     };
 
     loggerService.info('Check-in created', {
       practiceId,
       userId,
-      progressAmount: data.progressAmount,
-      streak: streakInfo.newStreak
+      checkInCount: newCheckInCount,
+      progressPercentage: progressResult.percentage,
+      streak: streakInfo.newStreak,
+      isFirstCheckIn,
+      hasReachedTarget: progressResult.hasReachedMinTarget
     });
 
-    return createSuccessResponse(checkInEntity);
+    // 觸發 PE02 首次打卡郵件（非阻塞）
+    if (isFirstCheckIn) {
+      enqueuePracticeEmail('PE02', practiceId, userId).catch(err => {
+        loggerService.error('Failed to enqueue PE02 email', { practiceId, error: err });
+      });
+    }
+
+    return createSuccessResponse(response);
 
   } catch (error) {
     loggerService.error('Failed to create check-in', { practiceId, userId, error });
     throw error;
   }
+}
+
+/**
+ * 取得隨機鼓勵句
+ * 使用 encouragement.service.ts 提供的功能
+ */
+async function getRandomEncouragement(): Promise<string> {
+  const { getRandomEncouragement: getEncouragement } = await import('./encouragement.service');
+  const result = await getEncouragement();
+  return result.data.message;
 }
 
 /**

@@ -7,6 +7,9 @@ import { Request, Response } from 'express';
 import * as practiceService from '../services/practice.service';
 import * as practiceCheckInService from '../services/practice-checkin.service';
 import * as practiceInteractionService from '../services/practice-interaction.service';
+import * as encouragementService from '../services/encouragement.service';
+import * as tagPromptService from '../services/tag-prompt.service';
+import * as practiceTemplateService from '../services/practice-template.service';
 import { asyncHandler } from '../middleware/error.middleware';
 import { BadRequestError, UnauthorizedError } from '../middleware/error.middleware';
 import type {
@@ -440,7 +443,7 @@ export class PracticeController {
     }
 
     const practiceExternalId = req.params.id;
-    
+
     // 使用 id-converter 服務將 UUID 轉換為內部 ID
     const { externalToInternalId } = await import('../services/id-converter.service');
     const practiceId = await externalToInternalId('practice', practiceExternalId);
@@ -449,6 +452,121 @@ export class PracticeController {
 
     // 驗證響應格式
     const validatedResponse = userInteractionStatusApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
+  });
+
+  // ============================================================================
+  // 新增：模板、鼓勵句、引導句、封存功能
+  // ============================================================================
+
+  /**
+   * 取得實踐模板列表
+   * GET /api/v1/practices/templates
+   */
+  getTemplates = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const params = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      category: req.query.category as string,
+      search: req.query.search as string
+    };
+
+    const result = await practiceTemplateService.getTemplates(params);
+    res.json(result);
+  });
+
+  /**
+   * 取得單一實踐模板
+   * GET /api/v1/practices/templates/:id
+   */
+  getTemplateById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const templateId = req.params.id;
+    const result = await practiceTemplateService.getTemplateById(templateId);
+    res.json(result);
+  });
+
+  /**
+   * 取得隨機鼓勵句
+   * GET /api/v1/checkin-encouragements/random
+   */
+  getRandomEncouragement = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    const result = await encouragementService.getRandomEncouragement();
+    res.json(result);
+  });
+
+  /**
+   * 取得引導句列表
+   * GET /api/v1/tag-prompts
+   */
+  getTagPrompts = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    // 將舊的類型映射到新的類型
+    const usageTypeMap: Record<string, tagPromptService.TagPromptUsageType> = {
+      'checkin': 'practice_checkin',
+      'practice': 'practice_checkin',
+      'general': 'practice_checkin',
+      'practice_checkin': 'practice_checkin',
+      'reflection': 'reflection',
+      'summary': 'summary'
+    };
+    const usageTypeInput = req.query.usageType as string || 'checkin';
+    const usageType = usageTypeMap[usageTypeInput] || 'practice_checkin';
+
+    // 將舊的 locale 映射到新的 locale
+    const localeMap: Record<string, tagPromptService.TagPromptLocale> = {
+      'zh-TW': 'zh-TW',
+      'en': 'en-US',
+      'en-US': 'en-US'
+    };
+    const localeInput = req.query.locale as string || 'zh-TW';
+    const locale = localeMap[localeInput] || 'zh-TW';
+
+    const result = await tagPromptService.getTagPrompts(usageType, locale);
+    res.json(result);
+  });
+
+  /**
+   * 封存實踐
+   * POST /api/v1/practices/:id/archive
+   */
+  archive = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceExternalId = req.params.id;
+
+    // 使用 id-converter 服務將 UUID 轉換為內部 ID
+    const { externalToInternalId } = await import('../services/id-converter.service');
+    const practiceId = await externalToInternalId('practice', practiceExternalId);
+
+    const result = await practiceService.archive(practiceId, req.user.id);
+
+    // 驗證響應格式
+    const validatedResponse = operationSuccessApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
+  });
+
+  /**
+   * 取消封存實踐
+   * POST /api/v1/practices/:id/unarchive
+   */
+  unarchive = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceExternalId = req.params.id;
+
+    // 使用 id-converter 服務將 UUID 轉換為內部 ID
+    const { externalToInternalId } = await import('../services/id-converter.service');
+    const practiceId = await externalToInternalId('practice', practiceExternalId);
+
+    const result = await practiceService.unarchive(practiceId, req.user.id);
+
+    // 驗證響應格式
+    const validatedResponse = practiceApiResponseSchema.parse(result);
 
     res.json(validatedResponse);
   });

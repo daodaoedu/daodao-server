@@ -393,8 +393,10 @@ model practices {
   frequency_description    String?             @db.VarChar(50)
   practice_time_periods    String[]
   other_context            String?
-  status                   String?             @default("draft") @db.VarChar(20)
+  status                   String?             @default("not_started") @db.VarChar(20)
   has_resources            Boolean?            @default(false)
+  progress_percentage      Decimal?            @default(20) @db.Decimal(5, 2)
+  first_checkin_at         DateTime?           @db.Timestamptz(6)
   created_at               DateTime?           @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?           @db.Timestamptz(6)
   deleted_at               DateTime?           @db.Timestamptz(6)
@@ -634,6 +636,7 @@ model tags {
   updated_at             DateTime?                @db.Timestamptz(6)
   entity_tags            entity_tags[]
   practice_template_tags practice_template_tags[]
+  tag_prompt_templates   tag_prompt_templates[]
 }
 
 model task {
@@ -978,6 +981,35 @@ model practice_templates {
   practices                    practices[]
 
   @@index([created_at], map: "idx_practice_templates_created_at")
+}
+
+/// 打卡鼓勵句表
+/// @see docs/practice-mvp/backend-implementation-plan.md 2.5 節
+model checkin_encouragements {
+  id         Int       @id @default(autoincrement())
+  message    String    @unique @db.VarChar(100)
+  is_active  Boolean   @default(true)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([is_active], map: "idx_checkin_encouragements_active")
+}
+
+/// 標籤引導句模板表（用於打卡引導句）
+/// @see docs/practice-mvp/backend-implementation-plan.md 2.5 節
+model tag_prompt_templates {
+  id          Int       @id @default(autoincrement())
+  tag_id      Int
+  usage_type  String    @db.VarChar(30) // practice_checkin, reflection, summary
+  locale      String    @default("zh-TW") @db.VarChar(10)
+  prompt_text String    @db.VarChar(500)
+  is_default  Boolean   @default(false)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  tags        tags      @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tag_id, usage_type, locale])
+  @@index([usage_type, locale], map: "idx_tag_prompt_templates_usage_locale")
+  @@index([tag_id], map: "idx_tag_prompt_templates_tag_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

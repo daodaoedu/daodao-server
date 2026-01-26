@@ -34,8 +34,15 @@ import {
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
   updatePracticeApiResponseSchema,
-  operationSuccessApiResponseSchema
+  operationSuccessApiResponseSchema,
+  // 新增
+  practiceTemplateQuerySchema,
+  practiceTemplateResponseSchema,
+  encouragementResponseSchema,
+  tagPromptQuerySchema,
+  tagPromptResponseSchema
 } from '../validators/practice.validators';
+import { paginatedApiResponseSchema, apiSuccessResponseSchema } from '../validators/api-response.validators';
 
 // 月度日曆參數 schema
 const monthlyCalendarParamsSchema = z.object({
@@ -767,5 +774,46 @@ router.get('/:id/user-status',
   authenticate,
   validate(practiceParamsSchema, 'params'),
   practiceController.getUserInteractionStatus as RequestHandler);
+
+// ============================================================================
+// 新增路由：模板、鼓勵句、引導句、封存功能
+// ============================================================================
+
+/**
+ * GET /practices/templates
+ * 取得實踐模板列表
+ * 公開存取
+ */
+router.get('/templates',
+  validate(practiceTemplateQuerySchema, 'query'),
+  practiceController.getTemplates as RequestHandler);
+
+/**
+ * GET /practices/templates/:id
+ * 取得單一實踐模板
+ * 公開存取
+ */
+router.get('/templates/:id',
+  practiceController.getTemplateById as RequestHandler);
+
+/**
+ * POST /practices/:id/archive
+ * 封存實踐
+ * 需要身份驗證
+ */
+router.post('/:id/archive',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  practiceController.archive as RequestHandler);
+
+/**
+ * POST /practices/:id/unarchive
+ * 取消封存實踐
+ * 需要身份驗證
+ */
+router.post('/:id/unarchive',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  practiceController.unarchive as RequestHandler);
 
 export default router;
