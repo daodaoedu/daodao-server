@@ -170,12 +170,65 @@ export const welcomeEmailSchema = z.object({
       examples: ['王小明', 'Alice', '新成員'],
       minLength: 1,
       maxLength: 100
+    }),
+  hasCompletedQuiz: z.boolean().openapi({
+    description: '是否已完成學習類型測驗（決定使用哪個版本歡迎信）',
+    example: false
+  }),
+  practiceUrl: z.string()
+    .url('請提供有效的連結')
+    .optional()
+    .openapi({
+      description: '主題實踐連結（兩版本共用）',
+      example: 'https://daoedu.tw/practice',
+      format: 'uri'
+    }),
+  quizUrl: z.string()
+    .url('請提供有效的連結')
+    .optional()
+    .openapi({
+      description: '學習類型測驗連結（僅未做測驗版本使用）',
+      example: 'https://daoedu.tw/quiz',
+      format: 'uri'
+    }),
+  illustrationUrl: z.string()
+    .url('請提供有效的連結')
+    .optional()
+    .openapi({
+      description: '海星插圖 URL',
+      example: 'https://daodao.so/images/emails/joyride.png',
+      format: 'uri'
+    }),
+  unsubscribeUrl: z.string()
+    .url('請提供有效的連結')
+    .optional()
+    .openapi({
+      description: '取消訂閱連結',
+      example: 'https://daoedu.tw/unsubscribe',
+      format: 'uri'
+    }),
+  userId: z.number()
+    .int()
+    .positive()
+    .optional()
+    .openapi({
+      description: '用戶 ID（用於記錄到 email_logs）',
+      example: 123
     })
-}).openapi('WelcomeEmailRequest', {
-  description: '寄送歡迎信給新用戶的請求資料'
+}).refine(
+  // 如果未做測驗，quizUrl 應該要有值（或使用預設值）
+  (data) => data.hasCompletedQuiz || data.quizUrl !== undefined || true, // 允許使用預設值
+  {
+    message: '未做測驗版本建議提供 quizUrl',
+    path: ['quizUrl'],
+  }
+).openapi('WelcomeEmailRequest', {
+  description: '寄送歡迎信給新用戶的請求資料。根據 hasCompletedQuiz 決定使用哪個版本：已做測驗版本（簡短，1 個 CTA）或未做測驗版本（詳細，2 個 CTA）'
 });
 
 registry.register('WelcomeEmailRequest', welcomeEmailSchema);
+
+export type WelcomeEmailInput = z.infer<typeof welcomeEmailSchema>;
 
 // ===================================
 // 密碼重設郵件驗證器

@@ -5,7 +5,7 @@
 
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
-import { emailService } from '../services/auth/email.service';
+import { emailService } from '../services/email/email.service';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
@@ -356,7 +356,10 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     // 發送歡迎郵件
     const contact = user.contacts;
     if (contact?.email) {
-      await emailService.sendWelcomeEmail(contact.email, user.nickname || 'User');
+      await emailService.sendWelcomeEmail(contact.email, {
+        name: user.nickname || 'User',
+        hasCompletedQuiz: false
+      });
     }
 
     const response = createSuccessResponse({

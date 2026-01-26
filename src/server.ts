@@ -19,6 +19,7 @@ import session from 'express-session';
 import passport from 'passport';
 import { setupTypescriptRoutes } from './app';
 import { prismaService } from './services/database/prisma.service';
+import { emailService } from './services/email/email.service';
 
 
 const app = express();
@@ -170,29 +171,26 @@ async function startServer() {
 }
 
 // 優雅關閉處理
-process.on('SIGINT', async () => {
-  console.log('\n⏳ 正在關閉服務器...');
+async function gracefulShutdown(signal: string) {
+  console.log(`\n⏳ 收到 ${signal} 信號，正在關閉服務器...`);
   try {
-    await prismaService.disconnect();
-    console.log('✅ 資料庫連線已關閉');
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ 關閉服務器時發生錯誤:', error);
-    process.exit(1);
-  }
-});
+    // 關閉郵件服務
+    await emailService.close();
+    console.log('✅ 郵件服務已關閉');
 
-process.on('SIGTERM', async () => {
-  console.log('\n⏳ 正在關閉服務器...');
-  try {
+    // 關閉資料庫連線
     await prismaService.disconnect();
     console.log('✅ 資料庫連線已關閉');
+
     process.exit(0);
   } catch (error) {
     console.error('❌ 關閉服務器時發生錯誤:', error);
     process.exit(1);
   }
-});
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // 啟動服務器
 startServer();

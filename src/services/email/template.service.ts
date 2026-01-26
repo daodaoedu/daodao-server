@@ -1,11 +1,11 @@
-import type { 
-  EmailTemplate, 
-  WelcomeEmailData, 
-  VerificationEmailData, 
-  ContactEmailData, 
-  MarathonEmailData, 
-  PasswordResetEmailData 
-} from './types';
+import type {
+  EmailTemplateContent,
+  WelcomeEmailData,
+  VerificationEmailData,
+  ContactEmailData,
+  MarathonEmailData,
+  PasswordResetEmailData
+} from '../../types/email';
 import { generateWelcomeEmail } from './welcome-template';
 import { generateVerificationEmail } from './verification-template';
 import { generateContactEmail } from './contact-template';
@@ -20,42 +20,42 @@ export class EmailTemplateService {
   /**
    * 生成歡迎郵件模板
    */
-  generateWelcomeEmail(data: WelcomeEmailData): EmailTemplate {
+  generateWelcomeEmail(data: WelcomeEmailData): EmailTemplateContent {
     return generateWelcomeEmail(data);
   }
 
   /**
    * 生成驗證郵件模板
    */
-  generateVerificationEmail(data: VerificationEmailData): EmailTemplate {
+  generateVerificationEmail(data: VerificationEmailData): EmailTemplateContent {
     return generateVerificationEmail(data);
   }
 
   /**
    * 生成聯絡郵件模板
    */
-  generateContactEmail(data: ContactEmailData): EmailTemplate {
+  generateContactEmail(data: ContactEmailData): EmailTemplateContent {
     return generateContactEmail(data);
   }
 
   /**
    * 生成馬拉松郵件模板
    */
-  generateMarathonEmail(data: MarathonEmailData): EmailTemplate {
+  generateMarathonEmail(data: MarathonEmailData): EmailTemplateContent {
     return generateMarathonEmail(data);
   }
 
   /**
    * 生成密碼重設郵件模板
    */
-  generatePasswordResetEmail(data: PasswordResetEmailData): EmailTemplate {
+  generatePasswordResetEmail(data: PasswordResetEmailData): EmailTemplateContent {
     return generatePasswordResetEmail(data);
   }
 
   /**
    * 生成自定義郵件模板
    */
-  generateCustomEmail(subject: string, content: string, data?: unknown): EmailTemplate {
+  generateCustomEmail(subject: string, content: string, data?: unknown): EmailTemplateContent {
     return {
       subject,
       html: content
