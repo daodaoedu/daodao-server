@@ -4,17 +4,19 @@
  */
 
 import nodemailer from 'nodemailer';
-import { emailConfig } from './enhanced-email.service';
+import { emailConfig } from '../../config/email.config';
 import { EmailTemplateService } from './template.service';
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiSuccessResponse } from '../../types/api-response.types';
-import type { EmailTemplate } from './types';
-// 簡單的 Logger 介面
-interface Logger {
-  info(message: string): void;
-  error(message: string): void;
-  warn(message: string): void;
-}
+import { isValidEmail } from '../../utils/sanitize';
+import {
+  createEmailLog,
+  hasEmailBeenSent,
+} from './email-log.service';
+import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
+import { EMAIL_TYPES } from '../../types/email';
+import { EMAIL_ERROR_CODES, getErrorMessage } from '../../constants/errors';
+import type { Logger } from '../../types/logger.types';
 
 export interface EmailSendOptions {
   to: string | string[];
@@ -33,6 +35,14 @@ export interface EmailSendResult {
   error?: string;
   accepted?: string[];
   rejected?: string[];
+}
+
+/**
+ * 帶有用戶 ID 的歡迎信資料
+ * 用於整合 email_logs 記錄功能
+ */
+export interface WelcomeEmailDataWithUser extends WelcomeEmailData {
+  userId: number;
 }
 
 export interface EmailServiceStats {
@@ -95,7 +105,7 @@ export class EmailService {
       if (!this.isConfigured || !this.transporter) {
         return {
           success: false,
-          error: 'Email service is not configured'
+          error: getErrorMessage(EMAIL_ERROR_CODES.NOT_CONFIGURED)
         };
       }
 
@@ -142,10 +152,12 @@ export class EmailService {
 
   /**
    * 發送歡迎郵件
+   * @param to 收件人 Email
+   * @param data 歡迎信資料（包含 hasCompletedQuiz 決定使用哪個版本）
    */
-  async sendWelcomeEmail(to: string, name: string): Promise<EmailSendResult> {
-    const template = this.templateService.generateWelcomeEmail({ name });
-    
+  async sendWelcomeEmail(to: string, data: WelcomeEmailData): Promise<EmailSendResult> {
+    const template = this.templateService.generateWelcomeEmail(data);
+
     return this.sendEmail({
       to,
       subject: template.subject,
@@ -154,14 +166,75 @@ export class EmailService {
   }
 
   /**
-   * 發送歡迎郵件 (API 版本)
+   * 發送歡迎郵件（含發送紀錄整合）
+   * 會自動檢查是否已發送過，並記錄到 email_logs
+   * @param to 收件人 Email
+   * @param data 歡迎信資料（包含 userId 用於記錄）
    */
-  async sendWelcomeEmailApi(to: string, name: string): Promise<ApiSuccessResponse<{ messageId?: string }>> {
-    const result = await this.sendWelcomeEmail(to, name);
-    
+  async sendWelcomeEmailWithLog(to: string, data: WelcomeEmailDataWithUser): Promise<EmailSendResult> {
+    const { userId, ...templateData } = data;
+
+    // 1. 檢查是否已發送過歡迎信
+    try {
+      const alreadySent = await hasEmailBeenSent({
+        userId,
+        emailType: EMAIL_TYPES.AUTH_REGISTER,
+      });
+
+      if (alreadySent) {
+        this.logger?.warn(`歡迎信已發送過 - 用戶 ID: ${userId}`);
+        return { success: false, error: getErrorMessage(EMAIL_ERROR_CODES.ALREADY_SENT) };
+      }
+    } catch (error) {
+      // 檢查失敗應該拒絕發送，採用保守策略
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      this.logger?.error(`檢查歡迎信發送狀態失敗 - 用戶 ID: ${userId}, 錯誤: ${errorMessage}`);
+      return {
+        success: false,
+        error: getErrorMessage(EMAIL_ERROR_CODES.LOG_QUERY_FAILED)
+      };
+    }
+
+    // 2. 產生郵件內容
+    const template = this.templateService.generateWelcomeEmail(templateData);
+
+    // 3. 發送郵件
+    const result = await this.sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html,
+    });
+
+    // 4. 記錄發送紀錄
+    if (result.success) {
+      try {
+        await createEmailLog({
+          userId,
+          emailType: EMAIL_TYPES.AUTH_REGISTER,
+          subject: template.subject,
+        });
+      } catch (error) {
+        // 記錄失敗不影響郵件發送結果
+        this.logger?.error(`記錄歡迎信發送紀錄失敗 - 用戶 ID: ${userId}`);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 發送歡迎郵件 (API 版本)
+   * @param to 收件人 Email
+   * @param data 歡迎信資料（包含 hasCompletedQuiz 決定使用哪個版本）
+   */
+  async sendWelcomeEmailApi(to: string, data: WelcomeEmailData): Promise<ApiSuccessResponse<{ messageId?: string }>> {
+    const result = await this.sendWelcomeEmail(to, data);
+
     if (!result.success) {
       throw new Error(result.error || '發送歡迎郵件失敗');
     }
+
+    const templateVersion = data.hasCompletedQuiz ? 'welcome-completed' : 'welcome-pending';
 
     return createSuccessResponse({
       messageId: result.messageId
@@ -170,7 +243,7 @@ export class EmailService {
       aggregateData: {
         emailInfo: {
           recipient: to,
-          template: 'welcome',
+          template: templateVersion,
           sentAt: new Date().toISOString()
         }
       }
@@ -311,7 +384,7 @@ export class EmailService {
     let failed = 0;
 
     for (const recipient of recipients) {
-      let template: EmailTemplate;
+      let template: EmailTemplateContent;
       
       if (templateType === 'custom' && customTemplate) {
         template = customTemplate;
@@ -350,7 +423,7 @@ export class EmailService {
       }
 
       // 為了避免被郵件服務商限制，在批量發送時添加延遲
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, emailConfig?.bulk.delayMs || 100));
     }
 
     return { success, failed, results };
@@ -385,11 +458,10 @@ export class EmailService {
   }
 
   /**
-   * 驗證郵件地址格式
+   * 驗證郵件地址格式（RFC 5322 標準）
    */
   validateEmailAddress(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return isValidEmail(email);
   }
 
   /**
@@ -461,5 +533,14 @@ export const emailService = new EmailService(templateService);
 // 導出 API 版本的郵件服務函數
 export const sendWelcomeEmailApi = emailService.sendWelcomeEmailApi.bind(emailService);
 export const sendVerificationEmailApi = emailService.sendVerificationEmailApi.bind(emailService);
+
+// 導出帶發送紀錄的歡迎郵件函數
+export const sendWelcomeEmailWithLog = emailService.sendWelcomeEmailWithLog.bind(emailService);
+
+// 重新導出 email-log.service 的函數
+export {
+  createEmailLog,
+  hasEmailBeenSent,
+} from './email-log.service';
 
 export default emailService;

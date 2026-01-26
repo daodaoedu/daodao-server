@@ -5,7 +5,7 @@
 
 import { prisma } from './database/prisma.service';
 import { jwtService } from './jwt.service';
-import { emailService } from './auth/email.service';
+import { emailService } from './email/email.service';
 import {
   UserQueryParams,
   CreateUserRequest,
