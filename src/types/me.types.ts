@@ -12,7 +12,7 @@ export interface MyPracticeItem {
   totalAmount?: number; // Optional - field doesn't exist in DB schema
   currentProgress: number;
   startDate?: string; // YYYY-MM-DD format
-  status: 'active' | 'paused' | 'completed' | 'archived';
+  status: 'draft' | 'not_started' | 'active' | 'completed' | 'archived';
   streak: number;
   maxStreak: number;
   lastCheckInDate?: string; // YYYY-MM-DD format
@@ -47,7 +47,6 @@ export interface PracticeStatsData {
   totalPractices: number;
   activePractices: number;
   completedPractices: number;
-  pausedPractices: number;
   archivedPractices: number;
   totalCheckIns: number;
   currentStreak: number;
