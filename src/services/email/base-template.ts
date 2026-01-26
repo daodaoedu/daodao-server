@@ -85,7 +85,7 @@ export const generateEmailHead = (title: string): string => `
 
     body, table, td, p, a, li, blockquote {
       -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%https://daodao.so/images/emails/linkedin.png;
+      -ms-text-size-adjust: 100%;
     }
 
     table, td {
