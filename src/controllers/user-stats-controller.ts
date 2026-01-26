@@ -217,9 +217,116 @@ export const exportStats = asyncWrapper(
   }
 );
 
+/**
+ * 獲取 DAU/WAU/MAU 統計
+ * GET /api/v1/admin/user-stats/active-users
+ */
+export const getActiveUsersStats = asyncWrapper(
+  async (_req: Request, res: Response) => {
+    const stats = await userStatsService.getActiveUsersStats();
+
+    res.json({
+      success: true,
+      data: stats,
+      metadata: {
+        generated_at: new Date().toISOString()
+      }
+    });
+  }
+);
+
+/**
+ * 獲取裝置分析
+ * GET /api/v1/admin/user-stats/device-analytics
+ */
+export const getDeviceAnalytics = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const query = req.query as Record<string, unknown>;
+
+    const stats = await userStatsService.getDeviceAnalytics(
+      query as Parameters<typeof userStatsService.getDeviceAnalytics>[0]
+    );
+
+    res.json({
+      success: true,
+      data: stats,
+      metadata: {
+        generated_at: new Date().toISOString()
+      }
+    });
+  }
+);
+
+/**
+ * 獲取用戶留存率
+ * GET /api/v1/admin/user-stats/retention
+ */
+export const getRetentionStats = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const query = req.query as Record<string, unknown>;
+
+    const stats = await userStatsService.getRetentionStats(
+      query as Parameters<typeof userStatsService.getRetentionStats>[0]
+    );
+
+    res.json({
+      success: true,
+      data: stats,
+      metadata: {
+        generated_at: new Date().toISOString()
+      }
+    });
+  }
+);
+
+/**
+ * 獲取熱門檔案排行
+ * GET /api/v1/admin/user-stats/popular-profiles
+ */
+export const getPopularProfiles = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const query = req.query as Record<string, unknown>;
+
+    const stats = await userStatsService.getPopularProfiles(
+      query as Parameters<typeof userStatsService.getPopularProfiles>[0]
+    );
+
+    res.json({
+      success: true,
+      data: stats,
+      metadata: {
+        generated_at: new Date().toISOString()
+      }
+    });
+  }
+);
+
+/**
+ * 獲取用戶活躍度分類
+ * GET /api/v1/admin/user-stats/segmentation
+ */
+export const getUserActivitySegmentation = asyncWrapper(
+  async (_req: Request, res: Response) => {
+    const stats = await userStatsService.getUserActivitySegmentation();
+
+    res.json({
+      success: true,
+      data: stats,
+      metadata: {
+        generated_at: new Date().toISOString()
+      }
+    });
+  }
+);
+
 export default {
   getOverview,
   getRegistrationStats,
   getActivityStats,
-  exportStats
+  exportStats,
+  getActiveUsersStats,
+  getDeviceAnalytics,
+  getRetentionStats,
+  getPopularProfiles,
+  getUserActivitySegmentation
 };

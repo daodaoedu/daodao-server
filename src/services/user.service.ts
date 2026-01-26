@@ -264,6 +264,11 @@ interface PrismaUserWithRelations {
   professional_field?: string | null;
   personal_slogan?: string | null;
   referral_source?: string | null;
+  // 活躍狀態統計
+  last_login_at?: Date | null;
+  last_active_at?: Date | null;
+  login_count?: number | null;
+  profile_views?: number | null;
   user_preferences?: Array<{
     preference_option_id: number;
     is_selected: boolean | null;
@@ -284,6 +289,8 @@ interface PrismaUserWithRelations {
     discord?: string | null;
     line?: string | null;
     fb?: string | null;
+    threads?: string | null;
+    linkedin?: string | null;
   } | null;
   basic_info?: {
     self_introduction?: string | null;
@@ -337,6 +344,12 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
   // 獲取專業領域（新增）
   const professionalField = await professionalFieldService.getUserProfessionalFields(user.id);
 
+  // 獲取最新測驗結果
+  const latestQuizResult = await prisma.quiz_results.findFirst({
+    where: { user_id: user.id },
+    orderBy: { completed_at: 'desc' }
+  });
+
   return {
     id: user.external_id || '',
     name: user.nickname || null,
@@ -364,7 +377,9 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
       instagram: user.contacts?.ig || null,
       discord: user.contacts?.discord || null,
       line: user.contacts?.line || null,
-      facebook: user.contacts?.fb || null
+      facebook: user.contacts?.fb || null,
+      threads: user.contacts?.threads || null,
+      linkedin: user.contacts?.linkedin || null
     },
     basicInfo: {
       selfIntroduction: user.basic_info?.self_introduction || null,
@@ -382,6 +397,20 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     professionalField,
     personalSlogan: user.personal_slogan || null,
     referralSource: user.referral_source || null,
+
+    // 活躍狀態統計
+    lastLoginAt: user.last_login_at ? moment(user.last_login_at).toISOString() : null,
+    lastActiveAt: user.last_active_at ? moment(user.last_active_at).toISOString() : null,
+    loginCount: user.login_count ?? 0,
+    profileViews: user.profile_views ?? 0,
+
+    // 最新測驗結果
+    latestQuizResult: latestQuizResult ? {
+      id: latestQuizResult.id,
+      resultType: latestQuizResult.result_type,
+      scores: latestQuizResult.scores as Record<string, number>,
+      completedAt: moment(latestQuizResult.completed_at).toISOString()
+    } : null,
 
     createdDate: formatToISOString(user.created_at),
     updatedDate: formatToISOString(user.updated_at)
@@ -603,8 +632,13 @@ const getMe = async (externalId: string): Promise<ApiSuccessResponse<FormattedUs
 
 /**
  * 獲取指定用戶
+ * @param externalId 目標用戶的 external_id
+ * @param viewerId 查看者的內部 ID（可選，用於增加被查看次數）
  */
-const getOneUser = async (externalId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null> => {
+const getOneUser = async (
+  externalId: string,
+  viewerId?: number
+): Promise<ApiSuccessResponse<FormattedUserResponse> | null> => {
   const user = await prisma.users.findUnique({
     where: { external_id: externalId },
     include: {
@@ -627,6 +661,14 @@ const getOneUser = async (externalId: string): Promise<ApiSuccessResponse<Format
 
   if (!user) {
     return null;
+  }
+
+  // 如果查看者不是自己，增加被查看次數
+  if (viewerId && viewerId !== user.id) {
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { profile_views: { increment: 1 } }
+    });
   }
 
   const formattedUser = await formatUserResponse(user);
@@ -740,7 +782,9 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         ig: contactList?.instagram,
         discord: contactList?.discord,
         line: contactList?.line,
-        fb: contactList?.facebook
+        fb: contactList?.facebook,
+        threads: contactList?.threads,
+        linkedin: contactList?.linkedin
       }
     });
 
@@ -954,7 +998,9 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
           ig: contactList?.instagram,
           discord: contactList?.discord,
           line: contactList?.line,
-          fb: contactList?.facebook
+          fb: contactList?.facebook,
+          threads: contactList?.threads,
+          linkedin: contactList?.linkedin
         }
       });
     }
@@ -1505,6 +1551,162 @@ const getAvailablePreferences = async (): Promise<ApiSuccessResponse<Array<{
   return createSuccessResponse(availablePreferences);
 };
 
+/**
+ * 更新用戶登入時間和次數
+ * @param userId 用戶內部 ID
+ * @param deviceInfo 可選的裝置資訊
+ */
+const updateLastLogin = async (
+  userId: number,
+  deviceInfo?: {
+    deviceType?: string;
+    os?: string;
+    browser?: string;
+    userAgent?: string;
+    ipAddress?: string;
+  }
+): Promise<void> => {
+  await prisma.$transaction(async (tx) => {
+    // 更新 users 表的登入統計和最後使用裝置資訊
+    await tx.users.update({
+      where: { id: userId },
+      data: {
+        last_login_at: new Date(),
+        login_count: { increment: 1 },
+        // 同步更新最後使用的裝置資訊
+        ...(deviceInfo && {
+          last_device_type: deviceInfo.deviceType,
+          last_os: deviceInfo.os,
+          last_browser: deviceInfo.browser
+        })
+      }
+    });
+
+    // 記錄登入歷史
+    if (deviceInfo) {
+      await tx.user_login_history.create({
+        data: {
+          user_id: userId,
+          device_type: deviceInfo.deviceType,
+          os: deviceInfo.os,
+          browser: deviceInfo.browser,
+          user_agent: deviceInfo.userAgent,
+          ip_address: deviceInfo.ipAddress
+        }
+      });
+    }
+  });
+};
+
+/**
+ * 更新用戶最後活動時間
+ * @param userId 用戶內部 ID
+ */
+const updateLastActive = async (userId: number): Promise<void> => {
+  await prisma.users.update({
+    where: { id: userId },
+    data: {
+      last_active_at: new Date()
+    }
+  });
+};
+
+/**
+ * 增加用戶檔案被查看次數
+ * @param userId 被查看用戶的內部 ID
+ */
+const incrementProfileViews = async (userId: number): Promise<void> => {
+  await prisma.users.update({
+    where: { id: userId },
+    data: {
+      profile_views: { increment: 1 }
+    }
+  });
+};
+
+/**
+ * 獲取用戶登入歷史
+ * @param userId 用戶內部 ID
+ * @param limit 限制數量，預設 10
+ */
+const getLoginHistory = async (
+  userId: number,
+  limit: number = 10
+): Promise<ApiSuccessResponse<Array<{
+  id: number;
+  deviceType: string | null;
+  os: string | null;
+  browser: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  loginAt: string | null;
+}>>> => {
+  const history = await prisma.user_login_history.findMany({
+    where: { user_id: userId },
+    orderBy: { login_at: 'desc' },
+    take: limit
+  });
+
+  const formattedHistory = history.map(record => ({
+    id: record.id,
+    deviceType: record.device_type,
+    os: record.os,
+    browser: record.browser,
+    userAgent: record.user_agent,
+    ipAddress: record.ip_address,
+    loginAt: record.login_at ? moment(record.login_at).toISOString() : null
+  }));
+
+  return createSuccessResponse(formattedHistory);
+};
+
+/**
+ * 獲取用戶活躍統計
+ * @param userId 用戶內部 ID
+ */
+const getUserActivityStats = async (
+  userId: number
+): Promise<ApiSuccessResponse<{
+  lastLoginAt: string | null;
+  lastActiveAt: string | null;
+  loginCount: number;
+  profileViews: number;
+  recentLoginCount: number; // 最近 30 天登入次數
+}>> => {
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    select: {
+      last_login_at: true,
+      last_active_at: true,
+      login_count: true,
+      profile_views: true
+    }
+  });
+
+  if (!user) {
+    throw new NotFoundError('用戶不存在');
+  }
+
+  // 計算最近 30 天登入次數
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const recentLoginCount = await prisma.user_login_history.count({
+    where: {
+      user_id: userId,
+      login_at: { gte: thirtyDaysAgo }
+    }
+  });
+
+  return createSuccessResponse({
+    lastLoginAt: user.last_login_at ? moment(user.last_login_at).toISOString() : null,
+    lastActiveAt: user.last_active_at ? moment(user.last_active_at).toISOString() : null,
+    loginCount: user.login_count ?? 0,
+    profileViews: user.profile_views ?? 0,
+    recentLoginCount
+  });
+};
+
 // 匯出服務函數
 export const userService = {
   getAllUsers,
@@ -1520,7 +1722,13 @@ export const userService = {
   removeCustomId,
   getUserPreferences,
   updateUserPreferences,
-  getAvailablePreferences
+  getAvailablePreferences,
+  // 活躍狀態統計方法
+  updateLastLogin,
+  updateLastActive,
+  incrementProfileViews,
+  getLoginHistory,
+  getUserActivityStats
 } as const;
 
 export default userService;

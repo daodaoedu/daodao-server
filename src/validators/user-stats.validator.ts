@@ -168,6 +168,41 @@ export const exportStatsQuerySchema = z
   );
 
 /**
+ * 裝置分析查詢參數 Schema
+ */
+export const deviceAnalyticsQuerySchema = z.object({
+  // 時間範圍
+  startDate: dateStringSchema.optional(),
+  endDate: dateStringSchema.optional(),
+  // 天數（如果沒提供日期範圍，預設最近 N 天）
+  days: nonNegativeIntStringSchema('days', 365).default(30).optional()
+});
+
+/**
+ * 留存率查詢參數 Schema
+ */
+export const retentionQuerySchema = z.object({
+  // 分析的群組數量（最近 N 個群組）
+  cohorts: nonNegativeIntStringSchema('cohorts', 30).default(7).optional(),
+  // 追蹤天數
+  trackDays: nonNegativeIntStringSchema('trackDays', 90).default(30).optional(),
+  // 群組粒度
+  granularity: z.enum(['day', 'week']).default('day').optional()
+});
+
+/**
+ * 熱門檔案查詢參數 Schema
+ */
+export const popularProfilesQuerySchema = z.object({
+  // 返回數量
+  limit: nonNegativeIntStringSchema('limit', 100).default(10).optional(),
+  // 偏移量
+  offset: nonNegativeIntStringSchema('offset').default(0).optional(),
+  // 最低查看次數
+  minViews: nonNegativeIntStringSchema('minViews').default(1).optional()
+});
+
+/**
  * 類型推導
  */
 export type RegistrationStatsQuery = z.infer<
@@ -175,6 +210,9 @@ export type RegistrationStatsQuery = z.infer<
 >;
 export type ActivityStatsQuery = z.infer<typeof activityStatsQuerySchema>;
 export type ExportStatsQuery = z.infer<typeof exportStatsQuerySchema>;
+export type DeviceAnalyticsQuery = z.infer<typeof deviceAnalyticsQuerySchema>;
+export type RetentionQuery = z.infer<typeof retentionQuerySchema>;
+export type PopularProfilesQuery = z.infer<typeof popularProfilesQuerySchema>;
 
 /**
  * 驗證函數
@@ -185,3 +223,9 @@ export const validateActivityStatsQuery = (data: unknown): ActivityStatsQuery =>
   activityStatsQuerySchema.parse(data);
 export const validateExportStatsQuery = (data: unknown): ExportStatsQuery =>
   exportStatsQuerySchema.parse(data);
+export const validateDeviceAnalyticsQuery = (data: unknown): DeviceAnalyticsQuery =>
+  deviceAnalyticsQuerySchema.parse(data);
+export const validateRetentionQuery = (data: unknown): RetentionQuery =>
+  retentionQuerySchema.parse(data);
+export const validatePopularProfilesQuery = (data: unknown): PopularProfilesQuery =>
+  popularProfilesQuerySchema.parse(data);

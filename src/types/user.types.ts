@@ -54,6 +54,8 @@ export interface CreateUserRequest {
     discord?: string;
     line?: string;
     facebook?: string;
+    threads?: string;
+    linkedin?: string;
   };
   educationStage?: string;
   isOpenLocation?: boolean;
@@ -87,6 +89,8 @@ export interface UpdateUserRequest {
     discord?: string;
     line?: string;
     facebook?: string;
+    threads?: string;
+    linkedin?: string;
   };
   educationStage?: string;
   isOpenLocation?: boolean;
@@ -151,6 +155,8 @@ export interface FormattedUserResponse {
     discord: string | null;
     line: string | null;
     facebook: string | null;
+    threads: string | null;
+    linkedin: string | null;
   } | null;
   basicInfo: {
     selfIntroduction: string | null;
@@ -166,6 +172,20 @@ export interface FormattedUserResponse {
   professionalField: ProfessionalField[] | null; // 支援多選
   personalSlogan: string | null;
   referralSource: ReferralSource | string | null;
+
+  // 活躍狀態統計
+  lastLoginAt: string | null;      // 最後登入時間
+  lastActiveAt: string | null;     // 最後活動時間
+  loginCount: number;              // 總登入次數
+  profileViews: number;            // 個人檔案被查看次數
+
+  // 最新測驗結果
+  latestQuizResult: {
+    id: number;
+    resultType: string;
+    scores: Record<string, number>;
+    completedAt: string;
+  } | null;
 
   createdDate: string;
   updatedDate: string;
@@ -205,15 +225,50 @@ export interface UserResponse {
   details?: string;
 }
 
+// 登入歷史記錄介面
+export interface LoginHistoryRecord {
+  id: number;
+  deviceType: string | null;
+  os: string | null;
+  browser: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  loginAt: string | null;
+}
+
+// 用戶活躍統計介面
+export interface UserActivityStats {
+  lastLoginAt: string | null;
+  lastActiveAt: string | null;
+  loginCount: number;
+  profileViews: number;
+  recentLoginCount: number;
+}
+
+// 裝置資訊介面
+export interface DeviceInfo {
+  deviceType?: string;
+  os?: string;
+  browser?: string;
+  userAgent?: string;
+  ipAddress?: string;
+}
+
 // 用戶服務介面
 export interface UserService {
   getAllUsers(params: UserQueryParams): Promise<PaginatedApiResponse<FormattedUserResponse>>;
   getMe(userId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null>;
-  getOneUser(externalId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null>;
+  getOneUser(externalId: string, viewerId?: number): Promise<ApiSuccessResponse<FormattedUserResponse> | null>;
   createUser(userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>>;
   updateUser(externalId: string, userData: UpdateUserRequest): Promise<ApiSuccessResponse<FormattedUserResponse>>;
   deleteMe(externalId: string): Promise<ApiSuccessResponse<{ message: string }>>;
   deleteUser(userId: number): Promise<ApiSuccessResponse<{ message: string }>>;
+  // 活躍狀態統計方法
+  updateLastLogin(userId: number, deviceInfo?: DeviceInfo): Promise<void>;
+  updateLastActive(userId: number): Promise<void>;
+  incrementProfileViews(userId: number): Promise<void>;
+  getLoginHistory(userId: number, limit?: number): Promise<ApiSuccessResponse<LoginHistoryRecord[]>>;
+  getUserActivityStats(userId: number): Promise<ApiSuccessResponse<UserActivityStats>>;
 }
 
 // 關聯模型型別 (基於現有的 JavaScript 模型結構)
@@ -239,6 +294,8 @@ export interface UserWithAssociations extends users {
     discord?: string;
     line?: string;
     fb?: string;
+    threads?: string;
+    linkedin?: string;
   };
   BasicInfo?: {
     id: number;

@@ -26,7 +26,9 @@ import {
   removeCustomIdResponseSchema,
   userPreferencesResponseSchema,
   updateUserPreferencesResponseSchema,
-  availablePreferencesResponseSchema
+  availablePreferencesResponseSchema,
+  loginHistoryResponseSchema,
+  userActivityStatsResponseSchema
 } from '../validators/user.validators';
 import {
   NotFoundError
@@ -88,8 +90,11 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
+  const currentUser = req.user;
 
-  const user = await userService.getOneUser(id);
+  // 傳遞當前用戶 ID 用於增加 profile_views（如果不是查看自己）
+  const viewerId = currentUser?.id;
+  const user = await userService.getOneUser(id, viewerId);
 
   if (!user) {
     throw new NotFoundError('User not found');
@@ -327,6 +332,45 @@ export const getAvailablePreferences = asyncHandler(async (_req: Request, res: R
   res.json(validatedResponse);
 });
 
+/**
+ * 獲取當前用戶的登入歷史
+ * GET /api/users/me/login-history
+ */
+export const getLoginHistory = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser || !currentUser.id) {
+    throw new NotFoundError('User not found');
+  }
+
+  const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+  const result = await userService.getLoginHistory(currentUser.id, limit);
+
+  // 驗證響應格式
+  const validatedResponse = loginHistoryResponseSchema.parse(result);
+
+  res.json(validatedResponse);
+});
+
+/**
+ * 獲取當前用戶的活躍統計
+ * GET /api/users/me/activity-stats
+ */
+export const getActivityStats = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser || !currentUser.id) {
+    throw new NotFoundError('User not found');
+  }
+
+  const result = await userService.getUserActivityStats(currentUser.id);
+
+  // 驗證響應格式
+  const validatedResponse = userActivityStatsResponseSchema.parse(result);
+
+  res.json(validatedResponse);
+});
+
 export const userController = {
   getAllUsers,
   getMe,
@@ -342,7 +386,9 @@ export const userController = {
   getUserByCustomId,
   getUserPreferences,
   updateUserPreferences,
-  getAvailablePreferences
+  getAvailablePreferences,
+  getLoginHistory,
+  getActivityStats
 };
 
 export default userController;

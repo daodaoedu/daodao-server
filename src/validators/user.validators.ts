@@ -100,6 +100,18 @@ const contactListSchema = z.object({
     .openapi({
       description: 'Facebook 帳號',
       example: 'john.doe.fb'
+    }),
+  threads: z.string()
+    .optional()
+    .openapi({
+      description: 'Threads 帳號',
+      example: '@john_doe'
+    }),
+  linkedin: z.string()
+    .optional()
+    .openapi({
+      description: 'LinkedIn 個人檔案網址或用戶名',
+      example: 'john-doe-123456'
     })
 }).optional().openapi('ContactList', {
   description: '用戶聯絡資訊'
@@ -566,6 +578,12 @@ const formattedUserResponseSchema = z.object({
     }),
     facebook: z.string().nullable().openapi({
       description: 'Facebook 帳號'
+    }),
+    threads: z.string().nullable().openapi({
+      description: 'Threads 帳號'
+    }),
+    linkedin: z.string().nullable().openapi({
+      description: 'LinkedIn 個人檔案網址或用戶名'
     })
   }).nullable().openapi({
     description: '聯絡方式資訊'
@@ -611,6 +629,57 @@ const formattedUserResponseSchema = z.object({
       example: 'instagram',
       examples: ['instagram', 'friend_referral']
     }),
+
+  // 活躍狀態統計
+  lastLoginAt: z.string()
+    .nullable()
+    .openapi({
+      description: '最後登入時間',
+      example: '2024-01-20T08:30:00.000Z',
+      format: 'date-time'
+    }),
+  lastActiveAt: z.string()
+    .nullable()
+    .openapi({
+      description: '最後活動時間（任何操作）',
+      example: '2024-01-20T14:25:00.000Z',
+      format: 'date-time'
+    }),
+  loginCount: z.number()
+    .int()
+    .openapi({
+      description: '總登入次數',
+      example: 42
+    }),
+  profileViews: z.number()
+    .int()
+    .openapi({
+      description: '個人檔案被查看次數',
+      example: 128
+    }),
+
+  // 最新測驗結果
+  latestQuizResult: z.object({
+    id: z.number().int().openapi({
+      description: '測驗結果 ID',
+      example: 1
+    }),
+    resultType: z.string().openapi({
+      description: '測驗結果類型 (L/C/A/D/O)',
+      example: 'A'
+    }),
+    scores: z.record(z.string(), z.number()).openapi({
+      description: '五個維度的分數',
+      example: { L: 10, C: 8, A: 12, D: 6, O: 9 }
+    }),
+    completedAt: z.string().openapi({
+      description: '測驗完成時間',
+      example: '2024-01-20T14:30:00.000Z',
+      format: 'date-time'
+    })
+  }).nullable().openapi({
+    description: '最新測驗結果（如果有的話）'
+  }),
 
   createdDate: z.string().openapi({
     description: '建立時間',
@@ -761,9 +830,103 @@ export const removeCustomIdResponseSchema = apiSuccessResponseSchema(
   description: '移除自訂 ID 成功回應'
 });
 
+// 登入歷史記錄 schema
+const loginHistoryRecordSchema = z.object({
+  id: z.number().int().openapi({
+    description: '登入記錄 ID',
+    example: 1
+  }),
+  deviceType: z.string().nullable().openapi({
+    description: '裝置類型',
+    example: 'desktop',
+    examples: ['desktop', 'mobile', 'tablet']
+  }),
+  os: z.string().nullable().openapi({
+    description: '作業系統',
+    example: 'macOS 14.0'
+  }),
+  browser: z.string().nullable().openapi({
+    description: '瀏覽器',
+    example: 'Chrome 120'
+  }),
+  userAgent: z.string().nullable().openapi({
+    description: '完整 User-Agent 字串',
+    example: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+  }),
+  ipAddress: z.string().nullable().openapi({
+    description: 'IP 地址',
+    example: '192.168.1.1'
+  }),
+  loginAt: z.string().nullable().openapi({
+    description: '登入時間',
+    example: '2024-01-20T08:30:00.000Z',
+    format: 'date-time'
+  })
+}).openapi('LoginHistoryRecord', {
+  description: '登入歷史記錄'
+});
+
+// 用戶活躍統計 schema
+const userActivityStatsSchema = z.object({
+  lastLoginAt: z.string().nullable().openapi({
+    description: '最後登入時間',
+    example: '2024-01-20T08:30:00.000Z',
+    format: 'date-time'
+  }),
+  lastActiveAt: z.string().nullable().openapi({
+    description: '最後活動時間',
+    example: '2024-01-20T14:25:00.000Z',
+    format: 'date-time'
+  }),
+  loginCount: z.number().int().openapi({
+    description: '總登入次數',
+    example: 42
+  }),
+  profileViews: z.number().int().openapi({
+    description: '個人檔案被查看次數',
+    example: 128
+  }),
+  recentLoginCount: z.number().int().openapi({
+    description: '最近 30 天登入次數',
+    example: 15
+  })
+}).openapi('UserActivityStats', {
+  description: '用戶活躍統計'
+});
+
+// 登入歷史回應 schema
+export const loginHistoryResponseSchema = apiSuccessResponseSchema(
+  z.array(loginHistoryRecordSchema)
+).openapi('LoginHistoryResponse', {
+  description: '登入歷史回應'
+});
+
+// 用戶活躍統計回應 schema
+export const userActivityStatsResponseSchema = apiSuccessResponseSchema(
+  userActivityStatsSchema
+).openapi('UserActivityStatsResponse', {
+  description: '用戶活躍統計回應'
+});
+
+// 登入歷史查詢參數 schema
+export const loginHistoryQuerySchema = z.object({
+  limit: z.string()
+    .regex(/^\d+$/, "數量必須為正整數")
+    .transform(Number)
+    .optional()
+    .openapi({
+      description: '限制返回數量',
+      example: '10',
+      examples: ['5', '10', '20']
+    })
+}).openapi({
+  description: '登入歷史查詢參數'
+});
+
 // 導出型別
 export type CreateUserDto = z.infer<typeof createUserSchema>;
 export type UpdateUserDto = z.infer<typeof updateUserSchema>;
 export type GetUserParamsDto = z.infer<typeof getUserParamsSchema>;
 export type GetUserQueryDto = z.infer<typeof getUserQuerySchema>;
 export type UserPreferencesDto = z.infer<typeof userPreferencesSchema>;
+export type LoginHistoryQueryDto = z.infer<typeof loginHistoryQuerySchema>;

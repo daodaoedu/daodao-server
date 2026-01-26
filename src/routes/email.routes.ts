@@ -470,7 +470,7 @@ router.post('/verification',
  */
 router.post('/welcome',
   authenticate,
-  requireAdmin,
+  // requireAdmin,
   validate(welcomeEmailSchema, 'body'),
   emailController.sendWelcomeEmail as RequestHandler
 );

@@ -13,6 +13,7 @@ import {
 } from '../../middleware/error.middleware';
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
+import { userService } from '../user.service';
 
 /**
  * 根據 email 查找用戶及其聯絡資訊
@@ -134,7 +135,7 @@ export const getUserRoles = async (userId: number): Promise<ApiResponse<any[]>> 
   }
 
   const roles = [];
-  
+
   // 添加主要角色
   if (user.roles) {
     roles.push(user.roles);
@@ -196,16 +197,22 @@ export const generateAuthToken = (payload: {
 };
 
 /**
- * 更新用戶最後登入時間
+ * 更新用戶最後登入時間和登入次數
+ * 委派給 userService 處理，避免重複實作
+ * @param userId 用戶 ID
+ * @param deviceInfo 可選的裝置資訊
  */
-export const updateLastLogin = async (userId: number): Promise<ApiResponse<{ success: boolean }>> => {
-  await prisma.users.update({
-    where: { id: userId },
-    data: {
-      updated_at: new Date()
-    }
-  });
-
+export const updateLastLogin = async (
+  userId: number,
+  deviceInfo?: {
+    deviceType?: string;
+    os?: string;
+    browser?: string;
+    userAgent?: string;
+    ipAddress?: string;
+  }
+): Promise<ApiResponse<{ success: boolean }>> => {
+  await userService.updateLastLogin(userId, deviceInfo);
   return createSuccessResponse({ success: true });
 };
 

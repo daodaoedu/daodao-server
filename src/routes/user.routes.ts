@@ -29,7 +29,10 @@ import {
   removeCustomIdResponseSchema,
   userPreferencesResponseSchema,
   updateUserPreferencesResponseSchema,
-  availablePreferencesResponseSchema
+  availablePreferencesResponseSchema,
+  loginHistoryResponseSchema,
+  userActivityStatsResponseSchema,
+  loginHistoryQuerySchema
 } from '../validators/user.validators';
 import {
   customIdSchema,
@@ -476,6 +479,79 @@ router.put('/me/preferences',
   authenticate,
   validate(updatePreferencesSchema, 'body'),
   userController.updateUserPreferences as RequestHandler
+);
+
+/**
+ * GET /api/v1/users/me/login-history - 獲取當前用戶的登入歷史
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/me/login-history',
+  tags: ['Me'],
+  summary: '獲取當前用戶的登入歷史',
+  description: '獲取當前用戶的登入歷史記錄，包含裝置和時間資訊',
+  request: {
+    query: loginHistoryQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取登入歷史',
+      content: {
+        'application/json': {
+          schema: loginHistoryResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /users/me/login-history
+ * 獲取當前用戶的登入歷史
+ * 查詢參數：limit - 限制返回數量（預設 10）
+ * 需要身份驗證
+ */
+router.get('/me/login-history',
+  authenticate,
+  validate(loginHistoryQuerySchema, 'query'),
+  userController.getLoginHistory as RequestHandler
+);
+
+/**
+ * GET /api/v1/users/me/activity-stats - 獲取當前用戶的活躍統計
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/me/activity-stats',
+  tags: ['Me'],
+  summary: '獲取當前用戶的活躍統計',
+  description: '獲取當前用戶的活躍狀態統計，包含登入次數、最後活動時間等',
+  responses: {
+    200: {
+      description: '成功獲取活躍統計',
+      content: {
+        'application/json': {
+          schema: userActivityStatsResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /users/me/activity-stats
+ * 獲取當前用戶的活躍統計
+ * 需要身份驗證
+ */
+router.get('/me/activity-stats',
+  authenticate,
+  userController.getActivityStats as RequestHandler
 );
 
 /**

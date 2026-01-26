@@ -79,19 +79,23 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   let userPermissions: Array<{ name: string }> = [];
 
   if (!isTemp && id) {
+    // 分開 try-catch，確保 roles 和 permissions 獨立獲取
     try {
       const rolesResponse = await authService.getUserRoles(id);
-      const permissionsResponse = await authService.getUserPermissions(id);
-
       if (rolesResponse.success) {
         userRoles = rolesResponse.data;
       }
+    } catch (error) {
+      console.error('Failed to fetch user roles:', error);
+    }
+
+    try {
+      const permissionsResponse = await authService.getUserPermissions(id);
       if (permissionsResponse.success) {
         userPermissions = permissionsResponse.data;
       }
     } catch (error) {
-      console.error('Failed to fetch user roles/permissions:', error);
-      // 繼續執行，但不會有權限
+      console.error('Failed to fetch user permissions:', error);
     }
   }
 

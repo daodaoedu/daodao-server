@@ -83,3 +83,134 @@ export interface ExportData {
   filename: string;
   mimeType: string;
 }
+
+/**
+ * DAU/WAU/MAU 統計資料
+ */
+export interface ActiveUsersStats {
+  dau: number;           // 日活躍用戶數
+  wau: number;           // 週活躍用戶數
+  mau: number;           // 月活躍用戶數
+  dauRate: number;       // DAU 佔總用戶比例
+  wauRate: number;       // WAU 佔總用戶比例
+  mauRate: number;       // MAU 佔總用戶比例
+  totalUsers: number;    // 總用戶數
+  trend?: {
+    dauTrend: number;    // DAU 較昨日變化百分比
+    wauTrend: number;    // WAU 較上週變化百分比
+    mauTrend: number;    // MAU 較上月變化百分比
+  };
+}
+
+/**
+ * 裝置統計資料
+ */
+export interface DeviceStats {
+  deviceType: string | null;
+  count: number;
+  percentage: number;
+}
+
+/**
+ * 瀏覽器統計資料
+ */
+export interface BrowserStats {
+  browser: string | null;
+  count: number;
+  percentage: number;
+}
+
+/**
+ * 作業系統統計資料
+ */
+export interface OsStats {
+  os: string | null;
+  count: number;
+  percentage: number;
+}
+
+/**
+ * 裝置分析完整資料
+ */
+export interface DeviceAnalytics {
+  devices: DeviceStats[];
+  browsers: BrowserStats[];
+  operatingSystems: OsStats[];
+  totalLogins: number;
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+}
+
+/**
+ * 用戶留存率資料
+ */
+export interface RetentionData {
+  cohortDate: string;      // 群組日期
+  cohortSize: number;      // 群組大小（當天新註冊用戶數）
+  retentionByDay: {
+    day: number;           // 第 N 天
+    retainedUsers: number; // 留存用戶數
+    retentionRate: number; // 留存率
+  }[];
+}
+
+/**
+ * 留存率統計
+ */
+export interface RetentionStats {
+  cohorts: RetentionData[];
+  averageRetention: {
+    day1: number;
+    day7: number;
+    day14: number;
+    day30: number;
+  };
+}
+
+/**
+ * 熱門用戶檔案資料
+ */
+export interface PopularProfile {
+  userId: number;
+  externalId: string;
+  nickname: string | null;
+  photoUrl: string | null;
+  profileViews: number;
+  lastActiveAt: string | null;
+}
+
+/**
+ * 熱門檔案排行
+ */
+export interface PopularProfilesStats {
+  profiles: PopularProfile[];
+  totalCount: number;
+}
+
+/**
+ * 用戶活躍度標籤
+ */
+export type UserActivityLabel = 'highly_active' | 'active' | 'moderate' | 'inactive' | 'dormant';
+
+/**
+ * 用戶活躍度分類
+ */
+export interface UserActivitySegment {
+  label: UserActivityLabel;
+  displayName: string;
+  description: string;
+  userCount: number;
+  percentage: number;
+  criteria: string;
+}
+
+/**
+ * 用戶活躍度分類統計
+ */
+export interface UserActivitySegmentation {
+  segments: UserActivitySegment[];
+  totalUsers: number;
+  lastUpdated: string;
+}
