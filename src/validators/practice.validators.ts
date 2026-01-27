@@ -382,6 +382,16 @@ export const practiceCommentParamsSchema = z.object({
   }).int('Comment ID must be an integer').positive('Comment ID must be positive')
 });
 
+// 用戶實踐列表參數 Schema
+export const userPracticesParamsSchema = z.object({
+  userId: z.string().uuid('User ID must be a valid UUID').openapi({
+    description: '用戶外部 UUID',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  })
+}).openapi('UserPracticesParams', {
+  description: '用戶實踐列表路徑參數'
+});
+
 // 我的實踐查詢參數 Schema
 export const myPracticesQuerySchema = practiceQuerySchema.extend({
   status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all']).default('all')
@@ -403,6 +413,7 @@ export type ReactionRequest = z.infer<typeof reactionSchema>;
 export type PracticeParamsRequest = z.infer<typeof practiceParamsSchema>;
 export type PracticeCommentParamsRequest = z.infer<typeof practiceCommentParamsSchema>;
 export type MyPracticesQueryParams = z.infer<typeof myPracticesQuerySchema>;
+export type UserPracticesParamsRequest = z.infer<typeof userPracticesParamsSchema>;
 
 // 驗證函數
 export const validateCreatePractice = (data: unknown): CreatePracticeRequest => createPracticeSchema.parse(data);
@@ -418,6 +429,7 @@ export const validateReaction = (data: unknown): ReactionRequest => reactionSche
 export const validatePracticeParams = (data: unknown): PracticeParamsRequest => practiceParamsSchema.parse(data);
 export const validatePracticeCommentParams = (data: unknown): PracticeCommentParamsRequest => practiceCommentParamsSchema.parse(data);
 export const validateMyPracticesQuery = (data: unknown): MyPracticesQueryParams => myPracticesQuerySchema.parse(data);
+export const validateUserPracticesParams = (data: unknown): UserPracticesParamsRequest => userPracticesParamsSchema.parse(data);
 
 // ===== Response Validation Schemas =====
 // These schemas validate API response data to ensure consistency
@@ -870,6 +882,7 @@ export const practiceValidators = {
   // 參數 schemas
   practiceParamsSchema,
   practiceCommentParamsSchema,
+  userPracticesParamsSchema,
 
   // 子組件 schemas
   practiceResourceInputSchema,

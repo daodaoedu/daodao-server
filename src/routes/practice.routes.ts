@@ -13,6 +13,7 @@ import {
   practiceQuerySchema,
   myPracticesQuerySchema,
   practiceParamsSchema,
+  userPracticesParamsSchema,
   createPracticeSchema,
   updatePracticeSchema,
   checkInSchema,
@@ -138,6 +139,34 @@ registry.registerPath({
         }
       }
     },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/user/{userId} - 取得指定用戶的實踐列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/user/{userId}',
+  tags: ['Practice'],
+  summary: '取得指定用戶的實踐列表',
+  description: '取得指定用戶的實踐活動列表，支援分頁、搜尋和過濾。公開存取。',
+  request: {
+    params: userPracticesParamsSchema,
+    query: practiceQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取用戶實踐列表',
+      content: {
+        'application/json': {
+          schema: practicesListApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
@@ -624,6 +653,19 @@ router.get('/templates',
  */
 router.get('/templates/:id',
   practiceController.getTemplateById as RequestHandler);
+
+/**
+ * GET /practices/user/:userId
+ * 取得指定用戶的實踐列表
+ * 路徑參數：userId - 用戶外部 UUID
+ * 查詢參數：page, limit, search, status, sortBy, sortOrder
+ * 公開存取
+ * 注意：必須在 /:id 之前定義，否則 'user' 會被當作 :id 參數
+ */
+router.get('/user/:userId',
+  validate(userPracticesParamsSchema, 'params'),
+  validate(practiceQuerySchema, 'query'),
+  practiceController.getUserPractices as RequestHandler);
 
 /**
  * GET /practices/:id
