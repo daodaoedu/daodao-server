@@ -12306,6 +12306,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/practices/user/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得指定用戶的實踐列表
+         * @description 取得指定用戶的實踐活動列表，支援分頁、搜尋和過濾。公開存取。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                    query?: string;
+                    contentType?: string;
+                    tags?: string;
+                    userId?: string;
+                    status?: "draft" | "not_started" | "active" | "completed" | "archived" | "all";
+                    sort?: "createdAt" | "updatedAt" | "likeCount";
+                    order?: "asc" | "desc";
+                    include?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description 用戶外部 UUID */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功獲取用戶實踐列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description Array of paginated data items */
+                            data: components["schemas"]["PracticeEntity"][];
+                            /**
+                             * @description Pagination information
+                             * @example {
+                             *       "currentPage": 1,
+                             *       "totalPages": 5,
+                             *       "totalItems": 50,
+                             *       "itemsPerPage": 10,
+                             *       "hasNext": true,
+                             *       "hasPrev": false
+                             *     }
+                             * @example {
+                             *       "currentPage": 3,
+                             *       "totalPages": 8,
+                             *       "totalItems": 156,
+                             *       "itemsPerPage": 20,
+                             *       "hasNext": true,
+                             *       "hasPrev": true
+                             *     }
+                             */
+                            pagination: {
+                                /** @description Current page number (1-based) */
+                                currentPage: number;
+                                /** @description Total number of pages */
+                                totalPages: number;
+                                /** @description Total number of items across all pages */
+                                totalItems: number;
+                                /** @description Number of items per page */
+                                itemsPerPage: number;
+                                /** @description Whether there are more pages after current page */
+                                hasNext: boolean;
+                                /** @description Whether there are pages before current page */
+                                hasPrev: boolean;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/practices/{id}": {
         parameters: {
             query?: never;
