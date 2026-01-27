@@ -33801,6 +33801,353 @@
         }
       }
     },
+    "/api/v1/practices/user/{userId}": {
+      "get": {
+        "tags": [
+          "Practice"
+        ],
+        "summary": "取得指定用戶的實踐列表",
+        "description": "取得指定用戶的實踐活動列表，支援分頁、搜尋和過濾。公開存取。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "用戶外部 UUID",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "用戶外部 UUID",
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "query",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "contentType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "tags",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "userId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "not_started",
+                "active",
+                "completed",
+                "archived",
+                "all"
+              ],
+              "default": "active"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "updatedAt",
+                "likeCount"
+              ],
+              "default": "createdAt"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "required": false,
+            "name": "order",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "include",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取用戶實踐列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PracticeEntity"
+                      },
+                      "description": "Array of paginated data items"
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "currentPage": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "description": "Current page number (1-based)"
+                        },
+                        "totalPages": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total number of pages"
+                        },
+                        "totalItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total number of items across all pages"
+                        },
+                        "itemsPerPage": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "description": "Number of items per page"
+                        },
+                        "hasNext": {
+                          "type": "boolean",
+                          "description": "Whether there are more pages after current page"
+                        },
+                        "hasPrev": {
+                          "type": "boolean",
+                          "description": "Whether there are pages before current page"
+                        }
+                      },
+                      "required": [
+                        "currentPage",
+                        "totalPages",
+                        "totalItems",
+                        "itemsPerPage",
+                        "hasNext",
+                        "hasPrev"
+                      ],
+                      "description": "Pagination information",
+                      "examples": [
+                        {
+                          "currentPage": 1,
+                          "totalPages": 5,
+                          "totalItems": 50,
+                          "itemsPerPage": 10,
+                          "hasNext": true,
+                          "hasPrev": false
+                        },
+                        {
+                          "currentPage": 3,
+                          "totalPages": 8,
+                          "totalItems": 156,
+                          "itemsPerPage": 20,
+                          "hasNext": true,
+                          "hasPrev": true
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "pagination",
+                    "timestamp"
+                  ],
+                  "description": "Paginated response format for page-based pagination",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": 1,
+                          "title": "React 入門教程",
+                          "category": "前端開發",
+                          "createdAt": "2024-01-10T10:00:00Z"
+                        },
+                        {
+                          "id": 2,
+                          "title": "Vue.js 進階指南",
+                          "category": "前端開發",
+                          "createdAt": "2024-01-11T10:00:00Z"
+                        }
+                      ],
+                      "pagination": {
+                        "currentPage": 1,
+                        "totalPages": 5,
+                        "totalItems": 50,
+                        "itemsPerPage": 10,
+                        "hasNext": true,
+                        "hasPrev": false
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "searchTime": 45,
+                        "cacheHit": false,
+                        "categoryCounts": {
+                          "前端開發": 25,
+                          "後端開發": 18,
+                          "資料科學": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/practices/{id}": {
       "get": {
         "tags": [
