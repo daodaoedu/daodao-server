@@ -15,7 +15,7 @@ export const resetIdCounter = () => {
 export const createTestUser = (overrides: Partial<any> = {}) => {
   const id = overrides.id || getNextId();
   const nickname = overrides.nickname || faker.person.fullName();
-  
+
   return {
     id,
     external_id: overrides.external_id || faker.string.uuid(),
@@ -44,6 +44,17 @@ export const createTestUser = (overrides: Partial<any> = {}) => {
     custom_id: overrides.custom_id || null,
     custom_id_verified: overrides.custom_id_verified ?? false,
     custom_id_created_at: overrides.custom_id_created_at || null,
+    // New fields added to users table
+    professional_field: overrides.professional_field || null,
+    personal_slogan: overrides.personal_slogan || null,
+    referral_source: overrides.referral_source || null,
+    last_login_at: overrides.last_login_at || null,
+    last_active_at: overrides.last_active_at || null,
+    login_count: overrides.login_count ?? 0,
+    profile_views: overrides.profile_views ?? 0,
+    last_device_type: overrides.last_device_type || null,
+    last_os: overrides.last_os || null,
+    last_browser: overrides.last_browser || null,
     ...overrides
   };
 };
@@ -51,7 +62,7 @@ export const createTestUser = (overrides: Partial<any> = {}) => {
 // User with relations for service tests
 export const createTestUserWithRelations = (overrides: Partial<any> = {}) => {
   const user = createTestUser(overrides);
-  
+
   const defaultContacts = {
     id: 1,
     google_id: 'google-123',
@@ -61,7 +72,12 @@ export const createTestUserWithRelations = (overrides: Partial<any> = {}) => {
     ig: null,
     discord: null,
     line: null,
-    fb: null
+    fb: null,
+    // New fields added to contacts table
+    threads: null,
+    linkedin: null,
+    github: null,
+    website: null
   };
 
   const defaultBasicInfo = {

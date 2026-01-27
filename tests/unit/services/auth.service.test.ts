@@ -10,6 +10,11 @@ import { prismaMock, mockResponses, PRISMA_ERRORS, mockPrismaError } from '@test
 import { createTestUser, createTestToken } from '@tests/utils/test-factories';
 import bcrypt from 'bcrypt';
 
+// Mock userService
+const mockUserService = {
+  updateLastLogin: jest.fn()
+};
+
 // Mock external dependencies
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: prismaMock
@@ -20,6 +25,10 @@ jest.mock('@/services/jwt.service', () => ({
   jwtService: {
     generateToken: jest.fn()
   }
+}));
+
+jest.mock('@/services/user.service', () => ({
+  userService: mockUserService
 }));
 
 // Import mocked modules
@@ -46,6 +55,11 @@ describe('Auth Service', () => {
     discord: null,
     line: null,
     fb: null,
+    // New fields added to contacts table
+    threads: null,
+    linkedin: null,
+    github: null,
+    website: null,
     users: [createTestUser({ id: 1 })],
     ...overrides
   });
@@ -129,11 +143,11 @@ describe('Auth Service', () => {
 
     it('should return existing temp user in success response', async () => {
       const existingTempUser = createTestTempUser();
-      prismaMock.temp_users.findUnique.mockResolvedValue(existingTempUser);
+      prismaMock.temp_users.findFirst.mockResolvedValue(existingTempUser);
 
       const result = await authService.findOrCreateTempUser(mockProfile);
 
-      expect(prismaMock.temp_users.findUnique).toHaveBeenCalledWith({
+      expect(prismaMock.temp_users.findFirst).toHaveBeenCalledWith({
         where: { google_id: 'google-123' }
       });
       expect(result.success).toBe(true);
@@ -143,18 +157,18 @@ describe('Auth Service', () => {
 
     it('should create new temp user when not found', async () => {
       const newTempUser = createTestTempUser();
-      
-      prismaMock.temp_users.findUnique
+
+      prismaMock.temp_users.findFirst
         .mockResolvedValueOnce(null) // googleId check
         .mockResolvedValueOnce(null); // email check
       prismaMock.temp_users.create.mockResolvedValue(newTempUser);
 
       const result = await authService.findOrCreateTempUser(mockProfile);
 
-      expect(prismaMock.temp_users.findUnique).toHaveBeenNthCalledWith(1, {
+      expect(prismaMock.temp_users.findFirst).toHaveBeenNthCalledWith(1, {
         where: { google_id: 'google-123' }
       });
-      expect(prismaMock.temp_users.findUnique).toHaveBeenNthCalledWith(2, {
+      expect(prismaMock.temp_users.findFirst).toHaveBeenNthCalledWith(2, {
         where: { email: 'temp@example.com' }
       });
       expect(prismaMock.temp_users.create).toHaveBeenCalledWith({
@@ -170,18 +184,18 @@ describe('Auth Service', () => {
     });
 
     it('should throw ConflictError when email already exists', async () => {
-      const existingByEmail = createTestTempUser({ 
+      const existingByEmail = createTestTempUser({
         google_id: 'different-id',
         email: 'temp@example.com'
       });
 
-      prismaMock.temp_users.findUnique
+      prismaMock.temp_users.findFirst
         .mockResolvedValueOnce(null) // googleId check
         .mockResolvedValueOnce(existingByEmail); // email check
 
       await expect(authService.findOrCreateTempUser(mockProfile))
         .rejects.toThrow('此電子郵件已被使用');
-      
+
       expect(prismaMock.temp_users.create).not.toHaveBeenCalled();
     });
 
@@ -199,7 +213,7 @@ describe('Auth Service', () => {
         photo_url: undefined
       });
 
-      prismaMock.temp_users.findUnique
+      prismaMock.temp_users.findFirst
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null);
       prismaMock.temp_users.create.mockResolvedValue(newTempUser);
@@ -219,7 +233,7 @@ describe('Auth Service', () => {
     });
 
     it('should handle database errors during creation', async () => {
-      prismaMock.temp_users.findUnique.mockResolvedValue(null);
+      prismaMock.temp_users.findFirst.mockResolvedValue(null);
       const dbError = mockPrismaError(PRISMA_ERRORS.UNIQUE_CONSTRAINT, 'Unique constraint violation');
       prismaMock.temp_users.create.mockRejectedValue(dbError);
 
@@ -346,6 +360,11 @@ describe('Auth Service', () => {
         {
           user_id: 1,
           permission_id: 1,
+          granted: true,
+          granted_at: new Date(),
+          granted_by: null,
+          expires_at: null,
+          notes: null,
           permissions: {
             id: 1,
             name: 'user:read',
@@ -355,6 +374,11 @@ describe('Auth Service', () => {
         {
           user_id: 1,
           permission_id: 2,
+          granted: true,
+          granted_at: new Date(),
+          granted_by: null,
+          expires_at: null,
+          notes: null,
           permissions: {
             id: 2,
             name: 'user:write',
@@ -469,24 +493,18 @@ describe('Auth Service', () => {
 
   describe('updateLastLogin', () => {
     it('should update user last login time and return success', async () => {
-      const mockUpdatedUser = createTestUser({ updated_at: new Date() });
-      prismaMock.users.update.mockResolvedValue(mockUpdatedUser);
+      mockUserService.updateLastLogin.mockResolvedValue(undefined);
 
       const result = await authService.updateLastLogin(1);
 
-      expect(prismaMock.users.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: {
-          updated_at: expect.any(Date)
-        }
-      });
+      expect(mockUserService.updateLastLogin).toHaveBeenCalledWith(1, undefined);
       expect(result.success).toBe(true);
       expect(result.data!.success).toBe(true);
     });
 
     it('should handle database errors during update', async () => {
-      const dbError = mockPrismaError(PRISMA_ERRORS.NOT_FOUND, 'User not found');
-      prismaMock.users.update.mockRejectedValue(dbError);
+      const dbError = new Error('User not found');
+      mockUserService.updateLastLogin.mockRejectedValue(dbError);
 
       await expect(authService.updateLastLogin(999))
         .rejects.toThrow('User not found');
@@ -632,6 +650,11 @@ describe('Auth Service', () => {
           {
             user_id: 1,
             permission_id: 1,
+            granted: true,
+            granted_at: new Date(),
+            granted_by: null,
+            expires_at: null,
+            notes: null,
             permissions: {
               id: 1,
               name: 'user:read',
