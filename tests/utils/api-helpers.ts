@@ -26,11 +26,12 @@ export const createAuthToken = (user: Partial<AuthUser> = {}) => {
     username: 'testuser',
     role: 'USER'
   };
-  
+
   const payload = { ...defaultUser, ...user };
+  // 使用與 setup.ts 一致的 secret
   return jwt.sign(
     payload,
-    process.env.JWT_SECRET || 'test-secret',
+    process.env.JWT_SECRET || 'test-secret-key-for-testing',
     { expiresIn: '1h' }
   );
 };
@@ -39,7 +40,7 @@ export const createAuthToken = (user: Partial<AuthUser> = {}) => {
 export const createRefreshToken = (userId: number) => {
   return jwt.sign(
     { userId, type: 'refresh' },
-    process.env.JWT_SECRET || 'test-secret',
+    process.env.JWT_SECRET || 'test-secret-key-for-testing',
     { expiresIn: '7d' }
   );
 };

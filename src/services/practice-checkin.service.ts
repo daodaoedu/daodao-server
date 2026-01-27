@@ -8,7 +8,7 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
-import { ConflictError, NotFoundError } from '../middleware/error.middleware';
+import { ConflictError, NotFoundError, InternalServerError } from '../middleware/error.middleware';
 import {
   CheckInEntity,
   CheckInResponseWithEncouragement,
@@ -150,12 +150,12 @@ export async function createCheckIn(
 
           if (shiftResult.needsShift) {
             practiceUpdateData.start_date = shiftResult.newStartDate;
-            // 如果有 end_date 欄位，也更新它
-            // practiceUpdateData.end_date = shiftResult.newEndDate;
+            practiceUpdateData.end_date = shiftResult.newEndDate;
             loggerService.info('Practice dates shifted due to early check-in', {
               practiceId,
               originalStart: practice.start_date,
               newStart: shiftResult.newStartDate,
+              newEnd: shiftResult.newEndDate,
               shiftDays: shiftResult.shiftDays
             });
           }
@@ -171,17 +171,15 @@ export async function createCheckIn(
 
     // 使用交易確保資料一致性
     const [checkIn] = await prismaClient.$transaction([
-      // 建立簽到記錄（不再需要 progress_amount）
+      // 建立簽到記錄
       prismaClient.practice_checkins.create({
         data: {
           practice_id: practiceId,
           user_id: userId,
           checkin_date: today,
-          progress_amount: 0, // 不再使用，保留為 0
-          note: data.note,
           mood: data.mood,
-          reflection_text: data.reflectionText,
-          cumulative_progress: newCheckInCount // 使用打卡次數作為累積進度
+          note: data.note,
+          image_urls: data.imageUrls || []
         },
         include: {
           practices: {
@@ -205,18 +203,13 @@ export async function createCheckIn(
       id: checkIn.id,
       practiceId: checkIn.practice_id,
       userId: checkIn.user_id,
-      checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
-      progressAmount: 0, // 已移除此功能
-      unit: undefined,
-      note: checkIn.note || undefined,
+      checkinDate: checkIn.checkin_date.toISOString().split('T')[0],
       mood: checkIn.mood as CheckInMood,
-      reflectionText: checkIn.reflection_text || undefined,
-      relatedResourceId: undefined,
-      streakDay: streakInfo.newStreak,
-      cumulativeProgress: newCheckInCount,
-      createdAt: checkIn.created_at?.toISOString() || '',
+      note: checkIn.note || undefined,
+      imageUrls: checkIn.image_urls || [],
+      createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString(),
-      // 新增欄位
+      // 擴展欄位
       encouragement,
       practiceProgressPercentage: progressResult.percentage,
       practiceStatus: newStatus as PracticeStatus,
@@ -315,16 +308,11 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       id: checkIn.id,
       practiceId: checkIn.practice_id,
       userId: checkIn.user_id,
-      checkInDate: checkIn.checkin_date.toISOString().split('T')[0],
-      progressAmount: Number(checkIn.progress_amount),
-      unit: undefined, // Field doesn't exist in DB
-      note: checkIn.note || undefined,
+      checkinDate: checkIn.checkin_date.toISOString().split('T')[0],
       mood: checkIn.mood as CheckInMood,
-      reflectionText: checkIn.reflection_text || undefined,
-      relatedResourceId: undefined, // Field doesn't exist in DB
-      streakDay: 1, // Field doesn't exist in DB - would need calculation
-      cumulativeProgress: Number(checkIn.cumulative_progress),
-      createdAt: checkIn.created_at?.toISOString() || '',
+      note: checkIn.note || undefined,
+      imageUrls: checkIn.image_urls || [],
+      createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString()
     }));
 
@@ -347,7 +335,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
 
   } catch (error) {
     loggerService.error('Failed to retrieve check-ins', { practiceId, error });
-    throw new Error('取得簽到記錄失敗');
+    throw new InternalServerError('取得簽到記錄失敗');
   }
 }
 
@@ -438,7 +426,7 @@ export async function updatePracticeProgress(
 
   } catch (error) {
     loggerService.error('Failed to update practice', { practiceId, updates, error });
-    throw new Error('更新實踐失敗');
+    throw new InternalServerError('更新實踐失敗');
   }
 }
 
@@ -477,7 +465,6 @@ export async function getCheckInStats(practiceId: number, userId: number): Promi
   totalCheckIns: number;
   currentStreak: number;
   maxStreak: number;
-  averageProgress: number;
   lastCheckInDate?: string;
 }> {
   try {
@@ -487,7 +474,6 @@ export async function getCheckInStats(practiceId: number, userId: number): Promi
         user_id: userId
       },
       _count: { id: true },
-      _avg: { progress_amount: true },
       _max: { checkin_date: true }
     });
 
@@ -500,13 +486,12 @@ export async function getCheckInStats(practiceId: number, userId: number): Promi
       totalCheckIns: checkInStats._count.id,
       currentStreak: streakInfo.newStreak, // Calculated from check-ins
       maxStreak: 0, // Field doesn't exist in DB - would need historical calculation
-      averageProgress: Number(checkInStats._avg.progress_amount) || 0,
       lastCheckInDate: checkInStats._max.checkin_date?.toISOString().split('T')[0]
     };
 
   } catch (error) {
     loggerService.error('Failed to get check-in stats', { practiceId, userId, error });
-    throw new Error('取得簽到統計失敗');
+    throw new InternalServerError('取得簽到統計失敗');
   }
 }
 
@@ -555,6 +540,6 @@ export async function getMonthlyCheckInCalendar(practiceId: number, userId: numb
 
   } catch (error) {
     loggerService.error('Failed to get monthly check-in calendar', { practiceId, userId, year, month, error });
-    throw new Error('取得月度簽到日曆失敗');
+    throw new InternalServerError('取得月度簽到日曆失敗');
   }
 }

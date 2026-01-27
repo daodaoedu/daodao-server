@@ -607,6 +607,25 @@ router.get('/stats',
   practiceController.getUserPracticeStats as RequestHandler);
 
 /**
+ * GET /practices/templates
+ * 取得實踐模板列表
+ * 公開存取
+ * 注意：必須在 /:id 之前定義，否則 'templates' 會被當作 :id 參數
+ */
+router.get('/templates',
+  validate(practiceTemplateQuerySchema, 'query'),
+  practiceController.getTemplates as RequestHandler);
+
+/**
+ * GET /practices/templates/:id
+ * 取得單一實踐模板
+ * 公開存取
+ * 注意：必須在 /:id 之前定義
+ */
+router.get('/templates/:id',
+  practiceController.getTemplateById as RequestHandler);
+
+/**
  * GET /practices/:id
  * 取得實踐詳情
  * 路徑參數：id - 實踐 ID
@@ -776,25 +795,8 @@ router.get('/:id/user-status',
   practiceController.getUserInteractionStatus as RequestHandler);
 
 // ============================================================================
-// 新增路由：模板、鼓勵句、引導句、封存功能
+// 封存功能
 // ============================================================================
-
-/**
- * GET /practices/templates
- * 取得實踐模板列表
- * 公開存取
- */
-router.get('/templates',
-  validate(practiceTemplateQuerySchema, 'query'),
-  practiceController.getTemplates as RequestHandler);
-
-/**
- * GET /practices/templates/:id
- * 取得單一實踐模板
- * 公開存取
- */
-router.get('/templates/:id',
-  practiceController.getTemplateById as RequestHandler);
 
 /**
  * POST /practices/:id/archive

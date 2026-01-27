@@ -353,22 +353,22 @@ model post {
   @@index([project_id, status], map: "idx_posts_project_status")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// 主題實踐打卡記錄表
+/// CHECK 約束說明（需在資料庫層手動維護）:
+/// - mood: CHECK ("mood" IN ('give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy'))
+/// - image_urls: CHECK (array_length("image_urls", 1) <= 3 OR "image_urls" IS NULL)
 model practice_checkins {
-  id                  Int       @id @default(autoincrement())
-  practice_id         Int
-  user_id             Int
-  checkin_date        DateTime  @db.Date
-  progress_amount     Decimal   @db.Decimal(10, 2)
-  note                String?
-  mood                String?   @db.VarChar(20)
-  reflection_text     String?
-  image_urls          String[]
-  cumulative_progress Decimal   @db.Decimal(10, 2)
-  created_at          DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime? @db.Timestamptz(6)
-  practices           practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           Int       @id @default(autoincrement())
+  practice_id  Int
+  user_id      Int
+  checkin_date DateTime  @db.Date
+  mood         String?   @db.VarChar(20) /// 允許值: give_up, frustrated, bored, neutral, good, happy
+  note         String?   @db.VarChar(300) /// 詳細描述（最多300字）
+  image_urls   String[] /// 打卡圖片 URL，最多 3 張
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @db.Timestamptz(6)
+  practices    practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([practice_id, checkin_date])
   @@index([checkin_date], map: "idx_practice_checkins_date")
