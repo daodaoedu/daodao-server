@@ -68,7 +68,7 @@ export const generateMarathonEmail = (data: MarathonEmailData): EmailTemplateCon
       <tr>
         <td style="padding-bottom: 24px;">
           <p style="margin: 0 0 12px 0; font-size: 14px; color: ${EMAIL_COLORS.textSecondary}; line-height: 175%;">
-            若有任何疑問歡迎 email 至 <a href="mailto:contact@daoedu.tw" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: none;">contact@daoedu.tw</a>
+            若有任何疑問歡迎 email 至 <a href="mailto:contact@daodao.so" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: none;">contact@daodao.so</a>
           </p>
         </td>
       </tr>

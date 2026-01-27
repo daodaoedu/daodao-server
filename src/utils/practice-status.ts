@@ -1,0 +1,209 @@
+/**
+ * Practice 狀態流轉管理
+ *
+ * 狀態流程：
+ * draft → not_started → active → completed
+ *           ↓            ↓          ↓
+ *        archived ← archived ← archived
+ *
+ * @see docs/practice-mvp/backend-implementation-plan.md
+ */
+
+/**
+ * 實踐狀態類型
+ *
+ * @see FRD 狀態定義：
+ * - draft: 草稿（建立流程未完成）
+ * - not_started: 未開始（已建立但未開始打卡）
+ * - active: 進行中（已有打卡記錄）
+ * - completed: 完成（到達結束日）
+ * - archived: 封存（使用者手動封存）
+ */
+export type PracticeStatusType =
+  | 'draft'
+  | 'not_started'
+  | 'active'
+  | 'completed'
+  | 'archived';
+
+/**
+ * 狀態流轉上下文
+ */
+export interface StatusTransitionContext {
+  /** 當前狀態 */
+  currentStatus: PracticeStatusType;
+  /** 是否有打卡記錄 */
+  hasCheckIns: boolean;
+  /** 是否達成目標 */
+  hasReachedTarget: boolean;
+  /** 是否手動封存 */
+  isArchiving?: boolean;
+  /** 是否取消封存 */
+  isUnarchiving?: boolean;
+  /** 封存前的狀態（用於取消封存） */
+  previousStatus?: PracticeStatusType;
+}
+
+/**
+ * 狀態優先順序（用於排序和比較）
+ */
+export const STATUS_PRIORITY: Record<PracticeStatusType, number> = {
+  draft: 0,
+  not_started: 1,
+  active: 2,
+  completed: 3,
+  archived: 4,
+} as const;
+
+/**
+ * 有效的狀態轉換映射
+ */
+export const VALID_TRANSITIONS: Record<PracticeStatusType, PracticeStatusType[]> = {
+  draft: ['not_started', 'archived'],
+  not_started: ['active', 'archived'],
+  active: ['completed', 'archived'],
+  completed: ['archived'],
+  archived: ['not_started', 'active', 'completed'], // 取消封存可回到之前狀態
+} as const;
+
+/**
+ * 判斷狀態轉換是否有效
+ *
+ * @param from 來源狀態
+ * @param to 目標狀態
+ * @returns 是否允許轉換
+ */
+export function isValidTransition(
+  from: PracticeStatusType,
+  to: PracticeStatusType
+): boolean {
+  if (from === to) {
+    return true; // 相同狀態視為有效
+  }
+
+  const validTargets = VALID_TRANSITIONS[from];
+  return validTargets?.includes(to) ?? false;
+}
+
+/**
+ * 根據上下文決定新狀態
+ *
+ * @param ctx 狀態轉換上下文
+ * @returns 新狀態
+ */
+export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatusType {
+  const { currentStatus, hasCheckIns, hasReachedTarget, isArchiving, isUnarchiving, previousStatus } = ctx;
+
+  // 手動封存
+  if (isArchiving) {
+    return 'archived';
+  }
+
+  // 取消封存：回到之前的狀態
+  if (isUnarchiving && currentStatus === 'archived') {
+    if (previousStatus && previousStatus !== 'archived') {
+      return previousStatus;
+    }
+    // 根據是否有打卡記錄決定回到哪個狀態
+    return hasCheckIns ? 'active' : 'not_started';
+  }
+
+  // 達成目標
+  if (hasReachedTarget && currentStatus !== 'archived') {
+    return 'completed';
+  }
+
+  // 首次打卡：not_started → active
+  if (hasCheckIns && currentStatus === 'not_started') {
+    return 'active';
+  }
+
+  // 保持當前狀態
+  return currentStatus;
+}
+
+/**
+ * 取得狀態的顯示名稱
+ *
+ * @param status 狀態
+ * @param locale 語言（預設繁體中文）
+ * @returns 顯示名稱
+ */
+export function getStatusDisplayName(
+  status: PracticeStatusType,
+  locale: 'zh-TW' | 'en' = 'zh-TW'
+): string {
+  const names: Record<PracticeStatusType, Record<'zh-TW' | 'en', string>> = {
+    draft: { 'zh-TW': '草稿', en: 'Draft' },
+    not_started: { 'zh-TW': '未開始', en: 'Not Started' },
+    active: { 'zh-TW': '進行中', en: 'Active' },
+    completed: { 'zh-TW': '已完成', en: 'Completed' },
+    archived: { 'zh-TW': '已封存', en: 'Archived' },
+  };
+
+  return names[status]?.[locale] ?? status;
+}
+
+/**
+ * 判斷狀態是否為終態
+ *
+ * @param status 狀態
+ * @returns 是否為終態
+ */
+export function isTerminalStatus(status: PracticeStatusType): boolean {
+  return status === 'completed' || status === 'archived';
+}
+
+/**
+ * 判斷狀態是否允許打卡
+ *
+ * @param status 狀態
+ * @returns 是否允許打卡
+ */
+export function canCheckIn(status: PracticeStatusType): boolean {
+  return status === 'not_started' || status === 'active';
+}
+
+/**
+ * 判斷狀態是否允許編輯
+ *
+ * @param status 狀態
+ * @returns 是否允許編輯
+ */
+export function canEdit(status: PracticeStatusType): boolean {
+  return status !== 'archived';
+}
+
+/**
+ * 判斷狀態是否允許刪除
+ *
+ * @param status 狀態
+ * @returns 是否允許刪除（軟刪除/封存）
+ */
+export function canDelete(status: PracticeStatusType): boolean {
+  return status !== 'archived';
+}
+
+/**
+ * 驗證狀態值是否有效
+ *
+ * @param status 狀態值
+ * @returns 是否為有效狀態
+ */
+export function isValidStatus(status: string): status is PracticeStatusType {
+  return ['draft', 'not_started', 'active', 'completed', 'archived'].includes(status);
+}
+
+/**
+ * 狀態轉換錯誤
+ */
+export class StatusTransitionError extends Error {
+  constructor(
+    public readonly from: PracticeStatusType,
+    public readonly to: PracticeStatusType,
+    message?: string
+  ) {
+    super(message ?? `無效的狀態轉換：${from} → ${to}`);
+    this.name = 'StatusTransitionError';
+  }
+}
