@@ -40,7 +40,6 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       page: params.page,
       limit: params.limit,
       search: params.search,
-      contentType: params.contentType,
       status: params.status,
       sortBy: params.sortBy as 'createdAt' | 'updatedAt' | 'likeCount',
       sortOrder: params.sortOrder,
@@ -51,25 +50,27 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       throw new Error('Failed to fetch practices');
     }
 
-    // Transform to match MyPracticeItem interface
+    // Transform to match MyPracticeItem interface (基於新的 DB schema)
     const practices: MyPracticeItem[] = result.data.map(practice => ({
       id: practice.id,
       title: practice.title,
-      contentType: practice.contentType,
-      customContentType: practice.customContentType,
-      totalAmount: practice.totalAmount,
-      currentProgress: practice.currentProgress,
+      practiceAction: practice.practiceAction,
       startDate: practice.startDate,
+      endDate: practice.endDate,
+      durationDays: practice.durationDays,
+      frequencyMinDays: practice.frequencyMinDays,
+      frequencyMaxDays: practice.frequencyMaxDays,
+      frequencyDescription: practice.frequencyDescription,
+      sessionDurationMinutes: practice.sessionDurationMinutes,
+      practiceTimePeriods: practice.practiceTimePeriods,
+      otherContext: practice.otherContext,
       status: practice.status,
-      streak: practice.streak,
-      maxStreak: practice.maxStreak,
-      lastCheckInDate: practice.lastCheckInDate,
+      hasResources: practice.hasResources,
+      progressPercentage: practice.progressPercentage,
+      firstCheckinAt: practice.firstCheckinAt,
       createdAt: practice.createdAt,
       updatedAt: practice.updatedAt,
-      dailyGoal: practice.dailyGoal,
-      tags: practice.tags,
-      practiceAction: practice.practiceAction,
-      hasResources: practice.hasResources
+      tags: practice.tags
     }));
 
     loggerService.info('User practices retrieved', { 
@@ -452,20 +453,26 @@ const getTimeStats = async (_userId: number, _timeRange: string): Promise<{ toda
 };
 
 const getProgressStats = async (userId: number): Promise<{ averageProgress: number }> => {
-  // Note: current_progress field doesn't exist in practices schema
-  // Progress is calculated from check-ins
-  const result = await prisma.practice_checkins.aggregate({
+  // 進度改用打卡次數計算
+  const result = await prisma.practice_checkins.count({
     where: {
       user_id: userId,
       practices: {
         status: { not: 'archived' }
       }
-    },
-    _avg: { cumulative_progress: true }
+    }
+  });
+
+  // 計算每個 practice 的平均打卡次數
+  const practiceCount = await prisma.practices.count({
+    where: {
+      user_id: userId,
+      status: { not: 'archived' }
+    }
   });
 
   return {
-    averageProgress: Math.round(Number(result._avg?.cumulative_progress) || 0)
+    averageProgress: practiceCount > 0 ? Math.round(result / practiceCount) : 0
   };
 };
 

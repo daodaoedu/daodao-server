@@ -7,6 +7,7 @@
 
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
+import { NotFoundError, BadRequestError, InternalServerError } from '../middleware/error.middleware';
 import {
   ViewEventRequest,
   ClickEventRequest,
@@ -33,7 +34,7 @@ export async function recordViewEvent(data: ViewEventRequest, userId: number): P
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // 記錄瀏覽事件（暫時只記錄日誌）
@@ -66,7 +67,7 @@ export async function recordClickEvent(data: ClickEventRequest, userId: number):
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // 記錄點擊事件（暫時只記錄日誌）
@@ -100,7 +101,7 @@ export async function recordShareEvent(data: ShareEventRequest, userId: number):
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // 記錄分享事件（暫時只記錄日誌）
@@ -133,7 +134,7 @@ export async function recordFavoriteEvent(data: FavoriteEventRequest, userId: nu
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // 新增收藏記錄（暫時只記錄日誌）
@@ -164,7 +165,7 @@ export async function removeFavoriteEvent(entityId: number, entityType: string, 
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // 移除收藏記錄（暫時只記錄日誌）
@@ -215,7 +216,7 @@ export async function recordBatchEvents(
             await recordFavoriteEvent(event.data as FavoriteEventRequest, userId);
             break;
           default:
-            throw new Error(`不支援的事件類型: ${event.type}`);
+            throw new BadRequestError(`不支援的事件類型: ${event.type}`);
         }
         successCount++;
       } catch (error) {
@@ -239,7 +240,7 @@ export async function recordBatchEvents(
 
   } catch (error) {
     loggerService.error('Failed to process batch events', { userId, events: events.length, error });
-    throw new Error('批量處理事件失敗');
+    throw new InternalServerError('批量處理事件失敗');
   }
 }
 
@@ -320,7 +321,7 @@ export async function getEventStats(entityId: number, entityType = 'practice'): 
 
   } catch (error) {
     loggerService.error('Failed to get event stats', { entityId, entityType, error });
-    throw new Error('取得事件統計失敗');
+    throw new InternalServerError('取得事件統計失敗');
   }
 }
 
@@ -440,6 +441,6 @@ export async function getUserEventHistory(
 
   } catch (error) {
     loggerService.error('Failed to get user event history', { userId, params, error });
-    throw new Error('取得使用者事件歷史失敗');
+    throw new InternalServerError('取得使用者事件歷史失敗');
   }
 }

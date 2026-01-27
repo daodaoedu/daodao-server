@@ -19,83 +19,12 @@ export const practiceStatusSchema = z.enum(['draft', 'not_started', 'active', 'c
   examples: ['draft', 'not_started', 'active', 'completed', 'archived']
 });
 
-export const contentTypeSchema = z.enum(['book', 'video', 'articles', 'podcast', 'course', 'custom']).openapi({
-  description: '內容類型 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自定義)',
-  example: 'book',
-  examples: ['book', 'video', 'articles', 'podcast', 'course', 'custom']
+// 實踐時段 Schema
+export const practiceTimePeriodSchema = z.enum(['morning', 'afternoon', 'evening', 'night']).openapi({
+  description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)',
+  example: 'morning',
+  examples: ['morning', 'afternoon', 'evening', 'night']
 });
-
-export const dailyGoalTypeSchema = z.enum(['time', 'completion']).openapi({
-  description: '每日目標類型 (time: 時間目標, completion: 完成目標)',
-  example: 'time',
-  examples: ['time', 'completion']
-});
-
-// 每日目標 Schema
-export const dailyGoalSchema = z.object({
-  type: dailyGoalTypeSchema,
-  timeMinutes: z.number({
-    message: 'Time minutes must be a number'
-  })
-    .min(5, '時間目標最少5分鐘')
-    .max(240, '時間目標最多240分鐘')
-    .optional()
-    .openapi({
-      description: '每日時間目標（分鐘）',
-      example: 60,
-      examples: [30, 60, 90, 120]
-    }),
-  amount: z.number({
-    message: 'Amount must be a number'
-  })
-    .min(1, '數量目標最少1')
-    .max(100, '數量目標最多100')
-    .optional()
-    .openapi({
-      description: '每日數量目標',
-      example: 3,
-      examples: [1, 3, 5, 10]
-    }),
-  unit: z.string()
-    .max(10, '單位不能超過10字符')
-    .optional()
-    .openapi({
-      description: '數量單位',
-      example: '章',
-      examples: ['章', '頁', '集', '篇']
-    })
-}).openapi('DailyGoal', {
-  description: '每日學習目標設定',
-  example: {
-    type: 'time',
-    timeMinutes: 60
-  },
-  examples: [
-    {
-      type: 'time',
-      timeMinutes: 60
-    },
-    {
-      type: 'completion',
-      amount: 3,
-      unit: '章'
-    }
-  ]
-}).refine(data => {
-  if (data.type === 'time' && !data.timeMinutes) {
-    return false;
-  }
-  if (data.type === 'completion' && (!data.amount || !data.unit)) {
-    return false;
-  }
-  return true;
-}, {
-  message: '時間類型需要timeMinutes，完成類型需要amount和unit',
-  path: ['type']
-});
-
-// 註冊 DailyGoal 為可重用組件
-registry.register('DailyGoal', dailyGoalSchema);
 
 // 實踐資源 Schema (用於創建)
 export const practiceResourceInputSchema = z.object({
@@ -163,70 +92,113 @@ export const practiceResourceSchema = z.object({
 // 註冊 PracticeResource
 registry.register('PracticeResource', practiceResourceSchema);
 
-// 創建實踐請求 Schema
+// 創建實踐請求 Schema - 基於 Prisma schema practices 表
 export const createPracticeSchema = z.object({
   title: z.string({ message: '請輸入標題' })
     .min(1, '請輸入標題')
     .max(100, '標題不可超過100字')
     .openapi({
       description: '實踐活動標題',
-      example: '學習 React Hooks',
-      examples: ['學習 React Hooks', '閱讀《深入理解計算機系統》', '練習 JavaScript 算法']
+      example: '每日閱讀 30 分鐘',
+      examples: ['每日閱讀 30 分鐘', '學習 React Hooks', '每天運動 20 分鐘']
     }),
-  contentType: contentTypeSchema,
-  customContentType: z.string()
-    .max(50, '自定義內容類型不可超過50字')
-    .optional()
-    .openapi({
-      description: '自定義內容類型（當選擇 custom 時使用）',
-      example: '程式設計練習',
-      examples: ['程式設計練習', '語言學習', '技術文檔']
-    }),
-  totalAmount: z.number({
-    message: '總量必須是數字'
-  })
-    .min(1, '總量必須大於0')
-    .max(10000, '總量不可超過10000')
-    .openapi({
-      description: '學習內容的總量（如總頁數、總章節數等）',
-      example: 300,
-      examples: [300, 12, 50, 100]
-    }),
-  startDate: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD')
-    .optional()
-    .openapi({
-      description: '實踐開始日期',
-      example: '2024-01-15',
-      examples: ['2024-01-15', '2024-03-01', '2024-06-01'],
-      format: 'date'
-    }),
-  dailyGoal: dailyGoalSchema,
   practiceAction: z.string()
     .max(200, '實踐行動描述不可超過200字')
     .optional()
     .openapi({
       description: '具體的實踐行動描述',
-      example: '每天閱讀並做筆記',
-      examples: ['每天閱讀並做筆記', '觀看影片並實作練習', '完成課後習題']
+      example: '閱讀技術書籍或文章',
+      examples: ['閱讀技術書籍或文章', '完成線上課程一個章節', '跑步或健身']
     }),
-  tags: z.array(z.string().min(1).max(50))
-    .max(3, '標籤最多3個')
+  startDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '實踐開始日期（不可超過 14 天後）',
+      example: '2024-01-15',
+      examples: ['2024-01-15', '2024-03-01', '2024-06-01'],
+      format: 'date'
+    }),
+  durationDays: z.number({
+    message: '持續天數必須是數字'
+  })
+    .int('持續天數必須是整數')
+    .min(7, '持續天數最少 7 天')
+    .max(90, '持續天數最多 90 天')
+    .optional()
+    .openapi({
+      description: '實踐持續天數',
+      example: 14,
+      examples: [7, 14, 21, 30]
+    }),
+  frequencyMinDays: z.number({
+    message: '最低頻率必須是數字'
+  })
+    .int('最低頻率必須是整數')
+    .min(1, '最低頻率最少 1 天')
+    .max(7, '最低頻率最多 7 天')
+    .optional()
+    .openapi({
+      description: '每週最低打卡天數',
+      example: 4,
+      examples: [1, 3, 4, 5]
+    }),
+  frequencyMaxDays: z.number({
+    message: '最高頻率必須是數字'
+  })
+    .int('最高頻率必須是整數')
+    .min(1, '最高頻率最少 1 天')
+    .max(7, '最高頻率最多 7 天')
+    .optional()
+    .openapi({
+      description: '每週最高打卡天數',
+      example: 7,
+      examples: [5, 6, 7]
+    }),
+  sessionDurationMinutes: z.number({
+    message: '每次時長必須是數字'
+  })
+    .int('每次時長必須是整數')
+    .min(5, '每次時長最少 5 分鐘')
+    .max(240, '每次時長最多 240 分鐘')
+    .optional()
+    .openapi({
+      description: '每次實踐時長（分鐘）',
+      example: 30,
+      examples: [15, 30, 60, 90]
+    }),
+  practiceTimePeriods: z.array(practiceTimePeriodSchema)
+    .max(4, '最多選擇 4 個時段')
     .default([])
     .openapi({
-      description: '相關標籤（最多3個）',
-      example: ['JavaScript', '前端'],
+      description: '偏好實踐時段',
+      example: ['morning', 'evening'],
+      examples: [['morning'], ['afternoon', 'evening'], ['morning', 'night']]
+    }),
+  otherContext: z.string()
+    .max(500, '其他說明不可超過 500 字')
+    .optional()
+    .openapi({
+      description: '其他補充說明',
+      example: '希望養成每天閱讀的習慣'
+    }),
+  tags: z.array(z.string().min(1).max(50))
+    .max(3, '標籤最多 3 個')
+    .default([])
+    .openapi({
+      description: '相關標籤（最多 3 個）',
+      example: ['閱讀', '學習'],
       examples: [
-        ['JavaScript', '前端'],
-        ['React', 'Hooks', '實戰'],
-        ['算法', '資料結構']
+        ['閱讀', '學習'],
+        ['運動', '健康'],
+        ['程式', '前端', 'React']
       ]
     }),
   resources: z.array(practiceResourceInputSchema)
-    .max(5, '資源最多5個')
+    .max(5, '資源最多 5 個')
     .optional()
     .openapi({
-      description: '相關學習資源（最多5個）',
+      description: '相關學習資源（最多 5 個）',
       example: [{
         name: 'React 官方文檔',
         url: 'https://react.dev/'
@@ -235,41 +207,57 @@ export const createPracticeSchema = z.object({
 }).openapi('CreatePracticeRequest', {
   description: '創建實踐活動的請求資料',
   example: {
-    title: '學習 React Hooks',
-    contentType: 'course',
-    totalAmount: 20,
+    title: '每日閱讀 30 分鐘',
+    practiceAction: '閱讀技術書籍或文章',
     startDate: '2024-01-15',
-    dailyGoal: {
-      type: 'time',
-      timeMinutes: 60
-    },
-    practiceAction: '每天學習 1 小時的 React Hooks 課程並做實作練習',
-    tags: ['React', 'Hooks', '前端'],
-    resources: [{
-      name: 'React 官方文檔',
-      url: 'https://react.dev/'
-    }]
+    durationDays: 14,
+    frequencyMinDays: 4,
+    frequencyMaxDays: 7,
+    sessionDurationMinutes: 30,
+    practiceTimePeriods: ['morning', 'evening'],
+    tags: ['閱讀', '學習'],
+    resources: []
   }
 }).refine(data => {
-  if (data.contentType === 'custom' && !data.customContentType) {
-    return false;
+  // 驗證 frequencyMinDays <= frequencyMaxDays
+  if (data.frequencyMinDays && data.frequencyMaxDays) {
+    return data.frequencyMinDays <= data.frequencyMaxDays;
   }
   return true;
 }, {
-  message: '選擇自定義類型時，請填寫自定義內容類型',
-  path: ['customContentType']
+  message: '最低頻率不能大於最高頻率',
+  path: ['frequencyMinDays']
+}).refine(data => {
+  // 驗證 startDate 不能超過 14 天後
+  if (data.startDate) {
+    const startDate = new Date(data.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 14);
+    return startDate <= maxDate;
+  }
+  return true;
+}, {
+  message: '開始日期不能超過 14 天後',
+  path: ['startDate']
 });
 
 // 註冊 CreatePracticeRequest
 registry.register('CreatePracticeRequest', createPracticeSchema);
 
-// 更新實踐請求 Schema
+// 更新實踐請求 Schema - 基於 Prisma schema practices 表
+// 注意：已打卡後，startDate, durationDays, frequencyMinDays, frequencyMaxDays 將被鎖定
 export const updatePracticeSchema = z.object({
   title: z.string().min(1, '標題不能為空').max(100, '標題不可超過100字').optional(),
-  totalAmount: z.number().min(1, '總量必須大於0').max(10000, '總量不可超過10000').optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD').optional(),
-  dailyGoal: dailyGoalSchema.optional(),
   practiceAction: z.string().max(200, '實踐行動描述不可超過200字').optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD').optional(),
+  durationDays: z.number().int().min(7).max(90).optional(),
+  frequencyMinDays: z.number().int().min(1).max(7).optional(),
+  frequencyMaxDays: z.number().int().min(1).max(7).optional(),
+  sessionDurationMinutes: z.number().int().min(5).max(240).optional(),
+  practiceTimePeriods: z.array(practiceTimePeriodSchema).max(4).optional(),
+  otherContext: z.string().max(500).optional(),
   tags: z.array(z.string().min(1).max(50)).max(3, '標籤最多3個').optional(),
   resources: z.array(practiceResourceInputSchema).max(5, '資源最多5個').optional(),
   status: practiceStatusSchema.optional()
@@ -278,77 +266,48 @@ export const updatePracticeSchema = z.object({
   return Object.keys(data).length > 0;
 }, {
   message: '至少需要提供一個要更新的欄位'
+}).refine(data => {
+  // 驗證 frequencyMinDays <= frequencyMaxDays
+  if (data.frequencyMinDays && data.frequencyMaxDays) {
+    return data.frequencyMinDays <= data.frequencyMaxDays;
+  }
+  return true;
+}, {
+  message: '最低頻率不能大於最高頻率',
+  path: ['frequencyMinDays']
 });
 
-// 簽到記錄 Schema
+// 簽到記錄 Schema - 基於 Prisma schema practice_checkins 表
 export const checkInSchema = z.object({
-  progress: z.number({
-    message: '進度必須是數字'
-  })
-    .min(0.01, '進度必須大於0')
+  mood: z.enum(['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy'])
+    .optional()
     .openapi({
-      description: '今日學習進度',
-      example: 25,
-      examples: [5, 10, 25, 50, 100]
+      description: '學習心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)',
+      example: 'happy',
+      examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(500, '筆記不可超過500字')
+    .max(300, '詳細描述不可超過300字')
     .optional()
     .openapi({
-      description: '學習筆記',
-      example: '今天學習了 React Hooks 的 useState',
-      examples: ['今天學習了 React Hooks 的 useState', '完成了三個章節的練習題']
+      description: '詳細描述（最多300字）',
+      example: '今天閱讀了第三章，學到了很多新概念',
+      examples: ['今天閱讀了第三章，學到了很多新概念', '完成了 30 分鐘的練習']
     }),
-  mood: z.enum(['awesome', 'happy', 'neutral', 'tired', 'frustrated'])
-    .optional()
-    .openapi({
-      description: '學習心情 (awesome: 非常棒, happy: 開心, neutral: 普通, tired: 疲累, frustrated: 挫折)',
-      example: 'happy',
-      examples: ['awesome', 'happy', 'neutral', 'tired', 'frustrated']
-    }),
-  reflectionText: z.string()
-    .max(1000, '反思文字不可超過1000字')
-    .optional()
-    .openapi({
-      description: '學習反思',
-      example: '今天的學習效果很好，對 Hooks 的理解更深入了',
-      examples: ['今天的學習效果很好，對 Hooks 的理解更深入了', '遇到了一些困難，需要多練習']
-    }),
-  relatedResourceId: z.string()
-    .uuid('關聯資源ID格式不正確')
-    .optional()
-    .openapi({
-      description: '相關資源ID',
-      example: '123e4567-e89b-12d3-a456-426614174000',
-      format: 'uuid'
-    }),
-  isPublic: z.boolean()
-    .default(true)
-    .openapi({
-      description: '是否公開分享',
-      example: true,
-      examples: [true, false]
-    }),
-  tags: z.array(z.string().min(1).max(50))
-    .max(5, '標籤最多5個')
+  imageUrls: z.array(z.string().url('請輸入有效的圖片網址'))
+    .max(3, '圖片最多3張')
     .default([])
     .openapi({
-      description: '簽到標籤（最多5個）',
-      example: ['React', '學習'],
-      examples: [
-        ['React', '學習'],
-        ['JavaScript', '進步', '練習']
-      ]
+      description: '打卡圖片 URL（最多3張）',
+      example: [],
+      examples: [[], ['https://example.com/image1.jpg']]
     })
 }).openapi('CheckInRequest', {
   description: '實踐活動簽到記錄',
   example: {
-    progress: 25,
-    note: '今天學習了 React Hooks 的 useState 和 useEffect',
     mood: 'happy',
-    reflectionText: '對 Hooks 的概念有了更清楚的理解',
-    isPublic: true,
-    tags: ['React', 'Hooks', '學習']
+    note: '今天閱讀了第三章，學到了很多新概念',
+    imageUrls: []
   }
 });
 
@@ -514,47 +473,47 @@ export const practiceStatsResponseSchema = z.object({
 // 註冊 PracticeStats
 registry.register('PracticeStats', practiceStatsResponseSchema);
 
-// 實踐活動回應 Schema (based on actual PracticeEntity from service)
+// 實踐活動回應 Schema - 基於 Prisma schema practices 表
 export const practiceEntityResponseSchema = z.object({
   id: z.string().openapi({ description: '實踐活動外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
-  title: z.string().openapi({ description: '實踐活動標題', example: '學習 React Hooks' }),
-  contentType: contentTypeSchema,
-  customContentType: z.string().optional().openapi({ description: '自定義內容類型', example: '程式設計練習' }),
-  totalAmount: z.number().int().min(1).openapi({ description: '總學習量', example: 20 }),
-  currentProgress: z.number().min(0).openapi({ description: '當前進度', example: 8 }),
+  title: z.string().openapi({ description: '實踐活動標題', example: '每日閱讀 30 分鐘' }),
+  practiceAction: z.string().optional().openapi({ description: '實踐行動描述', example: '閱讀技術書籍或文章' }),
   startDate: z.string().optional().openapi({ description: '開始日期 (YYYY-MM-DD)', example: '2024-01-15', format: 'date' }),
-  dailyGoal: dailyGoalSchema,
-  practiceAction: z.string().optional().openapi({ description: '實踐行動描述', example: '每天學習 1 小時的 React Hooks 課程並做實作練習' }),
+  endDate: z.string().optional().openapi({ description: '結束日期 (YYYY-MM-DD)', example: '2024-01-29', format: 'date' }),
+  durationDays: z.number().int().optional().openapi({ description: '持續天數', example: 14 }),
+  frequencyMinDays: z.number().int().optional().openapi({ description: '每週最低打卡天數', example: 4 }),
+  frequencyMaxDays: z.number().int().optional().openapi({ description: '每週最高打卡天數', example: 7 }),
+  frequencyDescription: z.string().optional().openapi({ description: '頻率描述', example: '每週 4-7 天' }),
+  sessionDurationMinutes: z.number().int().optional().openapi({ description: '每次實踐時長（分鐘）', example: 30 }),
+  practiceTimePeriods: z.array(z.string()).openapi({ description: '偏好實踐時段', example: ['morning', 'evening'] }),
+  otherContext: z.string().optional().openapi({ description: '其他說明' }),
   status: practiceStatusSchema,
   hasResources: z.boolean().openapi({ description: '是否有相關資源', example: true }),
-  streak: z.number().int().min(0).openapi({ description: '當前連續天數', example: 5 }),
-  maxStreak: z.number().int().min(0).openapi({ description: '最大連續天數', example: 12 }),
-  lastCheckInDate: z.string().optional().openapi({ description: '最後簽到日期', example: '2024-01-20', format: 'date' }),
+  progressPercentage: z.number().min(0).openapi({ description: '進度百分比', example: 50 }),
+  firstCheckinAt: z.string().optional().openapi({ description: '首次打卡時間', format: 'date-time' }),
   createdAt: z.string().datetime().openapi({ description: '創建時間', example: '2024-01-15T10:30:00.000Z', format: 'date-time' }),
   updatedAt: z.string().datetime().optional().openapi({ description: '更新時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' }),
   user: userBasicInfoResponseSchema,
-  tags: z.array(z.string()).openapi({ description: '相關標籤', example: ['React', 'Hooks', '前端'] }),
+  tags: z.array(z.string()).openapi({ description: '相關標籤', example: ['閱讀', '學習'] }),
   stats: practiceStatsResponseSchema
 }).openapi('PracticeEntity', {
   description: '實踐活動詳細資訊',
   example: {
     id: '123e4567-e89b-12d3-a456-426614174000',
-    title: '學習 React Hooks',
-    contentType: 'course',
-    customContentType: null,
-    totalAmount: 20,
-    currentProgress: 8,
+    title: '每日閱讀 30 分鐘',
+    practiceAction: '閱讀技術書籍或文章',
     startDate: '2024-01-15',
-    dailyGoal: {
-      type: 'time',
-      timeMinutes: 60
-    },
-    practiceAction: '每天學習 1 小時的 React Hooks 課程並做實作練習',
+    endDate: '2024-01-29',
+    durationDays: 14,
+    frequencyMinDays: 4,
+    frequencyMaxDays: 7,
+    frequencyDescription: '每週 4-7 天',
+    sessionDurationMinutes: 30,
+    practiceTimePeriods: ['morning', 'evening'],
     status: 'active',
-    hasResources: true,
-    streak: 5,
-    maxStreak: 12,
-    lastCheckInDate: '2024-01-20',
+    hasResources: false,
+    progressPercentage: 50,
+    firstCheckinAt: '2024-01-15T08:30:00.000Z',
     createdAt: '2024-01-15T10:30:00.000Z',
     updatedAt: '2024-01-20T15:45:00.000Z',
     user: {
@@ -566,7 +525,7 @@ export const practiceEntityResponseSchema = z.object({
       tagList: ['前端', 'React'],
       selfIntroduction: '熱愛學習的開發者'
     },
-    tags: ['React', 'Hooks', '前端'],
+    tags: ['閱讀', '學習'],
     stats: {
       likeCount: 25,
       viewCount: 150,
@@ -580,20 +539,15 @@ export const practiceEntityResponseSchema = z.object({
 // 註冊 PracticeEntity
 registry.register('PracticeEntity', practiceEntityResponseSchema);
 
-// 簽到記錄回應 Schema (based on actual CheckInEntity from service)
+// 簽到記錄回應 Schema - 基於 Prisma schema practice_checkins 表
 export const checkInEntityResponseSchema = z.object({
   id: z.number().int().openapi({ description: '簽到記錄內部 ID', example: 456 }),
   practiceId: z.number().int().openapi({ description: '關聯的實踐活動內部 ID', example: 123 }),
   userId: z.number().int().openapi({ description: '簽到用戶內部 ID', example: 789 }),
-  checkInDate: z.string().openapi({ description: '簽到日期', example: '2024-01-20', format: 'date' }),
-  progressAmount: z.number().min(0).openapi({ description: '簽到進度數量', example: 50 }),
-  unit: z.string().optional().openapi({ description: '進度單位（頁、章、集等）', example: '頁' }),
-  note: z.string().optional().openapi({ description: '簽到筆記', example: '今天學習了 useState 和 useEffect' }),
-  mood: z.enum(['awesome', 'happy', 'neutral', 'tired', 'frustrated']).optional().openapi({ description: '簽到心情', example: 'happy' }),
-  reflectionText: z.string().optional().openapi({ description: '學習反思', example: '對 Hooks 的概念有了更清楚的理解' }),
-  relatedResourceId: z.string().optional().openapi({ description: '相關資源 ID', example: 'res-123e4567-e89b-12d3-a456-426614174000' }),
-  streakDay: z.number().int().min(0).openapi({ description: '連續簽到天數', example: 5 }),
-  cumulativeProgress: z.number().min(0).openapi({ description: '累積進度', example: 8 }),
+  checkinDate: z.string().openapi({ description: '簽到日期', example: '2024-01-20', format: 'date' }),
+  mood: z.enum(['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']).optional().openapi({ description: '簽到心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)', example: 'happy' }),
+  note: z.string().optional().openapi({ description: '詳細描述', example: '今天閱讀了第三章' }),
+  imageUrls: z.array(z.string()).openapi({ description: '打卡圖片 URL（最多3張）', example: [] }),
   createdAt: z.string().datetime().openapi({ description: '創建時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' }),
   updatedAt: z.string().datetime().optional().openapi({ description: '更新時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' })
 }).openapi('CheckInEntity', {
@@ -602,15 +556,10 @@ export const checkInEntityResponseSchema = z.object({
     id: 456,
     practiceId: 123,
     userId: 789,
-    checkInDate: '2024-01-20',
-    progressAmount: 50,
-    unit: '頁',
-    note: '今天學習了 useState 和 useEffect',
+    checkinDate: '2024-01-20',
     mood: 'happy',
-    reflectionText: '對 Hooks 的概念有了更清楚的理解',
-    relatedResourceId: 'res-123e4567-e89b-12d3-a456-426614174000',
-    streakDay: 5,
-    cumulativeProgress: 8,
+    note: '今天閱讀了第三章',
+    imageUrls: [],
     createdAt: '2024-01-20T15:45:00.000Z',
     updatedAt: '2024-01-20T15:45:00.000Z'
   }
@@ -717,7 +666,6 @@ export const checkInStatsResponseSchema = z.object({
   totalCheckIns: z.number().int().min(0).describe("總簽到次數"),
   currentStreak: z.number().int().min(0).describe("當前連續天數"),
   maxStreak: z.number().int().min(0).describe("最大連續天數"),
-  averageProgress: z.number().min(0).describe("平均進度"),
   lastCheckInDate: z.string().optional().describe("最後簽到日期")
 }).describe("簽到統計資訊").meta({
   title: "簽到統計",
@@ -725,7 +673,6 @@ export const checkInStatsResponseSchema = z.object({
     totalCheckIns: 45,
     currentStreak: 5,
     maxStreak: 12,
-    averageProgress: 2.3,
     lastCheckInDate: "2024-01-20"
   }]
 });
@@ -879,6 +826,9 @@ export const practicesListApiResponseSchema = paginatedApiResponseSchema(practic
 // 簽到記錄回應
 export const checkInApiResponseSchema = apiSuccessResponseSchema(checkInEntityResponseSchema);
 
+// 創建簽到回應（含鼓勵句和進度）
+export const createCheckInApiResponseSchema = apiSuccessResponseSchema(checkInWithEncouragementResponseSchema);
+
 // 簽到列表回應
 export const checkInsListApiResponseSchema = paginatedApiResponseSchema(checkInEntityResponseSchema);
 
@@ -922,14 +872,12 @@ export const practiceValidators = {
   practiceCommentParamsSchema,
 
   // 子組件 schemas
-  dailyGoalSchema,
   practiceResourceInputSchema,
   practiceResourceSchema,
+  practiceTimePeriodSchema,
 
   // 枚舉 schemas
   practiceStatusSchema,
-  contentTypeSchema,
-  dailyGoalTypeSchema,
 
   // Template & Encouragement schemas
   practiceTemplateQuerySchema,
@@ -959,6 +907,7 @@ export const practiceValidators = {
   practiceApiResponseSchema,
   practicesListApiResponseSchema,
   checkInApiResponseSchema,
+  createCheckInApiResponseSchema,
   checkInsListApiResponseSchema,
   practiceStatsApiResponseSchema,
   checkInStatsApiResponseSchema,

@@ -7,6 +7,7 @@
 
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
+import { NotFoundError, InternalServerError } from '../middleware/error.middleware';
 import {
   ApiSuccessResponse
 } from '../types/api-response.types';
@@ -27,7 +28,7 @@ export async function toggleLike(practiceId: number, userId: number): Promise<Ap
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // TODO: 實作 reaction 表格後再啟用點讚功能
@@ -68,7 +69,7 @@ export async function recordShare(practiceId: number, userId: number, shareData?
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // TODO: 實作 share 表格後再啟用分享功能
@@ -86,7 +87,8 @@ export async function recordShare(practiceId: number, userId: number, shareData?
 
   } catch (error) {
     loggerService.error('Failed to record practice share', { practiceId, userId, error });
-    throw new Error('記錄分享失敗');
+    if (error instanceof NotFoundError) throw error;
+    throw new InternalServerError('記錄分享失敗');
   }
 }
 
@@ -101,7 +103,7 @@ export async function toggleFavorite(practiceId: number, userId: number): Promis
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // TODO: 實作 favorite 表格後再啟用收藏功能
@@ -142,7 +144,7 @@ export async function recordView(practiceId: number, userId: number, viewData?: 
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // TODO: 實作 view 表格後再啟用瀏覽記錄功能
@@ -160,7 +162,8 @@ export async function recordView(practiceId: number, userId: number, viewData?: 
 
   } catch (error) {
     loggerService.error('Failed to record practice view', { practiceId, userId, error });
-    throw new Error('記錄瀏覽失敗');
+    if (error instanceof NotFoundError) throw error;
+    throw new InternalServerError('記錄瀏覽失敗');
   }
 }
 
@@ -179,7 +182,7 @@ export async function recordClick(practiceId: number, userId: number, clickData:
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     // TODO: 實作 click_events 或 view 表格後再啟用點擊記錄功能
@@ -196,7 +199,8 @@ export async function recordClick(practiceId: number, userId: number, clickData:
 
   } catch (error) {
     loggerService.error('Failed to record practice click', { practiceId, userId, clickData, error });
-    throw new Error('記錄點擊失敗');
+    if (error instanceof NotFoundError) throw error;
+    throw new InternalServerError('記錄點擊失敗');
   }
 }
 
@@ -223,7 +227,7 @@ export async function getUserInteractionStatus(practiceId: number, userId: numbe
 
   } catch (error) {
     loggerService.error('Failed to get user interaction status', { practiceId, userId, error });
-    throw new Error('取得互動狀態失敗');
+    throw new InternalServerError('取得互動狀態失敗');
   }
 }
 
@@ -263,7 +267,7 @@ export async function getInteractionStats(practiceId: number): Promise<ApiSucces
 
   } catch (error) {
     loggerService.error('Failed to get interaction stats', { practiceId, error });
-    throw new Error('取得互動統計失敗');
+    throw new InternalServerError('取得互動統計失敗');
   }
 }
 
@@ -323,6 +327,6 @@ export async function getUserFavorites(userId: number, params: {
 
   } catch (error) {
     loggerService.error('Failed to get user favorites', { userId, error });
-    throw new Error('取得收藏列表失敗');
+    throw new InternalServerError('取得收藏列表失敗');
   }
 }

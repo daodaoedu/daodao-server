@@ -4,12 +4,14 @@
  */
 
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import * as practiceService from '../services/practice.service';
 import * as practiceCheckInService from '../services/practice-checkin.service';
 import * as practiceInteractionService from '../services/practice-interaction.service';
 import * as encouragementService from '../services/encouragement.service';
 import * as tagPromptService from '../services/tag-prompt.service';
 import * as practiceTemplateService from '../services/practice-template.service';
+import { externalToInternalId } from '../services/id-converter.service';
 import { asyncHandler } from '../middleware/error.middleware';
 import { BadRequestError, UnauthorizedError } from '../middleware/error.middleware';
 import type {
@@ -19,7 +21,6 @@ import type {
   CheckInRequest,
   CreateCheckInRequest,
   CheckInQueryParams,
-  ContentType,
   PracticeStatus,
   SortField,
   SortOrder,
@@ -41,9 +42,41 @@ import {
   interactionStatsApiResponseSchema,
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
+  createCheckInApiResponseSchema,
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema
 } from '../validators/practice.validators';
+
+// ===== 參數驗證 Schemas =====
+
+/** UUID 格式驗證 Schema */
+const uuidParamSchema = z.string().uuid('Practice ID 格式不正確，應為 UUID 格式');
+
+/** 年份參數驗證 Schema */
+const yearParamSchema = z.coerce.number()
+  .int('年份必須是整數')
+  .min(2020, '年份不能早於 2020 年')
+  .max(2050, '年份不能晚於 2050 年');
+
+/** 月份參數驗證 Schema */
+const monthParamSchema = z.coerce.number()
+  .int('月份必須是整數')
+  .min(1, '月份必須在 1-12 之間')
+  .max(12, '月份必須在 1-12 之間');
+
+/**
+ * 驗證並轉換 practice external ID 為 internal ID
+ * @param externalId - UUID 格式的外部 ID
+ * @returns 內部數字 ID
+ * @throws BadRequestError 如果 UUID 格式不正確
+ */
+async function validateAndConvertPracticeId(externalId: string): Promise<number> {
+  const validationResult = uuidParamSchema.safeParse(externalId);
+  if (!validationResult.success) {
+    throw new BadRequestError(validationResult.error.issues[0]?.message || 'Practice ID 格式不正確');
+  }
+  return externalToInternalId('practice', externalId);
+}
 
 export class PracticeController {
   /**
@@ -55,7 +88,6 @@ export class PracticeController {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
-      contentType: req.query.contentType as ContentType,
       status: req.query.status as PracticeStatus,
       sortBy: req.query.sortBy as SortField,
       sortOrder: req.query.sortOrder as SortOrder,
@@ -83,7 +115,6 @@ export class PracticeController {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
-      contentType: req.query.contentType as ContentType,
       status: req.query.status as PracticeStatus,
       sortBy: req.query.sortBy as SortField,
       sortOrder: req.query.sortOrder as SortOrder
@@ -103,12 +134,8 @@ export class PracticeController {
    * GET /api/v1/practices/:id
    */
   getPractice = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const practiceExternalId = req.params.id;
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const userId = req.user?.id;
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
 
     const result = await practiceService.findById(practiceId, userId);
 
@@ -145,12 +172,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const updateData: UpdatePracticeRequest = req.body;
     const result = await practiceService.update(practiceId, updateData, req.user.id);
 
@@ -169,12 +191,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceService.deleteFunction(practiceId, req.user.id);
 
     // 驗證響應格式
@@ -213,24 +230,17 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const requestBody: CheckInRequest = req.body;
     const checkInData: CreateCheckInRequest = {
-      progressAmount: requestBody.progress,
       note: requestBody.note,
       mood: requestBody.mood,
-      reflectionText: requestBody.reflectionText,
-      relatedResourceId: requestBody.relatedResourceId
+      imageUrls: requestBody.imageUrls
     };
     const result = await practiceCheckInService.createCheckIn(practiceId, checkInData, req.user.id);
 
-    // 驗證響應格式
-    const validatedResponse = checkInApiResponseSchema.parse(result);
+    // 驗證響應格式（使用含鼓勵句和進度的 schema）
+    const validatedResponse = createCheckInApiResponseSchema.parse(result);
 
     res.status(201).json(validatedResponse);
   });
@@ -240,11 +250,7 @@ export class PracticeController {
    * GET /api/v1/practices/:id/checkins
    */
   getCheckIns = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
 
     const queryParams: CheckInQueryParams = {
       page: parseInt(req.query.page as string) || 1,
@@ -272,12 +278,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const stats = await practiceCheckInService.getCheckInStats(practiceId, req.user.id);
 
     // 驗證響應格式
@@ -295,23 +296,24 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    const year = parseInt(req.params.year);
-    const month = parseInt(req.params.month);
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
 
-    if (isNaN(year) || isNaN(month)) {
-      throw new BadRequestError('無效的年份或月份參數');
+    // 驗證並解析年月參數
+    const yearResult = yearParamSchema.safeParse(req.params.year);
+    const monthResult = monthParamSchema.safeParse(req.params.month);
+
+    if (!yearResult.success) {
+      throw new BadRequestError(yearResult.error.issues[0]?.message || '無效的年份參數');
     }
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
+    if (!monthResult.success) {
+      throw new BadRequestError(monthResult.error.issues[0]?.message || '無效的月份參數');
+    }
 
     const calendar = await practiceCheckInService.getMonthlyCheckInCalendar(
       practiceId,
       req.user.id,
-      year,
-      month
+      yearResult.data,
+      monthResult.data
     );
 
     // 驗證響應格式
@@ -329,12 +331,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceInteractionService.toggleLike(practiceId, req.user.id);
 
     // 驗證響應格式
@@ -352,12 +349,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceInteractionService.toggleFavorite(practiceId, req.user.id);
 
     // 驗證響應格式
@@ -375,12 +367,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const shareData = req.body;
     const result = await practiceInteractionService.recordShare(practiceId, req.user.id, shareData);
 
@@ -399,12 +386,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const viewData = req.body;
     const result = await practiceInteractionService.recordView(practiceId, req.user.id, viewData);
 
@@ -419,12 +401,7 @@ export class PracticeController {
    * GET /api/v1/practices/:id/stats
    */
   getInteractionStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const practiceExternalId = req.params.id;
-    
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceInteractionService.getInteractionStats(practiceId);
 
     // 驗證響應格式
@@ -442,12 +419,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceInteractionService.getUserInteractionStatus(practiceId, req.user.id);
 
     // 驗證響應格式
@@ -534,12 +506,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceService.archive(practiceId, req.user.id);
 
     // 驗證響應格式
@@ -557,12 +524,7 @@ export class PracticeController {
       throw new UnauthorizedError('未授權存取');
     }
 
-    const practiceExternalId = req.params.id;
-
-    // 使用 id-converter 服務將 UUID 轉換為內部 ID
-    const { externalToInternalId } = await import('../services/id-converter.service');
-    const practiceId = await externalToInternalId('practice', practiceExternalId);
-
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceService.unarchive(practiceId, req.user.id);
 
     // 驗證響應格式

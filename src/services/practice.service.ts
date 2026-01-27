@@ -8,15 +8,14 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
+import { NotFoundError, ForbiddenError, BadRequestError } from '../middleware/error.middleware';
 import {
   PracticeEntity,
   PracticeStats,
   CreatePracticeRequest,
   UpdatePracticeRequest,
   PracticeQueryParams,
-  ContentType,
-  PracticeStatus,
-  DailyGoalType
+  PracticeStatus
 } from '../types/practice.types';
 import {
   ApiSuccessResponse,
@@ -67,6 +66,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
     const take = Math.min(limit, 100); // 限制最大數量
 
     // 建構查詢條件
+    // 預設排除 archived 狀態，除非明確指定查詢 archived
     const where: Prisma.practicesWhereInput = {
       ...(search && {
         OR: [
@@ -75,7 +75,11 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         ]
       }),
       // Note: content_type field doesn't exist in schema, filter removed
-      ...(status && status !== 'all' && { status }),
+      ...(status === 'archived'
+        ? { status: 'archived' }
+        : status && status !== 'all'
+          ? { status }
+          : { status: { not: 'archived' } }),
       ...(userId && { user_id: userId })
     };
 
@@ -155,29 +159,25 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
     }, {} as Record<number, Array<{ id: number; name: string }>>);
 
 
-    // 轉換為 API 格式
+    // 轉換為 API 格式 - 基於 Prisma schema practices 表
     const practiceEntities: PracticeEntity[] = practices.map(practice => ({
       id: practice.external_id || '',
       title: practice.title,
-      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
-      customContentType: undefined,
-      totalAmount: undefined, // Field doesn't exist in DB
-      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
-      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
-      startDate: practice.start_date?.toISOString().split('T')[0],
-      dailyGoal: {
-        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
-        timeMinutes: undefined,
-        amount: undefined,
-        unit: undefined
-      },
       practiceAction: practice.practice_action || undefined,
+      startDate: practice.start_date?.toISOString().split('T')[0],
+      endDate: practice.end_date?.toISOString().split('T')[0],
+      durationDays: practice.duration_days || undefined,
+      frequencyMinDays: practice.frequency_min_days || undefined,
+      frequencyMaxDays: practice.frequency_max_days || undefined,
+      frequencyDescription: practice.frequency_description || undefined,
+      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+      practiceTimePeriods: practice.practice_time_periods || [],
+      otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: 0, // Field doesn't exist in DB - calculated from check-ins
-      maxStreak: 0, // Field doesn't exist in DB
-      lastCheckInDate: undefined, // Field doesn't exist in DB
-      createdAt: practice.created_at?.toISOString() || '',
+      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
+      firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
         id: practice.users.external_id || '',
@@ -253,7 +253,12 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
+    }
+
+    // 檢查是否已被刪除（軟刪除）
+    if (practice.status === 'archived') {
+      throw new NotFoundError('實踐不存在');
     }
 
     // 記錄瀏覽事件（暫時只記錄日誌）
@@ -285,24 +290,21 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
-      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
-      customContentType: undefined,
-      totalAmount: undefined, // Field doesn't exist in DB
-      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
-      startDate: practice.start_date?.toISOString().split('T')[0],
-      dailyGoal: {
-        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
-        timeMinutes: undefined,
-        amount: undefined,
-        unit: undefined
-      },
       practiceAction: practice.practice_action || undefined,
+      startDate: practice.start_date?.toISOString().split('T')[0],
+      endDate: practice.end_date?.toISOString().split('T')[0],
+      durationDays: practice.duration_days || undefined,
+      frequencyMinDays: practice.frequency_min_days || undefined,
+      frequencyMaxDays: practice.frequency_max_days || undefined,
+      frequencyDescription: practice.frequency_description || undefined,
+      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+      practiceTimePeriods: practice.practice_time_periods || [],
+      otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: 0, // Field doesn't exist in DB - calculated from check-ins
-      maxStreak: 0, // Field doesn't exist in DB
-      lastCheckInDate: undefined, // Field doesn't exist in DB
-      createdAt: practice.created_at?.toISOString() || '',
+      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
+      firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
         id: practice.users.external_id || '',
@@ -339,26 +341,47 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
  */
 export async function create(data: CreatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
   try {
+    // 計算結束日期
+    const startDate = data.startDate ? new Date(data.startDate) : new Date();
+    const durationDays = data.durationDays || 14;
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + durationDays - 1);
+
     const practice = await prismaClient.practices.create({
       data: {
         user_id: userId,
         title: data.title,
-        // Note: content_type and related fields don't exist in schema
-        start_date: data.startDate ? new Date(data.startDate) : null,
         practice_action: data.practiceAction,
-        status: 'not_started', // Initial status before first check-in
-        has_resources: Boolean(data.resources && data.resources.length > 0)
-        // Note: progress_percentage 欄位需要在 daodao-storage 新增後才能使用
-        // progress_percentage: INITIAL_PROGRESS
+        start_date: startDate,
+        end_date: endDate,
+        duration_days: durationDays,
+        frequency_min_days: data.frequencyMinDays,
+        frequency_max_days: data.frequencyMaxDays,
+        session_duration_minutes: data.sessionDurationMinutes,
+        practice_time_periods: data.practiceTimePeriods || [],
+        other_context: data.otherContext,
+        status: 'not_started',
+        has_resources: Boolean(data.resources && data.resources.length > 0),
+        progress_percentage: INITIAL_PROGRESS
       },
       select: {
         id: true,
         external_id: true,
         title: true,
-        start_date: true,
         practice_action: true,
+        start_date: true,
+        end_date: true,
+        duration_days: true,
+        frequency_min_days: true,
+        frequency_max_days: true,
+        frequency_description: true,
+        session_duration_minutes: true,
+        practice_time_periods: true,
+        other_context: true,
         status: true,
         has_resources: true,
+        progress_percentage: true,
+        first_checkin_at: true,
         created_at: true,
         updated_at: true,
         users: {
@@ -399,24 +422,21 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
-      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
-      customContentType: undefined,
-      totalAmount: undefined, // Field doesn't exist in DB
-      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
-      startDate: practice.start_date?.toISOString().split('T')[0],
-      dailyGoal: {
-        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
-        timeMinutes: undefined,
-        amount: undefined,
-        unit: undefined
-      },
       practiceAction: practice.practice_action || undefined,
+      startDate: practice.start_date?.toISOString().split('T')[0],
+      endDate: practice.end_date?.toISOString().split('T')[0],
+      durationDays: practice.duration_days || undefined,
+      frequencyMinDays: practice.frequency_min_days || undefined,
+      frequencyMaxDays: practice.frequency_max_days || undefined,
+      frequencyDescription: practice.frequency_description || undefined,
+      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+      practiceTimePeriods: practice.practice_time_periods || [],
+      otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: 0, // Field doesn't exist in DB - calculated from check-ins
-      maxStreak: 0, // Field doesn't exist in DB
-      lastCheckInDate: undefined, // Field doesn't exist in DB
-      createdAt: practice.created_at?.toISOString() || '',
+      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
+      firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
         id: practice.users.external_id || '',
@@ -465,16 +485,16 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     });
 
     if (!existingPractice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     if (existingPractice.user_id !== userId) {
-      throw new Error('沒有權限修改此實踐');
+      throw new ForbiddenError('沒有權限修改此實踐');
     }
 
     // 檢查狀態是否允許編輯
     if (!canEdit(existingPractice.status as PracticeStatusType)) {
-      throw new Error('此實踐狀態不允許編輯');
+      throw new BadRequestError('此實踐狀態不允許編輯');
     }
 
     // 檢查是否有打卡記錄
@@ -487,19 +507,43 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     const updateFields = Object.keys(data);
     const validation = validateUpdateFields(updateFields, hasCheckIns);
     if (!validation.isValid) {
-      throw new Error(validation.errorMessage);
+      throw new BadRequestError(validation.errorMessage || '無法修改已鎖定的欄位');
     }
 
     const updateData: Prisma.practicesUpdateInput = {};
 
     if (data.title !== undefined) updateData.title = data.title;
-    // Note: totalAmount field doesn't exist in schema
-    if (data.startDate !== undefined) {
-      updateData.start_date = data.startDate ? new Date(data.startDate) : null;
-    }
-    // Note: dailyGoal fields don't exist in schema
     if (data.practiceAction !== undefined) updateData.practice_action = data.practiceAction;
+    if (data.otherContext !== undefined) updateData.other_context = data.otherContext;
     if (data.status !== undefined) updateData.status = data.status;
+
+    // 處理頻率相關欄位
+    if (data.frequencyMinDays !== undefined) updateData.frequency_min_days = data.frequencyMinDays;
+    if (data.frequencyMaxDays !== undefined) updateData.frequency_max_days = data.frequencyMaxDays;
+    if (data.sessionDurationMinutes !== undefined) updateData.session_duration_minutes = data.sessionDurationMinutes;
+    if (data.practiceTimePeriods !== undefined) updateData.practice_time_periods = data.practiceTimePeriods;
+
+    // 處理日期相關欄位（需要重新計算 end_date）
+    if (data.startDate !== undefined || data.durationDays !== undefined) {
+      const newStartDate = data.startDate
+        ? new Date(data.startDate)
+        : existingPractice.start_date;
+      const newDurationDays = data.durationDays ?? existingPractice.duration_days ?? 14;
+
+      if (data.startDate !== undefined) {
+        updateData.start_date = newStartDate;
+      }
+      if (data.durationDays !== undefined) {
+        updateData.duration_days = newDurationDays;
+      }
+
+      // 重新計算 end_date
+      if (newStartDate) {
+        const endDate = new Date(newStartDate);
+        endDate.setDate(endDate.getDate() + newDurationDays - 1);
+        updateData.end_date = endDate;
+      }
+    }
 
     updateData.updated_at = new Date();
 
@@ -569,24 +613,21 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
-      contentType: 'other' as ContentType, // Default value - field doesn't exist in DB
-      customContentType: undefined,
-      totalAmount: undefined, // Field doesn't exist in DB
-      currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
-      startDate: practice.start_date?.toISOString().split('T')[0],
-      dailyGoal: {
-        type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
-        timeMinutes: undefined,
-        amount: undefined,
-        unit: undefined
-      },
       practiceAction: practice.practice_action || undefined,
+      startDate: practice.start_date?.toISOString().split('T')[0],
+      endDate: practice.end_date?.toISOString().split('T')[0],
+      durationDays: practice.duration_days || undefined,
+      frequencyMinDays: practice.frequency_min_days || undefined,
+      frequencyMaxDays: practice.frequency_max_days || undefined,
+      frequencyDescription: practice.frequency_description || undefined,
+      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+      practiceTimePeriods: practice.practice_time_periods || [],
+      otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
-      streak: 0, // Field doesn't exist in DB - calculated from check-ins
-      maxStreak: 0, // Field doesn't exist in DB
-      lastCheckInDate: undefined, // Field doesn't exist in DB
-      createdAt: practice.created_at?.toISOString() || '',
+      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
+      firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
         id: practice.users.external_id || '',
@@ -625,11 +666,11 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     if (practice.user_id !== userId) {
-      throw new Error('沒有權限刪除此實踐');
+      throw new ForbiddenError('沒有權限刪除此實踐');
     }
 
     // 軟刪除：更新狀態為 archived
@@ -762,15 +803,16 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
 
 /**
  * 連結資源
+ * 創建資源記錄並建立 practice-resource 關聯
  */
 async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<void> {
   if (!resources.length) return;
 
   try {
-    // 創建資源
-    await Promise.all(
-      resources.map(resource =>
-        prismaClient.resources.create({
+    for (const resource of resources) {
+      try {
+        // 1. 創建資源記錄
+        const createdResource = await prismaClient.resources.create({
           data: {
             name: resource.name,
             url: resource.url || '',
@@ -779,11 +821,26 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
             cost: 'free',
             created_by: userId
           }
-        }).catch(error => {
-          loggerService.warn('Failed to create resource', { practiceId, resource, error });
-        })
-      )
-    );
+        });
+
+        // 2. 建立 practice-resource 關聯
+        await prismaClient.entity_resources.create({
+          data: {
+            resource_id: createdResource.id,
+            entity_type: 'practice',
+            entity_id: practiceId,
+            created_by: userId
+          }
+        });
+      } catch (error) {
+        loggerService.warn('Failed to create resource', { practiceId, resource, error });
+      }
+    }
+
+    loggerService.info('Resources linked to practice', {
+      practiceId,
+      resourceCount: resources.length
+    });
   } catch (error) {
     loggerService.warn('Failed to link resources', { practiceId, resources, error });
   }
@@ -813,17 +870,46 @@ async function updateTags(practiceId: number, tagNames: string[]): Promise<void>
 
 /**
  * 更新資源
+ * 軟刪除現有關聯並建立新的資源關聯
  */
-async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string }>, _userId: number): Promise<void> {
+async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<void> {
   try {
-    // 注意：這裡需要根據實際的資源關聯表結構來實作
-    // 目前 resources 表沒有直接的 practice 關聯字段
-    // 可能需要通過其他方式關聯，或者建立新的關聯表
+    // 1. 取得現有的 practice-resource 關聯
+    const existingRelations = await prismaClient.entity_resources.findMany({
+      where: {
+        entity_type: 'practice',
+        entity_id: practiceId,
+        deleted_at: null
+      }
+    });
 
-    // 暫時只記錄日誌，實際實作需要根據資源關聯的具體設計
-    loggerService.info('Resources update - needs proper relation design', { practiceId, resources });
+    // 2. 軟刪除現有關聯（設置 deleted_at）
+    if (existingRelations.length > 0) {
+      await prismaClient.entity_resources.updateMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: practiceId,
+          deleted_at: null
+        },
+        data: {
+          deleted_at: new Date()
+        }
+      });
+    }
+
+    // 3. 建立新的資源和關聯
+    if (resources.length > 0) {
+      await linkResources(practiceId, resources, userId);
+    }
+
+    loggerService.info('Resources updated for practice', {
+      practiceId,
+      previousCount: existingRelations.length,
+      newCount: resources.length
+    });
   } catch (error) {
-    loggerService.warn('Failed to update resources', { practiceId, resources, error });
+    loggerService.error('Failed to update resources', { practiceId, resources, error });
+    throw new Error('更新資源關聯失敗');
   }
 }
 
@@ -863,15 +949,15 @@ export async function archive(id: number, userId: number): Promise<ApiSuccessRes
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     if (practice.user_id !== userId) {
-      throw new Error('沒有權限封存此實踐');
+      throw new ForbiddenError('沒有權限封存此實踐');
     }
 
     if (practice.status === 'archived') {
-      throw new Error('實踐已經是封存狀態');
+      throw new BadRequestError('實踐已經是封存狀態');
     }
 
     // 保存封存前的狀態（如果需要取消封存時使用）
@@ -930,15 +1016,15 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     });
 
     if (!practice) {
-      throw new Error('實踐不存在');
+      throw new NotFoundError('實踐不存在');
     }
 
     if (practice.user_id !== userId) {
-      throw new Error('沒有權限取消封存此實踐');
+      throw new ForbiddenError('沒有權限取消封存此實踐');
     }
 
     if (practice.status !== 'archived') {
-      throw new Error('實踐不是封存狀態');
+      throw new BadRequestError('實踐不是封存狀態');
     }
 
     // 檢查是否有打卡記錄，決定恢復到什麼狀態
@@ -1008,24 +1094,20 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     const practiceEntity: PracticeEntity = {
       id: updatedPractice.external_id || '',
       title: updatedPractice.title,
-      contentType: 'other' as ContentType,
-      customContentType: undefined,
-      totalAmount: undefined,
-      currentProgress: 0,
-      progressPercentage: Number(updatedPractice.progress_percentage) || INITIAL_PROGRESS,
-      startDate: updatedPractice.start_date?.toISOString().split('T')[0],
-      dailyGoal: {
-        type: 'time' as DailyGoalType,
-        timeMinutes: undefined,
-        amount: undefined,
-        unit: undefined
-      },
       practiceAction: updatedPractice.practice_action || undefined,
+      startDate: updatedPractice.start_date?.toISOString().split('T')[0],
+      endDate: updatedPractice.end_date?.toISOString().split('T')[0],
+      durationDays: updatedPractice.duration_days || undefined,
+      frequencyMinDays: updatedPractice.frequency_min_days || undefined,
+      frequencyMaxDays: updatedPractice.frequency_max_days || undefined,
+      frequencyDescription: updatedPractice.frequency_description || undefined,
+      sessionDurationMinutes: updatedPractice.session_duration_minutes || undefined,
+      practiceTimePeriods: updatedPractice.practice_time_periods || [],
+      otherContext: updatedPractice.other_context || undefined,
       status: updatedPractice.status as PracticeStatus || 'not_started',
       hasResources: updatedPractice.has_resources || false,
-      streak: 0,
-      maxStreak: 0,
-      lastCheckInDate: undefined,
+      progressPercentage: Number(updatedPractice.progress_percentage) || INITIAL_PROGRESS,
+      firstCheckinAt: updatedPractice.first_checkin_at?.toISOString(),
       createdAt: updatedPractice.created_at?.toISOString() || '',
       updatedAt: updatedPractice.updated_at?.toISOString(),
       user: {

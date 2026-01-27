@@ -4,29 +4,27 @@
  */
 
 // Practice response types (extending from existing practice.types.ts)
+// 基於 Prisma schema practices 表
 export interface MyPracticeItem {
   id: string;
   title: string;
-  contentType: 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom' | 'other';
-  customContentType?: string;
-  totalAmount?: number; // Optional - field doesn't exist in DB schema
-  currentProgress: number;
+  practiceAction?: string;
   startDate?: string; // YYYY-MM-DD format
+  endDate?: string; // YYYY-MM-DD format
+  durationDays?: number;
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  frequencyDescription?: string;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods: string[];
+  otherContext?: string;
   status: 'draft' | 'not_started' | 'active' | 'completed' | 'archived';
-  streak: number;
-  maxStreak: number;
-  lastCheckInDate?: string; // YYYY-MM-DD format
+  hasResources: boolean;
+  progressPercentage?: number;
+  firstCheckinAt?: string;
   createdAt: string;
   updatedAt?: string;
-  dailyGoal: {
-    type: 'time' | 'completion' | 'amount';
-    timeMinutes?: number;
-    amount?: number;
-    unit?: string;
-  };
   tags: string[];
-  practiceAction?: string;
-  hasResources: boolean;
 }
 
 export interface MyPracticesResponse {

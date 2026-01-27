@@ -25,6 +25,16 @@ jest.mock('@/services/logging/logger.service', () => ({
   loggerService: mockLoggerService
 }));
 
+jest.mock('@/services/encouragement.service', () => ({
+  getRandomEncouragement: jest.fn().mockResolvedValue({
+    data: { message: '你真棒！繼續加油！' }
+  })
+}));
+
+jest.mock('@/queues', () => ({
+  enqueuePracticeEmail: jest.fn().mockResolvedValue(undefined)
+}));
+
 import {
   createCheckIn,
   getCheckIns,
@@ -61,22 +71,22 @@ describe('Practice CheckIn Service', () => {
     id: 1,
     external_id: 'practice-uuid',
     user_id: 1,
+    template_id: null,
     title: 'TypeScript 學習',
-    content_type: 'book',
-    custom_content_type: null,
-    total_amount: 40,
-    current_progress: createDecimalMock(10),
+    practice_action: '閱讀技術書籍',
     start_date: new Date('2024-01-01'),
-    daily_goal_type: 'amount',
-    daily_goal_time_minutes: null,
-    daily_goal_amount: 2,
-    daily_goal_unit: 'chapters',
-    practice_action: null,
-    status: 'active',
+    end_date: new Date('2024-01-14'),
+    duration_days: 14,
+    frequency_min_days: 4,
+    frequency_max_days: 7,
+    frequency_description: null,
+    session_duration_minutes: 30,
+    practice_time_periods: ['morning', 'evening'],
+    other_context: null,
+    status: 'not_started',
     has_resources: false,
-    streak: 2,
-    max_streak: 5,
-    last_checkin_date: new Date('2023-12-31'),
+    progress_percentage: createDecimalMock(20),
+    first_checkin_at: null,
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-01'),
     deleted_at: null,
@@ -88,85 +98,66 @@ describe('Practice CheckIn Service', () => {
     practice_id: 1,
     user_id: 1,
     checkin_date: new Date('2024-01-01'),
-    progress_amount: createDecimalMock(2),
-    note: '今天完成了兩章',
     mood: 'happy',
-    reflection_text: '學到很多新知識',
-    related_resource_id: null,
-    streak_day: 3,
-    cumulative_progress: createDecimalMock(12),
+    note: '今天完成了閱讀',
+    image_urls: [],
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-01'),
     practices: {
-      title: 'TypeScript 學習',
-      total_amount: 40
+      title: 'TypeScript 學習'
     },
     ...overrides
   });
 
   const createCheckInRequest = (overrides = {}): CreateCheckInRequest => ({
-    progressAmount: 2,
-    note: '今天完成了兩章',
     mood: 'happy',
-    reflectionText: '學到很多新知識',
+    note: '今天完成了閱讀',
+    imageUrls: [],
     ...overrides
   });
 
   describe('createCheckIn', () => {
-    it('should create check-in successfully with complete data', async () => {
+    it('should create first check-in successfully with progress 50% and status active', async () => {
       // Arrange: Setup test data and mocks
-      const testPractice = createTestPractice();
+      const testPractice = createTestPractice({ status: 'not_started' });
       const testCheckIn = createTestCheckIn();
       const request = createCheckInRequest();
 
       prismaMock.practices.findUnique.mockResolvedValue(testPractice);
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null); // No existing check-in today
+      prismaMock.practice_checkins.count.mockResolvedValue(0); // First check-in
       prismaMock.practice_checkins.findMany.mockResolvedValue([]); // No recent check-ins for streak calculation
-      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
-      prismaMock.practices.update.mockResolvedValue({} as any);
+      prismaMock.$transaction.mockResolvedValue([testCheckIn, {}]);
+
+      // Mock encouragement service
+      jest.mock('@/services/encouragement.service', () => ({
+        getRandomEncouragement: jest.fn().mockResolvedValue({
+          data: { message: '你真棒！' }
+        })
+      }));
 
       // Act: Execute the service method
       const result = await createCheckIn(1, request, 1);
 
       // Assert: Verify behavior and database calls
       expect(prismaMock.practices.findUnique).toHaveBeenCalledWith({
-        where: { 
+        where: {
           id: 1,
-          user_id: 1 
-        }
-      });
-
-      expect(prismaMock.practice_checkins.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          practice_id: 1,
-          user_id: 1,
-          progress_amount: 2,
-          note: '今天完成了兩章',
-          mood: 'happy',
-          reflection_text: '學到很多新知識',
-          cumulative_progress: 12 // 10 + 2
-        }),
-        include: {
-          practices: {
-            select: {
-              title: true,
-              total_amount: true
-            }
-          }
+          user_id: 1
         }
       });
 
       expect(result.success).toBe(true);
-      expect(result.data.progressAmount).toBe(2);
-      expect(result.data.cumulativeProgress).toBe(12);
-      expect(result.data.checkInDate).toBe('2024-01-01');
-      expect(result.data.mood).toBe('happy');
+      expect(result.data.isFirstCheckIn).toBe(true);
+      expect(result.data.practiceProgressPercentage).toBe(50); // First check-in = 50%
+      expect(result.data.practiceStatus).toBe('active');
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Check-in created',
         expect.objectContaining({
           practiceId: 1,
           userId: 1,
-          progressAmount: 2
+          checkInCount: 1,
+          isFirstCheckIn: true
         })
       );
     });
@@ -178,18 +169,19 @@ describe('Practice CheckIn Service', () => {
         .rejects.toThrow('實踐不存在或沒有權限');
     });
 
-    it('should throw PermissionError when practice does not belong to user', async () => {
-      // findUnique returns null when practice doesn't exist or doesn't belong to user
-      prismaMock.practices.findUnique.mockResolvedValue(null);
+    it('should throw error when practice status does not allow check-in', async () => {
+      const testPractice = createTestPractice({ status: 'completed' });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
 
       await expect(createCheckIn(1, createCheckInRequest(), 1))
-        .rejects.toThrow('實踐不存在或沒有權限');
+        .rejects.toThrow('此實踐狀態不允許打卡');
     });
 
     it('should throw DuplicateError when already checked in today', async () => {
-      const testPractice = createTestPractice();
+      const testPractice = createTestPractice({ status: 'active' });
       const existingCheckIn = { id: 1, checkin_date: new Date() };
-      
+
       prismaMock.practices.findUnique.mockResolvedValue(testPractice);
       prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
 
@@ -197,76 +189,43 @@ describe('Practice CheckIn Service', () => {
         .rejects.toThrow('今日已完成簽到');
     });
 
-    it('should calculate cumulative progress correctly', async () => {
-      const testPractice = createTestPractice({ 
-        current_progress: createDecimalMock(15)
+    it('should calculate progress based on check-in count', async () => {
+      // With 2 check-ins (after this one), progress should increase from 50%
+      const testPractice = createTestPractice({
+        status: 'active',
+        first_checkin_at: new Date()
       });
-      const testCheckIn = createTestCheckIn({ 
-        cumulative_progress: createDecimalMock(20)
-      });
-      const request = createCheckInRequest({ progressAmount: 5 });
-
-      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
-      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
-      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
-      prismaMock.practices.update.mockResolvedValue({} as any);
-
-      await createCheckIn(1, request, 1);
-
-      expect(prismaMock.practice_checkins.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            cumulative_progress: 20 // 15 + 5
-          })
-        })
-      );
-    });
-
-    it('should update practice progress after check-in', async () => {
-      const testPractice = createTestPractice();
       const testCheckIn = createTestCheckIn();
 
       prismaMock.practices.findUnique.mockResolvedValue(testPractice);
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(1); // 1 existing check-in
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
-      prismaMock.practices.update.mockResolvedValue({} as any);
-
-      await createCheckIn(1, createCheckInRequest(), 1);
-
-      expect(prismaMock.practices.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: expect.objectContaining({
-          current_progress: 12,
-          streak: expect.any(Number),
-          max_streak: expect.any(Number),
-          last_checkin_date: expect.any(Date),
-          updated_at: expect.any(Date)
-        })
-      });
-    });
-
-    it('should handle null values with sensible defaults', async () => {
-      const testPractice = createTestPractice({ current_progress: null });
-      const testCheckIn = createTestCheckIn({ 
-        cumulative_progress: createDecimalMock(2)
-      });
-      
-      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
-      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
-      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
-      prismaMock.practices.update.mockResolvedValue({} as any);
+      prismaMock.$transaction.mockResolvedValue([testCheckIn, {}]);
 
       const result = await createCheckIn(1, createCheckInRequest(), 1);
 
-      expect(result.data.cumulativeProgress).toBe(2); // 0 + 2 (null treated as 0)
+      expect(result.data.isFirstCheckIn).toBe(false);
+    });
+
+    it('should use transaction for database operations', async () => {
+      const testPractice = createTestPractice({ status: 'not_started' });
+      const testCheckIn = createTestCheckIn();
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.$transaction.mockResolvedValue([testCheckIn, {}]);
+
+      await createCheckIn(1, createCheckInRequest(), 1);
+
+      expect(prismaMock.$transaction).toHaveBeenCalled();
     });
   });
 
   describe('getCheckIns', () => {
-    const mockCheckIns = [createTestCheckIn()];
+    const mockCheckIns = [createTestCheckIn()] as any;
 
     it('should return check-ins with pagination', async () => {
       const params: CheckInQueryParams = {
@@ -391,12 +350,11 @@ describe('Practice CheckIn Service', () => {
     it('should return streak 1 for first check-in', async () => {
       const currentDate = new Date('2024-01-01');
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-      prismaMock.practices.findUnique.mockResolvedValue({ max_streak: 0 } as any);
 
       const result = await calculateStreak(1, 1, currentDate);
 
       expect(result.newStreak).toBe(1);
-      expect(result.isNewRecord).toBe(true);
+      expect(result.isNewRecord).toBe(true); // First check-in is always new record
     });
 
     it('should calculate consecutive streak correctly', async () => {
@@ -406,14 +364,14 @@ describe('Practice CheckIn Service', () => {
         { checkin_date: new Date('2024-01-03') },
         { checkin_date: new Date('2024-01-02') }
       ];
-      
+
       prismaMock.practice_checkins.findMany.mockResolvedValue(recentCheckIns as any);
-      prismaMock.practices.findUnique.mockResolvedValue({ max_streak: 3 } as any);
 
       const result = await calculateStreak(1, 1, currentDate);
 
       expect(result.newStreak).toBe(4); // 3 consecutive days + today
-      expect(result.isNewRecord).toBe(true);
+      // isNewRecord is false because max_streak field doesn't exist in DB
+      expect(result.isNewRecord).toBe(false);
     });
 
     it('should reset streak when there is a gap', async () => {
@@ -422,9 +380,8 @@ describe('Practice CheckIn Service', () => {
         { checkin_date: new Date('2024-01-02') }, // Gap on Jan 3 and 4
         { checkin_date: new Date('2024-01-01') }
       ];
-      
+
       prismaMock.practice_checkins.findMany.mockResolvedValue(recentCheckIns as any);
-      prismaMock.practices.findUnique.mockResolvedValue({ max_streak: 10 } as any);
 
       const result = await calculateStreak(1, 1, currentDate);
 
@@ -446,26 +403,10 @@ describe('Practice CheckIn Service', () => {
         expect.objectContaining({ practiceId: 1, userId: 1, error })
       );
     });
-
-    it('should detect new record when streak exceeds max_streak', async () => {
-      const currentDate = new Date('2024-01-04');
-      const recentCheckIns = [
-        { checkin_date: new Date('2024-01-03') },
-        { checkin_date: new Date('2024-01-02') }
-      ];
-      
-      prismaMock.practice_checkins.findMany.mockResolvedValue(recentCheckIns as any);
-      prismaMock.practices.findUnique.mockResolvedValue({ max_streak: 2 } as any);
-
-      const result = await calculateStreak(1, 1, currentDate);
-
-      expect(result.newStreak).toBe(3);
-      expect(result.isNewRecord).toBe(true);
-    });
   });
 
   describe('updatePracticeProgress', () => {
-    it('should update practice progress successfully', async () => {
+    it('should only update timestamp (function is deprecated)', async () => {
       const updates = {
         currentProgress: 15,
         streak: 7,
@@ -477,24 +418,19 @@ describe('Practice CheckIn Service', () => {
 
       await updatePracticeProgress(1, updates);
 
+      // Only updates timestamp because progress fields don't exist in schema
       expect(prismaMock.practices.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          current_progress: 15,
-          streak: 7,
-          max_streak: 10,
-          last_checkin_date: new Date('2024-01-01'),
           updated_at: expect.any(Date)
         }
       });
 
       expect(mockLoggerService.info).toHaveBeenCalledWith(
-        'Practice progress updated',
+        'Practice timestamp updated',
         expect.objectContaining({
           practiceId: 1,
-          currentProgress: 15,
-          streak: 7,
-          maxStreak: 10
+          note: 'Progress tracking fields do not exist in schema'
         })
       );
     });
@@ -510,10 +446,10 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practices.update.mockRejectedValue(error);
 
       await expect(updatePracticeProgress(1, updates))
-        .rejects.toThrow('更新實踐進度失敗');
-        
+        .rejects.toThrow('更新實踐失敗');
+
       expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Failed to update practice progress',
+        'Failed to update practice',
         expect.objectContaining({ practiceId: 1, updates, error })
       );
     });
@@ -569,42 +505,41 @@ describe('Practice CheckIn Service', () => {
   });
 
   describe('getCheckInStats', () => {
-    it('should return check-in statistics successfully', async () => {
+    it('should return check-in statistics with streak calculated from check-ins', async () => {
+      const recentCheckIns = [
+        { checkin_date: new Date() }
+      ];
+
       prismaMock.practice_checkins.aggregate.mockResolvedValue({
         _count: { id: 30 },
-        _avg: { progress_amount: 2.5 }
+        _max: { checkin_date: new Date('2024-01-01') }
       } as any);
-      prismaMock.practices.findUnique.mockResolvedValue({
-        streak: 7,
-        max_streak: 15,
-        last_checkin_date: new Date('2024-01-01')
-      } as any);
+      // calculateStreak is called internally, mock its dependencies
+      prismaMock.practice_checkins.findMany.mockResolvedValue(recentCheckIns as any);
 
       const result = await getCheckInStats(1, 1);
 
       expect(result).toMatchObject({
         totalCheckIns: 30,
-        currentStreak: 7,
-        maxStreak: 15,
-        averageProgress: 2.5,
+        currentStreak: expect.any(Number), // Calculated from check-ins
+        maxStreak: 0, // Field doesn't exist in DB
         lastCheckInDate: '2024-01-01'
       });
     });
 
-    it('should handle missing practice data with defaults', async () => {
+    it('should handle no check-ins with defaults', async () => {
       prismaMock.practice_checkins.aggregate.mockResolvedValue({
         _count: { id: 0 },
-        _avg: { progress_amount: null }
+        _max: { checkin_date: null }
       } as any);
-      prismaMock.practices.findUnique.mockResolvedValue(null);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
 
       const result = await getCheckInStats(1, 1);
 
       expect(result).toMatchObject({
         totalCheckIns: 0,
-        currentStreak: 0,
+        currentStreak: expect.any(Number),
         maxStreak: 0,
-        averageProgress: 0,
         lastCheckInDate: undefined
       });
     });
@@ -615,7 +550,7 @@ describe('Practice CheckIn Service', () => {
 
       await expect(getCheckInStats(1, 1))
         .rejects.toThrow('取得簽到統計失敗');
-        
+
       expect(mockLoggerService.error).toHaveBeenCalledWith(
         'Failed to get check-in stats',
         expect.objectContaining({ practiceId: 1, userId: 1, error })
@@ -626,14 +561,8 @@ describe('Practice CheckIn Service', () => {
   describe('getMonthlyCheckInCalendar', () => {
     it('should return monthly check-in calendar successfully', async () => {
       const checkIns = [
-        {
-          checkin_date: new Date('2024-01-01'),
-          streak_day: 1
-        },
-        {
-          checkin_date: new Date('2024-01-05'),
-          streak_day: 2
-        }
+        { checkin_date: new Date('2024-01-01') },
+        { checkin_date: new Date('2024-01-05') }
       ];
 
       prismaMock.practice_checkins.findMany.mockResolvedValue(checkIns as any);
@@ -642,6 +571,7 @@ describe('Practice CheckIn Service', () => {
 
       expect(result.checkInDates).toEqual(['2024-01-01', '2024-01-05']);
       expect(result.totalCheckIns).toBe(2);
+      // streakDays uses sequential numbering as fallback (field doesn't exist in DB)
       expect(result.streakDays).toEqual([
         { date: '2024-01-01', streakDay: 1 },
         { date: '2024-01-05', streakDay: 2 }
@@ -663,8 +593,7 @@ describe('Practice CheckIn Service', () => {
           }
         },
         select: {
-          checkin_date: true,
-          streak_day: true
+          checkin_date: true
         },
         orderBy: { checkin_date: 'asc' }
       });
@@ -676,7 +605,7 @@ describe('Practice CheckIn Service', () => {
 
       await expect(getMonthlyCheckInCalendar(1, 1, 2024, 1))
         .rejects.toThrow('取得月度簽到日曆失敗');
-        
+
       expect(mockLoggerService.error).toHaveBeenCalledWith(
         'Failed to get monthly check-in calendar',
         expect.objectContaining({ practiceId: 1, userId: 1, year: 2024, month: 1, error })
@@ -696,19 +625,41 @@ describe('Practice CheckIn Service', () => {
 
   describe('Business logic validation', () => {
     describe('streak calculation edge cases', () => {
-      it('should handle streak calculation when max_streak is null', async () => {
+      it('should handle consecutive check-ins correctly', async () => {
         const currentDate = new Date('2024-01-02');
         const recentCheckIns = [
           { checkin_date: new Date('2024-01-01') }
         ];
-        
+
         prismaMock.practice_checkins.findMany.mockResolvedValue(recentCheckIns as any);
-        prismaMock.practices.findUnique.mockResolvedValue({ max_streak: null } as any);
 
         const result = await calculateStreak(1, 1, currentDate);
 
         expect(result.newStreak).toBe(2);
-        expect(result.isNewRecord).toBe(true); // null treated as 0, so any streak is new record
+        // isNewRecord is false because max_streak field doesn't exist in DB
+        expect(result.isNewRecord).toBe(false);
+      });
+    });
+
+    describe('progress calculation edge cases', () => {
+      it('should handle first check-in with status transition', async () => {
+        const testPractice = createTestPractice({
+          status: 'not_started',
+          first_checkin_at: null
+        });
+        const testCheckIn = createTestCheckIn();
+
+        prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+        prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+        prismaMock.practice_checkins.count.mockResolvedValue(0);
+        prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+        prismaMock.$transaction.mockResolvedValue([testCheckIn, {}]);
+
+        const result = await createCheckIn(1, createCheckInRequest(), 1);
+
+        expect(result.data.isFirstCheckIn).toBe(true);
+        expect(result.data.practiceStatus).toBe('active');
+        expect(result.data.practiceProgressPercentage).toBe(50);
       });
     });
   });

@@ -224,7 +224,7 @@ export async function getTemplates(
         sessionDurationMinutes: t.session_duration_minutes,
         practiceTimePeriods: t.practice_time_periods || [],
         suggestedTags: t.practice_template_tags.map(pt => pt.tags.name),
-        createdAt: t.created_at?.toISOString() || ''
+        createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 
       const paginationInfo = calculatePagination(page, take, total);
@@ -306,7 +306,7 @@ export async function getTemplateById(
         sessionDurationMinutes: template.session_duration_minutes,
         practiceTimePeriods: template.practice_time_periods || [],
         suggestedTags: template.practice_template_tags.map(pt => pt.tags.name),
-        createdAt: template.created_at?.toISOString() || ''
+        createdAt: template.created_at?.toISOString() || new Date().toISOString()
       });
     }
   } catch (error) {

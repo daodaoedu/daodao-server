@@ -24,6 +24,11 @@ const mockEmailService = {
   sendWelcomeEmail: jest.fn()
 };
 
+const mockProfessionalFieldService = {
+  getUserProfessionalFields: jest.fn(),
+  setUserProfessionalFields: jest.fn()
+};
+
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: prismaMock
 }));
@@ -34,8 +39,13 @@ jest.mock('@/services/jwt.service', () => ({
   jwtService: mockJwtService
 }));
 
-jest.mock('@/services/auth/email.service', () => ({
+jest.mock('@/services/email/email.service', () => ({
   emailService: mockEmailService
+}));
+
+jest.mock('@/services/professional-field.service', () => ({
+  default: mockProfessionalFieldService,
+  ...mockProfessionalFieldService
 }));
 
 import { userService } from '@/services/user.service';
@@ -49,12 +59,18 @@ describe('User Service', () => {
     jest.clearAllMocks();
     // Setup transaction mock
     setupTransactionMock();
-    
+
     // Setup common mock returns
     mockTagService.getEntityTags.mockResolvedValue([]);
     mockTagService.setEntityTags.mockResolvedValue(undefined);
     mockJwtService.generateToken.mockReturnValue('mock-jwt-token');
     mockEmailService.sendVerificationEmail.mockResolvedValue({ success: true, messageId: 'mock-message-id' });
+    mockProfessionalFieldService.getUserProfessionalFields.mockResolvedValue([]);
+    mockProfessionalFieldService.setUserProfessionalFields.mockResolvedValue(undefined);
+
+    // Setup common Prisma mock returns for formatUserResponse dependencies
+    prismaMock.user_interests.findMany.mockResolvedValue([]);
+    prismaMock.quiz_results.findFirst.mockResolvedValue(null);
   });
 
   // Test data factories
@@ -87,6 +103,11 @@ describe('User Service', () => {
     discord: null,
     line: null,
     fb: null,
+    // New fields added to contacts table
+    threads: null,
+    linkedin: null,
+    github: null,
+    website: null,
     ...overrides
   });
 
