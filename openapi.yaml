@@ -5,16 +5,16 @@ info:
   description: 提供資源管理、心得評價和標籤功能的 RESTful API
   contact:
     name: DaoDao 開發團隊
-    email: support@daodao.com
+    email: contact@daodao.so
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
   - url: http://localhost:4000
     description: 本機開發
-  - url: https://server.daoedu.tw/
+  - url: https://server-dev.daodao.so/
     description: 開發環境
-  - url: https://dao-server.daoedu.tw/
+  - url: https://server.daodao.so/
     description: 生產環境
 components:
   securitySchemes:
@@ -1272,12 +1272,12 @@ components:
           type: string
           format: uri
           description: 主題實踐連結（兩版本共用）
-          example: https://daoedu.tw/practice
+          example: https://daodao.so/practice/create
         quizUrl:
           type: string
           format: uri
           description: 學習類型測驗連結（僅未做測驗版本使用）
-          example: https://daoedu.tw/quiz
+          example: https://daodao.so/quiz
         illustrationUrl:
           type: string
           format: uri
@@ -1287,7 +1287,7 @@ components:
           type: string
           format: uri
           description: 取消訂閱連結
-          example: https://daoedu.tw/unsubscribe
+          example: https://daodao.so/unsubscribe
         userId:
           type: integer
           minimum: 0

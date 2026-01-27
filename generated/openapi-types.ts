@@ -16045,13 +16045,13 @@ export interface components {
             /**
              * Format: uri
              * @description 主題實踐連結（兩版本共用）
-             * @example https://daoedu.tw/practice
+             * @example https://daodao.so/practice
              */
             practiceUrl?: string;
             /**
              * Format: uri
              * @description 學習類型測驗連結（僅未做測驗版本使用）
-             * @example https://daoedu.tw/quiz
+             * @example https://daodao.so/quiz
              */
             quizUrl?: string;
             /**
@@ -16063,7 +16063,7 @@ export interface components {
             /**
              * Format: uri
              * @description 取消訂閱連結
-             * @example https://daoedu.tw/unsubscribe
+             * @example https://daodao.so/unsubscribe
              */
             unsubscribeUrl?: string;
             /**
