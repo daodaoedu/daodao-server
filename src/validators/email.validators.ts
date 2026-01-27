@@ -180,7 +180,7 @@ export const welcomeEmailSchema = z.object({
     .optional()
     .openapi({
       description: '主題實踐連結（兩版本共用）',
-      example: 'https://daoedu.tw/practice',
+      example: 'https://daodao.so/practice/create',
       format: 'uri'
     }),
   quizUrl: z.string()
@@ -188,7 +188,7 @@ export const welcomeEmailSchema = z.object({
     .optional()
     .openapi({
       description: '學習類型測驗連結（僅未做測驗版本使用）',
-      example: 'https://daoedu.tw/quiz',
+      example: 'https://daodao.so/quiz',
       format: 'uri'
     }),
   illustrationUrl: z.string()
@@ -204,7 +204,7 @@ export const welcomeEmailSchema = z.object({
     .optional()
     .openapi({
       description: '取消訂閱連結',
-      example: 'https://daoedu.tw/unsubscribe',
+      example: 'https://daodao.so/unsubscribe',
       format: 'uri'
     }),
   userId: z.number()

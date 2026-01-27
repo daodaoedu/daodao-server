@@ -13,10 +13,10 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 
 // 基礎枚舉定義
-export const practiceStatusSchema = z.enum(['active', 'paused', 'completed', 'archived']).openapi({
-  description: '實踐活動狀態 (active: 進行中, paused: 暫停, completed: 已完成, archived: 已封存)',
-  example: 'active',
-  examples: ['active', 'paused', 'completed', 'archived']
+export const practiceStatusSchema = z.enum(['draft', 'not_started', 'active', 'completed', 'archived']).openapi({
+  description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)',
+  example: 'not_started',
+  examples: ['draft', 'not_started', 'active', 'completed', 'archived']
 });
 
 export const contentTypeSchema = z.enum(['book', 'video', 'articles', 'podcast', 'course', 'custom']).openapi({
@@ -367,7 +367,7 @@ export const practiceQuerySchema = z.object({
   contentType: z.string().optional(), // 逗號分隔
   tags: z.string().optional(), // 逗號分隔
   userId: z.string().optional(),
-  status: z.enum(['active', 'paused', 'completed', 'archived', 'all']).default('active'),
+  status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all']).default('active'),
   sort: z.enum(['createdAt', 'updatedAt', 'likeCount'], 'Sort must be one of: createdAt, updatedAt, likeCount').default('createdAt'),
   order: z.enum(['asc', 'desc'], 'Order must be either asc or desc').default('desc'),
   include: z.string().optional() // resources, stats等
@@ -425,7 +425,7 @@ export const practiceCommentParamsSchema = z.object({
 
 // 我的實踐查詢參數 Schema
 export const myPracticesQuerySchema = practiceQuerySchema.extend({
-  status: z.enum(['active', 'paused', 'completed', 'archived', 'all']).default('all')
+  status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all']).default('all')
 });
 
 // 型別導出
@@ -624,7 +624,6 @@ export const practiceUserStatsResponseSchema = z.object({
   totalPractices: z.number().int().min(0).openapi({ description: '總實踐數', example: 12 }),
   activePractices: z.number().int().min(0).openapi({ description: '活躍實踐數', example: 3 }),
   completedPractices: z.number().int().min(0).openapi({ description: '已完成實踐數', example: 7 }),
-  pausedPractices: z.number().int().min(0).openapi({ description: '暫停的實踐數', example: 2 }),
   totalCheckIns: z.number().int().min(0).openapi({ description: '總簽到次數', example: 245 }),
   averageStreak: z.number().min(0).openapi({ description: '平均連續天數', example: 8.5 }),
   maxStreak: z.number().int().min(0).openapi({ description: '最大連續天數', example: 25 })
@@ -634,7 +633,6 @@ export const practiceUserStatsResponseSchema = z.object({
     totalPractices: 12,
     activePractices: 3,
     completedPractices: 7,
-    pausedPractices: 2,
     totalCheckIns: 245,
     averageStreak: 8.5,
     maxStreak: 25
@@ -763,6 +761,113 @@ export const operationSuccessResponseSchema = z.object({
   }]
 });
 
+// ===== Practice Template Schemas =====
+
+// 模板查詢參數
+export const practiceTemplateQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  category: z.string().optional().openapi({
+    description: '模板分類',
+    example: 'reading',
+    examples: ['reading', 'learning', 'fitness', 'meditation']
+  }),
+  search: z.string().optional().openapi({
+    description: '搜尋關鍵字',
+    example: '閱讀'
+  })
+}).openapi('PracticeTemplateQuery', {
+  description: '實踐模板查詢參數'
+});
+
+// 模板回應
+export const practiceTemplateResponseSchema = z.object({
+  id: z.string().uuid().openapi({ description: '模板 ID' }),
+  title: z.string().openapi({ description: '模板標題', example: '每日閱讀 30 分鐘' }),
+  description: z.string().optional().openapi({ description: '模板描述' }),
+  category: z.string().openapi({ description: '模板分類', example: 'reading' }),
+  frequencyMinDays: z.number().int().min(1).openapi({ description: '最低打卡頻率', example: 1 }),
+  frequencyMaxDays: z.number().int().min(1).openapi({ description: '最高打卡頻率', example: 3 }),
+  durationDays: z.number().int().min(1).openapi({ description: '建議持續天數', example: 30 }),
+  suggestedTags: z.array(z.string()).openapi({ description: '建議標籤', example: ['閱讀', '習慣養成'] }),
+  createdAt: z.string().datetime().openapi({ description: '建立時間' })
+}).openapi('PracticeTemplate', {
+  description: '實踐模板'
+});
+
+// 註冊 PracticeTemplate
+registry.register('PracticeTemplate', practiceTemplateResponseSchema);
+
+// ===== Encouragement Schemas =====
+
+// 鼓勵句回應
+export const encouragementResponseSchema = z.object({
+  id: z.number().int().openapi({ description: '鼓勵句 ID' }),
+  message: z.string().openapi({ description: '鼓勵句內容', example: '太棒了！你做到了！' }),
+  category: z.string().optional().openapi({ description: '分類', example: 'general' })
+}).openapi('Encouragement', {
+  description: '打卡鼓勵句'
+});
+
+// 註冊 Encouragement
+registry.register('Encouragement', encouragementResponseSchema);
+
+// ===== Tag Prompt Schemas =====
+
+// 引導句查詢參數
+export const tagPromptQuerySchema = z.object({
+  usageType: z.enum(['checkin', 'practice', 'general']).default('checkin').openapi({
+    description: '使用場景類型',
+    example: 'checkin'
+  }),
+  locale: z.enum(['zh-TW', 'en']).default('zh-TW').openapi({
+    description: '語言',
+    example: 'zh-TW'
+  })
+}).openapi('TagPromptQuery', {
+  description: '引導句查詢參數'
+});
+
+// 引導句回應
+export const tagPromptResponseSchema = z.object({
+  id: z.number().int().openapi({ description: '引導句 ID' }),
+  tagName: z.string().openapi({ description: '標籤名稱', example: '閱讀' }),
+  prompt: z.string().openapi({ description: '引導句內容', example: '今天讀了什麼書？有什麼收穫嗎？' }),
+  usageType: z.string().openapi({ description: '使用場景', example: 'checkin' })
+}).openapi('TagPrompt', {
+  description: '標籤引導句'
+});
+
+// 註冊 TagPrompt
+registry.register('TagPrompt', tagPromptResponseSchema);
+
+// ===== Check-in with Encouragement Schema =====
+
+export const checkInWithEncouragementResponseSchema = checkInEntityResponseSchema.extend({
+  encouragement: z.string().openapi({ description: '鼓勵句', example: '太棒了！你做到了！' }),
+  practiceProgressPercentage: z.number().openapi({ description: '實踐進度百分比', example: 50 }),
+  practiceStatus: practiceStatusSchema,
+  isFirstCheckIn: z.boolean().openapi({ description: '是否首次打卡', example: false }),
+  hasReachedTarget: z.boolean().openapi({ description: '是否達成目標', example: false })
+}).openapi('CheckInWithEncouragement', {
+  description: '打卡回應（含鼓勵句）'
+});
+
+// 註冊 CheckInWithEncouragement
+registry.register('CheckInWithEncouragement', checkInWithEncouragementResponseSchema);
+
+// 驗證函數
+export const validatePracticeTemplateQuery = (data: unknown) => practiceTemplateQuerySchema.parse(data);
+export const validateTagPromptQuery = (data: unknown) => tagPromptQuerySchema.parse(data);
+
+// 類型導出
+export type PracticeTemplateQuery = z.infer<typeof practiceTemplateQuerySchema>;
+export type PracticeTemplateResponse = z.infer<typeof practiceTemplateResponseSchema>;
+export type EncouragementResponse = z.infer<typeof encouragementResponseSchema>;
+export type TagPromptQuery = z.infer<typeof tagPromptQuerySchema>;
+export type TagPromptResponse = z.infer<typeof tagPromptResponseSchema>;
+export type CheckInWithEncouragementResponse = z.infer<typeof checkInWithEncouragementResponseSchema>;
+
 // ===== API Response Schemas =====
 
 // 單一實踐回應
@@ -825,6 +930,14 @@ export const practiceValidators = {
   practiceStatusSchema,
   contentTypeSchema,
   dailyGoalTypeSchema,
+
+  // Template & Encouragement schemas
+  practiceTemplateQuerySchema,
+  practiceTemplateResponseSchema,
+  encouragementResponseSchema,
+  tagPromptQuerySchema,
+  tagPromptResponseSchema,
+  checkInWithEncouragementResponseSchema,
 
   // Response schemas
   userBasicInfoResponseSchema,

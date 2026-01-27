@@ -2245,8 +2245,8 @@ export interface paths {
                     page?: number;
                     /** @description 每頁顯示的練習項目數量 */
                     limit?: number;
-                    /** @description 按練習狀態篩選 (active: 進行中, paused: 已暫停, completed: 已完成, archived: 已歸檔) */
-                    status?: "active" | "paused" | "completed" | "archived";
+                    /** @description 按練習狀態篩選 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存) */
+                    status?: "draft" | "not_started" | "active" | "completed" | "archived";
                     /** @description 按內容類型篩選練習 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自訂) */
                     contentType?: "book" | "video" | "articles" | "podcast" | "course" | "custom";
                     /** @description 搜尋關鍵詞，用於標題或內容搜尋 */
@@ -2423,8 +2423,7 @@ export interface paths {
                              *       "totalPractices": 12,
                              *       "activePractices": 3,
                              *       "completedPractices": 7,
-                             *       "pausedPractices": 2,
-                             *       "archivedPractices": 0,
+                             *       "archivedPractices": 2,
                              *       "totalCheckIns": 245,
                              *       "currentStreak": 5,
                              *       "maxStreak": 25,
@@ -2473,8 +2472,6 @@ export interface paths {
                                 activePractices: number;
                                 /** @description 已完成實踐數 */
                                 completedPractices: number;
-                                /** @description 暫停的實踐數 */
-                                pausedPractices: number;
                                 /** @description 歸檔的實踐數 */
                                 archivedPractices: number;
                                 /** @description 總簽到次數 */
@@ -11732,7 +11729,7 @@ export interface paths {
                     contentType?: string;
                     tags?: string;
                     userId?: string;
-                    status?: "active" | "paused" | "completed" | "archived" | "all";
+                    status?: "draft" | "not_started" | "active" | "completed" | "archived" | "all";
                     sort?: "createdAt" | "updatedAt" | "likeCount";
                     order?: "asc" | "desc";
                     include?: string;
@@ -11966,7 +11963,7 @@ export interface paths {
                     contentType?: string;
                     tags?: string;
                     userId?: string;
-                    status?: "active" | "paused" | "completed" | "archived" | "all";
+                    status?: "draft" | "not_started" | "active" | "completed" | "archived" | "all";
                     sort?: "createdAt" | "updatedAt" | "likeCount";
                     order?: "asc" | "desc";
                     include?: string;
@@ -12311,15 +12308,16 @@ export interface paths {
                         tags?: string[];
                         resources?: components["schemas"]["PracticeResourceInput"][];
                         /**
-                         * @description 實踐活動狀態 (active: 進行中, paused: 暫停, completed: 已完成, archived: 已封存)
+                         * @description 實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)
+                         * @example not_started
+                         * @example draft
+                         * @example not_started
                          * @example active
-                         * @example active
-                         * @example paused
                          * @example completed
                          * @example archived
                          * @enum {string}
                          */
-                        status?: "active" | "paused" | "completed" | "archived";
+                        status?: "draft" | "not_started" | "active" | "completed" | "archived";
                     };
                 };
             };
@@ -13706,6 +13704,210 @@ export interface paths {
                 };
                 401: components["responses"]["UnauthorizedError"];
                 404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/checkin-encouragements/random": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得隨機鼓勵句
+         * @description 取得打卡時顯示的隨機鼓勵句
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功獲取鼓勵句 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            data: components["schemas"]["Encouragement"] & unknown;
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tag-prompts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得引導句列表
+         * @description 取得標籤相關的引導句，用於打卡時顯示
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 使用場景類型 */
+                    usageType?: "checkin" | "practice" | "general";
+                    /** @description 語言 */
+                    locale?: "zh-TW" | "en";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功獲取引導句列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: components["schemas"]["TagPrompt"][];
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
                 500: components["responses"]["InternalServerError"];
             };
         };
@@ -15843,13 +16045,13 @@ export interface components {
             /**
              * Format: uri
              * @description 主題實踐連結（兩版本共用）
-             * @example https://daoedu.tw/practice
+             * @example https://daodao.so/practice
              */
             practiceUrl?: string;
             /**
              * Format: uri
              * @description 學習類型測驗連結（僅未做測驗版本使用）
-             * @example https://daoedu.tw/quiz
+             * @example https://daodao.so/quiz
              */
             quizUrl?: string;
             /**
@@ -15861,7 +16063,7 @@ export interface components {
             /**
              * Format: uri
              * @description 取消訂閱連結
-             * @example https://daoedu.tw/unsubscribe
+             * @example https://daodao.so/unsubscribe
              */
             unsubscribeUrl?: string;
             /**
@@ -20105,15 +20307,16 @@ export interface components {
              */
             practiceAction?: string;
             /**
-             * @description 實踐活動狀態 (active: 進行中, paused: 暫停, completed: 已完成, archived: 已封存)
+             * @description 實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)
+             * @example not_started
+             * @example draft
+             * @example not_started
              * @example active
-             * @example active
-             * @example paused
              * @example completed
              * @example archived
              * @enum {string}
              */
-            status: "active" | "paused" | "completed" | "archived";
+            status: "draft" | "not_started" | "active" | "completed" | "archived";
             /**
              * @description 是否有相關資源
              * @example true
@@ -20260,7 +20463,6 @@ export interface components {
          *       "totalPractices": 12,
          *       "activePractices": 3,
          *       "completedPractices": 7,
-         *       "pausedPractices": 2,
          *       "totalCheckIns": 245,
          *       "averageStreak": 8.5,
          *       "maxStreak": 25
@@ -20283,11 +20485,6 @@ export interface components {
              */
             completedPractices: number;
             /**
-             * @description 暫停的實踐數
-             * @example 2
-             */
-            pausedPractices: number;
-            /**
              * @description 總簽到次數
              * @example 245
              */
@@ -20302,6 +20499,141 @@ export interface components {
              * @example 25
              */
             maxStreak: number;
+        };
+        /** @description 實踐模板 */
+        PracticeTemplate: {
+            /**
+             * Format: uuid
+             * @description 模板 ID
+             */
+            id: string;
+            /**
+             * @description 模板標題
+             * @example 每日閱讀 30 分鐘
+             */
+            title: string;
+            /** @description 模板描述 */
+            description?: string;
+            /**
+             * @description 模板分類
+             * @example reading
+             */
+            category: string;
+            /**
+             * @description 最低打卡頻率
+             * @example 1
+             */
+            frequencyMinDays: number;
+            /**
+             * @description 最高打卡頻率
+             * @example 3
+             */
+            frequencyMaxDays: number;
+            /**
+             * @description 建議持續天數
+             * @example 30
+             */
+            durationDays: number;
+            /**
+             * @description 建議標籤
+             * @example [
+             *       "閱讀",
+             *       "習慣養成"
+             *     ]
+             */
+            suggestedTags: string[];
+            /**
+             * Format: date-time
+             * @description 建立時間
+             */
+            createdAt: string;
+        };
+        /** @description 打卡鼓勵句 */
+        Encouragement: {
+            /** @description 鼓勵句 ID */
+            id: number;
+            /**
+             * @description 鼓勵句內容
+             * @example 太棒了！你做到了！
+             */
+            message: string;
+            /**
+             * @description 分類
+             * @example general
+             */
+            category?: string;
+        };
+        /** @description 標籤引導句 */
+        TagPrompt: {
+            /** @description 引導句 ID */
+            id: number;
+            /**
+             * @description 標籤名稱
+             * @example 閱讀
+             */
+            tagName: string;
+            /**
+             * @description 引導句內容
+             * @example 今天讀了什麼書？有什麼收穫嗎？
+             */
+            prompt: string;
+            /**
+             * @description 使用場景
+             * @example checkin
+             */
+            usageType: string;
+        };
+        /**
+         * @description 打卡回應（含鼓勵句）
+         * @example {
+         *       "id": 456,
+         *       "practiceId": 123,
+         *       "userId": 789,
+         *       "checkInDate": "2024-01-20",
+         *       "progressAmount": 50,
+         *       "unit": "頁",
+         *       "note": "今天學習了 useState 和 useEffect",
+         *       "mood": "happy",
+         *       "reflectionText": "對 Hooks 的概念有了更清楚的理解",
+         *       "relatedResourceId": "res-123e4567-e89b-12d3-a456-426614174000",
+         *       "streakDay": 5,
+         *       "cumulativeProgress": 8,
+         *       "createdAt": "2024-01-20T15:45:00.000Z",
+         *       "updatedAt": "2024-01-20T15:45:00.000Z"
+         *     }
+         */
+        CheckInWithEncouragement: components["schemas"]["CheckInEntity"] & {
+            /**
+             * @description 鼓勵句
+             * @example 太棒了！你做到了！
+             */
+            encouragement: string;
+            /**
+             * @description 實踐進度百分比
+             * @example 50
+             */
+            practiceProgressPercentage: number;
+            /**
+             * @description 實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)
+             * @example not_started
+             * @example draft
+             * @example not_started
+             * @example active
+             * @example completed
+             * @example archived
+             * @enum {string}
+             */
+            practiceStatus: "draft" | "not_started" | "active" | "completed" | "archived";
+            /**
+             * @description 是否首次打卡
+             * @example false
+             */
+            isFirstCheckIn: boolean;
+            /**
+             * @description 是否達成目標
+             * @example false
+             */
+            hasReachedTarget: boolean;
         };
         /** @description 創建新學習成果的請求資料 */
         CreateOutcomeRequest: {
@@ -21374,7 +21706,7 @@ export interface components {
              * @example active
              * @enum {string}
              */
-            status: "active" | "paused" | "completed" | "archived";
+            status: "draft" | "not_started" | "active" | "completed" | "archived";
             /**
              * @description 當前連續天數
              * @example 5

@@ -29,7 +29,7 @@ export const openApiConfig = {
     description: '提供資源管理、心得評價和標籤功能的 RESTful API',
     contact: {
       name: 'DaoDao 開發團隊',
-      email: 'support@daodao.com'
+      email: 'contact@daodao.so'
     },
     license: {
       name: 'MIT',
@@ -42,11 +42,11 @@ export const openApiConfig = {
       description: '本機開發'
     },
     {
-      url: 'https://server.daoedu.tw/',
+      url: 'https://server-dev.daodao.so/',
       description: '開發環境'
     },
     {
-      url: 'https://dao-server.daoedu.tw/',
+      url: 'https://server.daodao.so/',
       description: '生產環境'
     }
   ]

@@ -27,6 +27,23 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import {
+  INITIAL_PROGRESS,
+  calculateProgress,
+  calculateMinTargetCheckIns,
+  type PracticeProgressConfig
+} from '../utils/practice-progress';
+import {
+  determineNewStatus,
+  isValidTransition,
+  canEdit,
+  type PracticeStatusType
+} from '../utils/practice-status';
+import {
+  validateUpdateFields,
+  LOCKED_FIELDS_AFTER_CHECKIN
+} from '../validators/practice-business.validators';
+import { enqueuePracticeEmail } from '../queues';
 
 const prismaClient = prisma;
 
@@ -146,6 +163,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       customContentType: undefined,
       totalAmount: undefined, // Field doesn't exist in DB
       currentProgress: 0, // Field doesn't exist in DB - calculated from check-ins
+      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       startDate: practice.start_date?.toISOString().split('T')[0],
       dailyGoal: {
         type: 'time' as DailyGoalType, // Default value - field doesn't exist in DB
@@ -314,6 +332,10 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
 
 /**
  * 建立實踐（包含資源關聯）
+ *
+ * 變更：
+ * - 設定初始進度 progress_percentage: 20
+ * - 設定初始狀態 status: 'not_started'
  */
 export async function create(data: CreatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
   try {
@@ -324,8 +346,10 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         // Note: content_type and related fields don't exist in schema
         start_date: data.startDate ? new Date(data.startDate) : null,
         practice_action: data.practiceAction,
-        status: 'active', // CreatePracticeRequest doesn't have status field
+        status: 'not_started', // Initial status before first check-in
         has_resources: Boolean(data.resources && data.resources.length > 0)
+        // Note: progress_percentage 欄位需要在 daodao-storage 新增後才能使用
+        // progress_percentage: INITIAL_PROGRESS
       },
       select: {
         id: true,
@@ -412,6 +436,11 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
 
     loggerService.info('Practice created', { practiceId: practice.id, userId });
 
+    // 觸發 PE01 實踐建立郵件（非阻塞）
+    enqueuePracticeEmail('PE01', practice.id, userId).catch(err => {
+      loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
+    });
+
     return createSuccessResponse(practiceEntity);
 
   } catch (error) {
@@ -422,6 +451,11 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
 
 /**
  * 更新實踐
+ *
+ * 變更：
+ * - 檢查是否有打卡記錄
+ * - 有打卡時鎖定：startDate, frequencyMinDays, frequencyMaxDays, durationDays
+ * - 檢查狀態是否允許編輯
  */
 export async function update(id: number, data: UpdatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
   try {
@@ -436,6 +470,24 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     if (existingPractice.user_id !== userId) {
       throw new Error('沒有權限修改此實踐');
+    }
+
+    // 檢查狀態是否允許編輯
+    if (!canEdit(existingPractice.status as PracticeStatusType)) {
+      throw new Error('此實踐狀態不允許編輯');
+    }
+
+    // 檢查是否有打卡記錄
+    const checkInCount = await prismaClient.practice_checkins.count({
+      where: { practice_id: id }
+    });
+    const hasCheckIns = checkInCount > 0;
+
+    // 驗證更新欄位是否允許（有打卡後部分欄位不可修改）
+    const updateFields = Object.keys(data);
+    const validation = validateUpdateFields(updateFields, hasCheckIns);
+    if (!validation.isValid) {
+      throw new Error(validation.errorMessage);
     }
 
     const updateData: Prisma.practicesUpdateInput = {};
@@ -650,7 +702,6 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
       totalPractices: practiceStats._count?.id || 0,
       activePractices: statusCounts.find(s => s.status === 'active')?._count.id || 0,
       completedPractices: statusCounts.find(s => s.status === 'completed')?._count.id || 0,
-      pausedPractices: statusCounts.find(s => s.status === 'paused')?._count.id || 0,
       totalCheckIns: checkInStats._count.id,
       averageStreak: 0, // Field doesn't exist in DB - would need to calculate from check-ins
       maxStreak: 0 // Field doesn't exist in DB - would need to calculate from check-ins
@@ -799,6 +850,207 @@ async function getCommentCounts(practiceIds: number[]): Promise<Record<number, n
   } catch (error) {
     loggerService.warn('Failed to get comment counts', { practiceIds, error });
     return {};
+  }
+}
+
+/**
+ * 封存實踐
+ */
+export async function archive(id: number, userId: number): Promise<ApiSuccessResponse<{ success: boolean }>> {
+  try {
+    const practice = await prismaClient.practices.findUnique({
+      where: { id }
+    });
+
+    if (!practice) {
+      throw new Error('實踐不存在');
+    }
+
+    if (practice.user_id !== userId) {
+      throw new Error('沒有權限封存此實踐');
+    }
+
+    if (practice.status === 'archived') {
+      throw new Error('實踐已經是封存狀態');
+    }
+
+    // 保存封存前的狀態（如果需要取消封存時使用）
+    const previousStatus = practice.status;
+
+    await prismaClient.practices.update({
+      where: { id },
+      data: {
+        status: 'archived',
+        // 可選：存儲封存前狀態，以便取消封存時恢復
+        // previous_status: previousStatus,
+        updated_at: new Date()
+      }
+    });
+
+    loggerService.info('Practice archived', { practiceId: id, userId, previousStatus });
+
+    return createSuccessResponse({ success: true });
+
+  } catch (error) {
+    loggerService.error('Failed to archive practice', { practiceId: id, userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 取消封存實踐
+ */
+export async function unarchive(id: number, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
+  try {
+    const practice = await prismaClient.practices.findUnique({
+      where: { id },
+      include: {
+        users: {
+          select: {
+            id: true,
+            external_id: true,
+            nickname: true,
+            contacts: {
+              select: {
+                photo_url: true
+              }
+            },
+            user_positions: {
+              select: {
+                position: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!practice) {
+      throw new Error('實踐不存在');
+    }
+
+    if (practice.user_id !== userId) {
+      throw new Error('沒有權限取消封存此實踐');
+    }
+
+    if (practice.status !== 'archived') {
+      throw new Error('實踐不是封存狀態');
+    }
+
+    // 檢查是否有打卡記錄，決定恢復到什麼狀態
+    const checkInCount = await prismaClient.practice_checkins.count({
+      where: { practice_id: id }
+    });
+    const hasCheckIns = checkInCount > 0;
+
+    // 根據是否有打卡記錄決定恢復狀態
+    const newStatus = determineNewStatus({
+      currentStatus: 'archived',
+      hasCheckIns,
+      hasReachedTarget: false,
+      isUnarchiving: true
+    });
+
+    const updatedPractice = await prismaClient.practices.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        updated_at: new Date()
+      },
+      include: {
+        users: {
+          select: {
+            id: true,
+            external_id: true,
+            nickname: true,
+            contacts: {
+              select: {
+                photo_url: true
+              }
+            },
+            user_positions: {
+              select: {
+                position: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 取得統計數據和標籤
+    const [comments, tags] = await Promise.all([
+      getCommentCounts([id]),
+      prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: id
+        },
+        include: {
+          tags: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      })
+    ]);
+
+    const practiceEntity: PracticeEntity = {
+      id: updatedPractice.external_id || '',
+      title: updatedPractice.title,
+      contentType: 'other' as ContentType,
+      customContentType: undefined,
+      totalAmount: undefined,
+      currentProgress: 0,
+      progressPercentage: Number(updatedPractice.progress_percentage) || INITIAL_PROGRESS,
+      startDate: updatedPractice.start_date?.toISOString().split('T')[0],
+      dailyGoal: {
+        type: 'time' as DailyGoalType,
+        timeMinutes: undefined,
+        amount: undefined,
+        unit: undefined
+      },
+      practiceAction: updatedPractice.practice_action || undefined,
+      status: updatedPractice.status as PracticeStatus || 'not_started',
+      hasResources: updatedPractice.has_resources || false,
+      streak: 0,
+      maxStreak: 0,
+      lastCheckInDate: undefined,
+      createdAt: updatedPractice.created_at?.toISOString() || '',
+      updatedAt: updatedPractice.updated_at?.toISOString(),
+      user: {
+        id: updatedPractice.users.external_id || '',
+        name: updatedPractice.users.nickname || 'Unknown User',
+        photoURL: updatedPractice.users.contacts?.photo_url || null,
+        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+      },
+      tags: tags.map(tag => tag.tags.name),
+      stats: {
+        likeCount: 0,
+        viewCount: 0,
+        favoriteCount: 0,
+        shareCount: 0,
+        commentCount: comments[id] || 0
+      }
+    };
+
+    loggerService.info('Practice unarchived', { practiceId: id, userId, newStatus });
+
+    return createSuccessResponse(practiceEntity);
+
+  } catch (error) {
+    loggerService.error('Failed to unarchive practice', { practiceId: id, userId, error });
+    throw error;
   }
 }
 
