@@ -471,7 +471,7 @@ components:
           minLength: 1
           description: OAuth 狀態參數
           example: random_state_123456
-          examples: &ref_42
+          examples: &ref_41
             - random_state_123456
             - oauth_state_abc
         code:
@@ -479,14 +479,14 @@ components:
           minLength: 1
           description: OAuth 授權碼
           example: auth_code_123456789
-          examples: &ref_43
+          examples: &ref_42
             - auth_code_123456789
             - oauth_authorization_code
         error:
           type: string
           description: OAuth 錯誤代碼
           example: access_denied
-          examples: &ref_44
+          examples: &ref_43
             - access_denied
             - invalid_request
             - server_error
@@ -494,7 +494,7 @@ components:
           type: string
           description: OAuth 錯誤詳細描述
           example: User denied the request
-          examples: &ref_45
+          examples: &ref_44
             - User denied the request
             - Invalid client credentials
             - Internal server error
@@ -1981,7 +1981,7 @@ components:
           default: 1
           description: 分頁頁碼，從 1 開始
           example: 1
-          examples: &ref_30
+          examples: &ref_29
             - 1
             - 2
             - 5
@@ -1992,7 +1992,7 @@ components:
           default: 20
           description: 每頁顯示的想法數量（1-100）
           example: 20
-          examples: &ref_31
+          examples: &ref_30
             - 10
             - 20
             - 50
@@ -2000,7 +2000,7 @@ components:
           type: string
           description: 搜尋關鍵詞，用於內容搜尋
           example: React
-          examples: &ref_32
+          examples: &ref_31
             - React
             - 學習
             - 開源專案
@@ -2008,7 +2008,7 @@ components:
           type: string
           description: 標籤篩選條件，多個標籤用逗號分隔
           example: 前端,React
-          examples: &ref_33
+          examples: &ref_32
             - 前端,React
             - 學習,教育
             - 開源
@@ -2016,7 +2016,7 @@ components:
           type: string
           description: 篩選特定使用者的想法
           example: 123e4567-e89b-12d3-a456-426614174000
-          examples: &ref_34
+          examples: &ref_33
             - 123e4567-e89b-12d3-a456-426614174000
             - user123
         status:
@@ -2028,7 +2028,7 @@ components:
             - all
           description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
           example: active
-          examples: &ref_35
+          examples: &ref_34
             - active
             - draft
             - archived
@@ -2042,7 +2042,7 @@ components:
           default: createdAt
           description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
           example: createdAt
-          examples: &ref_36
+          examples: &ref_35
             - createdAt
             - updatedAt
             - likeCount
@@ -2054,7 +2054,7 @@ components:
           default: desc
           description: 排序方向：asc (升序)、desc (降序)
           example: desc
-          examples: &ref_37
+          examples: &ref_36
             - asc
             - desc
       description: 想法列表查詢參數
@@ -2462,7 +2462,7 @@ components:
             - hasNext
             - hasPrev
           description: Pagination information
-          examples: &ref_38
+          examples: &ref_37
             - currentPage: 1
               totalPages: 5
               totalItems: 50
@@ -2855,7 +2855,7 @@ components:
           pattern: ^[a-zA-Z0-9._-]+$
           description: 圖片檔案名稱
           example: image_123.jpg
-          examples: &ref_79
+          examples: &ref_78
             - image_123.jpg
             - user-avatar.png
             - banner.webp
@@ -5471,63 +5471,6 @@ components:
       required:
         - message
       description: 刪除留言回應
-    DailyGoal:
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - time
-            - completion
-          description: '每日目標類型 (time: 時間目標, completion: 完成目標)'
-          example: time
-          examples:
-            - time
-            - completion
-        timeMinutes:
-          type: number
-          minimum: 5
-          maximum: 240
-          description: 每日時間目標（分鐘）
-          example: 60
-          examples:
-            - 30
-            - 60
-            - 90
-            - 120
-        amount:
-          type: number
-          minimum: 1
-          maximum: 100
-          description: 每日數量目標
-          example: 3
-          examples:
-            - 1
-            - 3
-            - 5
-            - 10
-        unit:
-          type: string
-          maxLength: 10
-          description: 數量單位
-          example: 章
-          examples:
-            - 章
-            - 頁
-            - 集
-            - 篇
-      required:
-        - type
-      description: 每日學習目標設定
-      example:
-        type: time
-        timeMinutes: 60
-      examples:
-        - type: time
-          timeMinutes: 60
-        - type: completion
-          amount: 3
-          unit: 章
     PracticeResourceInput:
       type: object
       properties:
@@ -5600,70 +5543,106 @@ components:
           minLength: 1
           maxLength: 100
           description: 實踐活動標題
-          example: 學習 React Hooks
-          examples:
+          example: 每日閱讀 30 分鐘
+          examples: &ref_83
+            - 每日閱讀 30 分鐘
             - 學習 React Hooks
-            - 閱讀《深入理解計算機系統》
-            - 練習 JavaScript 算法
-        contentType:
-          type: string
-          enum:
-            - book
-            - video
-            - articles
-            - podcast
-            - course
-            - custom
-          description: '內容類型 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自定義)'
-          example: book
-          examples: &ref_17
-            - book
-            - video
-            - articles
-            - podcast
-            - course
-            - custom
-        customContentType:
-          type: string
-          maxLength: 50
-          description: 自定義內容類型（當選擇 custom 時使用）
-          example: 程式設計練習
-          examples:
-            - 程式設計練習
-            - 語言學習
-            - 技術文檔
-        totalAmount:
-          type: number
-          minimum: 1
-          maximum: 10000
-          description: 學習內容的總量（如總頁數、總章節數等）
-          example: 300
-          examples:
-            - 300
-            - 12
-            - 50
-            - 100
-        startDate:
-          type: string
-          format: date
-          pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 實踐開始日期
-          example: '2024-01-15'
-          examples:
-            - '2024-01-15'
-            - '2024-03-01'
-            - '2024-06-01'
-        dailyGoal:
-          $ref: '#/components/schemas/DailyGoal'
+            - 每天運動 20 分鐘
         practiceAction:
           type: string
           maxLength: 200
           description: 具體的實踐行動描述
-          example: 每天閱讀並做筆記
-          examples:
-            - 每天閱讀並做筆記
-            - 觀看影片並實作練習
-            - 完成課後習題
+          example: 閱讀技術書籍或文章
+          examples: &ref_84
+            - 閱讀技術書籍或文章
+            - 完成線上課程一個章節
+            - 跑步或健身
+        startDate:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 實踐開始日期（不可超過 14 天後）
+          example: '2024-01-15'
+          examples: &ref_85
+            - '2024-01-15'
+            - '2024-03-01'
+            - '2024-06-01'
+        durationDays:
+          type: integer
+          minimum: 7
+          maximum: 90
+          description: 實踐持續天數
+          example: 14
+          examples: &ref_86
+            - 7
+            - 14
+            - 21
+            - 30
+        frequencyMinDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: 每週最低打卡天數
+          example: 4
+          examples: &ref_87
+            - 1
+            - 3
+            - 4
+            - 5
+        frequencyMaxDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: 每週最高打卡天數
+          example: 7
+          examples: &ref_88
+            - 5
+            - 6
+            - 7
+        sessionDurationMinutes:
+          type: integer
+          minimum: 5
+          maximum: 240
+          description: 每次實踐時長（分鐘）
+          example: 30
+          examples: &ref_89
+            - 15
+            - 30
+            - 60
+            - 90
+        practiceTimePeriods:
+          type: array
+          items:
+            type: string
+            enum:
+              - morning
+              - afternoon
+              - evening
+              - night
+            description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+            example: morning
+            examples: &ref_90
+              - morning
+              - afternoon
+              - evening
+              - night
+          maxItems: 4
+          default: &ref_91 []
+          description: 偏好實踐時段
+          example: &ref_92
+            - morning
+            - evening
+          examples: &ref_93
+            - - morning
+            - - afternoon
+              - evening
+            - - morning
+              - night
+        otherContext:
+          type: string
+          maxLength: 500
+          description: 其他補充說明
+          example: 希望養成每天閱讀的習慣
         tags:
           type: array
           items:
@@ -5671,140 +5650,76 @@ components:
             minLength: 1
             maxLength: 50
           maxItems: 3
-          default: []
-          description: 相關標籤（最多3個）
-          example:
-            - JavaScript
-            - 前端
-          examples:
-            - - JavaScript
+          default: &ref_94 []
+          description: 相關標籤（最多 3 個）
+          example: &ref_95
+            - 閱讀
+            - 學習
+          examples: &ref_96
+            - - 閱讀
+              - 學習
+            - - 運動
+              - 健康
+            - - 程式
               - 前端
-            - - React
-              - Hooks
-              - 實戰
-            - - 算法
-              - 資料結構
+              - React
         resources:
           type: array
           items:
             $ref: '#/components/schemas/PracticeResourceInput'
           maxItems: 5
-          description: 相關學習資源（最多5個）
-          example:
+          description: 相關學習資源（最多 5 個）
+          example: &ref_97
             - name: React 官方文檔
               url: https://react.dev/
       required:
         - title
-        - contentType
-        - totalAmount
-        - dailyGoal
-      description: 創建實踐活動的請求資料
-      example:
-        title: 學習 React Hooks
-        contentType: course
-        totalAmount: 20
-        startDate: '2024-01-15'
-        dailyGoal:
-          type: time
-          timeMinutes: 60
-        practiceAction: 每天學習 1 小時的 React Hooks 課程並做實作練習
-        tags:
-          - React
-          - Hooks
-          - 前端
-        resources:
-          - name: React 官方文檔
-            url: https://react.dev/
     CheckInRequest:
       type: object
       properties:
-        progress:
-          type: number
-          minimum: 0.01
-          description: 今日學習進度
-          example: 25
-          examples:
-            - 5
-            - 10
-            - 25
-            - 50
-            - 100
-        note:
-          type: string
-          maxLength: 500
-          description: 學習筆記
-          example: 今天學習了 React Hooks 的 useState
-          examples:
-            - 今天學習了 React Hooks 的 useState
-            - 完成了三個章節的練習題
         mood:
           type: string
           enum:
-            - awesome
-            - happy
-            - neutral
-            - tired
+            - give_up
             - frustrated
-          description: '學習心情 (awesome: 非常棒, happy: 開心, neutral: 普通, tired: 疲累, frustrated: 挫折)'
+            - bored
+            - neutral
+            - good
+            - happy
+          description: '學習心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)'
           example: happy
           examples:
-            - awesome
-            - happy
-            - neutral
-            - tired
+            - give_up
             - frustrated
-        reflectionText:
+            - bored
+            - neutral
+            - good
+            - happy
+        note:
           type: string
-          maxLength: 1000
-          description: 學習反思
-          example: 今天的學習效果很好，對 Hooks 的理解更深入了
+          maxLength: 300
+          description: 詳細描述（最多300字）
+          example: 今天閱讀了第三章，學到了很多新概念
           examples:
-            - 今天的學習效果很好，對 Hooks 的理解更深入了
-            - 遇到了一些困難，需要多練習
-        relatedResourceId:
-          type: string
-          format: uuid
-          description: 相關資源ID
-          example: 123e4567-e89b-12d3-a456-426614174000
-        isPublic:
-          type: boolean
-          default: true
-          description: 是否公開分享
-          example: true
-          examples:
-            - true
-            - false
-        tags:
+            - 今天閱讀了第三章，學到了很多新概念
+            - 完成了 30 分鐘的練習
+        imageUrls:
           type: array
           items:
             type: string
-            minLength: 1
-            maxLength: 50
-          maxItems: 5
+            format: uri
+          maxItems: 3
           default: []
-          description: 簽到標籤（最多5個）
-          example:
-            - React
-            - 學習
+          description: 打卡圖片 URL（最多3張）
+          example: []
           examples:
-            - - React
-              - 學習
-            - - JavaScript
-              - 進步
-              - 練習
-      required:
-        - progress
+            - []
+            - - https://example.com/image1.jpg
       description: 實踐活動簽到記錄
       example:
-        progress: 25
-        note: 今天學習了 React Hooks 的 useState 和 useEffect
         mood: happy
-        reflectionText: 對 Hooks 的概念有了更清楚的理解
-        isPublic: true
-        tags:
-          - React
-          - Hooks
-          - 學習
+        note: 今天閱讀了第三章，學到了很多新概念
+        imageUrls: []
     PracticeStats:
       type: object
       properties:
@@ -5857,44 +5772,52 @@ components:
         title:
           type: string
           description: 實踐活動標題
-          example: 學習 React Hooks
-        contentType:
+          example: 每日閱讀 30 分鐘
+        practiceAction:
           type: string
-          enum:
-            - book
-            - video
-            - articles
-            - podcast
-            - course
-            - custom
-          description: '內容類型 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自定義)'
-          example: book
-          examples: *ref_17
-        customContentType:
-          type: string
-          description: 自定義內容類型
-          example: 程式設計練習
-        totalAmount:
-          type: integer
-          minimum: 1
-          description: 總學習量
-          example: 20
-        currentProgress:
-          type: number
-          minimum: 0
-          description: 當前進度
-          example: 8
+          description: 實踐行動描述
+          example: 閱讀技術書籍或文章
         startDate:
           type: string
           format: date
           description: 開始日期 (YYYY-MM-DD)
           example: '2024-01-15'
-        dailyGoal:
-          $ref: '#/components/schemas/DailyGoal'
-        practiceAction:
+        endDate:
           type: string
-          description: 實踐行動描述
-          example: 每天學習 1 小時的 React Hooks 課程並做實作練習
+          format: date
+          description: 結束日期 (YYYY-MM-DD)
+          example: '2024-01-29'
+        durationDays:
+          type: integer
+          description: 持續天數
+          example: 14
+        frequencyMinDays:
+          type: integer
+          description: 每週最低打卡天數
+          example: 4
+        frequencyMaxDays:
+          type: integer
+          description: 每週最高打卡天數
+          example: 7
+        frequencyDescription:
+          type: string
+          description: 頻率描述
+          example: 每週 4-7 天
+        sessionDurationMinutes:
+          type: integer
+          description: 每次實踐時長（分鐘）
+          example: 30
+        practiceTimePeriods:
+          type: array
+          items:
+            type: string
+          description: 偏好實踐時段
+          example:
+            - morning
+            - evening
+        otherContext:
+          type: string
+          description: 其他說明
         status:
           type: string
           enum:
@@ -5905,7 +5828,7 @@ components:
             - archived
           description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
           example: not_started
-          examples: &ref_18
+          examples: &ref_17
             - draft
             - not_started
             - active
@@ -5915,21 +5838,15 @@ components:
           type: boolean
           description: 是否有相關資源
           example: true
-        streak:
-          type: integer
+        progressPercentage:
+          type: number
           minimum: 0
-          description: 當前連續天數
-          example: 5
-        maxStreak:
-          type: integer
-          minimum: 0
-          description: 最大連續天數
-          example: 12
-        lastCheckInDate:
+          description: 進度百分比
+          example: 50
+        firstCheckinAt:
           type: string
-          format: date
-          description: 最後簽到日期
-          example: '2024-01-20'
+          format: date-time
+          description: 首次打卡時間
         createdAt:
           type: string
           format: date-time
@@ -5961,22 +5878,17 @@ components:
             type: string
           description: 相關標籤
           example:
-            - React
-            - Hooks
-            - 前端
+            - 閱讀
+            - 學習
         stats:
           $ref: '#/components/schemas/PracticeStats'
       required:
         - id
         - title
-        - contentType
-        - totalAmount
-        - currentProgress
-        - dailyGoal
+        - practiceTimePeriods
         - status
         - hasResources
-        - streak
-        - maxStreak
+        - progressPercentage
         - createdAt
         - user
         - tags
@@ -5984,21 +5896,22 @@ components:
       description: 實踐活動詳細資訊
       example:
         id: 123e4567-e89b-12d3-a456-426614174000
-        title: 學習 React Hooks
-        contentType: course
-        customContentType: null
-        totalAmount: 20
-        currentProgress: 8
+        title: 每日閱讀 30 分鐘
+        practiceAction: 閱讀技術書籍或文章
         startDate: '2024-01-15'
-        dailyGoal:
-          type: time
-          timeMinutes: 60
-        practiceAction: 每天學習 1 小時的 React Hooks 課程並做實作練習
+        endDate: '2024-01-29'
+        durationDays: 14
+        frequencyMinDays: 4
+        frequencyMaxDays: 7
+        frequencyDescription: 每週 4-7 天
+        sessionDurationMinutes: 30
+        practiceTimePeriods:
+          - morning
+          - evening
         status: active
-        hasResources: true
-        streak: 5
-        maxStreak: 12
-        lastCheckInDate: '2024-01-20'
+        hasResources: false
+        progressPercentage: 50
+        firstCheckinAt: '2024-01-15T08:30:00.000Z'
         createdAt: '2024-01-15T10:30:00.000Z'
         updatedAt: '2024-01-20T15:45:00.000Z'
         user:
@@ -6014,9 +5927,8 @@ components:
             - React
           selfIntroduction: 熱愛學習的開發者
         tags:
-          - React
-          - Hooks
-          - 前端
+          - 閱讀
+          - 學習
         stats:
           likeCount: 25
           viewCount: 150
@@ -6038,52 +5950,32 @@ components:
           type: integer
           description: 簽到用戶內部 ID
           example: 789
-        checkInDate:
+        checkinDate:
           type: string
           format: date
           description: 簽到日期
           example: '2024-01-20'
-        progressAmount:
-          type: number
-          minimum: 0
-          description: 簽到進度數量
-          example: 50
-        unit:
-          type: string
-          description: 進度單位（頁、章、集等）
-          example: 頁
-        note:
-          type: string
-          description: 簽到筆記
-          example: 今天學習了 useState 和 useEffect
         mood:
           type: string
           enum:
-            - awesome
-            - happy
-            - neutral
-            - tired
+            - give_up
             - frustrated
-          description: 簽到心情
+            - bored
+            - neutral
+            - good
+            - happy
+          description: '簽到心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)'
           example: happy
-        reflectionText:
+        note:
           type: string
-          description: 學習反思
-          example: 對 Hooks 的概念有了更清楚的理解
-        relatedResourceId:
-          type: string
-          description: 相關資源 ID
-          example: res-123e4567-e89b-12d3-a456-426614174000
-        streakDay:
-          type: integer
-          minimum: 0
-          description: 連續簽到天數
-          example: 5
-        cumulativeProgress:
-          type: number
-          minimum: 0
-          description: 累積進度
-          example: 8
+          description: 詳細描述
+          example: 今天閱讀了第三章
+        imageUrls:
+          type: array
+          items:
+            type: string
+          description: 打卡圖片 URL（最多3張）
+          example: []
         createdAt:
           type: string
           format: date-time
@@ -6098,25 +5990,18 @@ components:
         - id
         - practiceId
         - userId
-        - checkInDate
-        - progressAmount
-        - streakDay
-        - cumulativeProgress
+        - checkinDate
+        - imageUrls
         - createdAt
       description: 簽到記錄詳細資訊
-      example: &ref_19
+      example: &ref_18
         id: 456
         practiceId: 123
         userId: 789
-        checkInDate: '2024-01-20'
-        progressAmount: 50
-        unit: 頁
-        note: 今天學習了 useState 和 useEffect
+        checkinDate: '2024-01-20'
         mood: happy
-        reflectionText: 對 Hooks 的概念有了更清楚的理解
-        relatedResourceId: res-123e4567-e89b-12d3-a456-426614174000
-        streakDay: 5
-        cumulativeProgress: 8
+        note: 今天閱讀了第三章
+        imageUrls: []
         createdAt: '2024-01-20T15:45:00.000Z'
         updatedAt: '2024-01-20T15:45:00.000Z'
     PracticeUserStats:
@@ -6287,7 +6172,7 @@ components:
                 - archived
               description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
               example: not_started
-              examples: *ref_18
+              examples: *ref_17
             isFirstCheckIn:
               type: boolean
               description: 是否首次打卡
@@ -6303,7 +6188,7 @@ components:
             - isFirstCheckIn
             - hasReachedTarget
       description: 打卡回應（含鼓勵句）
-      example: *ref_19
+      example: *ref_18
     CreateOutcomeRequest:
       type: object
       properties:
@@ -6370,13 +6255,13 @@ components:
             - https://vimeo.com/123456789
         visibility:
           type: string
-          enum: &ref_20
+          enum: &ref_19
             - private
             - public
           default: private
           description: 成果的可見性設定
           example: private
-          examples: &ref_21
+          examples: &ref_20
             - private
             - public
       required:
@@ -6449,10 +6334,10 @@ components:
             - https://youtube.com/watch?v=updated-demo2
         visibility:
           type: string
-          enum: *ref_20
+          enum: *ref_19
           description: 成果的可見性設定
           example: private
-          examples: *ref_21
+          examples: *ref_20
       description: 更新現有學習成果的請求資料
     OutcomeResponse:
       type: object
@@ -6902,7 +6787,7 @@ components:
         motivation:
           nullable: true
           description: 專案動機資訊
-          example: &ref_22
+          example: &ref_21
             reason: 提升技術能力
         motivationDescription:
           type: string
@@ -6922,7 +6807,7 @@ components:
         strategy:
           nullable: true
           description: 專案執行策略
-          example: &ref_23
+          example: &ref_22
             approach: 逐步學習
         strategyDescription:
           type: string
@@ -6937,7 +6822,7 @@ components:
         outcome:
           nullable: true
           description: 專案預期成果
-          example: &ref_24
+          example: &ref_23
             deliverable: 完成網站開發
         outcomeDescription:
           type: string
@@ -6957,7 +6842,7 @@ components:
             - Canceled
           description: 專案完成狀態
           example: Not Started
-          examples: &ref_25
+          examples: &ref_24
             - Not Started
             - Ongoing
             - Completed
@@ -7010,7 +6895,7 @@ components:
         motivation:
           nullable: true
           description: 專案動機資訊
-          example: *ref_22
+          example: *ref_21
         motivationDescription:
           type: string
           maxLength: 1000
@@ -7029,7 +6914,7 @@ components:
         strategy:
           nullable: true
           description: 專案執行策略
-          example: *ref_23
+          example: *ref_22
         strategyDescription:
           type: string
           maxLength: 1000
@@ -7043,7 +6928,7 @@ components:
         outcome:
           nullable: true
           description: 專案預期成果
-          example: *ref_24
+          example: *ref_23
         outcomeDescription:
           type: string
           maxLength: 1000
@@ -7062,7 +6947,7 @@ components:
             - Canceled
           description: 專案完成狀態
           example: Not Started
-          examples: *ref_25
+          examples: *ref_24
         startDate:
           type: string
           format: date-time
@@ -7499,35 +7384,63 @@ components:
           type: string
           description: 實踐項目標題
           example: 學習React Hooks
-        contentType:
+        practiceAction:
           type: string
-          enum:
-            - book
-            - video
-            - articles
-            - podcast
-            - course
-            - custom
-          description: 內容類型
-          example: course
-        customContentType:
-          type: string
-          description: 自定義內容類型
-          example: 線上課程
-        totalAmount:
-          type: integer
-          minimum: 1
-          description: 總學習量
-          example: 20
-        currentProgress:
-          type: number
-          minimum: 0
-          description: 當前進度
-          example: 8
+          description: 實踐行動描述
+          example: 每天學習1小時React Hooks課程
         startDate:
           type: string
           description: 開始日期 (YYYY-MM-DD)
           example: '2024-01-15'
+        endDate:
+          type: string
+          description: 結束日期 (YYYY-MM-DD)
+          example: '2024-02-15'
+        durationDays:
+          type: integer
+          minimum: 7
+          maximum: 90
+          description: 持續天數 (7-90天)
+          example: 30
+        frequencyMinDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: 最小頻率天數
+          example: 1
+        frequencyMaxDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: 最大頻率天數
+          example: 7
+        frequencyDescription:
+          type: string
+          description: 頻率描述
+          example: 每週3-5次
+        sessionDurationMinutes:
+          type: integer
+          minimum: 5
+          maximum: 240
+          description: 每次練習時長 (分鐘)
+          example: 30
+        practiceTimePeriods:
+          type: array
+          items:
+            type: string
+            enum:
+              - morning
+              - afternoon
+              - evening
+              - night
+          description: 練習時段
+          example:
+            - morning
+            - evening
+        otherContext:
+          type: string
+          description: 其他備註或情境說明
+          example: 在通勤時間練習
         status:
           type: string
           enum:
@@ -7538,20 +7451,21 @@ components:
             - archived
           description: 實踐狀態
           example: active
-        streak:
-          type: integer
+        hasResources:
+          type: boolean
+          description: 是否有相關資源
+          example: true
+        progressPercentage:
+          type: number
           minimum: 0
-          description: 當前連續天數
-          example: 5
-        maxStreak:
-          type: integer
-          minimum: 0
-          description: 最大連續天數
-          example: 12
-        lastCheckInDate:
+          maximum: 100
+          description: 進度百分比 (0-100)
+          example: 45
+        firstCheckinAt:
           type: string
-          description: 最後簽到日期 (YYYY-MM-DD)
-          example: '2024-01-20'
+          format: date-time
+          description: 首次打卡時間
+          example: '2024-01-16T08:30:00.000Z'
         createdAt:
           type: string
           format: date-time
@@ -7562,10 +7476,6 @@ components:
           format: date-time
           description: 更新時間
           example: '2024-01-20T15:45:00.000Z'
-        dailyGoal:
-          allOf:
-            - $ref: '#/components/schemas/DailyGoal'
-            - description: 每日目標設定
         tags:
           type: array
           items:
@@ -7575,27 +7485,14 @@ components:
             - React
             - 前端
             - Hooks
-        practiceAction:
-          type: string
-          description: 實踐行動描述
-          example: 每天學習1小時React Hooks課程
-        hasResources:
-          type: boolean
-          description: 是否有相關資源
-          example: true
       required:
         - id
         - title
-        - contentType
-        - totalAmount
-        - currentProgress
+        - practiceTimePeriods
         - status
-        - streak
-        - maxStreak
-        - createdAt
-        - dailyGoal
-        - tags
         - hasResources
+        - createdAt
+        - tags
       description: 我的實踐項目
     UpdatePreferencesRequest:
       type: object
@@ -8290,7 +8187,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: &ref_27
+                    examples: &ref_26
                       - cursors:
                           start: eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==
                           end: eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ==
@@ -8777,7 +8674,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_26
+                examples: &ref_25
                   - success: true
                     data:
                       id: 123
@@ -9055,7 +8952,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_26
+                examples: *ref_25
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -9339,7 +9236,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: *ref_27
+                    examples: *ref_26
                   timestamp:
                     type: string
                     format: date-time
@@ -9743,7 +9640,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_28
+                examples: &ref_27
                   - success: true
                     data:
                       id: 123
@@ -9995,7 +9892,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_28
+                examples: *ref_27
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -10111,7 +10008,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_29
+                examples: &ref_28
                   - success: true
                     data:
                       id: 123
@@ -10240,7 +10137,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_29
+                examples: *ref_28
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -10260,7 +10157,7 @@ paths:
             default: 1
             description: 分頁頁碼，從 1 開始
             example: 1
-            examples: *ref_30
+            examples: *ref_29
           required: false
           description: 分頁頁碼，從 1 開始
           name: page
@@ -10272,7 +10169,7 @@ paths:
             default: 20
             description: 每頁顯示的想法數量（1-100）
             example: 20
-            examples: *ref_31
+            examples: *ref_30
           required: false
           description: 每頁顯示的想法數量（1-100）
           name: limit
@@ -10281,7 +10178,7 @@ paths:
             type: string
             description: 搜尋關鍵詞，用於內容搜尋
             example: React
-            examples: *ref_32
+            examples: *ref_31
           required: false
           description: 搜尋關鍵詞，用於內容搜尋
           name: query
@@ -10290,7 +10187,7 @@ paths:
             type: string
             description: 標籤篩選條件，多個標籤用逗號分隔
             example: 前端,React
-            examples: *ref_33
+            examples: *ref_32
           required: false
           description: 標籤篩選條件，多個標籤用逗號分隔
           name: tags
@@ -10299,7 +10196,7 @@ paths:
             type: string
             description: 篩選特定使用者的想法
             example: 123e4567-e89b-12d3-a456-426614174000
-            examples: *ref_34
+            examples: *ref_33
           required: false
           description: 篩選特定使用者的想法
           name: userId
@@ -10313,7 +10210,7 @@ paths:
               - all
             description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
             example: active
-            examples: *ref_35
+            examples: *ref_34
           required: false
           description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
           name: status
@@ -10327,7 +10224,7 @@ paths:
             default: createdAt
             description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
             example: createdAt
-            examples: *ref_36
+            examples: *ref_35
           required: false
           description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
           name: sort
@@ -10340,7 +10237,7 @@ paths:
             default: desc
             description: 排序方向：asc (升序)、desc (降序)
             example: desc
-            examples: *ref_37
+            examples: *ref_36
           required: false
           description: 排序方向：asc (升序)、desc (降序)
           name: order
@@ -10652,7 +10549,7 @@ paths:
             default: 1
             description: 分頁頁碼，從 1 開始
             example: 1
-            examples: *ref_30
+            examples: *ref_29
           required: false
           description: 分頁頁碼，從 1 開始
           name: page
@@ -10664,7 +10561,7 @@ paths:
             default: 20
             description: 每頁顯示的想法數量（1-100）
             example: 20
-            examples: *ref_31
+            examples: *ref_30
           required: false
           description: 每頁顯示的想法數量（1-100）
           name: limit
@@ -10673,7 +10570,7 @@ paths:
             type: string
             description: 搜尋關鍵詞，用於內容搜尋
             example: React
-            examples: *ref_32
+            examples: *ref_31
           required: false
           description: 搜尋關鍵詞，用於內容搜尋
           name: query
@@ -10682,7 +10579,7 @@ paths:
             type: string
             description: 標籤篩選條件，多個標籤用逗號分隔
             example: 前端,React
-            examples: *ref_33
+            examples: *ref_32
           required: false
           description: 標籤篩選條件，多個標籤用逗號分隔
           name: tags
@@ -10691,7 +10588,7 @@ paths:
             type: string
             description: 篩選特定使用者的想法
             example: 123e4567-e89b-12d3-a456-426614174000
-            examples: *ref_34
+            examples: *ref_33
           required: false
           description: 篩選特定使用者的想法
           name: userId
@@ -10705,7 +10602,7 @@ paths:
               - all
             description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
             example: active
-            examples: *ref_35
+            examples: *ref_34
           required: false
           description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
           name: status
@@ -10719,7 +10616,7 @@ paths:
             default: createdAt
             description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
             example: createdAt
-            examples: *ref_36
+            examples: *ref_35
           required: false
           description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
           name: sort
@@ -10732,7 +10629,7 @@ paths:
             default: desc
             description: 排序方向：asc (升序)、desc (降序)
             example: desc
-            examples: *ref_37
+            examples: *ref_36
           required: false
           description: 排序方向：asc (升序)、desc (降序)
           name: order
@@ -10808,28 +10705,6 @@ paths:
           in: query
         - schema:
             type: string
-            enum:
-              - book
-              - video
-              - articles
-              - podcast
-              - course
-              - custom
-            description: '按內容類型篩選練習 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自訂)'
-            example: book
-            examples:
-              - book
-              - video
-              - articles
-              - podcast
-              - course
-              - custom
-          required: false
-          description: '按內容類型篩選練習 (book: 書籍, video: 影片, articles: 文章, podcast: 播客, course: 課程, custom: 自訂)'
-          name: contentType
-          in: query
-        - schema:
-            type: string
             maxLength: 100
             description: 搜尋關鍵詞，用於標題或內容搜尋
             example: React
@@ -10846,18 +10721,16 @@ paths:
             enum:
               - createdAt
               - updatedAt
-              - title
-              - progress
+              - likeCount
             default: createdAt
-            description: '排序欄位 (createdAt: 按創建時間, updatedAt: 按更新時間, title: 按標題, progress: 按進度)'
+            description: '排序欄位 (createdAt: 按創建時間, updatedAt: 按更新時間, likeCount: 按喜歡數)'
             example: createdAt
             examples:
               - createdAt
               - updatedAt
-              - title
-              - progress
+              - likeCount
           required: false
-          description: '排序欄位 (createdAt: 按創建時間, updatedAt: 按更新時間, title: 按標題, progress: 按進度)'
+          description: '排序欄位 (createdAt: 按創建時間, updatedAt: 按更新時間, likeCount: 按喜歡數)'
           name: sortBy
           in: query
         - schema:
@@ -10952,7 +10825,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -11651,7 +11524,7 @@ paths:
             maxLength: 50
             description: 按偏好設定分類篩選
             example: 學習偏好
-            examples: &ref_74
+            examples: &ref_73
               - 學習偏好
               - 通知設定
               - 隱私設定
@@ -11666,7 +11539,7 @@ paths:
             default: false
             description: 是否包含系統層級的偏好設定
             example: false
-            examples: &ref_75
+            examples: &ref_74
               - true
               - false
           required: false
@@ -12356,13 +12229,13 @@ paths:
                     - practice
                     - review
                   description: 實體類型
-                  examples: &ref_39
+                  examples: &ref_38
                     - resource
                     - project
                     - idea
                     - practice
                     - review
-                  enumDescriptions: &ref_40
+                  enumDescriptions: &ref_39
                     resource: 資源
                     project: 專案
                     idea: 想法
@@ -12374,7 +12247,7 @@ paths:
                   maxLength: 50
                   pattern: ^[a-zA-Z0-9\u4e00-\u9fa5_-]+$
                   description: 標籤名稱
-                  examples: &ref_41
+                  examples: &ref_40
                     - React
                     - JavaScript
                     - 前端開發
@@ -12525,15 +12398,15 @@ paths:
                     - practice
                     - review
                   description: 實體類型
-                  examples: *ref_39
-                  enumDescriptions: *ref_40
+                  examples: *ref_38
+                  enumDescriptions: *ref_39
                 tagName:
                   type: string
                   minLength: 1
                   maxLength: 50
                   pattern: ^[a-zA-Z0-9\u4e00-\u9fa5_-]+$
                   description: 標籤名稱
-                  examples: *ref_41
+                  examples: *ref_40
               required:
                 - entityId
                 - entityType
@@ -12664,8 +12537,8 @@ paths:
               - practice
               - review
             description: 實體類型
-            examples: *ref_39
-            enumDescriptions: *ref_40
+            examples: *ref_38
+            enumDescriptions: *ref_39
           required: true
           description: 實體類型
           name: entityType
@@ -13162,7 +13035,7 @@ paths:
             minLength: 1
             description: OAuth 狀態參數
             example: random_state_123456
-            examples: *ref_42
+            examples: *ref_41
           required: false
           description: OAuth 狀態參數
           name: state
@@ -13172,7 +13045,7 @@ paths:
             minLength: 1
             description: OAuth 授權碼
             example: auth_code_123456789
-            examples: *ref_43
+            examples: *ref_42
           required: false
           description: OAuth 授權碼
           name: code
@@ -13181,7 +13054,7 @@ paths:
             type: string
             description: OAuth 錯誤代碼
             example: access_denied
-            examples: *ref_44
+            examples: *ref_43
           required: false
           description: OAuth 錯誤代碼
           name: error
@@ -13190,7 +13063,7 @@ paths:
             type: string
             description: OAuth 錯誤詳細描述
             example: User denied the request
-            examples: *ref_45
+            examples: *ref_44
           required: false
           description: OAuth 錯誤詳細描述
           name: error_description
@@ -13250,7 +13123,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: &ref_46
+            examples: &ref_45
               - '1'
               - '2'
               - '10'
@@ -13263,7 +13136,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: &ref_47
+            examples: &ref_46
               - '10'
               - '20'
               - '50'
@@ -13280,7 +13153,7 @@ paths:
               - Canceled
             description: 專案完成狀態
             example: Not Started
-            examples: *ref_25
+            examples: *ref_24
           required: false
           description: 專案完成狀態
           name: status
@@ -13289,7 +13162,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: &ref_48
+            examples: &ref_47
               - 'true'
               - 'false'
           required: false
@@ -13301,7 +13174,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: &ref_49
+            examples: &ref_48
               - '123'
               - '456'
               - '789'
@@ -13314,7 +13187,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: &ref_50
+            examples: &ref_49
               - React
               - 網站開發
               - 機器學習
@@ -13332,7 +13205,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: &ref_51
+            examples: &ref_50
               - createdAt
               - updatedAt
               - title
@@ -13349,7 +13222,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: &ref_52
+            examples: &ref_51
               - asc
               - desc
           required: false
@@ -13407,7 +13280,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -13458,7 +13331,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_53
+                examples: &ref_52
                   - success: true
                     data:
                       - id: 1
@@ -13566,7 +13439,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_54
+                examples: &ref_53
                   - success: true
                     data:
                       id: 123
@@ -13605,7 +13478,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: *ref_46
+            examples: *ref_45
           required: false
           description: 頁碼
           name: page
@@ -13615,7 +13488,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: *ref_47
+            examples: *ref_46
           required: false
           description: 每頁項目數
           name: limit
@@ -13629,7 +13502,7 @@ paths:
               - Canceled
             description: 專案完成狀態
             example: Not Started
-            examples: *ref_25
+            examples: *ref_24
           required: false
           description: 專案完成狀態
           name: status
@@ -13638,7 +13511,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: *ref_48
+            examples: *ref_47
           required: false
           description: 是否只查詢公開專案
           name: isPublic
@@ -13648,7 +13521,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: *ref_49
+            examples: *ref_48
           required: false
           description: 指定用戶ID篩選
           name: userId
@@ -13658,7 +13531,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: *ref_50
+            examples: *ref_49
           required: false
           description: 搜尋關鍵字
           name: search
@@ -13673,7 +13546,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: *ref_51
+            examples: *ref_50
           required: false
           description: 排序欄位
           name: sortBy
@@ -13685,7 +13558,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: *ref_52
+            examples: *ref_51
           required: false
           description: 排序順序
           name: sortOrder
@@ -13741,7 +13614,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -13792,7 +13665,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_53
+                examples: *ref_52
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -13811,7 +13684,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: *ref_46
+            examples: *ref_45
           required: false
           description: 頁碼
           name: page
@@ -13821,7 +13694,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: *ref_47
+            examples: *ref_46
           required: false
           description: 每頁項目數
           name: limit
@@ -13835,7 +13708,7 @@ paths:
               - Canceled
             description: 專案完成狀態
             example: Not Started
-            examples: *ref_25
+            examples: *ref_24
           required: false
           description: 專案完成狀態
           name: status
@@ -13844,7 +13717,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: *ref_48
+            examples: *ref_47
           required: false
           description: 是否只查詢公開專案
           name: isPublic
@@ -13854,7 +13727,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: *ref_49
+            examples: *ref_48
           required: false
           description: 指定用戶ID篩選
           name: userId
@@ -13864,7 +13737,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: *ref_50
+            examples: *ref_49
           required: false
           description: 搜尋關鍵字
           name: search
@@ -13879,7 +13752,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: *ref_51
+            examples: *ref_50
           required: false
           description: 排序欄位
           name: sortBy
@@ -13891,7 +13764,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: *ref_52
+            examples: *ref_51
           required: false
           description: 排序順序
           name: sortOrder
@@ -13947,7 +13820,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -13998,7 +13871,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_53
+                examples: *ref_52
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -14190,7 +14063,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_54
+                examples: *ref_53
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -14283,7 +14156,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_54
+                examples: *ref_53
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -14499,7 +14372,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_54
+                examples: *ref_53
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -14521,7 +14394,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: &ref_55
+            examples: &ref_54
               - project_123
               - my-study-notes
               - learning-journey-2024
@@ -14711,7 +14584,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -14842,7 +14715,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 里程碑唯一識別碼
-            examples: &ref_56
+            examples: &ref_55
               - '1'
               - '2'
               - '123'
@@ -15029,7 +14902,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 里程碑唯一識別碼
-            examples: *ref_56
+            examples: *ref_55
           required: true
           description: 里程碑唯一識別碼
           name: milestoneId
@@ -15117,7 +14990,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -15197,10 +15070,10 @@ paths:
                     - public
                   default: private
                   description: 便利貼的可見性設定
-                  examples: &ref_59
+                  examples: &ref_58
                     - private
                     - public
-                  enumDescriptions: &ref_60
+                  enumDescriptions: &ref_59
                     private: 私人可見，僅作者可查看
                     public: 公開可見，所有人可查看
               required:
@@ -15336,7 +15209,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -15459,7 +15332,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: &ref_57
+            examples: &ref_56
               - project_123
               - my-study-notes
               - learning-journey-2024
@@ -15471,7 +15344,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: &ref_58
+            examples: &ref_57
               - '123'
               - '456'
               - '789'
@@ -15596,7 +15469,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: *ref_57
+            examples: *ref_56
           required: true
           description: 便利貼所屬的專案唯一識別ID
           name: projectId
@@ -15605,7 +15478,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: *ref_58
+            examples: *ref_57
           required: true
           description: 便利貼的唯一識別ID
           name: noteId
@@ -15679,8 +15552,8 @@ paths:
                     - private
                     - public
                   description: 便利貼的可見性設定
-                  examples: *ref_59
-                  enumDescriptions: *ref_60
+                  examples: *ref_58
+                  enumDescriptions: *ref_59
               description: 更新現有便利貼筆記的請求資料
               examples:
                 - title: React 學習筆記 - 更新
@@ -15807,7 +15680,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: *ref_57
+            examples: *ref_56
           required: true
           description: 便利貼所屬的專案唯一識別ID
           name: projectId
@@ -15816,7 +15689,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: *ref_58
+            examples: *ref_57
           required: true
           description: 便利貼的唯一識別ID
           name: noteId
@@ -16155,7 +16028,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -16231,7 +16104,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_61
+                examples: &ref_60
                   - success: true
                     data:
                       id: 123
@@ -16268,7 +16141,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -16340,7 +16213,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_64
+                examples: &ref_63
                   - success: true
                     data:
                       id: 123
@@ -16375,7 +16248,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: &ref_62
+            examples: &ref_61
               - project_123
               - my-learning-journey
               - bootcamp-2024
@@ -16388,7 +16261,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: &ref_63
+            examples: &ref_62
               - '123'
               - '456'
               - '789'
@@ -16462,7 +16335,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_61
+                examples: *ref_60
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -16480,7 +16353,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_62
+            examples: *ref_61
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -16490,7 +16363,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_63
+            examples: *ref_62
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -16566,7 +16439,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_61
+                examples: *ref_60
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -16588,7 +16461,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_62
+            examples: *ref_61
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -16598,7 +16471,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_63
+            examples: *ref_62
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -16768,7 +16641,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_64
+                examples: *ref_63
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -16786,7 +16659,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -16802,7 +16675,7 @@ paths:
                   minimum: 1
                   maximum: 52
                   description: 覆盤週數
-                  examples: &ref_65
+                  examples: &ref_64
                     - 1
                     - 12
                     - 24
@@ -16826,13 +16699,13 @@ paths:
                     - tired
                     - frustrated
                   description: 心情評估等級
-                  examples: &ref_66
+                  examples: &ref_65
                     - happy
                     - calm
                     - anxious
                     - tired
                     - frustrated
-                  enumDescriptions: &ref_67
+                  enumDescriptions: &ref_66
                     happy: 開心
                     calm: 平靜
                     anxious: 焦慮
@@ -16843,7 +16716,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 壓力等級評估
-                  examples: &ref_68
+                  examples: &ref_67
                     - 1
                     - 3
                     - 5
@@ -16862,7 +16735,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 學習效果評估等級
-                  examples: &ref_71
+                  examples: &ref_70
                     - 1
                     - 4
                     - 6
@@ -17021,7 +16894,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_55
+            examples: *ref_54
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -17031,7 +16904,7 @@ paths:
             minimum: 1
             maximum: 52
             description: 覆盤週數
-            examples: *ref_65
+            examples: *ref_64
           required: false
           description: 覆盤週數
           name: week
@@ -17045,8 +16918,8 @@ paths:
               - tired
               - frustrated
             description: 心情評估等級
-            examples: *ref_66
-            enumDescriptions: *ref_67
+            examples: *ref_65
+            enumDescriptions: *ref_66
           required: false
           description: 心情評估等級
           name: mood
@@ -17056,7 +16929,7 @@ paths:
             minimum: 1
             maximum: 10
             description: 壓力等級評估
-            examples: *ref_68
+            examples: *ref_67
           required: false
           description: 壓力等級評估
           name: stressLevel
@@ -17194,7 +17067,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: &ref_69
+            examples: &ref_68
               - 123e4567-e89b-12d3-a456-426614174000
               - proj_abc123
               - project-001
@@ -17205,7 +17078,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: &ref_70
+            examples: &ref_69
               - '1'
               - '123'
               - '456'
@@ -17319,7 +17192,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: *ref_69
+            examples: *ref_68
           required: true
           description: 專案識別碼
           name: projectId
@@ -17327,7 +17200,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: *ref_70
+            examples: *ref_69
           required: true
           description: 覆盤識別碼
           name: reviewId
@@ -17355,14 +17228,14 @@ paths:
                     - tired
                     - frustrated
                   description: 心情評估等級
-                  examples: *ref_66
-                  enumDescriptions: *ref_67
+                  examples: *ref_65
+                  enumDescriptions: *ref_66
                 stressLevel:
                   type: integer
                   minimum: 1
                   maximum: 10
                   description: 壓力等級評估
-                  examples: *ref_68
+                  examples: *ref_67
                 moodDescription:
                   type: string
                   maxLength: 1000
@@ -17375,7 +17248,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 學習效果評估等級
-                  examples: *ref_71
+                  examples: *ref_70
                 learningFeedback:
                   type: string
                   maxLength: 2000
@@ -17507,7 +17380,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: *ref_69
+            examples: *ref_68
           required: true
           description: 專案識別碼
           name: projectId
@@ -17515,7 +17388,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: *ref_70
+            examples: *ref_69
           required: true
           description: 覆盤識別碼
           name: reviewId
@@ -17719,7 +17592,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -17887,7 +17760,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_72
+                examples: &ref_71
                   - success: true
                     data:
                       id: 123
@@ -17986,7 +17859,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_73
+                examples: &ref_72
                   - success: true
                     data:
                       id: 123
@@ -18096,7 +17969,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_72
+                examples: *ref_71
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -18181,7 +18054,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_76
+                examples: &ref_75
                   - success: true
                     data:
                       id: 123
@@ -18285,7 +18158,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_77
+                examples: &ref_76
                   - success: true
                     data:
                       id: 123
@@ -18415,7 +18288,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_73
+                examples: *ref_72
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -18504,7 +18377,7 @@ paths:
             maxLength: 50
             description: 按偏好設定分類篩選
             example: 學習偏好
-            examples: *ref_74
+            examples: *ref_73
           required: false
           description: 按偏好設定分類篩選
           name: category
@@ -18515,7 +18388,7 @@ paths:
             default: false
             description: 是否包含系統層級的偏好設定
             example: false
-            examples: *ref_75
+            examples: *ref_74
           required: false
           description: 是否包含系統層級的偏好設定
           name: includeSystem
@@ -19039,7 +18912,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_73
+                examples: *ref_72
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -19132,7 +19005,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_76
+                examples: *ref_75
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -19231,7 +19104,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_77
+                examples: *ref_76
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -19807,7 +19680,7 @@ paths:
             exclusiveMinimum: true
             description: 留言唯一識別碼
             example: 123
-            examples: &ref_78
+            examples: &ref_77
               - 1
               - 25
               - 100
@@ -19919,7 +19792,7 @@ paths:
             exclusiveMinimum: true
             description: 留言唯一識別碼
             example: 123
-            examples: *ref_78
+            examples: *ref_77
           required: true
           description: 留言唯一識別碼
           name: commentId
@@ -20038,7 +19911,7 @@ paths:
             exclusiveMinimum: true
             description: 留言唯一識別碼
             example: 123
-            examples: *ref_78
+            examples: *ref_77
           required: true
           description: 留言唯一識別碼
           name: commentId
@@ -20150,7 +20023,7 @@ paths:
             pattern: ^[a-zA-Z0-9._-]+$
             description: 圖片檔案名稱
             example: image_123.jpg
-            examples: *ref_79
+            examples: *ref_78
           required: true
           description: 圖片檔案名稱
           name: filename
@@ -20203,7 +20076,7 @@ paths:
             pattern: ^[a-zA-Z0-9._-]+$
             description: 圖片檔案名稱
             example: image_123.jpg
-            examples: *ref_79
+            examples: *ref_78
           required: true
           description: 圖片檔案名稱
           name: filename
@@ -20536,7 +20409,7 @@ paths:
             pattern: ^\d+$
             description: 導師指派記錄的唯一識別 ID
             example: '123'
-            examples: &ref_80
+            examples: &ref_79
               - '123'
               - '456'
               - '789'
@@ -20655,7 +20528,7 @@ paths:
             pattern: ^\d+$
             description: 導師指派記錄的唯一識別 ID
             example: '123'
-            examples: *ref_80
+            examples: *ref_79
           required: true
           description: 導師指派記錄的唯一識別 ID
           name: assignmentId
@@ -20993,7 +20866,7 @@ paths:
             pattern: ^\d+$
             description: 學習參與者的唯一識別 ID
             example: '1001'
-            examples: &ref_82
+            examples: &ref_81
               - '1001'
               - '2045'
               - '3078'
@@ -21066,7 +20939,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_81
+                examples: &ref_80
                   - success: true
                     data:
                       id: 123
@@ -21155,7 +21028,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_81
+                examples: *ref_80
     delete:
       tags:
         - Mentor
@@ -21169,7 +21042,7 @@ paths:
             pattern: ^\d+$
             description: 學習參與者的唯一識別 ID
             example: '1001'
-            examples: *ref_82
+            examples: *ref_81
           required: true
           description: 學習參與者的唯一識別 ID
           name: participantId
@@ -21278,7 +21151,7 @@ paths:
             minLength: 1
             description: 學習活動或馬拉松的唯一識別 ID
             example: marathon_2024_spring
-            examples: &ref_83
+            examples: &ref_82
               - marathon_2024_spring
               - bootcamp_react_2024
               - workshop_nodejs_basics
@@ -21391,7 +21264,7 @@ paths:
             minLength: 1
             description: 學習活動或馬拉松的唯一識別 ID
             example: marathon_2024_spring
-            examples: *ref_83
+            examples: *ref_82
           required: true
           description: 學習活動或馬拉松的唯一識別 ID
           name: eventId
@@ -21617,7 +21490,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -21668,7 +21541,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_84
+                examples: &ref_98
                   - success: true
                     data:
                       - id: 1
@@ -21709,7 +21582,98 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePracticeRequest'
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: 實踐活動標題
+                  example: 每日閱讀 30 分鐘
+                  examples: *ref_83
+                practiceAction:
+                  type: string
+                  maxLength: 200
+                  description: 具體的實踐行動描述
+                  example: 閱讀技術書籍或文章
+                  examples: *ref_84
+                startDate:
+                  type: string
+                  format: date
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                  description: 實踐開始日期（不可超過 14 天後）
+                  example: '2024-01-15'
+                  examples: *ref_85
+                durationDays:
+                  type: integer
+                  minimum: 7
+                  maximum: 90
+                  description: 實踐持續天數
+                  example: 14
+                  examples: *ref_86
+                frequencyMinDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                  description: 每週最低打卡天數
+                  example: 4
+                  examples: *ref_87
+                frequencyMaxDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                  description: 每週最高打卡天數
+                  example: 7
+                  examples: *ref_88
+                sessionDurationMinutes:
+                  type: integer
+                  minimum: 5
+                  maximum: 240
+                  description: 每次實踐時長（分鐘）
+                  example: 30
+                  examples: *ref_89
+                practiceTimePeriods:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - morning
+                      - afternoon
+                      - evening
+                      - night
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+                    example: morning
+                    examples: *ref_90
+                  maxItems: 4
+                  default: *ref_91
+                  description: 偏好實踐時段
+                  example: *ref_92
+                  examples: *ref_93
+                otherContext:
+                  type: string
+                  maxLength: 500
+                  description: 其他補充說明
+                  example: 希望養成每天閱讀的習慣
+                tags:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 50
+                  maxItems: 3
+                  default: *ref_94
+                  description: 相關標籤（最多 3 個）
+                  example: *ref_95
+                  examples: *ref_96
+                resources:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PracticeResourceInput'
+                  maxItems: 5
+                  description: 相關學習資源（最多 5 個）
+                  example: *ref_97
+              required:
+                - title
       responses:
         '201':
           description: 實踐創建成功
@@ -21933,7 +21897,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -21984,7 +21948,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_84
+                examples: *ref_98
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -22218,18 +22182,44 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
-                totalAmount:
-                  type: number
-                  minimum: 1
-                  maximum: 10000
-                startDate:
-                  type: string
-                  pattern: ^\d{4}-\d{2}-\d{2}$
-                dailyGoal:
-                  $ref: '#/components/schemas/DailyGoal'
                 practiceAction:
                   type: string
                   maxLength: 200
+                startDate:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                durationDays:
+                  type: integer
+                  minimum: 7
+                  maximum: 90
+                frequencyMinDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                frequencyMaxDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                sessionDurationMinutes:
+                  type: integer
+                  minimum: 5
+                  maximum: 240
+                practiceTimePeriods:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - morning
+                      - afternoon
+                      - evening
+                      - night
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+                    example: morning
+                    examples: *ref_90
+                  maxItems: 4
+                otherContext:
+                  type: string
+                  maxLength: 500
                 tags:
                   type: array
                   items:
@@ -22252,7 +22242,7 @@ paths:
                     - archived
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
-                  examples: *ref_18
+                  examples: *ref_17
       responses:
         '200':
           description: 實踐更新成功
@@ -22677,7 +22667,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_38
+                    examples: *ref_37
                   timestamp:
                     type: string
                     format: date-time
@@ -22801,10 +22791,6 @@ paths:
                         type: integer
                         minimum: 0
                         description: 最大連續天數
-                      averageProgress:
-                        type: number
-                        minimum: 0
-                        description: 平均進度
                       lastCheckInDate:
                         type: string
                         description: 最後簽到日期
@@ -22812,13 +22798,11 @@ paths:
                       - totalCheckIns
                       - currentStreak
                       - maxStreak
-                      - averageProgress
                     description: The main response data
                     examples:
                       - totalCheckIns: 45
                         currentStreak: 5
                         maxStreak: 12
-                        averageProgress: 2.3
                         lastCheckInDate: '2024-01-20'
                   timestamp:
                     type: string

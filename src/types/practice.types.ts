@@ -8,16 +8,19 @@
 
 import { Request, Response } from 'express';
 
-// Core enums and basic types
-export type ContentType = 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom' | 'other';
+// Core enums and basic types - 基於 Prisma schema
 export type PracticeStatus = 'draft' | 'not_started' | 'active' | 'completed' | 'archived';
-export type DailyGoalType = 'time' | 'completion' | 'amount';
-export type CheckInMood = 'awesome' | 'happy' | 'neutral' | 'tired' | 'frustrated';
+export type CheckInMood = 'give_up' | 'frustrated' | 'bored' | 'neutral' | 'good' | 'happy';
+export type PracticeTimePeriod = 'morning' | 'afternoon' | 'evening' | 'night';
 export type SortField = 'createdAt' | 'updatedAt' | 'likeCount';
 export type SortOrder = 'asc' | 'desc';
 export type EventType = 'practice';
 
-// Daily goal interface
+// @deprecated - 以下類型保留向後兼容，但已不在 DB schema 中使用
+export type ContentType = 'book' | 'video' | 'articles' | 'podcast' | 'course' | 'custom' | 'other';
+export type DailyGoalType = 'time' | 'completion' | 'amount';
+
+/** @deprecated - DailyGoal 已不在 DB schema 中使用 */
 export interface DailyGoal {
   type: DailyGoalType;
   timeMinutes?: number;
@@ -41,28 +44,24 @@ export interface PracticeProgressConfig {
   durationDays: number;
 }
 
-// Core practice entity interface
+// Core practice entity interface - 基於 Prisma schema practices 表
 export interface PracticeEntity {
   id: string;
   title: string;
-  contentType: ContentType;
-  customContentType?: string;
-  totalAmount?: number; // Optional - field doesn't exist in DB schema
-  currentProgress: number; // Calculated from check-ins
-  progressPercentage?: number; // Progress as percentage (20% → 50% → 100%) - Optional until DB field exists
+  practiceAction?: string;
   startDate?: string;
   endDate?: string;
-  firstCheckinAt?: string; // Timestamp of first check-in
-  frequencyMinDays?: number; // Min days between check-ins
-  frequencyMaxDays?: number; // Max days between check-ins
-  durationDays?: number; // Total duration in days
-  dailyGoal: DailyGoal;
-  practiceAction?: string;
+  durationDays?: number;
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  frequencyDescription?: string;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods: string[];
+  otherContext?: string;
   status: PracticeStatus;
   hasResources: boolean;
-  streak: number; // Calculated from check-ins
-  maxStreak: number; // Calculated from check-ins
-  lastCheckInDate?: string; // Calculated from check-ins
+  progressPercentage?: number;
+  firstCheckinAt?: string;
   createdAt: string;
   updatedAt?: string;
   user: UserSimpleInfo;
@@ -74,23 +73,18 @@ export interface PracticeEntity {
     shareCount: number;
     commentCount: number;
   };
-  checkIns?: CheckInEntity[]; // Optional: included when ?include=checkIns is specified
+  checkIns?: CheckInEntity[];
 }
 
-// Check-in entity interface
+// Check-in entity interface - 基於 Prisma schema practice_checkins 表
 export interface CheckInEntity {
   id: number;
   practiceId: number;
   userId: number;
-  checkInDate: string;
-  progressAmount: number;
-  unit?: string;
-  note?: string;
+  checkinDate: string;
   mood?: CheckInMood;
-  reflectionText?: string;
-  relatedResourceId?: string;
-  streakDay: number;
-  cumulativeProgress: number;
+  note?: string;
+  imageUrls: string[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -119,16 +113,18 @@ export interface PracticeStats {
   maxStreak: number;
 }
 
-// Request interfaces
+// Request interfaces - 基於 Prisma schema practices 表
 export interface CreatePracticeRequest {
   title: string;
-  contentType: ContentType;
-  customContentType?: string;
-  totalAmount: number;
-  startDate?: string;
-  dailyGoal: DailyGoal;
   practiceAction?: string;
-  tags: string[];
+  startDate?: string;
+  durationDays?: number;
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods?: PracticeTimePeriod[];
+  otherContext?: string;
+  tags?: string[];
   resources?: Array<{
     name: string;
     url?: string;
@@ -137,10 +133,14 @@ export interface CreatePracticeRequest {
 
 export interface UpdatePracticeRequest {
   title?: string;
-  totalAmount?: number;
-  startDate?: string;
-  dailyGoal?: DailyGoal;
   practiceAction?: string;
+  startDate?: string;
+  durationDays?: number;
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods?: PracticeTimePeriod[];
+  otherContext?: string;
   tags?: string[];
   resources?: Array<{
     name: string;
@@ -149,22 +149,17 @@ export interface UpdatePracticeRequest {
   status?: PracticeStatus;
 }
 
+// Check-in request - 基於 Prisma schema practice_checkins 表
 export interface CheckInRequest {
-  progress: number;
-  note?: string;
   mood?: CheckInMood;
-  reflectionText?: string;
-  relatedResourceId?: string;
-  isPublic: boolean;
-  tags: string[];
+  note?: string;
+  imageUrls?: string[];
 }
 
 export interface CreateCheckInRequest {
-  progressAmount: number;
-  note?: string;
   mood?: CheckInMood;
-  reflectionText?: string;
-  relatedResourceId?: string;
+  note?: string;
+  imageUrls?: string[];
 }
 
 // Event request interfaces
@@ -342,17 +337,13 @@ export interface DatabasePractice {
 }
 
 export interface DatabaseCheckIn {
-  id: string;
+  id: number;
   practice_id: number;
   user_id: number;
   checkin_date: Date;
-  progress_amount: number;
-  note: string | null;
   mood: string | null;
-  reflection_text: string | null;
-  related_resource_id: string | null;
-  streak_day: number;
-  cumulative_progress: number;
+  note: string | null;
+  image_urls: string[];
   created_at: Date | null;
   updated_at: Date | null;
 }

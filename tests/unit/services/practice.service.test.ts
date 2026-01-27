@@ -49,14 +49,20 @@ describe('Practice Service', () => {
       const mockPractices = [
         {
           id: 1,
+          external_id: 'practice-uuid-1',
           title: 'Test Practice',
-          content_type: 'book',
-          total_amount: 100,
-          current_progress: { toNumber: () => 10 },
+          practice_action: '閱讀技術書籍',
+          start_date: new Date('2025-01-01'),
+          end_date: new Date('2025-01-14'),
+          duration_days: 14,
+          frequency_min_days: 4,
+          frequency_max_days: 7,
+          session_duration_minutes: 30,
+          practice_time_periods: ['morning', 'evening'],
           status: 'active',
           has_resources: false,
-          streak: 5,
-          max_streak: 10,
+          progress_percentage: 50, // Use plain number
+          first_checkin_at: new Date(),
           created_at: new Date(),
           updated_at: new Date(),
           users: {
@@ -68,16 +74,18 @@ describe('Practice Service', () => {
           }
         }
       ] as any;
-      
+
       prismaMock.practices.findMany.mockResolvedValue(mockPractices);
       prismaMock.practices.count.mockResolvedValue(1);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       const result = await findAll({ page: 1, limit: 20 });
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
       expect(result.data[0].title).toBe('Test Practice');
+      expect(result.data[0].progressPercentage).toBe(50);
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Practice list retrieved',
         expect.any(Object)
@@ -88,6 +96,7 @@ describe('Practice Service', () => {
       prismaMock.practices.findMany.mockResolvedValue([]);
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       await findAll({ search: 'test search' });
 
@@ -103,17 +112,18 @@ describe('Practice Service', () => {
       );
     });
 
-    it('should handle content type filtering', async () => {
+    it('should handle status filtering', async () => {
       prismaMock.practices.findMany.mockResolvedValue([]);
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
-      await findAll({ contentType: 'video' });
+      await findAll({ status: 'active' });
 
       expect(prismaMock.practices.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            content_type: 'video'
+            status: 'active'
           })
         })
       );
@@ -133,10 +143,18 @@ describe('Practice Service', () => {
         id: 1,
         external_id: 'test-practice-uuid',
         title: 'Test Practice',
-        content_type: 'book',
-        total_amount: 100,
-        current_progress: { toNumber: () => 25 },
+        practice_action: '閱讀技術書籍',
+        start_date: new Date('2025-01-01'),
+        end_date: new Date('2025-01-14'),
+        duration_days: 14,
+        frequency_min_days: 4,
+        frequency_max_days: 7,
+        session_duration_minutes: 30,
+        practice_time_periods: ['morning', 'evening'],
         status: 'active',
+        has_resources: false,
+        progress_percentage: 50, // Use plain number
+        first_checkin_at: new Date(),
         created_at: new Date(),
         updated_at: new Date(),
         users: {
@@ -147,26 +165,34 @@ describe('Practice Service', () => {
           user_positions: []
         }
       } as any;
-      
+
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       const result = await findById(1);
 
       expect(result.success).toBe(true);
       expect(result.data.id).toBe('test-practice-uuid');
       expect(result.data.title).toBe('Test Practice');
+      expect(result.data.progressPercentage).toBe(50);
     });
 
     it('should record view when userId provided', async () => {
       const mockPractice = {
         id: 1,
+        external_id: 'practice-uuid',
         title: 'Test Practice',
-        users: { id: 1, nickname: 'Test', contacts: null, user_positions: [] }
+        status: 'active',
+        progress_percentage: 20,
+        practice_time_periods: [],
+        created_at: new Date(),
+        users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
-      
+
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       await findById(1, 5);
 
@@ -186,23 +212,36 @@ describe('Practice Service', () => {
   describe('create', () => {
     const mockCreateRequest = {
       title: 'New Practice',
-      contentType: 'book' as const,
-      totalAmount: 100,
-      dailyGoal: {
-        type: 'time' as const,
-        timeMinutes: 30
-      },
+      practiceAction: '閱讀技術書籍',
+      startDate: new Date().toISOString().split('T')[0],
+      durationDays: 14,
+      frequencyMinDays: 4,
+      frequencyMaxDays: 7,
+      sessionDurationMinutes: 30,
+      practiceTimePeriods: ['morning', 'evening'] as ('morning' | 'afternoon' | 'evening' | 'night')[],
       tags: ['test'],
       resources: []
     };
 
-    it('should create practice successfully', async () => {
+    it('should create practice successfully with status not_started and progress 20', async () => {
       const mockCreatedPractice = {
         id: 1,
+        external_id: 'practice-uuid-1',
         title: 'New Practice',
-        content_type: 'book',
-        total_amount: 100,
-        status: 'active',
+        practice_action: '閱讀技術書籍',
+        start_date: new Date(),
+        end_date: new Date(Date.now() + 13 * 86400000),
+        duration_days: 14,
+        frequency_min_days: 4,
+        frequency_max_days: 7,
+        session_duration_minutes: 30,
+        practice_time_periods: ['morning', 'evening'],
+        status: 'not_started',
+        has_resources: false,
+        progress_percentage: 20, // Use plain number
+        first_checkin_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
         users: {
           id: 1,
           external_id: 'user-1',
@@ -211,13 +250,17 @@ describe('Practice Service', () => {
           user_positions: []
         }
       } as any;
-      
+
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
+      prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
+      prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
 
       const result = await create(mockCreateRequest, 1);
 
       expect(result.success).toBe(true);
       expect(result.data.title).toBe('New Practice');
+      expect(result.data.status).toBe('not_started');
+      expect(result.data.progressPercentage).toBe(20);
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Practice created',
         { practiceId: 1, userId: 1 }
@@ -225,8 +268,17 @@ describe('Practice Service', () => {
     });
 
     it('should handle tag linking', async () => {
-      const mockCreatedPractice = { id: 1, users: { id: 1 } } as any;
-      
+      const mockCreatedPractice = {
+        id: 1,
+        external_id: 'practice-uuid',
+        title: 'New Practice',
+        status: 'not_started',
+        progress_percentage: 20,
+        practice_time_periods: [],
+        created_at: new Date(),
+        users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
+      } as any;
+
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
       prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
       prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
@@ -250,22 +302,33 @@ describe('Practice Service', () => {
 
   describe('update', () => {
     const mockUpdateRequest = {
-      title: 'Updated Practice',
-      status: 'completed' as const
+      title: 'Updated Practice'
     };
 
-    it('should update practice successfully', async () => {
-      const mockExistingPractice = { id: 1, user_id: 1 };
+    it('should update practice successfully when status allows edit', async () => {
+      const mockExistingPractice = {
+        id: 1,
+        user_id: 1,
+        status: 'not_started',
+        practice_time_periods: [],
+        created_at: new Date()
+      };
       const mockUpdatedPractice = {
         id: 1,
+        external_id: 'practice-uuid',
         title: 'Updated Practice',
-        status: 'completed',
-        users: { id: 1, nickname: 'Test', contacts: null, user_positions: [] }
+        status: 'not_started',
+        progress_percentage: 20,
+        practice_time_periods: [],
+        created_at: new Date(),
+        users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
-      
+
       prismaMock.practices.findUnique.mockResolvedValue(mockExistingPractice as any);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
       prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       const result = await update(1, mockUpdateRequest, 1);
 
@@ -280,11 +343,34 @@ describe('Practice Service', () => {
     });
 
     it('should throw error when user lacks permission', async () => {
-      const mockPractice = { id: 1, user_id: 2 }; // Different user
-      
+      const mockPractice = { id: 1, user_id: 2, status: 'not_started' }; // Different user
+
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
 
       await expect(update(1, mockUpdateRequest, 1)).rejects.toThrow('沒有權限修改此實踐');
+    });
+
+    it('should throw error when status does not allow edit (archived)', async () => {
+      const mockPractice = { id: 1, user_id: 1, status: 'archived' };
+
+      prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
+
+      await expect(update(1, mockUpdateRequest, 1)).rejects.toThrow('此實踐狀態不允許編輯');
+    });
+
+    it('should throw error when trying to modify locked fields after check-in', async () => {
+      const mockPractice = {
+        id: 1,
+        user_id: 1,
+        status: 'active',
+        first_checkin_at: new Date()
+      };
+
+      prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
+      prismaMock.practice_checkins.count.mockResolvedValue(1); // Has check-ins
+
+      // startDate is a locked field after check-in
+      await expect(update(1, { startDate: '2025-03-01' }, 1)).rejects.toThrow();
     });
   });
 
@@ -328,6 +414,7 @@ describe('Practice Service', () => {
       prismaMock.practices.findMany.mockResolvedValue([]);
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       const result = await findUserPractices(5, { page: 1, limit: 10 });
 
@@ -346,8 +433,6 @@ describe('Practice Service', () => {
     it('should calculate user practice statistics correctly', async () => {
       const mockPracticeStats = {
         _count: { id: 10 },
-        _avg: { streak: 5.5 },
-        _max: { max_streak: 15 },
         _min: null,
         _sum: null
       } as any;
@@ -363,7 +448,7 @@ describe('Practice Service', () => {
       const mockStatusCounts = [
         { status: 'active', _count: { id: 6 } },
         { status: 'completed', _count: { id: 3 } },
-        { status: 'paused', _count: { id: 1 } }
+        { status: 'not_started', _count: { id: 1 } }
       ] as any;
 
       prismaMock.practices.aggregate.mockResolvedValue(mockPracticeStats);
@@ -376,17 +461,15 @@ describe('Practice Service', () => {
       expect(result.data.totalPractices).toBe(10);
       expect(result.data.activePractices).toBe(6);
       expect(result.data.completedPractices).toBe(3);
-      expect(result.data.pausedPractices).toBe(1);
       expect(result.data.totalCheckIns).toBe(45);
-      expect(result.data.averageStreak).toBe(6); // Rounded from 5.5
-      expect(result.data.maxStreak).toBe(15);
+      // averageStreak and maxStreak are not calculated from DB (fields don't exist)
+      expect(result.data.averageStreak).toBe(0);
+      expect(result.data.maxStreak).toBe(0);
     });
 
     it('should handle missing status counts gracefully', async () => {
       const mockPracticeStats = {
         _count: { id: 5 },
-        _avg: { streak: null },
-        _max: { max_streak: null },
         _min: null,
         _sum: null
       } as any;
@@ -408,7 +491,6 @@ describe('Practice Service', () => {
       expect(result.data.totalPractices).toBe(5);
       expect(result.data.activePractices).toBe(0);
       expect(result.data.completedPractices).toBe(0);
-      expect(result.data.pausedPractices).toBe(0);
       expect(result.data.totalCheckIns).toBe(0);
       expect(result.data.averageStreak).toBe(0);
       expect(result.data.maxStreak).toBe(0);
@@ -429,16 +511,23 @@ describe('Practice Service', () => {
     it('should handle null values with sensible defaults', async () => {
       const mockPractice = {
         id: 1,
+        external_id: 'practice-uuid',
         title: 'Test',
-        content_type: 'book',
-        custom_content_type: null,
         practice_action: null,
         start_date: null,
-        last_checkin_date: null,
-        daily_goal_time_minutes: null,
-        daily_goal_amount: null,
-        daily_goal_unit: null,
-        current_progress: { toNumber: () => 0 },
+        end_date: null,
+        duration_days: null,
+        frequency_min_days: null,
+        frequency_max_days: null,
+        session_duration_minutes: null,
+        practice_time_periods: [],
+        other_context: null,
+        status: 'not_started',
+        has_resources: false,
+        progress_percentage: null,
+        first_checkin_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
         users: {
           id: 1,
           external_id: null,
@@ -447,42 +536,47 @@ describe('Practice Service', () => {
           user_positions: []
         }
       } as any;
-      
+
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
-      
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
+
       const result = await findById(1);
-      
-      expect(result.data.customContentType).toBeUndefined();
+
       expect(result.data.practiceAction).toBeUndefined();
       expect(result.data.startDate).toBeUndefined();
-      expect(result.data.lastCheckInDate).toBeUndefined();
-      expect(result.data.dailyGoal.timeMinutes).toBeUndefined();
-      expect(result.data.dailyGoal.amount).toBeUndefined();
-      expect(result.data.dailyGoal.unit).toBeUndefined();
+      expect(result.data.endDate).toBeUndefined();
+      expect(result.data.durationDays).toBeUndefined();
+      expect(result.data.frequencyMinDays).toBeUndefined();
+      expect(result.data.frequencyMaxDays).toBeUndefined();
+      expect(result.data.sessionDurationMinutes).toBeUndefined();
+      expect(result.data.otherContext).toBeUndefined();
+      expect(result.data.progressPercentage).toBe(20); // INITIAL_PROGRESS default
       expect(result.data.user.name).toBe('Unknown User');
     });
 
-    it('should handle numeric string conversion correctly', async () => {
+    it('should handle progress_percentage conversion correctly', async () => {
       const mockPractice = {
         id: 1,
+        external_id: 'practice-uuid',
         title: 'Test',
-        content_type: 'book',
-        total_amount: 100,
-        current_progress: 25.5, // Direct number for this test
         status: 'active',
+        progress_percentage: 50.5,
+        practice_time_periods: ['morning'],
+        has_resources: false,
         created_at: new Date(),
         updated_at: new Date(),
-        users: { id: 1, nickname: 'Test', contacts: null, user_positions: [] }
+        users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
-      
+
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
-      
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
+
       const result = await findById(1);
-      
-      expect(result.data.currentProgress).toBe(25.5);
-      expect(typeof result.data.currentProgress).toBe('number');
+
+      expect(result.data.progressPercentage).toBe(50.5);
+      expect(typeof result.data.progressPercentage).toBe('number');
     });
   });
 });
