@@ -130,6 +130,33 @@ export class PracticeController {
   });
 
   /**
+   * 取得指定用戶的實踐列表
+   * GET /api/v1/practices/user/:userId
+   */
+  getUserPractices = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const userExternalId = req.params.userId;
+
+    // 將 user external_id 轉換為 internal id
+    const userId = await externalToInternalId('user', userExternalId);
+
+    const queryParams: PracticeQueryParams = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      search: req.query.search as string,
+      status: req.query.status as PracticeStatus,
+      sortBy: req.query.sortBy as SortField,
+      sortOrder: req.query.sortOrder as SortOrder
+    };
+
+    const result = await practiceService.findUserPractices(userId, queryParams);
+
+    // 驗證響應格式
+    const validatedResponse = practicesListApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
+  });
+
+  /**
    * 取得單一實踐詳情
    * GET /api/v1/practices/:id
    */
