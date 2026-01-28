@@ -9,6 +9,7 @@
 
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
+import { NotFoundError } from '../middleware/error.middleware';
 import {
   createSuccessResponse,
   createPaginatedResponse
@@ -418,32 +419,32 @@ export async function createTemplate(
       }
     });
 
-    // 處理分類關聯 - 使用 connectOrCreate 避免競爭條件
+    // 處理分類關聯 - 使用 upsert 避免競爭條件
     for (const categoryName of categories) {
+      const category = await tx.content_categories.upsert({
+        where: { name: categoryName },
+        create: { name: categoryName },
+        update: {}
+      });
       await tx.practice_template_categories.create({
         data: {
           template_id: newTemplate.id,
-          content_categories: {
-            connectOrCreate: {
-              where: { name: categoryName },
-              create: { name: categoryName }
-            }
-          }
+          category_id: category.id
         }
       });
     }
 
-    // 處理標籤關聯 - 使用 connectOrCreate 避免競爭條件
+    // 處理標籤關聯 - 使用 upsert 避免競爭條件
     for (const tagName of suggestedTags) {
+      const tag = await tx.tags.upsert({
+        where: { name: tagName },
+        create: { name: tagName },
+        update: {}
+      });
       await tx.practice_template_tags.create({
         data: {
           template_id: newTemplate.id,
-          tags: {
-            connectOrCreate: {
-              where: { name: tagName },
-              create: { name: tagName }
-            }
-          }
+          tag_id: tag.id
         }
       });
     }
@@ -526,17 +527,17 @@ export async function updateTemplate(
         where: { template_id: existingTemplate.id }
       });
 
-      // 創建新關聯 - 使用 connectOrCreate 避免競爭條件
+      // 創建新關聯 - 使用 upsert 避免競爭條件
       for (const categoryName of categories) {
+        const category = await tx.content_categories.upsert({
+          where: { name: categoryName },
+          create: { name: categoryName },
+          update: {}
+        });
         await tx.practice_template_categories.create({
           data: {
             template_id: existingTemplate.id,
-            content_categories: {
-              connectOrCreate: {
-                where: { name: categoryName },
-                create: { name: categoryName }
-              }
-            }
+            category_id: category.id
           }
         });
       }
@@ -549,17 +550,17 @@ export async function updateTemplate(
         where: { template_id: existingTemplate.id }
       });
 
-      // 創建新關聯 - 使用 connectOrCreate 避免競爭條件
+      // 創建新關聯 - 使用 upsert 避免競爭條件
       for (const tagName of suggestedTags) {
+        const tag = await tx.tags.upsert({
+          where: { name: tagName },
+          create: { name: tagName },
+          update: {}
+        });
         await tx.practice_template_tags.create({
           data: {
             template_id: existingTemplate.id,
-            tags: {
-              connectOrCreate: {
-                where: { name: tagName },
-                create: { name: tagName }
-              }
-            }
+            tag_id: tag.id
           }
         });
       }
