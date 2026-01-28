@@ -8,6 +8,7 @@ import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import {
   getPopularTagsApi,
   searchTagsApi,
+  suggestTagsApi,
   getAllTagsApi,
   getEntityTagsApi,
   setEntityTags,
@@ -19,6 +20,7 @@ import type { tags } from '../../generated/prisma';
 import {
   getPopularTagsApiResponseSchema,
   searchTagsApiResponseSchema,
+  suggestTagsApiResponseSchema,
   getTagStatsApiResponseSchema,
   addEntityTagApiResponseSchema,
   removeEntityTagApiResponseSchema,
@@ -77,6 +79,26 @@ export const searchTags = asyncHandler(async (req: Request, res: Response) => {
   };
 
   const validatedResponse = searchTagsApiResponseSchema.parse(formattedResult);
+  res.json(validatedResponse);
+});
+
+/**
+ * 標籤建議（自動補全）
+ * GET /tags/suggest
+ */
+export const suggestTags = asyncHandler(async (req: Request, res: Response) => {
+  const { q, limit } = req.query;
+
+  if (!q) {
+    throw new BadRequestError('必須提供搜索關鍵詞');
+  }
+
+  const result = await suggestTagsApi(
+    q as string,
+    limit ? parseInt(limit as string, 10) : 10
+  );
+
+  const validatedResponse = suggestTagsApiResponseSchema.parse(result);
   res.json(validatedResponse);
 });
 
@@ -213,6 +235,7 @@ export const getEntityTags = asyncHandler(async (req: Request, res: Response) =>
 export default {
   getPopularTags,
   searchTags,
+  suggestTags,
   getTagStats,
   addEntityTag,
   removeEntityTag,

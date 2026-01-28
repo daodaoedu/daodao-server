@@ -148,6 +148,127 @@ export async function searchTagsApi(query: string, limit = 10): Promise<ApiSucce
 }
 
 /**
+ * 標籤建議結果類型
+ */
+export interface TagSuggestion {
+  id: number;
+  name: string;
+  count: number;
+  matchType: 'exact' | 'prefix' | 'contains';
+}
+
+/**
+ * 標籤建議 (內部工具函數)
+ * 用於輸入時的自動補全，優先顯示前綴匹配和熱門標籤
+ * @param query - 搜尋關鍵字
+ * @param limit - 限制數量
+ * @returns 標籤建議列表（含使用次數和匹配類型）
+ */
+export async function suggestTags(query: string, limit = 10): Promise<TagSuggestion[]> {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  // 查詢所有匹配的標籤（包含匹配）
+  const matchingTags = await prisma.tags.findMany({
+    where: {
+      name: {
+        contains: query,
+        mode: 'insensitive'
+      }
+    },
+    take: limit * 3 // 多取一些以便排序後篩選
+  });
+
+  if (matchingTags.length === 0) {
+    return [];
+  }
+
+  // 取得這些標籤的使用次數
+  const tagIds = matchingTags.map(tag => tag.id);
+  const usageCounts = await prisma.entity_tags.groupBy({
+    by: ['tag_id'],
+    where: {
+      tag_id: { in: tagIds }
+    },
+    _count: {
+      tag_id: true
+    }
+  });
+
+  // 建立使用次數映射
+  const countMap = new Map(
+    usageCounts.map(item => [item.tag_id, item._count.tag_id])
+  );
+
+  // 計算每個標籤的排序分數
+  const scoredTags = matchingTags.map(tag => {
+    const tagNameLower = tag.name.toLowerCase();
+    const count = countMap.get(tag.id) || 0;
+
+    // 判斷匹配類型
+    let matchType: 'exact' | 'prefix' | 'contains';
+    let matchScore: number;
+
+    if (tagNameLower === normalizedQuery) {
+      matchType = 'exact';
+      matchScore = 100;
+    } else if (tagNameLower.startsWith(normalizedQuery)) {
+      matchType = 'prefix';
+      matchScore = 80;
+    } else {
+      matchType = 'contains';
+      matchScore = 40;
+    }
+
+    // 總分 = 匹配類型分數 + 使用次數加權（使用 log 避免熱門標籤過度主導）
+    const totalScore = matchScore + Math.log(count + 1) * 5;
+
+    return {
+      id: tag.id,
+      name: tag.name,
+      count,
+      matchType,
+      score: totalScore
+    };
+  });
+
+  // 按分數排序並取前 limit 個
+  return scoredTags
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ id, name, count, matchType }) => ({
+      id,
+      name,
+      count,
+      matchType
+    }));
+}
+
+/**
+ * 標籤建議 (API 版本)
+ * @param query - 搜尋關鍵字
+ * @param limit - 限制數量
+ * @returns API 回應格式的標籤建議列表
+ */
+export async function suggestTagsApi(
+  query: string,
+  limit = 10
+): Promise<ApiSuccessResponse<TagSuggestion[]>> {
+  try {
+    const suggestions = await suggestTags(query, limit);
+    return createSuccessResponse(suggestions, {
+      searchQuery: query,
+      filters: { limit }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('取得標籤建議失敗');
+  }
+}
+
+/**
  * 為實體設置標籤
  * @param entityType - 實體類型 (resource, idea, etc.)
  * @param entityId - 實體 ID
@@ -477,17 +598,19 @@ export default {
   getTagByName,
   getAllTags,
   searchTags,
+  suggestTags,
   setEntityTags,
   getEntityTags,
   removeEntityTag,
   getTagUsageStats,
   getPopularTags,
   cleanupUnusedTags,
-  
+
   // API 版本函數
   getTagByIdApi,
   getAllTagsApi,
   searchTagsApi,
+  suggestTagsApi,
   getEntityTagsApi,
   getTagUsageStatsApi,
   getPopularTagsApi,
