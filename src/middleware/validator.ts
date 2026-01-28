@@ -5,17 +5,17 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
-import { BadRequestError } from '../utils/error-handler';
+import { BadRequestError } from '../middleware/error.middleware';
 
 /**
  * 格式化 Zod 錯誤
  * @param error - Zod 錯誤
  * @returns 格式化後的錯誤對象
  */
-function formatZodErrors(error: ZodError) {
+function formatZodErrors(error: ZodError): Record<string, string> {
   const errors: Record<string, string> = {};
   
-  for (const issue of error.errors) {
+  for (const issue of error.issues) {
     // 使用路徑作為錯誤鍵
     const path = issue.path.join('.');
     errors[path] = issue.message;
@@ -71,7 +71,7 @@ export const combineValidators = (...validators: Array<(req: Request, res: Respo
       
       try {
         const nextCalled = { value: false };
-        const nextProxy = () => {
+        const nextProxy = (): void => {
           nextCalled.value = true;
           runValidators(index + 1);
         };

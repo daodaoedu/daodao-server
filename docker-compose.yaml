@@ -1,90 +1,71 @@
-version: '3.8'
+
 services:
   prod_app:
-    image: ${DOCKER_HUB_USERNAME}/app:prod
-    container_name: prod_app
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=prod
+    image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-prod}${COMMIT_SHA:+-}${COMMIT_SHA}
     env_file:
       - .env.prod
+    # 禁用 Docker 日誌捕獲
+    logging:
+      driver: "none"
     networks:
+      - prod-daodao-network
       - prod_network
+    # 掛載日誌目錄到宿主機
+    volumes:
+      - ./logs:/app/logs
     depends_on:
+      # MongoDB 現在是可選的，不等待健康檢查
       mongo_prod:
-        condition: service_healthy
+        condition: service_started
+      # Redis 仍然是必須的（核心業務邏輯依賴）
       redis_prod:
         condition: service_healthy
-      postgres-prod:
-        condition: service_healthy
+    # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   dev_app:
-    image: ${DOCKER_HUB_USERNAME}/app:dev
-    container_name: dev_app
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=dev
+    image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-dev}${COMMIT_SHA:+-}${COMMIT_SHA}
     env_file:
       - .env.dev
     volumes:
       - ./src:/app/src
+      - ./logs:/app/logs  # 掛載日誌目錄（Winston 會自動創建 dev 子資料夾）
+    # 開發環境可保留最小日誌用於調試
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
     networks:
+      - dev-daodao-network
       - dev_network
     depends_on:
+      # MongoDB 現在是可選的，不等待健康檢查
       mongo_dev:
-        condition: service_healthy
+        condition: service_started
+      # Redis 仍然是必須的（核心業務邏輯依賴）
       redis_dev:
         condition: service_healthy
-      postgres-dev:
-        condition: service_healthy
-
-  postgres-dev:
-    image: postgres:14
-    container_name: postgres-dev
-    environment:
-      POSTGRES_USER: daodao
-      POSTGRES_PASSWORD: daodao
-      POSTGRES_DB: daodao
-    networks:
-      - dev_network
-    volumes:
-      - postgres-dev-data:/var/lib/postgresql/data
-
+    # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U daodao -d daodao" ]
-      interval: 5s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 3
+      start_period: 30s
 
-  postgres-prod:
-    image: postgres:14
-    container_name: postgres-prod
-    environment:
-      POSTGRES_USER: daodao
-      POSTGRES_PASSWORD: daodao
-      POSTGRES_DB: daodao
-    networks:
-      - prod_network
-    volumes:
-      - postgres-prod-data:/var/lib/postgresql/data
-
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U daodao -d daodao" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-  
   mongo_prod:
     image: mongo:4.4
     container_name: mongo_prod
     volumes:
       - mongo_prod_data:/data/db
     networks:
-      - prod_network
+      - prod-daodao-network
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -97,7 +78,7 @@ services:
     volumes:
       - mongo_dev_data:/data/db
     networks:
-      - dev_network
+      - dev-daodao-network
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -110,7 +91,7 @@ services:
     volumes:
       - redis_prod_data:/data
     networks:
-      - prod_network
+      - prod-daodao-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -123,7 +104,7 @@ services:
     volumes:
       - redis_dev_data:/data
     networks:
-      - dev_network
+      - dev-daodao-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -144,19 +125,19 @@ services:
       - prod_app
       - dev_app
     networks:
-      - prod_network
-      - dev_network
+      - prod-daodao-network
+      - dev-daodao-network
 
 volumes:
   mongo_prod_data:
   mongo_dev_data:
   redis_prod_data:
   redis_dev_data:
-  postgres-dev-data:
-  postgres-prod-data:
 
 networks:
-  prod_network:
-    driver: bridge
+  prod-daodao-network:
+    external: true
+  dev-daodao-network:
+    external: true
   dev_network:
-    driver: bridge
+  prod_network:

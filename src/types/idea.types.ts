@@ -1,8 +1,9 @@
 export interface IdeaEntity {
   id: string; // external_id UUID 格式
   content: string;
-  user: UserBasicInfo;
+  user: UserSimpleInfo;
   tags: string[];
+  resources: IdeaResource[];
   likeCount: number;
   commentCount: number;
   viewCount: number;
@@ -17,12 +18,8 @@ export interface IdeaEntity {
   deletedAt?: string;
 }
 
-export interface UserBasicInfo {
-  id: string; // user external_id UUID 格式
-  name: string;
-  photoUrl?: string;
-  role?: string;
-}
+// 使用 common types 中的 UserSimpleInfo
+import { UserSimpleInfo } from './common.types';
 
 export type IdeaStatus = 'active' | 'draft' | 'archived';
 
@@ -34,43 +31,22 @@ export interface IdeaResource {
   type?: string;
   cost?: string;
   level?: string;
-  status: ResourceStatus;
+  status?: ResourceStatus;
   majorCategory?: string;
   subCategory?: string;
   relationshipType?: string;
   createdFromType?: 'idea';
   createdFromId?: string;
-  createdAt: string;
+  createdAt?: string;
   publishedAt?: string;
 }
 
 export type ResourceStatus = 'draft' | 'active' | 'archived';
 
-// API 回應型別
-export interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface ApiSuccessResponse<T> {
-  success: true;
-  data: T;
-  message?: string;
-  pagination?: PaginationInfo;
-}
-
-export interface ApiErrorResponse {
-  success: false;
-  error: {
-    message: string;
-    code?: string;
-    details?: unknown;
-  };
-}
-
-export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+// 從統一響應類型文件導入
+import type { 
+  PaginationInfo
+} from './api-response.types';
 
 // 事件相關型別
 export interface EventResponse {
@@ -95,7 +71,7 @@ export interface CommentEntity {
   content: string;
   visibility: 'public' | 'private';
   parentId: number | null;
-  user: UserBasicInfo;
+  user: UserSimpleInfo;
   createdAt: string;
   updatedAt: string;
   replies: CommentEntity[];
@@ -124,8 +100,10 @@ export interface CreateIdeaResponse {
 // 查詢過濾器型別
 export interface IdeaFilters {
   query?: string;
+  search?: string;
   tags?: string[];
   userId?: string;
+  authorId?: string;
   status?: IdeaStatus | 'all';
   sort: 'createdAt' | 'updatedAt' | 'likeCount';
   order: 'asc' | 'desc';
