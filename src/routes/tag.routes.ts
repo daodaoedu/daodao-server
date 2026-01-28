@@ -10,12 +10,14 @@ import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import {
   tagSearchQuerySchema,
+  suggestTagsQuerySchema,
   popularTagsQuerySchema,
   addEntityTagSchema,
   removeEntityTagSchema,
   entityTagsQuerySchema,
   getPopularTagsApiResponseSchema,
   searchTagsApiResponseSchema,
+  suggestTagsApiResponseSchema,
   getTagStatsApiResponseSchema,
   addEntityTagApiResponseSchema,
   removeEntityTagApiResponseSchema,
@@ -72,6 +74,32 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: searchTagsApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/tags/suggest - 標籤建議（自動補全）
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tags/suggest',
+  tags: ['Tags'],
+  summary: '標籤建議（自動補全）',
+  description: '根據輸入提供標籤建議，優先顯示前綴匹配和熱門標籤。適用於輸入時的自動補全功能。',
+  request: {
+    query: suggestTagsQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得標籤建議',
+      content: {
+        'application/json': {
+          schema: suggestTagsApiResponseSchema
         }
       }
     },
@@ -220,6 +248,16 @@ router.get('/popular',
 router.get('/search',
   validate(tagSearchQuerySchema, 'query'),
   tagController.searchTags as RequestHandler
+);
+
+/**
+ * GET /tags/suggest
+ * 標籤建議（自動補全）
+ * 查詢參數：q, limit
+ */
+router.get('/suggest',
+  validate(suggestTagsQuerySchema, 'query'),
+  tagController.suggestTags as RequestHandler
 );
 
 /**
