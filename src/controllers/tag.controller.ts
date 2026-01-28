@@ -11,7 +11,7 @@ import {
   suggestTagsApi,
   getAllTagsApi,
   getEntityTagsApi,
-  setEntityTags,
+  addEntityTag as addEntityTagService,
   removeEntityTag as removeEntityTagInternal,
   getTagByName,
   type TimeRange
@@ -157,24 +157,24 @@ export const addEntityTag = asyncHandler(async (req: Request, res: Response) => 
     throw new BadRequestError('需要用戶認證');
   }
 
-  // 添加實體標籤
-  await setEntityTags(
+  // 添加實體標籤（追加模式，不會刪除現有標籤）
+  const added = await addEntityTagService(
     entityType as string,
-    parseInt(entityId as string),
-    [tagName as string],
+    parseInt(entityId as string, 10),
+    tagName as string,
     userId
   );
 
   const result = createSuccessResponse({
-    entityId: parseInt(entityId as string),
+    entityId: parseInt(entityId as string, 10),
     entityType,
     tagName
   }, {
-    message: '標籤已成功添加到實體'
+    message: added ? '標籤已成功添加到實體' : '標籤已存在於該實體'
   });
 
   const validatedResponse = addEntityTagApiResponseSchema.parse(result);
-  res.status(201).json(validatedResponse);
+  res.status(added ? 201 : 200).json(validatedResponse);
 });
 
 /**

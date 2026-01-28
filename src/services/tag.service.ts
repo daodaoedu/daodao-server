@@ -5,6 +5,7 @@
 
 import { prisma } from './database/prisma.service';
 import { redis } from './database/redis.service';
+import { loggerService } from './logging/logger.service';
 import type { tags } from '../../generated/prisma';
 import type { ApiSuccessResponse } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
@@ -42,7 +43,7 @@ async function getFromCache<T>(key: string): Promise<T | null> {
     return null;
   } catch (error) {
     // 快取錯誤不應影響正常功能，僅記錄錯誤
-    console.error('Redis cache get error:', error);
+    loggerService.error('Redis cache get error', { key, error });
     return null;
   }
 }
@@ -55,23 +56,19 @@ async function setCache(key: string, data: unknown, ttl: number): Promise<void> 
     await redis.setex(key, ttl, JSON.stringify(data));
   } catch (error) {
     // 快取錯誤不應影響正常功能，僅記錄錯誤
-    console.error('Redis cache set error:', error);
+    loggerService.error('Redis cache set error', { key, ttl, error });
   }
 }
 
 /**
  * 清除熱門標籤相關快取
- * 當標籤資料變更時呼叫
+ * 注意：不使用 KEYS 命令（會阻塞 Redis），改為依賴 TTL 自動過期
+ * 快取會在 5 分鐘內自動失效，這是生產環境的最佳實踐
  */
 export async function clearPopularTagsCache(): Promise<void> {
-  try {
-    const keys = await redis.keys(`${CACHE_PREFIX}popular:*`);
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
-  } catch (error) {
-    console.error('Redis cache clear error:', error);
-  }
+  // 依賴 TTL 自動過期（5分鐘），避免使用 KEYS 命令阻塞 Redis
+  // 如果需要立即清除特定快取，可以直接刪除已知的 key
+  loggerService.debug('Popular tags cache will expire via TTL');
 }
 
 // ============================================================================
@@ -339,7 +336,8 @@ export async function suggestTagsApi(
 }
 
 /**
- * 為實體設置標籤
+ * 為實體設置標籤（替換模式）
+ * 會先刪除所有現有標籤，再設置新標籤
  * @param entityType - 實體類型 (resource, idea, etc.)
  * @param entityId - 實體 ID
  * @param tagNames - 標籤名稱列表
@@ -381,6 +379,58 @@ export async function setEntityTags(
 
   // 清除熱門標籤快取（標籤使用次數已變更）
   await clearPopularTagsCache();
+}
+
+/**
+ * 為實體添加單一標籤（追加模式）
+ * 不會刪除現有標籤，只添加新標籤（如果標籤已存在則忽略）
+ * @param entityType - 實體類型 (resource, idea, etc.)
+ * @param entityId - 實體 ID
+ * @param tagName - 標籤名稱
+ * @param userId - 創建者 ID
+ * @param transaction - 事務對象
+ * @returns 是否成功添加（如果標籤已存在則返回 false）
+ */
+export async function addEntityTag(
+  entityType: string,
+  entityId: number,
+  tagName: string,
+  userId: number,
+  transaction?: TransactionClient | typeof prisma
+): Promise<boolean> {
+  const tx = transaction || prisma;
+
+  // 創建或獲取標籤
+  const tag = await createTag(tagName.trim(), tx);
+
+  // 檢查是否已存在該標籤關聯
+  const existing = await tx.entity_tags.findFirst({
+    where: {
+      entity_type: entityType,
+      entity_id: entityId,
+      tag_id: tag.id
+    }
+  });
+
+  if (existing) {
+    // 標籤已存在，不需要重複添加
+    return false;
+  }
+
+  // 創建實體標籤關聯
+  await tx.entity_tags.create({
+    data: {
+      entity_type: entityType,
+      entity_id: entityId,
+      tag_id: tag.id,
+      created_by: userId
+    }
+  });
+
+  // 清除熱門標籤快取（標籤使用次數已變更）
+  await clearPopularTagsCache();
+
+  return true;
 }
 
 /**
@@ -731,6 +781,7 @@ export default {
   searchTags,
   suggestTags,
   setEntityTags,
+  addEntityTag,
   getEntityTags,
   removeEntityTag,
   getTagUsageStats,
