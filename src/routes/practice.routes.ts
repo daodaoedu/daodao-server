@@ -36,14 +36,18 @@ import {
   createPracticeApiResponseSchema,
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
-  // 新增
+  // Practice Template
   practiceTemplateQuerySchema,
-  practiceTemplateResponseSchema,
-  encouragementResponseSchema,
-  tagPromptQuerySchema,
-  tagPromptResponseSchema
+  practiceTemplateParamsSchema,
+  createPracticeTemplateSchema,
+  updatePracticeTemplateSchema,
+  practiceTemplatesListApiResponseSchema,
+  practiceTemplateApiResponseSchema,
+  templateCategoriesApiResponseSchema,
+  createPracticeTemplateApiResponseSchema,
+  updatePracticeTemplateApiResponseSchema,
+  deletePracticeTemplateApiResponseSchema
 } from '../validators/practice.validators';
-import { paginatedApiResponseSchema, apiSuccessResponseSchema } from '../validators/api-response.validators';
 
 // 月度日曆參數 schema
 const monthlyCalendarParamsSchema = z.object({
@@ -600,6 +604,185 @@ registry.registerPath({
 });
 
 // ============================================================================
+// Practice Template OpenAPI 路由定義
+// ============================================================================
+
+/**
+ * GET /api/v1/practices/templates - 取得實踐模板列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/templates',
+  tags: ['Practice Templates'],
+  summary: '取得實踐模板列表',
+  description: '取得可用的實踐模板列表，支援分頁、分類過濾和搜尋。模板提供預設的實踐配置供用戶參考。',
+  request: {
+    query: practiceTemplateQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取模板列表',
+      content: {
+        'application/json': {
+          schema: practiceTemplatesListApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/templates/categories - 取得模板分類列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/templates/categories',
+  tags: ['Practice Templates'],
+  summary: '取得模板分類列表',
+  description: '取得所有可用的實踐模板分類，用於前端篩選功能。',
+  responses: {
+    200: {
+      description: '成功獲取分類列表',
+      content: {
+        'application/json': {
+          schema: templateCategoriesApiResponseSchema
+        }
+      }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/practices/templates/{id} - 取得單一實踐模板
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/templates/{id}',
+  tags: ['Practice Templates'],
+  summary: '取得單一實踐模板',
+  description: '根據模板 ID 取得單一實踐模板的詳細資訊。',
+  request: {
+    params: practiceTemplateParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取模板詳情',
+      content: {
+        'application/json': {
+          schema: practiceTemplateApiResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * POST /api/v1/practices/templates - 創建實踐模板
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/templates',
+  tags: ['Practice Templates'],
+  summary: '創建實踐模板',
+  description: '創建新的實踐模板。需要管理員權限。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createPracticeTemplateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '模板創建成功',
+      content: {
+        'application/json': {
+          schema: createPracticeTemplateApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * PUT /api/v1/practices/templates/{id} - 更新實踐模板
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/practices/templates/{id}',
+  tags: ['Practice Templates'],
+  summary: '更新實踐模板',
+  description: '更新指定實踐模板的資訊。需要管理員權限。',
+  request: {
+    params: practiceTemplateParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: updatePracticeTemplateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '模板更新成功',
+      content: {
+        'application/json': {
+          schema: updatePracticeTemplateApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * DELETE /api/v1/practices/templates/{id} - 刪除實踐模板
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/practices/templates/{id}',
+  tags: ['Practice Templates'],
+  summary: '刪除實踐模板',
+  description: '刪除指定的實踐模板。需要管理員權限。',
+  request: {
+    params: practiceTemplateParamsSchema
+  },
+  responses: {
+    200: {
+      description: '模板刪除成功',
+      content: {
+        'application/json': {
+          schema: deletePracticeTemplateApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+// ============================================================================
 // Express 路由定義
 // ============================================================================
 
@@ -646,13 +829,54 @@ router.get('/templates',
   practiceController.getTemplates as RequestHandler);
 
 /**
+ * GET /practices/templates/categories
+ * 取得模板分類列表
+ * 公開存取
+ * 注意：必須在 /templates/:id 之前定義，否則 'categories' 會被當作 :id 參數
+ */
+router.get('/templates/categories',
+  practiceController.getTemplateCategories as RequestHandler);
+
+/**
  * GET /practices/templates/:id
  * 取得單一實踐模板
  * 公開存取
  * 注意：必須在 /:id 之前定義
  */
 router.get('/templates/:id',
+  validate(practiceTemplateParamsSchema, 'params'),
   practiceController.getTemplateById as RequestHandler);
+
+/**
+ * POST /practices/templates
+ * 創建實踐模板
+ * 需要身份驗證（管理員權限）
+ */
+router.post('/templates',
+  authenticate,
+  validate(createPracticeTemplateSchema, 'body'),
+  practiceController.createTemplate as RequestHandler);
+
+/**
+ * PUT /practices/templates/:id
+ * 更新實踐模板
+ * 需要身份驗證（管理員權限）
+ */
+router.put('/templates/:id',
+  authenticate,
+  validate(practiceTemplateParamsSchema, 'params'),
+  validate(updatePracticeTemplateSchema, 'body'),
+  practiceController.updateTemplate as RequestHandler);
+
+/**
+ * DELETE /practices/templates/:id
+ * 刪除實踐模板
+ * 需要身份驗證（管理員權限）
+ */
+router.delete('/templates/:id',
+  authenticate,
+  validate(practiceTemplateParamsSchema, 'params'),
+  practiceController.deleteTemplate as RequestHandler);
 
 /**
  * GET /practices/user/:userId
