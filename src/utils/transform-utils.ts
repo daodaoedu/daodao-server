@@ -3,13 +3,7 @@
  * 用於處理分頁、游標等功能
  */
 
-// 定義支持 Prisma 結果的類型
-type DatabaseRecord = Record<string, unknown>;
-
-// 輔助函數：從資料庫記錄中獲取欄位值
-function getFieldValue(record: DatabaseRecord, fieldName: string): unknown {
-  return record?.[fieldName];
-}
+import { Model } from 'sequelize';
 
 
 
@@ -18,7 +12,7 @@ function getFieldValue(record: DatabaseRecord, fieldName: string): unknown {
  * @param cursor - 加密的游標字符串
  * @returns 解碼後的游標數據
  */
-export function decodeCursor(cursor: string): { id: number; timestamp: Date } | null {
+export function decodeCursor(cursor: string) {
   try {
     // 游標格式：BASE64(JSON({ id: number, timestamp: string/number }))
     const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
@@ -42,7 +36,7 @@ export function decodeCursor(cursor: string): { id: number; timestamp: Date } | 
  * @param timestamp - 時間戳（通常是排序欄位的值）
  * @returns 加密的游標字符串
  */
-export function generateCursor(id: number, timestamp: string | number | Date): string {
+export function generateCursor(id: number, timestamp: string | number | Date) {
   // 創建游標數據對象
   const cursorData = { id, timestamp };
   
@@ -61,32 +55,16 @@ export function generateCursor(id: number, timestamp: string | number | Date): s
  * @returns 分頁元數據
  */
 export function generatePaginationMetadata(
-  rows: DatabaseRecord[],
+  rows: Model[],
   count: number,
   limit: number,
   sortField: string,
   hasMore: boolean,
   parentCount?: number
-): {
-  cursors: { start: string | null; end: string | null };
-  hasMore: boolean;
-  count: number;
-  parentCount?: number;
-  limit: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-  nextCursor: string | null;
-  prevCursor: string | null;
-  totalEstimate: number;
-  parentTotalEstimate: number | null;
-} {
+) {
   // 如果結果為空，返回空的分頁數據
   if (rows.length === 0) {
     return {
-      cursors: { start: null, end: null },
-      hasMore: false,
-      count,
-      parentCount,
       limit,
       hasNext: false,
       hasPrev: false,
@@ -97,30 +75,22 @@ export function generatePaginationMetadata(
     };
   }
   
-  // 獲取第一條和最後一條記錄
-  const firstItem = rows[0];
+  // 獲取最後一條記錄
   const lastItem = rows[rows.length - 1];
   
-  // 取得記錄的 ID 和排序欄位值
-  const firstId = getFieldValue(firstItem, 'id') as number;
-  const firstTimestamp = getFieldValue(firstItem, sortField) as string | number | Date;
-  const lastId = getFieldValue(lastItem, 'id') as number;
-  const lastTimestamp = getFieldValue(lastItem, sortField) as string | number | Date;
+  // 取得最後一條記錄的 ID 和排序欄位值
+  const lastId = lastItem.get('id') as number;
+  const lastTimestamp = lastItem.get(sortField) as string | number | Date;
   
-  // 生成游標
+  // 生成下一頁游標
   const nextCursor = hasMore ? generateCursor(lastId, lastTimestamp) : null;
-  const prevCursor = generateCursor(firstId, firstTimestamp);
   
   return {
-    cursors: { start: prevCursor, end: nextCursor },
-    hasMore,
-    count,
-    parentCount,
     limit,
     hasNext: hasMore,
-    hasPrev: true, // 如果有數據，表示可能有上一頁
+    hasPrev: false, // TODO: 實作 prev 邏輯
     nextCursor,
-    prevCursor,
+    prevCursor: null, // TODO: 實作 prev 游標
     totalEstimate: count,
     parentTotalEstimate: parentCount || null
   };
@@ -151,7 +121,7 @@ export function booleanFieldsToObject<T extends Record<string, boolean>>(
  * @param mapping - 欄位映射關係
  * @returns 轉換後的資料庫欄位對象
  */
-export function objectToBooleanFields(apiObject: Record<string, boolean>, mapping: Record<string, string>): Record<string, boolean> {
+export function objectToBooleanFields(apiObject: Record<string, boolean>, mapping: Record<string, string>) {
   const result: Record<string, boolean> = {};
   
   Object.entries(mapping).forEach(([apiField, dbField]) => {
