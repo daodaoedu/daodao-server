@@ -329,14 +329,23 @@ export async function getTagUsageStatsApi(tagId: number): Promise<ApiSuccessResp
 /**
  * 獲取熱門標籤 (內部工具函數)
  * @param limit - 限制數量
+ * @param entityType - 可選的實體類型篩選 (resource, idea, project, practice, review)
  * @returns 熱門標籤列表
  */
-export async function getPopularTags(limit = 20): Promise<Array<{
+export async function getPopularTags(
+  limit = 20,
+  entityType?: string
+): Promise<Array<{
   tag: tags;
   usageCount: number;
 }>> {
+  // 建立 where 條件
+  const whereCondition = entityType ? { entity_type: entityType } : {};
+
+  // 統計每個標籤被使用的次數
   const tagUsage = await prisma.entity_tags.groupBy({
     by: ['tag_id'],
+    where: whereCondition,
     _count: {
       tag_id: true
     },
@@ -348,18 +357,33 @@ export async function getPopularTags(limit = 20): Promise<Array<{
     take: limit
   });
 
-  const popularTags = await Promise.all(
-    tagUsage.map(async (usage) => {
-      const tag = await prisma.tags.findUnique({
-        where: { id: usage.tag_id }
-      });
-      
+  // 如果沒有結果，直接返回空陣列
+  if (tagUsage.length === 0) {
+    return [];
+  }
+
+  // 一次查詢取得所有標籤（解決 N+1 問題）
+  const tagIds = tagUsage.map(usage => usage.tag_id);
+  const tagsData = await prisma.tags.findMany({
+    where: {
+      id: { in: tagIds }
+    }
+  });
+
+  // 建立 tagId -> tag 的映射
+  const tagMap = new Map(tagsData.map(tag => [tag.id, tag]));
+
+  // 組合結果，保持原本的排序
+  const popularTags = tagUsage
+    .map(usage => {
+      const tag = tagMap.get(usage.tag_id);
+      if (!tag) return null;
       return {
-        tag: tag as tags,
+        tag,
         usageCount: usage._count.tag_id
       };
     })
-  );
+    .filter((item): item is { tag: tags; usageCount: number } => item !== null);
 
   return popularTags;
 }
@@ -367,17 +391,22 @@ export async function getPopularTags(limit = 20): Promise<Array<{
 /**
  * 獲取熱門標籤 (API 版本)
  * @param limit - 限制數量
+ * @param entityType - 可選的實體類型篩選
  * @returns API 回應格式的熱門標籤列表
  */
-export async function getPopularTagsApi(limit = 20): Promise<ApiSuccessResponse<Array<{
+export async function getPopularTagsApi(
+  limit = 20,
+  entityType?: string
+): Promise<ApiSuccessResponse<Array<{
   tag: tags;
   usageCount: number;
 }>>> {
   try {
-    const popularTags = await getPopularTags(limit);
+    const popularTags = await getPopularTags(limit, entityType);
     return createSuccessResponse(popularTags, {
       filters: {
-        limit
+        limit,
+        ...(entityType && { entityType })
       },
       aggregateData: {
         totalTags: popularTags.length,
