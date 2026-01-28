@@ -5,12 +5,3 @@ node_modules
 .DS_Store
 coverage
 dist
-/generated/prisma
-logs/
-backup/
-
-# pnpm
-.pnpm-debug.log
-
-# npm (保留備份)
-# package-lock.json
