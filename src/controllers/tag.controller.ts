@@ -30,10 +30,11 @@ import {
  * GET /tags/popular
  */
 export const getPopularTags = asyncHandler(async (req: Request, res: Response) => {
-  const { limit } = req.query;
+  const { limit, entityType } = req.query;
 
   const result = await getPopularTagsApi(
-    limit ? parseInt(limit as string, 10) : 20
+    limit ? parseInt(limit as string, 10) : 20,
+    entityType as string | undefined
   );
 
   // 格式化回應資料

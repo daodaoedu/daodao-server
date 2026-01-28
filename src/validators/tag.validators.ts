@@ -79,11 +79,34 @@ export const popularTagsQuerySchema = z.object({
     .meta({
       title: "限制數量",
       examples: ["10", "20", "50"]
+    }),
+  entityType: z.enum([
+    'resource',
+    'project',
+    'idea',
+    'practice',
+    'review'
+  ])
+    .optional()
+    .describe("篩選特定實體類型的熱門標籤")
+    .meta({
+      title: "實體類型篩選",
+      examples: ['resource', 'project', 'idea', 'practice', 'review'],
+      enumDescriptions: {
+        "resource": "資源",
+        "project": "專案",
+        "idea": "想法",
+        "practice": "實作",
+        "review": "評論"
+      }
     })
 }).describe("熱門標籤查詢參數").meta({
   title: "熱門標籤查詢",
   examples: [{
     limit: "20"
+  }, {
+    limit: "10",
+    entityType: "resource"
   }]
 });
 

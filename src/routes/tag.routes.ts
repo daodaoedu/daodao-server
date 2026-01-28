@@ -36,7 +36,7 @@ registry.registerPath({
   path: '/api/v1/tags/popular',
   tags: ['Tags'],
   summary: '取得熱門標籤',
-  description: '取得熱門標籤列表，按使用次數排序',
+  description: '取得熱門標籤列表，按使用次數排序。可選擇篩選特定實體類型（resource, project, idea, practice, review）的熱門標籤。',
   request: {
     query: popularTagsQuerySchema
   },
@@ -206,7 +206,7 @@ registry.registerPath({
 /**
  * GET /tags/popular
  * 獲取熱門標籤
- * 查詢參數：limit
+ * 查詢參數：limit, entityType (可選)
  */
 router.get('/popular',
   validate(popularTagsQuerySchema, 'query'),
