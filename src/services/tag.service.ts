@@ -185,7 +185,7 @@ export async function searchTags(query: string, limit = 10): Promise<tags[]> {
   return await prisma.tags.findMany({
     where: {
       name: {
-        contains: query,
+        contains: query.trim(),
         mode: 'insensitive'
       }
     },
@@ -242,7 +242,7 @@ export async function suggestTags(query: string, limit = 10): Promise<TagSuggest
   const matchingTags = await prisma.tags.findMany({
     where: {
       name: {
-        contains: query,
+        contains: query.trim(),
         mode: 'insensitive'
       }
     },

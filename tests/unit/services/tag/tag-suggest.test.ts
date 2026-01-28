@@ -255,7 +255,7 @@ describe('Tag Suggest Service', () => {
         expect(result).toEqual([]);
       });
 
-      it('should use original query for database search (trim is for empty check only)', async () => {
+      it('should trim query before database search', async () => {
         // Arrange
         const tags = [createTestTag({ id: 1, name: 'react' })];
         prismaMock.tags.findMany.mockResolvedValue(tags);
@@ -264,13 +264,12 @@ describe('Tag Suggest Service', () => {
         // Act
         await suggestTags('  react  ');
 
-        // Assert - Note: Current implementation uses original query in database search
-        // The trimmed value is only used for empty check
+        // Assert - Query should be trimmed before being sent to database
         expect(prismaMock.tags.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
             where: {
               name: {
-                contains: '  react  ',
+                contains: 'react',
                 mode: 'insensitive'
               }
             }

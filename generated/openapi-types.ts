@@ -2942,14 +2942,7 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: {
-                                /** @description 標籤 ID */
-                                id: number;
-                                /** @description 標籤名稱 */
-                                name: string;
-                                /** @description 使用次數 */
-                                count: number;
-                            }[];
+                            data: components["schemas"]["PopularTagItem"][];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -3055,12 +3048,7 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: {
-                                /** @description 標籤 ID */
-                                id: number;
-                                /** @description 標籤名稱 */
-                                name: string;
-                            }[];
+                            data: components["schemas"]["FormattedTag"][];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -3166,19 +3154,7 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: {
-                                /** @description 標籤 ID */
-                                id: number;
-                                /** @description 標籤名稱 */
-                                name: string;
-                                /** @description 使用次數 */
-                                count: number;
-                                /**
-                                 * @description 匹配類型
-                                 * @enum {string}
-                                 */
-                                matchType: "exact" | "prefix" | "contains";
-                            }[];
+                            data: components["schemas"]["TagSuggestionItem"][];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -3278,20 +3254,7 @@ export interface paths {
                              * @enum {boolean}
                              */
                             success: true;
-                            /** @description The main response data */
-                            data: {
-                                /** @description 總標籤數量 */
-                                totalTags: number;
-                                /** @description 熱門標籤列表 */
-                                popularTags: {
-                                    /** @description 標籤 ID */
-                                    id: number;
-                                    /** @description 標籤名稱 */
-                                    name: string;
-                                    /** @description 使用次數 */
-                                    count: number;
-                                }[];
-                            };
+                            data: components["schemas"]["TagStatsData"] & unknown;
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -3398,16 +3361,7 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: {
-                                /** @description 引導句 ID */
-                                id: number;
-                                /** @description 標籤名稱 */
-                                tagName: string;
-                                /** @description 引導句內容 */
-                                prompt: string;
-                                /** @description 使用場景 */
-                                usageType: string;
-                            }[];
+                            data: components["schemas"]["TagPromptItem"][];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -3513,12 +3467,7 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: {
-                                /** @description 標籤 ID */
-                                id: number;
-                                /** @description 標籤名稱 */
-                                name: string;
-                            }[];
+                            data: components["schemas"]["FormattedTag"][];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -3639,15 +3588,7 @@ export interface paths {
                              * @enum {boolean}
                              */
                             success: true;
-                            /** @description The main response data */
-                            data: {
-                                /** @description 實體 ID */
-                                entityId: number;
-                                /** @description 實體類型 */
-                                entityType: string;
-                                /** @description 標籤名稱 */
-                                tagName: string;
-                            };
+                            data: components["schemas"]["EntityTagOperation"] & unknown;
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -21527,6 +21468,234 @@ export interface components {
             marathon: components["schemas"]["MarathonInfo"] & unknown;
             /** @description 覆盤列表 */
             reviews: components["schemas"]["MentorReview"][];
+        };
+        /**
+         * @description 標籤引導句項目
+         * @example {
+         *       "id": 101,
+         *       "tagName": "實作",
+         *       "prompt": "我練習了...",
+         *       "usageType": "practice_checkin"
+         *     }
+         */
+        TagPromptItem: {
+            /**
+             * @description 引導句 ID
+             * @example 101
+             */
+            id: number;
+            /**
+             * @description 標籤名稱
+             * @example 實作
+             */
+            tagName: string;
+            /**
+             * @description 引導句內容
+             * @example 我練習了...
+             */
+            prompt: string;
+            /**
+             * @description 使用場景
+             * @example practice_checkin
+             */
+            usageType: string;
+        };
+        /**
+         * @description 標籤實體
+         * @example {
+         *       "id": 1,
+         *       "name": "React",
+         *       "created_at": "2024-01-15T10:30:00.000Z",
+         *       "updated_at": "2024-01-15T10:30:00.000Z"
+         *     }
+         */
+        TagEntity: {
+            /**
+             * @description 標籤 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 標籤名稱
+             * @example React
+             */
+            name: string;
+            /**
+             * @description 創建時間
+             * @example 2024-01-15T10:30:00.000Z
+             */
+            created_at?: string;
+            /**
+             * @description 更新時間
+             * @example 2024-01-15T10:30:00.000Z
+             */
+            updated_at?: string;
+        };
+        /**
+         * @description 格式化標籤
+         * @example {
+         *       "id": 1,
+         *       "name": "JavaScript"
+         *     }
+         */
+        FormattedTag: {
+            /**
+             * @description 標籤 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 標籤名稱
+             * @example JavaScript
+             */
+            name: string;
+        };
+        /**
+         * @description 熱門標籤項目
+         * @example {
+         *       "id": 1,
+         *       "name": "React",
+         *       "count": 150
+         *     }
+         */
+        PopularTagItem: {
+            /**
+             * @description 標籤 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 標籤名稱
+             * @example React
+             */
+            name: string;
+            /**
+             * @description 使用次數
+             * @example 150
+             */
+            count: number;
+        };
+        /**
+         * @description 標籤建議項目
+         * @example {
+         *       "id": 1,
+         *       "name": "React",
+         *       "count": 150,
+         *       "matchType": "exact"
+         *     }
+         */
+        TagSuggestionItem: {
+            /**
+             * @description 標籤 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 標籤名稱
+             * @example React
+             */
+            name: string;
+            /**
+             * @description 使用次數
+             * @example 150
+             */
+            count: number;
+            /**
+             * @description 匹配類型
+             * @example exact
+             * @enum {string}
+             */
+            matchType: "exact" | "prefix" | "contains";
+        };
+        /**
+         * @description 標籤使用統計
+         * @example {
+         *       "totalUsage": 256,
+         *       "resourceCount": 120,
+         *       "ideaCount": 85
+         *     }
+         */
+        TagUsageStats: {
+            /**
+             * @description 總使用次數
+             * @example 256
+             */
+            totalUsage: number;
+            /**
+             * @description 資源使用次數
+             * @example 120
+             */
+            resourceCount: number;
+            /**
+             * @description 想法使用次數
+             * @example 85
+             */
+            ideaCount: number;
+        };
+        /**
+         * @description 標籤統計資料
+         * @example {
+         *       "totalTags": 128,
+         *       "popularTags": [
+         *         {
+         *           "id": 1,
+         *           "name": "React",
+         *           "count": 150
+         *         },
+         *         {
+         *           "id": 2,
+         *           "name": "JavaScript",
+         *           "count": 120
+         *         }
+         *       ]
+         *     }
+         */
+        TagStatsData: {
+            /**
+             * @description 總標籤數量
+             * @example 128
+             */
+            totalTags: number;
+            /** @description 熱門標籤列表 */
+            popularTags: components["schemas"]["PopularTagItem"][];
+        };
+        /**
+         * @description 實體標籤操作
+         * @example {
+         *       "entityId": 123,
+         *       "entityType": "resource",
+         *       "tagName": "React"
+         *     }
+         */
+        EntityTagOperation: {
+            /**
+             * @description 實體 ID
+             * @example 123
+             */
+            entityId: number;
+            /**
+             * @description 實體類型
+             * @example resource
+             */
+            entityType: string;
+            /**
+             * @description 標籤名稱
+             * @example React
+             */
+            tagName: string;
+        };
+        /**
+         * @description 標籤清理結果
+         * @example {
+         *       "deletedCount": 5
+         *     }
+         */
+        TagCleanupResult: {
+            /**
+             * @description 刪除的標籤數量
+             * @example 5
+             */
+            deletedCount: number;
         };
         /** @description 創建專案的請求資料 */
         CreateProjectRequest: {
