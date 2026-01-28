@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '@generated/prisma';
 import { mockDeep, mockReset, DeepMockProxy } from 'jest-mock-extended';
 
 // Create a deep mock of PrismaClient

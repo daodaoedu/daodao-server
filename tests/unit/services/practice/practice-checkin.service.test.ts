@@ -7,7 +7,7 @@
  */
 
 import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
-import { Prisma } from '../../../../generated/prisma';
+import { Prisma } from '@generated/prisma';
 
 // Mock external dependencies
 const mockLoggerService = {

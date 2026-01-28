@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '@generated/prisma';
 import Redis from 'ioredis';
 import mongoose from 'mongoose';
 

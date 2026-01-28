@@ -6766,6 +6766,229 @@ components:
         - marathon
         - reviews
       description: 導師參與者覆盤資訊
+    TagPromptItem:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 引導句 ID
+          example: 101
+        tagName:
+          type: string
+          description: 標籤名稱
+          example: 實作
+        prompt:
+          type: string
+          description: 引導句內容
+          example: 我練習了...
+        usageType:
+          type: string
+          description: 使用場景
+          example: practice_checkin
+      required:
+        - id
+        - tagName
+        - prompt
+        - usageType
+      description: 標籤引導句項目
+      example:
+        id: 101
+        tagName: 實作
+        prompt: 我練習了...
+        usageType: practice_checkin
+    TagEntity:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 標籤 ID
+          example: 1
+        name:
+          type: string
+          description: 標籤名稱
+          example: React
+        created_at:
+          type: string
+          description: 創建時間
+          example: '2024-01-15T10:30:00.000Z'
+        updated_at:
+          type: string
+          description: 更新時間
+          example: '2024-01-15T10:30:00.000Z'
+      required:
+        - id
+        - name
+      description: 標籤實體
+      example:
+        id: 1
+        name: React
+        created_at: '2024-01-15T10:30:00.000Z'
+        updated_at: '2024-01-15T10:30:00.000Z'
+    FormattedTag:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 標籤 ID
+          example: 1
+        name:
+          type: string
+          description: 標籤名稱
+          example: JavaScript
+      required:
+        - id
+        - name
+      description: 格式化標籤
+      example:
+        id: 1
+        name: JavaScript
+    PopularTagItem:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 標籤 ID
+          example: 1
+        name:
+          type: string
+          description: 標籤名稱
+          example: React
+        count:
+          type: number
+          description: 使用次數
+          example: 150
+      required:
+        - id
+        - name
+        - count
+      description: 熱門標籤項目
+      example:
+        id: 1
+        name: React
+        count: 150
+    TagSuggestionItem:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 標籤 ID
+          example: 1
+        name:
+          type: string
+          description: 標籤名稱
+          example: React
+        count:
+          type: number
+          description: 使用次數
+          example: 150
+        matchType:
+          type: string
+          enum:
+            - exact
+            - prefix
+            - contains
+          description: 匹配類型
+          example: exact
+          enumDescriptions:
+            exact: 完全匹配
+            prefix: 前綴匹配
+            contains: 包含匹配
+      required:
+        - id
+        - name
+        - count
+        - matchType
+      description: 標籤建議項目
+      example:
+        id: 1
+        name: React
+        count: 150
+        matchType: exact
+    TagUsageStats:
+      type: object
+      properties:
+        totalUsage:
+          type: number
+          description: 總使用次數
+          example: 256
+        resourceCount:
+          type: number
+          description: 資源使用次數
+          example: 120
+        ideaCount:
+          type: number
+          description: 想法使用次數
+          example: 85
+      required:
+        - totalUsage
+        - resourceCount
+        - ideaCount
+      description: 標籤使用統計
+      example:
+        totalUsage: 256
+        resourceCount: 120
+        ideaCount: 85
+    TagStatsData:
+      type: object
+      properties:
+        totalTags:
+          type: number
+          description: 總標籤數量
+          example: 128
+        popularTags:
+          type: array
+          items:
+            $ref: '#/components/schemas/PopularTagItem'
+          description: 熱門標籤列表
+      required:
+        - totalTags
+        - popularTags
+      description: 標籤統計資料
+      example:
+        totalTags: 128
+        popularTags:
+          - id: 1
+            name: React
+            count: 150
+          - id: 2
+            name: JavaScript
+            count: 120
+    EntityTagOperation:
+      type: object
+      properties:
+        entityId:
+          type: number
+          description: 實體 ID
+          example: 123
+        entityType:
+          type: string
+          description: 實體類型
+          example: resource
+        tagName:
+          type: string
+          description: 標籤名稱
+          example: React
+      required:
+        - entityId
+        - entityType
+        - tagName
+      description: 實體標籤操作
+      example:
+        entityId: 123
+        entityType: resource
+        tagName: React
+    TagCleanupResult:
+      type: object
+      properties:
+        deletedCount:
+          type: number
+          description: 刪除的標籤數量
+          example: 5
+      required:
+        - deletedCount
+      description: 標籤清理結果
+      example:
+        deletedCount: 5
     CreateProjectRequest:
       type: object
       properties:
@@ -11825,7 +12048,7 @@ paths:
       tags:
         - Tags
       summary: 取得熱門標籤
-      description: 取得熱門標籤列表，按使用次數排序
+      description: 取得熱門標籤列表，按使用次數排序。支援按實體類型和時間範圍篩選，實現時間衰減效果（近期使用的標籤優先）。
       parameters:
         - schema:
             type: string
@@ -11839,6 +12062,66 @@ paths:
           required: false
           description: 返回結果限制數量
           name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - resource
+              - project
+              - idea
+              - practice
+              - practice_checkin
+              - circle
+              - user
+              - review
+            description: 篩選特定實體類型的熱門標籤
+            examples:
+              - resource
+              - project
+              - idea
+              - practice
+              - practice_checkin
+              - circle
+              - user
+              - review
+            enumDescriptions:
+              resource: 學習資源
+              project: 專案計畫
+              idea: 創意想法
+              practice: 實作練習
+              practice_checkin: 打卡記錄
+              circle: 學習圈子
+              user: 使用者標籤
+              review: 評論
+          required: false
+          description: 篩選特定實體類型的熱門標籤
+          name: entityType
+          in: query
+        - schema:
+            type: string
+            enum:
+              - 7d
+              - 30d
+              - 90d
+              - 1y
+              - all
+            default: all
+            description: 時間範圍篩選，只統計指定時間內的使用次數
+            examples:
+              - 7d
+              - 30d
+              - 90d
+              - 1y
+              - all
+            enumDescriptions:
+              7d: 近 7 天
+              30d: 近 30 天
+              90d: 近 90 天
+              1y: 近 1 年
+              all: 全部時間
+          required: false
+          description: 時間範圍篩選，只統計指定時間內的使用次數
+          name: timeRange
           in: query
       responses:
         '200':
@@ -11856,21 +12139,7 @@ paths:
                   data:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: number
-                          description: 標籤 ID
-                        name:
-                          type: string
-                          description: 標籤名稱
-                        count:
-                          type: number
-                          description: 使用次數
-                      required:
-                        - id
-                        - name
-                        - count
+                      $ref: '#/components/schemas/PopularTagItem'
                     description: The main response data
                   timestamp:
                     type: string
@@ -11994,17 +12263,130 @@ paths:
                   data:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: number
-                          description: 標籤 ID
-                        name:
-                          type: string
-                          description: 標籤名稱
-                      required:
-                        - id
-                        - name
+                      $ref: '#/components/schemas/FormattedTag'
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/tags/suggest:
+    get:
+      tags:
+        - Tags
+      summary: 標籤建議（自動補全）
+      description: 根據輸入提供標籤建議，優先顯示前綴匹配和熱門標籤。適用於輸入時的自動補全功能。
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 50
+            description: 搜索關鍵詞
+            examples:
+              - Rea
+              - Java
+              - 前端
+          required: true
+          description: 搜索關鍵詞
+          name: q
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d+$
+            default: '10'
+            description: 返回結果限制數量
+            examples:
+              - '5'
+              - '10'
+              - '20'
+          required: false
+          description: 返回結果限制數量
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功取得標籤建議
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TagSuggestionItem'
                     description: The main response data
                   timestamp:
                     type: string
@@ -12098,34 +12480,9 @@ paths:
                       - true
                     description: Indicates successful API response
                   data:
-                    type: object
-                    properties:
-                      totalTags:
-                        type: number
-                        description: 總標籤數量
-                      popularTags:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: number
-                              description: 標籤 ID
-                            name:
-                              type: string
-                              description: 標籤名稱
-                            count:
-                              type: number
-                              description: 使用次數
-                          required:
-                            - id
-                            - name
-                            - count
-                        description: 熱門標籤列表
-                    required:
-                      - totalTags
-                      - popularTags
-                    description: The main response data
+                    allOf:
+                      - $ref: '#/components/schemas/TagStatsData'
+                      - description: The main response data
                   timestamp:
                     type: string
                     format: date-time
@@ -12196,6 +12553,148 @@ paths:
                       processingTime: 23.1
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/tags/prompts:
+    get:
+      tags:
+        - Tags
+      summary: 取得標籤引導句
+      description: 根據標籤名稱取得對應的引導句，用於打卡時提示用戶輸入。支援多個標籤（逗號分隔）。
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            description: 標籤名稱，多個標籤用逗號分隔
+            examples:
+              - 實作
+              - 實作,新概念,困難
+          required: true
+          description: 標籤名稱，多個標籤用逗號分隔
+          name: tags
+          in: query
+        - schema:
+            type: string
+            enum:
+              - practice_checkin
+              - reflection
+              - summary
+            default: practice_checkin
+            description: 使用場景
+            examples:
+              - practice_checkin
+              - reflection
+              - summary
+            enumDescriptions:
+              practice_checkin: 打卡記錄
+              reflection: 反思
+              summary: 總結
+          required: false
+          description: 使用場景
+          name: usageType
+          in: query
+        - schema:
+            type: string
+            enum:
+              - zh-TW
+              - en-US
+            default: zh-TW
+            description: 語言
+            examples:
+              - zh-TW
+              - en-US
+          required: false
+          description: 語言
+          name: locale
+          in: query
+      responses:
+        '200':
+          description: 成功獲取標籤引導句
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TagPromptItem'
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/tags/entities:
     post:
       tags:
@@ -12227,6 +12726,9 @@ paths:
                     - project
                     - idea
                     - practice
+                    - practice_checkin
+                    - circle
+                    - user
                     - review
                   description: 實體類型
                   examples: &ref_38
@@ -12234,12 +12736,18 @@ paths:
                     - project
                     - idea
                     - practice
+                    - practice_checkin
+                    - circle
+                    - user
                     - review
                   enumDescriptions: &ref_39
-                    resource: 資源
-                    project: 專案
-                    idea: 想法
-                    practice: 實作
+                    resource: 學習資源
+                    project: 專案計畫
+                    idea: 創意想法
+                    practice: 實作練習
+                    practice_checkin: 打卡記錄
+                    circle: 學習圈子
+                    user: 使用者標籤
                     review: 評論
                 tagName:
                   type: string
@@ -12276,22 +12784,9 @@ paths:
                       - true
                     description: Indicates successful API response
                   data:
-                    type: object
-                    properties:
-                      entityId:
-                        type: number
-                        description: 實體 ID
-                      entityType:
-                        type: string
-                        description: 實體類型
-                      tagName:
-                        type: string
-                        description: 標籤名稱
-                    required:
-                      - entityId
-                      - entityType
-                      - tagName
-                    description: The main response data
+                    allOf:
+                      - $ref: '#/components/schemas/EntityTagOperation'
+                      - description: The main response data
                   timestamp:
                     type: string
                     format: date-time
@@ -12396,6 +12891,9 @@ paths:
                     - project
                     - idea
                     - practice
+                    - practice_checkin
+                    - circle
+                    - user
                     - review
                   description: 實體類型
                   examples: *ref_38
@@ -12535,6 +13033,9 @@ paths:
               - project
               - idea
               - practice
+              - practice_checkin
+              - circle
+              - user
               - review
             description: 實體類型
             examples: *ref_38
@@ -12559,17 +13060,7 @@ paths:
                   data:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: number
-                          description: 標籤 ID
-                        name:
-                          type: string
-                          description: 標籤名稱
-                      required:
-                        - id
-                        - name
+                      $ref: '#/components/schemas/FormattedTag'
                     description: The main response data
                   timestamp:
                     type: string
