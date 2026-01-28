@@ -30,7 +30,6 @@ import {
   // Response validation schemas
   practiceApiResponseSchema,
   practicesListApiResponseSchema,
-  checkInApiResponseSchema,
   checkInsListApiResponseSchema,
   practiceStatsApiResponseSchema,
   checkInStatsApiResponseSchema,
@@ -482,6 +481,15 @@ export class PracticeController {
   getTemplateById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const templateId = req.params.id;
     const result = await practiceTemplateService.getTemplateById(templateId);
+    res.json(result);
+  });
+
+  /**
+   * 取得模板分類列表
+   * GET /api/v1/practices/templates/categories
+   */
+  getTemplateCategories = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    const result = await practiceTemplateService.getTemplateCategories();
     res.json(result);
   });
 
