@@ -13,7 +13,8 @@ import {
   getEntityTagsApi,
   setEntityTags,
   removeEntityTag as removeEntityTagInternal,
-  getTagByName
+  getTagByName,
+  type TimeRange
 } from '../services/tag.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { tags } from '../../generated/prisma';
@@ -32,11 +33,12 @@ import {
  * GET /tags/popular
  */
 export const getPopularTags = asyncHandler(async (req: Request, res: Response) => {
-  const { limit, entityType } = req.query;
+  const { limit, entityType, timeRange } = req.query;
 
   const result = await getPopularTagsApi(
     limit ? parseInt(limit as string, 10) : 20,
-    entityType as string | undefined
+    entityType as string | undefined,
+    (timeRange as TimeRange) || 'all'
   );
 
   // 格式化回應資料

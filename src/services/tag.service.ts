@@ -448,20 +448,62 @@ export async function getTagUsageStatsApi(tagId: number): Promise<ApiSuccessResp
 }
 
 /**
+ * 時間範圍類型
+ */
+export type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
+
+/**
+ * 計算時間範圍的起始日期
+ */
+function getTimeRangeStartDate(timeRange: TimeRange): Date | null {
+  if (timeRange === 'all') {
+    return null;
+  }
+
+  const now = new Date();
+  switch (timeRange) {
+    case '7d':
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case '30d':
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case '90d':
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    case '1y':
+      return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    default:
+      return null;
+  }
+}
+
+/**
  * 獲取熱門標籤 (內部工具函數)
  * @param limit - 限制數量
  * @param entityType - 可選的實體類型篩選 (resource, idea, project, practice, review)
+ * @param timeRange - 時間範圍篩選，用於時間衰減（預設 'all' 表示全部時間）
  * @returns 熱門標籤列表
  */
 export async function getPopularTags(
   limit = 20,
-  entityType?: string
+  entityType?: string,
+  timeRange: TimeRange = 'all'
 ): Promise<Array<{
   tag: tags;
   usageCount: number;
 }>> {
   // 建立 where 條件
-  const whereCondition = entityType ? { entity_type: entityType } : {};
+  const whereCondition: Record<string, unknown> = {};
+
+  if (entityType) {
+    whereCondition.entity_type = entityType;
+  }
+
+  // 加入時間範圍篩選
+  const startDate = getTimeRangeStartDate(timeRange);
+  if (startDate) {
+    whereCondition.created_at = {
+      gte: startDate
+    };
+  }
 
   // 統計每個標籤被使用的次數
   const tagUsage = await prisma.entity_tags.groupBy({
@@ -513,21 +555,24 @@ export async function getPopularTags(
  * 獲取熱門標籤 (API 版本)
  * @param limit - 限制數量
  * @param entityType - 可選的實體類型篩選
+ * @param timeRange - 時間範圍篩選
  * @returns API 回應格式的熱門標籤列表
  */
 export async function getPopularTagsApi(
   limit = 20,
-  entityType?: string
+  entityType?: string,
+  timeRange: TimeRange = 'all'
 ): Promise<ApiSuccessResponse<Array<{
   tag: tags;
   usageCount: number;
 }>>> {
   try {
-    const popularTags = await getPopularTags(limit, entityType);
+    const popularTags = await getPopularTags(limit, entityType, timeRange);
     return createSuccessResponse(popularTags, {
       filters: {
         limit,
-        ...(entityType && { entityType })
+        ...(entityType && { entityType }),
+        ...(timeRange !== 'all' && { timeRange })
       },
       aggregateData: {
         totalTags: popularTags.length,

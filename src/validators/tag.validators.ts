@@ -127,6 +127,21 @@ export const popularTagsQuerySchema = z.object({
         "practice": "實作",
         "review": "評論"
       }
+    }),
+  timeRange: z.enum(['7d', '30d', '90d', '1y', 'all'])
+    .optional()
+    .default('all')
+    .describe("時間範圍篩選，只統計指定時間內的使用次數")
+    .meta({
+      title: "時間範圍",
+      examples: ['7d', '30d', '90d', '1y', 'all'],
+      enumDescriptions: {
+        "7d": "近 7 天",
+        "30d": "近 30 天",
+        "90d": "近 90 天",
+        "1y": "近 1 年",
+        "all": "全部時間"
+      }
     })
 }).describe("熱門標籤查詢參數").meta({
   title: "熱門標籤查詢",
@@ -135,6 +150,9 @@ export const popularTagsQuerySchema = z.object({
   }, {
     limit: "10",
     entityType: "resource"
+  }, {
+    limit: "20",
+    timeRange: "30d"
   }]
 });
 
