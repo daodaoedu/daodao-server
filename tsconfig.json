@@ -12,13 +12,7 @@
     "paths": {
       "@/*": ["src/*"],
       "@types/*": ["src/types/*"],
-      "@services/*": ["src/services/*"],
-      "@middleware/*": ["src/middleware/*"],
-      "@utils/*": ["src/utils/*"],
-      "@models/*": ["src/models/*"],
-      "@controllers/*": ["src/controllers/*"],
-      "@generated/*": ["generated/*"],
-      "@tests/*": ["tests/*"]
+      "@services/*": ["src/services/*"]
     },
     "allowJs": true,
     "declaration": false,
@@ -33,13 +27,11 @@
     "controllers/**/*",
     "routes/**/*",
     "validators/**/*",
-    "src/types/**/*.d.ts",
-    "tests/**/*",
-    "generated/**/*"
+    "src/types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "tests/**/*"
+    "tests"
   ]
 }
