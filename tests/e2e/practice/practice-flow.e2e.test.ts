@@ -10,7 +10,7 @@
 
 import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 import { createAuthToken } from '@tests/utils/api-helpers';
-import { Prisma } from '../../../generated/prisma';
+import { Prisma } from '@generated/prisma';
 import { NotFoundError } from '@/middleware/error.middleware';
 import request from 'supertest';
 import type { Application } from 'express';

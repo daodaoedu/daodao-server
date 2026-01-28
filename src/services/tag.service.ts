@@ -4,9 +4,76 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { redis } from './database/redis.service';
+import { loggerService } from './logging/logger.service';
 import type { tags } from '../../generated/prisma';
 import type { ApiSuccessResponse } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
+
+// ============================================================================
+// 快取設定
+// ============================================================================
+
+/** 熱門標籤快取過期時間（秒） */
+const POPULAR_TAGS_CACHE_TTL = 5 * 60; // 5 分鐘
+
+/** 快取 key 前綴 */
+const CACHE_PREFIX = 'tags:';
+
+/**
+ * 生成熱門標籤快取 key
+ */
+function getPopularTagsCacheKey(
+  limit: number,
+  entityType?: string,
+  timeRange?: string
+): string {
+  return `${CACHE_PREFIX}popular:${limit}:${entityType || 'all'}:${timeRange || 'all'}`;
+}
+
+/**
+ * 從快取取得資料
+ */
+async function getFromCache<T>(key: string): Promise<T | null> {
+  try {
+    const cached = await redis.get(key);
+    if (cached) {
+      return JSON.parse(cached) as T;
+    }
+    return null;
+  } catch (error) {
+    // 快取錯誤不應影響正常功能，僅記錄錯誤
+    loggerService.error('Redis cache get error', { key, error });
+    return null;
+  }
+}
+
+/**
+ * 設定快取資料
+ */
+async function setCache(key: string, data: unknown, ttl: number): Promise<void> {
+  try {
+    await redis.setex(key, ttl, JSON.stringify(data));
+  } catch (error) {
+    // 快取錯誤不應影響正常功能，僅記錄錯誤
+    loggerService.error('Redis cache set error', { key, ttl, error });
+  }
+}
+
+/**
+ * 清除熱門標籤相關快取
+ * 注意：不使用 KEYS 命令（會阻塞 Redis），改為依賴 TTL 自動過期
+ * 快取會在 5 分鐘內自動失效，這是生產環境的最佳實踐
+ */
+export async function clearPopularTagsCache(): Promise<void> {
+  // 依賴 TTL 自動過期（5分鐘），避免使用 KEYS 命令阻塞 Redis
+  // 如果需要立即清除特定快取，可以直接刪除已知的 key
+  loggerService.debug('Popular tags cache will expire via TTL');
+}
+
+// ============================================================================
+// 核心服務函數
+// ============================================================================
 
 // 定義事務類型
 type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -118,7 +185,7 @@ export async function searchTags(query: string, limit = 10): Promise<tags[]> {
   return await prisma.tags.findMany({
     where: {
       name: {
-        contains: query,
+        contains: query.trim(),
         mode: 'insensitive'
       }
     },
@@ -148,7 +215,129 @@ export async function searchTagsApi(query: string, limit = 10): Promise<ApiSucce
 }
 
 /**
- * 為實體設置標籤
+ * 標籤建議結果類型
+ */
+export interface TagSuggestion {
+  id: number;
+  name: string;
+  count: number;
+  matchType: 'exact' | 'prefix' | 'contains';
+}
+
+/**
+ * 標籤建議 (內部工具函數)
+ * 用於輸入時的自動補全，優先顯示前綴匹配和熱門標籤
+ * @param query - 搜尋關鍵字
+ * @param limit - 限制數量
+ * @returns 標籤建議列表（含使用次數和匹配類型）
+ */
+export async function suggestTags(query: string, limit = 10): Promise<TagSuggestion[]> {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  // 查詢所有匹配的標籤（包含匹配）
+  const matchingTags = await prisma.tags.findMany({
+    where: {
+      name: {
+        contains: query.trim(),
+        mode: 'insensitive'
+      }
+    },
+    take: limit * 3 // 多取一些以便排序後篩選
+  });
+
+  if (matchingTags.length === 0) {
+    return [];
+  }
+
+  // 取得這些標籤的使用次數
+  const tagIds = matchingTags.map(tag => tag.id);
+  const usageCounts = await prisma.entity_tags.groupBy({
+    by: ['tag_id'],
+    where: {
+      tag_id: { in: tagIds }
+    },
+    _count: {
+      tag_id: true
+    }
+  });
+
+  // 建立使用次數映射
+  const countMap = new Map(
+    usageCounts.map(item => [item.tag_id, item._count.tag_id])
+  );
+
+  // 計算每個標籤的排序分數
+  const scoredTags = matchingTags.map(tag => {
+    const tagNameLower = tag.name.toLowerCase();
+    const count = countMap.get(tag.id) || 0;
+
+    // 判斷匹配類型
+    let matchType: 'exact' | 'prefix' | 'contains';
+    let matchScore: number;
+
+    if (tagNameLower === normalizedQuery) {
+      matchType = 'exact';
+      matchScore = 100;
+    } else if (tagNameLower.startsWith(normalizedQuery)) {
+      matchType = 'prefix';
+      matchScore = 80;
+    } else {
+      matchType = 'contains';
+      matchScore = 40;
+    }
+
+    // 總分 = 匹配類型分數 + 使用次數加權（使用 log 避免熱門標籤過度主導）
+    const totalScore = matchScore + Math.log(count + 1) * 5;
+
+    return {
+      id: tag.id,
+      name: tag.name,
+      count,
+      matchType,
+      score: totalScore
+    };
+  });
+
+  // 按分數排序並取前 limit 個
+  return scoredTags
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ id, name, count, matchType }) => ({
+      id,
+      name,
+      count,
+      matchType
+    }));
+}
+
+/**
+ * 標籤建議 (API 版本)
+ * @param query - 搜尋關鍵字
+ * @param limit - 限制數量
+ * @returns API 回應格式的標籤建議列表
+ */
+export async function suggestTagsApi(
+  query: string,
+  limit = 10
+): Promise<ApiSuccessResponse<TagSuggestion[]>> {
+  try {
+    const suggestions = await suggestTags(query, limit);
+    return createSuccessResponse(suggestions, {
+      searchQuery: query,
+      filters: { limit }
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('取得標籤建議失敗');
+  }
+}
+
+/**
+ * 為實體設置標籤（替換模式）
+ * 會先刪除所有現有標籤，再設置新標籤
  * @param entityType - 實體類型 (resource, idea, etc.)
  * @param entityId - 實體 ID
  * @param tagNames - 標籤名稱列表
@@ -176,7 +365,7 @@ export async function setEntityTags(
   for (const tagName of tagNames) {
     // 創建或獲取標籤
     const tag = await createTag(tagName.trim(), tx);
-    
+
     // 創建實體標籤關聯
     await tx.entity_tags.create({
       data: {
@@ -187,6 +376,61 @@ export async function setEntityTags(
       }
     });
   }
+
+  // 清除熱門標籤快取（標籤使用次數已變更）
+  await clearPopularTagsCache();
+}
+
+/**
+ * 為實體添加單一標籤（追加模式）
+ * 不會刪除現有標籤，只添加新標籤（如果標籤已存在則忽略）
+ * @param entityType - 實體類型 (resource, idea, etc.)
+ * @param entityId - 實體 ID
+ * @param tagName - 標籤名稱
+ * @param userId - 創建者 ID
+ * @param transaction - 事務對象
+ * @returns 是否成功添加（如果標籤已存在則返回 false）
+ */
+export async function addEntityTag(
+  entityType: string,
+  entityId: number,
+  tagName: string,
+  userId: number,
+  transaction?: TransactionClient | typeof prisma
+): Promise<boolean> {
+  const tx = transaction || prisma;
+
+  // 創建或獲取標籤
+  const tag = await createTag(tagName.trim(), tx);
+
+  // 檢查是否已存在該標籤關聯
+  const existing = await tx.entity_tags.findFirst({
+    where: {
+      entity_type: entityType,
+      entity_id: entityId,
+      tag_id: tag.id
+    }
+  });
+
+  if (existing) {
+    // 標籤已存在，不需要重複添加
+    return false;
+  }
+
+  // 創建實體標籤關聯
+  await tx.entity_tags.create({
+    data: {
+      entity_type: entityType,
+      entity_id: entityId,
+      tag_id: tag.id,
+      created_by: userId
+    }
+  });
+
+  // 清除熱門標籤快取（標籤使用次數已變更）
+  await clearPopularTagsCache();
+
+  return true;
 }
 
 /**
@@ -262,6 +506,9 @@ export async function removeEntityTag(
       tag_id: tagId
     }
   });
+
+  // 清除熱門標籤快取（標籤使用次數已變更）
+  await clearPopularTagsCache();
 }
 
 /**
@@ -327,16 +574,74 @@ export async function getTagUsageStatsApi(tagId: number): Promise<ApiSuccessResp
 }
 
 /**
+ * 時間範圍類型
+ */
+export type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
+
+/**
+ * 計算時間範圍的起始日期
+ */
+function getTimeRangeStartDate(timeRange: TimeRange): Date | null {
+  if (timeRange === 'all') {
+    return null;
+  }
+
+  const now = new Date();
+  switch (timeRange) {
+    case '7d':
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    case '30d':
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case '90d':
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    case '1y':
+      return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    default:
+      return null;
+  }
+}
+
+/**
  * 獲取熱門標籤 (內部工具函數)
  * @param limit - 限制數量
+ * @param entityType - 可選的實體類型篩選 (resource, idea, project, practice, review)
+ * @param timeRange - 時間範圍篩選，用於時間衰減（預設 'all' 表示全部時間）
  * @returns 熱門標籤列表
  */
-export async function getPopularTags(limit = 20): Promise<Array<{
+export async function getPopularTags(
+  limit = 20,
+  entityType?: string,
+  timeRange: TimeRange = 'all'
+): Promise<Array<{
   tag: tags;
   usageCount: number;
 }>> {
+  // 嘗試從快取取得
+  const cacheKey = getPopularTagsCacheKey(limit, entityType, timeRange);
+  const cached = await getFromCache<Array<{ tag: tags; usageCount: number }>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 建立 where 條件
+  const whereCondition: Record<string, unknown> = {};
+
+  if (entityType) {
+    whereCondition.entity_type = entityType;
+  }
+
+  // 加入時間範圍篩選
+  const startDate = getTimeRangeStartDate(timeRange);
+  if (startDate) {
+    whereCondition.created_at = {
+      gte: startDate
+    };
+  }
+
+  // 統計每個標籤被使用的次數
   const tagUsage = await prisma.entity_tags.groupBy({
     by: ['tag_id'],
+    where: whereCondition,
     _count: {
       tag_id: true
     },
@@ -348,18 +653,36 @@ export async function getPopularTags(limit = 20): Promise<Array<{
     take: limit
   });
 
-  const popularTags = await Promise.all(
-    tagUsage.map(async (usage) => {
-      const tag = await prisma.tags.findUnique({
-        where: { id: usage.tag_id }
-      });
-      
+  // 如果沒有結果，直接返回空陣列
+  if (tagUsage.length === 0) {
+    return [];
+  }
+
+  // 一次查詢取得所有標籤（解決 N+1 問題）
+  const tagIds = tagUsage.map(usage => usage.tag_id);
+  const tagsData = await prisma.tags.findMany({
+    where: {
+      id: { in: tagIds }
+    }
+  });
+
+  // 建立 tagId -> tag 的映射
+  const tagMap = new Map(tagsData.map(tag => [tag.id, tag]));
+
+  // 組合結果，保持原本的排序
+  const popularTags = tagUsage
+    .map(usage => {
+      const tag = tagMap.get(usage.tag_id);
+      if (!tag) return null;
       return {
-        tag: tag as tags,
+        tag,
         usageCount: usage._count.tag_id
       };
     })
-  );
+    .filter((item): item is { tag: tags; usageCount: number } => item !== null);
+
+  // 寫入快取
+  await setCache(cacheKey, popularTags, POPULAR_TAGS_CACHE_TTL);
 
   return popularTags;
 }
@@ -367,17 +690,25 @@ export async function getPopularTags(limit = 20): Promise<Array<{
 /**
  * 獲取熱門標籤 (API 版本)
  * @param limit - 限制數量
+ * @param entityType - 可選的實體類型篩選
+ * @param timeRange - 時間範圍篩選
  * @returns API 回應格式的熱門標籤列表
  */
-export async function getPopularTagsApi(limit = 20): Promise<ApiSuccessResponse<Array<{
+export async function getPopularTagsApi(
+  limit = 20,
+  entityType?: string,
+  timeRange: TimeRange = 'all'
+): Promise<ApiSuccessResponse<Array<{
   tag: tags;
   usageCount: number;
 }>>> {
   try {
-    const popularTags = await getPopularTags(limit);
+    const popularTags = await getPopularTags(limit, entityType, timeRange);
     return createSuccessResponse(popularTags, {
       filters: {
-        limit
+        limit,
+        ...(entityType && { entityType }),
+        ...(timeRange !== 'all' && { timeRange })
       },
       aggregateData: {
         totalTags: popularTags.length,
@@ -448,17 +779,21 @@ export default {
   getTagByName,
   getAllTags,
   searchTags,
+  suggestTags,
   setEntityTags,
+  addEntityTag,
   getEntityTags,
   removeEntityTag,
   getTagUsageStats,
   getPopularTags,
   cleanupUnusedTags,
-  
+  clearPopularTagsCache,
+
   // API 版本函數
   getTagByIdApi,
   getAllTagsApi,
   searchTagsApi,
+  suggestTagsApi,
   getEntityTagsApi,
   getTagUsageStatsApi,
   getPopularTagsApi,

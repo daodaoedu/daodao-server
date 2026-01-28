@@ -10,16 +10,20 @@ import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import {
   tagSearchQuerySchema,
+  suggestTagsQuerySchema,
   popularTagsQuerySchema,
   addEntityTagSchema,
   removeEntityTagSchema,
   entityTagsQuerySchema,
+  tagPromptsQuerySchema,
   getPopularTagsApiResponseSchema,
   searchTagsApiResponseSchema,
+  suggestTagsApiResponseSchema,
   getTagStatsApiResponseSchema,
   addEntityTagApiResponseSchema,
   removeEntityTagApiResponseSchema,
-  getEntityTagsApiResponseSchema
+  getEntityTagsApiResponseSchema,
+  tagPromptsApiResponseSchema
 } from '@/validators/tag.validators';
 
 const router = Router();
@@ -36,7 +40,7 @@ registry.registerPath({
   path: '/api/v1/tags/popular',
   tags: ['Tags'],
   summary: '取得熱門標籤',
-  description: '取得熱門標籤列表，按使用次數排序',
+  description: '取得熱門標籤列表，按使用次數排序。支援按實體類型和時間範圍篩選，實現時間衰減效果（近期使用的標籤優先）。',
   request: {
     query: popularTagsQuerySchema
   },
@@ -81,6 +85,32 @@ registry.registerPath({
 });
 
 /**
+ * GET /api/v1/tags/suggest - 標籤建議（自動補全）
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tags/suggest',
+  tags: ['Tags'],
+  summary: '標籤建議（自動補全）',
+  description: '根據輸入提供標籤建議，優先顯示前綴匹配和熱門標籤。適用於輸入時的自動補全功能。',
+  request: {
+    query: suggestTagsQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得標籤建議',
+      content: {
+        'application/json': {
+          schema: suggestTagsApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
  * GET /api/v1/tags/stats - 取得標籤統計
  */
 registry.registerPath({
@@ -98,6 +128,32 @@ registry.registerPath({
         }
       }
     },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/tags/prompts - 取得標籤引導句
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tags/prompts',
+  tags: ['Tags'],
+  summary: '取得標籤引導句',
+  description: '根據標籤名稱取得對應的引導句，用於打卡時提示用戶輸入。支援多個標籤（逗號分隔）。',
+  request: {
+    query: tagPromptsQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取標籤引導句',
+      content: {
+        'application/json': {
+          schema: tagPromptsApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
@@ -206,7 +262,7 @@ registry.registerPath({
 /**
  * GET /tags/popular
  * 獲取熱門標籤
- * 查詢參數：limit
+ * 查詢參數：limit, entityType (可選), timeRange (可選)
  */
 router.get('/popular',
   validate(popularTagsQuerySchema, 'query'),
@@ -223,11 +279,31 @@ router.get('/search',
 );
 
 /**
+ * GET /tags/suggest
+ * 標籤建議（自動補全）
+ * 查詢參數：q, limit
+ */
+router.get('/suggest',
+  validate(suggestTagsQuerySchema, 'query'),
+  tagController.suggestTags as RequestHandler
+);
+
+/**
  * GET /tags/stats
  * 獲取標籤統計
  */
 router.get('/stats',
   tagController.getTagStats as RequestHandler
+);
+
+/**
+ * GET /tags/prompts
+ * 取得標籤引導句
+ * 查詢參數：tags (逗號分隔), usageType (可選), locale (可選)
+ */
+router.get('/prompts',
+  validate(tagPromptsQuerySchema, 'query'),
+  tagController.getTagPrompts as RequestHandler
 );
 
 /**

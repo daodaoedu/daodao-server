@@ -8,21 +8,30 @@ import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import {
   getPopularTagsApi,
   searchTagsApi,
+  suggestTagsApi,
   getAllTagsApi,
   getEntityTagsApi,
-  setEntityTags,
+  addEntityTag as addEntityTagService,
   removeEntityTag as removeEntityTagInternal,
-  getTagByName
+  getTagByName,
+  type TimeRange
 } from '../services/tag.service';
+import {
+  getTagPromptsByTags,
+  type TagPromptUsageType,
+  type TagPromptLocale
+} from '../services/tag-prompt.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { tags } from '../../generated/prisma';
 import {
   getPopularTagsApiResponseSchema,
   searchTagsApiResponseSchema,
+  suggestTagsApiResponseSchema,
   getTagStatsApiResponseSchema,
   addEntityTagApiResponseSchema,
   removeEntityTagApiResponseSchema,
-  getEntityTagsApiResponseSchema
+  getEntityTagsApiResponseSchema,
+  tagPromptsApiResponseSchema
 } from '../validators/tag.validators';
 
 /**
@@ -30,10 +39,12 @@ import {
  * GET /tags/popular
  */
 export const getPopularTags = asyncHandler(async (req: Request, res: Response) => {
-  const { limit } = req.query;
+  const { limit, entityType, timeRange } = req.query;
 
   const result = await getPopularTagsApi(
-    limit ? parseInt(limit as string, 10) : 20
+    limit ? parseInt(limit as string, 10) : 20,
+    entityType as string | undefined,
+    (timeRange as TimeRange) || 'all'
   );
 
   // 格式化回應資料
@@ -76,6 +87,26 @@ export const searchTags = asyncHandler(async (req: Request, res: Response) => {
   };
 
   const validatedResponse = searchTagsApiResponseSchema.parse(formattedResult);
+  res.json(validatedResponse);
+});
+
+/**
+ * 標籤建議（自動補全）
+ * GET /tags/suggest
+ */
+export const suggestTags = asyncHandler(async (req: Request, res: Response) => {
+  const { q, limit } = req.query;
+
+  if (!q) {
+    throw new BadRequestError('必須提供搜索關鍵詞');
+  }
+
+  const result = await suggestTagsApi(
+    q as string,
+    limit ? parseInt(limit as string, 10) : 10
+  );
+
+  const validatedResponse = suggestTagsApiResponseSchema.parse(result);
   res.json(validatedResponse);
 });
 
@@ -126,24 +157,24 @@ export const addEntityTag = asyncHandler(async (req: Request, res: Response) => 
     throw new BadRequestError('需要用戶認證');
   }
 
-  // 添加實體標籤
-  await setEntityTags(
+  // 添加實體標籤（追加模式，不會刪除現有標籤）
+  const added = await addEntityTagService(
     entityType as string,
-    parseInt(entityId as string),
-    [tagName as string],
+    parseInt(entityId as string, 10),
+    tagName as string,
     userId
   );
 
   const result = createSuccessResponse({
-    entityId: parseInt(entityId as string),
+    entityId: parseInt(entityId as string, 10),
     entityType,
     tagName
   }, {
-    message: '標籤已成功添加到實體'
+    message: added ? '標籤已成功添加到實體' : '標籤已存在於該實體'
   });
 
   const validatedResponse = addEntityTagApiResponseSchema.parse(result);
-  res.status(201).json(validatedResponse);
+  res.status(added ? 201 : 200).json(validatedResponse);
 });
 
 /**
@@ -208,12 +239,42 @@ export const getEntityTags = asyncHandler(async (req: Request, res: Response) =>
   res.json(validatedResponse);
 });
 
+/**
+ * 取得標籤引導句
+ * GET /tags/prompts
+ */
+export const getTagPrompts = asyncHandler(async (req: Request, res: Response) => {
+  const { tags: tagsParam, usageType, locale } = req.query;
+
+  if (!tagsParam) {
+    throw new BadRequestError('必須提供標籤名稱');
+  }
+
+  // 解析標籤名稱（逗號分隔）
+  const tagNames = (tagsParam as string).split(',').map(t => t.trim()).filter(Boolean);
+
+  if (tagNames.length === 0) {
+    throw new BadRequestError('必須提供至少一個有效的標籤名稱');
+  }
+
+  const result = await getTagPromptsByTags(
+    tagNames,
+    (usageType as TagPromptUsageType) || 'practice_checkin',
+    (locale as TagPromptLocale) || 'zh-TW'
+  );
+
+  const validatedResponse = tagPromptsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
+});
+
 // 導出所有控制器函數
 export default {
   getPopularTags,
   searchTags,
+  suggestTags,
   getTagStats,
   addEntityTag,
   removeEntityTag,
-  getEntityTags
+  getEntityTags,
+  getTagPrompts
 };
