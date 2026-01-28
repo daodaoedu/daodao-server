@@ -1,18 +1,4 @@
-// Express type augmentation
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: number;
-        username?: string;
-        email?: string;
-        isTemp?: boolean;
-        roles?: string[];
-        [key: string]: unknown;
-      };
-    }
-  }
-}
+// Global type definitions
+// Note: Express type augmentation is handled in src/types/declarations/express.d.ts
 
 export {};

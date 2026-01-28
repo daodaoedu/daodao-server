@@ -414,7 +414,7 @@ ts-node src/index.ts
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      NODE_ENV: 'development' | 'production' | 'test';
+      NODE_ENV: 'dev' | 'prod' | 'local';
       PORT: string;
       
       // 資料庫配置

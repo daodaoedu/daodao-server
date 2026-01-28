@@ -3,6 +3,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { mongoConnect } = require('./services/mongo');
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 dotenv.config();
 const dashboardRoutes = require('./routes/dashboard'); 
@@ -12,8 +13,6 @@ const projectRoutes = require('./routes/project');
 const mentorRoutes = require('./routes/mentor');
 const circleRoutes = require('./routes/circle');
 const commentRoutes = require('./routes/comment');
-const marathonRoutes = require('./routes/marathon');
-const tagRoutes = require('./routes/tag');
 const emailRoutes = require('./routes/email');
 const imageRoutes = require('./routes/image');
 const projectListRoutes = require('./routes/projectList');
@@ -23,9 +22,6 @@ const passport = require("passport");
 require("./services/passport");
 const monitorRoutes = require('./routes/monitor');
 const dbInfoRoutes = require('./routes/dbInfo');
-const User = require("./models/user.model");
-const Activity = require("./models/activity.model");
-const Marathon = require("./models/marathon.model");
 const path = require('path');
 const PORT = process.env.PORT || 3000;
 
@@ -38,6 +34,7 @@ console.log(`🧠 啟動記憶體使用: ${Math.round(startMemUsage.heapUsed / 1
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // 設置 trust proxy 以正確處理來自反向代理的請求
 // 限制為特定的代理配置，提高安全性
@@ -111,9 +108,7 @@ app.use('/projects', projectRoutes);
 app.use('/users', userRoutes);
 app.use('/circles', circleRoutes);
 app.use('/comments', commentRoutes);
-app.use("/marathons", marathonRoutes);
 app.use("/mentors", mentorRoutes);
-app.use('/tags', tagRoutes);
 app.use('/emails',strictLimiter, emailRoutes);
 app.use('/images',strictLimiter, imageRoutes);
 app.use('/monitor', monitorRoutes);
