@@ -40,7 +40,7 @@ import {
   ShareEventRequest,
   FavoriteEventRequest
 } from '@/types/practice.types';
-import { Prisma } from '../../../generated/prisma';
+import { Prisma } from '@generated/prisma';
 
 describe('Practice Event Service', () => {
   beforeEach(() => {

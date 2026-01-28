@@ -3,36 +3,10 @@
  * Tests tag service core business logic in isolation
  *
  * Focus: Tag CRUD operations, entity tag management
- * Mocks: Database (Prisma), Redis cache, logger
+ * Mocks: All external dependencies (database, Redis cache, logger)
  */
 
-// Create standalone Prisma mock (avoids dependency on generated types)
-const prismaMock = {
-  tags: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    deleteMany: jest.fn()
-  },
-  entity_tags: {
-    findFirst: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    deleteMany: jest.fn(),
-    groupBy: jest.fn()
-  },
-  $transaction: jest.fn()
-};
-
-// Setup transaction mock
-const setupTransactionMock = () => {
-  prismaMock.$transaction.mockImplementation(async (fn: unknown) => {
-    if (typeof fn === 'function') {
-      return (fn as (tx: typeof prismaMock) => Promise<unknown>)(prismaMock);
-    }
-    return Promise.all(fn as Promise<unknown>[]);
-  });
-};
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 
 // Mock Redis
 const mockRedis = {
@@ -42,7 +16,7 @@ const mockRedis = {
 };
 
 // Mock logger
-const mockLogger = {
+const mockLoggerService = {
   debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
@@ -68,7 +42,7 @@ jest.mock('@/services/database/redis.service', () => ({
 }));
 
 jest.mock('@/services/logging/logger.service', () => ({
-  loggerService: mockLogger
+  loggerService: mockLoggerService
 }));
 
 jest.mock('@/utils/response-helper', () => mockResponseHelper);
@@ -78,10 +52,12 @@ import {
   getTagById,
   getTagByName,
   getAllTags,
+  searchTags,
   addEntityTag,
   setEntityTags,
   getEntityTags,
   removeEntityTag,
+  getTagUsageStats,
   getPopularTags,
   cleanupUnusedTags
 } from '@/services/tag.service';
@@ -90,8 +66,14 @@ describe('Tag Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setupTransactionMock();
+
+    // Setup common mock returns
     mockRedis.get.mockResolvedValue(null);
     mockRedis.setex.mockResolvedValue('OK');
+    mockLoggerService.info.mockReturnValue(undefined);
+    mockLoggerService.error.mockReturnValue(undefined);
+    mockLoggerService.warn.mockReturnValue(undefined);
+    mockLoggerService.debug.mockReturnValue(undefined);
   });
 
   // Test data factories
@@ -110,6 +92,7 @@ describe('Tag Service', () => {
     tag_id: 1,
     created_by: 1,
     created_at: new Date('2024-01-01'),
+    updated_at: new Date('2024-01-01'),
     ...overrides
   });
 
@@ -519,9 +502,17 @@ describe('Tag Service', () => {
     });
 
     it('should return cached result if available', async () => {
-      // Arrange
+      // Arrange - Note: Redis stores data as JSON, so dates become strings
       const cachedResult = [
-        { tag: createTestTag({ id: 1, name: 'React' }), usageCount: 100 }
+        {
+          tag: {
+            id: 1,
+            name: 'React',
+            created_at: '2024-01-01T00:00:00.000Z',
+            updated_at: '2024-01-01T00:00:00.000Z'
+          },
+          usageCount: 100
+        }
       ];
       mockRedis.get.mockResolvedValue(JSON.stringify(cachedResult));
 
@@ -608,6 +599,130 @@ describe('Tag Service', () => {
     });
   });
 
+  describe('searchTags', () => {
+    it('should search tags by query with case-insensitive matching', async () => {
+      // Arrange
+      const testTags = [
+        createTestTag({ id: 1, name: 'JavaScript' }),
+        createTestTag({ id: 2, name: 'Java' })
+      ];
+      prismaMock.tags.findMany.mockResolvedValue(testTags);
+
+      // Act
+      const result = await searchTags('java');
+
+      // Assert
+      expect(prismaMock.tags.findMany).toHaveBeenCalledWith({
+        where: {
+          name: {
+            contains: 'java',
+            mode: 'insensitive'
+          }
+        },
+        orderBy: { name: 'asc' },
+        take: 10
+      });
+      expect(result).toHaveLength(2);
+    });
+
+    it('should apply custom limit', async () => {
+      // Arrange
+      prismaMock.tags.findMany.mockResolvedValue([]);
+
+      // Act
+      await searchTags('react', 5);
+
+      // Assert
+      expect(prismaMock.tags.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 5
+        })
+      );
+    });
+
+    it('should return empty array when no tags match', async () => {
+      // Arrange
+      prismaMock.tags.findMany.mockResolvedValue([]);
+
+      // Act
+      const result = await searchTags('nonexistent');
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('should handle database errors', async () => {
+      // Arrange
+      prismaMock.tags.findMany.mockRejectedValue(new Error('Database error'));
+
+      // Act & Assert
+      await expect(searchTags('test')).rejects.toThrow('Database error');
+    });
+  });
+
+  describe('getTagUsageStats', () => {
+    it('should return usage statistics for a tag', async () => {
+      // Arrange
+      prismaMock.entity_tags.count
+        .mockResolvedValueOnce(100) // totalUsage
+        .mockResolvedValueOnce(60)  // resourceCount
+        .mockResolvedValueOnce(40); // ideaCount
+
+      // Act
+      const result = await getTagUsageStats(1);
+
+      // Assert
+      expect(result).toEqual({
+        totalUsage: 100,
+        resourceCount: 60,
+        ideaCount: 40
+      });
+    });
+
+    it('should query correct entity types', async () => {
+      // Arrange
+      prismaMock.entity_tags.count.mockResolvedValue(0);
+
+      // Act
+      await getTagUsageStats(1);
+
+      // Assert
+      expect(prismaMock.entity_tags.count).toHaveBeenCalledTimes(3);
+      expect(prismaMock.entity_tags.count).toHaveBeenNthCalledWith(1, {
+        where: { tag_id: 1 }
+      });
+      expect(prismaMock.entity_tags.count).toHaveBeenNthCalledWith(2, {
+        where: { tag_id: 1, entity_type: 'resource' }
+      });
+      expect(prismaMock.entity_tags.count).toHaveBeenNthCalledWith(3, {
+        where: { tag_id: 1, entity_type: 'idea' }
+      });
+    });
+
+    it('should return zero counts when tag has no usage', async () => {
+      // Arrange
+      prismaMock.entity_tags.count.mockResolvedValue(0);
+
+      // Act
+      const result = await getTagUsageStats(999);
+
+      // Assert
+      expect(result).toEqual({
+        totalUsage: 0,
+        resourceCount: 0,
+        ideaCount: 0
+      });
+    });
+
+    it('should handle database errors', async () => {
+      // Arrange
+      prismaMock.entity_tags.count.mockRejectedValue(new Error('Database error'));
+
+      // Act & Assert
+      await expect(getTagUsageStats(1)).rejects.toThrow('Database error');
+    });
+  });
+
   describe('Error handling', () => {
     it('should propagate database errors', async () => {
       // Arrange
@@ -629,7 +744,7 @@ describe('Tag Service', () => {
       // Assert - should fall back to database query
       expect(prismaMock.entity_tags.groupBy).toHaveBeenCalled();
       expect(result).toEqual([]);
-      expect(mockLogger.error).toHaveBeenCalled();
+      expect(mockLoggerService.error).toHaveBeenCalled();
     });
   });
 });
