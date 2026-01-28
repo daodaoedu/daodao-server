@@ -627,7 +627,7 @@ export async function deleteTemplate(
   });
 
   if (!existingTemplate) {
-    return createSuccessResponse({ deleted: false });
+    throw new NotFoundError('實踐模板不存在');
   }
 
   // 刪除關聯資料
