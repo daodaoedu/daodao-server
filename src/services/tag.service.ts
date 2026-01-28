@@ -4,9 +4,79 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { redis } from './database/redis.service';
 import type { tags } from '../../generated/prisma';
 import type { ApiSuccessResponse } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
+
+// ============================================================================
+// 快取設定
+// ============================================================================
+
+/** 熱門標籤快取過期時間（秒） */
+const POPULAR_TAGS_CACHE_TTL = 5 * 60; // 5 分鐘
+
+/** 快取 key 前綴 */
+const CACHE_PREFIX = 'tags:';
+
+/**
+ * 生成熱門標籤快取 key
+ */
+function getPopularTagsCacheKey(
+  limit: number,
+  entityType?: string,
+  timeRange?: string
+): string {
+  return `${CACHE_PREFIX}popular:${limit}:${entityType || 'all'}:${timeRange || 'all'}`;
+}
+
+/**
+ * 從快取取得資料
+ */
+async function getFromCache<T>(key: string): Promise<T | null> {
+  try {
+    const cached = await redis.get(key);
+    if (cached) {
+      return JSON.parse(cached) as T;
+    }
+    return null;
+  } catch (error) {
+    // 快取錯誤不應影響正常功能，僅記錄錯誤
+    console.error('Redis cache get error:', error);
+    return null;
+  }
+}
+
+/**
+ * 設定快取資料
+ */
+async function setCache(key: string, data: unknown, ttl: number): Promise<void> {
+  try {
+    await redis.setex(key, ttl, JSON.stringify(data));
+  } catch (error) {
+    // 快取錯誤不應影響正常功能，僅記錄錯誤
+    console.error('Redis cache set error:', error);
+  }
+}
+
+/**
+ * 清除熱門標籤相關快取
+ * 當標籤資料變更時呼叫
+ */
+export async function clearPopularTagsCache(): Promise<void> {
+  try {
+    const keys = await redis.keys(`${CACHE_PREFIX}popular:*`);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch (error) {
+    console.error('Redis cache clear error:', error);
+  }
+}
+
+// ============================================================================
+// 核心服務函數
+// ============================================================================
 
 // 定義事務類型
 type TransactionClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -297,7 +367,7 @@ export async function setEntityTags(
   for (const tagName of tagNames) {
     // 創建或獲取標籤
     const tag = await createTag(tagName.trim(), tx);
-    
+
     // 創建實體標籤關聯
     await tx.entity_tags.create({
       data: {
@@ -308,6 +378,9 @@ export async function setEntityTags(
       }
     });
   }
+
+  // 清除熱門標籤快取（標籤使用次數已變更）
+  await clearPopularTagsCache();
 }
 
 /**
@@ -383,6 +456,9 @@ export async function removeEntityTag(
       tag_id: tagId
     }
   });
+
+  // 清除熱門標籤快取（標籤使用次數已變更）
+  await clearPopularTagsCache();
 }
 
 /**
@@ -490,6 +566,13 @@ export async function getPopularTags(
   tag: tags;
   usageCount: number;
 }>> {
+  // 嘗試從快取取得
+  const cacheKey = getPopularTagsCacheKey(limit, entityType, timeRange);
+  const cached = await getFromCache<Array<{ tag: tags; usageCount: number }>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   // 建立 where 條件
   const whereCondition: Record<string, unknown> = {};
 
@@ -547,6 +630,9 @@ export async function getPopularTags(
       };
     })
     .filter((item): item is { tag: tags; usageCount: number } => item !== null);
+
+  // 寫入快取
+  await setCache(cacheKey, popularTags, POPULAR_TAGS_CACHE_TTL);
 
   return popularTags;
 }
@@ -650,6 +736,7 @@ export default {
   getTagUsageStats,
   getPopularTags,
   cleanupUnusedTags,
+  clearPopularTagsCache,
 
   // API 版本函數
   getTagByIdApi,
