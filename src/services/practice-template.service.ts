@@ -353,3 +353,261 @@ export async function getTemplateCategories(): Promise<ApiSuccessResponse<string
   const uniqueCategories = [...new Set(allCategories)];
   return createSuccessResponse(uniqueCategories);
 }
+
+/**
+ * 創建模板輸入參數
+ */
+export interface CreateTemplateInput {
+  title: string;
+  practiceAction?: string;
+  categories?: string[];
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  durationDays?: number;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods?: string[];
+  suggestedTags?: string[];
+}
+
+/**
+ * 更新模板輸入參數
+ */
+export interface UpdateTemplateInput {
+  title?: string;
+  practiceAction?: string;
+  categories?: string[];
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  durationDays?: number;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods?: string[];
+  suggestedTags?: string[];
+}
+
+/**
+ * 創建模板
+ * 使用事務確保原子性，使用 connectOrCreate 避免競爭條件
+ */
+export async function createTemplate(
+  input: CreateTemplateInput
+): Promise<ApiSuccessResponse<PracticeTemplateEntity>> {
+  const {
+    title,
+    practiceAction,
+    categories = [],
+    frequencyMinDays,
+    frequencyMaxDays,
+    durationDays,
+    sessionDurationMinutes,
+    practiceTimePeriods = [],
+    suggestedTags = []
+  } = input;
+
+  // 使用事務確保原子性
+  const template = await prismaClient.$transaction(async (tx) => {
+    // 創建模板（讓資料庫自動生成 ID）
+    const newTemplate = await tx.practice_templates.create({
+      data: {
+        title,
+        practice_action: practiceAction,
+        frequency_min_days: frequencyMinDays,
+        frequency_max_days: frequencyMaxDays,
+        duration_days: durationDays,
+        session_duration_minutes: sessionDurationMinutes,
+        practice_time_periods: practiceTimePeriods
+      }
+    });
+
+    // 處理分類關聯 - 使用 connectOrCreate 避免競爭條件
+    for (const categoryName of categories) {
+      await tx.practice_template_categories.create({
+        data: {
+          template_id: newTemplate.id,
+          content_categories: {
+            connectOrCreate: {
+              where: { name: categoryName },
+              create: { name: categoryName }
+            }
+          }
+        }
+      });
+    }
+
+    // 處理標籤關聯 - 使用 connectOrCreate 避免競爭條件
+    for (const tagName of suggestedTags) {
+      await tx.practice_template_tags.create({
+        data: {
+          template_id: newTemplate.id,
+          tags: {
+            connectOrCreate: {
+              where: { name: tagName },
+              create: { name: tagName }
+            }
+          }
+        }
+      });
+    }
+
+    return newTemplate;
+  });
+
+  loggerService.info('Practice template created', { templateId: template.id, title });
+
+  return createSuccessResponse({
+    id: template.external_id || String(template.id),
+    title: template.title,
+    practiceAction: template.practice_action || undefined,
+    categories,
+    frequencyMinDays: template.frequency_min_days,
+    frequencyMaxDays: template.frequency_max_days,
+    durationDays: template.duration_days,
+    sessionDurationMinutes: template.session_duration_minutes,
+    practiceTimePeriods: template.practice_time_periods || [],
+    suggestedTags,
+    createdAt: template.created_at?.toISOString() || new Date().toISOString()
+  });
+}
+
+/**
+ * 更新模板
+ * 使用事務確保原子性，使用 connectOrCreate 避免競爭條件
+ */
+export async function updateTemplate(
+  id: string,
+  input: UpdateTemplateInput
+): Promise<ApiSuccessResponse<PracticeTemplateEntity | null>> {
+  const {
+    title,
+    practiceAction,
+    categories,
+    frequencyMinDays,
+    frequencyMaxDays,
+    durationDays,
+    sessionDurationMinutes,
+    practiceTimePeriods,
+    suggestedTags
+  } = input;
+
+  // 查找模板
+  const existingTemplate = await prismaClient.practice_templates.findFirst({
+    where: {
+      OR: [
+        { external_id: id },
+        { id: parseInt(id, 10) || -1 }
+      ]
+    }
+  });
+
+  if (!existingTemplate) {
+    return createSuccessResponse(null);
+  }
+
+  // 使用事務確保原子性
+  await prismaClient.$transaction(async (tx) => {
+    // 更新模板基本資料
+    await tx.practice_templates.update({
+      where: { id: existingTemplate.id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(practiceAction !== undefined && { practice_action: practiceAction }),
+        ...(frequencyMinDays !== undefined && { frequency_min_days: frequencyMinDays }),
+        ...(frequencyMaxDays !== undefined && { frequency_max_days: frequencyMaxDays }),
+        ...(durationDays !== undefined && { duration_days: durationDays }),
+        ...(sessionDurationMinutes !== undefined && { session_duration_minutes: sessionDurationMinutes }),
+        ...(practiceTimePeriods !== undefined && { practice_time_periods: practiceTimePeriods }),
+        updated_at: new Date()
+      }
+    });
+
+    // 更新分類關聯
+    if (categories !== undefined) {
+      // 刪除舊關聯
+      await tx.practice_template_categories.deleteMany({
+        where: { template_id: existingTemplate.id }
+      });
+
+      // 創建新關聯 - 使用 connectOrCreate 避免競爭條件
+      for (const categoryName of categories) {
+        await tx.practice_template_categories.create({
+          data: {
+            template_id: existingTemplate.id,
+            content_categories: {
+              connectOrCreate: {
+                where: { name: categoryName },
+                create: { name: categoryName }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // 更新標籤關聯
+    if (suggestedTags !== undefined) {
+      // 刪除舊關聯
+      await tx.practice_template_tags.deleteMany({
+        where: { template_id: existingTemplate.id }
+      });
+
+      // 創建新關聯 - 使用 connectOrCreate 避免競爭條件
+      for (const tagName of suggestedTags) {
+        await tx.practice_template_tags.create({
+          data: {
+            template_id: existingTemplate.id,
+            tags: {
+              connectOrCreate: {
+                where: { name: tagName },
+                create: { name: tagName }
+              }
+            }
+          }
+        });
+      }
+    }
+  });
+
+  // 重新查詢完整資料
+  const result = await getTemplateById(id);
+  loggerService.info('Practice template updated', { templateId: existingTemplate.id });
+
+  return result;
+}
+
+/**
+ * 刪除模板
+ * 使用事務確保原子性
+ */
+export async function deleteTemplate(
+  id: string
+): Promise<ApiSuccessResponse<{ deleted: boolean }>> {
+  // 查找模板
+  const existingTemplate = await prismaClient.practice_templates.findFirst({
+    where: {
+      OR: [
+        { external_id: id },
+        { id: parseInt(id, 10) || -1 }
+      ]
+    }
+  });
+
+  if (!existingTemplate) {
+    throw new NotFoundError('實踐模板不存在');
+  }
+
+  // 使用事務確保原子性
+  await prismaClient.$transaction([
+    prismaClient.practice_template_categories.deleteMany({
+      where: { template_id: existingTemplate.id }
+    }),
+    prismaClient.practice_template_tags.deleteMany({
+      where: { template_id: existingTemplate.id }
+    }),
+    prismaClient.practice_templates.delete({
+      where: { id: existingTemplate.id }
+    })
+  ]);
+
+  loggerService.info('Practice template deleted', { templateId: existingTemplate.id });
+
+  return createSuccessResponse({ deleted: true });
+}

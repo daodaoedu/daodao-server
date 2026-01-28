@@ -724,12 +724,18 @@ export const operationSuccessResponseSchema = z.object({
 
 // 模板查詢參數
 export const practiceTemplateQuerySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  page: z.coerce.number().min(1).default(1).openapi({
+    description: '頁碼',
+    example: 1
+  }),
+  limit: z.coerce.number().min(1).max(100).default(20).openapi({
+    description: '每頁數量',
+    example: 20
+  }),
   category: z.string().optional().openapi({
     description: '模板分類',
     example: 'reading',
-    examples: ['reading', 'learning', 'fitness', 'meditation']
+    examples: ['reading', 'learning', 'fitness', 'meditation', 'writing', 'coding', 'language']
   }),
   search: z.string().optional().openapi({
     description: '搜尋關鍵字',
@@ -739,23 +745,304 @@ export const practiceTemplateQuerySchema = z.object({
   description: '實踐模板查詢參數'
 });
 
-// 模板回應
+// 模板 ID 參數
+export const practiceTemplateParamsSchema = z.object({
+  id: z.string().min(1, 'Template ID cannot be empty').openapi({
+    description: '模板 ID（UUID 或預設模板 ID）',
+    example: 'tpl-reading-daily'
+  })
+}).openapi('PracticeTemplateParams', {
+  description: '實踐模板路徑參數'
+});
+
+// 模板回應 - 對應 PracticeTemplateEntity from service
 export const practiceTemplateResponseSchema = z.object({
-  id: z.string().uuid().openapi({ description: '模板 ID' }),
-  title: z.string().openapi({ description: '模板標題', example: '每日閱讀 30 分鐘' }),
-  description: z.string().optional().openapi({ description: '模板描述' }),
-  category: z.string().openapi({ description: '模板分類', example: 'reading' }),
-  frequencyMinDays: z.number().int().min(1).openapi({ description: '最低打卡頻率', example: 1 }),
-  frequencyMaxDays: z.number().int().min(1).openapi({ description: '最高打卡頻率', example: 3 }),
-  durationDays: z.number().int().min(1).openapi({ description: '建議持續天數', example: 30 }),
-  suggestedTags: z.array(z.string()).openapi({ description: '建議標籤', example: ['閱讀', '習慣養成'] }),
-  createdAt: z.string().datetime().openapi({ description: '建立時間' })
+  id: z.string().openapi({
+    description: '模板 ID（UUID 或預設模板 ID）',
+    example: 'tpl-reading-daily'
+  }),
+  title: z.string().openapi({
+    description: '模板標題',
+    example: '每日閱讀 30 分鐘'
+  }),
+  practiceAction: z.string().optional().openapi({
+    description: '具體實踐行動描述',
+    example: '閱讀'
+  }),
+  categories: z.array(z.string()).openapi({
+    description: '模板分類列表',
+    example: ['reading']
+  }),
+  frequencyMinDays: z.number().int().nullable().openapi({
+    description: '每週最低打卡天數',
+    example: 1
+  }),
+  frequencyMaxDays: z.number().int().nullable().openapi({
+    description: '每週最高打卡天數',
+    example: 2
+  }),
+  durationDays: z.number().int().nullable().openapi({
+    description: '建議持續天數',
+    example: 30
+  }),
+  sessionDurationMinutes: z.number().int().nullable().openapi({
+    description: '每次實踐時長（分鐘）',
+    example: 30
+  }),
+  practiceTimePeriods: z.array(z.string()).openapi({
+    description: '建議實踐時段',
+    example: ['morning', 'evening']
+  }),
+  suggestedTags: z.array(z.string()).openapi({
+    description: '建議標籤',
+    example: ['閱讀', '習慣養成', '自我成長']
+  }),
+  createdAt: z.string().openapi({
+    description: '建立時間',
+    example: '2024-01-15T10:30:00.000Z'
+  })
 }).openapi('PracticeTemplate', {
-  description: '實踐模板'
+  description: '實踐模板',
+  example: {
+    id: 'tpl-reading-daily',
+    title: '每日閱讀 30 分鐘',
+    practiceAction: '閱讀',
+    categories: ['reading'],
+    frequencyMinDays: 1,
+    frequencyMaxDays: 2,
+    durationDays: 30,
+    sessionDurationMinutes: 30,
+    practiceTimePeriods: ['morning', 'evening'],
+    suggestedTags: ['閱讀', '習慣養成', '自我成長'],
+    createdAt: '2024-01-15T10:30:00.000Z'
+  }
 });
 
 // 註冊 PracticeTemplate
 registry.register('PracticeTemplate', practiceTemplateResponseSchema);
+
+// 模板分類列表回應
+export const templateCategoriesResponseSchema = z.array(z.string()).openapi({
+  description: '模板分類列表',
+  example: ['reading', 'learning', 'fitness', 'meditation', 'writing', 'coding', 'language']
+});
+
+// 創建模板請求 Schema
+export const createPracticeTemplateSchema = z.object({
+  title: z.string()
+    .min(1, '標題不能為空')
+    .max(100, '標題不可超過 100 字')
+    .openapi({
+      description: '模板標題',
+      example: '每日閱讀 30 分鐘'
+    }),
+  practiceAction: z.string()
+    .max(200, '實踐行動描述不可超過 200 字')
+    .optional()
+    .openapi({
+      description: '具體實踐行動描述',
+      example: '閱讀'
+    }),
+  categories: z.array(z.string().min(1).max(50))
+    .max(5, '分類最多 5 個')
+    .default([])
+    .openapi({
+      description: '模板分類列表',
+      example: ['reading']
+    }),
+  frequencyMinDays: z.number()
+    .int('最低頻率必須是整數')
+    .min(1, '最低頻率最少 1 天')
+    .max(7, '最低頻率最多 7 天')
+    .optional()
+    .openapi({
+      description: '每週最低打卡天數',
+      example: 1
+    }),
+  frequencyMaxDays: z.number()
+    .int('最高頻率必須是整數')
+    .min(1, '最高頻率最少 1 天')
+    .max(7, '最高頻率最多 7 天')
+    .optional()
+    .openapi({
+      description: '每週最高打卡天數',
+      example: 2
+    }),
+  durationDays: z.number()
+    .int('持續天數必須是整數')
+    .min(1, '持續天數最少 1 天')
+    .max(365, '持續天數最多 365 天')
+    .optional()
+    .openapi({
+      description: '建議持續天數',
+      example: 30
+    }),
+  sessionDurationMinutes: z.number()
+    .int('每次時長必須是整數')
+    .min(1, '每次時長最少 1 分鐘')
+    .max(480, '每次時長最多 480 分鐘')
+    .optional()
+    .openapi({
+      description: '每次實踐時長（分鐘）',
+      example: 30
+    }),
+  practiceTimePeriods: z.array(practiceTimePeriodSchema)
+    .max(4, '最多選擇 4 個時段')
+    .default([])
+    .openapi({
+      description: '建議實踐時段',
+      example: ['morning', 'evening']
+    }),
+  suggestedTags: z.array(z.string().min(1).max(50))
+    .max(10, '標籤最多 10 個')
+    .default([])
+    .openapi({
+      description: '建議標籤',
+      example: ['閱讀', '習慣養成', '自我成長']
+    })
+}).openapi('CreatePracticeTemplateRequest', {
+  description: '創建實踐模板的請求資料',
+  example: {
+    title: '每日閱讀 30 分鐘',
+    practiceAction: '閱讀',
+    categories: ['reading'],
+    frequencyMinDays: 1,
+    frequencyMaxDays: 2,
+    durationDays: 30,
+    sessionDurationMinutes: 30,
+    practiceTimePeriods: ['morning', 'evening'],
+    suggestedTags: ['閱讀', '習慣養成', '自我成長']
+  }
+}).refine(data => {
+  if (data.frequencyMinDays && data.frequencyMaxDays) {
+    return data.frequencyMinDays <= data.frequencyMaxDays;
+  }
+  return true;
+}, {
+  message: '最低頻率不能大於最高頻率',
+  path: ['frequencyMinDays']
+});
+
+// 註冊 CreatePracticeTemplateRequest
+registry.register('CreatePracticeTemplateRequest', createPracticeTemplateSchema);
+
+// 更新模板請求 Schema
+export const updatePracticeTemplateSchema = z.object({
+  title: z.string()
+    .min(1, '標題不能為空')
+    .max(100, '標題不可超過 100 字')
+    .optional()
+    .openapi({
+      description: '模板標題',
+      example: '每日閱讀 30 分鐘'
+    }),
+  practiceAction: z.string()
+    .max(200, '實踐行動描述不可超過 200 字')
+    .optional()
+    .openapi({
+      description: '具體實踐行動描述',
+      example: '閱讀'
+    }),
+  categories: z.array(z.string().min(1).max(50))
+    .max(5, '分類最多 5 個')
+    .optional()
+    .openapi({
+      description: '模板分類列表',
+      example: ['reading']
+    }),
+  frequencyMinDays: z.number()
+    .int('最低頻率必須是整數')
+    .min(1, '最低頻率最少 1 天')
+    .max(7, '最低頻率最多 7 天')
+    .optional()
+    .openapi({
+      description: '每週最低打卡天數',
+      example: 1
+    }),
+  frequencyMaxDays: z.number()
+    .int('最高頻率必須是整數')
+    .min(1, '最高頻率最少 1 天')
+    .max(7, '最高頻率最多 7 天')
+    .optional()
+    .openapi({
+      description: '每週最高打卡天數',
+      example: 2
+    }),
+  durationDays: z.number()
+    .int('持續天數必須是整數')
+    .min(1, '持續天數最少 1 天')
+    .max(365, '持續天數最多 365 天')
+    .optional()
+    .openapi({
+      description: '建議持續天數',
+      example: 30
+    }),
+  sessionDurationMinutes: z.number()
+    .int('每次時長必須是整數')
+    .min(1, '每次時長最少 1 分鐘')
+    .max(480, '每次時長最多 480 分鐘')
+    .optional()
+    .openapi({
+      description: '每次實踐時長（分鐘）',
+      example: 30
+    }),
+  practiceTimePeriods: z.array(practiceTimePeriodSchema)
+    .max(4, '最多選擇 4 個時段')
+    .optional()
+    .openapi({
+      description: '建議實踐時段',
+      example: ['morning', 'evening']
+    }),
+  suggestedTags: z.array(z.string().min(1).max(50))
+    .max(10, '標籤最多 10 個')
+    .optional()
+    .openapi({
+      description: '建議標籤',
+      example: ['閱讀', '習慣養成', '自我成長']
+    })
+}).openapi('UpdatePracticeTemplateRequest', {
+  description: '更新實踐模板的請求資料'
+}).refine(data => {
+  return Object.keys(data).length > 0;
+}, {
+  message: '至少需要提供一個要更新的欄位'
+}).refine(data => {
+  if (data.frequencyMinDays && data.frequencyMaxDays) {
+    return data.frequencyMinDays <= data.frequencyMaxDays;
+  }
+  return true;
+}, {
+  message: '最低頻率不能大於最高頻率',
+  path: ['frequencyMinDays']
+});
+
+// 刪除模板回應 Schema
+export const deleteTemplateResponseSchema = z.object({
+  deleted: z.boolean().openapi({
+    description: '是否成功刪除',
+    example: true
+  })
+}).openapi('DeleteTemplateResponse', {
+  description: '刪除模板回應'
+});
+
+// 模板列表 API 回應
+export const practiceTemplatesListApiResponseSchema = paginatedApiResponseSchema(practiceTemplateResponseSchema);
+
+// 單一模板 API 回應
+export const practiceTemplateApiResponseSchema = apiSuccessResponseSchema(practiceTemplateResponseSchema.nullable());
+
+// 模板分類 API 回應
+export const templateCategoriesApiResponseSchema = apiSuccessResponseSchema(templateCategoriesResponseSchema);
+
+// 創建模板 API 回應
+export const createPracticeTemplateApiResponseSchema = apiSuccessResponseSchema(practiceTemplateResponseSchema);
+
+// 更新模板 API 回應
+export const updatePracticeTemplateApiResponseSchema = apiSuccessResponseSchema(practiceTemplateResponseSchema.nullable());
+
+// 刪除模板 API 回應
+export const deletePracticeTemplateApiResponseSchema = apiSuccessResponseSchema(deleteTemplateResponseSchema);
 
 // ===== Encouragement Schemas =====
 
@@ -817,11 +1104,19 @@ registry.register('CheckInWithEncouragement', checkInWithEncouragementResponseSc
 
 // 驗證函數
 export const validatePracticeTemplateQuery = (data: unknown) => practiceTemplateQuerySchema.parse(data);
+export const validatePracticeTemplateParams = (data: unknown) => practiceTemplateParamsSchema.parse(data);
+export const validateCreatePracticeTemplate = (data: unknown) => createPracticeTemplateSchema.parse(data);
+export const validateUpdatePracticeTemplate = (data: unknown) => updatePracticeTemplateSchema.parse(data);
 export const validateTagPromptQuery = (data: unknown) => tagPromptQuerySchema.parse(data);
 
 // 類型導出
 export type PracticeTemplateQuery = z.infer<typeof practiceTemplateQuerySchema>;
+export type PracticeTemplateParams = z.infer<typeof practiceTemplateParamsSchema>;
 export type PracticeTemplateResponse = z.infer<typeof practiceTemplateResponseSchema>;
+export type CreatePracticeTemplateRequest = z.infer<typeof createPracticeTemplateSchema>;
+export type UpdatePracticeTemplateRequest = z.infer<typeof updatePracticeTemplateSchema>;
+export type DeleteTemplateResponse = z.infer<typeof deleteTemplateResponseSchema>;
+export type TemplateCategoriesResponse = z.infer<typeof templateCategoriesResponseSchema>;
 export type EncouragementResponse = z.infer<typeof encouragementResponseSchema>;
 export type TagPromptQuery = z.infer<typeof tagPromptQuerySchema>;
 export type TagPromptResponse = z.infer<typeof tagPromptResponseSchema>;
@@ -894,7 +1189,18 @@ export const practiceValidators = {
 
   // Template & Encouragement schemas
   practiceTemplateQuerySchema,
+  practiceTemplateParamsSchema,
   practiceTemplateResponseSchema,
+  createPracticeTemplateSchema,
+  updatePracticeTemplateSchema,
+  deleteTemplateResponseSchema,
+  templateCategoriesResponseSchema,
+  practiceTemplatesListApiResponseSchema,
+  practiceTemplateApiResponseSchema,
+  templateCategoriesApiResponseSchema,
+  createPracticeTemplateApiResponseSchema,
+  updatePracticeTemplateApiResponseSchema,
+  deletePracticeTemplateApiResponseSchema,
   encouragementResponseSchema,
   tagPromptQuerySchema,
   tagPromptResponseSchema,
