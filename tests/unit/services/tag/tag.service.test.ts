@@ -651,6 +651,26 @@ describe('Tag Service', () => {
       expect(result).toEqual([]);
     });
 
+    it('should trim query before database search', async () => {
+      // Arrange
+      prismaMock.tags.findMany.mockResolvedValue([]);
+
+      // Act
+      await searchTags('  react  ');
+
+      // Assert - Query should be trimmed before being sent to database
+      expect(prismaMock.tags.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            name: {
+              contains: 'react',
+              mode: 'insensitive'
+            }
+          }
+        })
+      );
+    });
+
     it('should handle database errors', async () => {
       // Arrange
       prismaMock.tags.findMany.mockRejectedValue(new Error('Database error'));

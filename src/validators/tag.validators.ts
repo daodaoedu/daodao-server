@@ -7,6 +7,7 @@ import { z } from 'zod';
 import {
   apiSuccessResponseSchema
 } from './api-response.validators';
+import { registry } from '../config/openapi-registry';
 
 // 標籤名稱基礎驗證
 const tagNameSchema = z.string()
@@ -128,7 +129,7 @@ export const popularTagsQuerySchema = z.object({
     .describe("篩選特定實體類型的熱門標籤")
     .meta({
       title: "實體類型篩選",
-      examples: ['resource', 'project', 'idea', 'practice', 'practice_checkin', 'circle', 'user'],
+      examples: ['resource', 'project', 'idea', 'practice', 'practice_checkin', 'circle', 'user', 'review'],
       enumDescriptions: {
         "resource": "學習資源",
         "project": "專案計畫",
@@ -344,43 +345,84 @@ export const tagPromptsQuerySchema = z.object({
 
 // 標籤引導句回應 schema
 export const tagPromptItemSchema = z.object({
-  id: z.number().describe("引導句 ID"),
-  tagName: z.string().describe("標籤名稱"),
-  prompt: z.string().describe("引導句內容"),
-  usageType: z.string().describe("使用場景")
+  id: z.number().openapi({ description: "引導句 ID", example: 101 }),
+  tagName: z.string().openapi({ description: "標籤名稱", example: "實作" }),
+  prompt: z.string().openapi({ description: "引導句內容", example: "我練習了..." }),
+  usageType: z.string().openapi({ description: "使用場景", example: "practice_checkin" })
+}).openapi('TagPromptItem', {
+  description: '標籤引導句項目',
+  example: {
+    id: 101,
+    tagName: '實作',
+    prompt: '我練習了...',
+    usageType: 'practice_checkin'
+  }
 });
+
+// 註冊 TagPromptItem
+registry.register('TagPromptItem', tagPromptItemSchema);
 
 // ===== RESPONSE VALIDATION SCHEMAS =====
 // Based on tag.service.ts return types and API response structures
 
 // Base tag entity schema (matches Prisma generated type)
 export const tagEntitySchema = z.object({
-  id: z.number().describe("標籤 ID"),
-  name: z.string().describe("標籤名稱"),
-  created_at: z.string().optional().describe("創建時間"),
-  updated_at: z.string().optional().describe("更新時間")
+  id: z.number().openapi({ description: "標籤 ID", example: 1 }),
+  name: z.string().openapi({ description: "標籤名稱", example: "React" }),
+  created_at: z.string().optional().openapi({ description: "創建時間", example: "2024-01-15T10:30:00.000Z" }),
+  updated_at: z.string().optional().openapi({ description: "更新時間", example: "2024-01-15T10:30:00.000Z" })
+}).openapi('TagEntity', {
+  description: '標籤實體',
+  example: {
+    id: 1,
+    name: 'React',
+    created_at: '2024-01-15T10:30:00.000Z',
+    updated_at: '2024-01-15T10:30:00.000Z'
+  }
 });
+
+// 註冊 TagEntity
+registry.register('TagEntity', tagEntitySchema);
 
 // Formatted tag schema (used in controller responses)
 export const formattedTagSchema = z.object({
-  id: z.number().describe("標籤 ID"),
-  name: z.string().describe("標籤名稱")
+  id: z.number().openapi({ description: "標籤 ID", example: 1 }),
+  name: z.string().openapi({ description: "標籤名稱", example: "JavaScript" })
+}).openapi('FormattedTag', {
+  description: '格式化標籤',
+  example: {
+    id: 1,
+    name: 'JavaScript'
+  }
 });
+
+// 註冊 FormattedTag
+registry.register('FormattedTag', formattedTagSchema);
 
 // Popular tag item schema
 export const popularTagItemSchema = z.object({
-  id: z.number().describe("標籤 ID"),
-  name: z.string().describe("標籤名稱"),
-  count: z.number().describe("使用次數")
+  id: z.number().openapi({ description: "標籤 ID", example: 1 }),
+  name: z.string().openapi({ description: "標籤名稱", example: "React" }),
+  count: z.number().openapi({ description: "使用次數", example: 150 })
+}).openapi('PopularTagItem', {
+  description: '熱門標籤項目',
+  example: {
+    id: 1,
+    name: 'React',
+    count: 150
+  }
 });
+
+// 註冊 PopularTagItem
+registry.register('PopularTagItem', popularTagItemSchema);
 
 // Tag suggestion item schema
 export const tagSuggestionItemSchema = z.object({
-  id: z.number().describe("標籤 ID"),
-  name: z.string().describe("標籤名稱"),
-  count: z.number().describe("使用次數"),
+  id: z.number().openapi({ description: "標籤 ID", example: 1 }),
+  name: z.string().openapi({ description: "標籤名稱", example: "React" }),
+  count: z.number().openapi({ description: "使用次數", example: 150 }),
   matchType: z.enum(['exact', 'prefix', 'contains'])
-    .describe("匹配類型")
+    .openapi({ description: "匹配類型", example: "exact" })
     .meta({
       enumDescriptions: {
         "exact": "完全匹配",
@@ -388,32 +430,83 @@ export const tagSuggestionItemSchema = z.object({
         "contains": "包含匹配"
       }
     })
+}).openapi('TagSuggestionItem', {
+  description: '標籤建議項目',
+  example: {
+    id: 1,
+    name: 'React',
+    count: 150,
+    matchType: 'exact'
+  }
 });
+
+// 註冊 TagSuggestionItem
+registry.register('TagSuggestionItem', tagSuggestionItemSchema);
 
 // Tag usage statistics schema
 export const tagUsageStatsSchema = z.object({
-  totalUsage: z.number().describe("總使用次數"),
-  resourceCount: z.number().describe("資源使用次數"),
-  ideaCount: z.number().describe("想法使用次數")
+  totalUsage: z.number().openapi({ description: "總使用次數", example: 256 }),
+  resourceCount: z.number().openapi({ description: "資源使用次數", example: 120 }),
+  ideaCount: z.number().openapi({ description: "想法使用次數", example: 85 })
+}).openapi('TagUsageStats', {
+  description: '標籤使用統計',
+  example: {
+    totalUsage: 256,
+    resourceCount: 120,
+    ideaCount: 85
+  }
 });
+
+// 註冊 TagUsageStats
+registry.register('TagUsageStats', tagUsageStatsSchema);
 
 // Tag stats response schema
 export const tagStatsDataSchema = z.object({
-  totalTags: z.number().describe("總標籤數量"),
-  popularTags: z.array(popularTagItemSchema).describe("熱門標籤列表")
+  totalTags: z.number().openapi({ description: "總標籤數量", example: 128 }),
+  popularTags: z.array(popularTagItemSchema).openapi({ description: "熱門標籤列表" })
+}).openapi('TagStatsData', {
+  description: '標籤統計資料',
+  example: {
+    totalTags: 128,
+    popularTags: [
+      { id: 1, name: 'React', count: 150 },
+      { id: 2, name: 'JavaScript', count: 120 }
+    ]
+  }
 });
+
+// 註冊 TagStatsData
+registry.register('TagStatsData', tagStatsDataSchema);
 
 // Entity tag operation schema
 export const entityTagOperationSchema = z.object({
-  entityId: z.number().describe("實體 ID"),
-  entityType: z.string().describe("實體類型"),
-  tagName: z.string().describe("標籤名稱")
+  entityId: z.number().openapi({ description: "實體 ID", example: 123 }),
+  entityType: z.string().openapi({ description: "實體類型", example: "resource" }),
+  tagName: z.string().openapi({ description: "標籤名稱", example: "React" })
+}).openapi('EntityTagOperation', {
+  description: '實體標籤操作',
+  example: {
+    entityId: 123,
+    entityType: 'resource',
+    tagName: 'React'
+  }
 });
+
+// 註冊 EntityTagOperation
+registry.register('EntityTagOperation', entityTagOperationSchema);
 
 // Tag cleanup result schema
 export const tagCleanupResultSchema = z.object({
-  deletedCount: z.number().describe("刪除的標籤數量")
+  deletedCount: z.number().openapi({ description: "刪除的標籤數量", example: 5 })
+}).openapi('TagCleanupResult', {
+  description: '標籤清理結果',
+  example: {
+    deletedCount: 5
+  }
 });
+
+// 註冊 TagCleanupResult
+registry.register('TagCleanupResult', tagCleanupResultSchema);
 
 // API Response schemas based on tag controller usage
 export const getPopularTagsApiResponseSchema = apiSuccessResponseSchema(z.array(popularTagItemSchema));
