@@ -39,9 +39,14 @@ import {
   // Practice Template
   practiceTemplateQuerySchema,
   practiceTemplateParamsSchema,
+  createPracticeTemplateSchema,
+  updatePracticeTemplateSchema,
   practiceTemplatesListApiResponseSchema,
   practiceTemplateApiResponseSchema,
-  templateCategoriesApiResponseSchema
+  templateCategoriesApiResponseSchema,
+  createPracticeTemplateApiResponseSchema,
+  updatePracticeTemplateApiResponseSchema,
+  deletePracticeTemplateApiResponseSchema
 } from '../validators/practice.validators';
 
 // 月度日曆參數 schema
@@ -676,6 +681,107 @@ registry.registerPath({
   }
 });
 
+/**
+ * POST /api/v1/practices/templates - 創建實踐模板
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/templates',
+  tags: ['Practice Templates'],
+  summary: '創建實踐模板',
+  description: '創建新的實踐模板。需要管理員權限。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createPracticeTemplateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '模板創建成功',
+      content: {
+        'application/json': {
+          schema: createPracticeTemplateApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * PUT /api/v1/practices/templates/{id} - 更新實踐模板
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/practices/templates/{id}',
+  tags: ['Practice Templates'],
+  summary: '更新實踐模板',
+  description: '更新指定實踐模板的資訊。需要管理員權限。',
+  request: {
+    params: practiceTemplateParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: updatePracticeTemplateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '模板更新成功',
+      content: {
+        'application/json': {
+          schema: updatePracticeTemplateApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * DELETE /api/v1/practices/templates/{id} - 刪除實踐模板
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/practices/templates/{id}',
+  tags: ['Practice Templates'],
+  summary: '刪除實踐模板',
+  description: '刪除指定的實踐模板。需要管理員權限。',
+  request: {
+    params: practiceTemplateParamsSchema
+  },
+  responses: {
+    200: {
+      description: '模板刪除成功',
+      content: {
+        'application/json': {
+          schema: deletePracticeTemplateApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
 // ============================================================================
 // Express 路由定義
 // ============================================================================
@@ -739,6 +845,35 @@ router.get('/templates/categories',
  */
 router.get('/templates/:id',
   practiceController.getTemplateById as RequestHandler);
+
+/**
+ * POST /practices/templates
+ * 創建實踐模板
+ * 需要身份驗證（管理員權限）
+ */
+router.post('/templates',
+  authenticate,
+  validate(createPracticeTemplateSchema, 'body'),
+  practiceController.createTemplate as RequestHandler);
+
+/**
+ * PUT /practices/templates/:id
+ * 更新實踐模板
+ * 需要身份驗證（管理員權限）
+ */
+router.put('/templates/:id',
+  authenticate,
+  validate(updatePracticeTemplateSchema, 'body'),
+  practiceController.updateTemplate as RequestHandler);
+
+/**
+ * DELETE /practices/templates/:id
+ * 刪除實踐模板
+ * 需要身份驗證（管理員權限）
+ */
+router.delete('/templates/:id',
+  authenticate,
+  practiceController.deleteTemplate as RequestHandler);
 
 /**
  * GET /practices/user/:userId
