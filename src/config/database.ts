@@ -1,36 +1,88 @@
-/**
- * 資料庫配置
- * 整合所有資料庫服務 (PostgreSQL, MongoDB, Redis)
- */
+// /**
+//  * 資料庫配置
+//  * 這是一個基本的 Sequelize 配置文件，用於連接到資料庫
+//  */
 
-import { postgres, mongo, redis } from '../services/database';
-import { mongoConnect } from '../services/database';
+// import { Sequelize } from 'sequelize';
+// import dotenv from 'dotenv';
 
-// 初始化所有資料庫連接
-const initializeDatabases = async (): Promise<void> => {
+// // 載入環境變數
+// dotenv.config();
+
+// // 從環境變數中獲取資料庫配置
+// const {
+//   POSTGRES_HOST = process.env.APP_ENV === 'dev' ? 'postgres-dev' : 'postgres-prod',
+//   POSTGRES_PORT = '5432',
+//   POSTGRES_USER = 'daodao',
+//   POSTGRES_PASSWORD = 'daodao',
+//   POSTGRES_DB = 'daodao',
+//   NODE_ENV = 'dev'
+// } = process.env;
+
+// // 建立 Sequelize 實例
+// const sequelize = new Sequelize({
+//   dialect: 'postgres',
+//   host: POSTGRES_HOST,
+//   port: parseInt(POSTGRES_PORT, 10),
+//   username: POSTGRES_USER,
+//   password: POSTGRES_PASSWORD,
+//   database: POSTGRES_DB,
+//   logging: NODE_ENV === 'development' ? console.log : false,
+//   define: {
+//     underscored: true,
+//     timestamps: true,
+//     paranoid: true
+//   },
+//   pool: {
+//     max: 5,         // 降低最大連線數以節省記憶體
+//     min: 1,         // 降低最小連線數
+//     acquire: 60000, // 增加獲取超時時間以應對慢速 Swap
+//     idle: 10000,
+//     evict: 5000
+//   }
+// });
+
+// // 測試資料庫連接
+// const testConnection = async () => {
+//   try {
+//     await sequelize.authenticate();
+//     console.log('TS資料庫連接成功');
+//   } catch (error) {
+//     console.error('TS無法連接到資料庫:', error);
+//   }
+// };
+
+// // 僅在非測試環境中執行連接測試
+// if (NODE_ENV !== 'test') {
+//   testConnection();
+// }
+
+// export default sequelize;
+import sequelize from '../../config/db';
+import dotenv from 'dotenv';
+
+// 載入環境變數
+dotenv.config();
+
+// 從環境變數中獲取資料庫配置
+const {
+  NODE_ENV = 'dev'
+} = process.env;
+
+// 測試資料庫連接
+const testConnection = async () => {
   try {
-    // 初始化 MongoDB 連接（現在是可選的）
-    try {
-      await mongoConnect();
-    } catch (mongoError) {
-      console.warn('⚠️  MongoDB 連接失敗，服務將繼續啟動（監控功能將不可用）');
-      console.error('MongoDB 錯誤:', mongoError);
-    }
-
-    // PostgreSQL 和 Redis 會在各自的服務模組中自動連接
-    console.log('資料庫服務已初始化');
+    await sequelize.authenticate();
+    console.log('TS資料庫連接成功');
   } catch (error) {
-    console.error('資料庫初始化失敗:', error);
-    // MongoDB 失敗不應該阻止服務啟動，只有 PostgreSQL 或 Redis 失敗才應該退出
-    // 因為核心業務邏輯依賴 PostgreSQL
-    console.error('⚠️  關鍵資料庫服務初始化失敗，服務無法啟動');
-    process.exit(1);
+    console.error('TS無法連接到資料庫:', error);
   }
 };
 
-// 注意：不再自動執行初始化
-// 如果需要使用 MongoDB，請在 server.ts 中手動調用 mongoConnect()
-// 目前 MongoDB 只用於監控端點，會在路由被訪問時檢查連接狀態
+// 僅在非測試環境中執行連接測試
+if (NODE_ENV !== 'test') {
+  testConnection();
+}
 
-export { postgres, mongo, redis, initializeDatabases };
-export default postgres;
+
+export default sequelize;
