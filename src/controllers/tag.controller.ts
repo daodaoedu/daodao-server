@@ -16,6 +16,11 @@ import {
   getTagByName,
   type TimeRange
 } from '../services/tag.service';
+import {
+  getTagPromptsByTags,
+  type TagPromptUsageType,
+  type TagPromptLocale
+} from '../services/tag-prompt.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { tags } from '../../generated/prisma';
 import {
@@ -25,7 +30,8 @@ import {
   getTagStatsApiResponseSchema,
   addEntityTagApiResponseSchema,
   removeEntityTagApiResponseSchema,
-  getEntityTagsApiResponseSchema
+  getEntityTagsApiResponseSchema,
+  tagPromptsApiResponseSchema
 } from '../validators/tag.validators';
 
 /**
@@ -233,6 +239,34 @@ export const getEntityTags = asyncHandler(async (req: Request, res: Response) =>
   res.json(validatedResponse);
 });
 
+/**
+ * 取得標籤引導句
+ * GET /tags/prompts
+ */
+export const getTagPrompts = asyncHandler(async (req: Request, res: Response) => {
+  const { tags: tagsParam, usageType, locale } = req.query;
+
+  if (!tagsParam) {
+    throw new BadRequestError('必須提供標籤名稱');
+  }
+
+  // 解析標籤名稱（逗號分隔）
+  const tagNames = (tagsParam as string).split(',').map(t => t.trim()).filter(Boolean);
+
+  if (tagNames.length === 0) {
+    throw new BadRequestError('必須提供至少一個有效的標籤名稱');
+  }
+
+  const result = await getTagPromptsByTags(
+    tagNames,
+    (usageType as TagPromptUsageType) || 'practice_checkin',
+    (locale as TagPromptLocale) || 'zh-TW'
+  );
+
+  const validatedResponse = tagPromptsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
+});
+
 // 導出所有控制器函數
 export default {
   getPopularTags,
@@ -241,5 +275,6 @@ export default {
   getTagStats,
   addEntityTag,
   removeEntityTag,
-  getEntityTags
+  getEntityTags,
+  getTagPrompts
 };

@@ -15,13 +15,15 @@ import {
   addEntityTagSchema,
   removeEntityTagSchema,
   entityTagsQuerySchema,
+  tagPromptsQuerySchema,
   getPopularTagsApiResponseSchema,
   searchTagsApiResponseSchema,
   suggestTagsApiResponseSchema,
   getTagStatsApiResponseSchema,
   addEntityTagApiResponseSchema,
   removeEntityTagApiResponseSchema,
-  getEntityTagsApiResponseSchema
+  getEntityTagsApiResponseSchema,
+  tagPromptsApiResponseSchema
 } from '@/validators/tag.validators';
 
 const router = Router();
@@ -126,6 +128,32 @@ registry.registerPath({
         }
       }
     },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/tags/prompts - 取得標籤引導句
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tags/prompts',
+  tags: ['Tags'],
+  summary: '取得標籤引導句',
+  description: '根據標籤名稱取得對應的引導句，用於打卡時提示用戶輸入。支援多個標籤（逗號分隔）。',
+  request: {
+    query: tagPromptsQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取標籤引導句',
+      content: {
+        'application/json': {
+          schema: tagPromptsApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
@@ -266,6 +294,16 @@ router.get('/suggest',
  */
 router.get('/stats',
   tagController.getTagStats as RequestHandler
+);
+
+/**
+ * GET /tags/prompts
+ * 取得標籤引導句
+ * 查詢參數：tags (逗號分隔), usageType (可選), locale (可選)
+ */
+router.get('/prompts',
+  validate(tagPromptsQuerySchema, 'query'),
+  tagController.getTagPrompts as RequestHandler
 );
 
 /**
