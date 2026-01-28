@@ -2911,13 +2911,17 @@ export interface paths {
         };
         /**
          * 取得熱門標籤
-         * @description 取得熱門標籤列表，按使用次數排序
+         * @description 取得熱門標籤列表，按使用次數排序。支援按實體類型和時間範圍篩選，實現時間衰減效果（近期使用的標籤優先）。
          */
         get: {
             parameters: {
                 query?: {
                     /** @description 返回結果限制數量 */
                     limit?: string;
+                    /** @description 篩選特定實體類型的熱門標籤 */
+                    entityType?: "resource" | "project" | "idea" | "practice" | "practice_checkin" | "circle" | "user" | "review";
+                    /** @description 時間範圍篩選，只統計指定時間內的使用次數 */
+                    timeRange?: "7d" | "30d" | "90d" | "1y" | "all";
                 };
                 header?: never;
                 path?: never;
@@ -3124,6 +3128,124 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tags/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 標籤建議（自動補全）
+         * @description 根據輸入提供標籤建議，優先顯示前綴匹配和熱門標籤。適用於輸入時的自動補全功能。
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 搜索關鍵詞 */
+                    q: string;
+                    /** @description 返回結果限制數量 */
+                    limit?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功取得標籤建議 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /** @description 標籤 ID */
+                                id: number;
+                                /** @description 標籤名稱 */
+                                name: string;
+                                /** @description 使用次數 */
+                                count: number;
+                                /**
+                                 * @description 匹配類型
+                                 * @enum {string}
+                                 */
+                                matchType: "exact" | "prefix" | "contains";
+                            }[];
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tags/stats": {
         parameters: {
             query?: never;
@@ -3236,6 +3358,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tags/prompts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得標籤引導句
+         * @description 根據標籤名稱取得對應的引導句，用於打卡時提示用戶輸入。支援多個標籤（逗號分隔）。
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 標籤名稱，多個標籤用逗號分隔 */
+                    tags: string;
+                    /** @description 使用場景 */
+                    usageType?: "practice_checkin" | "reflection" | "summary";
+                    /** @description 語言 */
+                    locale?: "zh-TW" | "en-US";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功獲取標籤引導句 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /** @description 引導句 ID */
+                                id: number;
+                                /** @description 標籤名稱 */
+                                tagName: string;
+                                /** @description 引導句內容 */
+                                prompt: string;
+                                /** @description 使用場景 */
+                                usageType: string;
+                            }[];
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tags/entities": {
         parameters: {
             query?: never;
@@ -3253,7 +3492,7 @@ export interface paths {
                     /** @description 實體唯一識別碼 */
                     entityId: string;
                     /** @description 實體類型 */
-                    entityType: "resource" | "project" | "idea" | "practice" | "review";
+                    entityType: "resource" | "project" | "idea" | "practice" | "practice_checkin" | "circle" | "user" | "review";
                 };
                 header?: never;
                 path?: never;
@@ -3368,10 +3607,13 @@ export interface paths {
                          * @example project
                          * @example idea
                          * @example practice
+                         * @example practice_checkin
+                         * @example circle
+                         * @example user
                          * @example review
                          * @enum {string}
                          */
-                        entityType: "resource" | "project" | "idea" | "practice" | "review";
+                        entityType: "resource" | "project" | "idea" | "practice" | "practice_checkin" | "circle" | "user" | "review";
                         /**
                          * @description 標籤名稱
                          * @example React
@@ -3493,10 +3735,13 @@ export interface paths {
                          * @example project
                          * @example idea
                          * @example practice
+                         * @example practice_checkin
+                         * @example circle
+                         * @example user
                          * @example review
                          * @enum {string}
                          */
-                        entityType: "resource" | "project" | "idea" | "practice" | "review";
+                        entityType: "resource" | "project" | "idea" | "practice" | "practice_checkin" | "circle" | "user" | "review";
                         /**
                          * @description 標籤名稱
                          * @example React

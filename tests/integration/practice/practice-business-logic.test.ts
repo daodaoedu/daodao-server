@@ -14,7 +14,7 @@ import { createAuthToken } from '@tests/utils/api-helpers';
 import { getTestApp } from '@tests/utils/test-app';
 import request from 'supertest';
 import type { Application } from 'express';
-import { Prisma } from '../../../generated/prisma';
+import { Prisma } from '@generated/prisma';
 
 // Mock dependencies - 必須在 import 之前定義
 jest.mock('@/services/database/prisma.service', () => ({

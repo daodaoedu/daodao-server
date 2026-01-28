@@ -16910,7 +16910,7 @@
           "Tags"
         ],
         "summary": "取得熱門標籤",
-        "description": "取得熱門標籤列表，按使用次數排序",
+        "description": "取得熱門標籤列表，按使用次數排序。支援按實體類型和時間範圍篩選，實現時間衰減效果（近期使用的標籤優先）。",
         "parameters": [
           {
             "schema": {
@@ -16927,6 +16927,77 @@
             "required": false,
             "description": "返回結果限制數量",
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "resource",
+                "project",
+                "idea",
+                "practice",
+                "practice_checkin",
+                "circle",
+                "user",
+                "review"
+              ],
+              "description": "篩選特定實體類型的熱門標籤",
+              "examples": [
+                "resource",
+                "project",
+                "idea",
+                "practice",
+                "practice_checkin",
+                "circle",
+                "user"
+              ],
+              "enumDescriptions": {
+                "resource": "學習資源",
+                "project": "專案計畫",
+                "idea": "創意想法",
+                "practice": "實作練習",
+                "practice_checkin": "打卡記錄",
+                "circle": "學習圈子",
+                "user": "使用者標籤",
+                "review": "評論"
+              }
+            },
+            "required": false,
+            "description": "篩選特定實體類型的熱門標籤",
+            "name": "entityType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "default": "all",
+              "description": "時間範圍篩選，只統計指定時間內的使用次數",
+              "examples": [
+                "7d",
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "enumDescriptions": {
+                "7d": "近 7 天",
+                "30d": "近 30 天",
+                "90d": "近 90 天",
+                "1y": "近 1 年",
+                "all": "全部時間"
+              }
+            },
+            "required": false,
+            "description": "時間範圍篩選，只統計指定時間內的使用次數",
+            "name": "timeRange",
             "in": "query"
           }
         ],
@@ -17301,6 +17372,230 @@
         }
       }
     },
+    "/api/v1/tags/suggest": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "標籤建議（自動補全）",
+        "description": "根據輸入提供標籤建議，優先顯示前綴匹配和熱門標籤。適用於輸入時的自動補全功能。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "description": "搜索關鍵詞",
+              "examples": [
+                "Rea",
+                "Java",
+                "前端"
+              ]
+            },
+            "required": true,
+            "description": "搜索關鍵詞",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "default": "10",
+              "description": "返回結果限制數量",
+              "examples": [
+                "5",
+                "10",
+                "20"
+              ]
+            },
+            "required": false,
+            "description": "返回結果限制數量",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得標籤建議",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "number",
+                            "description": "標籤 ID"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "標籤名稱"
+                          },
+                          "count": {
+                            "type": "number",
+                            "description": "使用次數"
+                          },
+                          "matchType": {
+                            "type": "string",
+                            "enum": [
+                              "exact",
+                              "prefix",
+                              "contains"
+                            ],
+                            "description": "匹配類型",
+                            "enumDescriptions": {
+                              "exact": "完全匹配",
+                              "prefix": "前綴匹配",
+                              "contains": "包含匹配"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "count",
+                          "matchType"
+                        ]
+                      },
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/tags/stats": {
       "get": {
         "tags": [
@@ -17485,6 +17780,246 @@
         }
       }
     },
+    "/api/v1/tags/prompts": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "取得標籤引導句",
+        "description": "根據標籤名稱取得對應的引導句，用於打卡時提示用戶輸入。支援多個標籤（逗號分隔）。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "標籤名稱，多個標籤用逗號分隔",
+              "examples": [
+                "實作",
+                "實作,新概念,困難"
+              ]
+            },
+            "required": true,
+            "description": "標籤名稱，多個標籤用逗號分隔",
+            "name": "tags",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "practice_checkin",
+                "reflection",
+                "summary"
+              ],
+              "default": "practice_checkin",
+              "description": "使用場景",
+              "examples": [
+                "practice_checkin",
+                "reflection",
+                "summary"
+              ],
+              "enumDescriptions": {
+                "practice_checkin": "打卡記錄",
+                "reflection": "反思",
+                "summary": "總結"
+              }
+            },
+            "required": false,
+            "description": "使用場景",
+            "name": "usageType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "zh-TW",
+                "en-US"
+              ],
+              "default": "zh-TW",
+              "description": "語言",
+              "examples": [
+                "zh-TW",
+                "en-US"
+              ]
+            },
+            "required": false,
+            "description": "語言",
+            "name": "locale",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取標籤引導句",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "number",
+                            "description": "引導句 ID"
+                          },
+                          "tagName": {
+                            "type": "string",
+                            "description": "標籤名稱"
+                          },
+                          "prompt": {
+                            "type": "string",
+                            "description": "引導句內容"
+                          },
+                          "usageType": {
+                            "type": "string",
+                            "description": "使用場景"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "tagName",
+                          "prompt",
+                          "usageType"
+                        ]
+                      },
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/tags/entities": {
       "post": {
         "tags": [
@@ -17527,6 +18062,9 @@
                       "project",
                       "idea",
                       "practice",
+                      "practice_checkin",
+                      "circle",
+                      "user",
                       "review"
                     ],
                     "description": "實體類型",
@@ -17535,13 +18073,19 @@
                       "project",
                       "idea",
                       "practice",
+                      "practice_checkin",
+                      "circle",
+                      "user",
                       "review"
                     ],
                     "enumDescriptions": {
-                      "resource": "資源",
-                      "project": "專案",
-                      "idea": "想法",
-                      "practice": "實作",
+                      "resource": "學習資源",
+                      "project": "專案計畫",
+                      "idea": "創意想法",
+                      "practice": "實作練習",
+                      "practice_checkin": "打卡記錄",
+                      "circle": "學習圈子",
+                      "user": "使用者標籤",
                       "review": "評論"
                     }
                   },
@@ -17783,6 +18327,9 @@
                       "project",
                       "idea",
                       "practice",
+                      "practice_checkin",
+                      "circle",
+                      "user",
                       "review"
                     ],
                     "description": "實體類型",
@@ -17791,13 +18338,19 @@
                       "project",
                       "idea",
                       "practice",
+                      "practice_checkin",
+                      "circle",
+                      "user",
                       "review"
                     ],
                     "enumDescriptions": {
-                      "resource": "資源",
-                      "project": "專案",
-                      "idea": "想法",
-                      "practice": "實作",
+                      "resource": "學習資源",
+                      "project": "專案計畫",
+                      "idea": "創意想法",
+                      "practice": "實作練習",
+                      "practice_checkin": "打卡記錄",
+                      "circle": "學習圈子",
+                      "user": "使用者標籤",
                       "review": "評論"
                     }
                   },
@@ -18016,6 +18569,9 @@
                 "project",
                 "idea",
                 "practice",
+                "practice_checkin",
+                "circle",
+                "user",
                 "review"
               ],
               "description": "實體類型",
@@ -18024,13 +18580,19 @@
                 "project",
                 "idea",
                 "practice",
+                "practice_checkin",
+                "circle",
+                "user",
                 "review"
               ],
               "enumDescriptions": {
-                "resource": "資源",
-                "project": "專案",
-                "idea": "想法",
-                "practice": "實作",
+                "resource": "學習資源",
+                "project": "專案計畫",
+                "idea": "創意想法",
+                "practice": "實作練習",
+                "practice_checkin": "打卡記錄",
+                "circle": "學習圈子",
+                "user": "使用者標籤",
                 "review": "評論"
               }
             },
