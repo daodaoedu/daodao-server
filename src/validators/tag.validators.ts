@@ -22,20 +22,26 @@ const tagNameSchema = z.string()
 // 實體類型驗證
 const entityTypeSchema = z.enum([
   'resource',
-  'project', 
+  'project',
   'idea',
   'practice',
+  'practice_checkin',
+  'circle',
+  'user',
   'review'
 ], "無效的實體類型")
   .describe("實體類型")
   .meta({
     title: "實體類型",
-    examples: ['resource', 'project', 'idea', 'practice', 'review'],
+    examples: ['resource', 'project', 'idea', 'practice', 'practice_checkin', 'circle', 'user', 'review'],
     enumDescriptions: {
-      "resource": "資源",
-      "project": "專案",
-      "idea": "想法",
-      "practice": "實作",
+      "resource": "學習資源",
+      "project": "專案計畫",
+      "idea": "創意想法",
+      "practice": "實作練習",
+      "practice_checkin": "打卡記錄",
+      "circle": "學習圈子",
+      "user": "使用者標籤",
       "review": "評論"
     }
   });
@@ -113,18 +119,24 @@ export const popularTagsQuerySchema = z.object({
     'project',
     'idea',
     'practice',
+    'practice_checkin',
+    'circle',
+    'user',
     'review'
   ])
     .optional()
     .describe("篩選特定實體類型的熱門標籤")
     .meta({
       title: "實體類型篩選",
-      examples: ['resource', 'project', 'idea', 'practice', 'review'],
+      examples: ['resource', 'project', 'idea', 'practice', 'practice_checkin', 'circle', 'user'],
       enumDescriptions: {
-        "resource": "資源",
-        "project": "專案",
-        "idea": "想法",
-        "practice": "實作",
+        "resource": "學習資源",
+        "project": "專案計畫",
+        "idea": "創意想法",
+        "practice": "實作練習",
+        "practice_checkin": "打卡記錄",
+        "circle": "學習圈子",
+        "user": "使用者標籤",
         "review": "評論"
       }
     }),
@@ -291,6 +303,53 @@ export const tagStatsQuerySchema = z.object({
   }]
 });
 
+// 標籤引導句查詢參數驗證
+export const tagPromptsQuerySchema = z.object({
+  tags: z.string()
+    .min(1, '必須提供至少一個標籤')
+    .describe("標籤名稱，多個標籤用逗號分隔")
+    .meta({
+      title: "標籤名稱",
+      examples: ["實作", "實作,新概念,困難"]
+    }),
+  usageType: z.enum(['practice_checkin', 'reflection', 'summary'])
+    .optional()
+    .default('practice_checkin')
+    .describe("使用場景")
+    .meta({
+      title: "使用場景",
+      examples: ['practice_checkin', 'reflection', 'summary'],
+      enumDescriptions: {
+        "practice_checkin": "打卡記錄",
+        "reflection": "反思",
+        "summary": "總結"
+      }
+    }),
+  locale: z.enum(['zh-TW', 'en-US'])
+    .optional()
+    .default('zh-TW')
+    .describe("語言")
+    .meta({
+      title: "語言",
+      examples: ['zh-TW', 'en-US']
+    })
+}).describe("標籤引導句查詢參數").meta({
+  title: "標籤引導句查詢",
+  examples: [{
+    tags: "實作",
+    usageType: "practice_checkin",
+    locale: "zh-TW"
+  }]
+});
+
+// 標籤引導句回應 schema
+export const tagPromptItemSchema = z.object({
+  id: z.number().describe("引導句 ID"),
+  tagName: z.string().describe("標籤名稱"),
+  prompt: z.string().describe("引導句內容"),
+  usageType: z.string().describe("使用場景")
+});
+
 // ===== RESPONSE VALIDATION SCHEMAS =====
 // Based on tag.service.ts return types and API response structures
 
@@ -366,11 +425,13 @@ export const removeEntityTagApiResponseSchema = apiSuccessResponseSchema(z.null(
 export const getEntityTagsApiResponseSchema = apiSuccessResponseSchema(z.array(formattedTagSchema));
 export const getTagUsageStatsApiResponseSchema = apiSuccessResponseSchema(tagUsageStatsSchema);
 export const tagCleanupApiResponseSchema = apiSuccessResponseSchema(tagCleanupResultSchema);
+export const tagPromptsApiResponseSchema = apiSuccessResponseSchema(z.array(tagPromptItemSchema));
 
 // 類型導出
 export type TagSearchQuery = z.infer<typeof tagSearchQuerySchema>;
 export type SuggestTagsQuery = z.infer<typeof suggestTagsQuerySchema>;
 export type PopularTagsQuery = z.infer<typeof popularTagsQuerySchema>;
+export type TagPromptsQuery = z.infer<typeof tagPromptsQuerySchema>;
 export type EntityTagsQuery = z.infer<typeof entityTagsQuerySchema>;
 export type AddEntityTagData = z.infer<typeof addEntityTagSchema>;
 export type RemoveEntityTagData = z.infer<typeof removeEntityTagSchema>;
@@ -382,6 +443,7 @@ export type TagEntity = z.infer<typeof tagEntitySchema>;
 export type FormattedTag = z.infer<typeof formattedTagSchema>;
 export type PopularTagItem = z.infer<typeof popularTagItemSchema>;
 export type TagSuggestionItem = z.infer<typeof tagSuggestionItemSchema>;
+export type TagPromptItem = z.infer<typeof tagPromptItemSchema>;
 export type TagUsageStats = z.infer<typeof tagUsageStatsSchema>;
 export type TagStatsData = z.infer<typeof tagStatsDataSchema>;
 export type EntityTagOperation = z.infer<typeof entityTagOperationSchema>;
