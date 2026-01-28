@@ -844,6 +844,7 @@ router.get('/templates/categories',
  * 注意：必須在 /:id 之前定義
  */
 router.get('/templates/:id',
+  validate(practiceTemplateParamsSchema, 'params'),
   practiceController.getTemplateById as RequestHandler);
 
 /**
@@ -863,6 +864,7 @@ router.post('/templates',
  */
 router.put('/templates/:id',
   authenticate,
+  validate(practiceTemplateParamsSchema, 'params'),
   validate(updatePracticeTemplateSchema, 'body'),
   practiceController.updateTemplate as RequestHandler);
 
@@ -873,6 +875,7 @@ router.put('/templates/:id',
  */
 router.delete('/templates/:id',
   authenticate,
+  validate(practiceTemplateParamsSchema, 'params'),
   practiceController.deleteTemplate as RequestHandler);
 
 /**
