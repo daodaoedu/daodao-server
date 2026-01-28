@@ -353,3 +353,298 @@ export async function getTemplateCategories(): Promise<ApiSuccessResponse<string
   const uniqueCategories = [...new Set(allCategories)];
   return createSuccessResponse(uniqueCategories);
 }
+
+/**
+ * 創建模板輸入參數
+ */
+export interface CreateTemplateInput {
+  title: string;
+  practiceAction?: string;
+  categories?: string[];
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  durationDays?: number;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods?: string[];
+  suggestedTags?: string[];
+}
+
+/**
+ * 更新模板輸入參數
+ */
+export interface UpdateTemplateInput {
+  title?: string;
+  practiceAction?: string;
+  categories?: string[];
+  frequencyMinDays?: number;
+  frequencyMaxDays?: number;
+  durationDays?: number;
+  sessionDurationMinutes?: number;
+  practiceTimePeriods?: string[];
+  suggestedTags?: string[];
+}
+
+/**
+ * 創建模板
+ */
+export async function createTemplate(
+  input: CreateTemplateInput
+): Promise<ApiSuccessResponse<PracticeTemplateEntity>> {
+  const {
+    title,
+    practiceAction,
+    categories = [],
+    frequencyMinDays,
+    frequencyMaxDays,
+    durationDays,
+    sessionDurationMinutes,
+    practiceTimePeriods = [],
+    suggestedTags = []
+  } = input;
+
+  // 取得下一個 ID（手動管理 ID）
+  const maxIdResult = await prismaClient.practice_templates.aggregate({
+    _max: { id: true }
+  });
+  const nextId = (maxIdResult._max.id || 0) + 1;
+
+  // 創建模板
+  const template = await prismaClient.practice_templates.create({
+    data: {
+      id: nextId,
+      title,
+      practice_action: practiceAction,
+      frequency_min_days: frequencyMinDays,
+      frequency_max_days: frequencyMaxDays,
+      duration_days: durationDays,
+      session_duration_minutes: sessionDurationMinutes,
+      practice_time_periods: practiceTimePeriods
+    }
+  });
+
+  // 處理分類關聯
+  if (categories.length > 0) {
+    for (const categoryName of categories) {
+      // 找到或創建分類
+      let category = await prismaClient.content_categories.findFirst({
+        where: { name: categoryName }
+      });
+
+      if (!category) {
+        const maxCatId = await prismaClient.content_categories.aggregate({
+          _max: { id: true }
+        });
+        category = await prismaClient.content_categories.create({
+          data: {
+            id: (maxCatId._max.id || 0) + 1,
+            name: categoryName
+          }
+        });
+      }
+
+      // 創建關聯
+      await prismaClient.practice_template_categories.create({
+        data: {
+          template_id: template.id,
+          category_id: category.id
+        }
+      });
+    }
+  }
+
+  // 處理標籤關聯
+  if (suggestedTags.length > 0) {
+    for (const tagName of suggestedTags) {
+      // 找到或創建標籤
+      let tag = await prismaClient.tags.findFirst({
+        where: { name: tagName }
+      });
+
+      if (!tag) {
+        tag = await prismaClient.tags.create({
+          data: { name: tagName }
+        });
+      }
+
+      // 創建關聯
+      await prismaClient.practice_template_tags.create({
+        data: {
+          template_id: template.id,
+          tag_id: tag.id
+        }
+      });
+    }
+  }
+
+  loggerService.info('Practice template created', { templateId: template.id, title });
+
+  return createSuccessResponse({
+    id: template.external_id || String(template.id),
+    title: template.title,
+    practiceAction: template.practice_action || undefined,
+    categories,
+    frequencyMinDays: template.frequency_min_days,
+    frequencyMaxDays: template.frequency_max_days,
+    durationDays: template.duration_days,
+    sessionDurationMinutes: template.session_duration_minutes,
+    practiceTimePeriods: template.practice_time_periods || [],
+    suggestedTags,
+    createdAt: template.created_at?.toISOString() || new Date().toISOString()
+  });
+}
+
+/**
+ * 更新模板
+ */
+export async function updateTemplate(
+  id: string,
+  input: UpdateTemplateInput
+): Promise<ApiSuccessResponse<PracticeTemplateEntity | null>> {
+  const {
+    title,
+    practiceAction,
+    categories,
+    frequencyMinDays,
+    frequencyMaxDays,
+    durationDays,
+    sessionDurationMinutes,
+    practiceTimePeriods,
+    suggestedTags
+  } = input;
+
+  // 查找模板
+  const existingTemplate = await prismaClient.practice_templates.findFirst({
+    where: {
+      OR: [
+        { external_id: id },
+        { id: parseInt(id, 10) || -1 }
+      ]
+    }
+  });
+
+  if (!existingTemplate) {
+    return createSuccessResponse(null);
+  }
+
+  // 更新模板基本資料
+  const template = await prismaClient.practice_templates.update({
+    where: { id: existingTemplate.id },
+    data: {
+      ...(title !== undefined && { title }),
+      ...(practiceAction !== undefined && { practice_action: practiceAction }),
+      ...(frequencyMinDays !== undefined && { frequency_min_days: frequencyMinDays }),
+      ...(frequencyMaxDays !== undefined && { frequency_max_days: frequencyMaxDays }),
+      ...(durationDays !== undefined && { duration_days: durationDays }),
+      ...(sessionDurationMinutes !== undefined && { session_duration_minutes: sessionDurationMinutes }),
+      ...(practiceTimePeriods !== undefined && { practice_time_periods: practiceTimePeriods }),
+      updated_at: new Date()
+    }
+  });
+
+  // 更新分類關聯
+  if (categories !== undefined) {
+    // 刪除舊關聯
+    await prismaClient.practice_template_categories.deleteMany({
+      where: { template_id: template.id }
+    });
+
+    // 創建新關聯
+    for (const categoryName of categories) {
+      let category = await prismaClient.content_categories.findFirst({
+        where: { name: categoryName }
+      });
+
+      if (!category) {
+        const maxCatId = await prismaClient.content_categories.aggregate({
+          _max: { id: true }
+        });
+        category = await prismaClient.content_categories.create({
+          data: {
+            id: (maxCatId._max.id || 0) + 1,
+            name: categoryName
+          }
+        });
+      }
+
+      await prismaClient.practice_template_categories.create({
+        data: {
+          template_id: template.id,
+          category_id: category.id
+        }
+      });
+    }
+  }
+
+  // 更新標籤關聯
+  if (suggestedTags !== undefined) {
+    // 刪除舊關聯
+    await prismaClient.practice_template_tags.deleteMany({
+      where: { template_id: template.id }
+    });
+
+    // 創建新關聯
+    for (const tagName of suggestedTags) {
+      let tag = await prismaClient.tags.findFirst({
+        where: { name: tagName }
+      });
+
+      if (!tag) {
+        tag = await prismaClient.tags.create({
+          data: { name: tagName }
+        });
+      }
+
+      await prismaClient.practice_template_tags.create({
+        data: {
+          template_id: template.id,
+          tag_id: tag.id
+        }
+      });
+    }
+  }
+
+  // 重新查詢完整資料
+  const result = await getTemplateById(id);
+  loggerService.info('Practice template updated', { templateId: template.id });
+
+  return result;
+}
+
+/**
+ * 刪除模板
+ */
+export async function deleteTemplate(
+  id: string
+): Promise<ApiSuccessResponse<{ deleted: boolean }>> {
+  // 查找模板
+  const existingTemplate = await prismaClient.practice_templates.findFirst({
+    where: {
+      OR: [
+        { external_id: id },
+        { id: parseInt(id, 10) || -1 }
+      ]
+    }
+  });
+
+  if (!existingTemplate) {
+    return createSuccessResponse({ deleted: false });
+  }
+
+  // 刪除關聯資料
+  await prismaClient.practice_template_categories.deleteMany({
+    where: { template_id: existingTemplate.id }
+  });
+
+  await prismaClient.practice_template_tags.deleteMany({
+    where: { template_id: existingTemplate.id }
+  });
+
+  // 刪除模板
+  await prismaClient.practice_templates.delete({
+    where: { id: existingTemplate.id }
+  });
+
+  loggerService.info('Practice template deleted', { templateId: existingTemplate.id });
+
+  return createSuccessResponse({ deleted: true });
+}

@@ -494,6 +494,37 @@ export class PracticeController {
   });
 
   /**
+   * 創建實踐模板
+   * POST /api/v1/practices/templates
+   */
+  createTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const input = req.body;
+    const result = await practiceTemplateService.createTemplate(input);
+    res.status(201).json(result);
+  });
+
+  /**
+   * 更新實踐模板
+   * PUT /api/v1/practices/templates/:id
+   */
+  updateTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const templateId = req.params.id;
+    const input = req.body;
+    const result = await practiceTemplateService.updateTemplate(templateId, input);
+    res.json(result);
+  });
+
+  /**
+   * 刪除實踐模板
+   * DELETE /api/v1/practices/templates/:id
+   */
+  deleteTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const templateId = req.params.id;
+    const result = await practiceTemplateService.deleteTemplate(templateId);
+    res.json(result);
+  });
+
+  /**
    * 取得隨機鼓勵句
    * GET /api/v1/checkin-encouragements/random
    */
