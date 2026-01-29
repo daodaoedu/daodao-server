@@ -390,13 +390,13 @@ model practices {
   session_duration_minutes Int?
   frequency_min_days       Int?
   frequency_max_days       Int?
-  frequency_description    String?             @db.VarChar(50)
   practice_time_periods    String[]
   other_context            String?
   status                   String?             @default("not_started") @db.VarChar(20)
   has_resources            Boolean?            @default(false)
   progress_percentage      Decimal?            @default(20) @db.Decimal(5, 2)
   first_checkin_at         DateTime?           @db.Timestamptz(6)
+  theme_color              String?             @db.VarChar(20)
   created_at               DateTime?           @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?           @db.Timestamptz(6)
   deleted_at               DateTime?           @db.Timestamptz(6)

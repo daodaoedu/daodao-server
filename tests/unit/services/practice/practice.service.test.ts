@@ -63,6 +63,7 @@ describe('Practice Service', () => {
           has_resources: false,
           progress_percentage: 50, // Use plain number
           first_checkin_at: new Date(),
+          theme_color: '#FCDD84',
           created_at: new Date(),
           updated_at: new Date(),
           users: {
@@ -79,6 +80,7 @@ describe('Practice Service', () => {
       prismaMock.practices.count.mockResolvedValue(1);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       const result = await findAll({ page: 1, limit: 20 });
 
@@ -86,6 +88,8 @@ describe('Practice Service', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].title).toBe('Test Practice');
       expect(result.data[0].progressPercentage).toBe(50);
+      expect(result.data[0].checkInCount).toBe(0);
+      expect(result.data[0].themeColor).toBe('#FCDD84');
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Practice list retrieved',
         expect.any(Object)
@@ -97,6 +101,7 @@ describe('Practice Service', () => {
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       await findAll({ search: 'test search' });
 
@@ -117,6 +122,7 @@ describe('Practice Service', () => {
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       await findAll({ status: 'active' });
 
@@ -132,7 +138,7 @@ describe('Practice Service', () => {
     it('should throw error when database fails', async () => {
       prismaMock.practices.findMany.mockRejectedValue(new Error('Database error'));
 
-      await expect(findAll({})).rejects.toThrow('取得實踐列表失敗');
+      await expect(findAll({})).rejects.toThrow('Database error');
       expect(mockLoggerService.error).toHaveBeenCalled();
     });
   });
@@ -155,6 +161,7 @@ describe('Practice Service', () => {
         has_resources: false,
         progress_percentage: 50, // Use plain number
         first_checkin_at: new Date(),
+        theme_color: '#FCDD84',
         created_at: new Date(),
         updated_at: new Date(),
         users: {
@@ -169,6 +176,7 @@ describe('Practice Service', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       const result = await findById(1);
 
@@ -176,6 +184,8 @@ describe('Practice Service', () => {
       expect(result.data.id).toBe('test-practice-uuid');
       expect(result.data.title).toBe('Test Practice');
       expect(result.data.progressPercentage).toBe(50);
+      expect(result.data.checkInCount).toBe(0);
+      expect(result.data.themeColor).toBe('#FCDD84');
     });
 
     it('should record view when userId provided', async () => {
@@ -186,6 +196,7 @@ describe('Practice Service', () => {
         status: 'active',
         progress_percentage: 20,
         practice_time_periods: [],
+        theme_color: '#FCDD84',
         created_at: new Date(),
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
@@ -193,6 +204,7 @@ describe('Practice Service', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       await findById(1, 5);
 
@@ -240,6 +252,7 @@ describe('Practice Service', () => {
         has_resources: false,
         progress_percentage: 20, // Use plain number
         first_checkin_at: null,
+        theme_color: '#FCDD84',
         created_at: new Date(),
         updated_at: new Date(),
         users: {
@@ -251,6 +264,7 @@ describe('Practice Service', () => {
         }
       } as any;
 
+      prismaMock.practices.count.mockResolvedValue(0); // For theme color assignment
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
       prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
       prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
@@ -261,6 +275,8 @@ describe('Practice Service', () => {
       expect(result.data.title).toBe('New Practice');
       expect(result.data.status).toBe('not_started');
       expect(result.data.progressPercentage).toBe(20);
+      expect(result.data.checkInCount).toBe(0);
+      expect(result.data.themeColor).toBe('#FCDD84');
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Practice created',
         { practiceId: 1, userId: 1 }
@@ -275,10 +291,12 @@ describe('Practice Service', () => {
         status: 'not_started',
         progress_percentage: 20,
         practice_time_periods: [],
+        theme_color: '#FCDD84',
         created_at: new Date(),
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
 
+      prismaMock.practices.count.mockResolvedValue(0); // For theme color assignment
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
       prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
       prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
@@ -293,9 +311,10 @@ describe('Practice Service', () => {
     });
 
     it('should throw error when creation fails', async () => {
+      prismaMock.practices.count.mockResolvedValue(0); // For theme color assignment
       prismaMock.practices.create.mockRejectedValue(new Error('Database error'));
 
-      await expect(create(mockCreateRequest, 1)).rejects.toThrow('建立實踐失敗');
+      await expect(create(mockCreateRequest, 1)).rejects.toThrow('Database error');
       expect(mockLoggerService.error).toHaveBeenCalled();
     });
   });
@@ -320,6 +339,7 @@ describe('Practice Service', () => {
         status: 'not_started',
         progress_percentage: 20,
         practice_time_periods: [],
+        theme_color: '#FCDD84',
         created_at: new Date(),
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
@@ -329,11 +349,14 @@ describe('Practice Service', () => {
       prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       const result = await update(1, mockUpdateRequest, 1);
 
       expect(result.success).toBe(true);
       expect(result.data.title).toBe('Updated Practice');
+      expect(result.data.checkInCount).toBe(0);
+      expect(result.data.themeColor).toBe('#FCDD84');
     });
 
     it('should throw error when practice not found', async () => {
@@ -499,7 +522,7 @@ describe('Practice Service', () => {
     it('should throw error when stats retrieval fails', async () => {
       prismaMock.practices.aggregate.mockRejectedValue(new Error('Database error'));
 
-      await expect(getUserStats(1)).rejects.toThrow('取得使用者統計失敗');
+      await expect(getUserStats(1)).rejects.toThrow('Database error');
       expect(mockLoggerService.error).toHaveBeenCalledWith(
         'Failed to retrieve user practice stats',
         { userId: 1, error: expect.any(Error) }
@@ -526,6 +549,7 @@ describe('Practice Service', () => {
         has_resources: false,
         progress_percentage: null,
         first_checkin_at: null,
+        theme_color: null,
         created_at: new Date(),
         updated_at: new Date(),
         users: {
@@ -540,6 +564,7 @@ describe('Practice Service', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
 
       const result = await findById(1);
 
@@ -552,6 +577,8 @@ describe('Practice Service', () => {
       expect(result.data.sessionDurationMinutes).toBeUndefined();
       expect(result.data.otherContext).toBeUndefined();
       expect(result.data.progressPercentage).toBe(20); // INITIAL_PROGRESS default
+      expect(result.data.checkInCount).toBe(0);
+      expect(result.data.themeColor).toBeUndefined();
       expect(result.data.user.name).toBe('Unknown User');
     });
 
@@ -564,6 +591,7 @@ describe('Practice Service', () => {
         progress_percentage: 50.5,
         practice_time_periods: ['morning'],
         has_resources: false,
+        theme_color: '#C3EEFF',
         created_at: new Date(),
         updated_at: new Date(),
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
@@ -572,6 +600,7 @@ describe('Practice Service', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([{ practice_id: 1, _count: { id: 3 } }] as any);
 
       const result = await findById(1);
 

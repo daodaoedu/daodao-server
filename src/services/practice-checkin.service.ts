@@ -362,22 +362,27 @@ export async function calculateStreak(practiceId: number, userId: number, curren
     }
 
     let streak = 1; // 包含今天
+
+    // 統一使用 UTC 日期字串比較，避免時區問題
+    const toUTCDateStr = (date: Date): string => date.toISOString().split('T')[0];
+
     const yesterday = new Date(currentDate);
-    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
     // 檢查是否與昨天連續
-    const yesterdayCheckIn = recentCheckIns.find(checkIn => 
-      checkIn.checkin_date.toDateString() === yesterday.toDateString()
+    const yesterdayStr = toUTCDateStr(yesterday);
+    const yesterdayCheckIn = recentCheckIns.find(checkIn =>
+      toUTCDateStr(checkIn.checkin_date) === yesterdayStr
     );
 
     if (yesterdayCheckIn) {
       // 從昨天開始往前計算連續天數
       const checkDate = new Date(yesterday);
-      
+
       for (const checkIn of recentCheckIns) {
-        if (checkIn.checkin_date.toDateString() === checkDate.toDateString()) {
+        if (toUTCDateStr(checkIn.checkin_date) === toUTCDateStr(checkDate)) {
           streak++;
-          checkDate.setDate(checkDate.getDate() - 1);
+          checkDate.setUTCDate(checkDate.getUTCDate() - 1);
         } else {
           break;
         }

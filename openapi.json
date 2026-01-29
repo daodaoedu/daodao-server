@@ -7995,11 +7995,6 @@
             "description": "每週最高打卡天數",
             "example": 7
           },
-          "frequencyDescription": {
-            "type": "string",
-            "description": "頻率描述",
-            "example": "每週 4-7 天"
-          },
           "sessionDurationMinutes": {
             "type": "integer",
             "description": "每次實踐時長（分鐘）",
@@ -8054,6 +8049,17 @@
             "type": "string",
             "format": "date-time",
             "description": "首次打卡時間"
+          },
+          "checkInCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "已打卡次數",
+            "example": 2
+          },
+          "themeColor": {
+            "type": "string",
+            "description": "主題色（HEX 格式）",
+            "example": "#FCDD84"
           },
           "createdAt": {
             "type": "string",
@@ -8113,6 +8119,7 @@
           "status",
           "hasResources",
           "progressPercentage",
+          "checkInCount",
           "createdAt",
           "user",
           "tags",
@@ -8128,7 +8135,6 @@
           "durationDays": 14,
           "frequencyMinDays": 4,
           "frequencyMaxDays": 7,
-          "frequencyDescription": "每週 4-7 天",
           "sessionDurationMinutes": 30,
           "practiceTimePeriods": [
             "morning",
@@ -8138,6 +8144,8 @@
           "hasResources": false,
           "progressPercentage": 50,
           "firstCheckinAt": "2024-01-15T08:30:00.000Z",
+          "checkInCount": 2,
+          "themeColor": "#FCDD84",
           "createdAt": "2024-01-15T10:30:00.000Z",
           "updatedAt": "2024-01-20T15:45:00.000Z",
           "user": {
@@ -10543,11 +10551,6 @@
             "description": "最大頻率天數",
             "example": 7
           },
-          "frequencyDescription": {
-            "type": "string",
-            "description": "頻率描述",
-            "example": "每週3-5次"
-          },
           "sessionDurationMinutes": {
             "type": "integer",
             "minimum": 5,
@@ -10607,6 +10610,17 @@
             "description": "首次打卡時間",
             "example": "2024-01-16T08:30:00.000Z"
           },
+          "checkInCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "已打卡次數",
+            "example": 5
+          },
+          "themeColor": {
+            "type": "string",
+            "description": "主題色（HEX 格式）",
+            "example": "#FCDD84"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -10638,6 +10652,7 @@
           "practiceTimePeriods",
           "status",
           "hasResources",
+          "checkInCount",
           "createdAt",
           "tags"
         ],

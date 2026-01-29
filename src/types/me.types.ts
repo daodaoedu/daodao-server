@@ -3,29 +3,10 @@
  * Based on the existing codebase patterns and database schema
  */
 
-// Practice response types (extending from existing practice.types.ts)
-// 基於 Prisma schema practices 表
-export interface MyPracticeItem {
-  id: string;
-  title: string;
-  practiceAction?: string;
-  startDate?: string; // YYYY-MM-DD format
-  endDate?: string; // YYYY-MM-DD format
-  durationDays?: number;
-  frequencyMinDays?: number;
-  frequencyMaxDays?: number;
-  frequencyDescription?: string;
-  sessionDurationMinutes?: number;
-  practiceTimePeriods: string[];
-  otherContext?: string;
-  status: 'draft' | 'not_started' | 'active' | 'completed' | 'archived';
-  hasResources: boolean;
-  progressPercentage?: number;
-  firstCheckinAt?: string;
-  createdAt: string;
-  updatedAt?: string;
-  tags: string[];
-}
+import { PracticeEntity } from './practice.types';
+
+// Practice response types - 共用 PracticeEntity，排除不需要的欄位
+export type MyPracticeItem = Omit<PracticeEntity, 'user' | 'stats' | 'checkIns'>;
 
 export interface MyPracticesResponse {
   success: true;

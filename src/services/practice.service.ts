@@ -46,6 +46,9 @@ import { enqueuePracticeEmail } from '../queues';
 
 const prismaClient = prisma;
 
+// 主題色循環順序
+const THEME_COLORS = ['#FCDD84', '#C3EEFF', '#FFC0C8', '#A0E8D0'] as const;
+
 /**
  * 取得實踐列表（支援篩選、分頁、搜尋）
  */
@@ -127,7 +130,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 取得統計數據 - 暫時只查詢存在的表格
     const practiceIds: number[] = practices.map(p => p.id);
-    const [comments, allTags] = await Promise.all([
+    const [comments, allTags, checkInCounts] = await Promise.all([
       getCommentCounts(practiceIds),
       // 批量查詢標籤
       prismaClient.entity_tags.findMany({
@@ -143,7 +146,9 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
             }
           }
         }
-      })
+      }),
+      // 批量查詢打卡次數
+      getCheckInCounts(practiceIds)
     ]);
 
     // 將標籤按實踐 ID 分組
@@ -169,14 +174,15 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       durationDays: practice.duration_days || undefined,
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
-      frequencyDescription: practice.frequency_description || undefined,
-      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+            sessionDurationMinutes: practice.session_duration_minutes || undefined,
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      checkInCount: checkInCounts[practice.id] || 0,
+      themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -267,7 +273,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     }
 
     // 取得統計數據和標籤 - 暫時只查詢存在的表格
-    const [comments, tags] = await Promise.all([
+    const [comments, tags, checkInCounts] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -283,7 +289,9 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
             }
           }
         }
-      })
+      }),
+      // 查詢打卡次數
+      getCheckInCounts([id])
     ]);
 
 
@@ -296,14 +304,15 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       durationDays: practice.duration_days || undefined,
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
-      frequencyDescription: practice.frequency_description || undefined,
-      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+            sessionDurationMinutes: practice.session_duration_minutes || undefined,
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      checkInCount: checkInCounts[id] || 0,
+      themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -347,6 +356,12 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + durationDays - 1);
 
+    // 查詢用戶已有的 practice 數量，用於分配主題色
+    const existingPracticeCount = await prismaClient.practices.count({
+      where: { user_id: userId }
+    });
+    const themeColor = THEME_COLORS[existingPracticeCount % THEME_COLORS.length];
+
     const practice = await prismaClient.practices.create({
       data: {
         user_id: userId,
@@ -362,7 +377,8 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         other_context: data.otherContext,
         status: 'not_started',
         has_resources: Boolean(data.resources && data.resources.length > 0),
-        progress_percentage: INITIAL_PROGRESS
+        progress_percentage: INITIAL_PROGRESS,
+        theme_color: themeColor
       },
       select: {
         id: true,
@@ -374,7 +390,6 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         duration_days: true,
         frequency_min_days: true,
         frequency_max_days: true,
-        frequency_description: true,
         session_duration_minutes: true,
         practice_time_periods: true,
         other_context: true,
@@ -382,6 +397,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         has_resources: true,
         progress_percentage: true,
         first_checkin_at: true,
+        theme_color: true,
         created_at: true,
         updated_at: true,
         users: {
@@ -428,14 +444,15 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       durationDays: practice.duration_days || undefined,
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
-      frequencyDescription: practice.frequency_description || undefined,
-      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+            sessionDurationMinutes: practice.session_duration_minutes || undefined,
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      checkInCount: 0,
+      themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -590,7 +607,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     }
 
     // 取得統計數據和標籤 - 暫時只查詢存在的表格
-    const [comments, updatedTags] = await Promise.all([
+    const [comments, updatedTags, checkInCounts] = await Promise.all([
       getCommentCounts([id]),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
@@ -606,7 +623,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
             }
           }
         }
-      })
+      }),
+      // 查詢打卡次數
+      getCheckInCounts([id])
     ]);
 
 
@@ -619,14 +638,15 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       durationDays: practice.duration_days || undefined,
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
-      frequencyDescription: practice.frequency_description || undefined,
-      sessionDurationMinutes: practice.session_duration_minutes || undefined,
+            sessionDurationMinutes: practice.session_duration_minutes || undefined,
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      checkInCount: checkInCounts[id] || 0,
+      themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: practice.updated_at?.toISOString(),
       user: {
@@ -940,6 +960,31 @@ async function getCommentCounts(practiceIds: number[]): Promise<Record<number, n
 }
 
 /**
+ * 取得打卡次數統計
+ */
+async function getCheckInCounts(practiceIds: number[]): Promise<Record<number, number>> {
+  if (!practiceIds.length) return {};
+
+  try {
+    const checkIns = await prismaClient.practice_checkins.groupBy({
+      by: ['practice_id'],
+      where: {
+        practice_id: { in: practiceIds }
+      },
+      _count: { id: true }
+    });
+
+    return checkIns.reduce((acc, checkIn) => {
+      acc[checkIn.practice_id] = checkIn._count?.id || 0;
+      return acc;
+    }, {} as Record<number, number>);
+  } catch (error) {
+    loggerService.warn('Failed to get check-in counts', { practiceIds, error });
+    return {};
+  }
+}
+
+/**
  * 封存實踐
  */
 export async function archive(id: number, userId: number): Promise<ApiSuccessResponse<{ success: boolean }>> {
@@ -1100,7 +1145,6 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       durationDays: updatedPractice.duration_days || undefined,
       frequencyMinDays: updatedPractice.frequency_min_days || undefined,
       frequencyMaxDays: updatedPractice.frequency_max_days || undefined,
-      frequencyDescription: updatedPractice.frequency_description || undefined,
       sessionDurationMinutes: updatedPractice.session_duration_minutes || undefined,
       practiceTimePeriods: updatedPractice.practice_time_periods || [],
       otherContext: updatedPractice.other_context || undefined,
@@ -1108,6 +1152,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       hasResources: updatedPractice.has_resources || false,
       progressPercentage: Number(updatedPractice.progress_percentage) || INITIAL_PROGRESS,
       firstCheckinAt: updatedPractice.first_checkin_at?.toISOString(),
+      checkInCount: checkInCount,
+      themeColor: updatedPractice.theme_color || undefined,
       createdAt: updatedPractice.created_at?.toISOString() || '',
       updatedAt: updatedPractice.updated_at?.toISOString(),
       user: {

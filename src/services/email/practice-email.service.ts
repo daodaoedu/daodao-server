@@ -254,10 +254,14 @@ export async function sendWeeklySummaryEmail(
       return;
     }
 
-    // 計算本週打卡統計
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setUTCHours(0, 0, 0, 0);
+    // 計算本週打卡統計（統一使用 UTC）
+    const now = new Date();
+    const weekStart = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - 7,
+      0, 0, 0, 0
+    ));
 
     const [weeklyCheckIns, totalCheckIns, latestCheckIn] = await Promise.all([
       prismaClient.practice_checkins.findMany({
@@ -326,13 +330,21 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
   try {
     loggerService.info('Starting weekly summary batch');
 
-    // 計算時間範圍
-    const threeWeeksAgo = new Date();
-    threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
+    // 計算時間範圍（統一使用 UTC）
+    const now = new Date();
+    const threeWeeksAgo = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - 21,
+      0, 0, 0, 0
+    ));
 
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setUTCHours(0, 0, 0, 0);
+    const weekStart = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - 7,
+      0, 0, 0, 0
+    ));
 
     // 一次性查詢所有進行中的實踐，並載入打卡資料（優化 N+1 查詢）
     const activePractices = await prismaClient.practices.findMany({
