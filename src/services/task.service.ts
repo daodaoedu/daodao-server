@@ -91,7 +91,7 @@ export async function createTask(
     if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
       throw error;
     }
-    throw new Error(`創建任務失敗: ${(error as Error).message}`);
+    throw error;
   }
 }
 
@@ -131,7 +131,7 @@ export async function getTasks(
     if (error instanceof NotFoundError) {
       throw error;
     }
-    throw new Error(`獲取任務列表失敗: ${(error as Error).message}`);
+    throw error;
   }
 }
 
@@ -180,7 +180,7 @@ export async function getTask(
     if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
       throw error;
     }
-    throw new Error(`獲取任務失敗: ${(error as Error).message}`);
+    throw error;
   }
 }
 
@@ -249,7 +249,7 @@ export async function updateTask(
     if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
       throw error;
     }
-    throw new Error(`更新任務失敗: ${(error as Error).message}`);
+    throw error;
   }
 }
 
@@ -302,6 +302,6 @@ export async function deleteTask(
     if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
       throw error;
     }
-    throw new Error(`刪除任務失敗: ${(error as Error).message}`);
+    throw error;
   }
 }

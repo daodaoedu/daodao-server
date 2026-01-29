@@ -216,7 +216,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
   } catch (error) {
     loggerService.error('Failed to retrieve practice list', error as Record<string, unknown>);
-    throw new Error('取得實踐列表失敗');
+    throw error;
   }
 }
 
@@ -465,7 +465,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
 
   } catch (error) {
     loggerService.error('Failed to create practice', { userId, error });
-    throw new Error('建立實踐失敗');
+    throw error;
   }
 }
 
@@ -754,7 +754,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
 
   } catch (error) {
     loggerService.error('Failed to retrieve user practice stats', { userId, error });
-    throw new Error('取得使用者統計失敗');
+    throw error;
   }
 }
 
@@ -909,7 +909,7 @@ async function updateResources(practiceId: number, resources: Array<{ name: stri
     });
   } catch (error) {
     loggerService.error('Failed to update resources', { practiceId, resources, error });
-    throw new Error('更新資源關聯失敗');
+    throw error;
   }
 }
 
