@@ -167,24 +167,24 @@
     - ... (其他事件)
   - 估計: 6 小時
 
+- [ ] **整合到主題實踐服務**
+  - 檔案: `src/services/practice.service.ts`
+  - 在建立實踐 (PE01)、首次打卡 (PE02) 時觸發通知
+  - 估計: 3 小時
+
+- [ ] **實現主題實踐排程任務**
+  - 檔案: `src/services/notification/practice-scheduler.service.ts`
+  - 每週回顧 (PE03-PE06)、完成總結 (PE07-PE08)
+  - 估計: 4 小時
+
 - [ ] **整合到評論服務**
   - 檔案: `src/services/comment.service.ts`
   - 在創建評論、回覆評論時觸發通知
   - 估計: 2 小時
 
-- [ ] **整合到資源服務**
-  - 檔案: `src/services/resource.service.ts`
-  - 在按讚、收藏時觸發通知
-  - 估計: 2 小時
-
-- [ ] **整合到專案服務**
-  - 檔案: `src/services/project.service.ts`
-  - 在里程碑到期前觸發提醒
-  - 估計: 2 小時
-
-- [ ] **整合到實踐服務**
-  - 檔案: `src/services/practice.service.ts`
-  - 在打卡提醒、成就達成時觸發通知
+- [ ] **整合到按讚服務**
+  - 檔案: `src/services/like.service.ts`
+  - 在按讚時觸發通知（含聚合邏輯）
   - 估計: 2 小時
 
 ### 2.3 郵件通知整合

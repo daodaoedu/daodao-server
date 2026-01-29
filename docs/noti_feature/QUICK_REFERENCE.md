@@ -10,19 +10,18 @@
 
 ### 通知類型 (Notification Types)
 
-| 分類 | 通知類型 | 優先級 | 預設渠道 |
-|-----|---------|-------|---------|
-| **社群** | 收到評論 | 🟡 中 | 站內 + 郵件 |
-| **社群** | 評論回覆 | 🟡 中 | 站內 + 郵件 |
-| **社群** | 內容按讚 | 🟢 低 | 僅站內 |
-| **社群** | 內容收藏 | 🟢 低 | 僅站內 |
-| **學習** | 里程碑到期 | 🔴 高 | 站內 + 郵件 |
-| **學習** | 打卡提醒 | 🟡 中 | 站內 + 郵件 |
-| **學習** | 目標達成 | 🟡 中 | 站內 + 郵件 |
-| **活動** | 馬拉松開始 | 🔴 高 | 站內 + 郵件 |
-| **活動** | 導師指派 | 🔴 高 | 站內 + 郵件 |
-| **系統** | 安全警告 | 🔴 高 | 站內 + 郵件 |
-| **系統** | 密碼重置 | 🔴 高 | 郵件 |
+| 分類 | 通知類型 | 代碼 | 優先級 | 預設渠道 |
+|-----|---------|------|-------|---------|
+| **主題實踐** | 建立成功 | PE01 | 🔴 高 | 郵件 |
+| **主題實踐** | 首次打卡 | PE02 | 🔴 高 | 郵件 |
+| **主題實踐** | 每週回顧 | PE03-06 | 🟡 中 | 郵件 |
+| **主題實踐** | 完成總結 | PE07-08 | 🟡 中 | 郵件 |
+| **社群** | 收到評論 | - | 🟡 中 | 站內 + 郵件 |
+| **社群** | 評論回覆 | - | 🟡 中 | 站內 + 郵件 |
+| **社群** | 內容按讚 | - | 🟢 低 | 僅站內 |
+| **系統** | 郵箱驗證 | - | 🔴 高 | 郵件 |
+| **系統** | 密碼重置 | - | 🔴 高 | 郵件 |
+| **系統** | 安全警告 | - | 🔴 高 | 站內 + 郵件 |
 
 ### 通知狀態流轉
 
@@ -285,46 +284,28 @@ export const createComment = async (data: CreateCommentRequest) => {
 };
 ```
 
-### 里程碑到期檢查 (定時任務)
+### 主題實踐每週回顧檢查 (定時任務)
 
 ```typescript
 // src/services/notification/notification-scheduler.service.ts
 
 import cron from 'node-cron';
-import { notificationEventHandler } from './notification-event-handler.service';
+import { practiceEmailService } from './practice-email.service';
 
-// 每天凌晨 1:00 檢查即將到期的里程碑
-cron.schedule('0 1 * * *', async () => {
-  const threeDaysLater = new Date();
-  threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+// 每日 09:00 發送主題實踐週回顧 (PE03-PE06)
+cron.schedule('0 9 * * *', async () => {
+  await practiceEmailService.sendPendingWeeklySummaries();
+}, { timezone: 'Asia/Taipei' });
 
-  const dueMilestones = await prisma.milestones.findMany({
-    where: {
-      deadline: {
-        gte: new Date(),
-        lte: threeDaysLater,
-      },
-      status: 'active',
-    },
-    include: {
-      project: {
-        include: { user: true },
-      },
-    },
-  });
+// 每日 10:00 發送主題實踐完成總結 (PE07-PE08)
+cron.schedule('0 10 * * *', async () => {
+  await practiceEmailService.sendPendingFinalSummaries();
+}, { timezone: 'Asia/Taipei' });
 
-  for (const milestone of dueMilestones) {
-    await notificationEventHandler.onMilestoneDueSoon({
-      user_id: milestone.project.user_id,
-      milestone_title: milestone.title,
-      project_title: milestone.project.title,
-      deadline: milestone.deadline,
-      days_remaining: Math.ceil(
-        (milestone.deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      ),
-    });
-  }
-});
+// 每日檢查並更新實踐狀態為 completed
+cron.schedule('0 0 * * *', async () => {
+  await updateCompletedPractices();
+}, { timezone: 'Asia/Taipei' });
 ```
 
 ---

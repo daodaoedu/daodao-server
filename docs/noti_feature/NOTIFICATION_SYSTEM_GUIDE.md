@@ -40,42 +40,30 @@ DaoDao 是一個**學習管理與社群互動平台**,提供以下核心功能:
 
 根據專案現有的功能模組,使用者在以下場景需要接收通知:
 
-#### 1. 社群互動通知 (Social Interactions)
+#### 1. 主題實踐通知 (Practice Notifications)
+
+| 觸發事件 | 通知對象 | 優先級 | 範例 |
+|---------|---------|-------|------|
+| 建立成功 (PE01) | 建立者 | 🔴 高 | "你的主題實踐已建立成功" |
+| 首次打卡 (PE02) | 建立者 | 🔴 高 | "恭喜完成首次打卡！" |
+| 每週回顧 (PE03-06) | 建立者 | 🟡 中 | "你的第 N 週回顧已送達" |
+| 完成總結 (PE07-08) | 建立者 | 🟡 中 | "恭喜完成主題實踐！" |
+
+#### 2. 社群互動通知 (Social Interactions)
 
 | 觸發事件 | 通知對象 | 優先級 | 範例 |
 |---------|---------|-------|------|
 | 收到評論 | 內容創建者 | 🟡 中 | "小明評論了你的學習資源" |
 | 評論被回覆 | 原評論者 | 🟡 中 | "小華回覆了你的評論" |
 | 內容被按讚 | 內容創建者 | 🟢 低 | "你的想法獲得 5 個讚" |
-| 內容被收藏 | 內容創建者 | 🟢 低 | "你的資源被 3 人收藏" |
-| 被標記/提及 | 被提及用戶 | 🟡 中 | "@你 在一則評論中" |
 
-#### 2. 學習進度通知 (Learning Progress)
+#### 3. 系統通知 (System Notifications)
 
 | 觸發事件 | 通知對象 | 優先級 | 範例 |
 |---------|---------|-------|------|
-| 里程碑即將到期 | 專案成員 | 🔴 高 | "專案里程碑將於 3 天後到期" |
-| 打卡提醒 | 實踐參與者 | 🟡 中 | "今天還沒打卡喔!" |
-| 目標達成 | 用戶本人 | 🟡 中 | "恭喜!你已連續打卡 30 天" |
-| 學習建議 | 用戶本人 | 🟢 低 | "發現適合你的新資源" |
-
-#### 3. 活動與協作通知 (Events & Collaboration)
-
-| 觸發事件 | 通知對象 | 優先級 | 範例 |
-|---------|---------|-------|------|
-| 馬拉松活動開始 | 報名參與者 | 🔴 高 | "學習馬拉松已開始!" |
-| 導師指派 | 學員 | 🔴 高 | "你的導師是李老師" |
-| 專案邀請 | 被邀請用戶 | 🟡 中 | "小明邀請你加入專案" |
-| 活動提醒 | 活動參與者 | 🟡 中 | "揪團活動將於明天舉行" |
-
-#### 4. 系統與安全通知 (System & Security)
-
-| 觸發事件 | 通知對象 | 優先級 | 範例 |
-|---------|---------|-------|------|
-| 帳號異常登入 | 帳號擁有者 | 🔴 高 | "檢測到新裝置登入" |
-| 密碼重置請求 | 帳號擁有者 | 🔴 高 | "密碼重置連結" |
 | 郵箱驗證 | 新註冊用戶 | 🔴 高 | "請驗證你的郵箱" |
-| 系統維護公告 | 全體用戶 | 🟡 中 | "系統將於週日維護" |
+| 密碼重置請求 | 帳號擁有者 | 🔴 高 | "密碼重置連結" |
+| 帳號異常登入 | 帳號擁有者 | 🔴 高 | "檢測到新裝置登入" |
 
 ---
 
@@ -248,24 +236,16 @@ model notification_preferences {
 
   // 站內通知偏好
   in_app_enabled        Boolean   @default(true)
+  in_app_practice       Boolean   @default(true)              // 主題實踐通知
   in_app_comment        Boolean   @default(true)              // 評論通知
   in_app_like           Boolean   @default(true)              // 按讚通知
-  in_app_milestone      Boolean   @default(true)              // 里程碑通知
-  in_app_practice       Boolean   @default(true)              // 打卡提醒
-  in_app_event          Boolean   @default(true)              // 活動通知
 
   // 郵件通知偏好
   email_enabled         Boolean   @default(true)
-  email_comment         Boolean   @default(true)
+  email_practice        Boolean   @default(true)              // 主題實踐郵件
+  email_comment         Boolean   @default(true)              // 評論通知
   email_like            Boolean   @default(false)             // 按讚通知預設關閉
-  email_milestone       Boolean   @default(true)
-  email_practice        Boolean   @default(true)
-  email_event           Boolean   @default(true)
-  email_digest          Boolean   @default(true)              // 每日彙總
-  email_digest_time     String?   @default("09:00")           // 彙總發送時間
-
-  // 推送通知偏好 (未來功能)
-  push_enabled          Boolean   @default(false)
+  email_security        Boolean   @default(true)              // 安全通知（強制開啟）
 
   // 靜音設定
   mute_until            DateTime? @db.Timestamptz(6)          // 靜音截止時間
@@ -310,32 +290,21 @@ model notification_templates {
  * 通知類型枚舉
  */
 export const NotificationTypes = {
+  // 主題實踐
+  PRACTICE_CREATED: 'practice_created',           // PE01: 建立成功
+  PRACTICE_FIRST_CHECKIN: 'practice_first_checkin', // PE02: 首次打卡
+  PRACTICE_WEEKLY_SUMMARY: 'practice_weekly_summary', // PE03-06: 每週回顧
+  PRACTICE_FINAL_SUMMARY: 'practice_final_summary', // PE07-08: 完成總結
+
   // 社群互動
   COMMENT_RECEIVED: 'comment_received',           // 收到評論
   COMMENT_REPLY: 'comment_reply',                 // 評論被回覆
   CONTENT_LIKED: 'content_liked',                 // 內容被按讚
-  CONTENT_BOOKMARKED: 'content_bookmarked',       // 內容被收藏
-  USER_MENTIONED: 'user_mentioned',               // 被提及
 
-  // 學習進度
-  MILESTONE_DUE_SOON: 'milestone_due_soon',       // 里程碑即將到期
-  MILESTONE_OVERDUE: 'milestone_overdue',         // 里程碑已逾期
-  PRACTICE_REMINDER: 'practice_reminder',         // 打卡提醒
-  PRACTICE_STREAK: 'practice_streak',             // 連續打卡成就
-  GOAL_ACHIEVED: 'goal_achieved',                 // 目標達成
-
-  // 活動與協作
-  MARATHON_START: 'marathon_start',               // 馬拉松開始
-  MARATHON_END: 'marathon_end',                   // 馬拉松結束
-  MENTOR_ASSIGNED: 'mentor_assigned',             // 導師指派
-  PROJECT_INVITATION: 'project_invitation',       // 專案邀請
-  EVENT_REMINDER: 'event_reminder',               // 活動提醒
-
-  // 系統與安全
-  SECURITY_ALERT: 'security_alert',               // 安全警告
-  PASSWORD_RESET: 'password_reset',               // 密碼重置
+  // 系統通知
   EMAIL_VERIFICATION: 'email_verification',       // 郵箱驗證
-  SYSTEM_ANNOUNCEMENT: 'system_announcement',     // 系統公告
+  PASSWORD_RESET: 'password_reset',               // 密碼重置
+  SECURITY_ALERT: 'security_alert',               // 安全警告
 } as const;
 
 export type NotificationType = typeof NotificationTypes[keyof typeof NotificationTypes];
@@ -415,20 +384,14 @@ export interface CreateNotificationRequest {
 export interface NotificationPreferences {
   user_id: number;
   in_app_enabled: boolean;
+  in_app_practice: boolean;
   in_app_comment: boolean;
   in_app_like: boolean;
-  in_app_milestone: boolean;
-  in_app_practice: boolean;
-  in_app_event: boolean;
   email_enabled: boolean;
+  email_practice: boolean;
   email_comment: boolean;
   email_like: boolean;
-  email_milestone: boolean;
-  email_practice: boolean;
-  email_event: boolean;
-  email_digest: boolean;
-  email_digest_time?: string;
-  push_enabled: boolean;
+  email_security: boolean;
   mute_until?: Date;
 }
 ```
