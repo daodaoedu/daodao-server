@@ -151,12 +151,18 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'DaoDao API 文檔'
+    customSiteTitle: 'DaoDao API 文檔',
+    swaggerOptions: {
+      docExpansion: 'none'  // 預設收合所有端點
+    }
   }));
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'DaoDao API 文檔'
+    customSiteTitle: 'DaoDao API 文檔',
+    swaggerOptions: {
+      docExpansion: 'none'  // 預設收合所有端點
+    }
   }));
   console.log('📚 Swagger UI 已初始化 - 可在 /api-docs 和 /api/docs 訪問');
 

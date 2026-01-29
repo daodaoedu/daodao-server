@@ -41196,8 +41196,8 @@
       "x-order": 3
     },
     {
-      "name": "Ideas",
-      "description": "想法分享相關操作",
+      "name": "User Statistics",
+      "description": "用戶統計相關操作",
       "x-order": 4
     },
     {
@@ -41216,84 +41216,99 @@
       "x-order": 7
     },
     {
-      "name": "Projects",
-      "description": "專案管理相關操作",
+      "name": "Practice Templates",
+      "description": "實踐模板相關操作",
       "x-order": 8
     },
     {
-      "name": "Quiz",
-      "description": "測驗管理相關操作",
+      "name": "Practice Helpers",
+      "description": "實踐輔助功能相關操作",
       "x-order": 9
-    },
-    {
-      "name": "Milestones",
-      "description": "里程碑管理相關操作",
-      "x-order": 10
-    },
-    {
-      "name": "Notes",
-      "description": "便利貼相關操作",
-      "x-order": 11
-    },
-    {
-      "name": "Outcomes",
-      "description": "成果相關操作",
-      "x-order": 12
-    },
-    {
-      "name": "Reviews",
-      "description": "覆盤相關操作",
-      "x-order": 13
-    },
-    {
-      "name": "Mentor",
-      "description": "導師系統相關操作",
-      "x-order": 14
-    },
-    {
-      "name": "Resources",
-      "description": "資源管理相關操作",
-      "x-order": 15
-    },
-    {
-      "name": "Resource Reviews",
-      "description": "資源評價和心得相關操作",
-      "x-order": 16
     },
     {
       "name": "Tags",
       "description": "標籤管理相關操作",
-      "x-order": 17
+      "x-order": 10
     },
     {
       "name": "Comments",
       "description": "評論系統相關操作",
-      "x-order": 18
+      "x-order": 11
     },
     {
       "name": "Email",
       "description": "郵件服務相關操作",
-      "x-order": 19
+      "x-order": 12
     },
     {
       "name": "Images",
       "description": "圖片管理相關操作",
+      "x-order": 13
+    },
+    {
+      "name": "Resources",
+      "description": "資源管理相關操作",
+      "x-order": 14
+    },
+    {
+      "name": "Resource Reviews",
+      "description": "資源評價和心得相關操作",
+      "x-order": 15
+    },
+    {
+      "name": "Ideas",
+      "description": "想法分享相關操作",
+      "x-order": 16
+    },
+    {
+      "name": "Projects",
+      "description": "專案管理相關操作",
+      "x-order": 17
+    },
+    {
+      "name": "Quiz",
+      "description": "測驗管理相關操作",
+      "x-order": 18
+    },
+    {
+      "name": "Milestones",
+      "description": "里程碑管理相關操作",
+      "x-order": 19
+    },
+    {
+      "name": "Notes",
+      "description": "便利貼相關操作",
       "x-order": 20
+    },
+    {
+      "name": "Outcomes",
+      "description": "成果相關操作",
+      "x-order": 21
+    },
+    {
+      "name": "Reviews",
+      "description": "覆盤相關操作",
+      "x-order": 22
+    },
+    {
+      "name": "Mentor",
+      "description": "導師系統相關操作",
+      "x-order": 23
     },
     {
       "name": "System",
       "description": "系統狀態和資訊相關操作",
-      "x-order": 21
+      "x-order": 24
     },
     {
       "name": "Database Info",
       "description": "資料庫資訊查詢相關操作",
-      "x-order": 22
+      "x-order": 25
     },
     {
       "name": "System Monitor",
       "description": "系統監控相關操作",
-      "x-order": 23
+      "x-order": 26
     }
   ]
 }
