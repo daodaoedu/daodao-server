@@ -160,6 +160,7 @@ describe('Practice E2E Tests', () => {
         progress_percentage: createDecimalMock(20),
         has_resources: false,
         first_checkin_at: null,
+        theme_color: '#FCDD84',
         created_at: new Date(),
         updated_at: new Date(),
         deleted_at: null,
@@ -172,6 +173,7 @@ describe('Practice E2E Tests', () => {
         }
       };
 
+      prismaMock.practices.count.mockResolvedValue(0); // For theme color assignment
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice as any);
 
       const createResponse = await authPost(API_BASE, practiceData, userToken);
@@ -491,6 +493,7 @@ describe('Practice E2E Tests', () => {
         start_date: new Date(exactDate),
         status: 'not_started',
         progress_percentage: createDecimalMock(20),
+        theme_color: '#FCDD84',
         created_at: new Date(),
         updated_at: new Date(),
         users: {
@@ -502,6 +505,7 @@ describe('Practice E2E Tests', () => {
         }
       };
 
+      prismaMock.practices.count.mockResolvedValue(0); // For theme color assignment
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice as any);
 
       const response = await authPost(

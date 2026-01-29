@@ -229,13 +229,15 @@ export const createPracticeSchema = z.object({
   path: ['frequencyMinDays']
 }).refine(data => {
   // 驗證 startDate 不能超過 14 天後
+  // 統一使用 UTC 避免時區問題
   if (data.startDate) {
-    const startDate = new Date(data.startDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const maxDate = new Date(today);
-    maxDate.setDate(maxDate.getDate() + 14);
-    return startDate <= maxDate;
+    const now = new Date();
+    // 取得今天的 UTC 日期
+    const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    // 計算 14 天後的 UTC 日期
+    const maxDateUTC = new Date(todayUTC + 14 * 24 * 60 * 60 * 1000);
+    const maxDateStr = maxDateUTC.toISOString().split('T')[0];
+    return data.startDate <= maxDateStr;
   }
   return true;
 }, {
@@ -495,7 +497,6 @@ export const practiceEntityResponseSchema = z.object({
   durationDays: z.number().int().optional().openapi({ description: '持續天數', example: 14 }),
   frequencyMinDays: z.number().int().optional().openapi({ description: '每週最低打卡天數', example: 4 }),
   frequencyMaxDays: z.number().int().optional().openapi({ description: '每週最高打卡天數', example: 7 }),
-  frequencyDescription: z.string().optional().openapi({ description: '頻率描述', example: '每週 4-7 天' }),
   sessionDurationMinutes: z.number().int().optional().openapi({ description: '每次實踐時長（分鐘）', example: 30 }),
   practiceTimePeriods: z.array(z.string()).openapi({ description: '偏好實踐時段', example: ['morning', 'evening'] }),
   otherContext: z.string().optional().openapi({ description: '其他說明' }),
@@ -503,6 +504,8 @@ export const practiceEntityResponseSchema = z.object({
   hasResources: z.boolean().openapi({ description: '是否有相關資源', example: true }),
   progressPercentage: z.number().min(0).openapi({ description: '進度百分比', example: 50 }),
   firstCheckinAt: z.string().optional().openapi({ description: '首次打卡時間', format: 'date-time' }),
+  checkInCount: z.number().int().min(0).openapi({ description: '已打卡次數', example: 2 }),
+  themeColor: z.string().optional().openapi({ description: '主題色（HEX 格式）', example: '#FCDD84' }),
   createdAt: z.string().datetime().openapi({ description: '創建時間', example: '2024-01-15T10:30:00.000Z', format: 'date-time' }),
   updatedAt: z.string().datetime().optional().openapi({ description: '更新時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' }),
   user: userBasicInfoResponseSchema,
@@ -519,13 +522,14 @@ export const practiceEntityResponseSchema = z.object({
     durationDays: 14,
     frequencyMinDays: 4,
     frequencyMaxDays: 7,
-    frequencyDescription: '每週 4-7 天',
     sessionDurationMinutes: 30,
     practiceTimePeriods: ['morning', 'evening'],
     status: 'active',
     hasResources: false,
     progressPercentage: 50,
     firstCheckinAt: '2024-01-15T08:30:00.000Z',
+    checkInCount: 2,
+    themeColor: '#FCDD84',
     createdAt: '2024-01-15T10:30:00.000Z',
     updatedAt: '2024-01-20T15:45:00.000Z',
     user: {

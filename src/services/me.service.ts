@@ -54,7 +54,7 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       throw new Error('Failed to fetch practices');
     }
 
-    // Transform to match MyPracticeItem interface (基於新的 DB schema)
+    // Transform to match MyPracticeItem interface (排除 user, stats, checkIns)
     const practices: MyPracticeItem[] = result.data.map(practice => ({
       id: practice.id,
       title: practice.title,
@@ -64,7 +64,6 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       durationDays: practice.durationDays,
       frequencyMinDays: practice.frequencyMinDays,
       frequencyMaxDays: practice.frequencyMaxDays,
-      frequencyDescription: practice.frequencyDescription,
       sessionDurationMinutes: practice.sessionDurationMinutes,
       practiceTimePeriods: practice.practiceTimePeriods,
       otherContext: practice.otherContext,
@@ -72,6 +71,8 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       hasResources: practice.hasResources,
       progressPercentage: practice.progressPercentage,
       firstCheckinAt: practice.firstCheckinAt,
+      checkInCount: practice.checkInCount,
+      themeColor: practice.themeColor,
       createdAt: practice.createdAt,
       updatedAt: practice.updatedAt,
       tags: practice.tags

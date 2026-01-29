@@ -264,10 +264,6 @@ export const myPracticeItemSchema = z.object({
     minimum: 1,
     maximum: 7
   }),
-  frequencyDescription: z.string().optional().openapi({
-    description: "頻率描述",
-    example: "每週3-5次"
-  }),
   sessionDurationMinutes: z.number().int().min(5).max(240).optional().openapi({
     description: "每次練習時長 (分鐘)",
     example: 30,
@@ -300,6 +296,14 @@ export const myPracticeItemSchema = z.object({
     description: "首次打卡時間",
     example: "2024-01-16T08:30:00.000Z",
     format: 'date-time'
+  }),
+  checkInCount: z.number().int().min(0).openapi({
+    description: "已打卡次數",
+    example: 5
+  }),
+  themeColor: z.string().optional().openapi({
+    description: "主題色（HEX 格式）",
+    example: "#FCDD84"
   }),
   createdAt: z.string().datetime().openapi({
     description: "創建時間",

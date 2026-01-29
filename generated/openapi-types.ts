@@ -21259,7 +21259,6 @@ export interface components {
          *       "durationDays": 14,
          *       "frequencyMinDays": 4,
          *       "frequencyMaxDays": 7,
-         *       "frequencyDescription": "每週 4-7 天",
          *       "sessionDurationMinutes": 30,
          *       "practiceTimePeriods": [
          *         "morning",
@@ -21269,6 +21268,8 @@ export interface components {
          *       "hasResources": false,
          *       "progressPercentage": 50,
          *       "firstCheckinAt": "2024-01-15T08:30:00.000Z",
+         *       "checkInCount": 2,
+         *       "themeColor": "#FCDD84",
          *       "createdAt": "2024-01-15T10:30:00.000Z",
          *       "updatedAt": "2024-01-20T15:45:00.000Z",
          *       "user": {
@@ -21344,11 +21345,6 @@ export interface components {
              */
             frequencyMaxDays?: number;
             /**
-             * @description 頻率描述
-             * @example 每週 4-7 天
-             */
-            frequencyDescription?: string;
-            /**
              * @description 每次實踐時長（分鐘）
              * @example 30
              */
@@ -21389,6 +21385,16 @@ export interface components {
              * @description 首次打卡時間
              */
             firstCheckinAt?: string;
+            /**
+             * @description 已打卡次數
+             * @example 2
+             */
+            checkInCount: number;
+            /**
+             * @description 主題色（HEX 格式）
+             * @example #FCDD84
+             */
+            themeColor?: string;
             /**
              * Format: date-time
              * @description 創建時間
@@ -23074,11 +23080,6 @@ export interface components {
              */
             frequencyMaxDays?: number;
             /**
-             * @description 頻率描述
-             * @example 每週3-5次
-             */
-            frequencyDescription?: string;
-            /**
              * @description 每次練習時長 (分鐘)
              * @example 30
              */
@@ -23118,6 +23119,16 @@ export interface components {
              * @example 2024-01-16T08:30:00.000Z
              */
             firstCheckinAt?: string;
+            /**
+             * @description 已打卡次數
+             * @example 5
+             */
+            checkInCount: number;
+            /**
+             * @description 主題色（HEX 格式）
+             * @example #FCDD84
+             */
+            themeColor?: string;
             /**
              * Format: date-time
              * @description 創建時間

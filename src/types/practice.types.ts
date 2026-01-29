@@ -54,7 +54,6 @@ export interface PracticeEntity {
   durationDays?: number;
   frequencyMinDays?: number;
   frequencyMaxDays?: number;
-  frequencyDescription?: string;
   sessionDurationMinutes?: number;
   practiceTimePeriods: string[];
   otherContext?: string;
@@ -62,6 +61,8 @@ export interface PracticeEntity {
   hasResources: boolean;
   progressPercentage?: number;
   firstCheckinAt?: string;
+  checkInCount: number;
+  themeColor?: string;
   createdAt: string;
   updatedAt?: string;
   user: UserSimpleInfo;
