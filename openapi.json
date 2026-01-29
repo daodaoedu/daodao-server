@@ -8315,40 +8315,63 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid",
-            "description": "模板 ID"
+            "description": "模板 ID（UUID 或預設模板 ID）",
+            "example": "tpl-reading-daily"
           },
           "title": {
             "type": "string",
             "description": "模板標題",
             "example": "每日閱讀 30 分鐘"
           },
-          "description": {
+          "practiceAction": {
             "type": "string",
-            "description": "模板描述"
+            "description": "具體實踐行動描述",
+            "example": "閱讀"
           },
-          "category": {
-            "type": "string",
-            "description": "模板分類",
-            "example": "reading"
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "模板分類列表",
+            "example": [
+              "reading"
+            ]
           },
           "frequencyMinDays": {
             "type": "integer",
-            "minimum": 1,
-            "description": "最低打卡頻率",
+            "nullable": true,
+            "description": "每週最低打卡天數",
             "example": 1
           },
           "frequencyMaxDays": {
             "type": "integer",
-            "minimum": 1,
-            "description": "最高打卡頻率",
-            "example": 3
+            "nullable": true,
+            "description": "每週最高打卡天數",
+            "example": 2
           },
           "durationDays": {
             "type": "integer",
-            "minimum": 1,
+            "nullable": true,
             "description": "建議持續天數",
             "example": 30
+          },
+          "sessionDurationMinutes": {
+            "type": "integer",
+            "nullable": true,
+            "description": "每次實踐時長（分鐘）",
+            "example": 30
+          },
+          "practiceTimePeriods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "建議實踐時段",
+            "example": [
+              "morning",
+              "evening"
+            ]
           },
           "suggestedTags": {
             "type": "array",
@@ -8358,26 +8381,178 @@
             "description": "建議標籤",
             "example": [
               "閱讀",
-              "習慣養成"
+              "習慣養成",
+              "自我成長"
             ]
           },
           "createdAt": {
             "type": "string",
-            "format": "date-time",
-            "description": "建立時間"
+            "description": "建立時間",
+            "example": "2024-01-15T10:30:00.000Z"
           }
         },
         "required": [
           "id",
           "title",
-          "category",
+          "categories",
           "frequencyMinDays",
           "frequencyMaxDays",
           "durationDays",
+          "sessionDurationMinutes",
+          "practiceTimePeriods",
           "suggestedTags",
           "createdAt"
         ],
-        "description": "實踐模板"
+        "description": "實踐模板",
+        "example": {
+          "id": "tpl-reading-daily",
+          "title": "每日閱讀 30 分鐘",
+          "practiceAction": "閱讀",
+          "categories": [
+            "reading"
+          ],
+          "frequencyMinDays": 1,
+          "frequencyMaxDays": 2,
+          "durationDays": 30,
+          "sessionDurationMinutes": 30,
+          "practiceTimePeriods": [
+            "morning",
+            "evening"
+          ],
+          "suggestedTags": [
+            "閱讀",
+            "習慣養成",
+            "自我成長"
+          ],
+          "createdAt": "2024-01-15T10:30:00.000Z"
+        }
+      },
+      "CreatePracticeTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "模板標題",
+            "example": "每日閱讀 30 分鐘"
+          },
+          "practiceAction": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "具體實踐行動描述",
+            "example": "閱讀"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "maxItems": 5,
+            "default": [],
+            "description": "模板分類列表",
+            "example": [
+              "reading"
+            ]
+          },
+          "frequencyMinDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "每週最低打卡天數",
+            "example": 1
+          },
+          "frequencyMaxDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "每週最高打卡天數",
+            "example": 2
+          },
+          "durationDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365,
+            "description": "建議持續天數",
+            "example": 30
+          },
+          "sessionDurationMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 480,
+            "description": "每次實踐時長（分鐘）",
+            "example": 30
+          },
+          "practiceTimePeriods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "morning",
+                "afternoon",
+                "evening",
+                "night"
+              ],
+              "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+              "example": "morning",
+              "examples": [
+                "morning",
+                "afternoon",
+                "evening",
+                "night"
+              ]
+            },
+            "maxItems": 4,
+            "default": [],
+            "description": "建議實踐時段",
+            "example": [
+              "morning",
+              "evening"
+            ]
+          },
+          "suggestedTags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "maxItems": 10,
+            "default": [],
+            "description": "建議標籤",
+            "example": [
+              "閱讀",
+              "習慣養成",
+              "自我成長"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "description": "創建實踐模板的請求資料",
+        "example": {
+          "title": "每日閱讀 30 分鐘",
+          "practiceAction": "閱讀",
+          "categories": [
+            "reading"
+          ],
+          "frequencyMinDays": 1,
+          "frequencyMaxDays": 2,
+          "durationDays": 30,
+          "sessionDurationMinutes": 30,
+          "practiceTimePeriods": [
+            "morning",
+            "evening"
+          ],
+          "suggestedTags": [
+            "閱讀",
+            "習慣養成",
+            "自我成長"
+          ]
+        }
       },
       "Encouragement": {
         "type": "object",
@@ -11288,6 +11463,20 @@
           "loginCount",
           "profileViews",
           "recentLoginCount"
+        ],
+        "description": "The main response data"
+      },
+      "DeleteTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "description": "是否成功刪除",
+            "example": true
+          }
+        },
+        "required": [
+          "deleted"
         ],
         "description": "The main response data"
       }
@@ -37632,6 +37821,1261 @@
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/practices/templates": {
+      "get": {
+        "tags": [
+          "Practice Templates"
+        ],
+        "summary": "取得實踐模板列表",
+        "description": "取得可用的實踐模板列表，支援分頁、分類過濾和搜尋。模板提供預設的實踐配置供用戶參考。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "default": 1,
+              "description": "頁碼",
+              "example": 1
+            },
+            "required": false,
+            "description": "頁碼",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "每頁數量",
+              "example": 20
+            },
+            "required": false,
+            "description": "每頁數量",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "模板分類",
+              "example": "reading",
+              "examples": [
+                "reading",
+                "learning",
+                "fitness",
+                "meditation",
+                "writing",
+                "coding",
+                "language"
+              ]
+            },
+            "required": false,
+            "description": "模板分類",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "搜尋關鍵字",
+              "example": "閱讀"
+            },
+            "required": false,
+            "description": "搜尋關鍵字",
+            "name": "search",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取模板列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PracticeTemplate"
+                      },
+                      "description": "Array of paginated data items"
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "currentPage": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "description": "Current page number (1-based)"
+                        },
+                        "totalPages": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total number of pages"
+                        },
+                        "totalItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total number of items across all pages"
+                        },
+                        "itemsPerPage": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "description": "Number of items per page"
+                        },
+                        "hasNext": {
+                          "type": "boolean",
+                          "description": "Whether there are more pages after current page"
+                        },
+                        "hasPrev": {
+                          "type": "boolean",
+                          "description": "Whether there are pages before current page"
+                        }
+                      },
+                      "required": [
+                        "currentPage",
+                        "totalPages",
+                        "totalItems",
+                        "itemsPerPage",
+                        "hasNext",
+                        "hasPrev"
+                      ],
+                      "description": "Pagination information",
+                      "examples": [
+                        {
+                          "currentPage": 1,
+                          "totalPages": 5,
+                          "totalItems": 50,
+                          "itemsPerPage": 10,
+                          "hasNext": true,
+                          "hasPrev": false
+                        },
+                        {
+                          "currentPage": 3,
+                          "totalPages": 8,
+                          "totalItems": 156,
+                          "itemsPerPage": 20,
+                          "hasNext": true,
+                          "hasPrev": true
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "pagination",
+                    "timestamp"
+                  ],
+                  "description": "Paginated response format for page-based pagination",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": 1,
+                          "title": "React 入門教程",
+                          "category": "前端開發",
+                          "createdAt": "2024-01-10T10:00:00Z"
+                        },
+                        {
+                          "id": 2,
+                          "title": "Vue.js 進階指南",
+                          "category": "前端開發",
+                          "createdAt": "2024-01-11T10:00:00Z"
+                        }
+                      ],
+                      "pagination": {
+                        "currentPage": 1,
+                        "totalPages": 5,
+                        "totalItems": 50,
+                        "itemsPerPage": 10,
+                        "hasNext": true,
+                        "hasPrev": false
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "searchTime": 45,
+                        "cacheHit": false,
+                        "categoryCounts": {
+                          "前端開發": 25,
+                          "後端開發": 18,
+                          "資料科學": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Practice Templates"
+        ],
+        "summary": "創建實踐模板",
+        "description": "創建新的實踐模板。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePracticeTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "模板創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PracticeTemplate"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/practices/templates/categories": {
+      "get": {
+        "tags": [
+          "Practice Templates"
+        ],
+        "summary": "取得模板分類列表",
+        "description": "取得所有可用的實踐模板分類，用於前端篩選功能。",
+        "responses": {
+          "200": {
+            "description": "成功獲取分類列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "The main response data",
+                      "example": [
+                        "reading",
+                        "learning",
+                        "fitness",
+                        "meditation",
+                        "writing",
+                        "coding",
+                        "language"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/practices/templates/{id}": {
+      "get": {
+        "tags": [
+          "Practice Templates"
+        ],
+        "summary": "取得單一實踐模板",
+        "description": "根據模板 ID 取得單一實踐模板的詳細資訊。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "模板 ID（UUID 或預設模板 ID）",
+              "example": "tpl-reading-daily"
+            },
+            "required": true,
+            "description": "模板 ID（UUID 或預設模板 ID）",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取模板詳情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PracticeTemplate"
+                        },
+                        {
+                          "nullable": true,
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Practice Templates"
+        ],
+        "summary": "更新實踐模板",
+        "description": "更新指定實踐模板的資訊。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "模板 ID（UUID 或預設模板 ID）",
+              "example": "tpl-reading-daily"
+            },
+            "required": true,
+            "description": "模板 ID（UUID 或預設模板 ID）",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "模板標題",
+                    "example": "每日閱讀 30 分鐘"
+                  },
+                  "practiceAction": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "具體實踐行動描述",
+                    "example": "閱讀"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 50
+                    },
+                    "maxItems": 5,
+                    "description": "模板分類列表",
+                    "example": [
+                      "reading"
+                    ]
+                  },
+                  "frequencyMinDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 7,
+                    "description": "每週最低打卡天數",
+                    "example": 1
+                  },
+                  "frequencyMaxDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 7,
+                    "description": "每週最高打卡天數",
+                    "example": 2
+                  },
+                  "durationDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "description": "建議持續天數",
+                    "example": 30
+                  },
+                  "sessionDurationMinutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 480,
+                    "description": "每次實踐時長（分鐘）",
+                    "example": 30
+                  },
+                  "practiceTimePeriods": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night"
+                      ],
+                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+                      "example": "morning",
+                      "examples": [
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night"
+                      ]
+                    },
+                    "maxItems": 4,
+                    "description": "建議實踐時段",
+                    "example": [
+                      "morning",
+                      "evening"
+                    ]
+                  },
+                  "suggestedTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 50
+                    },
+                    "maxItems": 10,
+                    "description": "建議標籤",
+                    "example": [
+                      "閱讀",
+                      "習慣養成",
+                      "自我成長"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "模板更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PracticeTemplate"
+                        },
+                        {
+                          "nullable": true,
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Practice Templates"
+        ],
+        "summary": "刪除實踐模板",
+        "description": "刪除指定的實踐模板。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "模板 ID（UUID 或預設模板 ID）",
+              "example": "tpl-reading-daily"
+            },
+            "required": true,
+            "description": "模板 ID（UUID 或預設模板 ID）",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "模板刪除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteTemplateResponse"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"

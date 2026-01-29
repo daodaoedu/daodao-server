@@ -23,11 +23,15 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { z } from 'zod';
 import {
   MePracticesQueryParams,
   PracticeStatsQueryParams,
   ResourcesQueryParams,
-  PreferencesQueryParams
+  PreferencesQueryParams,
+  myResourcesApiResponseSchema,
+  myPreferencesApiResponseSchema,
+  updatePreferencesApiResponseSchema
 } from '../validators/me.validators';
 
 /**
@@ -92,7 +96,7 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
 
   } catch (error) {
     loggerService.error('Failed to get user practices', { userId, error });
-    throw new Error('獲取個人實踐列表失敗');
+    throw error;
   }
 };
 
@@ -146,17 +150,19 @@ const getMyPracticeStats = async (userId: number, params: PracticeStatsQueryPara
 
   } catch (error) {
     loggerService.error('Failed to get user practice stats', { userId, error });
-    throw new Error('獲取實踐統計失敗');
+    throw error;
   }
 };
 
 /**
  * Get user's personal resource drafts
  */
-const getMyResources = async (userId: number, params: ResourcesQueryParams): Promise<PaginatedApiResponse<MyResourceItem>> => {
+type MyResourcesApiResponse = z.infer<typeof myResourcesApiResponseSchema>;
+
+const getMyResources = async (userId: number, params: ResourcesQueryParams): Promise<MyResourcesApiResponse> => {
   try {
     const { page, limit, category, type, status, search, sortBy, sortOrder, tags } = params;
-    
+
     // Use existing resource service
     const result = await resourceService.getResources(
       {
@@ -202,25 +208,28 @@ const getMyResources = async (userId: number, params: ResourcesQueryParams): Pro
 
     loggerService.info('User resources retrieved', { userId, count: myResources.length });
 
-    return createPaginatedResponse(
-      myResources,
-      paginationInfo,
-      {
-        stats,
-        filters: params
-      }
-    );
+    // Return response with stats at top level (matching myResourcesApiResponseSchema)
+    return {
+      success: true as const,
+      data: myResources,
+      pagination: paginationInfo,
+      stats,
+      timestamp: new Date().toISOString(),
+      meta: { filters: params }
+    };
 
   } catch (error) {
     loggerService.error('Failed to get user resources', { userId, error });
-    throw new Error('獲取個人資源失敗');
+    throw error;
   }
 };
 
 /**
  * Get user's preferences
  */
-const getMyPreferences = async (userId: number, _params: PreferencesQueryParams): Promise<ApiSuccessResponse<{ preferences: UserPreference[]; categories: unknown[] }>> => {
+type MyPreferencesApiResponse = z.infer<typeof myPreferencesApiResponseSchema>;
+
+const getMyPreferences = async (userId: number, _params: PreferencesQueryParams): Promise<MyPreferencesApiResponse> => {
   try {
     const where: Record<string, unknown> = { user_id: userId };
 
@@ -278,31 +287,42 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
 
     const categories = Array.from(categoriesMap.values());
 
+    // Get last updated timestamp
+    const lastUpdated = userPreferences.length > 0 && userPreferences[0].updated_at
+      ? userPreferences[0].updated_at.toISOString()
+      : undefined;
+
     const stats = {
       totalPreferences: preferences.length,
       activeSelections: preferences.filter(p => p.isSelected).length,
-      lastUpdated: undefined
+      lastUpdated
     };
 
     loggerService.info('User preferences retrieved', { userId, count: preferences.length });
 
-    return createSuccessResponse(
-      { preferences, categories },
-      { stats }
-    );
+    // Return response with stats at top level (matching myPreferencesApiResponseSchema)
+    return {
+      success: true as const,
+      data: { preferences, categories },
+      stats,
+      timestamp: new Date().toISOString()
+    };
 
   } catch (error) {
     loggerService.error('Failed to get user preferences', { userId, error });
-    throw new Error('獲取個人偏好設定失敗');
+    throw error;
   }
 };
 
 /**
  * Update user preferences
  */
-const updateMyPreferences = async (userId: number, request: { preferences: Array<{ preferenceTypeId: number; optionId: number; isSelected: boolean }> }): Promise<ApiSuccessResponse<{ processed: number; deleted: number }>> => {
+type UpdatePreferencesApiResponse = z.infer<typeof updatePreferencesApiResponseSchema>;
+
+const updateMyPreferences = async (userId: number, request: { preferences: Array<{ preferenceTypeId: number; optionId: number; isSelected: boolean }> }): Promise<UpdatePreferencesApiResponse> => {
   try {
-    let processed = 0;
+    let updated = 0;
+    let created = 0;
     let deleted = 0;
 
     // Process each preference update
@@ -325,6 +345,7 @@ const updateMyPreferences = async (userId: number, request: { preferences: Array
               updated_at: new Date()
             }
           });
+          updated++;
         } else {
           // Create new preference
           await prisma.user_preferences.create({
@@ -335,9 +356,8 @@ const updateMyPreferences = async (userId: number, request: { preferences: Array
               access_count: 0
             }
           });
+          created++;
         }
-
-        processed++;
       } else {
         // Delete preference if not selected
         const deleteResult = await prisma.user_preferences.deleteMany({
@@ -350,22 +370,24 @@ const updateMyPreferences = async (userId: number, request: { preferences: Array
       }
     }
 
-    loggerService.info('User preferences updated', { 
-      userId, 
-      processed, 
-      deleted 
+    loggerService.info('User preferences updated', {
+      userId,
+      updated,
+      created,
+      deleted
     });
 
-    return createSuccessResponse(
-      { processed, deleted },
-      {
-        message: `偏好設定已更新：處理 ${processed} 項，刪除 ${deleted} 項`
-      }
-    );
+    // Return response with message at top level (matching updatePreferencesApiResponseSchema)
+    return {
+      success: true as const,
+      data: { updated, created, deleted },
+      message: `偏好設定已更新：更新 ${updated} 項，新增 ${created} 項，刪除 ${deleted} 項`,
+      timestamp: new Date().toISOString()
+    };
 
   } catch (error) {
     loggerService.error('Failed to update user preferences', { userId, error });
-    throw new Error('更新個人偏好設定失敗');
+    throw error;
   }
 };
 

@@ -1406,7 +1406,7 @@ const getUserPreferences = async (userId: number, _params: PreferencesQueryParam
     });
 
   } catch (error) {
-    throw new Error('獲取個人偏好設定失敗');
+    throw error;
   }
 };
 

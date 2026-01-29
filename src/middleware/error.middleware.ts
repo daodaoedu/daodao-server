@@ -178,6 +178,10 @@ export const globalErrorHandler = (
       }
     }
   }
+  // 處理其他 Error（保留原始訊息）
+  else if (error instanceof Error && error.message) {
+    message = error.message;
+  }
 
   // 開發環境下記錄完整錯誤
   if (process.env.NODE_ENV === 'dev') {

@@ -163,7 +163,8 @@ export function categorizePrismaError(error: unknown): {
   // 處理 Prisma 已知請求錯誤
   if (isPrismaKnownRequestError(error)) {
     const mapping = getPrismaErrorMapping(error.code);
-    
+    const hasMapping = PRISMA_ERROR_MAPPINGS[error.code] !== undefined;
+
     // 特殊處理唯一約束錯誤，提取欄位資訊
     if (error.code === 'P2002' && error.meta?.target) {
       const fields = Array.isArray(error.meta.target) ? error.meta.target : [error.meta.target];
@@ -179,7 +180,7 @@ export function categorizePrismaError(error: unknown): {
         }
       };
     }
-    
+
     // 特殊處理外鍵約束錯誤
     if (error.code === 'P2003' && error.meta?.field_name) {
       return {
@@ -193,7 +194,18 @@ export function categorizePrismaError(error: unknown): {
         }
       };
     }
-    
+
+    // 未映射的錯誤碼，返回原始錯誤訊息
+    if (!hasMapping) {
+      return {
+        statusCode: 500,
+        message: error.message,
+        errorCode: `PRISMA_${error.code}`,
+        errorType: 'database_error',
+        details: error.meta ? error.meta as Record<string, string> : undefined
+      };
+    }
+
     return {
       statusCode: mapping.httpStatusCode,
       message: mapping.message,
