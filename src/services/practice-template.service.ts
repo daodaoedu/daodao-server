@@ -50,6 +50,14 @@ export interface TemplateQueryParams {
 }
 
 /**
+ * 隨機模板查詢參數
+ */
+export interface RandomTemplateQueryParams {
+  count?: number;
+  category?: string;
+}
+
+/**
  * 預設模板（當資料庫無資料時使用）
  */
 const DEFAULT_TEMPLATES: Omit<PracticeTemplateEntity, 'createdAt'>[] = [
@@ -200,13 +208,6 @@ export async function getTemplates(
                 select: { name: true }
               }
             }
-          },
-          practice_template_tags: {
-            include: {
-              tags: {
-                select: { name: true }
-              }
-            }
           }
         }
       }),
@@ -214,6 +215,24 @@ export async function getTemplates(
     ]);
 
     if (templates.length > 0) {
+      // 查詢所有模板的標籤
+      const templateIds = templates.map(t => t.id);
+      const templateTags = await prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice_template',
+          entity_id: { in: templateIds }
+        },
+        include: { tags: { select: { name: true } } }
+      });
+
+      // 建立 templateId -> tagNames 的映射
+      const tagsByTemplateId = new Map<number, string[]>();
+      for (const et of templateTags) {
+        const existing = tagsByTemplateId.get(et.entity_id) || [];
+        existing.push(et.tags.name);
+        tagsByTemplateId.set(et.entity_id, existing);
+      }
+
       const entities: PracticeTemplateEntity[] = templates.map(t => ({
         id: t.external_id || String(t.id),
         title: t.title,
@@ -224,7 +243,7 @@ export async function getTemplates(
         durationDays: t.duration_days,
         sessionDurationMinutes: t.session_duration_minutes,
         practiceTimePeriods: t.practice_time_periods || [],
-        suggestedTags: t.practice_template_tags.map(pt => pt.tags.name),
+        suggestedTags: tagsByTemplateId.get(t.id) || [],
         createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 
@@ -284,18 +303,20 @@ export async function getTemplateById(
               select: { name: true }
             }
           }
-        },
-        practice_template_tags: {
-          include: {
-            tags: {
-              select: { name: true }
-            }
-          }
         }
       }
     });
 
     if (template) {
+      // 查詢模板的標籤
+      const templateTags = await prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice_template',
+          entity_id: template.id
+        },
+        include: { tags: { select: { name: true } } }
+      });
+
       return createSuccessResponse({
         id: template.external_id || String(template.id),
         title: template.title,
@@ -306,7 +327,7 @@ export async function getTemplateById(
         durationDays: template.duration_days,
         sessionDurationMinutes: template.session_duration_minutes,
         practiceTimePeriods: template.practice_time_periods || [],
-        suggestedTags: template.practice_template_tags.map(pt => pt.tags.name),
+        suggestedTags: templateTags.map(et => et.tags.name),
         createdAt: template.created_at?.toISOString() || new Date().toISOString()
       });
     }
@@ -353,6 +374,120 @@ export async function getTemplateCategories(): Promise<ApiSuccessResponse<string
   const allCategories = DEFAULT_TEMPLATES.flatMap(t => t.categories);
   const uniqueCategories = [...new Set(allCategories)];
   return createSuccessResponse(uniqueCategories);
+}
+
+/**
+ * Fisher-Yates shuffle 演算法
+ * 將陣列元素隨機打亂
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
+ * 隨機取得實踐模板
+ */
+export async function getRandomTemplates(
+  params: RandomTemplateQueryParams = {}
+): Promise<ApiSuccessResponse<PracticeTemplateEntity[]>> {
+  const count = params.count ?? 3;
+  const { category } = params;
+
+  try {
+    // 基本查詢條件
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {};
+
+    // 如果有分類過濾，透過關聯表查詢
+    if (category) {
+      where.practice_template_categories = {
+        some: {
+          content_categories: {
+            name: category
+          }
+        }
+      };
+    }
+
+    // 從資料庫取得所有符合條件的模板
+    const templates = await prismaClient.practice_templates.findMany({
+      where,
+      include: {
+        practice_template_categories: {
+          include: {
+            content_categories: {
+              select: { name: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (templates.length > 0) {
+      // 查詢所有模板的標籤
+      const templateIds = templates.map(t => t.id);
+      const templateTags = await prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice_template',
+          entity_id: { in: templateIds }
+        },
+        include: { tags: { select: { name: true } } }
+      });
+
+      // 建立 templateId -> tagNames 的映射
+      const tagsByTemplateId = new Map<number, string[]>();
+      for (const et of templateTags) {
+        const existing = tagsByTemplateId.get(et.entity_id) || [];
+        existing.push(et.tags.name);
+        tagsByTemplateId.set(et.entity_id, existing);
+      }
+
+      const entities: PracticeTemplateEntity[] = templates.map(t => ({
+        id: t.external_id || String(t.id),
+        title: t.title,
+        practiceAction: t.practice_action || undefined,
+        categories: t.practice_template_categories.map(c => c.content_categories.name),
+        frequencyMinDays: t.frequency_min_days,
+        frequencyMaxDays: t.frequency_max_days,
+        durationDays: t.duration_days,
+        sessionDurationMinutes: t.session_duration_minutes,
+        practiceTimePeriods: t.practice_time_periods || [],
+        suggestedTags: tagsByTemplateId.get(t.id) || [],
+        createdAt: t.created_at?.toISOString() || new Date().toISOString()
+      }));
+
+      // 隨機打亂並選取指定數量
+      const shuffled = shuffleArray(entities);
+      const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+
+      return createSuccessResponse(selected);
+    }
+  } catch (error) {
+    loggerService.warn('Failed to get random templates from database, falling back to defaults', { params, error });
+  }
+
+  // 使用預設模板作為備援
+  let filteredTemplates = [...DEFAULT_TEMPLATES];
+
+  if (category) {
+    filteredTemplates = filteredTemplates.filter(t => t.categories.includes(category));
+  }
+
+  // 隨機打亂並選取指定數量
+  const shuffled = shuffleArray(filteredTemplates);
+  const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+
+  const entities: PracticeTemplateEntity[] = selected.map(t => ({
+    ...t,
+    createdAt: new Date().toISOString()
+  }));
+
+  return createSuccessResponse(entities);
 }
 
 /**
@@ -434,16 +569,17 @@ export async function createTemplate(
       });
     }
 
-    // 處理標籤關聯 - 使用 upsert 避免競爭條件
+    // 處理標籤關聯 - 使用 entity_tags 表
     for (const tagName of suggestedTags) {
       const tag = await tx.tags.upsert({
         where: { name: tagName },
         create: { name: tagName },
         update: {}
       });
-      await tx.practice_template_tags.create({
+      await tx.entity_tags.create({
         data: {
-          template_id: newTemplate.id,
+          entity_type: 'practice_template',
+          entity_id: newTemplate.id,
           tag_id: tag.id
         }
       });
@@ -543,11 +679,14 @@ export async function updateTemplate(
       }
     }
 
-    // 更新標籤關聯
+    // 更新標籤關聯 - 使用 entity_tags 表
     if (suggestedTags !== undefined) {
       // 刪除舊關聯
-      await tx.practice_template_tags.deleteMany({
-        where: { template_id: existingTemplate.id }
+      await tx.entity_tags.deleteMany({
+        where: {
+          entity_type: 'practice_template',
+          entity_id: existingTemplate.id
+        }
       });
 
       // 創建新關聯 - 使用 upsert 避免競爭條件
@@ -557,9 +696,10 @@ export async function updateTemplate(
           create: { name: tagName },
           update: {}
         });
-        await tx.practice_template_tags.create({
+        await tx.entity_tags.create({
           data: {
-            template_id: existingTemplate.id,
+            entity_type: 'practice_template',
+            entity_id: existingTemplate.id,
             tag_id: tag.id
           }
         });
@@ -600,8 +740,11 @@ export async function deleteTemplate(
     prismaClient.practice_template_categories.deleteMany({
       where: { template_id: existingTemplate.id }
     }),
-    prismaClient.practice_template_tags.deleteMany({
-      where: { template_id: existingTemplate.id }
+    prismaClient.entity_tags.deleteMany({
+      where: {
+        entity_type: 'practice_template',
+        entity_id: existingTemplate.id
+      }
     }),
     prismaClient.practice_templates.delete({
       where: { id: existingTemplate.id }

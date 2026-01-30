@@ -206,7 +206,8 @@ export function validateCheckInDate(
   timezone: string = DEFAULT_TIMEZONE
 ): ValidationResult {
   const checkin = moment.tz(checkInDate, timezone).startOf('day');
-  const start = moment.tz(practiceStartDate, timezone).startOf('day');
+  // practiceStartDate 保留供未來驗證使用
+  void practiceStartDate;
   const end = moment.tz(practiceEndDate, timezone).startOf('day');
 
   if (!checkin.isValid()) {

@@ -1106,12 +1106,33 @@ export const checkInWithEncouragementResponseSchema = checkInEntityResponseSchem
 // 註冊 CheckInWithEncouragement
 registry.register('CheckInWithEncouragement', checkInWithEncouragementResponseSchema);
 
+// ===== Random Template Schemas =====
+
+// 隨機模板查詢參數
+export const randomTemplateQuerySchema = z.object({
+  count: z.coerce.number().int().min(1).max(20).default(3).openapi({
+    description: '要隨機獲取的模板數量',
+    example: 3
+  }),
+  category: z.string().optional().openapi({
+    description: '可選的分類過濾',
+    example: 'reading',
+    examples: ['reading', 'learning', 'fitness', 'meditation', 'writing', 'coding', 'language']
+  })
+}).openapi('RandomTemplateQuery', {
+  description: '隨機模板查詢參數'
+});
+
+// 隨機模板 API 回應
+export const randomTemplatesApiResponseSchema = apiSuccessResponseSchema(z.array(practiceTemplateResponseSchema));
+
 // 驗證函數
 export const validatePracticeTemplateQuery = (data: unknown) => practiceTemplateQuerySchema.parse(data);
 export const validatePracticeTemplateParams = (data: unknown) => practiceTemplateParamsSchema.parse(data);
 export const validateCreatePracticeTemplate = (data: unknown) => createPracticeTemplateSchema.parse(data);
 export const validateUpdatePracticeTemplate = (data: unknown) => updatePracticeTemplateSchema.parse(data);
 export const validateTagPromptQuery = (data: unknown) => tagPromptQuerySchema.parse(data);
+export const validateRandomTemplateQuery = (data: unknown): RandomTemplateQuery => randomTemplateQuerySchema.parse(data);
 
 // 類型導出
 export type PracticeTemplateQuery = z.infer<typeof practiceTemplateQuerySchema>;
@@ -1125,6 +1146,7 @@ export type EncouragementResponse = z.infer<typeof encouragementResponseSchema>;
 export type TagPromptQuery = z.infer<typeof tagPromptQuerySchema>;
 export type TagPromptResponse = z.infer<typeof tagPromptResponseSchema>;
 export type CheckInWithEncouragementResponse = z.infer<typeof checkInWithEncouragementResponseSchema>;
+export type RandomTemplateQuery = z.infer<typeof randomTemplateQuerySchema>;
 
 // ===== API Response Schemas =====
 
@@ -1205,6 +1227,8 @@ export const practiceValidators = {
   createPracticeTemplateApiResponseSchema,
   updatePracticeTemplateApiResponseSchema,
   deletePracticeTemplateApiResponseSchema,
+  randomTemplateQuerySchema,
+  randomTemplatesApiResponseSchema,
   encouragementResponseSchema,
   tagPromptQuerySchema,
   tagPromptResponseSchema,

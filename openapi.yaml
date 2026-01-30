@@ -25038,6 +25038,130 @@ paths:
                       processingTime: 23.1
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/practices/templates/random:
+    get:
+      tags:
+        - Practice Templates
+      summary: 隨機取得實踐模板
+      description: 隨機取得指定數量的實踐模板，可選擇按分類過濾。適用於為用戶推薦模板。
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 3
+            description: 要隨機獲取的模板數量
+            example: 3
+          required: false
+          description: 要隨機獲取的模板數量
+          name: count
+          in: query
+        - schema:
+            type: string
+            description: 可選的分類過濾
+            example: reading
+            examples:
+              - reading
+              - learning
+              - fitness
+              - meditation
+              - writing
+              - coding
+              - language
+          required: false
+          description: 可選的分類過濾
+          name: category
+          in: query
+      responses:
+        '200':
+          description: 成功獲取隨機模板
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PracticeTemplate'
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/practices/templates/{id}:
     get:
       tags:

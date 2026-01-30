@@ -99,6 +99,7 @@ export function isValidEmail(email: string): boolean {
 export function stripControlCharacters(input: string): string {
   if (!input) return '';
   // 移除 ASCII 控制字元 (0x00-0x1F, 0x7F)，保留換行和 Tab
+  // eslint-disable-next-line no-control-regex
   return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 }
 

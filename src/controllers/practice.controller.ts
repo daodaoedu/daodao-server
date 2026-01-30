@@ -485,6 +485,20 @@ export class PracticeController {
   });
 
   /**
+   * 隨機取得實踐模板
+   * GET /api/v1/practices/templates/random
+   */
+  getRandomTemplates = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const params = {
+      count: parseInt(req.query.count as string) || 3,
+      category: req.query.category as string
+    };
+
+    const result = await practiceTemplateService.getRandomTemplates(params);
+    res.json(result);
+  });
+
+  /**
    * 取得模板分類列表
    * GET /api/v1/practices/templates/categories
    */

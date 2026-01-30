@@ -77,12 +77,34 @@ export const trackActivity = async (
     lastUpdateCache.set(userId, now);
 
     // 非同步更新資料庫（不阻塞請求）
-    prisma.users.update({
-      where: { id: userId },
-      data: { last_active_at: new Date() }
-    }).catch((error) => {
-      console.error('Failed to update last_active_at:', error);
-    });
+    // 透過 user_activity_stats 關聯更新
+    (async () => {
+      try {
+        const user = await prisma.users.findUnique({
+          where: { id: userId },
+          select: { activity_stats_id: true }
+        });
+
+        if (user?.activity_stats_id) {
+          // 更新現有的 activity_stats 記錄
+          await prisma.user_activity_stats.update({
+            where: { id: user.activity_stats_id },
+            data: { last_active_at: new Date() }
+          });
+        } else {
+          // 創建新的 activity_stats 記錄並關聯到用戶
+          const activityStats = await prisma.user_activity_stats.create({
+            data: { last_active_at: new Date() }
+          });
+          await prisma.users.update({
+            where: { id: userId },
+            data: { activity_stats_id: activityStats.id }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update last_active_at:', error);
+      }
+    })();
 
     next();
   } catch (error) {

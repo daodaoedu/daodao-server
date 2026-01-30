@@ -27,20 +27,15 @@ import {
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
 import {
-  INITIAL_PROGRESS,
-  calculateProgress,
-  calculateMinTargetCheckIns,
-  type PracticeProgressConfig
+  INITIAL_PROGRESS
 } from '../utils/practice-progress';
 import {
   determineNewStatus,
-  isValidTransition,
   canEdit,
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
-  validateUpdateFields,
-  LOCKED_FIELDS_AFTER_CHECKIN
+  validateUpdateFields
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 
