@@ -70,13 +70,15 @@ export async function getOverviewStats(): Promise<OverviewStats> {
         ? 100
         : 0;
 
-  // 活躍使用者數（使用 last_active_at 或 last_login_at 作為活躍度指標）
+  // 活躍使用者數（透過 user_activity_stats 關聯查詢）
   const activeUsers = await prisma.users.count({
     where: {
-      OR: [
-        { last_active_at: { gte: activeThreshold } },
-        { last_login_at: { gte: activeThreshold } }
-      ]
+      user_activity_stats: {
+        OR: [
+          { last_active_at: { gte: activeThreshold } },
+          { last_login_at: { gte: activeThreshold } }
+        ]
+      }
     }
   });
 
@@ -474,13 +476,15 @@ export async function getActivityStats(
 
   const activeThreshold = getDaysAgo(activeWithinDays as number);
 
-  // 活躍使用者數（使用 last_active_at 或 last_login_at）
+  // 活躍使用者數（透過 user_activity_stats 關聯查詢）
   const activeUsers = await prisma.users.count({
     where: {
-      OR: [
-        { last_active_at: { gte: activeThreshold } },
-        { last_login_at: { gte: activeThreshold } }
-      ]
+      user_activity_stats: {
+        OR: [
+          { last_active_at: { gte: activeThreshold } },
+          { last_login_at: { gte: activeThreshold } }
+        ]
+      }
     }
   });
 
@@ -503,10 +507,12 @@ export async function getActivityStats(
   // 如果有 groupBy，添加細分統計
   if (groupBy) {
     const activeWhere: Prisma.usersWhereInput = {
-      OR: [
-        { last_active_at: { gte: activeThreshold } },
-        { last_login_at: { gte: activeThreshold } }
-      ]
+      user_activity_stats: {
+        OR: [
+          { last_active_at: { gte: activeThreshold } },
+          { last_login_at: { gte: activeThreshold } }
+        ]
+      }
     };
 
     const breakdown: ActivityStats['breakdown'] = {};
@@ -537,7 +543,6 @@ export async function getActivityStats(
  * 獲取 DAU/WAU/MAU 統計
  */
 export async function getActiveUsersStats(): Promise<ActiveUsersStats> {
-  const now = new Date();
   const oneDayAgo = getDaysAgo(1);
   const oneWeekAgo = getDaysAgo(7);
   const oneMonthAgo = getDaysAgo(30);
@@ -794,15 +799,21 @@ export async function getPopularProfiles(query: PopularProfilesQuery): Promise<P
 
   const profiles = await prisma.users.findMany({
     where: {
-      profile_views: { gte: minViews as number },
+      user_activity_stats: {
+        profile_views: { gte: minViews as number }
+      },
       is_open_profile: true
     },
     select: {
       id: true,
       external_id: true,
       nickname: true,
-      profile_views: true,
-      last_active_at: true,
+      user_activity_stats: {
+        select: {
+          profile_views: true,
+          last_active_at: true
+        }
+      },
       contacts: {
         select: {
           photo_url: true
@@ -810,7 +821,9 @@ export async function getPopularProfiles(query: PopularProfilesQuery): Promise<P
       }
     },
     orderBy: {
-      profile_views: 'desc'
+      user_activity_stats: {
+        profile_views: 'desc'
+      }
     },
     take: limit as number,
     skip: offset as number
@@ -818,7 +831,9 @@ export async function getPopularProfiles(query: PopularProfilesQuery): Promise<P
 
   const totalCount = await prisma.users.count({
     where: {
-      profile_views: { gte: minViews as number },
+      user_activity_stats: {
+        profile_views: { gte: minViews as number }
+      },
       is_open_profile: true
     }
   });
@@ -829,8 +844,8 @@ export async function getPopularProfiles(query: PopularProfilesQuery): Promise<P
       externalId: p.external_id || '',
       nickname: p.nickname,
       photoUrl: p.contacts?.photo_url || null,
-      profileViews: p.profile_views || 0,
-      lastActiveAt: p.last_active_at ? formatDate(p.last_active_at) : null
+      profileViews: p.user_activity_stats?.profile_views || 0,
+      lastActiveAt: p.user_activity_stats?.last_active_at ? formatDate(p.user_activity_stats.last_active_at) : null
     })),
     totalCount
   };
@@ -846,7 +861,7 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
   const thirtyDaysAgo = getDaysAgo(30);
   const ninetyDaysAgo = getDaysAgo(90);
 
-  // 定義分類標準
+  // 定義分類標準（透過 user_activity_stats 關聯）
   const segments: Array<{
     label: UserActivityLabel;
     displayName: string;
@@ -860,10 +875,12 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
       description: '最近 3 天內有活動',
       criteria: 'last_active_at >= 3 days ago',
       where: {
-        OR: [
-          { last_active_at: { gte: threeDaysAgo } },
-          { last_login_at: { gte: threeDaysAgo } }
-        ]
+        user_activity_stats: {
+          OR: [
+            { last_active_at: { gte: threeDaysAgo } },
+            { last_login_at: { gte: threeDaysAgo } }
+          ]
+        }
       }
     },
     {
@@ -872,22 +889,16 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
       description: '最近 7 天內有活動',
       criteria: 'last_active_at >= 7 days ago',
       where: {
-        AND: [
-          {
-            OR: [
-              { last_active_at: { gte: sevenDaysAgo, lt: threeDaysAgo } },
-              { last_login_at: { gte: sevenDaysAgo, lt: threeDaysAgo } }
-            ]
-          },
-          {
-            NOT: {
+        user_activity_stats: {
+          AND: [
+            {
               OR: [
-                { last_active_at: { gte: threeDaysAgo } },
-                { last_login_at: { gte: threeDaysAgo } }
+                { last_active_at: { gte: sevenDaysAgo, lt: threeDaysAgo } },
+                { last_login_at: { gte: sevenDaysAgo, lt: threeDaysAgo } }
               ]
             }
-          }
-        ]
+          ]
+        }
       }
     },
     {
@@ -896,14 +907,12 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
       description: '最近 30 天內有活動',
       criteria: 'last_active_at >= 30 days ago',
       where: {
-        AND: [
-          {
-            OR: [
-              { last_active_at: { gte: thirtyDaysAgo, lt: sevenDaysAgo } },
-              { last_login_at: { gte: thirtyDaysAgo, lt: sevenDaysAgo } }
-            ]
-          }
-        ]
+        user_activity_stats: {
+          OR: [
+            { last_active_at: { gte: thirtyDaysAgo, lt: sevenDaysAgo } },
+            { last_login_at: { gte: thirtyDaysAgo, lt: sevenDaysAgo } }
+          ]
+        }
       }
     },
     {
@@ -912,14 +921,12 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
       description: '最近 90 天內有活動',
       criteria: 'last_active_at >= 90 days ago',
       where: {
-        AND: [
-          {
-            OR: [
-              { last_active_at: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } },
-              { last_login_at: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } }
-            ]
-          }
-        ]
+        user_activity_stats: {
+          OR: [
+            { last_active_at: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } },
+            { last_login_at: { gte: ninetyDaysAgo, lt: thirtyDaysAgo } }
+          ]
+        }
       }
     },
     {
@@ -928,18 +935,25 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
       description: '超過 90 天無活動',
       criteria: 'last_active_at < 90 days ago or null',
       where: {
-        AND: [
+        OR: [
+          { activity_stats_id: null },
           {
-            OR: [
-              { last_active_at: { lt: ninetyDaysAgo } },
-              { last_active_at: null }
-            ]
-          },
-          {
-            OR: [
-              { last_login_at: { lt: ninetyDaysAgo } },
-              { last_login_at: null }
-            ]
+            user_activity_stats: {
+              AND: [
+                {
+                  OR: [
+                    { last_active_at: { lt: ninetyDaysAgo } },
+                    { last_active_at: null }
+                  ]
+                },
+                {
+                  OR: [
+                    { last_login_at: { lt: ninetyDaysAgo } },
+                    { last_login_at: null }
+                  ]
+                }
+              ]
+            }
           }
         ]
       }

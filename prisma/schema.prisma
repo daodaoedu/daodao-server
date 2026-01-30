@@ -23,7 +23,7 @@ model categories {
   parent_id                                         Int?
   description                                       String?
   created_at                                        DateTime?        @default(now()) @db.Timestamptz(6)
-  updated_at                                        DateTime?        @db.Timestamptz(6)
+  updated_at                                        DateTime?        @default(now()) @db.Timestamptz(6)
   categories                                        categories?      @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   other_categories                                  categories[]     @relation("categoriesTocategories")
   resources_resources_major_category_idTocategories resources[]      @relation("resources_major_category_idTocategories")
@@ -36,7 +36,7 @@ model categories {
 
 model city {
   id       Int        @id @default(autoincrement())
-  name     city_t?
+  name     String     @unique(map: "city_name_unique") @db.VarChar(100)
   groups   groups[]
   location location[]
 
@@ -46,19 +46,14 @@ model city {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model comments {
   id             Int        @id @default(autoincrement())
-  target_type    String     @default("post") @db.VarChar(20)
   target_id      Int
   user_id        Int
-  parent_id      Int?
   content        String
-  mentions       String[]
-  visibility     String?    @default("public") @db.VarChar(10)
-  is_edited      Boolean?   @default(false)
-  is_deleted     Boolean?   @default(false)
-  likes_count    Int?       @default(0)
-  replies_count  Int?       @default(0)
-  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  visibility     String?    @default("private") @db.VarChar(10)
+  parent_id      Int?
+  created_at     DateTime?  @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?  @default(now()) @db.Timestamp(6)
+  target_type    String     @default("post") @db.VarChar(20)
   comments       comments?  @relation("commentsTocomments", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   other_comments comments[] @relation("commentsTocomments")
   users          users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -70,16 +65,16 @@ model comments {
 
 model contacts {
   id                 Int      @id @default(autoincrement())
-  email              String?  @db.VarChar(320)
+  google_id          String?  @db.VarChar(255)
+  photo_url          String?
   is_subscribe_email Boolean?
-  photo_url          String?  @db.VarChar(2048)
-  google_id          String?  @db.VarChar(100)
-  ig                 String?  @db.VarChar(30)
-  fb                 String?  @db.VarChar(50)
-  discord            String?  @db.VarChar(37)
-  line               String?  @db.VarChar(20)
+  email              String?  @db.VarChar(255)
+  ig                 String?  @db.VarChar(255)
+  discord            String?  @db.VarChar(255)
+  line               String?  @db.VarChar(255)
+  fb                 String?  @db.VarChar(255)
   threads            String?  @db.VarChar(30)
-  linkedin           String?  @db.VarChar(100)
+  linkedin           String?  @db.VarChar(255)
   github             String?  @db.VarChar(50)
   website            String?  @db.VarChar(2048)
   users              users[]
@@ -87,8 +82,8 @@ model contacts {
 
 model country {
   id       Int        @id @default(autoincrement())
-  alpha2   String?    @db.Char(2)
-  alpha3   String?    @db.Char(3)
+  alpha2   String?    @unique(map: "idx_country_alpha2") @db.Char(2)
+  alpha3   String?    @unique(map: "idx_country_alpha3") @db.Char(3)
   name     String     @db.VarChar(100)
   location location[]
 }
@@ -155,36 +150,43 @@ model groups {
   id                     Int                        @id @default(autoincrement())
   external_id            String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title                  String?
-  photo_url              String?
-  photo_alt              String?                    @db.VarChar(100)
-  description            String?                    @db.VarChar(500)
+  photo_url              String?                    @db.VarChar(255)
+  photo_alt              String?                    @db.VarChar(255)
   category               group_category_t[]
   group_type             group_type_t[]
   partner_education_step partner_education_step_t[]
+  description            String?                    @db.VarChar(255)
   city_id                Int?
-  is_online              Boolean?
-  TBD                    Boolean?
-  time                   String?
-  hold_time              DateTime?                  @db.Time(6)
   is_grouping            Boolean?
-  is_need_deadline       Boolean?
-  group_deadline         DateTime?                  @db.Timestamptz(6)
-  participator           Int?
-  motivation             String?
-  contents               String?
-  expectation_result     String?
-  partner_style          String?
-  notice                 String?
-  tag_list               String[]
   created_date           DateTime?                  @db.Timestamptz(6)
   updated_date           DateTime?                  @db.Timestamptz(6)
+  time                   String?
+  partner_style          String?
   created_at             DateTime?                  @db.Timestamptz(6)
   created_by             Int?
   updated_at             DateTime?                  @db.Timestamptz(6)
   updated_by             String?                    @db.VarChar(255)
+  motivation             String?
+  contents               String?
+  expectation_result     String?
+  notice                 String?
+  tag_list               String[]
+  group_deadline         DateTime?                  @db.Timestamptz(6)
+  is_need_deadline       Boolean?
+  participator           Int?
+  hold_time              DateTime?                  @db.Time(6)
+  is_online              Boolean?
+  TBD                    Boolean?
   city                   city?                      @relation(fields: [city_id], references: [id])
   users                  users?                     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user_join_group        user_join_group[]
+
+  @@index([TBD], map: "idx_group_TBD")
+  @@index([city_id], map: "idx_group_city_id")
+  @@index([group_type], map: "idx_group_group_type")
+  @@index([is_grouping], map: "idx_group_is_grouping")
+  @@index([is_online], map: "idx_group_is_online")
+  @@index([partner_education_step], map: "idx_group_partner_education_step")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -204,14 +206,13 @@ model ideas {
 
 model likes {
   id         Int       @id @default(autoincrement())
-  post_id    Int
-  user_id    Int
+  post_id    Int?
+  user_id    Int?
   created_at DateTime? @default(now()) @db.Timestamp(6)
-  post       post      @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  post       post?     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([post_id, user_id], map: "uq_likes_post_user")
-  @@index([post_id, created_at(sort: Desc)], map: "idx_likes_post_created_at")
+  @@index([post_id, user_id], map: "idx_likes_post_user")
 }
 
 model location {
@@ -223,7 +224,8 @@ model location {
   country    country? @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users      users[]
 
-  @@unique([country_id, city_id], map: "ux_location_country_city")
+  @@index([city_id], map: "idx_location_city_id")
+  @@index([country_id], map: "idx_location_country_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -235,10 +237,10 @@ model marathon {
   description             String?
   start_date              DateTime           @db.Date
   end_date                DateTime           @db.Date
-  registration_start_date DateTime?          @db.Date
-  registration_end_date   DateTime?          @db.Date
   registration_status     String?            @db.VarChar(50)
   people_number           Int?
+  registration_start_date DateTime?          @db.Date
+  registration_end_date   DateTime?          @db.Date
   is_public               Boolean?           @default(false)
   created_by              Int?
   created_at              DateTime?          @default(now()) @db.Timestamp(6)
@@ -252,32 +254,27 @@ model marathon {
 model mentor_participants {
   mentor_id                                       Int
   participant_id                                  Int
-  relationship_start_date                         DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
-  relationship_end_date                           DateTime? @db.Date
-  is_active                                       Boolean?  @default(true)
-  created_at                                      DateTime? @default(now()) @db.Timestamp(6)
-  updated_at                                      DateTime? @default(now()) @db.Timestamp(6)
-  users_mentor_participants_mentor_idTousers      users     @relation("mentor_participants_mentor_idTousers", fields: [mentor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_mentor_participants_participant_idTousers users     @relation("mentor_participants_participant_idTousers", fields: [participant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_mentor_participants_mentor_idTousers      users @relation("mentor_participants_mentor_idTousers", fields: [mentor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_mentor_participants_participant_idTousers users @relation("mentor_participants_participant_idTousers", fields: [participant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([mentor_id, participant_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model milestone {
-  id            Int       @id @default(autoincrement())
-  project_id    Int
-  display_order Int
-  name          String    @db.VarChar(255)
-  description   String?
-  start_date    DateTime  @db.Date
-  end_date      DateTime  @db.Date
-  is_completed  Boolean?  @default(false)
-  is_deleted    Boolean?  @default(false)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
-  updated_at    DateTime? @default(now()) @db.Timestamp(6)
-  project       project   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  task          task[]
+  id           Int       @id @default(autoincrement())
+  project_id   Int
+  position     Int?
+  name         String    @db.VarChar(255)
+  description  String?
+  start_date   DateTime  @db.Date
+  end_date     DateTime  @db.Date
+  is_completed Boolean?  @default(false)
+  is_deleted   Boolean?  @default(false)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  project      project   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  task         task[]
 
   @@index([project_id], map: "idx_milestone_project_id")
 }
@@ -290,8 +287,8 @@ model note {
   image_urls String[]
   video_urls String[]
   visibility String?   @default("private") @db.VarChar(10)
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
   post       post?     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([post_id], map: "idx_note_post_id")
@@ -305,8 +302,8 @@ model outcome {
   image_urls String[]
   video_urls String[]
   visibility String?   @default("private") @db.VarChar(10)
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
   post       post      @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([post_id], map: "idx_outcome_post_id")
@@ -328,27 +325,23 @@ model position {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model post {
-  id          Int       @id @default(autoincrement())
-  project_id  Int
-  user_id     Int
-  type        String    @db.VarChar(20)
-  week        Int?
-  title       String    @db.VarChar(200)
-  content     String?
-  date        DateTime? @db.Date
-  visibility  String?   @default("private") @db.VarChar(10)
-  status      String?   @default("draft") @db.VarChar(20)
-  tags        String[]
-  likes_count Int?      @default(0)
-  views_count Int?      @default(0)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
-  likes       likes[]
-  note        note[]
-  outcome     outcome[]
-  project     project   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  review      review[]
+  id         Int       @id @default(autoincrement())
+  project_id Int
+  user_id    Int
+  type       String    @db.VarChar(20)
+  week       Int?
+  title      String    @db.VarChar(255)
+  date       DateTime? @db.Date
+  visibility String?   @default("private") @db.VarChar(10)
+  status     String?   @default("draft") @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  likes      likes[]
+  note       note[]
+  outcome    outcome[]
+  project    project   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  review     review[]
 
   @@index([project_id, status], map: "idx_posts_project_status")
 }
@@ -362,9 +355,12 @@ model practice_checkins {
   practice_id  Int
   user_id      Int
   checkin_date DateTime  @db.Date
-  mood         String?   @db.VarChar(20) /// 允許值: give_up, frustrated, bored, neutral, good, happy
-  note         String?   @db.VarChar(300) /// 詳細描述（最多300字）
-  image_urls   String[] /// 打卡圖片 URL，最多 3 張
+  /// 允許值: give_up, frustrated, bored, neutral, good, happy
+  mood         String?   @db.VarChar(20)
+  /// 詳細描述（最多300字）
+  note         String?   @db.VarChar(300)
+  /// 打卡圖片 URL，最多 3 張
+  image_urls   String[]
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   updated_at   DateTime? @db.Timestamptz(6)
   practices    practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -392,11 +388,11 @@ model practices {
   frequency_max_days       Int?
   practice_time_periods    String[]
   other_context            String?
-  status                   String?             @default("not_started") @db.VarChar(20)
+  status                   String?             @default("draft") @db.VarChar(20)
   has_resources            Boolean?            @default(false)
-  progress_percentage      Decimal?            @default(20) @db.Decimal(5, 2)
-  first_checkin_at         DateTime?           @db.Timestamptz(6)
   theme_color              String?             @db.VarChar(20)
+  progress_percentage      Decimal?            @default(0) @db.Decimal(5, 2)
+  first_checkin_at         DateTime?           @db.Timestamptz(6)
   created_at               DateTime?           @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?           @db.Timestamptz(6)
   deleted_at               DateTime?           @db.Timestamptz(6)
@@ -445,28 +441,28 @@ model project {
   id                     Int                @id @default(autoincrement())
   external_id            String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                Int
+  img_url                String?            @db.VarChar(255)
   title                  String             @db.VarChar(255)
   description            String?
-  img_url                String?            @db.VarChar(2048)
-  goal                   String?            @db.VarChar(255)
-  content                String?
   motivation             motivation_t[]
   motivation_description String?
+  goal                   String?            @db.VarChar(255)
+  content                String?
   strategy               strategy_t[]
   strategy_description   String?
+  resource               String?
   outcome                outcome_t[]
   outcome_description    String?
-  resource               String?
-  status                 String?            @default("Not Started") @db.VarChar(50)
   is_public              Boolean?           @default(false)
+  status                 String?            @default("Not Started") @db.VarChar(50)
   start_date             DateTime?          @db.Date
   end_date               DateTime?          @db.Date
   interval               Int?
-  version                Int?
   created_at             DateTime?          @default(now()) @db.Timestamp(6)
   created_by             Int?
   updated_at             DateTime?          @default(now()) @db.Timestamp(6)
   updated_by             Int?
+  version                Int?
   milestone              milestone[]
   post                   post[]
   users                  users              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -524,7 +520,7 @@ model resource_review {
   not_applicable_resource Boolean?  @default(false)
   status                  String?   @default("published") @db.VarChar(20)
   created_at              DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime? @db.Timestamptz(6)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
   deleted_at              DateTime? @db.Timestamptz(6)
   resources               resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users                   users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -542,16 +538,16 @@ model resources {
   major_category_id                                  Int?
   sub_category_id                                    Int?
   name                                               String             @db.VarChar(255)
-  url                                                String             @db.VarChar(2048)
-  image_url                                          String?            @db.VarChar(2048)
+  url                                                String             @db.VarChar(1000)
+  image_url                                          String?            @db.VarChar(1000)
   description                                        String
-  video_url                                          String?            @db.VarChar(2048)
+  video_url                                          String?            @db.VarChar(1000)
   type                                               String             @db.VarChar(100)
   cost                                               String             @db.VarChar(50)
   level                                              String             @default("all_levels") @db.VarChar(50)
   status                                             String?            @default("active") @db.VarChar(20)
   created_at                                         DateTime?          @default(now()) @db.Timestamptz(6)
-  updated_at                                         DateTime?          @db.Timestamptz(6)
+  updated_at                                         DateTime?          @default(now()) @db.Timestamptz(6)
   deleted_at                                         DateTime?          @db.Timestamptz(6)
   entity_resources                                   entity_resources[]
   resource_review                                    resource_review[]
@@ -562,27 +558,26 @@ model resources {
   @@index([created_at], map: "idx_resource_created_at")
   @@index([created_by], map: "idx_resource_created_by")
   @@index([type, cost, level], map: "idx_resource_type_cost_level")
+  @@index([cost], map: "idx_resource_cost")
+  @@index([level], map: "idx_resource_level")
+  @@index([type], map: "idx_resource_type")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model review {
-  id                     Int                  @id @default(autoincrement())
-  post_id                Int
-  mood                   String               @db.VarChar(20)
-  mood_description       String?
-  stress_level           Int                  @db.SmallInt
-  learning_review        Int                  @db.SmallInt
-  learning_feedback      String?
-  adjustment_plan        String?
-  achievement_rating     Int?                 @db.SmallInt
-  difficulty_rating      Int?                 @db.SmallInt
-  time_management_rating Int?                 @db.SmallInt
-  collaboration_rating   Int?                 @db.SmallInt
-  visibility             String?              @default("private") @db.VarChar(10)
-  created_at             DateTime?            @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime?            @default(now()) @db.Timestamptz(6)
-  ai_review_feedbacks    ai_review_feedbacks?
-  post                   post                 @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                  Int                  @id @default(autoincrement())
+  post_id             Int
+  mood                String               @db.VarChar(20)
+  mood_description    String?
+  stress_level        Int                  @db.SmallInt
+  learning_review     Int                  @db.SmallInt
+  learning_feedback   String?
+  adjustment_plan     String?
+  visibility          String?              @default("private") @db.VarChar(10)
+  created_at          DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?            @default(now()) @db.Timestamp(6)
+  ai_review_feedbacks ai_review_feedbacks?
+  post                post                 @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([post_id], map: "idx_review_post_id")
 }
@@ -608,14 +603,14 @@ model store {
   id          Int       @id @default(autoincrement())
   external_id String?   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     Int?      @unique
-  name        String?   @db.VarChar(255)
-  description String?
-  content     String?
   image_url   String?   @db.VarChar(255)
   author_list String?
   tags        String?   @db.VarChar(255)
-  ai_summary  String?
   created_at  DateTime? @default(now()) @db.Timestamp(6)
+  ai_summary  String?
+  description String?
+  content     String?
+  name        String?   @db.VarChar(255)
   users       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -630,35 +625,34 @@ model subscription_plan {
 }
 
 model tags {
-  id                     Int                      @id @default(autoincrement())
-  name                   String                   @unique @db.VarChar(100)
-  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime?                @db.Timestamptz(6)
-  entity_tags            entity_tags[]
-  practice_template_tags practice_template_tags[]
-  tag_prompt_templates   tag_prompt_templates[]
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @unique @db.VarChar(100)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  entity_tags          entity_tags[]
+  tag_prompt_templates tag_prompt_templates[]
 }
 
 model task {
-  id            Int        @id @default(autoincrement())
-  milestone_id  Int
-  name          String?    @db.VarChar(255)
-  description   String?
-  days_of_week  day_enum[]
-  display_order Int?       @default(0)
-  is_completed  Boolean?   @default(false)
-  is_deleted    Boolean?   @default(false)
-  created_at    DateTime?  @default(now()) @db.Timestamp(6)
-  updated_at    DateTime?  @default(now()) @db.Timestamp(6)
-  milestone     milestone  @relation(fields: [milestone_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           Int        @id @default(autoincrement())
+  milestone_id Int
+  name         String?    @db.VarChar(255)
+  description  String?
+  days_of_week day_enum[]
+  is_completed Boolean?   @default(false)
+  is_deleted   Boolean?   @default(false)
+  created_at   DateTime?  @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?  @default(now()) @db.Timestamp(6)
+  position     Int        @default(0)
+  milestone    milestone  @relation(fields: [milestone_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([milestone_id], map: "idx_task_milestone_id")
 }
 
 model temp_users {
   id           Int      @id @default(autoincrement())
-  google_id    String   @db.VarChar(255)
-  email        String   @db.VarChar(255)
+  google_id    String   @unique @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
   name         String   @db.VarChar(255)
   photo_url    String?  @db.VarChar(255)
   created_date DateTime @default(now()) @db.Timestamptz(6)
@@ -670,12 +664,7 @@ model user_join_group {
   user_id                    Int?
   group_id                   Int?
   group_participation_role_t group_participation_role_t? @default(Initiator)
-  participated_at            DateTime?                   @default(now()) @db.Timestamptz(6)
-  left_at                    DateTime?                   @db.Timestamptz(6)
-  is_active                  Boolean?                    @default(true)
-  notes                      String?
-  created_at                 DateTime?                   @default(now()) @db.Timestamptz(6)
-  updated_at                 DateTime?                   @default(now()) @db.Timestamptz(6)
+  participated_at            DateTime?                   @db.Timestamptz(6)
   groups                     groups?                     @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users                      users?                      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -685,11 +674,6 @@ model user_join_group {
 model user_permissions {
   user_id       Int
   permission_id Int
-  granted       Boolean?    @default(true)
-  granted_at    DateTime?   @default(now()) @db.Timestamptz(6)
-  granted_by    String?     @db.VarChar(255)
-  expires_at    DateTime?   @db.Timestamptz(6)
-  notes         String?
   permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users         users       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -770,39 +754,31 @@ model users {
   gender                                                        gender_t?
   language                                                      String?                    @db.VarChar(255)
   education_stage                                               education_stage_t?         @default(other)
-  nickname                                                      String?                    @db.VarChar(50)
-  custom_id                                                     String?                    @unique @db.VarChar(50)
-  custom_id_verified                                            Boolean?                   @default(false)
-  custom_id_created_at                                          DateTime?                  @db.Timestamptz(6)
-  professional_field                                            String?                    @db.VarChar(100)
-  personal_slogan                                               String?
-  referral_source                                               String?                    @db.VarChar(100)
-  birth_date                                                    DateTime?                  @db.Date
   tag_list                                                      String[]
   contact_id                                                    Int?
-  location_id                                                   Int?
-  basic_info_id                                                 Int?
-  role_id                                                       Int
   is_open_location                                              Boolean?
+  location_id                                                   Int?
+  nickname                                                      String?                    @db.VarChar(255)
+  role_id                                                       Int
   is_open_profile                                               Boolean?
+  birth_date                                                    DateTime?                  @db.Date
+  basic_info_id                                                 Int?
+  createdDate                                                   DateTime?                  @db.Timestamptz(6)
+  updatedDate                                                   DateTime?                  @db.Timestamptz(6)
+  created_by                                                    String?                    @db.VarChar(255)
+  created_at                                                    DateTime?                  @db.Timestamptz(6)
+  updated_by                                                    String?                    @db.VarChar(255)
+  updated_at                                                    DateTime?                  @db.Timestamptz(6)
   is_active                                                     Boolean?                   @default(true)
   verified                                                      Boolean?                   @default(false)
   verified_at                                                   DateTime?                  @db.Timestamptz(6)
-  // 活躍狀態統計
-  last_login_at                                                 DateTime?                  @db.Timestamptz(6)
-  last_active_at                                                DateTime?                  @db.Timestamptz(6)
-  login_count                                                   Int?                       @default(0)
-  profile_views                                                 Int?                       @default(0)
-  // 最後使用裝置資訊
-  last_device_type                                              String?                    @db.VarChar(20)
-  last_os                                                       String?                    @db.VarChar(50)
-  last_browser                                                  String?                    @db.VarChar(50)
-  createdDate                                                   DateTime?                  @db.Timestamptz(6)
-  updatedDate                                                   DateTime?                  @db.Timestamptz(6)
-  created_by                                                    String?                    @db.VarChar(50)
-  created_at                                                    DateTime?                  @db.Timestamptz(6)
-  updated_by                                                    String?                    @db.VarChar(50)
-  updated_at                                                    DateTime?                  @db.Timestamptz(6)
+  custom_id                                                     String?                    @db.VarChar(255)
+  custom_id_created_at                                          DateTime?                  @db.Timestamp(6)
+  personal_slogan                                               String?
+  referral_source                                               String?                    @db.VarChar(255)
+  custom_id_verified                                            Boolean?                   @default(false)
+  professional_field                                            String?                    @db.VarChar(255)
+  activity_stats_id                                             Int?
   comments                                                      comments[]
   email_logs                                                    email_logs[]
   entity_resources                                              entity_resources[]
@@ -824,6 +800,7 @@ model users {
   store                                                         store?
   user_interests                                                user_interests[]
   user_join_group                                               user_join_group[]
+  user_login_history                                            user_login_history[]
   user_permissions                                              user_permissions[]
   user_positions                                                user_positions[]
   user_preferences                                              user_preferences[]
@@ -831,7 +808,7 @@ model users {
   user_profiles                                                 user_profiles[]
   user_project                                                  user_project[]
   user_subscription                                             user_subscription[]
-  user_login_history                                            user_login_history[]
+  user_activity_stats                                           user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
   basic_info                                                    basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contacts                                                      contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   location                                                      location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -950,19 +927,6 @@ model practice_template_categories {
   @@index([template_id], map: "idx_template_categories_template")
 }
 
-model practice_template_tags {
-  id                 Int                @id @default(autoincrement())
-  template_id        Int
-  tag_id             Int
-  created_at         DateTime?          @default(now()) @db.Timestamptz(6)
-  tags               tags               @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  practice_templates practice_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([template_id, tag_id])
-  @@index([tag_id], map: "idx_template_tags_tag")
-  @@index([template_id], map: "idx_template_tags_template")
-}
-
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model practice_templates {
   id                           Int                            @id @default(autoincrement())
@@ -977,10 +941,7 @@ model practice_templates {
   created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
   updated_at                   DateTime?                      @db.Timestamptz(6)
   practice_template_categories practice_template_categories[]
-  practice_template_tags       practice_template_tags[]
   practices                    practices[]
-
-  @@index([created_at], map: "idx_practice_templates_created_at")
 }
 
 /// 打卡鼓勵句表
@@ -988,10 +949,8 @@ model practice_templates {
 model checkin_encouragements {
   id         Int       @id @default(autoincrement())
   message    String    @unique @db.VarChar(100)
-  is_active  Boolean   @default(true)
+  is_active  Boolean?  @default(true)
   created_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@index([is_active], map: "idx_checkin_encouragements_active")
 }
 
 /// 標籤引導句模板表（用於打卡引導句）
@@ -999,17 +958,15 @@ model checkin_encouragements {
 model tag_prompt_templates {
   id          Int       @id @default(autoincrement())
   tag_id      Int
-  usage_type  String    @db.VarChar(30) // practice_checkin, reflection, summary
-  locale      String    @default("zh-TW") @db.VarChar(10)
-  prompt_text String    @db.VarChar(500)
-  is_default  Boolean   @default(false)
+  usage_type  String    @db.VarChar(50)
+  locale      String    @db.VarChar(10)
+  prompt_text String
+  is_default  Boolean   @default(true)
   created_at  DateTime? @default(now()) @db.Timestamptz(6)
   updated_at  DateTime? @db.Timestamptz(6)
   tags        tags      @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([tag_id, usage_type, locale])
-  @@index([usage_type, locale], map: "idx_tag_prompt_templates_usage_locale")
-  @@index([tag_id], map: "idx_tag_prompt_templates_tag_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -1065,6 +1022,24 @@ model user_login_history {
   @@index([user_id], map: "idx_login_history_user_id")
   @@index([login_at(sort: Desc)], map: "idx_login_history_login_at")
   @@index([user_id, login_at(sort: Desc)], map: "idx_login_history_user_time")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_activity_stats {
+  id               Int       @id @default(autoincrement())
+  last_login_at    DateTime? @db.Timestamptz(6)
+  last_active_at   DateTime? @db.Timestamptz(6)
+  login_count      Int?      @default(0)
+  profile_views    Int?      @default(0)
+  last_device_type String?   @db.VarChar(20)
+  last_os          String?   @db.VarChar(50)
+  last_browser     String?   @db.VarChar(50)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  users            users[]
+
+  @@index([last_active_at(sort: Desc)], map: "idx_user_activity_stats_last_active")
+  @@index([last_login_at(sort: Desc)], map: "idx_user_activity_stats_last_login")
 }
 
 enum age_t {
@@ -1123,6 +1098,11 @@ enum education_stage_t {
   university
   high
   other
+  elementary
+  junior_high
+  associate
+  master
+  doctorate
 }
 
 enum freqency_t {

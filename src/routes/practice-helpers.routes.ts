@@ -13,7 +13,7 @@ import {
   tagPromptQuerySchema,
   tagPromptResponseSchema
 } from '../validators/practice.validators';
-import { apiSuccessResponseSchema, paginatedApiResponseSchema } from '../validators/api-response.validators';
+import { apiSuccessResponseSchema } from '../validators/api-response.validators';
 
 const router = Router();
 

@@ -264,11 +264,16 @@ interface PrismaUserWithRelations {
   professional_field?: string | null;
   personal_slogan?: string | null;
   referral_source?: string | null;
-  // 活躍狀態統計
-  last_login_at?: Date | null;
-  last_active_at?: Date | null;
-  login_count?: number | null;
-  profile_views?: number | null;
+  // 活躍狀態統計（透過關聯）
+  user_activity_stats?: {
+    last_login_at?: Date | null;
+    last_active_at?: Date | null;
+    login_count?: number | null;
+    profile_views?: number | null;
+    last_device_type?: string | null;
+    last_os?: string | null;
+    last_browser?: string | null;
+  } | null;
   user_preferences?: Array<{
     preference_option_id: number;
     is_selected: boolean | null;
@@ -398,11 +403,11 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     personalSlogan: user.personal_slogan || null,
     referralSource: user.referral_source || null,
 
-    // 活躍狀態統計
-    lastLoginAt: user.last_login_at ? moment(user.last_login_at).toISOString() : null,
-    lastActiveAt: user.last_active_at ? moment(user.last_active_at).toISOString() : null,
-    loginCount: user.login_count ?? 0,
-    profileViews: user.profile_views ?? 0,
+    // 活躍狀態統計（透過關聯）
+    lastLoginAt: user.user_activity_stats?.last_login_at ? moment(user.user_activity_stats.last_login_at).toISOString() : null,
+    lastActiveAt: user.user_activity_stats?.last_active_at ? moment(user.user_activity_stats.last_active_at).toISOString() : null,
+    loginCount: user.user_activity_stats?.login_count ?? 0,
+    profileViews: user.user_activity_stats?.profile_views ?? 0,
 
     // 最新測驗結果
     latestQuizResult: latestQuizResult ? {
@@ -665,10 +670,27 @@ const getOneUser = async (
 
   // 如果查看者不是自己，增加被查看次數
   if (viewerId && viewerId !== user.id) {
-    await prisma.users.update({
+    // 透過 user_activity_stats 關聯更新
+    const targetUser = await prisma.users.findUnique({
       where: { id: user.id },
-      data: { profile_views: { increment: 1 } }
+      select: { activity_stats_id: true }
     });
+
+    if (targetUser?.activity_stats_id) {
+      await prisma.user_activity_stats.update({
+        where: { id: targetUser.activity_stats_id },
+        data: { profile_views: { increment: 1 } }
+      });
+    } else {
+      // 創建新的 activity_stats 記錄
+      const activityStats = await prisma.user_activity_stats.create({
+        data: { profile_views: 1 }
+      });
+      await prisma.users.update({
+        where: { id: user.id },
+        data: { activity_stats_id: activityStats.id }
+      });
+    }
   }
 
   const formattedUser = await formatUserResponse(user);
@@ -729,7 +751,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
       }
 
-      const existingCustomId = await tx.users.findUnique({
+      const existingCustomId = await tx.users.findFirst({
         where: { custom_id: customId }
       });
 
@@ -1233,7 +1255,7 @@ const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessRe
   }
 
   // 檢查資料庫中是否已存在
-  const existingUser = await prisma.users.findUnique({
+  const existingUser = await prisma.users.findFirst({
     where: { custom_id: customId }
   });
 
@@ -1252,7 +1274,7 @@ const setCustomId = async (userId: number, customId: string): Promise<ApiSuccess
   try {
     return await prisma.$transaction(async (tx) => {
       // 檢查是否已被使用
-      const existingUser = await tx.users.findUnique({
+      const existingUser = await tx.users.findFirst({
         where: { custom_id: customId }
       });
 
@@ -1302,7 +1324,7 @@ const setCustomId = async (userId: number, customId: string): Promise<ApiSuccess
  * 透過自訂 ID 查詢用戶
  */
 const getUserByCustomId = async (customId: string): Promise<ApiSuccessResponse<FormattedUserResponse> | null> => {
-  const user = await prisma.users.findUnique({
+  const user = await prisma.users.findFirst({
     where: { custom_id: customId },
     include: {
       roles: true,
@@ -1362,52 +1384,47 @@ const removeCustomId = async (userId: number): Promise<ApiSuccessResponse<{ mess
  * 獲取用戶偏好設定
  */
 const getUserPreferences = async (userId: number, _params: PreferencesQueryParams): Promise<ApiSuccessResponse<{ preferences: UserPreference[]; categories: unknown[] }>> => {
-  try {
-    const where: Record<string, unknown> = { user_id: userId };
+  const where: Record<string, unknown> = { user_id: userId };
 
-    const userPreferences = await prisma.user_preferences.findMany({
-      where,
-      include: {
-        preference_options: {
-          include: {
-            preference_types: true
-          }
+  const userPreferences = await prisma.user_preferences.findMany({
+    where,
+    include: {
+      preference_options: {
+        include: {
+          preference_types: true
         }
       }
-    });
+    }
+  });
 
-    const preferences = userPreferences.map(pref => ({
-      id: pref.id,
-      preferenceTypeId: pref.preference_options.preference_type_id,
-      optionId: pref.preference_option_id,
-      isSelected: pref.is_selected || false,
-      preferenceType: {
-        id: pref.preference_options.preference_types.id,
-        name: pref.preference_options.preference_types.name,
-        value: pref.preference_options.preference_types.value,
-        description: pref.preference_options.preference_types.description || undefined,
-        maxSelections: pref.preference_options.preference_types.max_selections || undefined,
-        options: []
-      },
-      option: {
-        id: pref.preference_options.id,
-        value: pref.preference_options.value,
-        name: pref.preference_options.name,
-        description: pref.preference_options.description || undefined
-      }
-    }));
+  const preferences = userPreferences.map(pref => ({
+    id: pref.id,
+    preferenceTypeId: pref.preference_options.preference_type_id,
+    optionId: pref.preference_option_id,
+    isSelected: pref.is_selected || false,
+    preferenceType: {
+      id: pref.preference_options.preference_types.id,
+      name: pref.preference_options.preference_types.name,
+      value: pref.preference_options.preference_types.value,
+      description: pref.preference_options.preference_types.description || undefined,
+      maxSelections: pref.preference_options.preference_types.max_selections || undefined,
+      options: []
+    },
+    option: {
+      id: pref.preference_options.id,
+      value: pref.preference_options.value,
+      name: pref.preference_options.name,
+      description: pref.preference_options.description || undefined
+    }
+  }));
 
-    // Get categories (for now, return empty array to match interface)
-    const categories: unknown[] = [];
+  // Get categories (for now, return empty array to match interface)
+  const categories: unknown[] = [];
 
-    return createSuccessResponse({
-      preferences,
-      categories
-    });
-
-  } catch (error) {
-    throw error;
-  }
+  return createSuccessResponse({
+    preferences,
+    categories
+  });
 };
 
 /**
@@ -1567,20 +1584,44 @@ const updateLastLogin = async (
   }
 ): Promise<void> => {
   await prisma.$transaction(async (tx) => {
-    // 更新 users 表的登入統計和最後使用裝置資訊
-    await tx.users.update({
+    // 獲取用戶的 activity_stats_id
+    const user = await tx.users.findUnique({
       where: { id: userId },
-      data: {
-        last_login_at: new Date(),
-        login_count: { increment: 1 },
-        // 同步更新最後使用的裝置資訊
-        ...(deviceInfo && {
-          last_device_type: deviceInfo.deviceType,
-          last_os: deviceInfo.os,
-          last_browser: deviceInfo.browser
-        })
-      }
+      select: { activity_stats_id: true }
     });
+
+    if (user?.activity_stats_id) {
+      // 更新現有的 activity_stats 記錄
+      await tx.user_activity_stats.update({
+        where: { id: user.activity_stats_id },
+        data: {
+          last_login_at: new Date(),
+          login_count: { increment: 1 },
+          ...(deviceInfo && {
+            last_device_type: deviceInfo.deviceType,
+            last_os: deviceInfo.os,
+            last_browser: deviceInfo.browser
+          })
+        }
+      });
+    } else {
+      // 創建新的 activity_stats 記錄並關聯到用戶
+      const activityStats = await tx.user_activity_stats.create({
+        data: {
+          last_login_at: new Date(),
+          login_count: 1,
+          ...(deviceInfo && {
+            last_device_type: deviceInfo.deviceType,
+            last_os: deviceInfo.os,
+            last_browser: deviceInfo.browser
+          })
+        }
+      });
+      await tx.users.update({
+        where: { id: userId },
+        data: { activity_stats_id: activityStats.id }
+      });
+    }
 
     // 記錄登入歷史
     if (deviceInfo) {
@@ -1603,12 +1644,28 @@ const updateLastLogin = async (
  * @param userId 用戶內部 ID
  */
 const updateLastActive = async (userId: number): Promise<void> => {
-  await prisma.users.update({
+  // 獲取用戶的 activity_stats_id
+  const user = await prisma.users.findUnique({
     where: { id: userId },
-    data: {
-      last_active_at: new Date()
-    }
+    select: { activity_stats_id: true }
   });
+
+  if (user?.activity_stats_id) {
+    // 更新現有的 activity_stats 記錄
+    await prisma.user_activity_stats.update({
+      where: { id: user.activity_stats_id },
+      data: { last_active_at: new Date() }
+    });
+  } else {
+    // 創建新的 activity_stats 記錄並關聯到用戶
+    const activityStats = await prisma.user_activity_stats.create({
+      data: { last_active_at: new Date() }
+    });
+    await prisma.users.update({
+      where: { id: userId },
+      data: { activity_stats_id: activityStats.id }
+    });
+  }
 };
 
 /**
@@ -1616,12 +1673,28 @@ const updateLastActive = async (userId: number): Promise<void> => {
  * @param userId 被查看用戶的內部 ID
  */
 const incrementProfileViews = async (userId: number): Promise<void> => {
-  await prisma.users.update({
+  // 獲取用戶的 activity_stats_id
+  const user = await prisma.users.findUnique({
     where: { id: userId },
-    data: {
-      profile_views: { increment: 1 }
-    }
+    select: { activity_stats_id: true }
   });
+
+  if (user?.activity_stats_id) {
+    // 更新現有的 activity_stats 記錄
+    await prisma.user_activity_stats.update({
+      where: { id: user.activity_stats_id },
+      data: { profile_views: { increment: 1 } }
+    });
+  } else {
+    // 創建新的 activity_stats 記錄並關聯到用戶
+    const activityStats = await prisma.user_activity_stats.create({
+      data: { profile_views: 1 }
+    });
+    await prisma.users.update({
+      where: { id: userId },
+      data: { activity_stats_id: activityStats.id }
+    });
+  }
 };
 
 /**
@@ -1631,7 +1704,7 @@ const incrementProfileViews = async (userId: number): Promise<void> => {
  */
 const getLoginHistory = async (
   userId: number,
-  limit: number = 10
+  limit = 10
 ): Promise<ApiSuccessResponse<Array<{
   id: number;
   deviceType: string | null;
@@ -1676,10 +1749,14 @@ const getUserActivityStats = async (
   const user = await prisma.users.findUnique({
     where: { id: userId },
     select: {
-      last_login_at: true,
-      last_active_at: true,
-      login_count: true,
-      profile_views: true
+      user_activity_stats: {
+        select: {
+          last_login_at: true,
+          last_active_at: true,
+          login_count: true,
+          profile_views: true
+        }
+      }
     }
   });
 
@@ -1698,11 +1775,13 @@ const getUserActivityStats = async (
     }
   });
 
+  const activityStats = user.user_activity_stats;
+
   return createSuccessResponse({
-    lastLoginAt: user.last_login_at ? moment(user.last_login_at).toISOString() : null,
-    lastActiveAt: user.last_active_at ? moment(user.last_active_at).toISOString() : null,
-    loginCount: user.login_count ?? 0,
-    profileViews: user.profile_views ?? 0,
+    lastLoginAt: activityStats?.last_login_at ? moment(activityStats.last_login_at).toISOString() : null,
+    lastActiveAt: activityStats?.last_active_at ? moment(activityStats.last_active_at).toISOString() : null,
+    loginCount: activityStats?.login_count ?? 0,
+    profileViews: activityStats?.profile_views ?? 0,
     recentLoginCount
   });
 };

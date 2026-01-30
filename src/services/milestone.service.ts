@@ -24,7 +24,7 @@ const formatMilestoneResponse = (milestone: Record<string, unknown>): MilestoneR
 
   return {
     id: milestone.id as number,
-    position: (milestone.display_order as number) || 0,
+    position: (milestone.position as number) || 0,
     name: (milestone.name as string) || '',
     description: (milestone.description as string) || '',
     startDate: startDate ? startDate.toISOString().split('T')[0] : '',
@@ -33,7 +33,7 @@ const formatMilestoneResponse = (milestone: Record<string, unknown>): MilestoneR
     tasks: (tasks || []).map((t): TaskResponse => ({
       id: t.id as number,
       name: (t.name as string) || '',
-      position: (t.display_order as number) || 0,
+      position: (t.position as number) || 0,
       description: (t.description as string) || '',
       daysOfWeek: t.days_of_week as number[],
       isCompleted: (t.is_completed as boolean) || false
@@ -84,7 +84,7 @@ export const createMilestone = async (
     const milestone = await tx.milestone.create({
       data: {
         project_id: project.id,
-        display_order: milestoneData.position || 0,
+        position: milestoneData.position || 0,
         name: milestoneData.name,
         description: milestoneData.description,
         start_date: startDate,
@@ -94,7 +94,7 @@ export const createMilestone = async (
       include: {
         task: {
           where: { is_deleted: false },
-          orderBy: { display_order: 'asc' }
+          orderBy: { position: 'asc' }
         }
       }
     });
@@ -128,10 +128,10 @@ export const getMilestones = async (
     include: {
       task: {
         where: { is_deleted: false },
-        orderBy: { display_order: 'asc' }
+        orderBy: { position: 'asc' }
       }
     },
-    orderBy: { display_order: 'asc' }
+    orderBy: { position: 'asc' }
   });
 
   const formattedMilestones = milestones.map(m => formatMilestoneResponse(m));
@@ -191,7 +191,7 @@ export const updateMilestone = async (
     const updatedMilestone = await tx.milestone.update({
       where: { id: milestoneId },
       data: {
-        display_order: updateData.position,
+        position: updateData.position,
         name: updateData.name,
         description: updateData.description,
         start_date: updateData.startDate ? new Date(updateData.startDate) : undefined,
@@ -201,7 +201,7 @@ export const updateMilestone = async (
       include: {
         task: {
           where: { is_deleted: false },
-          orderBy: { display_order: 'asc' }
+          orderBy: { position: 'asc' }
         }
       }
     });

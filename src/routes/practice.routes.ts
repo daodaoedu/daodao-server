@@ -46,7 +46,10 @@ import {
   templateCategoriesApiResponseSchema,
   createPracticeTemplateApiResponseSchema,
   updatePracticeTemplateApiResponseSchema,
-  deletePracticeTemplateApiResponseSchema
+  deletePracticeTemplateApiResponseSchema,
+  // Random Template
+  randomTemplateQuerySchema,
+  randomTemplatesApiResponseSchema
 } from '../validators/practice.validators';
 
 // 月度日曆參數 schema
@@ -656,6 +659,32 @@ registry.registerPath({
 });
 
 /**
+ * GET /api/v1/practices/templates/random - 隨機取得實踐模板
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/practices/templates/random',
+  tags: ['Practice Templates'],
+  summary: '隨機取得實踐模板',
+  description: '隨機取得指定數量的實踐模板，可選擇按分類過濾。適用於為用戶推薦模板。',
+  request: {
+    query: randomTemplateQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取隨機模板',
+      content: {
+        'application/json': {
+          schema: randomTemplatesApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
  * GET /api/v1/practices/templates/{id} - 取得單一實踐模板
  */
 registry.registerPath({
@@ -836,6 +865,16 @@ router.get('/templates',
  */
 router.get('/templates/categories',
   practiceController.getTemplateCategories as RequestHandler);
+
+/**
+ * GET /practices/templates/random
+ * 隨機取得實踐模板
+ * 公開存取
+ * 注意：必須在 /templates/:id 之前定義，否則 'random' 會被當作 :id 參數
+ */
+router.get('/templates/random',
+  validate(randomTemplateQuerySchema, 'query'),
+  practiceController.getRandomTemplates as RequestHandler);
 
 /**
  * GET /practices/templates/:id
