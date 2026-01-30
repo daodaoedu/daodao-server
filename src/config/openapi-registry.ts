@@ -228,9 +228,12 @@ export function generateOpenApiDocument(): ReturnType<OpenApiGeneratorV3['genera
     { name: 'Outcomes', description: '成果相關操作', 'x-order': 21 },
     { name: 'Reviews', description: '覆盤相關操作', 'x-order': 22 },
     { name: 'Mentor', description: '導師系統相關操作', 'x-order': 23 },
-    { name: 'System', description: '系統狀態和資訊相關操作', 'x-order': 24 },
-    { name: 'Database Info', description: '資料庫資訊查詢相關操作', 'x-order': 25 },
-    { name: 'System Monitor', description: '系統監控相關操作', 'x-order': 26 }
+    { name: 'Admin - Roles', description: '角色管理相關操作（需要管理員權限）', 'x-order': 24 },
+    { name: 'Admin - Permissions', description: '權限管理相關操作（需要管理員權限）', 'x-order': 25 },
+    { name: 'Admin - Users', description: '用戶角色指派相關操作（需要管理員權限）', 'x-order': 26 },
+    { name: 'System', description: '系統狀態和資訊相關操作', 'x-order': 27 },
+    { name: 'Database Info', description: '資料庫資訊查詢相關操作', 'x-order': 28 },
+    { name: 'System Monitor', description: '系統監控相關操作', 'x-order': 29 }
   ];
 
   // 同步寫入實體檔案
