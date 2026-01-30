@@ -30,4 +30,5 @@ export * from './quiz.validators';
 export * from './task.validators';
 export * from './user-stats.validator';
 export * from './request-params.validator';
+export * from './admin.validators';
 export { default as validate, validate as validateMiddleware } from '../middleware/validation.middleware';

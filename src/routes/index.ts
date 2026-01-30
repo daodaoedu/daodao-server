@@ -16,6 +16,7 @@ import commentRoutes from './comment.routes';
 import imageRoutes from './image.routes';
 import mentorRoutes from './mentor.routes';
 import practiceRoutes from './practice.routes';
+import adminRoutes from './admin.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -156,6 +157,23 @@ router.use('/mentor', mentorRoutes);
 // GET    /api/v1/practices/:id/user-status
 router.use('/practices', practiceRoutes);
 
+// 管理員路由
+// GET    /api/v1/admin/roles
+// GET    /api/v1/admin/roles/:id
+// POST   /api/v1/admin/roles
+// PUT    /api/v1/admin/roles/:id
+// DELETE /api/v1/admin/roles/:id
+// POST   /api/v1/admin/roles/:roleId/permissions
+// DELETE /api/v1/admin/roles/:roleId/permissions/:permissionId
+// GET    /api/v1/admin/permissions
+// GET    /api/v1/admin/permissions/:id
+// POST   /api/v1/admin/permissions
+// PUT    /api/v1/admin/permissions/:id
+// DELETE /api/v1/admin/permissions/:id
+// GET    /api/v1/admin/users/:userId/role
+// PUT    /api/v1/admin/users/:userId/role
+router.use('/admin', adminRoutes);
+
 /**
  * API 健康檢查端點
  * GET /api/v1/health
@@ -193,6 +211,7 @@ router.get('/info', (req, res) => {
         images: '/api/v1/images',
         mentor: '/api/v1/mentor',
         practices: '/api/v1/practices',
+        admin: '/api/v1/admin',
         health: '/api/v1/health'
       },
       features: [

@@ -43,6 +43,8 @@ import practiceHelpersRoutes from './routes/practice-helpers.routes';
 import quizRoutes from './routes/quiz.routes';
 // 引入使用者統計路由
 import userStatsRoutes from './routes/user-stats-routes';
+// 引入管理員路由（角色、權限管理）
+import adminRoutes from './routes/admin.routes';
 // 引入 OAuth 服務初始化
 import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
@@ -108,7 +110,7 @@ export function setupTypescriptRoutes(app: express.Application) {
     resourceRoutes, resourceReviewRoutes, ideaRoutes, meRoutes,
     tagRoutes, authRoutes, projectRoutes, userRoutes, emailRoutes,
     commentRoutes, imageRoutes, mentorRoutes, practiceRoutes,
-    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes
+    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -247,6 +249,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊使用者統計路由（管理員專用）
   app.use('/api/v1/admin/user-stats', userStatsRoutes);
   console.log('📈 v1 使用者統計路由已註冊 - 可在 /api/v1/admin/user-stats 訪問');
+
+  // 註冊管理員路由（角色、權限管理）
+  app.use('/api/v1/admin', adminRoutes);
+  console.log('🔐 v1 管理員路由已註冊 - 可在 /api/v1/admin 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {

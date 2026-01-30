@@ -10502,6 +10502,233 @@
         ],
         "description": "取得測驗結果成功響應"
       },
+      "RoleEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "角色 ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "角色名稱",
+            "example": "Admin"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "角色描述",
+            "example": "管理員角色"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "創建時間",
+            "example": "2024-01-15T10:30:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "更新時間",
+            "example": "2024-01-15T10:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "description": "角色實體"
+      },
+      "PermissionEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "權限 ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "權限名稱",
+            "example": "user:read"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "權限描述",
+            "example": "讀取用戶資料"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "創建時間",
+            "example": "2024-01-15T10:30:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "更新時間",
+            "example": "2024-01-15T10:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "description": "權限實體"
+      },
+      "RoleWithPermissions": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "角色 ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "角色名稱",
+            "example": "Admin"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "角色描述",
+            "example": "管理員角色"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionEntity"
+            },
+            "description": "權限列表"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "創建時間",
+            "example": "2024-01-15T10:30:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "更新時間",
+            "example": "2024-01-15T10:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "permissions"
+        ],
+        "description": "角色（含權限）"
+      },
+      "UserRoleInfo": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "number",
+            "description": "用戶 ID",
+            "example": 123
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RoleEntity"
+              },
+              {
+                "nullable": true,
+                "description": "用戶角色"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userId",
+          "role"
+        ],
+        "description": "用戶角色資訊"
+      },
+      "RoleIdParam": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "角色 ID",
+            "example": "1"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "description": "角色 ID 參數"
+      },
+      "PermissionIdParam": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "權限 ID",
+            "example": "1"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "description": "權限 ID 參數"
+      },
+      "RoleIdForPermissionParam": {
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "角色 ID",
+            "example": "1"
+          }
+        },
+        "required": [
+          "roleId"
+        ],
+        "description": "角色 ID 參數"
+      },
+      "RolePermissionParam": {
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "角色 ID",
+            "example": "1"
+          },
+          "permissionId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "權限 ID",
+            "example": "1"
+          }
+        },
+        "required": [
+          "roleId",
+          "permissionId"
+        ],
+        "description": "角色權限 ID 參數"
+      },
+      "UserIdParam": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "用戶 ID",
+            "example": "123"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "description": "用戶 ID 參數"
+      },
       "MyPracticeItem": {
         "type": "object",
         "properties": {
@@ -40944,6 +41171,2830 @@
         }
       }
     },
+    "/api/v1/admin/roles": {
+      "get": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "獲取所有角色",
+        "description": "獲取系統中所有角色的列表。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取角色列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RoleEntity"
+                      },
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "創建角色",
+        "description": "創建新的角色。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "角色名稱",
+                    "example": "Admin"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "描述",
+                    "example": "管理員角色"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "description": "創建角色請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "角色創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/RoleEntity"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/roles/{id}": {
+      "get": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "獲取單一角色",
+        "description": "獲取指定角色的詳細資訊，包含該角色所擁有的所有權限。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "角色 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "角色 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取角色詳情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/RoleWithPermissions"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "更新角色",
+        "description": "更新指定角色的資訊。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "角色 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "角色 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "角色名稱",
+                    "example": "Admin"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "描述",
+                    "example": "管理員角色"
+                  }
+                },
+                "description": "更新角色請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "角色更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/RoleEntity"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "刪除角色",
+        "description": "刪除指定的角色。如果有用戶正在使用此角色，將無法刪除。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "角色 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "角色 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "角色刪除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "deleted": {
+                          "type": "boolean",
+                          "description": "是否刪除成功",
+                          "example": true
+                        }
+                      },
+                      "required": [
+                        "deleted"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/permissions": {
+      "get": {
+        "tags": [
+          "Admin - Permissions"
+        ],
+        "summary": "獲取所有權限",
+        "description": "獲取系統中所有權限的列表。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取權限列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PermissionEntity"
+                      },
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Permissions"
+        ],
+        "summary": "創建權限",
+        "description": "創建新的權限。權限名稱格式必須為 resource:action。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "pattern": "^[a-zA-Z0-9_]+:[a-zA-Z0-9_]+$",
+                    "description": "權限名稱（格式：resource:action）",
+                    "example": "user:read"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "描述",
+                    "example": "管理員角色"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "description": "創建權限請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "權限創建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PermissionEntity"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/permissions/{id}": {
+      "get": {
+        "tags": [
+          "Admin - Permissions"
+        ],
+        "summary": "獲取單一權限",
+        "description": "獲取指定權限的詳細資訊。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "權限 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "權限 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取權限詳情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PermissionEntity"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin - Permissions"
+        ],
+        "summary": "更新權限",
+        "description": "更新指定權限的資訊。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "權限 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "權限 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "pattern": "^[a-zA-Z0-9_]+:[a-zA-Z0-9_]+$",
+                    "description": "權限名稱（格式：resource:action）",
+                    "example": "user:read"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "描述",
+                    "example": "管理員角色"
+                  }
+                },
+                "description": "更新權限請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "權限更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PermissionEntity"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Permissions"
+        ],
+        "summary": "刪除權限",
+        "description": "刪除指定的權限。如果有角色或用戶正在使用此權限，將無法刪除。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "權限 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "權限 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "權限刪除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "deleted": {
+                          "type": "boolean",
+                          "description": "是否刪除成功",
+                          "example": true
+                        }
+                      },
+                      "required": [
+                        "deleted"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/roles/{roleId}/permissions": {
+      "post": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "為角色新增權限",
+        "description": "為指定角色新增一個權限。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "角色 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "角色 ID",
+            "name": "roleId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "permissionId": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "description": "權限 ID",
+                    "example": 1
+                  }
+                },
+                "required": [
+                  "permissionId"
+                ],
+                "description": "新增角色權限請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "權限已存在於該角色",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "操作是否成功",
+                          "example": true
+                        }
+                      },
+                      "required": [
+                        "success"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "權限新增成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "操作是否成功",
+                          "example": true
+                        }
+                      },
+                      "required": [
+                        "success"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/roles/{roleId}/permissions/{permissionId}": {
+      "delete": {
+        "tags": [
+          "Admin - Roles"
+        ],
+        "summary": "移除角色權限",
+        "description": "從指定角色移除一個權限。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "角色 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "角色 ID",
+            "name": "roleId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "權限 ID",
+              "example": "1"
+            },
+            "required": true,
+            "description": "權限 ID",
+            "name": "permissionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "權限移除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "操作是否成功",
+                          "example": true
+                        }
+                      },
+                      "required": [
+                        "success"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{userId}/role": {
+      "get": {
+        "tags": [
+          "Admin - Users"
+        ],
+        "summary": "獲取用戶角色",
+        "description": "獲取指定用戶的角色資訊。需要管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "用戶 ID",
+              "example": "123"
+            },
+            "required": true,
+            "description": "用戶 ID",
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功獲取用戶角色",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/UserRoleInfo"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin - Users"
+        ],
+        "summary": "更新用戶角色",
+        "description": "更新指定用戶的角色。需要超級管理員權限。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$",
+              "description": "用戶 ID",
+              "example": "123"
+            },
+            "required": true,
+            "description": "用戶 ID",
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roleId": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "description": "角色 ID",
+                    "example": 2
+                  }
+                },
+                "required": [
+                  "roleId"
+                ],
+                "description": "更新用戶角色請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "用戶角色更新成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "操作是否成功",
+                          "example": true
+                        }
+                      },
+                      "required": [
+                        "success"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/db-info": {
       "get": {
         "tags": [
@@ -41486,19 +44537,34 @@
       "x-order": 23
     },
     {
+      "name": "Admin - Roles",
+      "description": "角色管理相關操作（需要管理員權限）",
+      "x-order": 24
+    },
+    {
+      "name": "Admin - Permissions",
+      "description": "權限管理相關操作（需要管理員權限）",
+      "x-order": 25
+    },
+    {
+      "name": "Admin - Users",
+      "description": "用戶角色指派相關操作（需要管理員權限）",
+      "x-order": 26
+    },
+    {
       "name": "System",
       "description": "系統狀態和資訊相關操作",
-      "x-order": 24
+      "x-order": 27
     },
     {
       "name": "Database Info",
       "description": "資料庫資訊查詢相關操作",
-      "x-order": 25
+      "x-order": 28
     },
     {
       "name": "System Monitor",
       "description": "系統監控相關操作",
-      "x-order": 26
+      "x-order": 29
     }
   ]
 }
