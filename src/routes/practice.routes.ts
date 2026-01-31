@@ -342,6 +342,37 @@ registry.registerPath({
 });
 
 /**
+ * DELETE /api/v1/practices/{id}/checkins/{checkInId} - 刪除簽到記錄
+ */
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/practices/{id}/checkins/{checkInId}',
+  tags: ['Practice Check-ins'],
+  summary: '刪除簽到記錄',
+  description: '刪除指定的簽到記錄，需要身份驗證且只能刪除自己的記錄',
+  request: {
+    params: z.object({
+      id: z.string().openapi({ description: '實踐 ID' }),
+      checkInId: z.string().openapi({ description: '簽到記錄 ID' })
+    })
+  },
+  responses: {
+    200: {
+      description: '成功刪除簽到記錄',
+      content: {
+        'application/json': {
+          schema: operationSuccessApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * GET /api/v1/practices/{id}/checkins - 取得簽到記錄列表
  */
 registry.registerPath({
@@ -991,6 +1022,17 @@ router.post('/:id/checkins',
   validate(checkInSchema, 'body'),
   // TODO: requirePracticeOwnership middleware
   practiceController.createCheckIn as RequestHandler);
+
+/**
+ * DELETE /practices/:id/checkins/:checkInId
+ * 刪除簽到記錄
+ * 路徑參數：id - 實踐 ID, checkInId - 簽到記錄 ID
+ * 需要身份驗證和擁有權驗證
+ */
+router.delete('/:id/checkins/:checkInId',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  practiceController.deleteCheckIn as RequestHandler);
 
 /**
  * GET /practices/:id/checkins

@@ -586,3 +586,88 @@ export async function getMonthlyCheckInCalendar(practiceId: number, userId: numb
     throw new InternalServerError('取得月度簽到日曆失敗');
   }
 }
+
+/**
+ * 刪除簽到記錄
+ */
+export async function deleteCheckIn(
+  checkInId: number,
+  practiceId: number,
+  userId: number
+): Promise<ApiSuccessResponse<{ deleted: boolean }>> {
+  try {
+    // 驗證簽到記錄存在且屬於該用戶和實踐
+    const checkIn = await prismaClient.practice_checkins.findFirst({
+      where: {
+        id: checkInId,
+        practice_id: practiceId,
+        user_id: userId
+      }
+    });
+
+    if (!checkIn) {
+      throw new NotFoundError('簽到記錄不存在或沒有權限刪除');
+    }
+
+    // 刪除關聯的標籤
+    await prismaClient.entity_tags.deleteMany({
+      where: {
+        entity_type: CHECKIN_ENTITY_TYPE,
+        entity_id: checkInId
+      }
+    });
+
+    // 刪除簽到記錄
+    await prismaClient.practice_checkins.delete({
+      where: { id: checkInId }
+    });
+
+    // 重新計算實踐進度
+    const remainingCheckIns = await prismaClient.practice_checkins.count({
+      where: {
+        practice_id: practiceId,
+        user_id: userId
+      }
+    });
+
+    // 取得實踐配置
+    const practice = await prismaClient.practices.findUnique({
+      where: { id: practiceId }
+    });
+
+    if (practice) {
+      const progressConfig: PracticeProgressConfig = {
+        frequencyMinDays: (practice as { frequency_min_days?: number }).frequency_min_days || 1,
+        frequencyMaxDays: (practice as { frequency_max_days?: number }).frequency_max_days || 7,
+        durationDays: (practice as { duration_days?: number }).duration_days || 30
+      };
+
+      const progressResult = calculateProgress(progressConfig, remainingCheckIns);
+
+      // 更新實踐進度
+      await prismaClient.practices.update({
+        where: { id: practiceId },
+        data: {
+          progress_percentage: progressResult.percentage,
+          updated_at: new Date()
+        }
+      });
+    }
+
+    loggerService.info('Check-in deleted', {
+      checkInId,
+      practiceId,
+      userId,
+      remainingCheckIns
+    });
+
+    return createSuccessResponse({ deleted: true });
+
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    loggerService.error('Failed to delete check-in', { checkInId, practiceId, userId, error });
+    throw new InternalServerError('刪除簽到記錄失敗');
+  }
+}
