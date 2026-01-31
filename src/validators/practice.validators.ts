@@ -487,6 +487,23 @@ export const practiceStatsResponseSchema = z.object({
 // 註冊 PracticeStats
 registry.register('PracticeStats', practiceStatsResponseSchema);
 
+// 實踐資源回應 Schema
+export const practiceResourceEntitySchema = z.object({
+  id: z.string().openapi({ description: '資源外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
+  name: z.string().openapi({ description: '資源名稱', example: 'React 官方文檔' }),
+  url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' })
+}).openapi('PracticeResourceEntity', {
+  description: '實踐使用的資源',
+  example: {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'React 官方文檔',
+    url: 'https://react.dev/'
+  }
+});
+
+// 註冊 PracticeResourceEntity
+registry.register('PracticeResourceEntity', practiceResourceEntitySchema);
+
 // 實踐活動回應 Schema - 基於 Prisma schema practices 表
 export const practiceEntityResponseSchema = z.object({
   id: z.string().openapi({ description: '實踐活動外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
@@ -502,6 +519,10 @@ export const practiceEntityResponseSchema = z.object({
   otherContext: z.string().optional().openapi({ description: '其他說明' }),
   status: practiceStatusSchema,
   hasResources: z.boolean().openapi({ description: '是否有相關資源', example: true }),
+  resources: z.array(practiceResourceEntitySchema).optional().openapi({
+    description: '使用的資源列表',
+    example: [{ id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev/' }]
+  }),
   progressPercentage: z.number().min(0).openapi({ description: '進度百分比', example: 50 }),
   firstCheckinAt: z.string().optional().openapi({ description: '首次打卡時間', format: 'date-time' }),
   checkInCount: z.number().int().min(0).openapi({ description: '已打卡次數', example: 2 }),
@@ -525,7 +546,10 @@ export const practiceEntityResponseSchema = z.object({
     sessionDurationMinutes: 30,
     practiceTimePeriods: ['morning', 'evening'],
     status: 'active',
-    hasResources: false,
+    hasResources: true,
+    resources: [
+      { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev/' }
+    ],
     progressPercentage: 50,
     firstCheckinAt: '2024-01-15T08:30:00.000Z',
     checkInCount: 2,

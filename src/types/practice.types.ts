@@ -44,6 +44,13 @@ export interface PracticeProgressConfig {
   durationDays: number;
 }
 
+// Practice resource response interface
+export interface PracticeResourceEntity {
+  id: string;
+  name: string;
+  url?: string;
+}
+
 // Core practice entity interface - 基於 Prisma schema practices 表
 export interface PracticeEntity {
   id: string;
@@ -59,6 +66,7 @@ export interface PracticeEntity {
   otherContext?: string;
   status: PracticeStatus;
   hasResources: boolean;
+  resources?: PracticeResourceEntity[];
   progressPercentage?: number;
   firstCheckinAt?: string;
   checkInCount: number;
