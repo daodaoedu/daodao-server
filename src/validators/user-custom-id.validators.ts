@@ -112,7 +112,7 @@ registry.register('CustomIdAvailabilityData', customIdAvailabilityDataSchema);
  * 設置自訂 ID 成功回應資料
  */
 export const setCustomIdDataSchema = z.object({
-  _id: z.string().uuid().openapi({
+  id: z.string().uuid().openapi({
     description: '用戶 UUID',
     example: '550e8400-e29b-41d4-a716-446655440000',
     format: 'uuid'
@@ -135,7 +135,7 @@ registry.register('SetCustomIdData', setCustomIdDataSchema);
  * 移除自訂 ID 成功回應資料
  */
 export const removeCustomIdDataSchema = z.object({
-  _id: z.string().uuid().openapi({
+  id: z.string().uuid().openapi({
     description: '用戶 UUID',
     example: '550e8400-e29b-41d4-a716-446655440000',
     format: 'uuid'

@@ -160,6 +160,7 @@ export interface UpdatePracticeRequest {
     url?: string;
   }>;
   status?: PracticeStatus;
+  isDraft?: boolean;
 }
 
 // Check-in request - 基於 Prisma schema practice_checkins 表
