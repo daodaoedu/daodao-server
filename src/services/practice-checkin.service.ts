@@ -43,6 +43,9 @@ const prismaClient = prisma;
 /** 打卡記錄的 entity_type */
 const CHECKIN_ENTITY_TYPE = 'practice_checkin';
 
+/** 一天的毫秒數 */
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 /**
  * 建立簽到記錄
  *
@@ -98,54 +101,79 @@ export async function createCheckIn(
       throw new ConflictError('今日已完成簽到');
     }
 
-    // 查詢現有打卡數量
-    const currentCheckInCount = await prismaClient.practice_checkins.count({
-      where: {
-        practice_id: practiceId,
-        user_id: userId
-      }
-    });
-
-    const isFirstCheckIn = currentCheckInCount === 0;
-    const newCheckInCount = currentCheckInCount + 1;
-
     // 取得實踐配置用於進度計算
-    // 注意：這些欄位可能尚未存在於資料庫，使用預設值
+    const durationDays = (practice as { duration_days?: number }).duration_days || 14;
     const progressConfig: PracticeProgressConfig = {
       frequencyMinDays: (practice as { frequency_min_days?: number }).frequency_min_days || 1,
       frequencyMaxDays: (practice as { frequency_max_days?: number }).frequency_max_days || 7,
-      durationDays: (practice as { duration_days?: number }).duration_days || 30
+      durationDays
     };
 
-    // 計算新進度
-    const progressResult = calculateProgress(progressConfig, newCheckInCount);
+    // 使用交易確保資料一致性，避免 race condition
+    const { checkIn, isFirstCheckIn, progressResult, newStatus, streakInfo, newCheckInCount } = await prismaClient.$transaction(async (tx) => {
+      // 在 transaction 內查詢打卡數量，確保原子性
+      const currentCheckInCount = await tx.practice_checkins.count({
+        where: {
+          practice_id: practiceId,
+          user_id: userId
+        }
+      });
 
-    // 準備更新實踐的資料
-    const practiceUpdateData: Prisma.practicesUpdateInput = {
-      progress_percentage: progressResult.percentage,
-      updated_at: new Date()
-    };
+      const txIsFirstCheckIn = currentCheckInCount === 0;
+      const newCheckInCount = currentCheckInCount + 1;
 
-    // 決定新狀態
-    const newStatus = determineNewStatus({
-      currentStatus: practice.status as PracticeStatusType,
-      hasCheckIns: true,
-      hasReachedTarget: progressResult.hasReachedMinTarget
-    });
-    practiceUpdateData.status = newStatus;
+      // 計算新進度
+      const txProgressResult = calculateProgress(progressConfig, newCheckInCount);
 
-    // 首次打卡：設定 first_checkin_at
-    if (isFirstCheckIn) {
-      practiceUpdateData.first_checkin_at = new Date();
-    }
+      // 準備更新實踐的資料
+      const practiceUpdateData: Prisma.practicesUpdateInput = {
+        progress_percentage: txProgressResult.percentage,
+        updated_at: new Date()
+      };
 
-    // 計算連續簽到天數
-    const streakInfo = await calculateStreak(practiceId, userId, today);
+      // 決定新狀態
+      const txNewStatus = determineNewStatus({
+        currentStatus: practice.status as PracticeStatusType,
+        hasCheckIns: true,
+        hasReachedTarget: txProgressResult.hasReachedMinTarget
+      });
+      practiceUpdateData.status = txNewStatus;
 
-    // 使用交易確保資料一致性
-    const [checkIn] = await prismaClient.$transaction([
+      // 首次打卡：設定 first_checkin_at 和日期位移
+      if (txIsFirstCheckIn) {
+        practiceUpdateData.first_checkin_at = new Date();
+
+        // 日期位移：若提早打卡（今日 < start_date），執行日期位移
+        const practiceStartDate = practice.start_date ? new Date(practice.start_date) : null;
+        if (practiceStartDate) {
+          practiceStartDate.setUTCHours(0, 0, 0, 0);
+
+          if (today.getTime() < practiceStartDate.getTime()) {
+            // 計算需要位移的天數
+            const shiftDays = Math.ceil((practiceStartDate.getTime() - today.getTime()) / MS_PER_DAY);
+
+            // 更新 start_date 為今天
+            practiceUpdateData.start_date = today;
+
+            // 從 start_date + duration_days 重新計算 end_date（而非減法位移）
+            const newEndDate = new Date(today);
+            newEndDate.setUTCDate(newEndDate.getUTCDate() + durationDays - 1);
+            practiceUpdateData.end_date = newEndDate;
+
+            loggerService.info('Practice dates shifted due to early check-in', {
+              practiceId,
+              userId,
+              shiftDays,
+              originalStartDate: practiceStartDate.toISOString(),
+              newStartDate: today.toISOString(),
+              newEndDate: newEndDate.toISOString()
+            });
+          }
+        }
+      }
+
       // 建立簽到記錄
-      prismaClient.practice_checkins.create({
+      const txCheckIn = await tx.practice_checkins.create({
         data: {
           practice_id: practiceId,
           user_id: userId,
@@ -162,13 +190,26 @@ export async function createCheckIn(
             }
           }
         }
-      }),
+      });
+
       // 更新實踐進度和狀態
-      prismaClient.practices.update({
+      await tx.practices.update({
         where: { id: practiceId },
         data: practiceUpdateData
-      })
-    ]);
+      });
+
+      // 計算連續簽到天數
+      const txStreakInfo = await calculateStreakInTransaction(tx, practiceId, userId, today);
+
+      return {
+        checkIn: txCheckIn,
+        isFirstCheckIn: txIsFirstCheckIn,
+        progressResult: txProgressResult,
+        newStatus: txNewStatus,
+        streakInfo: txStreakInfo,
+        newCheckInCount
+      };
+    });
 
     // 設置打卡標籤（如果有提供）
     const tags = data.tags || [];
@@ -404,6 +445,63 @@ export async function calculateStreak(practiceId: number, userId: number, curren
 
   } catch (error) {
     loggerService.error('Failed to calculate streak', { practiceId, userId, error });
+    return { newStreak: 1, isNewRecord: false };
+  }
+}
+
+/**
+ * 計算連續簽到天數（Transaction 版本）
+ * 用於在 transaction 內計算連續天數
+ */
+async function calculateStreakInTransaction(
+  tx: Prisma.TransactionClient,
+  practiceId: number,
+  userId: number,
+  currentDate: Date
+): Promise<{ newStreak: number; isNewRecord: boolean }> {
+  try {
+    const recentCheckIns = await tx.practice_checkins.findMany({
+      where: {
+        practice_id: practiceId,
+        user_id: userId,
+        checkin_date: {
+          lt: currentDate
+        }
+      },
+      orderBy: { checkin_date: 'desc' },
+      take: 30
+    });
+
+    if (recentCheckIns.length === 0) {
+      return { newStreak: 1, isNewRecord: true };
+    }
+
+    let streak = 1;
+    const toUTCDateStr = (date: Date): string => date.toISOString().split('T')[0];
+
+    const yesterday = new Date(currentDate);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+    const yesterdayStr = toUTCDateStr(yesterday);
+    const yesterdayCheckIn = recentCheckIns.find(checkIn =>
+      toUTCDateStr(checkIn.checkin_date) === yesterdayStr
+    );
+
+    if (yesterdayCheckIn) {
+      const checkDate = new Date(yesterday);
+      for (const checkIn of recentCheckIns) {
+        if (toUTCDateStr(checkIn.checkin_date) === toUTCDateStr(checkDate)) {
+          streak++;
+          checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    return { newStreak: streak, isNewRecord: false };
+  } catch (error) {
+    loggerService.error('Failed to calculate streak in transaction', { practiceId, userId, error });
     return { newStreak: 1, isNewRecord: false };
   }
 }

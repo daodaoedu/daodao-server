@@ -196,6 +196,7 @@ describe('Practice E2E Tests', () => {
         mood: 'happy',
         note: '第一天閱讀完成！',
         image_urls: [],
+        og_image_url: null,
         created_at: new Date(),
         updated_at: new Date(),
         practices: { title: '每日閱讀 30 分鐘' }
@@ -212,7 +213,9 @@ describe('Practice E2E Tests', () => {
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
       prismaMock.practice_checkins.count.mockResolvedValue(0);
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-      prismaMock.$transaction.mockResolvedValue([mockCheckIn, mockUpdatedPractice]);
+      prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
+      prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice as any);
+      // Note: setupTransactionMock() handles interactive transaction by passing prismaMock as tx
       prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
         id: 1,
         message: '今天的你也很有行動力哦！'
