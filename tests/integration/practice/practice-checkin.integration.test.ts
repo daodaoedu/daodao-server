@@ -320,6 +320,7 @@ describe('Practice Check-in API Integration Tests', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns as any);
       prismaMock.practice_checkins.count.mockResolvedValue(2);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
     });
 
     it('B-3-a: 無參數應返回所有打卡記錄', async () => {

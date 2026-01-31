@@ -404,6 +404,124 @@ export const revokeAllSessionsValidator = z.object({
 });
 
 /**
+ * Apple Sign In 請求驗證器
+ */
+export const appleSignInValidator = z.object({
+  idToken: z
+    .string()
+    .min(1, 'Apple ID Token 為必填欄位')
+    .openapi({
+      description: 'Apple Sign In 返回的 ID Token',
+      example: 'eyJraWQiOiJ...'
+    }),
+  user: z
+    .object({
+      name: z
+        .string()
+        .max(100, '名稱不能超過 100 個字符')
+        .optional()
+        .openapi({
+          description: '用戶名稱（僅首次登入時由 Apple 提供）',
+          example: 'John Doe'
+        }),
+      email: z
+        .string()
+        .email('請輸入有效的電子郵件格式')
+        .optional()
+        .openapi({
+          description: '用戶電子郵件（可能為 private relay email）',
+          example: 'user@privaterelay.appleid.com'
+        })
+    })
+    .optional()
+    .openapi({
+      description: '用戶資訊（僅首次授權時由 iOS App 提供）'
+    }),
+  nonce: z
+    .string()
+    .optional()
+    .openapi({
+      description: '用於防止重放攻擊的 nonce 值',
+      example: 'random_nonce_string'
+    })
+}).openapi('AppleSignInRequest', {
+  description: 'Apple Sign In 登入請求資料',
+  example: {
+    idToken: 'eyJraWQiOiJ...',
+    user: {
+      name: 'John Doe',
+      email: 'john@example.com'
+    }
+  }
+});
+
+/**
+ * Apple Sign In 回應 schema
+ */
+export const appleSignInResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    token: z.string().openapi({
+      description: 'JWT 認證 token',
+      example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+    }),
+    user: z.object({
+      id: z.number().int().openapi({
+        description: '用戶數字 ID',
+        example: 123
+      }),
+      _id: z.string().openapi({
+        description: '用戶 UUID',
+        example: '123e4567-e89b-12d3-a456-426614174000'
+      }),
+      name: z.string().openapi({
+        description: '用戶名稱',
+        example: 'John Doe'
+      }),
+      email: z.string().email().optional().openapi({
+        description: '電子郵件地址',
+        example: 'john@example.com'
+      }),
+      photoUrl: z.string().url().optional().openapi({
+        description: '個人大頭照 URL',
+        example: 'https://example.com/avatar.jpg'
+      }),
+      roleId: z.number().int().optional().openapi({
+        description: '角色 ID',
+        example: 2
+      })
+    }).openapi({
+      description: '用戶資訊'
+    }),
+    isTemp: z.boolean().openapi({
+      description: '是否為臨時用戶',
+      example: false
+    }),
+    isNewUser: z.boolean().openapi({
+      description: '是否為新建立的用戶',
+      example: true
+    })
+  })
+).openapi('AppleSignInResponse', {
+  description: 'Apple Sign In 登入成功回應',
+  example: {
+    success: true,
+    data: {
+      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      user: {
+        id: 123,
+        _id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'John Doe',
+        email: 'john@example.com',
+        roleId: 2
+      },
+      isTemp: false,
+      isNewUser: true
+    },
+    timestamp: '2024-01-15T10:30:00.000Z'
+  }
+});
+
+/**
  * OAuth 狀態驗證器
  */
 export const oauthStateValidator = z.object({
@@ -467,6 +585,7 @@ export type UpdateProfileRequest = z.infer<typeof updateProfileValidator>;
 export type TokenRequest = z.infer<typeof tokenValidator>;
 export type RevokeAllSessionsRequest = z.infer<typeof revokeAllSessionsValidator>;
 export type OAuthStateRequest = z.infer<typeof oauthStateValidator>;
+export type AppleSignInRequest = z.infer<typeof appleSignInValidator>;
 
 // 認證相關的回應 schemas
 
@@ -699,6 +818,7 @@ registry.register('UpdateProfileRequest', updateProfileValidator);
 registry.register('TokenRequest', tokenValidator);
 registry.register('RevokeAllSessionsRequest', revokeAllSessionsValidator);
 registry.register('OAuthStateRequest', oauthStateValidator);
+registry.register('AppleSignInRequest', appleSignInValidator);
 
 // 註冊回應 schemas
 registry.register('AuthUserData', authUserSchema);
@@ -707,6 +827,7 @@ registry.register('LogoutResponse', logoutResponseSchema);
 registry.register('RefreshTokenResponse', refreshTokenResponseSchema);
 registry.register('GetCurrentUserResponse', getCurrentUserResponseSchema);
 registry.register('VerifyEmailResponse', verifyEmailResponseSchema);
+registry.register('AppleSignInResponse', appleSignInResponseSchema);
 
 // 統一導出
 export const authValidators = {
@@ -719,7 +840,8 @@ export const authValidators = {
   updateProfileValidator,
   tokenValidator,
   revokeAllSessionsValidator,
-  oauthStateValidator
+  oauthStateValidator,
+  appleSignInValidator
 };
 
 export default authValidators;

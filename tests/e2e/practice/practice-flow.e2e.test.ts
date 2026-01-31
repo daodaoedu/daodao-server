@@ -239,6 +239,8 @@ describe('Practice E2E Tests', () => {
       } as any);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const detailResponse = await authGet(`${API_BASE}/${practiceExternalId}`, userToken);
 

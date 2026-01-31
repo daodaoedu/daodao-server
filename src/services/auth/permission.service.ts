@@ -94,7 +94,7 @@ export class PermissionService {
   }
 
   /**
-   * 檢查用戶是否有指定角色
+   * 檢查用戶是否有指定角色（不區分大小寫）
    */
   async hasRole(userId: number, roleName: string): Promise<boolean> {
     try {
@@ -105,7 +105,7 @@ export class PermissionService {
         }
       });
 
-      return user?.roles?.name === roleName;
+      return user?.roles?.name?.toLowerCase() === roleName.toLowerCase();
     } catch (error) {
       console.error('Error checking role:', error);
       return false;
@@ -252,11 +252,12 @@ export class PermissionService {
   }
 
   /**
-   * 檢查是否為超級管理員
+   * 檢查是否為超級管理員（不區分大小寫）
    */
   async isSuperAdmin(userId: number): Promise<boolean> {
     try {
-      return await this.hasRole(userId, 'super_admin');
+      // hasRole 已經是不區分大小寫的比較
+      return await this.hasRole(userId, 'superadmin');
     } catch (error) {
       console.error('Error checking super admin:', error);
       return false;
@@ -286,14 +287,15 @@ export class PermissionService {
   }
 
   /**
-   * 檢查用戶是否為管理員
+   * 檢查用戶是否為管理員（Admin 或 SuperAdmin，不區分大小寫）
    */
   async isAdmin(userId: number): Promise<boolean> {
     try {
       const userRoles = await this.getUserRoles(userId);
-      return userRoles.some(role => 
-        role.name === 'admin' || role.name === 'super_admin'
-      );
+      return userRoles.some(role => {
+        const name = role.name?.toLowerCase();
+        return name === 'admin' || name === 'superadmin' || name === 'super_admin';
+      });
     } catch (error) {
       console.error('Error checking admin status:', error);
       return false;

@@ -10,6 +10,8 @@ import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
 import { createOAuthState, encodeOAuthState } from '../../utils/oauth-state';
+import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
+import { oauthNonceService } from './oauth-nonce.service';
 
 interface AuthOptions {
   clientID: string;
@@ -25,6 +27,12 @@ interface GoogleProfile extends Profile {
 // 檢查 OAuth 環境變數是否可用
 const isOAuthConfigured = () => {
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
+};
+
+// 檢查是否啟用 OAuth 直接建立正式用戶
+const isOAuthDirectLoginEnabled = (): boolean => {
+  const value = process.env.OAUTH_DIRECT_LOGIN;
+  return value === 'true' || value === '1';
 };
 
 // OAuth 配置選項（只在配置可用時創建）
@@ -132,7 +140,25 @@ if (authOptions) {
           return done(null, userResult.data.user as unknown as Express.User);
         }
 
-        // 如果沒有正式用戶，則檢查或創建臨時用戶
+        // 檢查是否啟用直接建立正式用戶
+        if (isOAuthDirectLoginEnabled()) {
+          console.log('OAUTH_DIRECT_LOGIN 已啟用，直接建立正式用戶');
+          const newUserResult = await authService.createUserFromOAuth({
+            googleId: profile.id,
+            email,
+            name: profile.displayName,
+            photoUrl
+          });
+
+          if (newUserResult.success && newUserResult.data) {
+            console.log('正式用戶已建立:', newUserResult.data);
+            return done(null, newUserResult.data as unknown as Express.User);
+          } else {
+            return done(new Error('Failed to create user from OAuth'), false);
+          }
+        }
+
+        // 原有流程：如果沒有正式用戶，則檢查或創建臨時用戶
         const tempUserResult = await authService.findOrCreateTempUser({
           googleId: profile.id,
           email,
@@ -178,7 +204,7 @@ export const initializePassportSession = () => {
  * 開始 Google OAuth 流程
  * 支援從前端傳入 state 參數，包含 redirectUrl 等資訊
  */
-export const authenticateGoogle = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticateGoogle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   if (!isOAuthConfigured()) {
     res.status(500).json({ error: 'OAuth not configured' });
     return;
@@ -186,13 +212,49 @@ export const authenticateGoogle = (req: Request, res: Response, next: NextFuncti
 
   // 從前端請求中取得 state 參數
   // 前端可以傳入: ?state=xxx (已編碼的 state) 或 ?redirectUrl=xxx&source=xxx
+  // App 可以傳入: ?redirect_uri=xxx (custom scheme URL)
   let stateParam = req.query.state as string | undefined;
 
   if (!stateParam) {
-    // 如果沒有 state，從 redirectUrl 和 source 建立新的 state
-    const redirectUrl = (req.query.redirectUrl as string) || '/dashboard';
-    const source = (req.query.source as 'website' | 'app') || 'app';
+    // 如果沒有 state，從 redirectUrl/redirect_uri 和 source 建立新的 state
+    // 支援 redirect_uri（App 慣用）和 redirectUrl（Web 慣用）
+    const redirectUri = validateRedirectParam(req.query.redirect_uri);
+    const redirectUrlParam = validateRedirectParam(req.query.redirectUrl);
+    const redirectUrl = redirectUrlParam || redirectUri || '/dashboard';
+
+    // 安全性檢查：驗證 redirect URI 是否在白名單中
+    if (!isValidRedirectUri(redirectUrl)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REDIRECT_URI',
+          message: 'The provided redirect URI is not allowed'
+        }
+      });
+      return;
+    }
+
+    // 根據 URL 類型決定 source
+    const isAppScheme = isCustomScheme(redirectUrl);
+    const source = (req.query.source as 'website' | 'app') || (isAppScheme ? 'app' : 'website');
+
     const state = createOAuthState(redirectUrl, source);
+
+    // 儲存 nonce 到 Redis（用於 CSRF 保護驗證）
+    try {
+      await oauthNonceService.storeNonce(state.nonce, redirectUrl, source);
+    } catch (error) {
+      console.error('Failed to store OAuth nonce:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'NONCE_STORAGE_FAILED',
+          message: 'Failed to initialize OAuth flow'
+        }
+      });
+      return;
+    }
+
     stateParam = encodeOAuthState(state);
   }
 

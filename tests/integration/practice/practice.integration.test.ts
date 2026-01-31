@@ -354,6 +354,8 @@ describe('Practice API Integration Tests', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const response = await authGet(`${API_BASE}/550e8400-e29b-41d4-a716-446655440002`);
 

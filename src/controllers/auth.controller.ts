@@ -19,14 +19,18 @@ import {
   logoutResponseSchema,
   refreshTokenResponseSchema,
   getCurrentUserResponseSchema,
-  verifyEmailResponseSchema
+  verifyEmailResponseSchema,
+  appleSignInResponseSchema
 } from '../validators/auth.validators';
 import { setAuthCookie, clearAuthCookie, getAuthToken } from '../utils/cookie-config';
 import {
-  createOAuthState,
-  encodeOAuthState,
-  validateOAuthState
+  validateOAuthState,
+  OAuthState
 } from '../utils/oauth-state';
+import { appleAuthService } from '../services/auth/apple-auth.service';
+import { isCustomScheme, buildRedirectUrl } from '../utils/redirect-validation';
+import { oauthNonceService } from '../services/auth/oauth-nonce.service';
+import { authCodeService } from '../services/auth/auth-code.service';
 
 /**
  * 用戶登入
@@ -62,6 +66,34 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     throw new UnauthorizedError('Google 認證失敗');
   }
 
+  // 解析並驗證 state 參數
+  const stateParam = req.query.state as string | undefined;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  if (!stateParam) {
+    console.error('OAuth callback - missing state parameter');
+    res.redirect(`${frontendUrl}/auth/error?reason=missing_state`);
+    return;
+  }
+
+  // 驗證 state 格式
+  const validationResult = validateOAuthState(stateParam);
+  if (!validationResult.valid || !validationResult.state) {
+    console.error('OAuth callback - invalid state:', validationResult.error);
+    res.redirect(`${frontendUrl}/auth/error?reason=invalid_state`);
+    return;
+  }
+
+  const oauthState: OAuthState = validationResult.state;
+
+  // 驗證 nonce（CSRF 保護）
+  const nonceData = await oauthNonceService.verifyAndConsumeNonce(oauthState.nonce);
+  if (!nonceData) {
+    console.error('OAuth callback - nonce verification failed:', oauthState.nonce.substring(0, 8) + '...');
+    res.redirect(`${frontendUrl}/auth/error?reason=invalid_nonce`);
+    return;
+  }
+
   // 參考 JavaScript 版本的邏輯
   const { id, external_id, name } = user;
   let _id: string | number = id || 0;
@@ -79,7 +111,6 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   let userPermissions: Array<{ name: string }> = [];
 
   if (!isTemp && id) {
-    // 分開 try-catch，確保 roles 和 permissions 獨立獲取
     try {
       const rolesResponse = await authService.getUserRoles(id);
       if (rolesResponse.success) {
@@ -110,50 +141,34 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
   const token = jwtService.generateToken(payload);
 
-  // 設定 HTTP-only Cookie
+  // 設定 HTTP-only Cookie（Web 使用）
   setAuthCookie(res, token);
 
-  // 解析 state 參數以驗證並取得前端傳來的原始資訊
-  const stateParam = req.query.state as string | undefined;
-  let finalEncodedState: string;
+  // 根據來源決定重定向目標
+  let redirectTarget: string;
 
-  if (stateParam) {
-    // 驗證前端傳來的 state
-    const validationResult = validateOAuthState(stateParam);
+  if (isCustomScheme(oauthState.redirectUrl)) {
+    // App 登入：使用 authorization code flow
+    // 生成一次性授權碼，App 用 code 換取 token（避免 token 暴露在 URL）
+    const authCode = authCodeService.generateAuthCode();
+    await authCodeService.storeAuthCode(authCode, token, stateParam);
 
-    if (validationResult.valid && validationResult.state) {
-      // 驗證成功，保留前端的原始 nonce 和 source
-      // 這樣前端可以驗證 nonce 是否匹配，防止 CSRF 攻擊
-      const originalState = validationResult.state;
+    redirectTarget = buildRedirectUrl(oauthState.redirectUrl, {
+      code: authCode,
+      state: stateParam
+    });
 
-      // 原封不動地使用前端傳來的 state（包含原始 nonce 和 source）
-      finalEncodedState = stateParam;
-
-      console.log('OAuth callback - preserving original state:', {
-        nonce: originalState.nonce,
-        source: originalState.source,
-        redirectUrl: originalState.redirectUrl
-      });
-    } else {
-      // 驗證失敗，記錄錯誤但仍創建預設 state
-      console.warn('OAuth state validation failed:', validationResult.error);
-
-      // 創建預設 state
-      const defaultState = createOAuthState('/dashboard', 'app');
-      finalEncodedState = encodeOAuthState(defaultState);
-    }
+    console.log('OAuth callback - app redirect with auth code');
   } else {
-    // 沒有 state 參數，創建預設 state
-    console.warn('No state parameter provided in OAuth callback');
-    const defaultState = createOAuthState('/dashboard', 'app');
-    finalEncodedState = encodeOAuthState(defaultState);
+    // Web 登入：重定向到前端 callback 頁面（token 已在 cookie 中）
+    redirectTarget = buildRedirectUrl(`${frontendUrl}/auth/callback`, {
+      state: stateParam
+    });
+
+    console.log('OAuth callback - web redirect');
   }
 
-  // 重定向到前端 callback 頁面
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const url = `${frontendUrl}/auth/callback?state=${finalEncodedState}`;
-
-  res.redirect(url);
+  res.redirect(redirectTarget);
 });
 
 /**
@@ -379,6 +394,90 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Apple Sign In
+ * POST /api/v1/auth/apple/token
+ * 驗證 Apple ID Token 並登入或註冊用戶
+ */
+export const appleSignIn = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken, user, nonce } = req.body;
+
+  // 使用 Apple 認證服務處理登入
+  const result = await appleAuthService.handleAppleSignIn({
+    idToken,
+    user,
+    nonce
+  });
+
+  if (!result.success || !result.data) {
+    throw new UnauthorizedError('Apple 認證失敗');
+  }
+
+  // 設定 HTTP-only Cookie
+  setAuthCookie(res, result.data.token);
+
+  // 驗證與回傳響應
+  const validatedResponse = appleSignInResponseSchema.parse(result);
+  res.json(validatedResponse);
+});
+
+/**
+ * 交換 Authorization Code 獲取 Token
+ * POST /api/v1/auth/token
+ * App 使用 auth code 換取 JWT token
+ */
+export const exchangeToken = asyncHandler(async (req: Request, res: Response) => {
+  const { code } = req.body;
+
+  if (!code || typeof code !== 'string') {
+    throw new BadRequestError('Authorization code is required');
+  }
+
+  // 驗證並消耗 auth code
+  const result = await authCodeService.exchangeAuthCode(code);
+
+  if (!result) {
+    throw new UnauthorizedError('Invalid or expired authorization code');
+  }
+
+  // 設定 HTTP-only Cookie
+  setAuthCookie(res, result.token);
+
+  // 解碼 token 獲取用戶資訊
+  const decoded = jwtService.verifyToken(result.token);
+
+  // 獲取用戶詳細資訊
+  let userInfo: { id: string; email: string; name: string; avatar: string } = {
+    id: decoded._id || String(decoded.id) || '',
+    email: '',
+    name: decoded.username || '',
+    avatar: ''
+  };
+
+  // 如果不是臨時用戶，獲取完整資訊
+  if (!decoded.isTemp && decoded._id) {
+    const userResponse = await authService.findUserByExternalId(decoded._id);
+    if (userResponse.success && userResponse.data) {
+      const user = userResponse.data;
+      userInfo = {
+        id: user.external_id || '',
+        email: user.contacts?.email || '',
+        name: user.nickname || '',
+        avatar: user.contacts?.photo_url || ''
+      };
+    }
+  }
+
+  // 回傳 token（camelCase 格式，與專案一致）
+  res.json({
+    accessToken: result.token,
+    tokenType: 'Bearer',
+    expiresIn: 86400, // 24 小時
+    refreshToken: result.token, // 目前使用相同 token
+    user: userInfo
+  });
+});
+
 export const authController = {
   login,
   register,
@@ -388,7 +487,9 @@ export const authController = {
   getCurrentUser,
   forgotPassword,
   resetPassword,
-  verifyEmail
+  verifyEmail,
+  appleSignIn,
+  exchangeToken
 };
 
 export default authController;

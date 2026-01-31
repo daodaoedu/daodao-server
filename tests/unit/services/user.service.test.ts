@@ -79,6 +79,7 @@ describe('User Service', () => {
     name: 'Test User',
     email: 'test@example.com',
     google_id: 'google-123',
+    apple_id: null,
     photo_url: 'https://example.com/photo.jpg',
     created_date: new Date(),
     updated_date: new Date(),
@@ -96,6 +97,7 @@ describe('User Service', () => {
   const createTestContact = (overrides = {}) => ({
     id: 1,
     google_id: 'google-123',
+    apple_id: null,
     photo_url: null,
     is_subscribe_email: false,
     email: 'test@example.com',

@@ -235,6 +235,7 @@ describe('Practice CheckIn Service', () => {
 
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       const result = await getCheckIns(1, params);
 
@@ -264,6 +265,7 @@ describe('Practice CheckIn Service', () => {
 
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       await getCheckIns(1, params);
 
@@ -286,6 +288,7 @@ describe('Practice CheckIn Service', () => {
 
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       await getCheckIns(1, params);
 
@@ -303,6 +306,7 @@ describe('Practice CheckIn Service', () => {
 
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
       await getCheckIns(1, params, 1);
 
