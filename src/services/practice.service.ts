@@ -373,7 +373,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
  *
  * 變更：
  * - 設定初始進度 progress_percentage: 20
- * - 設定初始狀態 status: 'not_started'
+ * - 設定初始狀態 status: 'draft' 或 'not_started'（依據 isDraft 參數）
  */
 export async function create(data: CreatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
   try {
@@ -389,6 +389,9 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     });
     const themeColor = THEME_COLORS[existingPracticeCount % THEME_COLORS.length];
 
+    // 根據 isDraft 決定初始狀態
+    const initialStatus = data.isDraft ? 'draft' : 'not_started';
+
     const practice = await prismaClient.practices.create({
       data: {
         user_id: userId,
@@ -402,7 +405,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         session_duration_minutes: data.sessionDurationMinutes,
         practice_time_periods: data.practiceTimePeriods || [],
         other_context: data.otherContext,
-        status: 'not_started',
+        status: initialStatus,
         has_resources: Boolean(data.resources && data.resources.length > 0),
         progress_percentage: INITIAL_PROGRESS,
         theme_color: themeColor

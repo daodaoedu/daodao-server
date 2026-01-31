@@ -203,6 +203,12 @@ export const createPracticeSchema = z.object({
         name: 'React 官方文檔',
         url: 'https://react.dev/'
       }]
+    }),
+  isDraft: z.boolean()
+    .default(false)
+    .openapi({
+      description: '是否存為草稿',
+      example: false
     })
 }).openapi('CreatePracticeRequest', {
   description: '創建實踐活動的請求資料',
@@ -216,7 +222,8 @@ export const createPracticeSchema = z.object({
     sessionDurationMinutes: 30,
     practiceTimePeriods: ['morning', 'evening'],
     tags: ['閱讀', '學習'],
-    resources: []
+    resources: [],
+    isDraft: false
   }
 }).refine(data => {
   // 驗證 frequencyMinDays <= frequencyMaxDays

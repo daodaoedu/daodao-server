@@ -141,6 +141,7 @@ export interface CreatePracticeRequest {
     name: string;
     url?: string;
   }>;
+  isDraft?: boolean;
 }
 
 export interface UpdatePracticeRequest {
