@@ -182,6 +182,7 @@ describe('Practice Business Logic Tests', () => {
         mood: 'happy',
         note: null,
         image_urls: [],
+        og_image_url: null,
         created_at: new Date(),
         updated_at: new Date(),
         practices: { title: '每日閱讀' }
@@ -198,7 +199,9 @@ describe('Practice Business Logic Tests', () => {
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
       prismaMock.practice_checkins.count.mockResolvedValue(0);
       prismaMock.practice_checkins.findMany.mockResolvedValue([]); // for streak calculation
-      prismaMock.$transaction.mockResolvedValue([mockCheckIn, mockUpdatedPractice]);
+      prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
+      prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice as any);
+      // Note: setupTransactionMock() handles interactive transaction
       prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
         id: 1,
         message: '太棒了！'
@@ -235,6 +238,7 @@ describe('Practice Business Logic Tests', () => {
             mood: 'happy',
             note: null,
             image_urls: [],
+            og_image_url: null,
             created_at: new Date(),
             updated_at: new Date(),
             practices: { title: '每日閱讀' }
@@ -249,7 +253,9 @@ describe('Practice Business Logic Tests', () => {
           prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
           prismaMock.practice_checkins.count.mockResolvedValue(checkIns - 1);
           prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-          prismaMock.$transaction.mockResolvedValue([mockCheckIn, mockUpdatedPractice]);
+          prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
+          prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice as any);
+          // Note: setupTransactionMock() handles interactive transaction
           prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
             id: 1,
             message: '加油！'
@@ -278,6 +284,7 @@ describe('Practice Business Logic Tests', () => {
           mood: 'happy',
           note: null,
           image_urls: [],
+          og_image_url: null,
           created_at: new Date(),
           updated_at: new Date(),
           practices: { title: '每日閱讀' }
@@ -292,7 +299,9 @@ describe('Practice Business Logic Tests', () => {
         prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
         prismaMock.practice_checkins.count.mockResolvedValue(2); // Already has 2 check-ins
         prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-        prismaMock.$transaction.mockResolvedValue([mockCheckIn, mockUpdatedPractice]);
+        prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
+        prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice as any);
+        // Note: setupTransactionMock() handles interactive transaction
         prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
           id: 1,
           message: '超棒！'
@@ -352,6 +361,7 @@ describe('Practice Business Logic Tests', () => {
         mood: 'happy',
         note: null,
         image_urls: [],
+        og_image_url: null,
         created_at: new Date(),
         updated_at: new Date(),
         practices: { title: '每日閱讀' }
@@ -368,7 +378,9 @@ describe('Practice Business Logic Tests', () => {
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
       prismaMock.practice_checkins.count.mockResolvedValue(0);
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
-      prismaMock.$transaction.mockResolvedValue([mockCheckIn, mockUpdatedPractice]);
+      prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
+      prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice as any);
+      // Note: setupTransactionMock() handles interactive transaction
       prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
         id: 1,
         message: '太棒了！'
@@ -618,9 +630,11 @@ describe('Practice Business Logic Tests', () => {
       expect(newStartDate.getTime()).toBeLessThan(originalStartDate.getTime());
 
       // 驗證 endDate 同步前移（保持總天數不變）
+      // duration_days = 14 表示從 startDate 到 endDate 共 14 天（包含首尾）
+      // 所以 endDate = startDate + 13 天，daysDiff = 13
       const newEndDate = new Date(capturedUpdateData.end_date);
       const daysDiff = Math.round((newEndDate.getTime() - newStartDate.getTime()) / 86400000);
-      expect(daysDiff).toBe(14); // duration_days = 14
+      expect(daysDiff).toBe(13); // endDate - startDate = duration_days - 1
     });
 
     it('在 startDate 當天打卡不應位移日期', async () => {

@@ -81,6 +81,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const result = await findAll({ page: 1, limit: 20 });
 
@@ -102,6 +103,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       await findAll({ search: 'test search' });
 
@@ -123,6 +125,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       await findAll({ status: 'active' });
 
@@ -164,6 +167,7 @@ describe('Practice Service', () => {
         theme_color: '#FCDD84',
         created_at: new Date(),
         updated_at: new Date(),
+        deleted_at: null,
         users: {
           id: 1,
           external_id: 'user-1',
@@ -199,6 +203,7 @@ describe('Practice Service', () => {
         practice_time_periods: [],
         theme_color: '#FCDD84',
         created_at: new Date(),
+        deleted_at: null,
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
 
@@ -332,7 +337,8 @@ describe('Practice Service', () => {
         user_id: 1,
         status: 'not_started',
         practice_time_periods: [],
-        created_at: new Date()
+        created_at: new Date(),
+        deleted_at: null
       };
       const mockUpdatedPractice = {
         id: 1,
@@ -343,6 +349,7 @@ describe('Practice Service', () => {
         practice_time_periods: [],
         theme_color: '#FCDD84',
         created_at: new Date(),
+        deleted_at: null,
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
 
@@ -368,7 +375,7 @@ describe('Practice Service', () => {
     });
 
     it('should throw error when user lacks permission', async () => {
-      const mockPractice = { id: 1, user_id: 2, status: 'not_started' }; // Different user
+      const mockPractice = { id: 1, user_id: 2, status: 'not_started', deleted_at: null }; // Different user
 
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
 
@@ -376,7 +383,7 @@ describe('Practice Service', () => {
     });
 
     it('should throw error when status does not allow edit (archived)', async () => {
-      const mockPractice = { id: 1, user_id: 1, status: 'archived' };
+      const mockPractice = { id: 1, user_id: 1, status: 'archived', deleted_at: null };
 
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
 
@@ -388,7 +395,8 @@ describe('Practice Service', () => {
         id: 1,
         user_id: 1,
         status: 'active',
-        first_checkin_at: new Date()
+        first_checkin_at: new Date(),
+        deleted_at: null
       };
 
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
@@ -401,7 +409,7 @@ describe('Practice Service', () => {
 
   describe('deleteFunction', () => {
     it('should soft delete practice successfully', async () => {
-      const mockPractice = { id: 1, user_id: 1 };
+      const mockPractice = { id: 1, user_id: 1, deleted_at: null };
       
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
       prismaMock.practices.update.mockResolvedValue({ ...mockPractice, status: 'archived' } as any);
@@ -413,7 +421,7 @@ describe('Practice Service', () => {
       expect(prismaMock.practices.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: 'archived',
+          deleted_at: expect.any(Date),
           updated_at: expect.any(Date)
         }
       });
@@ -426,8 +434,8 @@ describe('Practice Service', () => {
     });
 
     it('should throw error when user lacks permission', async () => {
-      const mockPractice = { id: 1, user_id: 2 }; // Different user
-      
+      const mockPractice = { id: 1, user_id: 2, deleted_at: null }; // Different user
+
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
 
       await expect(deleteFunction(1, 1)).rejects.toThrow('沒有權限刪除此實踐');
@@ -440,6 +448,8 @@ describe('Practice Service', () => {
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const result = await findUserPractices(5, { page: 1, limit: 10 });
 
@@ -554,6 +564,7 @@ describe('Practice Service', () => {
         theme_color: null,
         created_at: new Date(),
         updated_at: new Date(),
+        deleted_at: null,
         users: {
           id: 1,
           external_id: null,
@@ -597,6 +608,7 @@ describe('Practice Service', () => {
         theme_color: '#C3EEFF',
         created_at: new Date(),
         updated_at: new Date(),
+        deleted_at: null,
         users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
       } as any;
 

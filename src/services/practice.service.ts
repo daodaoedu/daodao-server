@@ -65,7 +65,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
     const take = Math.min(limit, 100); // 限制最大數量
 
     // 建構查詢條件
-    // 預設排除 archived 狀態，除非明確指定查詢 archived
+    // 預設排除 archived 狀態，除非明確指定 status=archived
     const where: Prisma.practicesWhereInput = {
       ...(search && {
         OR: [
@@ -73,13 +73,18 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
           { practice_action: { contains: search, mode: 'insensitive' } }
         ]
       }),
-      // Note: content_type field doesn't exist in schema, filter removed
+      // status 過濾邏輯：
+      // - 'archived': 只顯示 archived（需明確指定）
+      // - 其他具體狀態: 只顯示該狀態
+      // - 'all' 或無指定: 排除 archived
       ...(status === 'archived'
         ? { status: 'archived' }
         : status && status !== 'all'
           ? { status }
           : { status: { not: 'archived' } }),
-      ...(userId && { user_id: userId })
+      ...(userId && { user_id: userId }),
+      // 排除已刪除的實踐（deleted_at 不為 null 表示已刪除）
+      deleted_at: null
     };
 
     // 建構排序條件
@@ -126,7 +131,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 取得統計數據 - 暫時只查詢存在的表格
     const practiceIds: number[] = practices.map(p => p.id);
-    const [comments, allTags, checkInCounts, lastCheckInDates] = await Promise.all([
+    const [comments, allTags, checkInCounts, lastCheckInDates, allResources] = await Promise.all([
       getCommentCounts(practiceIds),
       // 批量查詢標籤
       prismaClient.entity_tags.findMany({
@@ -146,7 +151,25 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       // 批量查詢打卡次數
       getCheckInCounts(practiceIds),
       // 批量查詢最後打卡時間
-      getLastCheckInDates(practiceIds)
+      getLastCheckInDates(practiceIds),
+      // 批量查詢資源
+      prismaClient.entity_resources.findMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: { in: practiceIds },
+          deleted_at: null
+        },
+        include: {
+          resources: {
+            select: {
+              id: true,
+              external_id: true,
+              name: true,
+              url: true
+            }
+          }
+        }
+      })
     ]);
 
     // 將標籤按實踐 ID 分組
@@ -160,6 +183,19 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       });
       return acc;
     }, {} as Record<number, Array<{ id: number; name: string }>>);
+
+    // 將資源按實踐 ID 分組
+    const resourcesByPracticeId = allResources.reduce((acc, er) => {
+      if (!acc[er.entity_id]) {
+        acc[er.entity_id] = [];
+      }
+      acc[er.entity_id].push({
+        id: er.resources.external_id || String(er.resources.id),
+        name: er.resources.name,
+        url: er.resources.url || undefined
+      });
+      return acc;
+    }, {} as Record<number, PracticeResourceEntity[]>);
 
 
     // 轉換為 API 格式 - 基於 Prisma schema practices 表
@@ -177,6 +213,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
+      resources: resourcesByPracticeId[practice.id] || undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
       lastCheckinAt: lastCheckInDates[practice.id]?.toISOString(),
@@ -257,12 +294,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       }
     });
 
-    if (!practice) {
-      throw new NotFoundError('實踐不存在');
-    }
-
-    // 檢查是否已被刪除（軟刪除）
-    if (practice.status === 'archived') {
+    // 驗證：存在性（含軟刪除）
+    if (!practice || practice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 
@@ -546,7 +579,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       where: { id }
     });
 
-    if (!existingPractice) {
+    // 驗證順序：1. 存在性（含軟刪除）→ 2. 權限 → 3. 業務邏輯
+    if (!existingPractice || existingPractice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 
@@ -728,12 +762,12 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
  */
 export async function deleteFunction(id: number, userId: number): Promise<ApiSuccessResponse<{ success: boolean }>> {
   try {
-    // 檢查權限
     const practice = await prismaClient.practices.findUnique({
       where: { id }
     });
 
-    if (!practice) {
+    // 驗證順序：1. 存在性（含軟刪除）→ 2. 權限
+    if (!practice || practice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 
@@ -741,11 +775,11 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
       throw new ForbiddenError('沒有權限刪除此實踐');
     }
 
-    // 軟刪除：更新狀態為 archived
+    // 軟刪除：設置 deleted_at 時間戳（與封存區分）
     await prismaClient.practices.update({
       where: { id },
       data: {
-        status: 'archived',
+        deleted_at: new Date(),
         updated_at: new Date()
       }
     });
@@ -885,7 +919,7 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
             name: resource.name,
             url: resource.url || '',
             description: '',
-            type: 'practice_resource',
+            type: 'other',
             cost: 'free',
             created_by: userId
           }
@@ -1066,7 +1100,8 @@ export async function archive(id: number, userId: number): Promise<ApiSuccessRes
       where: { id }
     });
 
-    if (!practice) {
+    // 驗證順序：1. 存在性（含軟刪除）→ 2. 權限 → 3. 業務邏輯
+    if (!practice || practice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 
@@ -1133,7 +1168,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       }
     });
 
-    if (!practice) {
+    // 驗證順序：1. 存在性（含軟刪除）→ 2. 權限 → 3. 業務邏輯
+    if (!practice || practice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 

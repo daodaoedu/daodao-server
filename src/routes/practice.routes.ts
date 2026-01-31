@@ -638,6 +638,70 @@ registry.registerPath({
 });
 
 // ============================================================================
+// Archive OpenAPI 路由定義
+// ============================================================================
+
+/**
+ * POST /api/v1/practices/{id}/archive - 封存實踐
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/archive',
+  tags: ['Practice'],
+  summary: '封存實踐',
+  description: '將指定的實踐封存。封存後的實踐不會出現在預設列表中，但可以透過取消封存恢復。只有實踐擁有者可以執行此操作。',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '封存成功',
+      content: {
+        'application/json': {
+          schema: operationSuccessApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/unarchive - 取消封存實踐
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/unarchive',
+  tags: ['Practice'],
+  summary: '取消封存實踐',
+  description: '取消封存指定的實踐，恢復到正常狀態。系統會根據是否有打卡記錄自動決定恢復後的狀態（active 或 not_started）。只有實踐擁有者可以執行此操作。',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    200: {
+      description: '取消封存成功',
+      content: {
+        'application/json': {
+          schema: practiceApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+// ============================================================================
 // Practice Template OpenAPI 路由定義
 // ============================================================================
 

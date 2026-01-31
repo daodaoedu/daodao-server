@@ -245,6 +245,8 @@ describe('Practice API Integration Tests', () => {
       prismaMock.practices.count.mockResolvedValue(1);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
     });
 
     it('A-2-a: 無參數應返回分頁列表', async () => {
@@ -296,6 +298,8 @@ describe('Practice API Integration Tests', () => {
       prismaMock.practices.count.mockResolvedValue(0);
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const response = await authGet(`${API_BASE}/me`, userToken);
 
