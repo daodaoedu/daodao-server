@@ -433,7 +433,8 @@ export const checkInSchema = z.object({
   reflectionText: z.string().max(1000, '反思文字不可超過 1000 字').optional(),
   relatedResourceId: z.string().optional(),
   isPublic: z.boolean().default(true),
-  tags: z.array(z.string()).max(5, '標籤最多 5 個').default([])
+  tags: z.array(z.string()).max(5, '標籤最多 5 個').default([]),
+  ogImage: z.string().url('請輸入有效的圖片網址').optional() // Open Graph 圖片 URL
 });
 
 // 查詢參數 Schema
@@ -813,7 +814,8 @@ Content-Type: application/json
   "reflectionText": "指法更流暢了，但節奏還需要加強",
   "relatedResourceId": "880e8400-e29b-41d4-a716-446655440003",
   "isPublic": true,
-  "tags": ["莫札特", "小夜曲"]
+  "tags": ["莫札特", "小夜曲"],
+  "ogImage": "https://example.com/checkin-og-image.jpg"
 }
 ```
 
@@ -834,6 +836,7 @@ Content-Type: application/json
     "cumulativeProgress": 1.5,
     "isPublic": true,
     "tags": ["莫札特", "小夜曲"],
+    "ogImage": "https://example.com/checkin-og-image.jpg",
     "likeCount": 0,
     "commentCount": 0,
     "createdAt": "2025-06-23T19:30Z"
@@ -875,6 +878,7 @@ GET /api/v1/practices/:id/checkins
       "streakDay": 1,
       "cumulativeProgress": 1.5,
       "isPublic": true,
+      "ogImage": "https://example.com/checkin-og-image.jpg",
       "likeCount": 0,
       "commentCount": 0,
       "isLiked": false,
@@ -1099,6 +1103,7 @@ export interface CheckInEntity {
   cumulativeProgress: number;
   isPublic: boolean;
   tags: string[];
+  ogImage?: string; // Open Graph 圖片 URL，用於社交分享
   likeCount: number;
   commentCount: number;
   isLiked?: boolean;
@@ -1353,6 +1358,7 @@ CREATE TABLE "practice_checkins" (
     "streak_day" INT DEFAULT 1,
     "cumulative_progress" DECIMAL(10,2) NOT NULL,
     "is_public" BOOLEAN DEFAULT TRUE,
+    "og_image" VARCHAR(1000), -- Open Graph 圖片 URL，用於社交分享
     "like_count" INT DEFAULT 0,
     "comment_count" INT DEFAULT 0,
     "created_at" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
