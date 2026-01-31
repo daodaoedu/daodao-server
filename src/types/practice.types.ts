@@ -95,6 +95,7 @@ export interface CheckInEntity {
   mood?: CheckInMood;
   note?: string;
   imageUrls: string[];
+  ogImageUrl?: string;
   tags: string[];
   createdAt: string;
   updatedAt?: string;
@@ -165,6 +166,7 @@ export interface CheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
+  ogImageUrl?: string;
   tags?: string[];
 }
 
@@ -172,6 +174,7 @@ export interface CreateCheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
+  ogImageUrl?: string;
   tags?: string[];
 }
 
@@ -357,6 +360,7 @@ export interface DatabaseCheckIn {
   mood: string | null;
   note: string | null;
   image_urls: string[];
+  og_image_url: string | null;
   created_at: Date | null;
   updated_at: Date | null;
 }
