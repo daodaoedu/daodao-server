@@ -771,7 +771,7 @@ const preferenceOptionWithIdSchema = z.object({
     description: '選項值',
     example: 'hands_on'
   }),
-  description: z.string().optional().openapi({
+  description: z.string().nullable().openapi({
     description: '選項描述',
     example: '透過實際操作學習'
   })
@@ -830,8 +830,8 @@ const userPreferenceItemSchema = z.object({
     id: z.number().int(),
     name: z.string(),
     value: z.string(),
-    description: z.string().optional(),
-    maxSelections: z.number().int().optional(),
+    description: z.string().nullable().optional(),
+    maxSelections: z.number().int().nullable().optional(),
     options: z.array(preferenceOptionWithIdSchema)
   }).openapi({
     description: '偏好類型資訊'

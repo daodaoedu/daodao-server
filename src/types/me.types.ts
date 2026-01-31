@@ -98,15 +98,15 @@ export interface PreferenceOption {
   id: number;
   value: string;
   name: string;
-  description?: string;
+  description: string | null;
 }
 
 export interface PreferenceType {
   id: number;
   name: string;
   value: string; // unique identifier
-  description?: string;
-  maxSelections?: number;
+  description: string | null;
+  maxSelections: number | null;
   options: PreferenceOption[];
 }
 

@@ -17738,10 +17738,12 @@
                                   },
                                   "description": {
                                     "type": "string",
+                                    "nullable": true,
                                     "description": "偏好類型描述"
                                   },
                                   "maxSelections": {
                                     "type": "integer",
+                                    "nullable": true,
                                     "minimum": 0,
                                     "exclusiveMinimum": true,
                                     "description": "最大選擇數"
@@ -17765,13 +17767,15 @@
                                         },
                                         "description": {
                                           "type": "string",
+                                          "nullable": true,
                                           "description": "選項描述"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "value",
-                                        "name"
+                                        "name",
+                                        "description"
                                       ],
                                       "description": "偏好設定選項"
                                     },
@@ -17782,6 +17786,8 @@
                                   "id",
                                   "name",
                                   "value",
+                                  "description",
+                                  "maxSelections",
                                   "options"
                                 ],
                                 "description": "偏好類型資訊"
@@ -17803,13 +17809,15 @@
                                   },
                                   "description": {
                                     "type": "string",
+                                    "nullable": true,
                                     "description": "選項描述"
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "value",
-                                  "name"
+                                  "name",
+                                  "description"
                                 ],
                                 "description": "選項資訊"
                               }
@@ -17847,10 +17855,12 @@
                                   },
                                   "description": {
                                     "type": "string",
+                                    "nullable": true,
                                     "description": "偏好類型描述"
                                   },
                                   "maxSelections": {
                                     "type": "integer",
+                                    "nullable": true,
                                     "minimum": 0,
                                     "exclusiveMinimum": true,
                                     "description": "最大選擇數"
@@ -17874,13 +17884,15 @@
                                         },
                                         "description": {
                                           "type": "string",
+                                          "nullable": true,
                                           "description": "選項描述"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "value",
-                                        "name"
+                                        "name",
+                                        "description"
                                       ],
                                       "description": "偏好設定選項"
                                     },
@@ -17891,6 +17903,8 @@
                                   "id",
                                   "name",
                                   "value",
+                                  "description",
+                                  "maxSelections",
                                   "options"
                                 ],
                                 "description": "偏好設定類型"
@@ -29497,10 +29511,12 @@
                                     "type": "string"
                                   },
                                   "description": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "nullable": true
                                   },
                                   "maxSelections": {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "nullable": true
                                   },
                                   "options": {
                                     "type": "array",
@@ -29524,6 +29540,7 @@
                                         },
                                         "description": {
                                           "type": "string",
+                                          "nullable": true,
                                           "description": "選項描述",
                                           "example": "透過實際操作學習"
                                         }
@@ -29531,7 +29548,8 @@
                                       "required": [
                                         "id",
                                         "name",
-                                        "value"
+                                        "value",
+                                        "description"
                                       ],
                                       "description": "完整偏好選項"
                                     }
@@ -29565,6 +29583,7 @@
                                   },
                                   "description": {
                                     "type": "string",
+                                    "nullable": true,
                                     "description": "選項描述",
                                     "example": "透過實際操作學習"
                                   }
@@ -29572,7 +29591,8 @@
                                 "required": [
                                   "id",
                                   "name",
-                                  "value"
+                                  "value",
+                                  "description"
                                 ],
                                 "description": "選項資訊"
                               }
@@ -30084,6 +30104,7 @@
                                 },
                                 "description": {
                                   "type": "string",
+                                  "nullable": true,
                                   "description": "選項描述",
                                   "example": "透過實際操作學習"
                                 }
@@ -30091,7 +30112,8 @@
                               "required": [
                                 "id",
                                 "name",
-                                "value"
+                                "value",
+                                "description"
                               ],
                               "description": "完整偏好選項"
                             },
