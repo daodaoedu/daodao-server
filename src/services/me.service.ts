@@ -258,15 +258,15 @@ const getMyPreferences = async (userId: number, _params: PreferencesQueryParams)
         id: pref.preference_options.preference_types.id,
         name: pref.preference_options.preference_types.name,
         value: pref.preference_options.preference_types.value,
-        description: pref.preference_options.preference_types.description || undefined,
-        maxSelections: pref.preference_options.preference_types.max_selections || undefined,
+        description: pref.preference_options.preference_types.description ?? null,
+        maxSelections: pref.preference_options.preference_types.max_selections ?? null,
         options: [] // Will be populated separately if needed
       },
       option: {
         id: pref.preference_options.id,
         value: pref.preference_options.value,
         name: pref.preference_options.name,
-        description: pref.preference_options.description || undefined
+        description: pref.preference_options.description ?? null
       }
     }));
 

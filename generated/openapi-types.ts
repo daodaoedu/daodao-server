@@ -2774,9 +2774,9 @@ export interface paths {
                                         /** @description 偏好類型唯一標識 */
                                         value: string;
                                         /** @description 偏好類型描述 */
-                                        description?: string;
+                                        description: string | null;
                                         /** @description 最大選擇數 */
-                                        maxSelections?: number;
+                                        maxSelections: number | null;
                                         /** @description 可選選項 */
                                         options: {
                                             /** @description 選項ID */
@@ -2786,7 +2786,7 @@ export interface paths {
                                             /** @description 選項名稱 */
                                             name: string;
                                             /** @description 選項描述 */
-                                            description?: string;
+                                            description: string | null;
                                         }[];
                                     };
                                     /** @description 選項資訊 */
@@ -2798,7 +2798,7 @@ export interface paths {
                                         /** @description 選項名稱 */
                                         name: string;
                                         /** @description 選項描述 */
-                                        description?: string;
+                                        description: string | null;
                                     };
                                 }[];
                                 categories: {
@@ -2811,9 +2811,9 @@ export interface paths {
                                         /** @description 偏好類型唯一標識 */
                                         value: string;
                                         /** @description 偏好類型描述 */
-                                        description?: string;
+                                        description: string | null;
                                         /** @description 最大選擇數 */
-                                        maxSelections?: number;
+                                        maxSelections: number | null;
                                         /** @description 可選選項 */
                                         options: {
                                             /** @description 選項ID */
@@ -2823,7 +2823,7 @@ export interface paths {
                                             /** @description 選項名稱 */
                                             name: string;
                                             /** @description 選項描述 */
-                                            description?: string;
+                                            description: string | null;
                                         }[];
                                     };
                                     userSelections: {
@@ -9046,8 +9046,8 @@ export interface paths {
                                         id: number;
                                         name: string;
                                         value: string;
-                                        description?: string;
-                                        maxSelections?: number;
+                                        description?: string | null;
+                                        maxSelections?: number | null;
                                         options: {
                                             /**
                                              * @description 選項 ID
@@ -9068,7 +9068,7 @@ export interface paths {
                                              * @description 選項描述
                                              * @example 透過實際操作學習
                                              */
-                                            description?: string;
+                                            description: string | null;
                                         }[];
                                     };
                                     /** @description 選項資訊 */
@@ -9092,7 +9092,7 @@ export interface paths {
                                          * @description 選項描述
                                          * @example 透過實際操作學習
                                          */
-                                        description?: string;
+                                        description: string | null;
                                     };
                                 }[];
                                 /** @description 偏好分類 */
@@ -9441,7 +9441,7 @@ export interface paths {
                                      * @description 選項描述
                                      * @example 透過實際操作學習
                                      */
-                                    description?: string;
+                                    description: string | null;
                                 }[];
                             }[];
                             /**

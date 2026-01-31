@@ -12469,9 +12469,11 @@ paths:
                                   description: 偏好類型唯一標識
                                 description:
                                   type: string
+                                  nullable: true
                                   description: 偏好類型描述
                                 maxSelections:
                                   type: integer
+                                  nullable: true
                                   minimum: 0
                                   exclusiveMinimum: true
                                   description: 最大選擇數
@@ -12491,17 +12493,21 @@ paths:
                                         description: 選項名稱
                                       description:
                                         type: string
+                                        nullable: true
                                         description: 選項描述
                                     required:
                                       - id
                                       - value
                                       - name
+                                      - description
                                     description: 偏好設定選項
                                   description: 可選選項
                               required:
                                 - id
                                 - name
                                 - value
+                                - description
+                                - maxSelections
                                 - options
                               description: 偏好類型資訊
                             option:
@@ -12518,11 +12524,13 @@ paths:
                                   description: 選項名稱
                                 description:
                                   type: string
+                                  nullable: true
                                   description: 選項描述
                               required:
                                 - id
                                 - value
                                 - name
+                                - description
                               description: 選項資訊
                           required:
                             - id
@@ -12551,9 +12559,11 @@ paths:
                                   description: 偏好類型唯一標識
                                 description:
                                   type: string
+                                  nullable: true
                                   description: 偏好類型描述
                                 maxSelections:
                                   type: integer
+                                  nullable: true
                                   minimum: 0
                                   exclusiveMinimum: true
                                   description: 最大選擇數
@@ -12573,17 +12583,21 @@ paths:
                                         description: 選項名稱
                                       description:
                                         type: string
+                                        nullable: true
                                         description: 選項描述
                                     required:
                                       - id
                                       - value
                                       - name
+                                      - description
                                     description: 偏好設定選項
                                   description: 可選選項
                               required:
                                 - id
                                 - name
                                 - value
+                                - description
+                                - maxSelections
                                 - options
                               description: 偏好設定類型
                             userSelections:
@@ -19688,8 +19702,10 @@ paths:
                                   type: string
                                 description:
                                   type: string
+                                  nullable: true
                                 maxSelections:
                                   type: integer
+                                  nullable: true
                                 options:
                                   type: array
                                   items:
@@ -19709,12 +19725,14 @@ paths:
                                         example: hands_on
                                       description:
                                         type: string
+                                        nullable: true
                                         description: 選項描述
                                         example: 透過實際操作學習
                                     required:
                                       - id
                                       - name
                                       - value
+                                      - description
                                     description: 完整偏好選項
                               required:
                                 - id
@@ -19739,12 +19757,14 @@ paths:
                                   example: hands_on
                                 description:
                                   type: string
+                                  nullable: true
                                   description: 選項描述
                                   example: 透過實際操作學習
                               required:
                                 - id
                                 - name
                                 - value
+                                - description
                               description: 選項資訊
                           required:
                             - id
@@ -20080,12 +20100,14 @@ paths:
                                 example: hands_on
                               description:
                                 type: string
+                                nullable: true
                                 description: 選項描述
                                 example: 透過實際操作學習
                             required:
                               - id
                               - name
                               - value
+                              - description
                             description: 完整偏好選項
                           description: 可用選項列表
                       required:

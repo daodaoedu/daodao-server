@@ -421,15 +421,15 @@ export const preferenceOptionSchema = z.object({
   id: z.number().int().describe("選項ID"),
   value: z.string().describe("選項值"),
   name: z.string().describe("選項名稱"),
-  description: z.string().optional().describe("選項描述")
+  description: z.string().nullable().describe("選項描述")
 }).describe("偏好設定選項");
 
 export const preferenceTypeSchema = z.object({
   id: z.number().int().describe("偏好類型ID"),
   name: z.string().describe("偏好類型名稱"),
   value: z.string().describe("偏好類型唯一標識"),
-  description: z.string().optional().describe("偏好類型描述"),
-  maxSelections: z.number().int().positive().optional().describe("最大選擇數"),
+  description: z.string().nullable().describe("偏好類型描述"),
+  maxSelections: z.number().int().positive().nullable().describe("最大選擇數"),
   options: z.array(preferenceOptionSchema).describe("可選選項")
 }).describe("偏好設定類型");
 
