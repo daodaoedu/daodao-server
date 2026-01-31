@@ -423,8 +423,16 @@ export const userPracticesParamsSchema = z.object({
 
 // 刪除簽到記錄參數 Schema
 export const deleteCheckInParamsSchema = z.object({
-  id: z.string().min(1, 'Practice ID cannot be empty'),
-  checkInId: z.string().regex(/^[1-9]\d*$/, 'checkInId must be a positive integer string')
+  id: z.string().min(1, 'Practice ID cannot be empty').openapi({
+    description: '實踐 ID（UUID 格式）',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  }),
+  checkInId: z.string().regex(/^[1-9]\d*$/, 'checkInId must be a positive integer string').openapi({
+    description: '簽到記錄 ID',
+    example: '123'
+  })
+}).openapi({
+  description: '刪除簽到記錄路徑參數'
 });
 
 // 我的實踐查詢參數 Schema

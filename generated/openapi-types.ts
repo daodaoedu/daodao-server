@@ -12245,7 +12245,7 @@ export interface paths {
                          */
                         otherContext?: string;
                         /**
-                         * @description 相關標籤（最多 3 個）
+                         * @description 相關標籤（最多 10 個）
                          * @default []
                          * @example [
                          *       "閱讀",
@@ -12276,6 +12276,12 @@ export interface paths {
                          *     ]
                          */
                         resources?: components["schemas"]["PracticeResourceInput"][];
+                        /**
+                         * @description 是否存為草稿
+                         * @default false
+                         * @example false
+                         */
+                        isDraft?: boolean;
                     };
                 };
             };
@@ -13301,6 +13307,123 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/practices/{id}/checkins/{checkInId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 刪除簽到記錄
+         * @description 刪除指定的簽到記錄，需要身份驗證且只能刪除自己的記錄
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 實踐 ID（UUID 格式） */
+                    id: string;
+                    /** @description 簽到記錄 ID */
+                    checkInId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功刪除簽到記錄 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /**
+                             * @description The main response data
+                             * @example {
+                             *       "success": true
+                             *     }
+                             */
+                            data: {
+                                /** @description 操作成功狀態 */
+                                success: boolean;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -23100,7 +23223,7 @@ export interface components {
              */
             otherContext?: string;
             /**
-             * @description 相關標籤（最多 3 個）
+             * @description 相關標籤（最多 10 個）
              * @default []
              * @example [
              *       "閱讀",
@@ -23131,6 +23254,12 @@ export interface components {
              *     ]
              */
             resources?: components["schemas"]["PracticeResourceInput"][];
+            /**
+             * @description 是否存為草稿
+             * @default false
+             * @example false
+             */
+            isDraft: boolean;
         };
         /**
          * @description 實踐活動簽到記錄
@@ -23138,6 +23267,7 @@ export interface components {
          *       "mood": "happy",
          *       "note": "今天閱讀了第三章，學到了很多新概念",
          *       "imageUrls": [],
+         *       "ogImageUrl": null,
          *       "tags": [
          *         "專注",
          *         "有收穫"
@@ -23174,6 +23304,12 @@ export interface components {
              *     ]
              */
             imageUrls: string[];
+            /**
+             * Format: uri
+             * @description OG 圖片 URL（用於社群分享）
+             * @example null
+             */
+            ogImageUrl?: string | null;
             /**
              * @description 打卡標籤（最多10個）
              * @default []
@@ -23462,6 +23598,7 @@ export interface components {
          *       "mood": "happy",
          *       "note": "今天閱讀了第三章",
          *       "imageUrls": [],
+         *       "ogImageUrl": null,
          *       "tags": [
          *         "專注",
          *         "有收穫"
@@ -23508,6 +23645,12 @@ export interface components {
              * @example []
              */
             imageUrls: string[];
+            /**
+             * Format: uri
+             * @description OG 圖片 URL（用於社群分享）
+             * @example null
+             */
+            ogImageUrl: string | null;
             /**
              * @description 打卡標籤
              * @example [
@@ -23790,6 +23933,7 @@ export interface components {
          *       "mood": "happy",
          *       "note": "今天閱讀了第三章",
          *       "imageUrls": [],
+         *       "ogImageUrl": null,
          *       "tags": [
          *         "專注",
          *         "有收穫"

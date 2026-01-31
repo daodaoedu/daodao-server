@@ -352,10 +352,7 @@ registry.registerPath({
   summary: '刪除簽到記錄',
   description: '刪除指定的簽到記錄，需要身份驗證且只能刪除自己的記錄',
   request: {
-    params: z.object({
-      id: z.string().openapi({ description: '實踐 ID' }),
-      checkInId: z.string().openapi({ description: '簽到記錄 ID' })
-    })
+    params: deleteCheckInParamsSchema
   },
   responses: {
     200: {
@@ -366,7 +363,9 @@ registry.registerPath({
         }
       }
     },
+    400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     404: { $ref: '#/components/responses/NotFoundError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   },
