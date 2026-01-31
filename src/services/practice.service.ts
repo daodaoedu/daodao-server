@@ -613,7 +613,13 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     if (data.title !== undefined) updateData.title = data.title;
     if (data.practiceAction !== undefined) updateData.practice_action = data.practiceAction;
     if (data.otherContext !== undefined) updateData.other_context = data.otherContext;
-    if (data.status !== undefined) updateData.status = data.status;
+
+    // 處理 isDraft 欄位：優先於 status
+    if (data.isDraft !== undefined) {
+      updateData.status = data.isDraft ? 'draft' : 'not_started';
+    } else if (data.status !== undefined) {
+      updateData.status = data.status;
+    }
 
     // 處理頻率相關欄位
     if (data.frequencyMinDays !== undefined) updateData.frequency_min_days = data.frequencyMinDays;
@@ -752,7 +758,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     loggerService.info('Practice updated', { practiceId: id, userId });
 
     // 草稿發布時觸發 PE01 實踐建立郵件（非阻塞）
-    const isPublishingDraft = existingPractice.status === 'draft' && data.status === 'not_started';
+    // 支援 isDraft=false 或 status='not_started' 來發布草稿
+    const isPublishingDraft = existingPractice.status === 'draft' &&
+      (data.isDraft === false || data.status === 'not_started');
     if (isPublishingDraft) {
       enqueuePracticeEmail('PE01', id, userId).catch(err => {
         loggerService.error('Failed to enqueue PE01 email for published draft', { practiceId: id, error: err });

@@ -194,7 +194,7 @@ export const participantDetailResponseSchema = z.object({
   id: z.number().openapi({ description: '參與者 ID', example: 1001 }),
   name: z.string().openapi({ description: '參與者姓名', example: '王小明' }),
   _id: z.string().openapi({ description: '參與者外部 ID（UUID）', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
-  roleList: z.array(z.string()).optional().openapi({ description: '角色列表', example: ['學生', '工程師'] }),
+  roleList: z.array(z.string()).optional().openapi({ description: '角色列表', example: ['normal-student', 'citizen'] }),
   photoURL: z.string().nullable().openapi({ description: '頭像 URL', example: 'https://example.com/avatar/wang.jpg', format: 'uri' }),
   educationStage: z.string().nullable().optional().openapi({ description: '教育階段', example: 'university' }),
   tagList: z.array(z.string()).optional().openapi({ description: '標籤列表', example: ['JavaScript', 'React'] }),

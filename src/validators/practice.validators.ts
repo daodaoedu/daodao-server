@@ -269,7 +269,11 @@ export const updatePracticeSchema = z.object({
   otherContext: z.string().max(500).optional(),
   tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
   resources: z.array(practiceResourceInputSchema).max(5, '資源最多5個').optional(),
-  status: practiceStatusSchema.optional()
+  status: practiceStatusSchema.optional(),
+  isDraft: z.boolean().optional().openapi({
+    description: '是否存為草稿（true: 設為草稿, false: 發布）',
+    example: false
+  })
 }).refine(data => {
   // 至少要更新一個欄位
   return Object.keys(data).length > 0;
@@ -488,8 +492,8 @@ export const userBasicInfoResponseSchema = z.object({
   id: z.string().openapi({ description: '用戶外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000' }),
   name: z.string().openapi({ description: '用戶名稱', example: '學習者小明' }),
   photoURL: z.string().url().nullable().openapi({ description: '用戶頭像 URL', example: 'https://example.com/avatar/123.jpg', format: 'uri' }),
-  roleList: z.array(z.string()).optional().openapi({ description: '用戶角色列表', example: ['學生', '開發者'] }),
-  educationStage: z.string().nullable().optional().openapi({ description: '教育階段', example: '大學' }),
+  roleList: z.array(z.string()).optional().openapi({ description: '用戶角色列表', example: ['normal-student', 'citizen'] }),
+  educationStage: z.string().nullable().optional().openapi({ description: '教育階段', example: 'university' }),
   tagList: z.array(z.string()).optional().openapi({ description: '用戶標籤列表', example: ['前端', 'React'] }),
   selfIntroduction: z.string().nullable().optional().openapi({ description: '自我介紹', example: '熱愛學習的開發者' })
 }).openapi('UserBasicInfo', {
@@ -498,8 +502,8 @@ export const userBasicInfoResponseSchema = z.object({
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: '學習者小明',
     photoURL: 'https://example.com/avatar/123.jpg',
-    roleList: ['學生', '開發者'],
-    educationStage: '大學',
+    roleList: ['normal-student', 'citizen'],
+    educationStage: 'university',
     tagList: ['前端', 'React'],
     selfIntroduction: '熱愛學習的開發者'
   }
@@ -604,8 +608,8 @@ export const practiceEntityResponseSchema = z.object({
       id: '123e4567-e89b-12d3-a456-426614174000',
       name: '學習者小明',
       photoURL: 'https://example.com/avatar/123.jpg',
-      roleList: ['學生', '開發者'],
-      educationStage: '大學',
+      roleList: ['normal-student', 'citizen'],
+      educationStage: 'university',
       tagList: ['前端', 'React'],
       selfIntroduction: '熱愛學習的開發者'
     },

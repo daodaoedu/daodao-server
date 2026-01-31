@@ -12971,6 +12971,11 @@ export interface paths {
                          * @enum {string}
                          */
                         status?: "draft" | "not_started" | "active" | "completed" | "archived";
+                        /**
+                         * @description 是否存為草稿（true: 設為草稿, false: 發布）
+                         * @example false
+                         */
+                        isDraft?: boolean;
                     };
                 };
             };
@@ -20375,14 +20380,14 @@ export interface components {
                 /**
                  * @description 用戶角色列表
                  * @example [
-                 *       "USER",
-                 *       "EDUCATOR"
+                 *       "normal-student",
+                 *       "citizen"
                  *     ]
                  */
                 roleList?: string[];
                 /**
                  * @description 教育階段
-                 * @example 大學
+                 * @example university
                  */
                 educationStage?: string | null;
                 /**
@@ -21235,7 +21240,7 @@ export interface components {
              * @description 用戶 UUID
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
-            _id: string;
+            id: string;
             /**
              * @description 設置的自訂 ID
              * @example john_doe_2024
@@ -21254,7 +21259,7 @@ export interface components {
              * @description 用戶 UUID
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
-            _id: string;
+            id: string;
             /**
              * @description 移除後的自訂 ID (null)
              * @example null
@@ -21298,6 +21303,17 @@ export interface components {
              * @example john-doe-123456
              */
             linkedin?: string;
+            /**
+             * Format: uri
+             * @description 個人網站網址
+             * @example https://johndoe.com
+             */
+            website?: string;
+            /**
+             * @description GitHub 帳號或網址
+             * @example johndoe
+             */
+            github?: string;
         };
         /** @description 創建用戶請求 */
         CreateUserRequest: {
@@ -21322,12 +21338,17 @@ export interface components {
             /**
              * @description 教育階段
              * @example university
-             * @example university
+             * @example elementary
+             * @example junior_high
              * @example high
+             * @example associate
+             * @example university
+             * @example master
+             * @example doctorate
              * @example other
              * @enum {string}
              */
-            educationStage?: "university" | "high" | "other";
+            educationStage?: "elementary" | "junior_high" | "high" | "associate" | "university" | "master" | "doctorate" | "other";
             /**
              * @description 是否公開位置資訊
              * @example true
@@ -21355,19 +21376,19 @@ export interface components {
             /**
              * @description 角色清單
              * @example [
-             *       "學生",
-             *       "工程師"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              * @example [
-             *       "學生",
-             *       "工程師"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              * @example [
-             *       "設計師"
+             *       "experimental-educator"
              *     ]
              * @example [
-             *       "產品經理",
-             *       "創業家"
+             *       "parents",
+             *       "other"
              *     ]
              */
             roleList?: string[];
@@ -21544,12 +21565,17 @@ export interface components {
             /**
              * @description 教育階段
              * @example university
-             * @example university
+             * @example elementary
+             * @example junior_high
              * @example high
+             * @example associate
+             * @example university
+             * @example master
+             * @example doctorate
              * @example other
              * @enum {string}
              */
-            educationStage?: "university" | "high" | "other";
+            educationStage?: "elementary" | "junior_high" | "high" | "associate" | "university" | "master" | "doctorate" | "other";
             /**
              * @description 是否公開位置資訊
              * @example true
@@ -21613,19 +21639,19 @@ export interface components {
             /**
              * @description 角色清單
              * @example [
-             *       "學生",
-             *       "工程師"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              * @example [
-             *       "學生",
-             *       "工程師"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              * @example [
-             *       "設計師"
+             *       "experimental-educator"
              *     ]
              * @example [
-             *       "產品經理",
-             *       "創業家"
+             *       "parents",
+             *       "other"
              *     ]
              */
             roleList?: string[];
@@ -21739,7 +21765,7 @@ export interface components {
              * @example university
              * @enum {string|null}
              */
-            educationStage: "university" | "high" | "other" | null;
+            educationStage: "elementary" | "junior_high" | "high" | "associate" | "university" | "master" | "doctorate" | "other" | null;
             /**
              * @description 是否公開位置資訊
              * @example true
@@ -21832,19 +21858,19 @@ export interface components {
             /**
              * @description 角色清單
              * @example [
-             *       "工程師",
-             *       "學生"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              * @example [
-             *       "工程師",
-             *       "學生"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              * @example [
-             *       "設計師"
+             *       "experimental-educator"
              *     ]
              * @example [
-             *       "產品經理",
-             *       "創業家"
+             *       "parents",
+             *       "other"
              *     ]
              */
             roleList: string[] | null;
@@ -21896,6 +21922,13 @@ export interface components {
                 threads: string | null;
                 /** @description LinkedIn 個人檔案網址或用戶名 */
                 linkedin: string | null;
+                /**
+                 * Format: uri
+                 * @description 個人網站網址
+                 */
+                website: string | null;
+                /** @description GitHub 帳號或網址 */
+                github: string | null;
             } | null;
             /**
              * @description 用戶自訂 ID
@@ -22353,7 +22386,7 @@ export interface components {
             photoURL: string | null;
             /**
              * @description 教育階段
-             * @example 大學
+             * @example university
              */
             educationStage?: string | null;
             /**
@@ -23163,8 +23196,8 @@ export interface components {
                 /**
                  * @description 用戶角色列表
                  * @example [
-                 *       "學生",
-                 *       "工程師"
+                 *       "normal-student",
+                 *       "citizen"
                  *     ]
                  */
                 roleList?: string[];
@@ -23728,10 +23761,10 @@ export interface components {
          *         "name": "學習者小明",
          *         "photoURL": "https://example.com/avatar/123.jpg",
          *         "roleList": [
-         *           "學生",
-         *           "開發者"
+         *           "normal-student",
+         *           "citizen"
          *         ],
-         *         "educationStage": "大學",
+         *         "educationStage": "university",
          *         "tagList": [
          *           "前端",
          *           "React"
@@ -24584,8 +24617,8 @@ export interface components {
             /**
              * @description 角色列表
              * @example [
-             *       "學生",
-             *       "工程師"
+             *       "normal-student",
+             *       "citizen"
              *     ]
              */
             roleList?: string[];

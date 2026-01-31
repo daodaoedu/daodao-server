@@ -56,6 +56,8 @@ export interface CreateUserRequest {
     facebook?: string;
     threads?: string;
     linkedin?: string;
+    website?: string;
+    github?: string;
   };
   educationStage?: string;
   isOpenLocation?: boolean;
@@ -91,6 +93,8 @@ export interface UpdateUserRequest {
     facebook?: string;
     threads?: string;
     linkedin?: string;
+    website?: string;
+    github?: string;
   };
   educationStage?: string;
   isOpenLocation?: boolean;
@@ -142,7 +146,7 @@ export interface FormattedUserResponse {
   location: string | null;
   tagList: string[] | null;
   wantToDoList: string[] | null;
-  educationStage: 'university' | 'high' | 'other' | null;
+  educationStage: 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other' | null;
   selfIntroduction: string | null;
   share: string | string[] | null;
   interestList: string[] | null; // 返回 category names 陣列 (例如: ["education_learning", "nature_environment"])
@@ -157,6 +161,8 @@ export interface FormattedUserResponse {
     facebook: string | null;
     threads: string | null;
     linkedin: string | null;
+    website: string | null;
+    github: string | null;
   } | null;
   basicInfo: {
     selfIntroduction: string | null;
@@ -296,6 +302,8 @@ export interface UserWithAssociations extends users {
     fb?: string;
     threads?: string;
     linkedin?: string;
+    website?: string;
+    github?: string;
   };
   BasicInfo?: {
     id: number;

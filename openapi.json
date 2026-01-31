@@ -3302,15 +3302,15 @@
                 },
                 "description": "用戶角色列表",
                 "example": [
-                  "USER",
-                  "EDUCATOR"
+                  "normal-student",
+                  "citizen"
                 ]
               },
               "educationStage": {
                 "type": "string",
                 "nullable": true,
                 "description": "教育階段",
-                "example": "大學"
+                "example": "university"
               },
               "tagList": {
                 "type": "array",
@@ -4636,7 +4636,7 @@
       "SetCustomIdData": {
         "type": "object",
         "properties": {
-          "_id": {
+          "id": {
             "type": "string",
             "format": "uuid",
             "description": "用戶 UUID",
@@ -4654,7 +4654,7 @@
           }
         },
         "required": [
-          "_id",
+          "id",
           "customId",
           "message"
         ],
@@ -4663,7 +4663,7 @@
       "RemoveCustomIdData": {
         "type": "object",
         "properties": {
-          "_id": {
+          "id": {
             "type": "string",
             "format": "uuid",
             "description": "用戶 UUID",
@@ -4681,7 +4681,7 @@
           }
         },
         "required": [
-          "_id",
+          "id",
           "customId",
           "message"
         ],
@@ -4719,6 +4719,17 @@
             "type": "string",
             "description": "LinkedIn 個人檔案網址或用戶名",
             "example": "john-doe-123456"
+          },
+          "website": {
+            "type": "string",
+            "format": "uri",
+            "description": "個人網站網址",
+            "example": "https://johndoe.com"
+          },
+          "github": {
+            "type": "string",
+            "description": "GitHub 帳號或網址",
+            "example": "johndoe"
           }
         },
         "description": "用戶聯絡資訊"
@@ -4765,15 +4776,25 @@
           "educationStage": {
             "type": "string",
             "enum": [
-              "university",
+              "elementary",
+              "junior_high",
               "high",
+              "associate",
+              "university",
+              "master",
+              "doctorate",
               "other"
             ],
             "description": "教育階段",
             "example": "university",
             "examples": [
-              "university",
+              "elementary",
+              "junior_high",
               "high",
+              "associate",
+              "university",
+              "master",
+              "doctorate",
               "other"
             ]
           },
@@ -4810,20 +4831,20 @@
             },
             "description": "角色清單",
             "example": [
-              "學生",
-              "工程師"
+              "normal-student",
+              "citizen"
             ],
             "examples": [
               [
-                "學生",
-                "工程師"
+                "normal-student",
+                "citizen"
               ],
               [
-                "設計師"
+                "experimental-educator"
               ],
               [
-                "產品經理",
-                "創業家"
+                "parents",
+                "other"
               ]
             ]
           },
@@ -5105,15 +5126,25 @@
           "educationStage": {
             "type": "string",
             "enum": [
-              "university",
+              "elementary",
+              "junior_high",
               "high",
+              "associate",
+              "university",
+              "master",
+              "doctorate",
               "other"
             ],
             "description": "教育階段",
             "example": "university",
             "examples": [
-              "university",
+              "elementary",
+              "junior_high",
               "high",
+              "associate",
+              "university",
+              "master",
+              "doctorate",
               "other"
             ]
           },
@@ -5204,20 +5235,20 @@
             },
             "description": "角色清單",
             "example": [
-              "學生",
-              "工程師"
+              "normal-student",
+              "citizen"
             ],
             "examples": [
               [
-                "學生",
-                "工程師"
+                "normal-student",
+                "citizen"
               ],
               [
-                "設計師"
+                "experimental-educator"
               ],
               [
-                "產品經理",
-                "創業家"
+                "parents",
+                "other"
               ]
             ]
           },
@@ -5396,8 +5427,13 @@
             "type": "string",
             "nullable": true,
             "enum": [
-              "university",
+              "elementary",
+              "junior_high",
               "high",
+              "associate",
+              "university",
+              "master",
+              "doctorate",
               "other",
               null
             ],
@@ -5543,20 +5579,20 @@
             },
             "description": "角色清單",
             "example": [
-              "工程師",
-              "學生"
+              "normal-student",
+              "citizen"
             ],
             "examples": [
               [
-                "工程師",
-                "學生"
+                "normal-student",
+                "citizen"
               ],
               [
-                "設計師"
+                "experimental-educator"
               ],
               [
-                "產品經理",
-                "創業家"
+                "parents",
+                "other"
               ]
             ]
           },
@@ -5659,6 +5695,17 @@
                 "type": "string",
                 "nullable": true,
                 "description": "LinkedIn 個人檔案網址或用戶名"
+              },
+              "website": {
+                "type": "string",
+                "nullable": true,
+                "format": "uri",
+                "description": "個人網站網址"
+              },
+              "github": {
+                "type": "string",
+                "nullable": true,
+                "description": "GitHub 帳號或網址"
               }
             },
             "required": [
@@ -5670,7 +5717,9 @@
               "line",
               "facebook",
               "threads",
-              "linkedin"
+              "linkedin",
+              "website",
+              "github"
             ],
             "description": "聯絡方式資訊"
           },
@@ -6394,7 +6443,7 @@
             "type": "string",
             "nullable": true,
             "description": "教育階段",
-            "example": "大學"
+            "example": "university"
           },
           "tagList": {
             "type": "array",
@@ -7451,8 +7500,8 @@
                 },
                 "description": "用戶角色列表",
                 "example": [
-                  "學生",
-                  "工程師"
+                  "normal-student",
+                  "citizen"
                 ]
               },
               "photoURL": {
@@ -8436,10 +8485,10 @@
                   "name": "學習者小明",
                   "photoURL": "https://example.com/avatar/123.jpg",
                   "roleList": [
-                    "學生",
-                    "開發者"
+                    "normal-student",
+                    "citizen"
                   ],
-                  "educationStage": "大學",
+                  "educationStage": "university",
                   "tagList": [
                     "前端",
                     "React"
@@ -8513,10 +8562,10 @@
             "name": "學習者小明",
             "photoURL": "https://example.com/avatar/123.jpg",
             "roleList": [
-              "學生",
-              "開發者"
+              "normal-student",
+              "citizen"
             ],
-            "educationStage": "大學",
+            "educationStage": "university",
             "tagList": [
               "前端",
               "React"
@@ -9546,8 +9595,8 @@
             },
             "description": "角色列表",
             "example": [
-              "學生",
-              "工程師"
+              "normal-student",
+              "citizen"
             ]
           },
           "photoURL": {
@@ -27885,8 +27934,13 @@
               "description": "過濾教育階段",
               "example": "university",
               "examples": [
-                "university",
+                "elementary",
+                "junior_high",
                 "high",
+                "associate",
+                "university",
+                "master",
+                "doctorate",
                 "other"
               ]
             },
@@ -27899,7 +27953,7 @@
             "schema": {
               "type": "string",
               "description": "過濾角色清單（以逗號分隔）",
-              "example": "工程師,設計師"
+              "example": "normal-student,citizen"
             },
             "required": false,
             "description": "過濾角色清單（以逗號分隔）",
@@ -27930,7 +27984,7 @@
               "examples": [
                 "小明",
                 "john",
-                "工程師"
+                "test"
               ]
             },
             "required": false,
@@ -36236,6 +36290,11 @@
                       "completed",
                       "archived"
                     ]
+                  },
+                  "isDraft": {
+                    "type": "boolean",
+                    "description": "是否存為草稿（true: 設為草稿, false: 發布）",
+                    "example": false
                   }
                 }
               }

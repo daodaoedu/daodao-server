@@ -2411,13 +2411,13 @@ components:
                 type: string
               description: 用戶角色列表
               example:
-                - USER
-                - EDUCATOR
+                - normal-student
+                - citizen
             educationStage:
               type: string
               nullable: true
               description: 教育階段
-              example: 大學
+              example: university
             tagList:
               type: array
               items:
@@ -3338,7 +3338,7 @@ components:
     SetCustomIdData:
       type: object
       properties:
-        _id:
+        id:
           type: string
           format: uuid
           description: 用戶 UUID
@@ -3352,14 +3352,14 @@ components:
           description: 操作訊息
           example: 自訂 ID 設置成功
       required:
-        - _id
+        - id
         - customId
         - message
       description: 設置自訂 ID 成功資料
     RemoveCustomIdData:
       type: object
       properties:
-        _id:
+        id:
           type: string
           format: uuid
           description: 用戶 UUID
@@ -3373,7 +3373,7 @@ components:
           description: 操作訊息
           example: 自訂 ID 已成功移除
       required:
-        - _id
+        - id
         - customId
         - message
       description: 移除自訂 ID 成功資料
@@ -3404,6 +3404,15 @@ components:
           type: string
           description: LinkedIn 個人檔案網址或用戶名
           example: john-doe-123456
+        website:
+          type: string
+          format: uri
+          description: 個人網站網址
+          example: https://johndoe.com
+        github:
+          type: string
+          description: GitHub 帳號或網址
+          example: johndoe
       description: 用戶聯絡資訊
     CreateUserRequest:
       type: object
@@ -3436,14 +3445,24 @@ components:
         educationStage:
           type: string
           enum:
-            - university
+            - elementary
+            - junior_high
             - high
+            - associate
+            - university
+            - master
+            - doctorate
             - other
           description: 教育階段
           example: university
           examples:
-            - university
+            - elementary
+            - junior_high
             - high
+            - associate
+            - university
+            - master
+            - doctorate
             - other
         isOpenLocation:
           type: boolean
@@ -3472,14 +3491,14 @@ components:
             type: string
           description: 角色清單
           example:
-            - 學生
-            - 工程師
+            - normal-student
+            - citizen
           examples:
-            - - 學生
-              - 工程師
-            - - 設計師
-            - - 產品經理
-              - 創業家
+            - - normal-student
+              - citizen
+            - - experimental-educator
+            - - parents
+              - other
         selfIntroduction:
           type: string
           description: 自我介紹
@@ -3678,14 +3697,24 @@ components:
         educationStage:
           type: string
           enum:
-            - university
+            - elementary
+            - junior_high
             - high
+            - associate
+            - university
+            - master
+            - doctorate
             - other
           description: 教育階段
           example: university
           examples:
-            - university
+            - elementary
+            - junior_high
             - high
+            - associate
+            - university
+            - master
+            - doctorate
             - other
         isOpenLocation:
           type: boolean
@@ -3746,14 +3775,14 @@ components:
             type: string
           description: 角色清單
           example:
-            - 學生
-            - 工程師
+            - normal-student
+            - citizen
           examples:
-            - - 學生
-              - 工程師
-            - - 設計師
-            - - 產品經理
-              - 創業家
+            - - normal-student
+              - citizen
+            - - experimental-educator
+            - - parents
+              - other
         interestList:
           type: array
           items:
@@ -3865,8 +3894,13 @@ components:
           type: string
           nullable: true
           enum:
-            - university
+            - elementary
+            - junior_high
             - high
+            - associate
+            - university
+            - master
+            - doctorate
             - other
             - null
           description: 教育階段
@@ -3969,14 +4003,14 @@ components:
             type: string
           description: 角色清單
           example:
-            - 工程師
-            - 學生
+            - normal-student
+            - citizen
           examples:
-            - - 工程師
-              - 學生
-            - - 設計師
-            - - 產品經理
-              - 創業家
+            - - normal-student
+              - citizen
+            - - experimental-educator
+            - - parents
+              - other
         basicInfo:
           type: object
           nullable: true
@@ -4052,6 +4086,15 @@ components:
               type: string
               nullable: true
               description: LinkedIn 個人檔案網址或用戶名
+            website:
+              type: string
+              nullable: true
+              format: uri
+              description: 個人網站網址
+            github:
+              type: string
+              nullable: true
+              description: GitHub 帳號或網址
           required:
             - email
             - photoURL
@@ -4062,6 +4105,8 @@ components:
             - facebook
             - threads
             - linkedin
+            - website
+            - github
           description: 聯絡方式資訊
         customId:
           type: string
@@ -4610,7 +4655,7 @@ components:
           type: string
           nullable: true
           description: 教育階段
-          example: 大學
+          example: university
         tagList:
           type: array
           items:
@@ -5362,8 +5407,8 @@ components:
                 type: string
               description: 用戶角色列表
               example:
-                - 學生
-                - 工程師
+                - normal-student
+                - citizen
             photoURL:
               type: string
               nullable: true
@@ -6122,9 +6167,9 @@ components:
                 name: 學習者小明
                 photoURL: https://example.com/avatar/123.jpg
                 roleList:
-                  - 學生
-                  - 開發者
-                educationStage: 大學
+                  - normal-student
+                  - citizen
+                educationStage: university
                 tagList:
                   - 前端
                   - React
@@ -6183,9 +6228,9 @@ components:
           name: 學習者小明
           photoURL: https://example.com/avatar/123.jpg
           roleList:
-            - 學生
-            - 開發者
-          educationStage: 大學
+            - normal-student
+            - citizen
+          educationStage: university
           tagList:
             - 前端
             - React
@@ -6978,8 +7023,8 @@ components:
             type: string
           description: 角色列表
           example:
-            - 學生
-            - 工程師
+            - normal-student
+            - citizen
         photoURL:
           type: string
           nullable: true
@@ -18699,8 +18744,13 @@ paths:
             description: 過濾教育階段
             example: university
             examples:
-              - university
+              - elementary
+              - junior_high
               - high
+              - associate
+              - university
+              - master
+              - doctorate
               - other
           required: false
           description: 過濾教育階段
@@ -18709,7 +18759,7 @@ paths:
         - schema:
             type: string
             description: 過濾角色清單（以逗號分隔）
-            example: 工程師,設計師
+            example: normal-student,citizen
           required: false
           description: 過濾角色清單（以逗號分隔）
           name: roleList
@@ -18733,7 +18783,7 @@ paths:
             examples:
               - 小明
               - john
-              - 工程師
+              - test
           required: false
           description: 搜尋關鍵字
           name: search
@@ -23734,6 +23784,10 @@ paths:
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
                   examples: *ref_18
+                isDraft:
+                  type: boolean
+                  description: '是否存為草稿（true: 設為草稿, false: 發布）'
+                  example: false
       responses:
         '200':
           description: 實踐更新成功

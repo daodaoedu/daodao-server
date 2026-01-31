@@ -418,7 +418,7 @@ const userBasicInfoSchema = z.object({
   }),
   educationStage: z.string().nullable().optional().openapi({
     description: '教育階段',
-    example: '大學'
+    example: 'university'
   }),
   tagList: z.array(z.string()).optional().openapi({
     description: '用戶標籤列表',

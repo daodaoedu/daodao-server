@@ -112,6 +112,20 @@ const contactListSchema = z.object({
     .openapi({
       description: 'LinkedIn 個人檔案網址或用戶名',
       example: 'john-doe-123456'
+    }),
+  website: z.string()
+    .url("無效的網址格式")
+    .optional()
+    .openapi({
+      description: '個人網站網址',
+      example: 'https://johndoe.com',
+      format: 'uri'
+    }),
+  github: z.string()
+    .optional()
+    .openapi({
+      description: 'GitHub 帳號或網址',
+      example: 'johndoe'
     })
 }).optional().openapi('ContactList', {
   description: '用戶聯絡資訊'
@@ -137,12 +151,12 @@ export const createUserSchema = z.object({
       examples: ['1995-06-15', '2000-12-25', '1988-03-08']
     }),
   contactList: contactListSchema,
-  educationStage: z.enum(['university', 'high', 'other'], "無效的教育階段")
+  educationStage: z.enum(['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other'], "無效的教育階段")
     .optional()
     .openapi({
       description: '教育階段',
       example: 'university',
-      examples: ['university', 'high', 'other']
+      examples: ['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other']
     }),
   isOpenLocation: z.boolean()
     .optional()
@@ -173,8 +187,8 @@ export const createUserSchema = z.object({
     .optional()
     .openapi({
       description: '角色清單',
-      example: ['學生', '工程師'],
-      examples: [['學生', '工程師'], ['設計師'], ['產品經理', '創業家']]
+      example: ['normal-student', 'citizen'],
+      examples: [['normal-student', 'citizen'], ['experimental-educator'], ['parents', 'other']]
     }),
   selfIntroduction: z.string()
     .optional()
@@ -281,12 +295,12 @@ export const updateUserSchema = z.object({
       examples: ['1995-06-15', '2000-12-25', '1988-03-08']
     }),
   contactList: contactListSchema,
-  educationStage: z.enum(['university', 'high', 'other'], "無效的教育階段")
+  educationStage: z.enum(['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other'], "無效的教育階段")
     .optional()
     .openapi({
       description: '教育階段',
       example: 'university',
-      examples: ['university', 'high', 'other']
+      examples: ['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other']
     }),
   isOpenLocation: z.boolean()
     .optional()
@@ -336,8 +350,8 @@ export const updateUserSchema = z.object({
     .optional()
     .openapi({
       description: '角色清單',
-      example: ['學生', '工程師'],
-      examples: [['學生', '工程師'], ['設計師'], ['產品經理', '創業家']]
+      example: ['normal-student', 'citizen'],
+      examples: [['normal-student', 'citizen'], ['experimental-educator'], ['parents', 'other']]
     }),
   interestList: interestListSchema,
   preferences: z.record(z.string(), z.array(z.string()))
@@ -399,13 +413,13 @@ export const getUserQuerySchema = z.object({
     .openapi({
       description: '過濾教育階段',
       example: 'university',
-      examples: ['university', 'high', 'other']
+      examples: ['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other']
     }),
   roleList: z.string()
     .optional()
     .openapi({
       description: '過濾角色清單（以逗號分隔）',
-      example: '工程師,設計師'
+      example: 'normal-student,citizen'
     }),
   location: z.string()
     .optional()
@@ -419,7 +433,7 @@ export const getUserQuerySchema = z.object({
     .openapi({
       description: '搜尋關鍵字',
       example: '小明',
-      examples: ['小明', 'john', '工程師']
+      examples: ['小明', 'john', 'test']
     })
 }).openapi({
   description: '獲取用戶列表的查詢參數'
@@ -472,7 +486,7 @@ const formattedUserResponseSchema = z.object({
     description: '出生日期',
     example: '1995-06-15'
   }),
-  educationStage: z.enum(['university', 'high', 'other']).nullable().openapi({
+  educationStage: z.enum(['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other']).nullable().openapi({
     description: '教育階段',
     example: 'university'
   }),
@@ -535,8 +549,8 @@ const formattedUserResponseSchema = z.object({
   }),
   roleList: z.array(z.string()).nullable().openapi({
     description: '角色清單',
-    example: ['工程師', '學生'],
-    examples: [['工程師', '學生'], ['設計師'], ['產品經理', '創業家']]
+    example: ['normal-student', 'citizen'],
+    examples: [['normal-student', 'citizen'], ['experimental-educator'], ['parents', 'other']]
   }),
   basicInfo: z.object({
     selfIntroduction: z.string().nullable().openapi({
@@ -584,6 +598,13 @@ const formattedUserResponseSchema = z.object({
     }),
     linkedin: z.string().nullable().openapi({
       description: 'LinkedIn 個人檔案網址或用戶名'
+    }),
+    website: z.string().nullable().openapi({
+      description: '個人網站網址',
+      format: 'uri'
+    }),
+    github: z.string().nullable().openapi({
+      description: 'GitHub 帳號或網址'
     })
   }).nullable().openapi({
     description: '聯絡方式資訊'

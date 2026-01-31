@@ -296,6 +296,8 @@ interface PrismaUserWithRelations {
     fb?: string | null;
     threads?: string | null;
     linkedin?: string | null;
+    website?: string | null;
+    github?: string | null;
   } | null;
   basic_info?: {
     self_introduction?: string | null;
@@ -370,7 +372,7 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     tagList: await getUserTags(user.id) || null,
     wantToDoList: user.basic_info?.want_to_do_list ?
       user.basic_info.want_to_do_list.map(item => String(item)) : null,
-    educationStage: (user.education_stage as 'university' | 'high' | 'other') || null,
+    educationStage: (user.education_stage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other') || null,
     selfIntroduction: user.basic_info?.self_introduction || null,
     share: user.basic_info?.share_list || null,
     interestList,
@@ -384,7 +386,9 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
       line: user.contacts?.line || null,
       facebook: user.contacts?.fb || null,
       threads: user.contacts?.threads || null,
-      linkedin: user.contacts?.linkedin || null
+      linkedin: user.contacts?.linkedin || null,
+      website: user.contacts?.website || null,
+      github: user.contacts?.github || null
     },
     basicInfo: {
       selfIntroduction: user.basic_info?.self_introduction || null,
@@ -806,7 +810,9 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         line: contactList?.line,
         fb: contactList?.facebook,
         threads: contactList?.threads,
-        linkedin: contactList?.linkedin
+        linkedin: contactList?.linkedin,
+        website: contactList?.website,
+        github: contactList?.github
       }
     });
 
@@ -816,7 +822,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         mongo_id: tempUser.id.toString(), // Use temp user ID as mongo_id
         nickname: tempUser.name,
         gender: gender as 'male' | 'female' | 'other' | undefined,
-        education_stage: (educationStage as 'university' | 'high' | 'other') || 'other',
+        education_stage: (educationStage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other') || 'other',
         tag_list: [],  // Tags will be handled separately via entity_tags
         contact_id: contact.id,
         is_open_location: isOpenLocation ?? true,
@@ -1022,7 +1028,9 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
           line: contactList?.line,
           fb: contactList?.facebook,
           threads: contactList?.threads,
-          linkedin: contactList?.linkedin
+          linkedin: contactList?.linkedin,
+          website: contactList?.website,
+          github: contactList?.github
         }
       });
     }
@@ -1046,7 +1054,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         nickname,
         gender: gender as 'male' | 'female' | 'other' | undefined,
         tag_list: [],  // Tags will be handled separately via entity_tags
-        education_stage: educationStage as 'university' | 'high' | 'other' | undefined,
+        education_stage: educationStage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other' | undefined,
         is_open_location: isOpenLocation,
         is_open_profile: isOpenProfile,
         birth_date: birthDate ? new Date(birthDate) : undefined,
@@ -1265,7 +1273,7 @@ const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessRe
 /**
  * 設置用戶自訂 ID
  */
-const setCustomId = async (userId: number, customId: string): Promise<ApiSuccessResponse<{ customId: string }>> => {
+const setCustomId = async (userId: number, customId: string): Promise<ApiSuccessResponse<{ id: string; customId: string; message: string }>> => {
   // 使用共享的驗證函數
   if (!validateCustomIdFormat(customId)) {
     throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
@@ -1306,7 +1314,11 @@ const setCustomId = async (userId: number, customId: string): Promise<ApiSuccess
         }
       });
 
-      return createSuccessResponse({ customId });
+      return createSuccessResponse({
+        id: user.external_id || '',
+        customId,
+        message: '自訂 ID 設置成功'
+      });
     });
   } catch (error: unknown) {
     // 處理 Prisma 的唯一約束違反錯誤 (P2002)
