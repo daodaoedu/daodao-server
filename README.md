@@ -32,10 +32,12 @@ DaoDao Server 是一個基於 Node.js、Express 和 TypeScript 的現代化後�
 - **部署**: Docker, PM2
 - **測試**: Jest (支持 TypeScript)
 - **CI/CD**: GitHub Actions
+- **包管理器**: pnpm
 - **其他技術**:
   - 檔案上傳: Multer
   - Cloudflare R2 儲存服務
   - 電子郵件發送: Nodemailer
+  - 任務隊列: BullMQ (Redis-based)
   - 資料驗證: Zod
   - 型別檢查: TypeScript, ESLint
   - 型別生成: Prisma Client, OpenAPI TypeScript
@@ -89,11 +91,24 @@ DaoDao Server 是一個全功能的學習平台後端服務，提供以下核心
 ### 學習實踐系統
 
 - **實踐管理**: 建立和追蹤個人學習實踐計畫
-- **打卡記錄**: 每日學習打卡與習慣養成
+- **打卡記錄**: 每日學習打卡與習慣養成，支援多種時段（通勤、早晨、中午等）
 - **實踐事件**: 管理實踐過程中的重要事件和里程碑
 - **互動功能**: 實踐社群互動、激勵與分享
 - **統計分析**: 實踐數據統計與進度視覺化
 - **目標設定**: 支援多種目標類型（每日、每週、累計）
+- **封存功能**: 支援實踐的封存與取消封存管理
+- **模板系統**: 實踐模板建立與套用
+
+### 測驗系統
+
+- **測驗管理**: 建立和管理學習測驗
+- **題庫系統**: 支援多種題型和題庫管理
+
+### 管理員功能
+
+- **後台管理**: 完整的管理員控制面板
+- **用戶統計**: 平台使用數據分析與報告
+- **數據匯出**: 支援 CSV/Excel 格式匯出
 
 ### 智慧標籤系統
 
@@ -157,7 +172,12 @@ daodao-server/
 │   │   ├── idea.controller.ts     # 想法分享控制器
 │   │   ├── tag.controller.ts      # 標籤管理控制器
 │   │   ├── email.controller.ts    # 郵件服務控制器
-│   │   └── resource-review.controller.ts # 資源評價控制器
+│   │   ├── resource-review.controller.ts # 資源評價控制器
+│   │   ├── practice.controller.ts # 學習實踐控制器
+│   │   ├── quiz.controller.ts     # 測驗控制器
+│   │   ├── admin.controller.ts    # 管理員控制器
+│   │   ├── user-stats.controller.ts # 用戶統計控制器
+│   │   └── task.controller.ts     # 任務管理控制器
 │   ├── middleware/                # 中間件層
 │   │   ├── auth.ts                # JWT 身份驗證中間件
 │   │   ├── permission.middleware.ts # 角色權限檢查
@@ -177,7 +197,12 @@ daodao-server/
 │   │   ├── me.routes.ts           # 個人資料路由
 │   │   ├── monitor.routes.ts      # 系統監控路由
 │   │   ├── db-info.routes.ts      # 資料庫資訊路由
-│   │   └── resource-review.routes.ts # 資源評價路由
+│   │   ├── resource-review.routes.ts # 資源評價路由
+│   │   ├── practice.routes.ts     # 學習實踐路由
+│   │   ├── quiz.routes.ts         # 測驗路由
+│   │   ├── admin.routes.ts        # 管理員路由
+│   │   ├── user-stats.routes.ts   # 用戶統計路由
+│   │   └── user.routes.ts         # 用戶管理路由
 │   ├── services/                  # 業務邏輯服務層
 │   │   ├── auth/                  # 身份驗證服務
 │   │   │   ├── auth.service.ts    # 核心驗證邏輯
@@ -214,13 +239,27 @@ daodao-server/
 │   │   ├── resource-review.service.ts # 資源評價業務邏輯
 │   │   ├── practice.service.ts    # 學習實踐核心服務
 │   │   ├── practice-checkin.service.ts # 實踐打卡記錄服務
+│   │   ├── practice-event.service.ts # 實踐事件服務
+│   │   ├── practice-interaction.service.ts # 實踐互動服務
+│   │   ├── practice-template.service.ts # 實踐模板服務
+│   │   ├── encouragement.service.ts # 鼓勵訊息服務
 │   │   ├── mentor.service.ts      # 導師管理服務
 │   │   ├── milestone.service.ts   # 里程碑管理服務
 │   │   ├── note.service.ts        # 筆記管理服務
 │   │   ├── outcome.service.ts     # 學習成果管理服務
 │   │   ├── review.service.ts      # 評價管理服務
 │   │   ├── me.service.ts          # 個人資料管理服務
+│   │   ├── quiz.service.ts        # 測驗服務
+│   │   ├── tag-prompt.service.ts  # 標籤提示服務
+│   │   ├── task.service.ts        # 任務管理服務
+│   │   ├── user-stats.service.ts  # 用戶統計服務
+│   │   ├── admin/                 # 管理員服務
+│   │   │   └── ...                # 管理員相關服務
 │   │   └── index.ts               # 服務層匯出
+│   ├── queues/                    # 任務隊列 (BullMQ)
+│   │   ├── connection.ts          # Redis 連接配置
+│   │   ├── practice-email.queue.ts # 實踐郵件隊列
+│   │   └── practice-email.worker.ts # 實踐郵件處理器
 │   ├── types/                     # TypeScript 型別定義
 │   │   ├── api-response.types.ts  # API 回應格式型別
 │   │   ├── auth.types.ts          # 身份驗證型別
@@ -355,6 +394,7 @@ daodao-server/
 - **Zod 驗證**: 強型別的請求驗證和資料解析
 - **Winston 日誌**: 結構化日誌記錄和多種輸出格式
 - **Swagger/OpenAPI**: 完整的 API 文檔生成和互動式測試介面
+- **BullMQ 任務隊列**: 基於 Redis 的分散式任務處理，用於郵件發送等異步操作
 
 #### 型別安全保證
 
@@ -375,39 +415,54 @@ daodao-server/
 1. 安裝依賴:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. 建立 .env.dev 檔案並配置必要的環境變數
 
-3. 啟動開發服務器:
+3. 生成 Prisma 客戶端:
 
    ```bash
-   npm run dev        # 使用 ts-node-dev 啟動開發伺服器
-   npm start          # 啟動生產伺服器 (執行編譯後的 dist/src/server.js)
+   pnpm run prisma:generate
+   ```
+
+4. 啟動開發服務器:
+
+   ```bash
+   pnpm run dev        # 使用 ts-node-dev 啟動開發伺服器
+   pnpm start          # 啟動生產伺服器 (執行編譯後的 dist/src/server.js)
    ```
 
 ### 開發命令
 
 ```bash
 # 開發與建置
-npm run dev           # 使用 ts-node-dev 啟動開發伺服器 (自動重載)
-npm run build         # 編譯 TypeScript 到 dist 目錄
-npm run clean         # 清理 dist 目錄
+pnpm run dev           # 使用 ts-node-dev 啟動開發伺服器 (自動重載)
+pnpm run dev:watch     # 使用 ts-node-dev 啟動開發伺服器 (監視 src 目錄)
+pnpm run build         # 編譯 TypeScript 到 dist 目錄
+pnpm run clean         # 清理 dist 目錄
 
 # 型別檢查與程式碼品質
-npm run typecheck     # 執行 TypeScript 型別檢查
-npm run lint          # 執行 ESLint 檢查程式碼品質
-npm run lint:fix      # 自動修復 ESLint 問題
+pnpm run typecheck     # 執行 TypeScript 型別檢查
+pnpm run lint          # 執行 ESLint 檢查程式碼品質
+pnpm run lint:fix      # 自動修復 ESLint 問題
 
 # 資料庫與型別生成
-npm run prisma:generate    # 生成 Prisma Client
-npm run prisma:studio      # 開啟 Prisma Studio GUI
-npm run types:generate     # 生成 Prisma 和 OpenAPI 型別
+pnpm run prisma:generate    # 生成 Prisma Client
+pnpm run prisma:studio      # 開啟 Prisma Studio GUI
+pnpm run prisma:introspect  # 從現有資料庫拉取 schema
+pnpm run types:generate     # 生成 Prisma 型別
 
 # 測試
-npm test              # 執行 Jest 測試
-npm run test:paths    # 使用 NODE_PATH=src 執行測試
+pnpm test                   # 執行所有測試
+pnpm run test:unit          # 執行單元測試
+pnpm run test:integration   # 執行整合測試
+pnpm run test:e2e           # 執行端對端測試
+pnpm run test:watch         # 監視模式執行測試
+pnpm run test:coverage      # 生成測試覆蓋率報告
+pnpm run test:ci            # CI 環境執行測試 (含覆蓋率)
+pnpm run test:debug         # 除錯模式執行測試
+pnpm run test:clean         # 清除 Jest 快取
 ```
 
 ### 使用 Docker
@@ -470,6 +525,11 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
   - 實踐計畫建立、進度追蹤、統計分析
   - 打卡記錄、習慣養成、社群互動
   - 實踐事件管理、互動功能（按讚、收藏、分享）
+  - 封存/取消封存實踐管理
+  - 支援多種打卡時段（通勤、早晨、中午、下午、晚上）
+- **`/api/v1/quiz`** - 測驗系統
+  - 測驗建立與管理
+  - 題目與答案驗證
 - **`/api/v1/mentor`** - 導師系統
   - 導師-學員配對管理
   - 馬拉松活動導師分配
@@ -489,6 +549,13 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 
 #### 系統管理 API (v1)
 
+- **`/api/v1/admin`** - 管理員後台
+  - 平台統計資訊、用戶管理
+  - 數據匯出功能 (CSV/Excel)
+  - 系統配置管理
+- **`/api/v1/user-stats`** - 用戶統計
+  - 用戶活動數據分析
+  - 學習進度統計報告
 - **`/api/v1/monitor`** - 系統監控儀表板
   - 即時效能監控、資源使用統計
   - 系統健康檢查、警報管理
@@ -533,10 +600,11 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
   - 支援關聯查詢和事務處理
 - **MongoDB**: 文件型資料庫，用於彈性資料結構
   - 活動日誌、使用者行為追蹤
-- **Redis**: 快取層和會話管理
+- **Redis**: 快取層、會話管理和任務隊列
   - API 回應快取
   - 使用者會話儲存
   - 速率限制計數器
+  - BullMQ 任務隊列後端
 
 主要資料模型包括:
 
@@ -564,15 +632,18 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 專案需要以下主要環境變數:
 
 - `PORT`: 服務器端口
-- `MONGODB_URI`: MongoDB 連接字串
-- `POSTGRES_*`: PostgreSQL 資料庫設定
-- `REDIS_*`: Redis 設定
-- `JWT_SECRET`: JWT 令牌密鑰
+- `NODE_ENV`: 環境模式 (development/production)
+- `DATABASE_URL`: PostgreSQL 連接字串
+- `MONGO_URL`: MongoDB 連接字串
+- `REDIS_HOST`: Redis 主機地址
+- `JWT_SECURITY`: JWT 令牌密鑰
+- `JWT_EXPIRATION`: JWT 過期時間
 - `SESSION_SECRET`: 會話密鑰
 - `FRONTEND_URL`: 前端應用 URL
-- `CLOUDFLARE_R2_*`: Cloudflare R2 配置
+- `R2_*`: Cloudflare R2 儲存配置
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google OAuth 設定
-- `EMAIL_*`: 電子郵件設定
+- `EMAIL_ADDRESS`, `EMAIL_PASSWORD`: 電子郵件設定
+- `LOG_LEVEL`: 日誌等級 (debug/info/warn/error)
 
 詳細的環境變數配置請參考 .env.dev_temp 和 .env.prod_temp 檔案。
 
@@ -655,41 +726,50 @@ tests/
 
 ```bash
 # 執行所有測試
-npm test
-
-# 使用路徑解析執行測試
-npm run test:paths
-
-# 監視模式執行測試 (開發時使用)
-npm test -- --watch
-
-# 執行特定測試檔案
-npm test -- auth.controller.test.ts
-
-# 執行整合測試
-npm test -- integration/
+pnpm test
 
 # 執行單元測試
-npm test -- unit/
+pnpm run test:unit
+
+# 執行整合測試
+pnpm run test:integration
+
+# 執行端對端測試
+pnpm run test:e2e
+
+# 監視模式執行測試 (開發時使用)
+pnpm run test:watch
 
 # 生成測試覆蓋率報告
-npm test -- --coverage
+pnpm run test:coverage
+
+# CI 環境執行測試
+pnpm run test:ci
+
+# 除錯模式執行測試
+pnpm run test:debug
+
+# 清除 Jest 快取
+pnpm run test:clean
+
+# 執行特定測試檔案
+pnpm test -- auth.controller.test.ts
 ```
 
 #### 進階測試選項
 
 ```bash
 # 執行特定模式的測試
-npm test -- --testNamePattern="Auth"
+pnpm test -- --testNamePattern="Auth"
 
 # 並行執行測試
-npm test -- --maxWorkers=4
+pnpm test -- --maxWorkers=4
 
 # 詳細輸出
-npm test -- --verbose
+pnpm test -- --verbose
 
 # 只執行失敗的測試
-npm test -- --onlyFailures
+pnpm test -- --onlyFailures
 ```
 
 ### 測試架構特點
@@ -856,6 +936,6 @@ RUN pnpm run build
 1. Fork 該專案
 2. 建立功能分支 (`git checkout -b feature/amazing-feature`)
 3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 運行測試確保所有測試通過 (`npm test`)
+4. 運行測試確保所有測試通過 (`pnpm test`)
 5. 推送到分支 (`git push origin feature/amazing-feature`)
 6. 開啟一個 Pull Request
