@@ -183,10 +183,10 @@ export const createPracticeSchema = z.object({
       example: '希望養成每天閱讀的習慣'
     }),
   tags: z.array(z.string().min(1).max(50))
-    .max(3, '標籤最多 3 個')
+    .max(10, '標籤最多 10 個')
     .default([])
     .openapi({
-      description: '相關標籤（最多 3 個）',
+      description: '相關標籤（最多 10 個）',
       example: ['閱讀', '學習'],
       examples: [
         ['閱讀', '學習'],
@@ -267,7 +267,7 @@ export const updatePracticeSchema = z.object({
   sessionDurationMinutes: z.number().int().min(5).max(240).optional(),
   practiceTimePeriods: z.array(practiceTimePeriodSchema).max(4).optional(),
   otherContext: z.string().max(500).optional(),
-  tags: z.array(z.string().min(1).max(50)).max(3, '標籤最多3個').optional(),
+  tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
   resources: z.array(practiceResourceInputSchema).max(5, '資源最多5個').optional(),
   status: practiceStatusSchema.optional()
 }).refine(data => {
