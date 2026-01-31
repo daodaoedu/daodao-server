@@ -9019,12 +9019,84 @@ export interface paths {
                             success: true;
                             /** @description The main response data */
                             data: {
-                                [key: string]: {
-                                    /** @description 選項名稱 */
-                                    name: string;
-                                    /** @description 選項值 */
-                                    value: string;
+                                /** @description 用戶偏好設定列表 */
+                                preferences: {
+                                    /**
+                                     * @description 用戶偏好 ID
+                                     * @example 1
+                                     */
+                                    id: number;
+                                    /**
+                                     * @description 偏好類型 ID
+                                     * @example 1
+                                     */
+                                    preferenceTypeId: number;
+                                    /**
+                                     * @description 選項 ID
+                                     * @example 101
+                                     */
+                                    optionId: number;
+                                    /**
+                                     * @description 是否已選擇
+                                     * @example true
+                                     */
+                                    isSelected: boolean;
+                                    /** @description 偏好類型資訊 */
+                                    preferenceType: {
+                                        id: number;
+                                        name: string;
+                                        value: string;
+                                        description?: string;
+                                        maxSelections?: number;
+                                        options: {
+                                            /**
+                                             * @description 選項 ID
+                                             * @example 101
+                                             */
+                                            id: number;
+                                            /**
+                                             * @description 選項名稱
+                                             * @example 實作導向
+                                             */
+                                            name: string;
+                                            /**
+                                             * @description 選項值
+                                             * @example hands_on
+                                             */
+                                            value: string;
+                                            /**
+                                             * @description 選項描述
+                                             * @example 透過實際操作學習
+                                             */
+                                            description?: string;
+                                        }[];
+                                    };
+                                    /** @description 選項資訊 */
+                                    option: {
+                                        /**
+                                         * @description 選項 ID
+                                         * @example 101
+                                         */
+                                        id: number;
+                                        /**
+                                         * @description 選項名稱
+                                         * @example 實作導向
+                                         */
+                                        name: string;
+                                        /**
+                                         * @description 選項值
+                                         * @example hands_on
+                                         */
+                                        value: string;
+                                        /**
+                                         * @description 選項描述
+                                         * @example 透過實際操作學習
+                                         */
+                                        description?: string;
+                                    };
                                 }[];
+                                /** @description 偏好分類 */
+                                categories: unknown[];
                             };
                             /**
                              * Format: date-time
@@ -9117,19 +9189,25 @@ export interface paths {
                             /** @description The main response data */
                             data: {
                                 /**
+                                 * @description 更新的偏好設定數量
+                                 * @example 2
+                                 */
+                                updated: number;
+                                /**
+                                 * @description 新增的偏好設定數量
+                                 * @example 1
+                                 */
+                                created: number;
+                                /**
+                                 * @description 刪除的偏好設定數量
+                                 * @example 0
+                                 */
+                                deleted: number;
+                                /**
                                  * @description 成功訊息
-                                 * @example 偏好設定已成功更新
+                                 * @example 偏好設定更新成功
                                  */
                                 message: string;
-                                /** @description 更新後的偏好設定 */
-                                preferences: {
-                                    [key: string]: {
-                                        /** @description 選項名稱 */
-                                        name: string;
-                                        /** @description 選項值 */
-                                        value: string;
-                                    }[];
-                                };
                             };
                             /**
                              * Format: date-time
@@ -9363,7 +9441,7 @@ export interface paths {
                                      * @description 選項描述
                                      * @example 透過實際操作學習
                                      */
-                                    description: string | null;
+                                    description?: string;
                                 }[];
                             }[];
                             /**

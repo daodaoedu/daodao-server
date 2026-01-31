@@ -750,7 +750,7 @@ const preferenceOptionWithIdSchema = z.object({
     description: '選項值',
     example: 'hands_on'
   }),
-  description: z.string().nullable().openapi({
+  description: z.string().optional().openapi({
     description: '選項描述',
     example: '透過實際操作學習'
   })
@@ -787,20 +787,71 @@ const preferenceTypeWithOptionsSchema = z.object({
   description: '偏好類型'
 });
 
+// 用戶偏好項目 schema（匹配 service 返回格式）
+const userPreferenceItemSchema = z.object({
+  id: z.number().int().openapi({
+    description: '用戶偏好 ID',
+    example: 1
+  }),
+  preferenceTypeId: z.number().int().openapi({
+    description: '偏好類型 ID',
+    example: 1
+  }),
+  optionId: z.number().int().openapi({
+    description: '選項 ID',
+    example: 101
+  }),
+  isSelected: z.boolean().openapi({
+    description: '是否已選擇',
+    example: true
+  }),
+  preferenceType: z.object({
+    id: z.number().int(),
+    name: z.string(),
+    value: z.string(),
+    description: z.string().optional(),
+    maxSelections: z.number().int().optional(),
+    options: z.array(preferenceOptionWithIdSchema)
+  }).openapi({
+    description: '偏好類型資訊'
+  }),
+  option: preferenceOptionWithIdSchema.openapi({
+    description: '選項資訊'
+  })
+}).openapi({
+  description: '用戶偏好設定項目'
+});
+
 // 用戶偏好設定回應 schema
 export const userPreferencesResponseSchema = apiSuccessResponseSchema(
-  z.record(z.string(), z.array(preferenceOptionSchema))
+  z.object({
+    preferences: z.array(userPreferenceItemSchema).openapi({
+      description: '用戶偏好設定列表'
+    }),
+    categories: z.array(z.unknown()).openapi({
+      description: '偏好分類'
+    })
+  })
 );
 
 // 更新偏好設定回應 schema
 export const updateUserPreferencesResponseSchema = apiSuccessResponseSchema(
   z.object({
+    updated: z.number().int().min(0).openapi({
+      description: '更新的偏好設定數量',
+      example: 2
+    }),
+    created: z.number().int().min(0).openapi({
+      description: '新增的偏好設定數量',
+      example: 1
+    }),
+    deleted: z.number().int().min(0).openapi({
+      description: '刪除的偏好設定數量',
+      example: 0
+    }),
     message: z.string().openapi({
       description: '成功訊息',
-      example: '偏好設定已成功更新'
-    }),
-    preferences: z.record(z.string(), z.array(preferenceOptionSchema)).openapi({
-      description: '更新後的偏好設定'
+      example: '偏好設定更新成功'
     })
   })
 );
