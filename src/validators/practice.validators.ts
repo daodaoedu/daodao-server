@@ -20,10 +20,10 @@ export const practiceStatusSchema = z.enum(['draft', 'not_started', 'active', 'c
 });
 
 // 實踐時段 Schema
-export const practiceTimePeriodSchema = z.enum(['morning', 'afternoon', 'evening', 'night']).openapi({
-  description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)',
+export const practiceTimePeriodSchema = z.enum(['morning', 'afternoon', 'evening', 'night', 'commute']).openapi({
+  description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)',
   example: 'morning',
-  examples: ['morning', 'afternoon', 'evening', 'night']
+  examples: ['morning', 'afternoon', 'evening', 'night', 'commute']
 });
 
 // 實踐資源 Schema (用於創建)

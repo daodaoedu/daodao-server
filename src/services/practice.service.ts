@@ -549,12 +549,14 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       }
     };
 
-    loggerService.info('Practice created', { practiceId: practice.id, userId });
+    loggerService.info('Practice created', { practiceId: practice.id, userId, isDraft: data.isDraft });
 
-    // 觸發 PE01 實踐建立郵件（非阻塞）
-    enqueuePracticeEmail('PE01', practice.id, userId).catch(err => {
-      loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
-    });
+    // 只有非草稿才觸發 PE01 實踐建立郵件（非阻塞）
+    if (!data.isDraft) {
+      enqueuePracticeEmail('PE01', practice.id, userId).catch(err => {
+        loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
+      });
+    }
 
     return createSuccessResponse(practiceEntity);
 
@@ -748,6 +750,14 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     };
 
     loggerService.info('Practice updated', { practiceId: id, userId });
+
+    // 草稿發布時觸發 PE01 實踐建立郵件（非阻塞）
+    const isPublishingDraft = existingPractice.status === 'draft' && data.status === 'not_started';
+    if (isPublishingDraft) {
+      enqueuePracticeEmail('PE01', id, userId).catch(err => {
+        loggerService.error('Failed to enqueue PE01 email for published draft', { practiceId: id, error: err });
+      });
+    }
 
     return createSuccessResponse(practiceEntity);
 
