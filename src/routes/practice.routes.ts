@@ -14,6 +14,7 @@ import {
   myPracticesQuerySchema,
   practiceParamsSchema,
   userPracticesParamsSchema,
+  deleteCheckInParamsSchema,
   createPracticeSchema,
   updatePracticeSchema,
   checkInSchema,
@@ -1031,7 +1032,7 @@ router.post('/:id/checkins',
  */
 router.delete('/:id/checkins/:checkInId',
   authenticate,
-  validate(practiceParamsSchema, 'params'),
+  validate(deleteCheckInParamsSchema, 'params'),
   practiceController.deleteCheckIn as RequestHandler);
 
 /**
