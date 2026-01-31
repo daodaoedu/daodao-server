@@ -9,7 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
-import { createOAuthState, encodeOAuthState } from '../../utils/oauth-state';
+import { createOAuthState, encodeOAuthState, validateOAuthState } from '../../utils/oauth-state';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
 import { oauthNonceService } from './oauth-nonce.service';
 
@@ -215,7 +215,53 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
   // App 可以傳入: ?redirect_uri=xxx (custom scheme URL)
   let stateParam = req.query.state as string | undefined;
 
-  if (!stateParam) {
+  if (stateParam) {
+    // 前端傳入了 state 參數，需要解析並存儲 nonce 到 Redis
+    const validationResult = validateOAuthState(stateParam);
+    if (!validationResult.valid || !validationResult.state) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_STATE',
+          message: 'The provided state parameter is invalid'
+        }
+      });
+      return;
+    }
+
+    const existingState = validationResult.state;
+
+    // 驗證 redirect URL
+    if (!isValidRedirectUri(existingState.redirectUrl)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REDIRECT_URI',
+          message: 'The provided redirect URI is not allowed'
+        }
+      });
+      return;
+    }
+
+    // 儲存前端傳入的 nonce 到 Redis（用於 CSRF 保護驗證）
+    try {
+      await oauthNonceService.storeNonce(
+        existingState.nonce,
+        existingState.redirectUrl,
+        existingState.source
+      );
+    } catch (error) {
+      console.error('Failed to store OAuth nonce from frontend state:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'NONCE_STORAGE_FAILED',
+          message: 'Failed to initialize OAuth flow'
+        }
+      });
+      return;
+    }
+  } else {
     // 如果沒有 state，從 redirectUrl/redirect_uri 和 source 建立新的 state
     // 支援 redirect_uri（App 慣用）和 redirectUrl（Web 慣用）
     const redirectUri = validateRedirectParam(req.query.redirect_uri);
