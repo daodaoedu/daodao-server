@@ -183,10 +183,10 @@ export const createPracticeSchema = z.object({
       example: '希望養成每天閱讀的習慣'
     }),
   tags: z.array(z.string().min(1).max(50))
-    .max(3, '標籤最多 3 個')
+    .max(10, '標籤最多 10 個')
     .default([])
     .openapi({
-      description: '相關標籤（最多 3 個）',
+      description: '相關標籤（最多 10 個）',
       example: ['閱讀', '學習'],
       examples: [
         ['閱讀', '學習'],
@@ -203,6 +203,12 @@ export const createPracticeSchema = z.object({
         name: 'React 官方文檔',
         url: 'https://react.dev/'
       }]
+    }),
+  isDraft: z.boolean()
+    .default(false)
+    .openapi({
+      description: '是否存為草稿',
+      example: false
     })
 }).openapi('CreatePracticeRequest', {
   description: '創建實踐活動的請求資料',
@@ -216,7 +222,8 @@ export const createPracticeSchema = z.object({
     sessionDurationMinutes: 30,
     practiceTimePeriods: ['morning', 'evening'],
     tags: ['閱讀', '學習'],
-    resources: []
+    resources: [],
+    isDraft: false
   }
 }).refine(data => {
   // 驗證 frequencyMinDays <= frequencyMaxDays
@@ -260,7 +267,7 @@ export const updatePracticeSchema = z.object({
   sessionDurationMinutes: z.number().int().min(5).max(240).optional(),
   practiceTimePeriods: z.array(practiceTimePeriodSchema).max(4).optional(),
   otherContext: z.string().max(500).optional(),
-  tags: z.array(z.string().min(1).max(50)).max(3, '標籤最多3個').optional(),
+  tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
   resources: z.array(practiceResourceInputSchema).max(5, '資源最多5個').optional(),
   status: practiceStatusSchema.optional()
 }).refine(data => {
@@ -304,6 +311,16 @@ export const checkInSchema = z.object({
       example: [],
       examples: [[], ['https://example.com/image1.jpg']]
     }),
+  ogImageUrl: z.string()
+    .url('請輸入有效的 OG 圖片網址')
+    .max(500, 'OG 圖片網址不可超過 500 字')
+    .nullable()
+    .optional()
+    .openapi({
+      description: 'OG 圖片 URL（用於社群分享）',
+      example: null,
+      format: 'uri'
+    }),
   tags: z.array(z.string().max(50, '標籤名稱不可超過50字'))
     .max(10, '標籤最多10個')
     .default([])
@@ -318,6 +335,7 @@ export const checkInSchema = z.object({
     mood: 'happy',
     note: '今天閱讀了第三章，學到了很多新概念',
     imageUrls: [],
+    ogImageUrl: null,
     tags: ['專注', '有收穫']
   }
 });
@@ -403,6 +421,12 @@ export const userPracticesParamsSchema = z.object({
   description: '用戶實踐列表路徑參數'
 });
 
+// 刪除簽到記錄參數 Schema
+export const deleteCheckInParamsSchema = z.object({
+  id: z.string().min(1, 'Practice ID cannot be empty'),
+  checkInId: z.string().regex(/^[1-9]\d*$/, 'checkInId must be a positive integer string')
+});
+
 // 我的實踐查詢參數 Schema
 export const myPracticesQuerySchema = practiceQuerySchema.extend({
   status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all']).default('all')
@@ -425,6 +449,7 @@ export type PracticeParamsRequest = z.infer<typeof practiceParamsSchema>;
 export type PracticeCommentParamsRequest = z.infer<typeof practiceCommentParamsSchema>;
 export type MyPracticesQueryParams = z.infer<typeof myPracticesQuerySchema>;
 export type UserPracticesParamsRequest = z.infer<typeof userPracticesParamsSchema>;
+export type DeleteCheckInParamsRequest = z.infer<typeof deleteCheckInParamsSchema>;
 
 // 驗證函數
 export const validateCreatePractice = (data: unknown): CreatePracticeRequest => createPracticeSchema.parse(data);
@@ -599,6 +624,7 @@ export const checkInEntityResponseSchema = z.object({
   mood: z.enum(['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']).optional().openapi({ description: '簽到心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)', example: 'happy' }),
   note: z.string().optional().openapi({ description: '詳細描述', example: '今天閱讀了第三章' }),
   imageUrls: z.array(z.string()).openapi({ description: '打卡圖片 URL（最多3張）', example: [] }),
+  ogImageUrl: z.string().nullable().openapi({ description: 'OG 圖片 URL（用於社群分享）', example: null, format: 'uri' }),
   tags: z.array(z.string()).openapi({ description: '打卡標籤', example: ['專注', '有收穫'] }),
   createdAt: z.string().datetime().openapi({ description: '創建時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' }),
   updatedAt: z.string().datetime().optional().openapi({ description: '更新時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' })
@@ -612,6 +638,7 @@ export const checkInEntityResponseSchema = z.object({
     mood: 'happy',
     note: '今天閱讀了第三章',
     imageUrls: [],
+    ogImageUrl: null,
     tags: ['專注', '有收穫'],
     createdAt: '2024-01-20T15:45:00.000Z',
     updatedAt: '2024-01-20T15:45:00.000Z'
@@ -1241,6 +1268,7 @@ export const practiceValidators = {
   practiceParamsSchema,
   practiceCommentParamsSchema,
   userPracticesParamsSchema,
+  deleteCheckInParamsSchema,
 
   // 子組件 schemas
   practiceResourceInputSchema,

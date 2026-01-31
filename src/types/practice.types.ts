@@ -95,6 +95,7 @@ export interface CheckInEntity {
   mood?: CheckInMood;
   note?: string;
   imageUrls: string[];
+  ogImageUrl: string | null;
   tags: string[];
   createdAt: string;
   updatedAt?: string;
@@ -140,6 +141,7 @@ export interface CreatePracticeRequest {
     name: string;
     url?: string;
   }>;
+  isDraft?: boolean;
 }
 
 export interface UpdatePracticeRequest {
@@ -165,6 +167,7 @@ export interface CheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
+  ogImageUrl?: string | null;
   tags?: string[];
 }
 
@@ -172,6 +175,7 @@ export interface CreateCheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
+  ogImageUrl?: string | null;
   tags?: string[];
 }
 
@@ -357,6 +361,7 @@ export interface DatabaseCheckIn {
   mood: string | null;
   note: string | null;
   image_urls: string[];
+  og_image_url: string | null;
   created_at: Date | null;
   updated_at: Date | null;
 }

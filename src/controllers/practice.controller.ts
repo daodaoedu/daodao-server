@@ -261,7 +261,9 @@ export class PracticeController {
     const checkInData: CreateCheckInRequest = {
       note: requestBody.note,
       mood: requestBody.mood,
-      imageUrls: requestBody.imageUrls
+      imageUrls: requestBody.imageUrls,
+      ogImageUrl: requestBody.ogImageUrl,
+      tags: requestBody.tags
     };
     const result = await practiceCheckInService.createCheckIn(practiceId, checkInData, req.user.id);
 
@@ -269,6 +271,27 @@ export class PracticeController {
     const validatedResponse = createCheckInApiResponseSchema.parse(result);
 
     res.status(201).json(validatedResponse);
+  });
+
+  /**
+   * 刪除簽到記錄
+   * DELETE /api/v1/practices/:id/checkins/:checkInId
+   */
+  deleteCheckIn = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user?.id) {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const checkInId = parseInt(req.params.checkInId, 10);
+
+    if (isNaN(checkInId) || checkInId <= 0) {
+      throw new BadRequestError('無效的簽到記錄 ID');
+    }
+
+    const result = await practiceCheckInService.deleteCheckIn(checkInId, practiceId, req.user.id);
+
+    res.json(result);
   });
 
   /**
