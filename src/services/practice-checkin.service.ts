@@ -218,7 +218,7 @@ export async function createCheckIn(
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
-      ogImageUrl: checkIn.og_image_url || undefined,
+      ogImageUrl: checkIn.og_image_url ?? null,
       tags,
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString(),
@@ -348,7 +348,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
-      ogImageUrl: checkIn.og_image_url || undefined,
+      ogImageUrl: checkIn.og_image_url ?? null,
       tags: entityTagsMap.get(checkIn.id) || [],
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString()

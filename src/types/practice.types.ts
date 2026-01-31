@@ -95,7 +95,7 @@ export interface CheckInEntity {
   mood?: CheckInMood;
   note?: string;
   imageUrls: string[];
-  ogImageUrl?: string;
+  ogImageUrl: string | null;
   tags: string[];
   createdAt: string;
   updatedAt?: string;
