@@ -261,7 +261,9 @@ export class PracticeController {
     const checkInData: CreateCheckInRequest = {
       note: requestBody.note,
       mood: requestBody.mood,
-      imageUrls: requestBody.imageUrls
+      imageUrls: requestBody.imageUrls,
+      ogImageUrl: requestBody.ogImageUrl,
+      tags: requestBody.tags
     };
     const result = await practiceCheckInService.createCheckIn(practiceId, checkInData, req.user.id);
 

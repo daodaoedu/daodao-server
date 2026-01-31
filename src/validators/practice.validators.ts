@@ -314,10 +314,11 @@ export const checkInSchema = z.object({
   ogImageUrl: z.string()
     .url('請輸入有效的 OG 圖片網址')
     .max(500, 'OG 圖片網址不可超過 500 字')
+    .nullable()
     .optional()
     .openapi({
       description: 'OG 圖片 URL（用於社群分享）',
-      example: 'https://example.com/og-image.jpg',
+      example: null,
       format: 'uri'
     }),
   tags: z.array(z.string().max(50, '標籤名稱不可超過50字'))

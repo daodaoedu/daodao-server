@@ -167,7 +167,7 @@ export interface CheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
-  ogImageUrl?: string;
+  ogImageUrl?: string | null;
   tags?: string[];
 }
 
@@ -175,7 +175,7 @@ export interface CreateCheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
-  ogImageUrl?: string;
+  ogImageUrl?: string | null;
   tags?: string[];
 }
 
