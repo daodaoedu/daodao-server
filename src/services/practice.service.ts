@@ -383,11 +383,25 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + durationDays - 1);
 
-    // 查詢用戶已有的 practice 數量，用於分配主題色
-    const existingPracticeCount = await prismaClient.practices.count({
-      where: { user_id: userId }
+    // 查詢用戶最後一個實踐的顏色，用於分配下一個主題色
+    const lastPractice = await prismaClient.practices.findFirst({
+      where: { user_id: userId, deleted_at: null },
+      orderBy: { created_at: 'desc' },
+      select: { theme_color: true }
     });
-    const themeColor = THEME_COLORS[existingPracticeCount % THEME_COLORS.length];
+
+    // 根據最後一個實踐的顏色，選擇下一個顏色
+    const lastColorIndex = lastPractice?.theme_color
+      ? THEME_COLORS.indexOf(lastPractice.theme_color as typeof THEME_COLORS[number])
+      : -1;
+    const themeColor = THEME_COLORS[(lastColorIndex + 1) % THEME_COLORS.length];
+
+    loggerService.info('Theme color assigned for new practice', {
+      userId,
+      lastPracticeColor: lastPractice?.theme_color || 'none',
+      lastColorIndex,
+      assignedColor: themeColor
+    });
 
     const practice = await prismaClient.practices.create({
       data: {

@@ -35,9 +35,6 @@ import {
   canCheckIn,
   type PracticeStatusType
 } from '../utils/practice-status';
-import {
-  calculateDateShift
-} from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags, getEntityTags } from './tag.service';
 
@@ -139,34 +136,6 @@ export async function createCheckIn(
 
     // 首次打卡：設定 first_checkin_at
     if (isFirstCheckIn) {
-      // 檢查是否提早打卡（需要日期位移）
-      if (practice.start_date) {
-        const startDate = new Date(practice.start_date);
-        startDate.setUTCHours(0, 0, 0, 0);
-
-        if (today < startDate) {
-          // 提早打卡：執行日期位移
-          const shiftResult = calculateDateShift(
-            practice.start_date,
-            today,
-            progressConfig.durationDays
-          );
-
-          if (shiftResult.needsShift) {
-            practiceUpdateData.start_date = shiftResult.newStartDate;
-            practiceUpdateData.end_date = shiftResult.newEndDate;
-            loggerService.info('Practice dates shifted due to early check-in', {
-              practiceId,
-              originalStart: practice.start_date,
-              newStart: shiftResult.newStartDate,
-              newEnd: shiftResult.newEndDate,
-              shiftDays: shiftResult.shiftDays
-            });
-          }
-        }
-      }
-
-      // 設定首次打卡時間
       practiceUpdateData.first_checkin_at = new Date();
     }
 
