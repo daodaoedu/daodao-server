@@ -19605,21 +19605,114 @@ paths:
                     description: Indicates successful API response
                   data:
                     type: object
-                    additionalProperties:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          name:
-                            type: string
-                            description: 選項名稱
-                          value:
-                            type: string
-                            description: 選項值
-                        required:
-                          - name
-                          - value
-                        description: 偏好選項
+                    properties:
+                      preferences:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              description: 用戶偏好 ID
+                              example: 1
+                            preferenceTypeId:
+                              type: integer
+                              description: 偏好類型 ID
+                              example: 1
+                            optionId:
+                              type: integer
+                              description: 選項 ID
+                              example: 101
+                            isSelected:
+                              type: boolean
+                              description: 是否已選擇
+                              example: true
+                            preferenceType:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                name:
+                                  type: string
+                                value:
+                                  type: string
+                                description:
+                                  type: string
+                                maxSelections:
+                                  type: integer
+                                options:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: number
+                                        description: 選項 ID
+                                        example: 101
+                                      name:
+                                        type: string
+                                        description: 選項名稱
+                                        example: 實作導向
+                                      value:
+                                        type: string
+                                        description: 選項值
+                                        example: hands_on
+                                      description:
+                                        type: string
+                                        description: 選項描述
+                                        example: 透過實際操作學習
+                                    required:
+                                      - id
+                                      - name
+                                      - value
+                                    description: 完整偏好選項
+                              required:
+                                - id
+                                - name
+                                - value
+                                - options
+                              description: 偏好類型資訊
+                            option:
+                              type: object
+                              properties:
+                                id:
+                                  type: number
+                                  description: 選項 ID
+                                  example: 101
+                                name:
+                                  type: string
+                                  description: 選項名稱
+                                  example: 實作導向
+                                value:
+                                  type: string
+                                  description: 選項值
+                                  example: hands_on
+                                description:
+                                  type: string
+                                  description: 選項描述
+                                  example: 透過實際操作學習
+                              required:
+                                - id
+                                - name
+                                - value
+                              description: 選項資訊
+                          required:
+                            - id
+                            - preferenceTypeId
+                            - optionId
+                            - isSelected
+                            - preferenceType
+                            - option
+                          description: 用戶偏好設定項目
+                        description: 用戶偏好設定列表
+                      categories:
+                        type: array
+                        items:
+                          nullable: true
+                        description: 偏好分類
+                    required:
+                      - preferences
+                      - categories
                     description: The main response data
                   timestamp:
                     type: string
@@ -19721,31 +19814,30 @@ paths:
                   data:
                     type: object
                     properties:
+                      updated:
+                        type: integer
+                        minimum: 0
+                        description: 更新的偏好設定數量
+                        example: 2
+                      created:
+                        type: integer
+                        minimum: 0
+                        description: 新增的偏好設定數量
+                        example: 1
+                      deleted:
+                        type: integer
+                        minimum: 0
+                        description: 刪除的偏好設定數量
+                        example: 0
                       message:
                         type: string
                         description: 成功訊息
-                        example: 偏好設定已成功更新
-                      preferences:
-                        type: object
-                        additionalProperties:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                                description: 選項名稱
-                              value:
-                                type: string
-                                description: 選項值
-                            required:
-                              - name
-                              - value
-                            description: 偏好選項
-                        description: 更新後的偏好設定
+                        example: 偏好設定更新成功
                     required:
+                      - updated
+                      - created
+                      - deleted
                       - message
-                      - preferences
                     description: The main response data
                   timestamp:
                     type: string
@@ -19938,14 +20030,12 @@ paths:
                                 example: hands_on
                               description:
                                 type: string
-                                nullable: true
                                 description: 選項描述
                                 example: 透過實際操作學習
                             required:
                               - id
                               - name
                               - value
-                              - description
                             description: 完整偏好選項
                           description: 可用選項列表
                       required:
