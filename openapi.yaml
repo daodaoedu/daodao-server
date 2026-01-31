@@ -5827,9 +5827,9 @@ components:
             type: string
             minLength: 1
             maxLength: 50
-          maxItems: 3
+          maxItems: 10
           default: &ref_94 []
-          description: 相關標籤（最多 3 個）
+          description: 相關標籤（最多 10 個）
           example: &ref_95
             - 閱讀
             - 學習
@@ -5850,6 +5850,11 @@ components:
           example: &ref_97
             - name: React 官方文檔
               url: https://react.dev/
+        isDraft:
+          type: boolean
+          default: false
+          description: 是否存為草稿
+          example: false
       required:
         - title
     CheckInRequest:
@@ -5893,6 +5898,13 @@ components:
           examples:
             - []
             - - https://example.com/image1.jpg
+        ogImageUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+          format: uri
+          description: OG 圖片 URL（用於社群分享）
+          example: null
         tags:
           type: array
           items:
@@ -5916,6 +5928,7 @@ components:
         mood: happy
         note: 今天閱讀了第三章，學到了很多新概念
         imageUrls: []
+        ogImageUrl: null
         tags:
           - 專注
           - 有收穫
@@ -6225,6 +6238,12 @@ components:
             type: string
           description: 打卡圖片 URL（最多3張）
           example: []
+        ogImageUrl:
+          type: string
+          nullable: true
+          format: uri
+          description: OG 圖片 URL（用於社群分享）
+          example: null
         tags:
           type: array
           items:
@@ -6249,6 +6268,7 @@ components:
         - userId
         - checkinDate
         - imageUrls
+        - ogImageUrl
         - tags
         - createdAt
       description: 簽到記錄詳細資訊
@@ -6260,6 +6280,7 @@ components:
         mood: happy
         note: 今天閱讀了第三章
         imageUrls: []
+        ogImageUrl: null
         tags:
           - 專注
           - 有收穫
@@ -22832,9 +22853,9 @@ paths:
                     type: string
                     minLength: 1
                     maxLength: 50
-                  maxItems: 3
+                  maxItems: 10
                   default: *ref_94
-                  description: 相關標籤（最多 3 個）
+                  description: 相關標籤（最多 10 個）
                   example: *ref_95
                   examples: *ref_96
                 resources:
@@ -22844,6 +22865,11 @@ paths:
                   maxItems: 5
                   description: 相關學習資源（最多 5 個）
                   example: *ref_97
+                isDraft:
+                  type: boolean
+                  default: false
+                  description: 是否存為草稿
+                  example: false
               required:
                 - title
       responses:
@@ -23595,7 +23621,7 @@ paths:
                     type: string
                     minLength: 1
                     maxLength: 50
-                  maxItems: 3
+                  maxItems: 10
                 resources:
                   type: array
                   items:
@@ -23743,7 +23769,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples:
+                    examples: &ref_99
                       - success: true
                   timestamp:
                     type: string
@@ -23794,7 +23820,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples:
+                examples: &ref_100
                   - success: true
                     data:
                       id: 123
@@ -24113,6 +24139,116 @@ paths:
                         前端開發: 25
                         後端開發: 18
                         資料科學: 7
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/practices/{id}/checkins/{checkInId}:
+    delete:
+      tags:
+        - Practice Check-ins
+      summary: 刪除簽到記錄
+      description: 刪除指定的簽到記錄，需要身份驗證且只能刪除自己的記錄
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            description: 實踐 ID（UUID 格式）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 實踐 ID（UUID 格式）
+          name: id
+          in: path
+        - schema:
+            type: string
+            pattern: ^[1-9]\d*$
+            description: 簽到記錄 ID
+            example: '123'
+          required: true
+          description: 簽到記錄 ID
+          name: checkInId
+          in: path
+      responses:
+        '200':
+          description: 成功刪除簽到記錄
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        description: 操作成功狀態
+                    required:
+                      - success
+                    description: The main response data
+                    examples: *ref_99
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_100
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -27380,7 +27516,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_99
+                examples: &ref_101
                   - success: true
                     data:
                       id: 123
@@ -27621,7 +27757,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_99
+                examples: *ref_101
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -27944,7 +28080,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_100
+                examples: &ref_102
                   - success: true
                     data:
                       id: 123
@@ -28186,7 +28322,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_100
+                examples: *ref_102
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -28420,7 +28556,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_101
+                examples: &ref_103
                   - success: true
                     data:
                       id: 123
@@ -28510,7 +28646,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_101
+                examples: *ref_103
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -28620,7 +28756,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_101
+                examples: *ref_103
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
