@@ -5,6 +5,7 @@
 
 import { prisma } from '../database/prisma.service';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { jwtService } from '../jwt.service';
 import {
   UnauthorizedError,
@@ -56,7 +57,7 @@ export const findOrCreateTempUser = async (profile: {
   email: string;
   name: string;
   photoUrl?: string;
-}): Promise<ApiResponse<any>> => {
+}): Promise<ApiResponse<unknown>> => {
   const { googleId, email, name, photoUrl } = profile;
 
   // 先檢查是否已存在
@@ -86,6 +87,265 @@ export const findOrCreateTempUser = async (profile: {
   }
 
   return createSuccessResponse(tempUser);
+};
+
+/**
+ * 根據 Apple ID 查找正式用戶
+ */
+export const findUserByAppleId = async (appleId: string): Promise<unknown | null> => {
+  const contact = await prisma.contacts.findFirst({
+    where: { apple_id: appleId },
+    include: {
+      users: {
+        include: {
+          roles: true,
+          contacts: true,
+          location: {
+            include: {
+              city: true,
+              country: true
+            }
+          },
+          user_positions: {
+            include: {
+              position: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!contact || !contact.users || contact.users.length === 0) {
+    return null;
+  }
+
+  return contact.users[0];
+};
+
+/**
+ * 根據 Apple ID 查找或創建臨時用戶
+ */
+export const findOrCreateTempUserFromApple = async (profile: {
+  appleId: string;
+  email: string;
+  name: string;
+  photoUrl?: string;
+}): Promise<ApiResponse<unknown>> => {
+  const { appleId, email, name, photoUrl } = profile;
+
+  // 先檢查是否已存在（通過 Apple ID）
+  let tempUser = await prisma.temp_users.findFirst({
+    where: { apple_id: appleId }
+  });
+
+  if (!tempUser) {
+    // 檢查 email 是否已存在
+    const existingByEmail = await prisma.temp_users.findFirst({
+      where: { email }
+    });
+
+    if (existingByEmail) {
+      // 如果 email 已存在但沒有 Apple ID，更新 Apple ID
+      if (!existingByEmail.apple_id) {
+        tempUser = await prisma.temp_users.update({
+          where: { id: existingByEmail.id },
+          data: { apple_id: appleId }
+        });
+      } else {
+        throw new ConflictError('此電子郵件已被使用');
+      }
+    } else {
+      // 創建新的臨時用戶
+      tempUser = await prisma.temp_users.create({
+        data: {
+          apple_id: appleId,
+          email,
+          name,
+          photo_url: photoUrl
+        }
+      });
+    }
+  }
+
+  return createSuccessResponse(tempUser);
+};
+
+/**
+ * 直接從 Apple OAuth 建立正式用戶（跳過臨時用戶階段）
+ * 在事務中建立 basic_info、contacts 和 users 記錄
+ */
+export const createUserFromAppleOAuth = async (profile: {
+  appleId: string;
+  email?: string;
+  name: string;
+  photoUrl?: string;
+}): Promise<ApiResponse<unknown>> => {
+  const { appleId, email, name, photoUrl } = profile;
+
+  // 使用事務確保資料一致性
+  const newUser = await prisma.$transaction(async (tx) => {
+    // 1. 建立 basic_info（空白預設值）
+    const basicInfo = await tx.basic_info.create({
+      data: {
+        self_introduction: null,
+        share_list: null,
+        want_to_do_list: []
+      }
+    });
+
+    // 2. 建立 contacts（Apple 資訊）
+    const contact = await tx.contacts.create({
+      data: {
+        apple_id: appleId,
+        email,
+        photo_url: photoUrl,
+        is_subscribe_email: false
+      }
+    });
+
+    // 3. 生成唯一的 mongo_id（使用 crypto 生成 24 字元的十六進位字串，模擬 MongoDB ObjectId 格式）
+    const mongoId = crypto.randomBytes(12).toString('hex');
+
+    // 4. 建立 users 記錄
+    const user = await tx.users.create({
+      data: {
+        mongo_id: mongoId,
+        nickname: name,
+        contact_id: contact.id,
+        basic_info_id: basicInfo.id,
+        role_id: 2, // 一般用戶
+        is_open_location: false,
+        is_open_profile: false,
+        verified: false,
+        is_active: true
+      }
+    });
+
+    // 5. 獲取完整的用戶資訊
+    const createdUser = await tx.users.findUnique({
+      where: { id: user.id },
+      include: {
+        roles: true,
+        contacts: true,
+        basic_info: true,
+        location: {
+          include: {
+            city: true,
+            country: true
+          }
+        },
+        user_positions: {
+          include: {
+            position: true
+          }
+        }
+      }
+    });
+
+    return createdUser;
+  });
+
+  return createSuccessResponse(newUser);
+};
+
+/**
+ * 將 Apple ID 關聯到現有用戶
+ */
+export const linkAppleIdToUser = async (userId: number, appleId: string): Promise<ApiResponse<{ success: boolean }>> => {
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    include: { contacts: true }
+  });
+
+  if (!user || !user.contact_id) {
+    throw new NotFoundError('用戶不存在');
+  }
+
+  await prisma.contacts.update({
+    where: { id: user.contact_id },
+    data: { apple_id: appleId }
+  });
+
+  return createSuccessResponse({ success: true });
+};
+
+/**
+ * 直接從 OAuth 建立正式用戶（跳過臨時用戶階段）
+ * 在事務中建立 basic_info、contacts 和 users 記錄
+ */
+export const createUserFromOAuth = async (profile: {
+  googleId: string;
+  email: string;
+  name: string;
+  photoUrl?: string;
+}): Promise<ApiResponse<unknown>> => {
+  const { googleId, email, name, photoUrl } = profile;
+
+  // 使用事務確保資料一致性
+  const newUser = await prisma.$transaction(async (tx) => {
+    // 1. 建立 basic_info（空白預設值）
+    const basicInfo = await tx.basic_info.create({
+      data: {
+        self_introduction: null,
+        share_list: null,
+        want_to_do_list: []
+      }
+    });
+
+    // 2. 建立 contacts（Google 資訊）
+    const contact = await tx.contacts.create({
+      data: {
+        google_id: googleId,
+        email,
+        photo_url: photoUrl,
+        is_subscribe_email: false
+      }
+    });
+
+    // 3. 生成唯一的 mongo_id（使用 crypto 生成 24 字元的十六進位字串，模擬 MongoDB ObjectId 格式）
+    const mongoId = crypto.randomBytes(12).toString('hex');
+
+    // 4. 建立 users 記錄
+    const user = await tx.users.create({
+      data: {
+        mongo_id: mongoId,
+        nickname: name,
+        contact_id: contact.id,
+        basic_info_id: basicInfo.id,
+        role_id: 2, // 一般用戶
+        is_open_location: false,
+        is_open_profile: false,
+        verified: false,
+        is_active: true
+      }
+    });
+
+    // 5. 獲取完整的用戶資訊
+    const createdUser = await tx.users.findUnique({
+      where: { id: user.id },
+      include: {
+        roles: true,
+        contacts: true,
+        basic_info: true,
+        location: {
+          include: {
+            city: true,
+            country: true
+          }
+        },
+        user_positions: {
+          include: {
+            position: true
+          }
+        }
+      }
+    });
+
+    return createdUser;
+  });
+
+  return createSuccessResponse(newUser);
 };
 
 /**
@@ -274,6 +534,7 @@ export const isUserActive = async (userId: number): Promise<ApiResponse<boolean>
 export const authService = {
   findUserByEmail,
   findOrCreateTempUser,
+  createUserFromOAuth,
   findUserByExternalId,
   getUserRoles,
   getUserPermissions,
@@ -283,7 +544,12 @@ export const authService = {
   verifyUserEmail,
   setUserActiveStatus,
   isUserEmailVerified,
-  isUserActive
+  isUserActive,
+  // Apple Sign In 相關方法
+  findUserByAppleId,
+  findOrCreateTempUserFromApple,
+  createUserFromAppleOAuth,
+  linkAppleIdToUser
 };
 
 export default authService;

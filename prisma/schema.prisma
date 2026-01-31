@@ -66,6 +66,7 @@ model comments {
 model contacts {
   id                 Int      @id @default(autoincrement())
   google_id          String?  @db.VarChar(255)
+  apple_id           String?  @unique @db.VarChar(255)
   photo_url          String?
   is_subscribe_email Boolean?
   email              String?  @db.VarChar(255)
@@ -651,7 +652,8 @@ model task {
 
 model temp_users {
   id           Int      @id @default(autoincrement())
-  google_id    String   @unique @db.VarChar(255)
+  google_id    String?  @unique @db.VarChar(255)
+  apple_id     String?  @unique @db.VarChar(255)
   email        String   @unique @db.VarChar(255)
   name         String   @db.VarChar(255)
   photo_url    String?  @db.VarChar(255)

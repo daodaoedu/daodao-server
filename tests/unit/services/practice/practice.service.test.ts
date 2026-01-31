@@ -177,6 +177,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const result = await findById(1);
 
@@ -205,6 +206,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       await findById(1, 5);
 
@@ -565,6 +567,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const result = await findById(1);
 
@@ -601,6 +604,7 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([{ practice_id: 1, _count: { id: 3 } }] as any);
+      prismaMock.entity_resources.findMany.mockResolvedValue([]);
 
       const result = await findById(1);
 

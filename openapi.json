@@ -676,6 +676,51 @@
           }
         ]
       },
+      "AppleSignInRequest": {
+        "type": "object",
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Apple Sign In 返回的 ID Token",
+            "example": "eyJraWQiOiJ..."
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "用戶名稱（僅首次登入時由 Apple 提供）",
+                "example": "John Doe"
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "description": "用戶電子郵件（可能為 private relay email）",
+                "example": "user@privaterelay.appleid.com"
+              }
+            },
+            "description": "用戶資訊（僅首次授權時由 iOS App 提供）"
+          },
+          "nonce": {
+            "type": "string",
+            "description": "用於防止重放攻擊的 nonce 值",
+            "example": "random_nonce_string"
+          }
+        },
+        "required": [
+          "idToken"
+        ],
+        "description": "Apple Sign In 登入請求資料",
+        "example": {
+          "idToken": "eyJraWQiOiJ...",
+          "user": {
+            "name": "John Doe",
+            "email": "john@example.com"
+          }
+        }
+      },
       "AuthUserData": {
         "type": "object",
         "properties": {
@@ -1578,6 +1623,215 @@
           "success": true,
           "data": {
             "message": "郵件驗證成功"
+          },
+          "timestamp": "2024-01-15T10:30:00.000Z"
+        }
+      },
+      "AppleSignInResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "description": "JWT 認證 token",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "用戶數字 ID",
+                    "example": 123
+                  },
+                  "_id": {
+                    "type": "string",
+                    "description": "用戶 UUID",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "用戶名稱",
+                    "example": "John Doe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "電子郵件地址",
+                    "example": "john@example.com"
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "個人大頭照 URL",
+                    "example": "https://example.com/avatar.jpg"
+                  },
+                  "roleId": {
+                    "type": "integer",
+                    "description": "角色 ID",
+                    "example": 2
+                  }
+                },
+                "required": [
+                  "id",
+                  "_id",
+                  "name"
+                ],
+                "description": "用戶資訊"
+              },
+              "isTemp": {
+                "type": "boolean",
+                "description": "是否為臨時用戶",
+                "example": false
+              },
+              "isNewUser": {
+                "type": "boolean",
+                "description": "是否為新建立的用戶",
+                "example": true
+              }
+            },
+            "required": [
+              "token",
+              "user",
+              "isTemp",
+              "isNewUser"
+            ],
+            "description": "The main response data"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "description": "Search query used for filtering results"
+              },
+              "searchTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Time taken to execute the search query in milliseconds"
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Applied filters for the request"
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Count of items per category"
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Aggregated statistical data"
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Unique identifier for request tracking"
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "description": "Whether the response was served from cache"
+              },
+              "processingTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Total processing time in milliseconds"
+              }
+            },
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Optional metadata about the response",
+            "examples": [
+              {
+                "searchQuery": "JavaScript教程",
+                "searchTime": 45,
+                "cacheHit": false,
+                "processingTime": 123.5,
+                "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+              },
+              {
+                "categoryCounts": {
+                  "前端開發": 25,
+                  "後端開發": 18,
+                  "資料科學": 12
+                },
+                "filters": {
+                  "difficulty": "intermediate",
+                  "language": "zh-TW"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "Apple Sign In 登入成功回應",
+        "examples": [
+          {
+            "success": true,
+            "data": {
+              "id": 123,
+              "_id": "550e8400-e29b-41d4-a716-446655440000",
+              "name": "JavaScript 基礎教程",
+              "description": "從零開始學習 JavaScript 程式設計",
+              "status": "published"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          },
+          {
+            "success": true,
+            "data": {
+              "userId": 456,
+              "username": "john_doe",
+              "email": "john@example.com",
+              "role": "student"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z",
+            "meta": {
+              "cacheHit": true,
+              "processingTime": 23.1
+            }
+          }
+        ],
+        "example": {
+          "success": true,
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "user": {
+              "id": 123,
+              "_id": "123e4567-e89b-12d3-a456-426614174000",
+              "name": "John Doe",
+              "email": "john@example.com",
+              "roleId": 2
+            },
+            "isTemp": false,
+            "isNewUser": true
           },
           "timestamp": "2024-01-15T10:30:00.000Z"
         }
@@ -7890,13 +8144,43 @@
                 "https://example.com/image1.jpg"
               ]
             ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxItems": 10,
+            "default": [],
+            "description": "打卡標籤（最多10個）",
+            "example": [
+              "專注",
+              "有收穫"
+            ],
+            "examples": [
+              [],
+              [
+                "專注",
+                "有收穫"
+              ],
+              [
+                "閱讀",
+                "冥想",
+                "運動"
+              ]
+            ]
           }
         },
         "description": "實踐活動簽到記錄",
         "example": {
           "mood": "happy",
           "note": "今天閱讀了第三章，學到了很多新概念",
-          "imageUrls": []
+          "imageUrls": [],
+          "tags": [
+            "專注",
+            "有收穫"
+          ]
         }
       },
       "PracticeStats": {
@@ -7947,6 +8231,38 @@
           "favoriteCount": 12,
           "shareCount": 8,
           "commentCount": 3
+        }
+      },
+      "PracticeResourceEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "資源外部 UUID",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "name": {
+            "type": "string",
+            "description": "資源名稱",
+            "example": "React 官方文檔"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "資源網址",
+            "example": "https://react.dev/"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "description": "實踐使用的資源",
+        "example": {
+          "id": "123e4567-e89b-12d3-a456-426614174000",
+          "name": "React 官方文檔",
+          "url": "https://react.dev/"
         }
       },
       "PracticeEntity": {
@@ -8039,6 +8355,20 @@
             "description": "是否有相關資源",
             "example": true
           },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticeResourceEntity"
+            },
+            "description": "使用的資源列表",
+            "example": [
+              {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "name": "React 官方文檔",
+                "url": "https://react.dev/"
+              }
+            ]
+          },
           "progressPercentage": {
             "type": "number",
             "minimum": 0,
@@ -8049,6 +8379,11 @@
             "type": "string",
             "format": "date-time",
             "description": "首次打卡時間"
+          },
+          "lastCheckinAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "最近打卡時間"
           },
           "checkInCount": {
             "type": "integer",
@@ -8141,9 +8476,17 @@
             "evening"
           ],
           "status": "active",
-          "hasResources": false,
+          "hasResources": true,
+          "resources": [
+            {
+              "id": "123e4567-e89b-12d3-a456-426614174000",
+              "name": "React 官方文檔",
+              "url": "https://react.dev/"
+            }
+          ],
           "progressPercentage": 50,
           "firstCheckinAt": "2024-01-15T08:30:00.000Z",
+          "lastCheckinAt": "2024-01-20T09:00:00.000Z",
           "checkInCount": 2,
           "themeColor": "#FCDD84",
           "createdAt": "2024-01-15T10:30:00.000Z",
@@ -8226,6 +8569,17 @@
             "description": "打卡圖片 URL（最多3張）",
             "example": []
           },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "打卡標籤",
+            "example": [
+              "專注",
+              "有收穫"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -8245,6 +8599,7 @@
           "userId",
           "checkinDate",
           "imageUrls",
+          "tags",
           "createdAt"
         ],
         "description": "簽到記錄詳細資訊",
@@ -8256,6 +8611,10 @@
           "mood": "happy",
           "note": "今天閱讀了第三章",
           "imageUrls": [],
+          "tags": [
+            "專注",
+            "有收穫"
+          ],
           "createdAt": "2024-01-20T15:45:00.000Z",
           "updatedAt": "2024-01-20T15:45:00.000Z"
         }
@@ -8683,6 +9042,10 @@
           "mood": "happy",
           "note": "今天閱讀了第三章",
           "imageUrls": [],
+          "tags": [
+            "專注",
+            "有收穫"
+          ],
           "createdAt": "2024-01-20T15:45:00.000Z",
           "updatedAt": "2024-01-20T15:45:00.000Z"
         }
@@ -20092,6 +20455,150 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/apple/token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Apple Sign In 登入",
+        "description": "驗證 Apple ID Token 並登入或註冊用戶。iOS App 使用 AuthenticationServices 框架獲取 ID Token 後，發送到此端點進行驗證。首次登入時，Apple 會提供用戶名稱和 email，需由 iOS App 在請求中一併傳送。",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppleSignInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Apple 認證成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppleSignInResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "交換 Authorization Code 獲取 Token",
+        "description": "App 使用 OAuth 流程取得的 authorization code 交換 JWT token。此 endpoint 用於 OAuth 2.0 Authorization Code Flow，避免 token 直接暴露在 redirect URL 中。",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "OAuth 流程取得的 authorization code"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "description": "Token 交換請求"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token 交換成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string",
+                      "description": "JWT access token"
+                    },
+                    "tokenType": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expiresIn": {
+                      "type": "number",
+                      "description": "Token 有效期（秒）"
+                    },
+                    "refreshToken": {
+                      "type": "string",
+                      "description": "Refresh token"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "用戶 ID"
+                        },
+                        "email": {
+                          "type": "string",
+                          "description": "用戶 email"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "用戶名稱"
+                        },
+                        "avatar": {
+                          "type": "string",
+                          "description": "用戶頭像 URL"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "avatar"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "tokenType",
+                    "expiresIn",
+                    "refreshToken",
+                    "user"
+                  ],
+                  "description": "Token 交換響應"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }

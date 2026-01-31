@@ -22,11 +22,13 @@ import {
   resetPasswordValidator,
   verifyEmailValidator,
   oauthStateValidator,
+  appleSignInValidator,
   loginSuccessResponseSchema,
   logoutResponseSchema,
   refreshTokenResponseSchema,
   verifyEmailResponseSchema,
-  getCurrentUserResponseSchema
+  getCurrentUserResponseSchema,
+  appleSignInResponseSchema
 } from '../validators/auth.validators';
 import { apiSuccessResponseSchema } from '../validators/api-response.validators';
 
@@ -485,5 +487,111 @@ router.get('/google/failure', (req, res) => {
     }
   });
 });
+
+// Apple Sign In 路由
+
+/**
+ * POST /api/v1/auth/apple/token - Apple Sign In 登入
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/apple/token',
+  tags: ['Authentication'],
+  summary: 'Apple Sign In 登入',
+  description: '驗證 Apple ID Token 並登入或註冊用戶。iOS App 使用 AuthenticationServices 框架獲取 ID Token 後，發送到此端點進行驗證。首次登入時，Apple 會提供用戶名稱和 email，需由 iOS App 在請求中一併傳送。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: appleSignInValidator
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: 'Apple 認證成功',
+      content: {
+        'application/json': {
+          schema: appleSignInResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * POST /auth/apple/token
+ * Apple Sign In 登入
+ * 請求體：AppleSignInRequest - 包含 idToken, user (可選), nonce (可選)
+ */
+router.post('/apple/token',
+  validate(appleSignInValidator, 'body'),
+  authController.appleSignIn
+);
+
+// Token Exchange 路由（App OAuth 使用）
+
+/**
+ * POST /api/v1/auth/token - 交換 Authorization Code 獲取 Token
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/token',
+  tags: ['Authentication'],
+  summary: '交換 Authorization Code 獲取 Token',
+  description: 'App 使用 OAuth 流程取得的 authorization code 交換 JWT token。此 endpoint 用於 OAuth 2.0 Authorization Code Flow，避免 token 直接暴露在 redirect URL 中。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            code: z.string().min(1).describe('OAuth 流程取得的 authorization code')
+          }).openapi({
+            description: 'Token 交換請求'
+          })
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: 'Token 交換成功',
+      content: {
+        'application/json': {
+          schema: z.object({
+            accessToken: z.string().describe('JWT access token'),
+            tokenType: z.literal('Bearer'),
+            expiresIn: z.number().describe('Token 有效期（秒）'),
+            refreshToken: z.string().describe('Refresh token'),
+            user: z.object({
+              id: z.string().describe('用戶 ID'),
+              email: z.string().describe('用戶 email'),
+              name: z.string().describe('用戶名稱'),
+              avatar: z.string().describe('用戶頭像 URL')
+            })
+          }).openapi({
+            description: 'Token 交換響應'
+          })
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * POST /auth/token
+ * 交換 Authorization Code 獲取 Token
+ * 請求體：{ code: string }
+ */
+router.post('/token',
+  authController.exchangeToken
+);
 
 export default router;

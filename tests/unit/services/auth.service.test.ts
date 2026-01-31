@@ -6,7 +6,7 @@
  * Mocks: All external dependencies (database, bcrypt, JWT)
  */
 
-import { prismaMock, mockResponses, PRISMA_ERRORS, mockPrismaError } from '@tests/utils/prisma-mock';
+import { prismaMock, mockResponses, PRISMA_ERRORS, mockPrismaError, setupTransactionMock } from '@tests/utils/prisma-mock';
 import { createTestUser, createTestToken } from '@tests/utils/test-factories';
 import bcrypt from 'bcrypt';
 
@@ -48,6 +48,7 @@ describe('Auth Service', () => {
   const createTestContact = (overrides = {}) => ({
     id: 1,
     google_id: 'google-123',
+    apple_id: null,
     photo_url: null,
     is_subscribe_email: false,
     email: 'test@example.com',
@@ -67,6 +68,7 @@ describe('Auth Service', () => {
   const createTestTempUser = (overrides = {}) => ({
     id: 1,
     google_id: 'google-123',
+    apple_id: null,
     email: 'temp@example.com',
     name: 'Temp User',
     photo_url: 'https://example.com/photo.jpg',
@@ -603,6 +605,198 @@ describe('Auth Service', () => {
     });
   });
 
+  describe('createUserFromOAuth', () => {
+    const mockOAuthProfile = {
+      googleId: 'google-oauth-123',
+      email: 'oauthuser@example.com',
+      name: 'OAuth User',
+      photoUrl: 'https://example.com/oauth-photo.jpg'
+    };
+
+    beforeEach(() => {
+      // Setup transaction mock for createUserFromOAuth
+      setupTransactionMock();
+    });
+
+    it('should create a new formal user with all related records', async () => {
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 1,
+        google_id: mockOAuthProfile.googleId,
+        email: mockOAuthProfile.email,
+        photo_url: mockOAuthProfile.photoUrl,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({
+        id: 1,
+        nickname: mockOAuthProfile.name,
+        contact_id: mockContact.id,
+        basic_info_id: mockBasicInfo.id,
+        role_id: 2,
+        is_open_location: false,
+        is_open_profile: false,
+        verified: false,
+        is_active: true
+      });
+      const mockUserWithRelations = {
+        ...mockUser,
+        roles: { id: 2, name: 'user' },
+        contacts: mockContact,
+        basic_info: mockBasicInfo,
+        location: null,
+        user_positions: []
+      };
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUserWithRelations);
+
+      const result = await authService.createUserFromOAuth(mockOAuthProfile);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeTruthy();
+
+      // Verify basic_info was created with empty values
+      expect(prismaMock.basic_info.create).toHaveBeenCalledWith({
+        data: {
+          self_introduction: null,
+          share_list: null,
+          want_to_do_list: []
+        }
+      });
+
+      // Verify contacts was created with Google info
+      expect(prismaMock.contacts.create).toHaveBeenCalledWith({
+        data: {
+          google_id: mockOAuthProfile.googleId,
+          email: mockOAuthProfile.email,
+          photo_url: mockOAuthProfile.photoUrl,
+          is_subscribe_email: false
+        }
+      });
+
+      // Verify users was created with correct defaults
+      expect(prismaMock.users.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          mongo_id: expect.any(String),
+          nickname: mockOAuthProfile.name,
+          contact_id: mockContact.id,
+          basic_info_id: mockBasicInfo.id,
+          role_id: 2,
+          is_open_location: false,
+          is_open_profile: false,
+          verified: false,
+          is_active: true
+        })
+      });
+
+      // Verify full user was fetched with relations
+      expect(prismaMock.users.findUnique).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+        include: {
+          roles: true,
+          contacts: true,
+          basic_info: true,
+          location: {
+            include: {
+              city: true,
+              country: true
+            }
+          },
+          user_positions: {
+            include: {
+              position: true
+            }
+          }
+        }
+      });
+    });
+
+    it('should create user without photoUrl when not provided', async () => {
+      const profileWithoutPhoto = {
+        googleId: 'google-no-photo-456',
+        email: 'nophoto@example.com',
+        name: 'No Photo User'
+      };
+
+      const mockBasicInfo = { id: 2, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 2,
+        google_id: profileWithoutPhoto.googleId,
+        email: profileWithoutPhoto.email,
+        photo_url: undefined,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({
+        id: 2,
+        nickname: profileWithoutPhoto.name,
+        contact_id: mockContact.id,
+        basic_info_id: mockBasicInfo.id
+      });
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
+
+      const result = await authService.createUserFromOAuth(profileWithoutPhoto);
+
+      expect(result.success).toBe(true);
+      expect(prismaMock.contacts.create).toHaveBeenCalledWith({
+        data: {
+          google_id: profileWithoutPhoto.googleId,
+          email: profileWithoutPhoto.email,
+          photo_url: undefined,
+          is_subscribe_email: false
+        }
+      });
+    });
+
+    it('should handle database errors during transaction', async () => {
+      const dbError = mockPrismaError(PRISMA_ERRORS.CONNECTION_ERROR, 'Transaction failed');
+      prismaMock.basic_info.create.mockRejectedValue(dbError);
+
+      await expect(authService.createUserFromOAuth(mockOAuthProfile))
+        .rejects.toThrow('Transaction failed');
+    });
+
+    it('should handle unique constraint violation on contacts', async () => {
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+
+      const uniqueError = mockPrismaError(PRISMA_ERRORS.UNIQUE_CONSTRAINT, 'Email already exists');
+      prismaMock.contacts.create.mockRejectedValue(uniqueError);
+
+      await expect(authService.createUserFromOAuth(mockOAuthProfile))
+        .rejects.toThrow('Email already exists');
+    });
+
+    it('should return user with role_id 2 (regular user)', async () => {
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = { id: 1, google_id: 'test', email: 'test@test.com', photo_url: null, is_subscribe_email: false };
+      const mockUser = createTestUser({ id: 1, role_id: 2 });
+      const mockUserWithRelations = {
+        ...mockUser,
+        roles: { id: 2, name: 'user', description: 'Regular user' }
+      };
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUserWithRelations);
+
+      const result = await authService.createUserFromOAuth(mockOAuthProfile);
+
+      expect(result.success).toBe(true);
+      expect(prismaMock.users.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          role_id: 2
+        })
+      });
+    });
+  });
+
   describe('Business logic integration', () => {
     describe('OAuth flow for new temp user', () => {
       it('should create temp user when formal user not found', async () => {
@@ -633,12 +827,80 @@ describe('Auth Service', () => {
         const tempUserResult = await authService.findOrCreateTempUser(profile);
         expect(tempUserResult.data).toEqual(newTempUser);
 
+        const tempUserData = tempUserResult.data as { id: number; email: string };
         const token = authService.generateAuthToken({
-          id: tempUserResult.data.id,
-          email: tempUserResult.data.email,
+          id: tempUserData.id,
+          email: tempUserData.email,
           isTemp: true
         });
         expect(token).toBe('temp-user-token');
+      });
+    });
+
+    describe('OAuth flow with direct login (OAUTH_DIRECT_LOGIN=true)', () => {
+      beforeEach(() => {
+        setupTransactionMock();
+      });
+
+      it('should create formal user directly when no existing user found', async () => {
+        const profile = {
+          googleId: 'direct-login-google-123',
+          email: 'directlogin@example.com',
+          name: 'Direct Login User',
+          photoUrl: 'https://example.com/direct-photo.jpg'
+        };
+
+        // Setup: No existing user found
+        prismaMock.contacts.findFirst.mockResolvedValue(null);
+
+        // Setup: createUserFromOAuth mocks
+        const mockBasicInfo = { id: 10, self_introduction: null, share_list: null, want_to_do_list: [] };
+        const mockContact = {
+          id: 10,
+          google_id: profile.googleId,
+          email: profile.email,
+          photo_url: profile.photoUrl,
+          is_subscribe_email: false
+        };
+        const mockUser = createTestUser({
+          id: 10,
+          nickname: profile.name,
+          contact_id: mockContact.id,
+          basic_info_id: mockBasicInfo.id,
+          role_id: 2,
+          verified: false
+        });
+        const mockUserWithRelations = {
+          ...mockUser,
+          roles: { id: 2, name: 'user' },
+          contacts: mockContact,
+          basic_info: mockBasicInfo,
+          location: null,
+          user_positions: []
+        };
+
+        prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+        prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+        prismaMock.users.create.mockResolvedValue(mockUser);
+        prismaMock.users.findUnique.mockResolvedValue(mockUserWithRelations);
+        mockJwtService.generateToken.mockReturnValue('direct-login-token');
+
+        // Execute flow
+        const userResult = await authService.findUserByEmail(profile.email);
+        expect(userResult.data).toBeNull();
+
+        // This simulates what would happen when OAUTH_DIRECT_LOGIN=true
+        const newUserResult = await authService.createUserFromOAuth(profile);
+        expect(newUserResult.success).toBe(true);
+        expect(newUserResult.data).toBeTruthy();
+
+        const token = authService.generateAuthToken({
+          id: (newUserResult.data as any).id,
+          email: profile.email,
+          isTemp: false,
+          roles: ['user']
+        });
+        expect(token).toBe('direct-login-token');
       });
     });
 
