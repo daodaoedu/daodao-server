@@ -270,7 +270,7 @@ export const myPracticeItemSchema = z.object({
     minimum: 5,
     maximum: 240
   }),
-  practiceTimePeriods: z.array(z.enum(['morning', 'afternoon', 'evening', 'night'])).openapi({
+  practiceTimePeriods: z.array(z.enum(['morning', 'afternoon', 'evening', 'night', 'commute'])).openapi({
     description: "練習時段",
     example: ["morning", "evening"]
   }),

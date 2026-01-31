@@ -8007,15 +8007,17 @@
                 "morning",
                 "afternoon",
                 "evening",
-                "night"
+                "night",
+                "commute"
               ],
-              "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+              "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
               "example": "morning",
               "examples": [
                 "morning",
                 "afternoon",
                 "evening",
-                "night"
+                "night",
+                "commute"
               ]
             },
             "maxItems": 4,
@@ -8884,15 +8886,17 @@
                 "morning",
                 "afternoon",
                 "evening",
-                "night"
+                "night",
+                "commute"
               ],
-              "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+              "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
               "example": "morning",
               "examples": [
                 "morning",
                 "afternoon",
                 "evening",
-                "night"
+                "night",
+                "commute"
               ]
             },
             "maxItems": 4,
@@ -11181,7 +11185,8 @@
                 "morning",
                 "afternoon",
                 "evening",
-                "night"
+                "night",
+                "commute"
               ]
             },
             "description": "練習時段",
@@ -34724,15 +34729,17 @@
                         "morning",
                         "afternoon",
                         "evening",
-                        "night"
+                        "night",
+                        "commute"
                       ],
-                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
                       "example": "morning",
                       "examples": [
                         "morning",
                         "afternoon",
                         "evening",
-                        "night"
+                        "night",
+                        "commute"
                       ]
                     },
                     "maxItems": 4,
@@ -36061,15 +36068,17 @@
                         "morning",
                         "afternoon",
                         "evening",
-                        "night"
+                        "night",
+                        "commute"
                       ],
-                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
                       "example": "morning",
                       "examples": [
                         "morning",
                         "afternoon",
                         "evening",
-                        "night"
+                        "night",
+                        "commute"
                       ]
                     },
                     "maxItems": 4
@@ -40262,15 +40271,17 @@
                         "morning",
                         "afternoon",
                         "evening",
-                        "night"
+                        "night",
+                        "commute"
                       ],
-                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)",
+                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
                       "example": "morning",
                       "examples": [
                         "morning",
                         "afternoon",
                         "evening",
-                        "night"
+                        "night",
+                        "commute"
                       ]
                     },
                     "maxItems": 4,

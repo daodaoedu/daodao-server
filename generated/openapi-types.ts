@@ -12238,7 +12238,7 @@ export interface paths {
                          *       "night"
                          *     ]
                          */
-                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night")[];
+                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         /**
                          * @description 其他補充說明
                          * @example 希望養成每天閱讀的習慣
@@ -12878,7 +12878,7 @@ export interface paths {
                         frequencyMinDays?: number;
                         frequencyMaxDays?: number;
                         sessionDurationMinutes?: number;
-                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night")[];
+                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         otherContext?: string;
                         tags?: string[];
                         resources?: components["schemas"]["PracticeResourceInput"][];
@@ -15229,7 +15229,7 @@ export interface paths {
                          *       "evening"
                          *     ]
                          */
-                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night")[];
+                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         /**
                          * @description 建議標籤
                          * @example [
@@ -23435,7 +23435,7 @@ export interface components {
              *       "night"
              *     ]
              */
-            practiceTimePeriods: ("morning" | "afternoon" | "evening" | "night")[];
+            practiceTimePeriods: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
             /**
              * @description 其他補充說明
              * @example 希望養成每天閱讀的習慣
@@ -24095,7 +24095,7 @@ export interface components {
              *       "evening"
              *     ]
              */
-            practiceTimePeriods: ("morning" | "afternoon" | "evening" | "night")[];
+            practiceTimePeriods: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
             /**
              * @description 建議標籤
              * @default []
@@ -25644,7 +25644,7 @@ export interface components {
              *       "evening"
              *     ]
              */
-            practiceTimePeriods: ("morning" | "afternoon" | "evening" | "night")[];
+            practiceTimePeriods: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
             /**
              * @description 其他備註或情境說明
              * @example 在通勤時間練習

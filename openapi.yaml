@@ -5797,13 +5797,15 @@ components:
               - afternoon
               - evening
               - night
-            description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+              - commute
+            description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
             example: morning
             examples: &ref_17
               - morning
               - afternoon
               - evening
               - night
+              - commute
           maxItems: 4
           default: &ref_91 []
           description: 偏好實踐時段
@@ -6485,7 +6487,8 @@ components:
               - afternoon
               - evening
               - night
-            description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+              - commute
+            description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
             example: morning
             examples: *ref_17
           maxItems: 4
@@ -8241,6 +8244,7 @@ components:
               - afternoon
               - evening
               - night
+              - commute
           description: 練習時段
           example:
             - morning
@@ -22834,7 +22838,8 @@ paths:
                       - afternoon
                       - evening
                       - night
-                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+                      - commute
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
                     examples: *ref_17
                   maxItems: 4
@@ -23608,7 +23613,8 @@ paths:
                       - afternoon
                       - evening
                       - night
-                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+                      - commute
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
                     examples: *ref_17
                   maxItems: 4
@@ -26192,7 +26198,8 @@ paths:
                       - afternoon
                       - evening
                       - night
-                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上)'
+                      - commute
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
                     examples: *ref_17
                   maxItems: 4
