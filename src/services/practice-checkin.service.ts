@@ -39,8 +39,12 @@ import {
   calculateDateShift
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
+import { setEntityTags, getEntityTags } from './tag.service';
 
 const prismaClient = prisma;
+
+/** 打卡記錄的 entity_type */
+const CHECKIN_ENTITY_TYPE = 'practice_checkin';
 
 /**
  * 建立簽到記錄
@@ -196,6 +200,12 @@ export async function createCheckIn(
       })
     ]);
 
+    // 設置打卡標籤（如果有提供）
+    const tags = data.tags || [];
+    if (tags.length > 0) {
+      await setEntityTags(CHECKIN_ENTITY_TYPE, checkIn.id, tags, userId);
+    }
+
     // 取得隨機鼓勵句
     const encouragement = await getRandomEncouragement();
 
@@ -207,6 +217,7 @@ export async function createCheckIn(
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
+      tags,
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString(),
       // 擴展欄位
@@ -304,6 +315,29 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       prismaClient.practice_checkins.count({ where })
     ]);
 
+    // 批量獲取所有打卡記錄的標籤
+    const checkInIds = checkIns.map(c => c.id);
+    const entityTagsMap = new Map<number, string[]>();
+
+    if (checkInIds.length > 0) {
+      const entityTags = await prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: CHECKIN_ENTITY_TYPE,
+          entity_id: { in: checkInIds }
+        },
+        include: {
+          tags: true
+        }
+      });
+
+      // 建立 checkInId -> tags[] 的映射
+      for (const et of entityTags) {
+        const existing = entityTagsMap.get(et.entity_id) || [];
+        existing.push(et.tags.name);
+        entityTagsMap.set(et.entity_id, existing);
+      }
+    }
+
     const checkInEntities: CheckInEntity[] = checkIns.map(checkIn => ({
       id: checkIn.id,
       practiceId: checkIn.practice_id,
@@ -312,6 +346,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
+      tags: entityTagsMap.get(checkIn.id) || [],
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString()
     }));
