@@ -126,7 +126,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 取得統計數據 - 暫時只查詢存在的表格
     const practiceIds: number[] = practices.map(p => p.id);
-    const [comments, allTags, checkInCounts] = await Promise.all([
+    const [comments, allTags, checkInCounts, lastCheckInDates] = await Promise.all([
       getCommentCounts(practiceIds),
       // 批量查詢標籤
       prismaClient.entity_tags.findMany({
@@ -144,7 +144,9 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         }
       }),
       // 批量查詢打卡次數
-      getCheckInCounts(practiceIds)
+      getCheckInCounts(practiceIds),
+      // 批量查詢最後打卡時間
+      getLastCheckInDates(practiceIds)
     ]);
 
     // 將標籤按實踐 ID 分組
@@ -177,6 +179,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      lastCheckinAt: lastCheckInDates[practice.id]?.toISOString(),
       checkInCount: checkInCounts[practice.id] || 0,
       themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
@@ -269,7 +272,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     }
 
     // 取得統計數據、標籤和資源 - 暫時只查詢存在的表格
-    const [comments, tags, checkInCounts, entityResources] = await Promise.all([
+    const [comments, tags, checkInCounts, lastCheckInDates, entityResources] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -288,6 +291,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       }),
       // 查詢打卡次數
       getCheckInCounts([id]),
+      // 查詢最後打卡時間
+      getLastCheckInDates([id]),
       // 查詢資源
       prismaClient.entity_resources.findMany({
         where: {
@@ -332,6 +337,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       resources: resources.length > 0 ? resources : undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      lastCheckinAt: lastCheckInDates[id]?.toISOString(),
       checkInCount: checkInCounts[id] || 0,
       themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
@@ -472,6 +478,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      lastCheckinAt: undefined,
       checkInCount: 0,
       themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
@@ -628,7 +635,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     }
 
     // 取得統計數據和標籤 - 暫時只查詢存在的表格
-    const [comments, updatedTags, checkInCounts] = await Promise.all([
+    const [comments, updatedTags, checkInCounts, lastCheckInDates] = await Promise.all([
       getCommentCounts([id]),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
@@ -646,7 +653,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         }
       }),
       // 查詢打卡次數
-      getCheckInCounts([id])
+      getCheckInCounts([id]),
+      // 查詢最後打卡時間
+      getLastCheckInDates([id])
     ]);
 
 
@@ -666,6 +675,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       hasResources: practice.has_resources || false,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
+      lastCheckinAt: lastCheckInDates[id]?.toISOString(),
       checkInCount: checkInCounts[id] || 0,
       themeColor: practice.theme_color || undefined,
       createdAt: practice.created_at?.toISOString() || new Date().toISOString(),
@@ -1006,6 +1016,31 @@ async function getCheckInCounts(practiceIds: number[]): Promise<Record<number, n
 }
 
 /**
+ * 取得最後打卡日期統計
+ */
+async function getLastCheckInDates(practiceIds: number[]): Promise<Record<number, Date | null>> {
+  if (!practiceIds.length) return {};
+
+  try {
+    const checkIns = await prismaClient.practice_checkins.groupBy({
+      by: ['practice_id'],
+      where: {
+        practice_id: { in: practiceIds }
+      },
+      _max: { checkin_date: true }
+    });
+
+    return checkIns.reduce((acc, checkIn) => {
+      acc[checkIn.practice_id] = checkIn._max?.checkin_date || null;
+      return acc;
+    }, {} as Record<number, Date | null>);
+  } catch (error) {
+    loggerService.warn('Failed to get last check-in dates', { practiceIds, error });
+    return {};
+  }
+}
+
+/**
  * 封存實踐
  */
 export async function archive(id: number, userId: number): Promise<ApiSuccessResponse<{ success: boolean }>> {
@@ -1139,7 +1174,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     });
 
     // 取得統計數據和標籤
-    const [comments, tags] = await Promise.all([
+    const [comments, tags, lastCheckInDates] = await Promise.all([
       getCommentCounts([id]),
       prismaClient.entity_tags.findMany({
         where: {
@@ -1154,7 +1189,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             }
           }
         }
-      })
+      }),
+      getLastCheckInDates([id])
     ]);
 
     const practiceEntity: PracticeEntity = {
@@ -1173,6 +1209,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       hasResources: updatedPractice.has_resources || false,
       progressPercentage: Number(updatedPractice.progress_percentage) || INITIAL_PROGRESS,
       firstCheckinAt: updatedPractice.first_checkin_at?.toISOString(),
+      lastCheckinAt: lastCheckInDates[id]?.toISOString(),
       checkInCount: checkInCount,
       themeColor: updatedPractice.theme_color || undefined,
       createdAt: updatedPractice.created_at?.toISOString() || '',

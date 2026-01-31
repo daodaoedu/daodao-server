@@ -69,6 +69,7 @@ export interface PracticeEntity {
   resources?: PracticeResourceEntity[];
   progressPercentage?: number;
   firstCheckinAt?: string;
+  lastCheckinAt?: string;
   checkInCount: number;
   themeColor?: string;
   createdAt: string;
@@ -94,6 +95,7 @@ export interface CheckInEntity {
   mood?: CheckInMood;
   note?: string;
   imageUrls: string[];
+  tags: string[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -163,12 +165,14 @@ export interface CheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
+  tags?: string[];
 }
 
 export interface CreateCheckInRequest {
   mood?: CheckInMood;
   note?: string;
   imageUrls?: string[];
+  tags?: string[];
 }
 
 // Event request interfaces
