@@ -36,7 +36,7 @@ import {
   type PracticeStatusType
 } from '../utils/practice-status';
 import { enqueuePracticeEmail } from '../queues';
-import { setEntityTags, getEntityTags } from './tag.service';
+import { setEntityTags } from './tag.service';
 
 const prismaClient = prisma;
 
@@ -152,7 +152,8 @@ export async function createCheckIn(
           checkin_date: today,
           mood: data.mood,
           note: data.note,
-          image_urls: data.imageUrls || []
+          image_urls: data.imageUrls || [],
+          og_image_url: data.ogImageUrl
         },
         include: {
           practices: {
@@ -186,6 +187,7 @@ export async function createCheckIn(
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
+      ogImageUrl: checkIn.og_image_url ?? null,
       tags,
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString(),
@@ -315,6 +317,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
+      ogImageUrl: checkIn.og_image_url ?? null,
       tags: entityTagsMap.get(checkIn.id) || [],
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString()
@@ -550,5 +553,91 @@ export async function getMonthlyCheckInCalendar(practiceId: number, userId: numb
   } catch (error) {
     loggerService.error('Failed to get monthly check-in calendar', { practiceId, userId, year, month, error });
     throw new InternalServerError('取得月度簽到日曆失敗');
+  }
+}
+
+/**
+ * 刪除簽到記錄
+ */
+export async function deleteCheckIn(
+  checkInId: number,
+  practiceId: number,
+  userId: number
+): Promise<ApiSuccessResponse<{ deleted: boolean }>> {
+  // 驗證簽到記錄存在且屬於該用戶和實踐
+  const checkIn = await prismaClient.practice_checkins.findFirst({
+    where: {
+      id: checkInId,
+      practice_id: practiceId,
+      user_id: userId
+    }
+  });
+
+  if (!checkIn) {
+    throw new NotFoundError('簽到記錄不存在或沒有權限刪除');
+  }
+
+  try {
+    const remainingCheckIns = await prismaClient.$transaction(async (tx) => {
+      // 刪除關聯的標籤
+      await tx.entity_tags.deleteMany({
+        where: {
+          entity_type: CHECKIN_ENTITY_TYPE,
+          entity_id: checkInId
+        }
+      });
+
+      // 刪除簽到記錄
+      await tx.practice_checkins.delete({
+        where: { id: checkInId }
+      });
+
+      // 重新計算實踐進度
+      const currentRemainingCheckIns = await tx.practice_checkins.count({
+        where: {
+          practice_id: practiceId,
+          user_id: userId
+        }
+      });
+
+      // 取得實踐配置
+      const practice = await tx.practices.findUnique({
+        where: { id: practiceId }
+      });
+
+      if (practice) {
+        const progressConfig: PracticeProgressConfig = {
+          frequencyMinDays: (practice as { frequency_min_days?: number }).frequency_min_days || 1,
+          frequencyMaxDays: (practice as { frequency_max_days?: number }).frequency_max_days || 7,
+          durationDays: (practice as { duration_days?: number }).duration_days || 30
+        };
+
+        const progressResult = calculateProgress(progressConfig, currentRemainingCheckIns);
+
+        // 更新實踐進度
+        await tx.practices.update({
+          where: { id: practiceId },
+          data: {
+            progress_percentage: progressResult.percentage,
+            updated_at: new Date()
+          }
+        });
+      }
+
+      return currentRemainingCheckIns;
+    });
+
+    loggerService.info('Check-in deleted', {
+      checkInId,
+      practiceId,
+      userId,
+      remainingCheckIns
+    });
+
+    return createSuccessResponse({ deleted: true });
+
+  } catch (error) {
+    loggerService.error('Failed to delete check-in', { checkInId, practiceId, userId, error });
+    throw new InternalServerError('刪除簽到記錄失敗');
   }
 }
