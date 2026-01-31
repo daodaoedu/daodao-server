@@ -609,7 +609,7 @@ export const checkInEntityResponseSchema = z.object({
   mood: z.enum(['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']).optional().openapi({ description: '簽到心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)', example: 'happy' }),
   note: z.string().optional().openapi({ description: '詳細描述', example: '今天閱讀了第三章' }),
   imageUrls: z.array(z.string()).openapi({ description: '打卡圖片 URL（最多3張）', example: [] }),
-  ogImageUrl: z.string().optional().openapi({ description: 'OG 圖片 URL（用於社群分享）', example: 'https://example.com/og-image.jpg', format: 'uri' }),
+  ogImageUrl: z.string().nullable().openapi({ description: 'OG 圖片 URL（用於社群分享）', example: null, format: 'uri' }),
   tags: z.array(z.string()).openapi({ description: '打卡標籤', example: ['專注', '有收穫'] }),
   createdAt: z.string().datetime().openapi({ description: '創建時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' }),
   updatedAt: z.string().datetime().optional().openapi({ description: '更新時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' })
