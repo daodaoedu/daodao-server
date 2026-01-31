@@ -183,7 +183,8 @@ export async function createCheckIn(
           checkin_date: today,
           mood: data.mood,
           note: data.note,
-          image_urls: data.imageUrls || []
+          image_urls: data.imageUrls || [],
+          og_image_url: data.ogImageUrl
         },
         include: {
           practices: {
@@ -217,6 +218,7 @@ export async function createCheckIn(
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
+      ogImageUrl: checkIn.og_image_url || undefined,
       tags,
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString(),
@@ -346,6 +348,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       mood: checkIn.mood as CheckInMood,
       note: checkIn.note || undefined,
       imageUrls: checkIn.image_urls || [],
+      ogImageUrl: checkIn.og_image_url || undefined,
       tags: entityTagsMap.get(checkIn.id) || [],
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString()
