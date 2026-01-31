@@ -421,6 +421,12 @@ export const userPracticesParamsSchema = z.object({
   description: '用戶實踐列表路徑參數'
 });
 
+// 刪除簽到記錄參數 Schema
+export const deleteCheckInParamsSchema = z.object({
+  id: z.string().min(1, 'Practice ID cannot be empty'),
+  checkInId: z.string().regex(/^[1-9]\d*$/, 'checkInId must be a positive integer string')
+});
+
 // 我的實踐查詢參數 Schema
 export const myPracticesQuerySchema = practiceQuerySchema.extend({
   status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all']).default('all')
@@ -443,6 +449,7 @@ export type PracticeParamsRequest = z.infer<typeof practiceParamsSchema>;
 export type PracticeCommentParamsRequest = z.infer<typeof practiceCommentParamsSchema>;
 export type MyPracticesQueryParams = z.infer<typeof myPracticesQuerySchema>;
 export type UserPracticesParamsRequest = z.infer<typeof userPracticesParamsSchema>;
+export type DeleteCheckInParamsRequest = z.infer<typeof deleteCheckInParamsSchema>;
 
 // 驗證函數
 export const validateCreatePractice = (data: unknown): CreatePracticeRequest => createPracticeSchema.parse(data);
@@ -1261,6 +1268,7 @@ export const practiceValidators = {
   practiceParamsSchema,
   practiceCommentParamsSchema,
   userPracticesParamsSchema,
+  deleteCheckInParamsSchema,
 
   // 子組件 schemas
   practiceResourceInputSchema,
