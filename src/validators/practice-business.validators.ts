@@ -234,27 +234,27 @@ export function validateCheckInDate(
 /**
  * 驗證打卡頻率
  *
- * @param lastCheckInDate 上次打卡日期
+ * @param lastCheckinAt 上次打卡時間
  * @param currentDate 當前日期
  * @param frequencyMinDays 最低頻率（天）
  * @param timezone 時區
  * @returns 驗證結果
  */
 export function validateCheckInFrequency(
-  lastCheckInDate: string | Date | null,
+  lastCheckinAt: string | Date | null,
   currentDate: string | Date,
   frequencyMinDays: number,
   timezone: string = DEFAULT_TIMEZONE
 ): ValidationResult {
-  if (!lastCheckInDate) {
+  if (!lastCheckinAt) {
     return { isValid: true };
   }
 
-  const last = moment.tz(lastCheckInDate, timezone).startOf('day');
+  const last = moment.tz(lastCheckinAt, timezone).startOf('day');
   const current = moment.tz(currentDate, timezone).startOf('day');
-  const daysSinceLastCheckIn = current.diff(last, 'days');
+  const daysSinceLastCheckin = current.diff(last, 'days');
 
-  if (daysSinceLastCheckIn < frequencyMinDays) {
+  if (daysSinceLastCheckin < frequencyMinDays) {
     return {
       isValid: false,
       errorMessage: `距離上次打卡未滿 ${frequencyMinDays} 天`,

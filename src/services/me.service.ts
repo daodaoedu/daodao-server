@@ -71,6 +71,7 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       hasResources: practice.hasResources,
       progressPercentage: practice.progressPercentage,
       firstCheckinAt: practice.firstCheckinAt,
+      lastCheckinAt: practice.lastCheckinAt,
       checkInCount: practice.checkInCount,
       themeColor: practice.themeColor,
       createdAt: practice.createdAt,
