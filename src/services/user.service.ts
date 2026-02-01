@@ -1416,10 +1416,10 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
 /**
  * 檢查自訂 ID 可用性
  */
-const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessResponse<{ available: boolean }>> => {
+const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessResponse<{ customId: string; available: boolean }>> => {
   // 使用共享的驗證函數
   if (!validateCustomIdFormat(customId)) {
-    return createSuccessResponse({ available: false });
+    return createSuccessResponse({ customId, available: false });
   }
 
   // 檢查資料庫中是否已存在
@@ -1427,7 +1427,7 @@ const checkCustomIdAvailability = async (customId: string): Promise<ApiSuccessRe
     where: { custom_id: customId }
   });
 
-  return createSuccessResponse({ available: !existingUser });
+  return createSuccessResponse({ customId, available: !existingUser });
 };
 
 /**
