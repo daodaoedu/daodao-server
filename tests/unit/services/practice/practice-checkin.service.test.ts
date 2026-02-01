@@ -432,7 +432,7 @@ describe('Practice CheckIn Service', () => {
         currentProgress: 15,
         streak: 7,
         maxStreak: 10,
-        lastCheckInDate: new Date('2024-01-01')
+        lastCheckinAt: new Date('2024-01-01')
       };
 
       prismaMock.practices.update.mockResolvedValue({} as any);
@@ -461,7 +461,7 @@ describe('Practice CheckIn Service', () => {
         currentProgress: 15,
         streak: 7,
         maxStreak: 10,
-        lastCheckInDate: new Date()
+        lastCheckinAt: new Date()
       };
       const error = new Error('Database error');
       prismaMock.practices.update.mockRejectedValue(error);
@@ -544,7 +544,7 @@ describe('Practice CheckIn Service', () => {
         totalCheckIns: 30,
         currentStreak: expect.any(Number), // Calculated from check-ins
         maxStreak: 0, // Field doesn't exist in DB
-        lastCheckInDate: '2024-01-01'
+        lastCheckinAt: '2024-01-01T00:00:00.000Z'
       });
     });
 
@@ -561,7 +561,7 @@ describe('Practice CheckIn Service', () => {
         totalCheckIns: 0,
         currentStreak: expect.any(Number),
         maxStreak: 0,
-        lastCheckInDate: undefined
+        lastCheckinAt: undefined
       });
     });
 

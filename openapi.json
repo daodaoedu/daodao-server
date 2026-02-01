@@ -11292,6 +11292,12 @@
             "description": "首次打卡時間",
             "example": "2024-01-16T08:30:00.000Z"
           },
+          "lastCheckinAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "最後打卡時間",
+            "example": "2024-01-25T20:15:00.000Z"
+          },
           "checkInCount": {
             "type": "integer",
             "minimum": 0,
@@ -37558,9 +37564,9 @@
                           "minimum": 0,
                           "description": "最大連續天數"
                         },
-                        "lastCheckInDate": {
+                        "lastCheckinAt": {
                           "type": "string",
-                          "description": "最後簽到日期"
+                          "description": "最後簽到時間"
                         }
                       },
                       "required": [
@@ -37574,7 +37580,7 @@
                           "totalCheckIns": 45,
                           "currentStreak": 5,
                           "maxStreak": 12,
-                          "lastCheckInDate": "2024-01-20"
+                          "lastCheckinAt": "2024-01-20T09:00:00.000Z"
                         }
                       ]
                     },

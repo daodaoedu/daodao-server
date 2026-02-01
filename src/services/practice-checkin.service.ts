@@ -600,7 +600,7 @@ export async function updatePracticeProgress(
     currentProgress: number;
     streak: number;
     maxStreak: number;
-    lastCheckInDate: Date;
+    lastCheckinAt: Date;
   }
 ): Promise<void> {
   try {
@@ -658,7 +658,7 @@ export async function getCheckInStats(practiceId: number, userId: number): Promi
   totalCheckIns: number;
   currentStreak: number;
   maxStreak: number;
-  lastCheckInDate?: string;
+  lastCheckinAt?: string;
 }> {
   try {
     const checkInStats = await prismaClient.practice_checkins.aggregate({
@@ -679,7 +679,7 @@ export async function getCheckInStats(practiceId: number, userId: number): Promi
       totalCheckIns: checkInStats._count.id,
       currentStreak: streakInfo.newStreak, // Calculated from check-ins
       maxStreak: 0, // Field doesn't exist in DB - would need historical calculation
-      lastCheckInDate: checkInStats._max.checkin_date?.toISOString().split('T')[0]
+      lastCheckinAt: checkInStats._max.checkin_date?.toISOString()
     };
 
   } catch (error) {

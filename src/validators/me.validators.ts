@@ -297,6 +297,11 @@ export const myPracticeItemSchema = z.object({
     example: "2024-01-16T08:30:00.000Z",
     format: 'date-time'
   }),
+  lastCheckinAt: z.string().datetime().optional().openapi({
+    description: "最後打卡時間",
+    example: "2024-01-25T20:15:00.000Z",
+    format: 'date-time'
+  }),
   checkInCount: z.number().int().min(0).openapi({
     description: "已打卡次數",
     example: 5

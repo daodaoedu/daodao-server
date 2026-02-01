@@ -13617,7 +13617,7 @@ export interface paths {
                              *       "totalCheckIns": 45,
                              *       "currentStreak": 5,
                              *       "maxStreak": 12,
-                             *       "lastCheckInDate": "2024-01-20"
+                             *       "lastCheckinAt": "2024-01-20T09:00:00.000Z"
                              *     }
                              */
                             data: {
@@ -13627,8 +13627,11 @@ export interface paths {
                                 currentStreak: number;
                                 /** @description 最大連續天數 */
                                 maxStreak: number;
-                                /** @description 最後簽到日期 */
-                                lastCheckInDate?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 最後簽到時間
+                                 */
+                                lastCheckinAt?: string;
                             };
                             /**
                              * Format: date-time

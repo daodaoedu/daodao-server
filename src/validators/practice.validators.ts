@@ -758,14 +758,14 @@ export const checkInStatsResponseSchema = z.object({
   totalCheckIns: z.number().int().min(0).describe("總簽到次數"),
   currentStreak: z.number().int().min(0).describe("當前連續天數"),
   maxStreak: z.number().int().min(0).describe("最大連續天數"),
-  lastCheckInDate: z.string().optional().describe("最後簽到日期")
+  lastCheckinAt: z.string().optional().describe("最後簽到時間")
 }).describe("簽到統計資訊").meta({
   title: "簽到統計",
   examples: [{
     totalCheckIns: 45,
     currentStreak: 5,
     maxStreak: 12,
-    lastCheckInDate: "2024-01-20"
+    lastCheckinAt: "2024-01-20T09:00:00.000Z"
   }]
 });
 
