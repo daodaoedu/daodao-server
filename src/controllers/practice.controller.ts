@@ -20,6 +20,7 @@ import type {
   PracticeQueryParams,
   CheckInRequest,
   CreateCheckInRequest,
+  CreateCheckInWithFilesRequest,
   CheckInQueryParams,
   PracticeStatus,
   SortField,
@@ -43,7 +44,9 @@ import {
   createPracticeApiResponseSchema,
   createCheckInApiResponseSchema,
   updatePracticeApiResponseSchema,
-  operationSuccessApiResponseSchema
+  operationSuccessApiResponseSchema,
+  // Request validation schemas
+  checkInSchema
 } from '../validators/practice.validators';
 
 // ===== 參數驗證 Schemas =====
@@ -248,8 +251,35 @@ export class PracticeController {
   });
 
   /**
+   * 解析 FormData 中的 JSON 欄位
+   */
+  private parseCheckInFormData(body: Record<string, unknown>): Partial<CheckInRequest> {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(body)) {
+      if (value === undefined || value === null || value === '') {
+        continue;
+      }
+
+      // 需要解析為 JSON 的欄位
+      if (key === 'tags' && typeof value === 'string') {
+        try {
+          result[key] = JSON.parse(value);
+        } catch {
+          result[key] = value;
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result as Partial<CheckInRequest>;
+  }
+
+  /**
    * 創建簽到記錄
    * POST /api/v1/practices/:id/checkins
+   * 支援 multipart/form-data（含 images 檔案）或 application/json
    */
   createCheckIn = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user?.id) {
@@ -257,11 +287,53 @@ export class PracticeController {
     }
 
     const practiceId = await validateAndConvertPracticeId(req.params.id);
-    const requestBody: CheckInRequest = req.body;
+
+    // 檢查是否為 multipart/form-data（有檔案上傳）
+    const imageFiles = req.files as Express.Multer.File[] | undefined;
+    const contentType = req.headers['content-type'] || '';
+    const isFormData = contentType.includes('multipart/form-data');
+
+    // 解析表單資料
+    const parsedBody = isFormData
+      ? this.parseCheckInFormData(req.body)
+      : req.body;
+
+    // 驗證請求資料
+    const validation = checkInSchema.safeParse(parsedBody);
+    if (!validation.success) {
+      const errorMessage = validation.error.issues
+        .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      throw new BadRequestError(`驗證失敗: ${errorMessage}`);
+    }
+
+    const requestBody = validation.data;
+
+    // 如果有圖片檔案，使用新的服務函數
+    if (imageFiles && imageFiles.length > 0) {
+      const checkInData: CreateCheckInWithFilesRequest = {
+        note: requestBody.note,
+        mood: requestBody.mood as CheckInMood | undefined,
+        ogImageUrl: requestBody.ogImageUrl,
+        tags: requestBody.tags,
+        imageFiles
+      };
+      const result = await practiceCheckInService.createCheckInWithImages(
+        practiceId,
+        checkInData,
+        req.user.id
+      );
+
+      const validatedResponse = createCheckInApiResponseSchema.parse(result);
+      res.status(201).json(validatedResponse);
+      return;
+    }
+
+    // 沒有圖片檔案，使用原有邏輯
     const checkInData: CreateCheckInRequest = {
       note: requestBody.note,
-      mood: requestBody.mood,
-      imageUrls: requestBody.imageUrls,
+      mood: requestBody.mood as CheckInMood | undefined,
+      imageUrls: requestBody.imageUrls || [],
       ogImageUrl: requestBody.ogImageUrl,
       tags: requestBody.tags
     };

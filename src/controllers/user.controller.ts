@@ -9,7 +9,8 @@ import {
   UserQueryParams,
   CreateUserRequest,
   UpdateUserRequest,
-  SetCustomIdRequest
+  SetCustomIdRequest,
+  UpdateUserWithAvatarRequest
 } from '../types/user.types';
 import type {
   PreferencesQueryParams,
@@ -28,10 +29,12 @@ import {
   updateUserPreferencesResponseSchema,
   availablePreferencesResponseSchema,
   loginHistoryResponseSchema,
-  userActivityStatsResponseSchema
+  userActivityStatsResponseSchema,
+  updateUserSchema
 } from '../validators/user.validators';
 import {
-  NotFoundError
+  NotFoundError,
+  BadRequestError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
 
@@ -135,8 +138,44 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * 解析 FormData 中的 JSON 欄位
+ * FormData 會將所有值轉為字串，需要解析 JSON 欄位
+ */
+const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => {
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(body)) {
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+
+    // 需要解析為 JSON 的欄位
+    const jsonFields = ['wantToDoList', 'tagList', 'roleList', 'interestList', 'preferences', 'contactList', 'professionalField'];
+
+    // 需要解析為 boolean 的欄位
+    const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail'];
+
+    if (jsonFields.includes(key) && typeof value === 'string') {
+      try {
+        result[key] = JSON.parse(value);
+      } catch {
+        // 如果解析失敗，保留原始值
+        result[key] = value;
+      }
+    } else if (booleanFields.includes(key)) {
+      result[key] = value === 'true' || value === true;
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result as UpdateUserRequest;
+};
+
+/**
  * 更新當前用戶
  * PUT /api/users/me
+ * 支援 multipart/form-data（含 avatar 檔案）或 application/json
  */
 export const updateMe = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
@@ -145,8 +184,32 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('User information not found');
   }
 
-  const requestData = req.body as UpdateUserRequest;
-  const result = await userService.updateUser(currentUser._id, requestData);
+  // 檢查是否為 multipart/form-data（有檔案上傳）
+  const avatarFile = req.file;
+
+  // 解析表單資料（FormData 會將值轉為字串）
+  const contentType = req.headers['content-type'] || '';
+  const isFormData = contentType.includes('multipart/form-data');
+
+  const parsedBody = isFormData
+    ? parseFormDataBody(req.body)
+    : req.body as UpdateUserRequest;
+
+  // 驗證請求資料
+  const validation = updateUserSchema.safeParse(parsedBody);
+  if (!validation.success) {
+    const errorMessage = validation.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new BadRequestError(`驗證失敗: ${errorMessage}`);
+  }
+
+  const requestData: UpdateUserWithAvatarRequest = {
+    ...validation.data,
+    avatarFile
+  };
+
+  const result = await userService.updateUserWithAvatar(currentUser._id, requestData);
 
   // 驗證響應格式
   const validatedResponse = updateUserResponseSchema.parse(result);

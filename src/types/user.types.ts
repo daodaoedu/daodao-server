@@ -116,6 +116,12 @@ export interface UpdateUserRequest {
   referralSource?: ReferralSource | string; // 允許自定義輸入
 }
 
+// 用戶更新請求介面（含頭像檔案）
+// 用於 FormData 統一提交方案
+export interface UpdateUserWithAvatarRequest extends UpdateUserRequest {
+  avatarFile?: Express.Multer.File;
+}
+
 // 自訂 ID 相關請求介面
 export interface SetCustomIdRequest {
   customId: string;
