@@ -3849,6 +3849,17 @@ components:
           description: 資訊來源 (如何得知島島阿學)
           example: instagram
           examples: *ref_8
+        customId:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: ^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$
+          description: 自訂 ID (可選)
+          example: my_custom_id
+          examples:
+            - my_custom_id
+            - user123
+            - john_doe
       description: 更新用戶請求
     FormattedUserResponse:
       type: object
@@ -19241,11 +19252,83 @@ paths:
       tags:
         - Me
       summary: 更新當前用戶資訊
-      description: 更新已登入用戶的個人資料
+      description: 更新已登入用戶的個人資料。支援 multipart/form-data 格式，可同時上傳頭像檔案。
       security:
         - bearerAuth: []
       requestBody:
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: 新頭像圖片（JPEG、PNG 或 WebP 格式，最大 500KB）
+                name:
+                  type: string
+                  description: 使用者姓名
+                gender:
+                  type: string
+                  enum:
+                    - male
+                    - female
+                    - other
+                  description: 性別
+                birthDay:
+                  type: string
+                  description: 出生日期 (YYYY-MM-DD)
+                location:
+                  type: string
+                  description: 地區代碼
+                educationStage:
+                  type: string
+                  description: 教育階段
+                isOpenLocation:
+                  type: boolean
+                  description: 是否公開位置資訊
+                isOpenProfile:
+                  type: boolean
+                  description: 是否公開個人資料
+                isSubscribeEmail:
+                  type: boolean
+                  description: 是否訂閱電子郵件
+                selfIntroduction:
+                  type: string
+                  description: 自我介紹
+                share:
+                  type: string
+                  description: 分享內容
+                wantToDoList:
+                  type: string
+                  description: 想做的事情清單 (JSON 字串)
+                tagList:
+                  type: string
+                  description: 標籤清單 (JSON 字串)
+                roleList:
+                  type: string
+                  description: 角色清單 (JSON 字串)
+                interestList:
+                  type: string
+                  description: 興趣清單 (JSON 字串)
+                preferences:
+                  type: string
+                  description: 偏好設定 (JSON 字串)
+                contactList:
+                  type: string
+                  description: 聯絡資訊 (JSON 字串)
+                professionalField:
+                  type: string
+                  description: 專業領域 (JSON 字串)
+                personalSlogan:
+                  type: string
+                  description: 個人標語
+                referralSource:
+                  type: string
+                  description: 資訊來源
+                customId:
+                  type: string
+                  description: 自訂 ID
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateUserRequest'
@@ -24024,7 +24107,7 @@ paths:
       tags:
         - Practice Check-ins
       summary: 創建簽到記錄
-      description: 為指定實踐創建新的簽到記錄
+      description: 為指定實踐創建新的簽到記錄。支援 multipart/form-data 格式，可同時上傳圖片檔案（最多 3 張）。
       security:
         - bearerAuth: []
       parameters:
@@ -24036,6 +24119,36 @@ paths:
           in: path
       requestBody:
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                mood:
+                  type: string
+                  enum:
+                    - give_up
+                    - frustrated
+                    - bored
+                    - neutral
+                    - good
+                    - happy
+                  description: 學習心情
+                note:
+                  type: string
+                  description: 詳細描述（最多 300 字）
+                tags:
+                  type: string
+                  description: 標籤（JSON 字串陣列，最多 10 個）
+                ogImageUrl:
+                  type: string
+                  description: OG 圖片 URL（用於社群分享）
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 3
+                  description: 圖片檔案（最多 3 張，每張最大 500KB）
           application/json:
             schema:
               $ref: '#/components/schemas/CheckInRequest'

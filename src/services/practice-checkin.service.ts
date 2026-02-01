@@ -8,15 +8,18 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
-import { ConflictError, NotFoundError, InternalServerError } from '../middleware/error.middleware';
+import { ConflictError, NotFoundError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import {
   CheckInEntity,
   CheckInResponseWithEncouragement,
   CreateCheckInRequest,
+  CreateCheckInWithFilesRequest,
   CheckInQueryParams,
   CheckInMood,
   PracticeStatus
 } from '../types/practice.types';
+import { uploadToR2, deleteFromR2 } from './r2.service';
+import { v4 as uuidv4 } from 'uuid';
 import {
   ApiSuccessResponse,
   PaginatedApiResponse
@@ -273,6 +276,86 @@ async function getRandomEncouragement(): Promise<string> {
   const { getRandomEncouragement: getEncouragement } = await import('./encouragement.service');
   const result = await getEncouragement();
   return result.data.message;
+}
+
+/**
+ * 建立簽到記錄（含圖片檔案上傳）
+ * 實作 FormData 統一提交方案
+ *
+ * 流程：
+ * 1. 驗證表單資料
+ * 2. 上傳圖片到 R2
+ * 3. 建立資料庫記錄
+ * 4. 失敗時刪除已上傳的圖片
+ */
+export async function createCheckInWithImages(
+  practiceId: number,
+  data: CreateCheckInWithFilesRequest,
+  userId: number
+): Promise<ApiSuccessResponse<CheckInResponseWithEncouragement>> {
+  const { imageFiles, ...checkInData } = data;
+  const uploadedImageUrls: string[] = [];
+  const uploadedFilenames: string[] = [];
+
+  // 驗證檔案類型和大小
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_IMAGE_SIZE = 500 * 1024; // 500KB
+
+  for (const file of imageFiles) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      throw new BadRequestError(
+        `不支援的圖片格式: ${file.mimetype}。支援格式: ${ALLOWED_IMAGE_TYPES.join(', ')}`
+      );
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      throw new BadRequestError(
+        `檔案大小超過限制: ${Math.round(file.size / 1024)}KB (最大: ${MAX_IMAGE_SIZE / 1024}KB)`
+      );
+    }
+  }
+
+  try {
+    // Step 1: 上傳所有圖片到 R2
+    const baseUrl = process.env.R2_PUBLIC_URL ||
+      `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ENDPOINT?.replace('https://', '')}`;
+
+    for (const file of imageFiles) {
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const filename = `checkins/${uuidv4()}.${fileExtension}`;
+
+      await uploadToR2(file, filename);
+      uploadedFilenames.push(filename);
+      uploadedImageUrls.push(`${baseUrl}/${filename}`);
+    }
+
+    // Step 2: 使用上傳後的 URL 建立打卡記錄
+    const createData: CreateCheckInRequest = {
+      ...checkInData,
+      imageUrls: uploadedImageUrls
+    };
+
+    const result = await createCheckIn(practiceId, createData, userId);
+
+    loggerService.info('Check-in with images created', {
+      practiceId,
+      userId,
+      imageCount: uploadedImageUrls.length
+    });
+
+    return result;
+
+  } catch (error) {
+    // Step 3: 如果失敗，刪除已上傳的圖片
+    for (const filename of uploadedFilenames) {
+      await deleteFromR2(filename).catch(err => {
+        loggerService.warn('Failed to cleanup uploaded image', { filename, err });
+      });
+    }
+
+    loggerService.error('Failed to create check-in with images', { practiceId, userId, error });
+    throw error;
+  }
 }
 
 /**
