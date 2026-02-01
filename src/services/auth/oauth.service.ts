@@ -205,10 +205,24 @@ export const initializePassportSession = () => {
  * 支援從前端傳入 state 參數，包含 redirectUrl 等資訊
  */
 export const authenticateGoogle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // 檢測 Chrome 預載請求（Speculative Loading）
+  // 預載請求會帶有 Sec-Purpose 或 Purpose header
+  const secPurpose = req.headers['sec-purpose'] || req.headers['purpose'];
+  if (secPurpose === 'prefetch' || secPurpose === 'prerender') {
+    console.log('OAuth - Ignoring speculative prefetch/prerender request');
+    res.status(204).end();
+    return;
+  }
+
   if (!isOAuthConfigured()) {
     res.status(500).json({ error: 'OAuth not configured' });
     return;
   }
+
+  // 設置防止預載和緩存的 headers
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   // 從前端請求中取得 state 參數
   // 前端可以傳入: ?state=xxx (已編碼的 state) 或 ?redirectUrl=xxx&source=xxx
