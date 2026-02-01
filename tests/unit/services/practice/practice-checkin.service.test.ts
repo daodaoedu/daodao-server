@@ -35,8 +35,18 @@ jest.mock('@/queues', () => ({
   enqueuePracticeEmail: jest.fn().mockResolvedValue(undefined)
 }));
 
+// Mock R2 service for image upload tests
+const mockUploadToR2 = jest.fn().mockResolvedValue(undefined);
+const mockDeleteFromR2 = jest.fn().mockResolvedValue(undefined);
+
+jest.mock('@/services/r2.service', () => ({
+  uploadToR2: (...args: unknown[]) => mockUploadToR2(...args),
+  deleteFromR2: (...args: unknown[]) => mockDeleteFromR2(...args)
+}));
+
 import {
   createCheckIn,
+  createCheckInWithImages,
   getCheckIns,
   calculateStreak,
   updatePracticeProgress,
@@ -44,7 +54,7 @@ import {
   getCheckInStats,
   getMonthlyCheckInCalendar
 } from '@/services/practice-checkin.service';
-import type { CreateCheckInRequest, CheckInQueryParams } from '@/types/practice.types';
+import type { CreateCheckInRequest, CreateCheckInWithFilesRequest, CheckInQueryParams } from '@/types/practice.types';
 
 describe('Practice CheckIn Service', () => {
   beforeEach(() => {
@@ -674,6 +684,222 @@ describe('Practice CheckIn Service', () => {
         expect(result.data.practiceStatus).toBe('active');
         expect(result.data.practiceProgressPercentage).toBe(50);
       });
+    });
+  });
+
+  describe('createCheckInWithImages', () => {
+    const createTestFile = (overrides = {}): Express.Multer.File => ({
+      fieldname: 'images',
+      originalname: 'test-image.jpg',
+      encoding: '7bit',
+      mimetype: 'image/jpeg',
+      size: 102400,
+      destination: '/tmp',
+      filename: 'test-image.jpg',
+      path: '/tmp/test-image.jpg',
+      buffer: Buffer.from('test image data'),
+      stream: {} as any,
+      ...overrides
+    });
+
+    const createCheckInWithFilesRequest = (overrides = {}): CreateCheckInWithFilesRequest => ({
+      mood: 'happy',
+      note: '今天完成了閱讀',
+      imageFiles: [createTestFile()],
+      ...overrides
+    });
+
+    beforeEach(() => {
+      mockUploadToR2.mockClear();
+      mockDeleteFromR2.mockClear();
+      // Set environment variables for R2
+      process.env.R2_PUBLIC_URL = 'https://cdn.example.com';
+    });
+
+    it('should upload images and create check-in successfully', async () => {
+      const testPractice = createTestPractice({ status: 'not_started' });
+      const testCheckIn = createTestCheckIn();
+      const request = createCheckInWithFilesRequest();
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+
+      const result = await createCheckInWithImages(1, request, 1);
+
+      expect(result.success).toBe(true);
+      expect(mockUploadToR2).toHaveBeenCalledTimes(1);
+      expect(mockUploadToR2).toHaveBeenCalledWith(
+        expect.objectContaining({ originalname: 'test-image.jpg' }),
+        expect.stringMatching(/^checkins\/[a-f0-9-]+\.jpg$/)
+      );
+      expect(mockLoggerService.info).toHaveBeenCalledWith(
+        'Check-in with images created',
+        expect.objectContaining({
+          practiceId: 1,
+          userId: 1,
+          imageCount: 1
+        })
+      );
+    });
+
+    it('should upload multiple images successfully', async () => {
+      const testPractice = createTestPractice({ status: 'active' });
+      const testCheckIn = createTestCheckIn();
+      const request = createCheckInWithFilesRequest({
+        imageFiles: [
+          createTestFile({ originalname: 'image1.jpg' }),
+          createTestFile({ originalname: 'image2.png' }),
+          createTestFile({ originalname: 'image3.jpeg' })
+        ]
+      });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+      prismaMock.practices.update.mockResolvedValue(testPractice);
+
+      const result = await createCheckInWithImages(1, request, 1);
+
+      expect(result.success).toBe(true);
+      expect(mockUploadToR2).toHaveBeenCalledTimes(3);
+      expect(mockLoggerService.info).toHaveBeenCalledWith(
+        'Check-in with images created',
+        expect.objectContaining({
+          imageCount: 3
+        })
+      );
+    });
+
+    it('should cleanup uploaded images when check-in creation fails', async () => {
+      const testPractice = createTestPractice({ status: 'not_started' });
+      const request = createCheckInWithFilesRequest({
+        imageFiles: [
+          createTestFile({ originalname: 'image1.jpg' }),
+          createTestFile({ originalname: 'image2.png' })
+        ]
+      });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockRejectedValue(new Error('Database error'));
+
+      await expect(createCheckInWithImages(1, request, 1))
+        .rejects.toThrow('Database error');
+
+      expect(mockUploadToR2).toHaveBeenCalledTimes(2);
+      expect(mockDeleteFromR2).toHaveBeenCalledTimes(2);
+      expect(mockLoggerService.error).toHaveBeenCalledWith(
+        'Failed to create check-in with images',
+        expect.objectContaining({
+          practiceId: 1,
+          userId: 1
+        })
+      );
+    });
+
+    it('should cleanup uploaded images when R2 upload fails', async () => {
+      const request = createCheckInWithFilesRequest({
+        imageFiles: [
+          createTestFile({ originalname: 'image1.jpg' }),
+          createTestFile({ originalname: 'image2.png' })
+        ]
+      });
+
+      // First upload succeeds, second fails
+      mockUploadToR2
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('R2 upload failed'));
+
+      await expect(createCheckInWithImages(1, request, 1))
+        .rejects.toThrow('R2 upload failed');
+
+      expect(mockUploadToR2).toHaveBeenCalledTimes(2);
+      // Should cleanup the first uploaded image
+      expect(mockDeleteFromR2).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFromR2).toHaveBeenCalledWith(
+        expect.stringMatching(/^checkins\/[a-f0-9-]+\.jpg$/)
+      );
+    });
+
+    it('should handle cleanup errors gracefully', async () => {
+      const testPractice = createTestPractice({ status: 'not_started' });
+      const request = createCheckInWithFilesRequest();
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockRejectedValue(new Error('Database error'));
+      mockDeleteFromR2.mockRejectedValue(new Error('R2 delete failed'));
+
+      await expect(createCheckInWithImages(1, request, 1))
+        .rejects.toThrow('Database error');
+
+      // Cleanup was attempted but failed
+      expect(mockDeleteFromR2).toHaveBeenCalledTimes(1);
+      expect(mockLoggerService.warn).toHaveBeenCalledWith(
+        'Failed to cleanup uploaded image',
+        expect.objectContaining({ filename: expect.any(String) })
+      );
+    });
+
+    it('should use correct file extension from original filename', async () => {
+      const testPractice = createTestPractice({ status: 'active' });
+      const testCheckIn = createTestCheckIn();
+      const request = createCheckInWithFilesRequest({
+        imageFiles: [createTestFile({ originalname: 'photo.PNG' })]
+      });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+      prismaMock.practices.update.mockResolvedValue(testPractice);
+
+      await createCheckInWithImages(1, request, 1);
+
+      expect(mockUploadToR2).toHaveBeenCalledWith(
+        expect.objectContaining({ originalname: 'photo.PNG' }),
+        expect.stringMatching(/^checkins\/[a-f0-9-]+\.PNG$/)
+      );
+    });
+
+    it('should throw NotFoundError when practice not found', async () => {
+      const request = createCheckInWithFilesRequest();
+
+      prismaMock.practices.findUnique.mockResolvedValue(null);
+
+      await expect(createCheckInWithImages(1, request, 1))
+        .rejects.toThrow('實踐不存在或沒有權限');
+
+      // Images should be cleaned up
+      expect(mockUploadToR2).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFromR2).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw ConflictError when already checked in today', async () => {
+      const testPractice = createTestPractice({ status: 'active' });
+      const existingCheckIn = { id: 1, checkin_date: new Date() };
+      const request = createCheckInWithFilesRequest();
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
+
+      await expect(createCheckInWithImages(1, request, 1))
+        .rejects.toThrow('今日已完成簽到');
+
+      // Images should be cleaned up
+      expect(mockUploadToR2).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFromR2).toHaveBeenCalledTimes(1);
     });
   });
 });

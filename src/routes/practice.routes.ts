@@ -9,6 +9,7 @@ import { registry } from '../config/openapi-registry';
 import { practiceController } from '../controllers/practice.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
+import upload from '../middleware/multer.middleware';
 import {
   practiceQuerySchema,
   myPracticesQuerySchema,
@@ -307,17 +308,39 @@ registry.registerPath({
 
 /**
  * POST /api/v1/practices/{id}/checkins - 創建簽到記錄
+ * 支援 multipart/form-data 以統一處理圖片上傳和表單資料
  */
 registry.registerPath({
   method: 'post',
   path: '/api/v1/practices/{id}/checkins',
   tags: ['Practice Check-ins'],
   summary: '創建簽到記錄',
-  description: '為指定實踐創建新的簽到記錄',
+  description: '為指定實踐創建新的簽到記錄。支援 multipart/form-data 格式，可同時上傳圖片檔案（最多 3 張）。',
   request: {
     params: practiceParamsSchema,
     body: {
       content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: {
+              mood: {
+                type: 'string',
+                enum: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy'],
+                description: '學習心情'
+              },
+              note: { type: 'string', description: '詳細描述（最多 300 字）' },
+              tags: { type: 'string', description: '標籤（JSON 字串陣列，最多 10 個）' },
+              ogImageUrl: { type: 'string', description: 'OG 圖片 URL（用於社群分享）' },
+              images: {
+                type: 'array',
+                items: { type: 'string', format: 'binary' },
+                maxItems: 3,
+                description: '圖片檔案（最多 3 張，每張最大 500KB）'
+              }
+            }
+          }
+        },
         'application/json': {
           schema: checkInSchema
         }
@@ -1077,13 +1100,13 @@ router.delete('/:id',
  * POST /practices/:id/checkins
  * 創建簽到記錄
  * 路徑參數：id - 實踐 ID
- * 請求體：CreateCheckInRequest
+ * 支援 multipart/form-data（含 images 檔案，最多 3 張）或 application/json
  * 需要身份驗證和擁有權驗證
  */
 router.post('/:id/checkins',
   authenticate,
+  upload.array('images', 3),
   validate(practiceParamsSchema, 'params'),
-  validate(checkInSchema, 'body'),
   // TODO: requirePracticeOwnership middleware
   practiceController.createCheckIn as RequestHandler);
 

@@ -180,6 +180,16 @@ export interface CreateCheckInRequest {
   tags?: string[];
 }
 
+// 打卡請求介面（含圖片檔案）
+// 用於 FormData 統一提交方案
+export interface CreateCheckInWithFilesRequest {
+  mood?: CheckInMood;
+  note?: string;
+  ogImageUrl?: string | null;
+  tags?: string[];
+  imageFiles: Express.Multer.File[];
+}
+
 // Event request interfaces
 export interface ViewEventRequest {
   entityId: number;

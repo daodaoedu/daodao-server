@@ -10,9 +10,12 @@ import {
   UserQueryParams,
   CreateUserRequest,
   UpdateUserRequest,
+  UpdateUserWithAvatarRequest,
   FormattedUserResponse,
   CompletenessWeights
 } from '../types/user.types';
+import { uploadToR2, deleteFromR2 } from './r2.service';
+import { v4 as uuidv4 } from 'uuid';
 import {
   UserPreference
 } from '../types/me.types';
@@ -30,8 +33,10 @@ import {
 import { calculatePagination } from '../utils/pagination-helper';
 import {
   NotFoundError,
-  ConflictError
+  ConflictError,
+  BadRequestError
 } from '../middleware/error.middleware';
+import { loggerService } from './logging/logger.service';
 import { city_t, want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
@@ -984,7 +989,8 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       professionalField,
       personalSlogan,
       referralSource,
-      interestList
+      interestList,
+      customId
     } = userData;
 
     // 處理地區更新
@@ -1013,6 +1019,48 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
           throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
         }
         locationId = location.id;
+      }
+    }
+
+    // 處理 customId 更新
+    let customIdData: {
+      custom_id?: string | null;
+      custom_id_verified?: boolean;
+      custom_id_created_at?: Date | null;
+    } | undefined = undefined;
+
+    if (customId !== undefined) {
+      // 驗證格式
+      if (customId && !validateCustomIdFormat(customId)) {
+        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
+      }
+
+      // 檢查是否與其他用戶重複（排除自己）
+      if (customId) {
+        const existingCustomId = await tx.users.findFirst({
+          where: {
+            custom_id: customId,
+            id: { not: user.id }
+          }
+        });
+
+        if (existingCustomId) {
+          throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.ALREADY_EXISTS);
+        }
+
+        // 設置新的 customId
+        customIdData = {
+          custom_id: customId,
+          custom_id_verified: true,
+          custom_id_created_at: user.custom_id ? user.custom_id_created_at : new Date()
+        };
+      } else {
+        // 清除 customId（傳入空字串或 null）
+        customIdData = {
+          custom_id: null,
+          custom_id_verified: false,
+          custom_id_created_at: null
+        };
       }
     }
 
@@ -1064,6 +1112,9 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         // 新增欄位
         personal_slogan: personalSlogan,
         referral_source: referralSource,
+
+        // customId 更新
+        ...customIdData,
       }
     });
 
@@ -1155,6 +1206,115 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
     const formattedUser = await formatUserResponse(updatedUser);
     return createSuccessResponse(formattedUser);
   });
+};
+
+/**
+ * 從 URL 提取 R2 檔案名稱
+ * @param url R2 圖片 URL
+ * @returns 檔案名稱（包含路徑）
+ */
+const extractR2FilenameFromUrl = (url: string): string | null => {
+  try {
+    const urlObj = new URL(url);
+    // 移除開頭的斜線
+    return urlObj.pathname.replace(/^\//, '');
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * 更新用戶（含頭像上傳）
+ * 實作 FormData 統一提交方案，處理圖片上傳邏輯
+ *
+ * 流程：
+ * 1. 驗證表單資料
+ * 2. 上傳新頭像到 R2（如果有）
+ * 3. 更新資料庫（使用 transaction）
+ * 4. 成功後刪除舊頭像
+ * 5. 失敗時刪除已上傳的新頭像
+ */
+const updateUserWithAvatar = async (
+  externalId: string,
+  userData: UpdateUserWithAvatarRequest
+): Promise<ApiSuccessResponse<FormattedUserResponse>> => {
+  const { avatarFile, ...updateData } = userData;
+
+  // 如果沒有頭像檔案，直接使用原有的 updateUser 邏輯
+  if (!avatarFile) {
+    return updateUser(externalId, updateData);
+  }
+
+  // 驗證檔案類型和大小
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_AVATAR_SIZE = 500 * 1024; // 500KB
+
+  if (!ALLOWED_IMAGE_TYPES.includes(avatarFile.mimetype)) {
+    throw new BadRequestError(
+      `不支援的圖片格式: ${avatarFile.mimetype}。支援格式: ${ALLOWED_IMAGE_TYPES.join(', ')}`
+    );
+  }
+
+  if (avatarFile.size > MAX_AVATAR_SIZE) {
+    throw new BadRequestError(
+      `檔案大小超過限制: ${Math.round(avatarFile.size / 1024)}KB (最大: ${MAX_AVATAR_SIZE / 1024}KB)`
+    );
+  }
+
+  // 取得用戶資訊，確認舊頭像 URL
+  const user = await prisma.users.findUnique({
+    where: { external_id: externalId },
+    include: { contacts: true }
+  });
+
+  if (!user) {
+    throw new NotFoundError('用戶不存在');
+  }
+
+  const oldAvatarUrl = user.contacts?.photo_url;
+  let newAvatarUrl: string | undefined;
+  let newAvatarFilename: string | undefined;
+
+  try {
+    // Step 1: 上傳新頭像到 R2
+    const fileExtension = avatarFile.originalname.split('.').pop() || 'jpg';
+    newAvatarFilename = `avatars/${uuidv4()}.${fileExtension}`;
+
+    await uploadToR2(avatarFile, newAvatarFilename);
+
+    // 建構完整的 URL
+    const baseUrl = process.env.R2_PUBLIC_URL ||
+      `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ENDPOINT?.replace('https://', '')}`;
+    newAvatarUrl = `${baseUrl}/${newAvatarFilename}`;
+
+    // Step 2: 更新資料庫（含新頭像 URL）
+    const result = await updateUser(externalId, {
+      ...updateData,
+      photoURL: newAvatarUrl
+    });
+
+    // Step 3: 資料庫更新成功後，刪除舊頭像
+    if (oldAvatarUrl) {
+      const oldFilename = extractR2FilenameFromUrl(oldAvatarUrl);
+      if (oldFilename) {
+        // 非同步刪除舊頭像，不阻塞回應
+        deleteFromR2(oldFilename).catch(err => {
+          loggerService.warn('Failed to delete old avatar', { oldAvatarUrl, error: err });
+        });
+      }
+    }
+
+    return result;
+
+  } catch (error) {
+    // Step 4: 如果更新失敗，刪除已上傳的新頭像
+    if (newAvatarFilename) {
+      await deleteFromR2(newAvatarFilename).catch(err => {
+        loggerService.warn('Failed to cleanup uploaded avatar', { newAvatarFilename, error: err });
+      });
+    }
+    throw error;
+  }
 };
 
 /**
@@ -1805,6 +1965,7 @@ export const userService = {
   getOneUser,
   createUser,
   updateUser,
+  updateUserWithAvatar,
   deleteMe,
   deleteUser,
   checkCustomIdAvailability,

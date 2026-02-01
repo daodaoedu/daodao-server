@@ -14,6 +14,7 @@ import {
   requireAdmin
 } from '../middleware/permission.middleware';
 import { validate } from '../middleware/validation.middleware';
+import upload from '../middleware/multer.middleware';
 import {
   createUserSchema,
   updateUserSchema,
@@ -169,16 +170,49 @@ router.post('/me',
 
 /**
  * PUT /api/v1/users/me - 更新當前用戶資訊
+ * 支援 multipart/form-data 以統一處理頭像上傳和表單資料
  */
 registry.registerPath({
   method: 'put',
   path: '/api/v1/users/me',
   tags: ['Me'],
   summary: '更新當前用戶資訊',
-  description: '更新已登入用戶的個人資料',
+  description: '更新已登入用戶的個人資料。支援 multipart/form-data 格式，可同時上傳頭像檔案。',
   request: {
     body: {
       content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: {
+              avatar: {
+                type: 'string',
+                format: 'binary',
+                description: '新頭像圖片（JPEG、PNG 或 WebP 格式，最大 500KB）'
+              },
+              name: { type: 'string', description: '使用者姓名' },
+              gender: { type: 'string', enum: ['male', 'female', 'other'], description: '性別' },
+              birthDay: { type: 'string', description: '出生日期 (YYYY-MM-DD)' },
+              location: { type: 'string', description: '地區代碼' },
+              educationStage: { type: 'string', description: '教育階段' },
+              isOpenLocation: { type: 'boolean', description: '是否公開位置資訊' },
+              isOpenProfile: { type: 'boolean', description: '是否公開個人資料' },
+              isSubscribeEmail: { type: 'boolean', description: '是否訂閱電子郵件' },
+              selfIntroduction: { type: 'string', description: '自我介紹' },
+              share: { type: 'string', description: '分享內容' },
+              wantToDoList: { type: 'string', description: '想做的事情清單 (JSON 字串)' },
+              tagList: { type: 'string', description: '標籤清單 (JSON 字串)' },
+              roleList: { type: 'string', description: '角色清單 (JSON 字串)' },
+              interestList: { type: 'string', description: '興趣清單 (JSON 字串)' },
+              preferences: { type: 'string', description: '偏好設定 (JSON 字串)' },
+              contactList: { type: 'string', description: '聯絡資訊 (JSON 字串)' },
+              professionalField: { type: 'string', description: '專業領域 (JSON 字串)' },
+              personalSlogan: { type: 'string', description: '個人標語' },
+              referralSource: { type: 'string', description: '資訊來源' },
+              customId: { type: 'string', description: '自訂 ID' }
+            }
+          }
+        },
         'application/json': {
           schema: updateUserSchema
         }
@@ -204,12 +238,12 @@ registry.registerPath({
 /**
  * PUT /users/me
  * 更新當前用戶資訊
- * 請求體：UpdateUserRequest
+ * 支援 multipart/form-data（含 avatar 檔案）或 application/json
  * 需要身份驗證
  */
 router.put('/me',
   authenticate,
-  validate(updateUserSchema, 'body'),
+  upload.single('avatar'),
   userController.updateMe as RequestHandler
 );
 
