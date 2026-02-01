@@ -29,9 +29,27 @@ const mockProfessionalFieldService = {
   setUserProfessionalFields: jest.fn()
 };
 
+const mockR2Service = {
+  uploadToR2: jest.fn(),
+  deleteFromR2: jest.fn()
+};
+
+const mockLoggerService = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn()
+};
+
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: prismaMock
 }));
+
+jest.mock('@/services/logging/logger.service', () => ({
+  loggerService: mockLoggerService
+}));
+
+jest.mock('@/services/r2.service', () => mockR2Service);
 
 jest.mock('@/services/tag.service', () => mockTagService);
 
@@ -67,6 +85,8 @@ describe('User Service', () => {
     mockEmailService.sendVerificationEmail.mockResolvedValue({ success: true, messageId: 'mock-message-id' });
     mockProfessionalFieldService.getUserProfessionalFields.mockResolvedValue([]);
     mockProfessionalFieldService.setUserProfessionalFields.mockResolvedValue(undefined);
+    mockR2Service.uploadToR2.mockResolvedValue('avatars/test-avatar.jpg');
+    mockR2Service.deleteFromR2.mockResolvedValue(undefined);
 
     // Setup common Prisma mock returns for formatUserResponse dependencies
     prismaMock.user_interests.findMany.mockResolvedValue([]);
@@ -291,6 +311,308 @@ describe('User Service', () => {
       await userService.updateUser(existingUser.external_id, updateData);
 
       expect(prismaMock.contacts.update).toHaveBeenCalled();
+    });
+
+    it('should update customId successfully', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({
+        custom_id: 'new_custom_id',
+        custom_id_verified: true,
+        custom_id_created_at: new Date()
+      });
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.findFirst.mockResolvedValue(null); // No duplicate customId
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      const result = await userService.updateUser(existingUser.external_id, {
+        customId: 'new_custom_id'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.customId).toBe('new_custom_id');
+    });
+
+    it('should throw error when customId format is invalid', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 }
+      });
+
+      prismaMock.users.findUnique.mockResolvedValueOnce(existingUser);
+
+      await expect(userService.updateUser(existingUser.external_id, {
+        customId: 'ab' // Too short (min 3 characters)
+      })).rejects.toThrow();
+    });
+
+    it('should throw error when customId already exists for another user', async () => {
+      const existingUser = createTestUser({
+        id: 1,
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 }
+      });
+      const anotherUser = createTestUser({
+        id: 2,
+        custom_id: 'taken_custom_id'
+      });
+
+      prismaMock.users.findUnique.mockResolvedValueOnce(existingUser);
+      prismaMock.users.findFirst.mockResolvedValue(anotherUser); // customId already taken
+
+      await expect(userService.updateUser(existingUser.external_id, {
+        customId: 'taken_custom_id'
+      })).rejects.toThrow('此自訂 ID 已被使用');
+    });
+
+    it('should clear customId when empty string is provided', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 },
+        custom_id: 'old_custom_id',
+        custom_id_verified: true
+      });
+      const updatedUser = createTestUser({
+        custom_id: null,
+        custom_id_verified: false,
+        custom_id_created_at: null
+      });
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      const result = await userService.updateUser(existingUser.external_id, {
+        customId: ''
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.customId).toBeNull();
+    });
+  });
+
+  describe('updateUserWithAvatar', () => {
+    const createMockFile = (overrides = {}): Express.Multer.File => ({
+      fieldname: 'avatar',
+      originalname: 'test.jpg',
+      encoding: '7bit',
+      mimetype: 'image/jpeg',
+      size: 102400,
+      destination: '/tmp',
+      filename: 'test.jpg',
+      path: '/tmp/test.jpg',
+      buffer: Buffer.from('test image data'),
+      stream: {} as any,
+      ...overrides
+    });
+
+    beforeEach(() => {
+      // Set environment variables for R2
+      process.env.R2_PUBLIC_URL = 'https://cdn.example.com';
+    });
+
+    it('should call updateUser without avatar when no file provided', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com', photo_url: 'https://old-avatar.jpg' },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({
+        nickname: 'Updated Name'
+      });
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      const result = await userService.updateUserWithAvatar(existingUser.external_id!, {
+        name: 'Updated Name'
+        // No avatarFile
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockR2Service.uploadToR2).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when user not found for avatar upload', async () => {
+      prismaMock.users.findUnique.mockResolvedValue(null);
+
+      const mockFile = createMockFile();
+
+      await expect(userService.updateUserWithAvatar('non-existent-id', {
+        name: 'Test',
+        avatarFile: mockFile
+      })).rejects.toThrow('用戶不存在');
+    });
+
+    it('should upload new avatar and update user successfully', async () => {
+      const existingUser = createTestUser({
+        external_id: 'user-123',
+        contacts: { id: 1, email: 'test@example.com', photo_url: null },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({
+        external_id: 'user-123',
+        nickname: 'Updated Name'
+      });
+      const mockFile = createMockFile();
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser) // For avatar check
+        .mockResolvedValueOnce(existingUser) // For updateUser
+        .mockResolvedValueOnce(updatedUser); // After update
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      const result = await userService.updateUserWithAvatar(existingUser.external_id!, {
+        name: 'Updated Name',
+        avatarFile: mockFile
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockR2Service.uploadToR2).toHaveBeenCalledTimes(1);
+      expect(mockR2Service.uploadToR2).toHaveBeenCalledWith(
+        expect.objectContaining({ originalname: 'test.jpg' }),
+        expect.stringMatching(/^avatars\/[a-f0-9-]+\.jpg$/)
+      );
+    });
+
+    it('should delete old avatar when uploading new one', async () => {
+      const oldAvatarUrl = 'https://cdn.example.com/avatars/old-avatar-uuid.jpg';
+      const existingUser = createTestUser({
+        external_id: 'user-123',
+        contacts: { id: 1, email: 'test@example.com', photo_url: oldAvatarUrl },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({
+        external_id: 'user-123',
+        nickname: 'Updated Name'
+      });
+      const mockFile = createMockFile();
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      await userService.updateUserWithAvatar(existingUser.external_id!, {
+        name: 'Updated Name',
+        avatarFile: mockFile
+      });
+
+      // Wait for async delete operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockR2Service.uploadToR2).toHaveBeenCalledTimes(1);
+      expect(mockR2Service.deleteFromR2).toHaveBeenCalledWith('avatars/old-avatar-uuid.jpg');
+    });
+
+    it('should cleanup uploaded avatar when database update fails', async () => {
+      const existingUser = createTestUser({
+        external_id: 'user-123',
+        contacts: { id: 1, email: 'test@example.com', photo_url: null },
+        basic_info: { id: 1 }
+      });
+      const mockFile = createMockFile();
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(existingUser);
+      prismaMock.users.update.mockRejectedValue(new Error('Database error'));
+
+      await expect(userService.updateUserWithAvatar(existingUser.external_id!, {
+        name: 'Updated Name',
+        avatarFile: mockFile
+      })).rejects.toThrow('Database error');
+
+      expect(mockR2Service.uploadToR2).toHaveBeenCalledTimes(1);
+      expect(mockR2Service.deleteFromR2).toHaveBeenCalledWith(
+        expect.stringMatching(/^avatars\/[a-f0-9-]+\.jpg$/)
+      );
+    });
+
+    it('should handle R2 upload failure', async () => {
+      const existingUser = createTestUser({
+        external_id: 'user-123',
+        contacts: { id: 1, email: 'test@example.com', photo_url: null },
+        basic_info: { id: 1 }
+      });
+      const mockFile = createMockFile();
+
+      prismaMock.users.findUnique.mockResolvedValue(existingUser);
+      mockR2Service.uploadToR2.mockRejectedValue(new Error('R2 upload failed'));
+
+      await expect(userService.updateUserWithAvatar(existingUser.external_id!, {
+        name: 'Updated Name',
+        avatarFile: mockFile
+      })).rejects.toThrow('R2 upload failed');
+
+      expect(prismaMock.users.update).not.toHaveBeenCalled();
+    });
+
+    it('should use correct file extension from original filename', async () => {
+      const existingUser = createTestUser({
+        external_id: 'user-123',
+        contacts: { id: 1, email: 'test@example.com', photo_url: null },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({ external_id: 'user-123' });
+      const mockFile = createMockFile({ originalname: 'photo.PNG' });
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      await userService.updateUserWithAvatar(existingUser.external_id!, {
+        avatarFile: mockFile
+      });
+
+      expect(mockR2Service.uploadToR2).toHaveBeenCalledWith(
+        expect.objectContaining({ originalname: 'photo.PNG' }),
+        expect.stringMatching(/^avatars\/[a-f0-9-]+\.PNG$/)
+      );
+    });
+
+    it('should continue even if old avatar deletion fails', async () => {
+      const oldAvatarUrl = 'https://cdn.example.com/avatars/old-avatar-uuid.jpg';
+      const existingUser = createTestUser({
+        external_id: 'user-123',
+        contacts: { id: 1, email: 'test@example.com', photo_url: oldAvatarUrl },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({ external_id: 'user-123' });
+      const mockFile = createMockFile();
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+      mockR2Service.deleteFromR2.mockRejectedValue(new Error('R2 delete failed'));
+
+      // Should not throw even if old avatar deletion fails
+      const result = await userService.updateUserWithAvatar(existingUser.external_id!, {
+        avatarFile: mockFile
+      });
+
+      expect(result.success).toBe(true);
+
+      // Wait for async delete operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Verify warning was logged
+      expect(mockLoggerService.warn).toHaveBeenCalledWith(
+        'Failed to delete old avatar',
+        expect.objectContaining({ oldAvatarUrl })
+      );
     });
   });
 
