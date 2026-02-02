@@ -19,6 +19,7 @@ import type {
   ApiSuccessResponse,
   PaginatedApiResponse
 } from '../types/api-response.types';
+import type { PracticeResourceEntity } from '../types/practice.types';
 
 const prismaClient = prisma;
 
@@ -36,6 +37,7 @@ export interface PracticeTemplateEntity {
   sessionDurationMinutes: number | null;
   practiceTimePeriods: string[];
   suggestedTags: string[];
+  resources?: PracticeResourceEntity[];
   createdAt: string;
 }
 
@@ -215,15 +217,34 @@ export async function getTemplates(
     ]);
 
     if (templates.length > 0) {
-      // 查詢所有模板的標籤
+      // 查詢所有模板的標籤和資源
       const templateIds = templates.map(t => t.id);
-      const templateTags = await prismaClient.entity_tags.findMany({
-        where: {
-          entity_type: 'practice_template',
-          entity_id: { in: templateIds }
-        },
-        include: { tags: { select: { name: true } } }
-      });
+      const [templateTags, templateResources] = await Promise.all([
+        prismaClient.entity_tags.findMany({
+          where: {
+            entity_type: 'practice_template',
+            entity_id: { in: templateIds }
+          },
+          include: { tags: { select: { name: true } } }
+        }),
+        prismaClient.entity_resources.findMany({
+          where: {
+            entity_type: 'practice_template',
+            entity_id: { in: templateIds },
+            deleted_at: null
+          },
+          include: {
+            resources: {
+              select: {
+                id: true,
+                external_id: true,
+                name: true,
+                url: true
+              }
+            }
+          }
+        })
+      ]);
 
       // 建立 templateId -> tagNames 的映射
       const tagsByTemplateId = new Map<number, string[]>();
@@ -231,6 +252,18 @@ export async function getTemplates(
         const existing = tagsByTemplateId.get(et.entity_id) || [];
         existing.push(et.tags.name);
         tagsByTemplateId.set(et.entity_id, existing);
+      }
+
+      // 建立 templateId -> resources 的映射
+      const resourcesByTemplateId = new Map<number, PracticeResourceEntity[]>();
+      for (const er of templateResources) {
+        const existing = resourcesByTemplateId.get(er.entity_id) || [];
+        existing.push({
+          id: er.resources.external_id || String(er.resources.id),
+          name: er.resources.name,
+          url: er.resources.url || undefined
+        });
+        resourcesByTemplateId.set(er.entity_id, existing);
       }
 
       const entities: PracticeTemplateEntity[] = templates.map(t => ({
@@ -244,6 +277,7 @@ export async function getTemplates(
         sessionDurationMinutes: t.session_duration_minutes,
         practiceTimePeriods: t.practice_time_periods || [],
         suggestedTags: tagsByTemplateId.get(t.id) || [],
+        resources: resourcesByTemplateId.get(t.id),
         createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 
@@ -308,14 +342,40 @@ export async function getTemplateById(
     });
 
     if (template) {
-      // 查詢模板的標籤
-      const templateTags = await prismaClient.entity_tags.findMany({
-        where: {
-          entity_type: 'practice_template',
-          entity_id: template.id
-        },
-        include: { tags: { select: { name: true } } }
-      });
+      // 查詢模板的標籤和資源
+      const [templateTags, templateResources] = await Promise.all([
+        prismaClient.entity_tags.findMany({
+          where: {
+            entity_type: 'practice_template',
+            entity_id: template.id
+          },
+          include: { tags: { select: { name: true } } }
+        }),
+        prismaClient.entity_resources.findMany({
+          where: {
+            entity_type: 'practice_template',
+            entity_id: template.id,
+            deleted_at: null
+          },
+          include: {
+            resources: {
+              select: {
+                id: true,
+                external_id: true,
+                name: true,
+                url: true
+              }
+            }
+          }
+        })
+      ]);
+
+      // 轉換資源格式
+      const resources: PracticeResourceEntity[] = templateResources.map(er => ({
+        id: er.resources.external_id || String(er.resources.id),
+        name: er.resources.name,
+        url: er.resources.url || undefined
+      }));
 
       return createSuccessResponse({
         id: template.external_id || String(template.id),
@@ -328,6 +388,7 @@ export async function getTemplateById(
         sessionDurationMinutes: template.session_duration_minutes,
         practiceTimePeriods: template.practice_time_periods || [],
         suggestedTags: templateTags.map(et => et.tags.name),
+        resources: resources.length > 0 ? resources : undefined,
         createdAt: template.created_at?.toISOString() || new Date().toISOString()
       });
     }
@@ -429,15 +490,34 @@ export async function getRandomTemplates(
     });
 
     if (templates.length > 0) {
-      // 查詢所有模板的標籤
+      // 查詢所有模板的標籤和資源
       const templateIds = templates.map(t => t.id);
-      const templateTags = await prismaClient.entity_tags.findMany({
-        where: {
-          entity_type: 'practice_template',
-          entity_id: { in: templateIds }
-        },
-        include: { tags: { select: { name: true } } }
-      });
+      const [templateTags, templateResources] = await Promise.all([
+        prismaClient.entity_tags.findMany({
+          where: {
+            entity_type: 'practice_template',
+            entity_id: { in: templateIds }
+          },
+          include: { tags: { select: { name: true } } }
+        }),
+        prismaClient.entity_resources.findMany({
+          where: {
+            entity_type: 'practice_template',
+            entity_id: { in: templateIds },
+            deleted_at: null
+          },
+          include: {
+            resources: {
+              select: {
+                id: true,
+                external_id: true,
+                name: true,
+                url: true
+              }
+            }
+          }
+        })
+      ]);
 
       // 建立 templateId -> tagNames 的映射
       const tagsByTemplateId = new Map<number, string[]>();
@@ -445,6 +525,18 @@ export async function getRandomTemplates(
         const existing = tagsByTemplateId.get(et.entity_id) || [];
         existing.push(et.tags.name);
         tagsByTemplateId.set(et.entity_id, existing);
+      }
+
+      // 建立 templateId -> resources 的映射
+      const resourcesByTemplateId = new Map<number, PracticeResourceEntity[]>();
+      for (const er of templateResources) {
+        const existing = resourcesByTemplateId.get(er.entity_id) || [];
+        existing.push({
+          id: er.resources.external_id || String(er.resources.id),
+          name: er.resources.name,
+          url: er.resources.url || undefined
+        });
+        resourcesByTemplateId.set(er.entity_id, existing);
       }
 
       const entities: PracticeTemplateEntity[] = templates.map(t => ({
@@ -458,6 +550,7 @@ export async function getRandomTemplates(
         sessionDurationMinutes: t.session_duration_minutes,
         practiceTimePeriods: t.practice_time_periods || [],
         suggestedTags: tagsByTemplateId.get(t.id) || [],
+        resources: resourcesByTemplateId.get(t.id),
         createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 
@@ -772,7 +865,8 @@ export interface TemplateUsageStats {
 }
 
 /**
- * 取得模版使用統計
+ * 取得模版使用統計（動態計算）
+ * 透過 practices.template_id 關聯動態計算，無需額外表格
  */
 export async function getTemplateUsageStats(
   templateId: string
@@ -789,8 +883,7 @@ export async function getTemplateUsageStats(
       select: {
         id: true,
         external_id: true,
-        title: true,
-        usage_count: true
+        title: true
       }
     });
 
@@ -798,33 +891,51 @@ export async function getTemplateUsageStats(
       return createSuccessResponse(null);
     }
 
-    // 查詢使用記錄
-    const usages = await prismaClient.template_usages.findMany({
-      where: { template_id: template.id },
-      orderBy: { created_at: 'desc' },
-      take: 10,
-      include: {
-        users: {
-          select: { external_id: true }
-        },
-        practices: {
-          select: { external_id: true }
+    // 動態查詢使用統計（透過 practices 表）
+    const [usageCount, uniqueUserCount, recentPractices] = await Promise.all([
+      // 使用次數
+      prismaClient.practices.count({
+        where: {
+          template_id: template.id,
+          deleted_at: null
         }
-      }
-    });
-
-    // 計算不重複用戶數
-    const uniqueUserIds = new Set(usages.map(u => u.user_id));
+      }),
+      // 不重複用戶數（使用 groupBy 計算）
+      prismaClient.practices.groupBy({
+        by: ['user_id'],
+        where: {
+          template_id: template.id,
+          deleted_at: null
+        }
+      }).then(result => result.length),
+      // 最近使用記錄
+      prismaClient.practices.findMany({
+        where: {
+          template_id: template.id,
+          deleted_at: null
+        },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+        select: {
+          external_id: true,
+          id: true,
+          created_at: true,
+          users: {
+            select: { external_id: true, id: true }
+          }
+        }
+      })
+    ]);
 
     const stats: TemplateUsageStats = {
       templateId: template.external_id || String(template.id),
       title: template.title,
-      usageCount: template.usage_count,
-      uniqueUserCount: uniqueUserIds.size,
-      recentUsages: usages.map(u => ({
-        practiceId: u.practices.external_id || String(u.practice_id),
-        userId: u.users.external_id || String(u.user_id),
-        createdAt: u.created_at?.toISOString() || new Date().toISOString()
+      usageCount,
+      uniqueUserCount,
+      recentUsages: recentPractices.map(p => ({
+        practiceId: p.external_id || String(p.id),
+        userId: p.users.external_id || String(p.users.id),
+        createdAt: p.created_at?.toISOString() || new Date().toISOString()
       }))
     };
 
@@ -841,15 +952,38 @@ export async function getTemplateUsageStats(
 }
 
 /**
- * 取得熱門模版（依使用次數排序）
+ * 取得熱門模版（依使用次數排序，動態計算）
+ * 透過 practices.template_id 關聯動態計算使用次數
  */
 export async function getPopularTemplates(
   limit = 10
 ): Promise<ApiSuccessResponse<PracticeTemplateEntity[]>> {
   try {
+    // 1. 動態計算每個模板的使用次數
+    const usageCounts = await prismaClient.practices.groupBy({
+      by: ['template_id'],
+      where: {
+        template_id: { not: null },
+        deleted_at: null
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: limit
+    });
+
+    // 如果沒有使用記錄，回傳空陣列
+    if (usageCounts.length === 0) {
+      return createSuccessResponse([]);
+    }
+
+    // 2. 取得排序後的模板 ID
+    const sortedTemplateIds = usageCounts
+      .filter(uc => uc.template_id !== null)
+      .map(uc => uc.template_id as number);
+
+    // 3. 查詢模板詳細資料
     const templates = await prismaClient.practice_templates.findMany({
-      orderBy: { usage_count: 'desc' },
-      take: limit,
+      where: { id: { in: sortedTemplateIds } },
       include: {
         practice_template_categories: {
           include: {
@@ -861,15 +995,33 @@ export async function getPopularTemplates(
       }
     });
 
-    // 查詢所有模板的標籤
-    const templateIds = templates.map(t => t.id);
-    const templateTags = await prismaClient.entity_tags.findMany({
-      where: {
-        entity_type: 'practice_template',
-        entity_id: { in: templateIds }
-      },
-      include: { tags: { select: { name: true } } }
-    });
+    // 4. 查詢所有模板的標籤和資源
+    const [templateTags, templateResources] = await Promise.all([
+      prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: 'practice_template',
+          entity_id: { in: sortedTemplateIds }
+        },
+        include: { tags: { select: { name: true } } }
+      }),
+      prismaClient.entity_resources.findMany({
+        where: {
+          entity_type: 'practice_template',
+          entity_id: { in: sortedTemplateIds },
+          deleted_at: null
+        },
+        include: {
+          resources: {
+            select: {
+              id: true,
+              external_id: true,
+              name: true,
+              url: true
+            }
+          }
+        }
+      })
+    ]);
 
     // 建立 templateId -> tagNames 的映射
     const tagsByTemplateId = new Map<number, string[]>();
@@ -879,19 +1031,39 @@ export async function getPopularTemplates(
       tagsByTemplateId.set(et.entity_id, existing);
     }
 
-    const entities: PracticeTemplateEntity[] = templates.map(t => ({
-      id: t.external_id || String(t.id),
-      title: t.title,
-      practiceAction: t.practice_action || undefined,
-      categories: t.practice_template_categories.map(c => c.content_categories.name),
-      frequencyMinDays: t.frequency_min_days,
-      frequencyMaxDays: t.frequency_max_days,
-      durationDays: t.duration_days,
-      sessionDurationMinutes: t.session_duration_minutes,
-      practiceTimePeriods: t.practice_time_periods || [],
-      suggestedTags: tagsByTemplateId.get(t.id) || [],
-      createdAt: t.created_at?.toISOString() || new Date().toISOString()
-    }));
+    // 建立 templateId -> resources 的映射
+    const resourcesByTemplateId = new Map<number, PracticeResourceEntity[]>();
+    for (const er of templateResources) {
+      const existing = resourcesByTemplateId.get(er.entity_id) || [];
+      existing.push({
+        id: er.resources.external_id || String(er.resources.id),
+        name: er.resources.name,
+        url: er.resources.url || undefined
+      });
+      resourcesByTemplateId.set(er.entity_id, existing);
+    }
+
+    // 建立 templateId -> template 的映射
+    const templateById = new Map(templates.map(t => [t.id, t]));
+
+    // 5. 按使用次數順序組裝結果
+    const entities: PracticeTemplateEntity[] = sortedTemplateIds
+      .map(id => templateById.get(id))
+      .filter((t): t is NonNullable<typeof t> => t !== undefined)
+      .map(t => ({
+        id: t.external_id || String(t.id),
+        title: t.title,
+        practiceAction: t.practice_action || undefined,
+        categories: t.practice_template_categories.map(c => c.content_categories.name),
+        frequencyMinDays: t.frequency_min_days,
+        frequencyMaxDays: t.frequency_max_days,
+        durationDays: t.duration_days,
+        sessionDurationMinutes: t.session_duration_minutes,
+        practiceTimePeriods: t.practice_time_periods || [],
+        suggestedTags: tagsByTemplateId.get(t.id) || [],
+        resources: resourcesByTemplateId.get(t.id),
+        createdAt: t.created_at?.toISOString() || new Date().toISOString()
+      }));
 
     loggerService.info('Popular templates retrieved', { count: entities.length });
 

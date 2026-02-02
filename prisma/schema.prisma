@@ -402,7 +402,6 @@ model practices {
   practice_checkins        practice_checkins[]
   practice_templates       practice_templates? @relation(fields: [template_id], references: [id], onUpdate: NoAction)
   users                    users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  template_usages          template_usages?
 
   @@index([start_date, end_date], map: "idx_practices_dates")
   @@index([status], map: "idx_practices_status")
@@ -813,7 +812,6 @@ model users {
   user_profiles                                                 user_profiles[]
   user_project                                                  user_project[]
   user_subscription                                             user_subscription[]
-  template_usages                                               template_usages[]
   user_activity_stats                                           user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
   basic_info                                                    basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contacts                                                      contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -945,28 +943,10 @@ model practice_templates {
   session_duration_minutes     Int?
   practice_time_periods        String[]
   other_context                String?                        /// 其他時段（使用者自訂文字）
-  usage_count                  Int                            @default(0) /// 模版使用次數
   created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
   updated_at                   DateTime?                      @db.Timestamptz(6)
   practice_template_categories practice_template_categories[]
   practices                    practices[]
-  template_usages              template_usages[]
-}
-
-/// 模版使用記錄表：追蹤模版被使用的情況
-model template_usages {
-  id          Int       @id @default(autoincrement())
-  template_id Int
-  user_id     Int
-  practice_id Int       @unique
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-
-  practice_templates practice_templates @relation(fields: [template_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users              users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  practices          practices          @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([template_id], map: "idx_template_usages_template_id")
-  @@index([user_id], map: "idx_template_usages_user_id")
 }
 
 /// 打卡鼓勵句表
