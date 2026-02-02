@@ -29,15 +29,24 @@ import {
   createPracticeEmailWorker,
   registerScheduledJobs,
   closePracticeEmailWorker,
-  setPracticeEmailQueue
+  setPracticeEmailQueue,
+  // Practice Status Queue
+  createPracticeStatusQueue,
+  createPracticeStatusWorker,
+  registerPracticeStatusScheduledJobs,
+  closePracticeStatusWorker,
+  setPracticeStatusQueue
 } from './queues';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
 import type { PracticeEmailJobData } from './types/email/practice.types';
+import type { PracticeStatusJobData } from './queues';
 
 // BullMQ 全域實例
 let practiceEmailQueue: Queue<PracticeEmailJobData> | null = null;
 let practiceEmailWorker: Worker<PracticeEmailJobData> | null = null;
+let practiceStatusQueue: Queue<PracticeStatusJobData> | null = null;
+let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
 
 
 const app = express();
@@ -203,21 +212,29 @@ async function initializeBullMQ(): Promise<void> {
     await connection.connect();
     console.log('📬 BullMQ Redis 連線已建立');
 
-    // 建立 Queue
+    // ===== Practice Email Queue =====
     practiceEmailQueue = createPracticeEmailQueue();
-    // 設定 singleton 實例供 service 層使用
     setPracticeEmailQueue(practiceEmailQueue);
     console.log('📬 Practice Email Queue 已建立');
 
-    // 建立 Worker
     practiceEmailWorker = createPracticeEmailWorker({ concurrency: 5 });
     console.log('📬 Practice Email Worker 已啟動');
 
-    // 註冊排程任務
     await registerScheduledJobs(practiceEmailQueue, DEFAULT_EMAIL_SCHEDULES);
     console.log('📬 郵件排程任務已註冊');
 
-    console.log('✅ BullMQ 郵件系統初始化完成');
+    // ===== Practice Status Queue（自動完成到期實踐）=====
+    practiceStatusQueue = createPracticeStatusQueue();
+    setPracticeStatusQueue(practiceStatusQueue);
+    console.log('⏰ Practice Status Queue 已建立');
+
+    practiceStatusWorker = createPracticeStatusWorker({ concurrency: 1 });
+    console.log('⏰ Practice Status Worker 已啟動');
+
+    await registerPracticeStatusScheduledJobs(practiceStatusQueue);
+    console.log('⏰ 實踐狀態排程任務已註冊（每小時檢查到期實踐）');
+
+    console.log('✅ BullMQ 系統初始化完成');
   } catch (error) {
     console.error('❌ BullMQ 初始化失敗:', error);
     throw error;
@@ -228,16 +245,28 @@ async function initializeBullMQ(): Promise<void> {
 async function gracefulShutdown(signal: string) {
   console.log(`\n⏳ 收到 ${signal} 信號，正在關閉服務器...`);
   try {
-    // 關閉 BullMQ Worker
+    // 關閉 Practice Email Worker
     if (practiceEmailWorker) {
       await closePracticeEmailWorker(practiceEmailWorker);
-      console.log('✅ BullMQ Worker 已關閉');
+      console.log('✅ Practice Email Worker 已關閉');
     }
 
-    // 關閉 BullMQ Queue
+    // 關閉 Practice Email Queue
     if (practiceEmailQueue) {
       await practiceEmailQueue.close();
-      console.log('✅ BullMQ Queue 已關閉');
+      console.log('✅ Practice Email Queue 已關閉');
+    }
+
+    // 關閉 Practice Status Worker
+    if (practiceStatusWorker) {
+      await closePracticeStatusWorker(practiceStatusWorker);
+      console.log('✅ Practice Status Worker 已關閉');
+    }
+
+    // 關閉 Practice Status Queue
+    if (practiceStatusQueue) {
+      await practiceStatusQueue.close();
+      console.log('✅ Practice Status Queue 已關閉');
     }
 
     // 關閉 BullMQ Redis 連線

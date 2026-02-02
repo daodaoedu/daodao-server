@@ -57,7 +57,7 @@ const formatParticipantDetail = async (participant: Record<string, unknown>): Pr
   const wantToDoList = basicInfo?.want_to_do_list as unknown[] | undefined;
   
   return {
-    id: participant.id as number,
+    id: String(participant.id),
     name: participant.nickname as string,
     _id: participant.external_id as string,
     roleList: userPositions?.map(up => {

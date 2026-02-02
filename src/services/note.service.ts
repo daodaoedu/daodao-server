@@ -51,7 +51,7 @@ const formatUserInfo = async (user: Record<string, unknown>): Promise<UserBasicI
   const basicInfo = user.basic_info as Record<string, unknown> | undefined;
   
   return {
-    id: user.id as number,
+    id: String(user.id),
     name: user.nickname as string,
     _id: user.external_id as string,
     roleList: userPositions?.map(up => {
