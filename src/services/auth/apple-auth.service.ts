@@ -8,6 +8,7 @@ import { authService } from './auth.service';
 import { jwtService } from '../jwt.service';
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
+import { DeviceInfo } from '../../types/user.types';
 import {
   UnauthorizedError,
   BadRequestError
@@ -80,6 +81,7 @@ interface AppleSignInRequest {
   idToken: string;
   user?: AppleUserInfo;
   nonce?: string;
+  deviceInfo?: DeviceInfo;
 }
 
 /**
@@ -177,7 +179,7 @@ export const verifyAppleIdToken = async (
 export const handleAppleSignIn = async (
   request: AppleSignInRequest
 ): Promise<ApiResponse<AppleSignInResult>> => {
-  const { idToken, user: userInfo, nonce } = request;
+  const { idToken, user: userInfo, nonce, deviceInfo } = request;
 
   // 1. 驗證 Apple ID Token
   const applePayload = await verifyAppleIdToken(idToken, nonce);
@@ -312,7 +314,7 @@ export const handleAppleSignIn = async (
   // 6. 更新最後登入時間（非臨時用戶）
   if (!isTemp) {
     try {
-      await authService.updateLastLogin(resultUser.id);
+      await authService.updateLastLogin(resultUser.id, deviceInfo);
     } catch (error) {
       console.error('Failed to update last login:', error);
     }
