@@ -26,6 +26,9 @@ RUN pnpm run prisma:generate && \
 # 構建層 - 編譯 TypeScript
 FROM prisma AS builder
 
+# 設定建構環境變數，避免在建構時嘗試連接 Redis 等外部服務
+ENV NODE_ENV=build
+
 # 第一步：複製 TypeScript 配置和類型文件 (類型變更時觸發重建)
 COPY tsconfig*.json ./
 COPY src/types/ ./src/types/

@@ -51,8 +51,8 @@ const testRedisConnection = async (): Promise<void> => {
   }
 };
 
-// 僅在非測試環境中執行連接測試
-if (NODE_ENV !== 'test') {
+// 僅在運行環境中執行連接測試（跳過 test 和 build 環境）
+if (NODE_ENV !== 'test' && NODE_ENV !== 'build') {
   testRedisConnection();
 }
 
