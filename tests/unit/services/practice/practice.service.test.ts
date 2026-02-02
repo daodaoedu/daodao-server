@@ -293,7 +293,7 @@ describe('Practice Service', () => {
       expect(result.data.themeColor).toBe('#FCDD84');
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Practice created',
-        { practiceId: 1, userId: 1 }
+        expect.objectContaining({ practiceId: 1, userId: 1 })
       );
     });
 

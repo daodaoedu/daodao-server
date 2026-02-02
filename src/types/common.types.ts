@@ -7,7 +7,7 @@ export type TimeUsage = '1_2_hours_daily' | 'few_intensive_days_week' | 'spare_m
 
 // 使用者基本資訊（完整版本）
 export interface UserBasicInfo {
-  id: number;
+  id: string;
   name: string;
   _id: string;
   roleList: string[];

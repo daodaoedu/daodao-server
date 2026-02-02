@@ -142,6 +142,8 @@ export interface CreatePracticeRequest {
     url?: string;
   }>;
   isDraft?: boolean;
+  /** 模版 ID（external_id），用於追蹤模版使用情況 */
+  templateId?: string;
 }
 
 export interface UpdatePracticeRequest {

@@ -407,6 +407,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
  * 變更：
  * - 設定初始進度 progress_percentage: 20
  * - 設定初始狀態 status: 'draft' 或 'not_started'（依據 isDraft 參數）
+ * - 支援 templateId 參數追蹤模版使用情況
  */
 export async function create(data: CreatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
   try {
@@ -439,9 +440,32 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     // 根據 isDraft 決定初始狀態
     const initialStatus = data.isDraft ? 'draft' : 'not_started';
 
+    // 如果有 templateId，查詢模版的內部 ID
+    let templateInternalId: number | null = null;
+    if (data.templateId) {
+      const template = await prismaClient.practice_templates.findFirst({
+        where: {
+          OR: [
+            { external_id: data.templateId },
+            { id: parseInt(data.templateId, 10) || -1 }
+          ]
+        },
+        select: { id: true }
+      });
+      if (template) {
+        templateInternalId = template.id;
+      } else {
+        loggerService.warn('Template not found for practice creation', {
+          templateId: data.templateId,
+          userId
+        });
+      }
+    }
+
     const practice = await prismaClient.practices.create({
       data: {
         user_id: userId,
+        template_id: templateInternalId,
         title: data.title,
         practice_action: data.practiceAction,
         start_date: startDate,
@@ -507,8 +531,14 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     }
 
     // 處理資源關聯（如果有提供）
+    let createdResources: PracticeResourceEntity[] = [];
     if (data.resources && data.resources.length > 0) {
-      await linkResources(practice.id, data.resources, userId);
+      createdResources = await linkResources(practice.id, data.resources, userId);
+    }
+
+    // 處理模版使用追蹤（如果有使用模版）
+    if (templateInternalId) {
+      await recordTemplateUsage(templateInternalId, userId, practice.id);
     }
 
 
@@ -521,11 +551,12 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       durationDays: practice.duration_days || undefined,
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
-            sessionDurationMinutes: practice.session_duration_minutes || undefined,
+      sessionDurationMinutes: practice.session_duration_minutes || undefined,
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
+      resources: createdResources.length > 0 ? createdResources : undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
       lastCheckinAt: undefined,
@@ -549,7 +580,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       }
     };
 
-    loggerService.info('Practice created', { practiceId: practice.id, userId, isDraft: data.isDraft });
+    loggerService.info('Practice created', { practiceId: practice.id, userId, isDraft: data.isDraft, resourceCount: createdResources.length });
 
     // 只有非草稿才觸發 PE01 實踐建立郵件（非阻塞）
     if (!data.isDraft) {
@@ -924,9 +955,12 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
 /**
  * 連結資源
  * 創建資源記錄並建立 practice-resource 關聯
+ * @returns 建立的資源列表（包含 external_id）
  */
-async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<void> {
-  if (!resources.length) return;
+async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<PracticeResourceEntity[]> {
+  if (!resources.length) return [];
+
+  const createdResources: PracticeResourceEntity[] = [];
 
   try {
     for (const resource of resources) {
@@ -952,6 +986,13 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
             created_by: userId
           }
         });
+
+        // 3. 收集建立的資源
+        createdResources.push({
+          id: createdResource.external_id || String(createdResource.id),
+          name: createdResource.name,
+          url: createdResource.url || undefined
+        });
       } catch (error) {
         loggerService.warn('Failed to create resource', { practiceId, resource, error });
       }
@@ -959,11 +1000,13 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
 
     loggerService.info('Resources linked to practice', {
       practiceId,
-      resourceCount: resources.length
+      resourceCount: createdResources.length
     });
   } catch (error) {
     loggerService.warn('Failed to link resources', { practiceId, resources, error });
   }
+
+  return createdResources;
 }
 
 /**
@@ -1307,6 +1350,127 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
 
   } catch (error) {
     loggerService.error('Failed to unarchive practice', { practiceId: id, userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 記錄模版使用情況
+ * 建立 template_usages 記錄並更新 usage_count
+ */
+async function recordTemplateUsage(templateId: number, userId: number, practiceId: number): Promise<void> {
+  try {
+    await prismaClient.$transaction([
+      // 建立使用記錄
+      prismaClient.template_usages.create({
+        data: {
+          template_id: templateId,
+          user_id: userId,
+          practice_id: practiceId
+        }
+      }),
+      // 更新使用次數
+      prismaClient.practice_templates.update({
+        where: { id: templateId },
+        data: {
+          usage_count: { increment: 1 },
+          updated_at: new Date()
+        }
+      })
+    ]);
+
+    loggerService.info('Template usage recorded', {
+      templateId,
+      userId,
+      practiceId
+    });
+  } catch (error) {
+    // 記錄失敗不影響實踐建立
+    loggerService.warn('Failed to record template usage', {
+      templateId,
+      userId,
+      practiceId,
+      error
+    });
+  }
+}
+
+/**
+ * 完成已到期的實踐
+ * 用於排程任務自動將到期的實踐標記為完成
+ *
+ * 冪等性設計：
+ * - 使用 updateMany 的 where 條件確保只更新符合條件的記錄
+ * - 即使重複執行也不會造成錯誤（已完成的不會再被查詢到）
+ * - 郵件發送透過 enqueuePracticeEmail 的 jobId 去重機制保護
+ */
+export async function completeExpiredPractices(): Promise<{
+  completedCount: number;
+  practiceIds: number[];
+}> {
+  const now = new Date();
+
+  try {
+    // 使用事務確保原子性：查詢並更新在同一個事務中
+    const result = await prismaClient.$transaction(async (tx) => {
+      // 查詢所有已到期但尚未完成的實踐
+      const expiredPractices = await tx.practices.findMany({
+        where: {
+          status: { in: ['not_started', 'active'] },
+          end_date: { lte: now },
+          deleted_at: null
+        },
+        select: { id: true, user_id: true }
+      });
+
+      if (expiredPractices.length === 0) {
+        return { expiredPractices: [], updatedCount: 0 };
+      }
+
+      const practiceIds = expiredPractices.map(p => p.id);
+
+      // 批量更新狀態為 completed
+      // 再次檢查狀態以防止競爭條件
+      const updateResult = await tx.practices.updateMany({
+        where: {
+          id: { in: practiceIds },
+          status: { in: ['not_started', 'active'] } // 雙重檢查
+        },
+        data: {
+          status: 'completed',
+          updated_at: new Date()
+        }
+      });
+
+      return { expiredPractices, updatedCount: updateResult.count };
+    });
+
+    if (result.updatedCount === 0) {
+      loggerService.info('No expired practices to complete');
+      return { completedCount: 0, practiceIds: [] };
+    }
+
+    const practiceIds = result.expiredPractices.map(p => p.id);
+
+    loggerService.info('Expired practices completed', {
+      count: result.updatedCount,
+      practiceIds
+    });
+
+    // 觸發 PE04 完成郵件（非阻塞）
+    // enqueuePracticeEmail 內部使用 jobId 去重，不會重複發送
+    for (const practice of result.expiredPractices) {
+      enqueuePracticeEmail('PE04', practice.id, practice.user_id).catch(err => {
+        loggerService.error('Failed to enqueue PE04 email', {
+          practiceId: practice.id,
+          error: err
+        });
+      });
+    }
+
+    return { completedCount: result.updatedCount, practiceIds };
+  } catch (error) {
+    loggerService.error('Failed to complete expired practices', { error });
     throw error;
   }
 }

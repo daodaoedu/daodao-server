@@ -66,7 +66,7 @@ export async function transformResourceToApi(
     avgRating: null,
     tags: [],
     user: {
-      id: Number(dbResource.created_by || 0),
+      id: String(dbResource.created_by || 0),
       name: '',
       _id: '',
       roleList: [],
@@ -90,7 +90,7 @@ export async function transformResourceToApi(
     if (dbResource.User && isUserData(dbResource.User)) {
       const user = dbResource.User as UserData;
       resource.user = {
-        id: Number(user.id || 0),
+        id: String(user.id || 0),
         name: String(user.display_name || user.username || ''),
         _id: String(user._id || ''),
         roleList: Array.isArray(user.roleList) ? user.roleList : [],
@@ -226,7 +226,7 @@ export async function transformReviewToApi(
     status: String(dbReview.status || 'published'),
     likeCount: 0,
     user: {
-      id: Number(dbReview.user_id || 0),
+      id: String(dbReview.user_id || 0),
       name: '',
       _id: '',
       roleList: [],
@@ -247,7 +247,7 @@ export async function transformReviewToApi(
     if (dbReview.User && isUserData(dbReview.User)) {
       const user = dbReview.User as UserData;
       review.user = {
-        id: Number(user.id || 0),
+        id: String(user.id || 0),
         name: String(user.display_name || user.username || ''),
         _id: String(user._id || ''),
         roleList: Array.isArray(user.roleList) ? user.roleList : [],

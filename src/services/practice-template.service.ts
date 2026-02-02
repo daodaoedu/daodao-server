@@ -755,3 +755,149 @@ export async function deleteTemplate(
 
   return createSuccessResponse({ deleted: true });
 }
+
+/**
+ * 模版使用統計
+ */
+export interface TemplateUsageStats {
+  templateId: string;
+  title: string;
+  usageCount: number;
+  uniqueUserCount: number;
+  recentUsages: Array<{
+    practiceId: string;
+    userId: string;
+    createdAt: string;
+  }>;
+}
+
+/**
+ * 取得模版使用統計
+ */
+export async function getTemplateUsageStats(
+  templateId: string
+): Promise<ApiSuccessResponse<TemplateUsageStats | null>> {
+  try {
+    // 查找模板
+    const template = await prismaClient.practice_templates.findFirst({
+      where: {
+        OR: [
+          { external_id: templateId },
+          { id: parseInt(templateId, 10) || -1 }
+        ]
+      },
+      select: {
+        id: true,
+        external_id: true,
+        title: true,
+        usage_count: true
+      }
+    });
+
+    if (!template) {
+      return createSuccessResponse(null);
+    }
+
+    // 查詢使用記錄
+    const usages = await prismaClient.template_usages.findMany({
+      where: { template_id: template.id },
+      orderBy: { created_at: 'desc' },
+      take: 10,
+      include: {
+        users: {
+          select: { external_id: true }
+        },
+        practices: {
+          select: { external_id: true }
+        }
+      }
+    });
+
+    // 計算不重複用戶數
+    const uniqueUserIds = new Set(usages.map(u => u.user_id));
+
+    const stats: TemplateUsageStats = {
+      templateId: template.external_id || String(template.id),
+      title: template.title,
+      usageCount: template.usage_count,
+      uniqueUserCount: uniqueUserIds.size,
+      recentUsages: usages.map(u => ({
+        practiceId: u.practices.external_id || String(u.practice_id),
+        userId: u.users.external_id || String(u.user_id),
+        createdAt: u.created_at?.toISOString() || new Date().toISOString()
+      }))
+    };
+
+    loggerService.info('Template usage stats retrieved', {
+      templateId: template.id,
+      usageCount: stats.usageCount
+    });
+
+    return createSuccessResponse(stats);
+  } catch (error) {
+    loggerService.error('Failed to get template usage stats', { templateId, error });
+    throw error;
+  }
+}
+
+/**
+ * 取得熱門模版（依使用次數排序）
+ */
+export async function getPopularTemplates(
+  limit = 10
+): Promise<ApiSuccessResponse<PracticeTemplateEntity[]>> {
+  try {
+    const templates = await prismaClient.practice_templates.findMany({
+      orderBy: { usage_count: 'desc' },
+      take: limit,
+      include: {
+        practice_template_categories: {
+          include: {
+            content_categories: {
+              select: { name: true }
+            }
+          }
+        }
+      }
+    });
+
+    // 查詢所有模板的標籤
+    const templateIds = templates.map(t => t.id);
+    const templateTags = await prismaClient.entity_tags.findMany({
+      where: {
+        entity_type: 'practice_template',
+        entity_id: { in: templateIds }
+      },
+      include: { tags: { select: { name: true } } }
+    });
+
+    // 建立 templateId -> tagNames 的映射
+    const tagsByTemplateId = new Map<number, string[]>();
+    for (const et of templateTags) {
+      const existing = tagsByTemplateId.get(et.entity_id) || [];
+      existing.push(et.tags.name);
+      tagsByTemplateId.set(et.entity_id, existing);
+    }
+
+    const entities: PracticeTemplateEntity[] = templates.map(t => ({
+      id: t.external_id || String(t.id),
+      title: t.title,
+      practiceAction: t.practice_action || undefined,
+      categories: t.practice_template_categories.map(c => c.content_categories.name),
+      frequencyMinDays: t.frequency_min_days,
+      frequencyMaxDays: t.frequency_max_days,
+      durationDays: t.duration_days,
+      sessionDurationMinutes: t.session_duration_minutes,
+      practiceTimePeriods: t.practice_time_periods || [],
+      suggestedTags: tagsByTemplateId.get(t.id) || [],
+      createdAt: t.created_at?.toISOString() || new Date().toISOString()
+    }));
+
+    loggerService.info('Popular templates retrieved', { count: entities.length });
+
+    return createSuccessResponse(entities);
+  } catch (error) {
+    loggerService.error('Failed to get popular templates', { error });
+    throw error;
+  }
+}
