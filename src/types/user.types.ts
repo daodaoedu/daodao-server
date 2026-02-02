@@ -5,6 +5,15 @@
 import type { users } from '../../generated/prisma';
 import type { ApiSuccessResponse, PaginatedApiResponse } from './api-response.types';
 
+// 引入 multer 類型擴展
+import 'multer';
+
+/**
+ * Multer 檔案類型別名
+ * 使用顯式引用避免在獨立腳本執行時的類型解析問題
+ */
+type MulterFile = Express.Multer.File;
+
 // ESCO 專業領域常數定義 (使用 snake_case 格式,對應 categories 命名規則)
 export const PROFESSIONAL_FIELDS = [
   'information_and_communication_technologies_icts',  // 資訊與通訊技術
@@ -119,7 +128,7 @@ export interface UpdateUserRequest {
 // 用戶更新請求介面（含頭像檔案）
 // 用於 FormData 統一提交方案
 export interface UpdateUserWithAvatarRequest extends UpdateUserRequest {
-  avatarFile?: Express.Multer.File;
+  avatarFile?: MulterFile;
 }
 
 // 自訂 ID 相關請求介面

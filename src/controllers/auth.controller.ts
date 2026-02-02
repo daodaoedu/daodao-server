@@ -31,6 +31,7 @@ import { appleAuthService } from '../services/auth/apple-auth.service';
 import { isCustomScheme, buildRedirectUrl } from '../utils/redirect-validation';
 import { oauthNonceService } from '../services/auth/oauth-nonce.service';
 import { authCodeService } from '../services/auth/auth-code.service';
+import { extractDeviceInfo } from '../utils/device-info.utils';
 
 /**
  * 用戶登入
@@ -143,6 +144,16 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
   // 設定 HTTP-only Cookie（Web 使用）
   setAuthCookie(res, token);
+
+  // 更新登入記錄（非臨時用戶）
+  if (!isTemp && id) {
+    try {
+      const deviceInfo = extractDeviceInfo(req);
+      await authService.updateLastLogin(id, deviceInfo);
+    } catch (error) {
+      console.error('Failed to update login history:', error);
+    }
+  }
 
   // 根據來源決定重定向目標
   let redirectTarget: string;
@@ -402,11 +413,15 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 export const appleSignIn = asyncHandler(async (req: Request, res: Response) => {
   const { idToken, user, nonce } = req.body;
 
+  // 從 request 提取裝置資訊
+  const deviceInfo = extractDeviceInfo(req);
+
   // 使用 Apple 認證服務處理登入
   const result = await appleAuthService.handleAppleSignIn({
     idToken,
     user,
-    nonce
+    nonce,
+    deviceInfo
   });
 
   if (!result.success || !result.data) {

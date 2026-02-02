@@ -942,6 +942,7 @@ model practice_templates {
   frequency_max_days           Int?
   session_duration_minutes     Int?
   practice_time_periods        String[]
+  other_context                String?                        /// 其他時段（使用者自訂文字）
   created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
   updated_at                   DateTime?                      @db.Timestamptz(6)
   practice_template_categories practice_template_categories[]
