@@ -536,12 +536,6 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       createdResources = await linkResources(practice.id, data.resources, userId);
     }
 
-    // 處理模版使用追蹤（如果有使用模版）
-    if (templateInternalId) {
-      await recordTemplateUsage(templateInternalId, userId, practice.id);
-    }
-
-
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
@@ -1351,47 +1345,6 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
   } catch (error) {
     loggerService.error('Failed to unarchive practice', { practiceId: id, userId, error });
     throw error;
-  }
-}
-
-/**
- * 記錄模版使用情況
- * 建立 template_usages 記錄並更新 usage_count
- */
-async function recordTemplateUsage(templateId: number, userId: number, practiceId: number): Promise<void> {
-  try {
-    await prismaClient.$transaction([
-      // 建立使用記錄
-      prismaClient.template_usages.create({
-        data: {
-          template_id: templateId,
-          user_id: userId,
-          practice_id: practiceId
-        }
-      }),
-      // 更新使用次數
-      prismaClient.practice_templates.update({
-        where: { id: templateId },
-        data: {
-          usage_count: { increment: 1 },
-          updated_at: new Date()
-        }
-      })
-    ]);
-
-    loggerService.info('Template usage recorded', {
-      templateId,
-      userId,
-      practiceId
-    });
-  } catch (error) {
-    // 記錄失敗不影響實踐建立
-    loggerService.warn('Failed to record template usage', {
-      templateId,
-      userId,
-      practiceId,
-      error
-    });
   }
 }
 

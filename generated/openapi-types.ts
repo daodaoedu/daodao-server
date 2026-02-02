@@ -4603,6 +4603,13 @@ export interface components {
          *         "習慣養成",
          *         "自我成長"
          *       ],
+         *       "resources": [
+         *         {
+         *           "id": "123e4567-e89b-12d3-a456-426614174000",
+         *           "name": "React 官方文檔",
+         *           "url": "https://react.dev"
+         *         }
+         *       ],
          *       "createdAt": "2024-01-15T10:30:00.000Z"
          *     }
          */
@@ -4666,6 +4673,17 @@ export interface components {
              *     ]
              */
             suggestedTags: string[];
+            /**
+             * @description 模板關聯的資源列表
+             * @example [
+             *       {
+             *         "id": "123e4567-e89b-12d3-a456-426614174000",
+             *         "name": "React 官方文檔",
+             *         "url": "https://react.dev"
+             *       }
+             *     ]
+             */
+            resources?: components["schemas"]["PracticeResource"][];
             /**
              * @description 建立時間
              * @example 2024-01-15T10:30:00.000Z

@@ -877,6 +877,12 @@ export const practiceTemplateResponseSchema = z.object({
     description: '建議標籤',
     example: ['閱讀', '習慣養成', '自我成長']
   }),
+  resources: z.array(practiceResourceSchema).optional().openapi({
+    description: '模板關聯的資源列表',
+    example: [
+      { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev' }
+    ]
+  }),
   createdAt: z.string().openapi({
     description: '建立時間',
     example: '2024-01-15T10:30:00.000Z'
@@ -894,6 +900,9 @@ export const practiceTemplateResponseSchema = z.object({
     sessionDurationMinutes: 30,
     practiceTimePeriods: ['morning', 'evening'],
     suggestedTags: ['閱讀', '習慣養成', '自我成長'],
+    resources: [
+      { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev' }
+    ],
     createdAt: '2024-01-15T10:30:00.000Z'
   }
 });
