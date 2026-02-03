@@ -6142,26 +6142,26 @@
             "type": "string",
             "nullable": true,
             "minLength": 1,
-            "description": "主要分類",
-            "example": "前端開發",
+            "description": "主要分類 key（用於 URL 路徑參數）",
+            "example": "education_learning",
             "examples": [
-              "前端開發",
-              "後端開發",
-              "數據科學",
-              "設計"
+              "education_learning",
+              "nature_environment",
+              "information_computer_science",
+              "arts_design"
             ]
           },
           "subCategory": {
             "type": "string",
             "nullable": true,
             "minLength": 1,
-            "description": "子分類",
-            "example": "React",
+            "description": "子分類 key（用於 URL 路徑參數）",
+            "example": "physics",
             "examples": [
-              "React",
-              "Vue.js",
-              "Node.js",
-              "Python"
+              "physics",
+              "biology",
+              "mathematics",
+              "chemistry"
             ]
           },
           "tags": {
@@ -6234,8 +6234,8 @@
           "type": "learning_platform_app",
           "cost": "free",
           "level": "intermediate",
-          "majorCategory": "前端開發",
-          "subCategory": "React",
+          "majorCategory": "information_computer_science",
+          "subCategory": "physics",
           "tags": [
             "JavaScript",
             "React",
@@ -6338,15 +6338,15 @@
             "type": "string",
             "nullable": true,
             "minLength": 1,
-            "description": "主要分類",
-            "example": "前端開發"
+            "description": "主要分類 key（用於 URL 路徑參數）",
+            "example": "education_learning"
           },
           "subCategory": {
             "type": "string",
             "nullable": true,
             "minLength": 1,
-            "description": "子分類",
-            "example": "React"
+            "description": "子分類 key（用於 URL 路徑參數）",
+            "example": "physics"
           },
           "tags": {
             "type": "array",
@@ -6426,7 +6426,12 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "用戶外部 ID",
+            "description": "用戶內部 ID",
+            "example": "123"
+          },
+          "_id": {
+            "type": "string",
+            "description": "用戶外部 ID (UUID)",
             "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           "name": {
@@ -6441,8 +6446,8 @@
             },
             "description": "用戶角色列表",
             "example": [
-              "USER",
-              "EDUCATOR"
+              "Mentor",
+              "citizen"
             ]
           },
           "photoURL": {
@@ -6478,6 +6483,7 @@
         },
         "required": [
           "id",
+          "_id",
           "name",
           "photoURL"
         ],
@@ -6581,14 +6587,14 @@
           "majorCategory": {
             "type": "string",
             "nullable": true,
-            "description": "主分類名稱",
-            "example": "前端開發"
+            "description": "主分類 key（用於 URL 路徑參數）",
+            "example": "education_learning"
           },
           "subCategory": {
             "type": "string",
             "nullable": true,
-            "description": "子分類名稱",
-            "example": "React"
+            "description": "子分類 key（用於 URL 路徑參數）",
+            "example": "physics"
           },
           "tags": {
             "type": "array",
@@ -6692,12 +6698,12 @@
               "type": "integer",
               "minimum": 0
             },
-            "description": "分類統計",
+            "description": "分類統計（key 值對應資源數量）",
             "example": {
-              "前端開發": 45,
-              "後端開發": 32,
-              "資料科學": 28,
-              "設計": 15
+              "education_learning": 45,
+              "nature_environment": 32,
+              "information_computer_science": 28,
+              "arts_design": 15
             }
           },
           "typeStats": {
@@ -12458,6 +12464,142 @@
                         }
                       ]
                     },
+                    "facets": {
+                      "type": "object",
+                      "properties": {
+                        "majorCategory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "string",
+                                "description": "Facet value key (used for URL path parameter)"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Number of items matching this facet value"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "count"
+                            ],
+                            "description": "Single facet value with count",
+                            "examples": [
+                              {
+                                "value": "education_learning",
+                                "count": 45
+                              },
+                              {
+                                "value": "physics",
+                                "count": 15
+                              }
+                            ]
+                          },
+                          "description": "Major category facet values (parent_id is NULL)"
+                        },
+                        "subCategory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "string",
+                                "description": "Facet value key (used for URL path parameter)"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Number of items matching this facet value"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "count"
+                            ],
+                            "description": "Single facet value with count",
+                            "examples": [
+                              {
+                                "value": "education_learning",
+                                "count": 45
+                              },
+                              {
+                                "value": "physics",
+                                "count": 15
+                              }
+                            ]
+                          },
+                          "description": "Sub category facet values (parent_id is NOT NULL)"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "string",
+                              "description": "Facet value key (used for URL path parameter)"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "description": "Number of items matching this facet value"
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "count"
+                          ],
+                          "description": "Single facet value with count",
+                          "examples": [
+                            {
+                              "value": "education_learning",
+                              "count": 45
+                            },
+                            {
+                              "value": "physics",
+                              "count": 15
+                            }
+                          ]
+                        }
+                      },
+                      "description": "Faceted search aggregations for filtering",
+                      "examples": [
+                        {
+                          "majorCategory": [
+                            {
+                              "value": "education_learning",
+                              "count": 45
+                            },
+                            {
+                              "value": "nature_environment",
+                              "count": 32
+                            },
+                            {
+                              "value": "information_computer_science",
+                              "count": 28
+                            }
+                          ],
+                          "subCategory": [
+                            {
+                              "value": "physics",
+                              "count": 15
+                            },
+                            {
+                              "value": "biology",
+                              "count": 12
+                            },
+                            {
+                              "value": "mathematics",
+                              "count": 10
+                            }
+                          ]
+                        }
+                      ]
+                    },
                     "timestamp": {
                       "type": "string",
                       "format": "date-time",
@@ -12568,6 +12710,36 @@
                         },
                         "hasMore": true,
                         "count": 20
+                      },
+                      "facets": {
+                        "majorCategory": [
+                          {
+                            "value": "education_learning",
+                            "count": 45
+                          },
+                          {
+                            "value": "nature_environment",
+                            "count": 32
+                          },
+                          {
+                            "value": "information_computer_science",
+                            "count": 28
+                          }
+                        ],
+                        "subCategory": [
+                          {
+                            "value": "physics",
+                            "count": 15
+                          },
+                          {
+                            "value": "biology",
+                            "count": 12
+                          },
+                          {
+                            "value": "mathematics",
+                            "count": 10
+                          }
+                        ]
                       },
                       "timestamp": "2024-01-15T10:30:00.000Z",
                       "meta": {
@@ -14151,6 +14323,142 @@
                         }
                       ]
                     },
+                    "facets": {
+                      "type": "object",
+                      "properties": {
+                        "majorCategory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "string",
+                                "description": "Facet value key (used for URL path parameter)"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Number of items matching this facet value"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "count"
+                            ],
+                            "description": "Single facet value with count",
+                            "examples": [
+                              {
+                                "value": "education_learning",
+                                "count": 45
+                              },
+                              {
+                                "value": "physics",
+                                "count": 15
+                              }
+                            ]
+                          },
+                          "description": "Major category facet values (parent_id is NULL)"
+                        },
+                        "subCategory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "string",
+                                "description": "Facet value key (used for URL path parameter)"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Number of items matching this facet value"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "count"
+                            ],
+                            "description": "Single facet value with count",
+                            "examples": [
+                              {
+                                "value": "education_learning",
+                                "count": 45
+                              },
+                              {
+                                "value": "physics",
+                                "count": 15
+                              }
+                            ]
+                          },
+                          "description": "Sub category facet values (parent_id is NOT NULL)"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "string",
+                              "description": "Facet value key (used for URL path parameter)"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "description": "Number of items matching this facet value"
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "count"
+                          ],
+                          "description": "Single facet value with count",
+                          "examples": [
+                            {
+                              "value": "education_learning",
+                              "count": 45
+                            },
+                            {
+                              "value": "physics",
+                              "count": 15
+                            }
+                          ]
+                        }
+                      },
+                      "description": "Faceted search aggregations for filtering",
+                      "examples": [
+                        {
+                          "majorCategory": [
+                            {
+                              "value": "education_learning",
+                              "count": 45
+                            },
+                            {
+                              "value": "nature_environment",
+                              "count": 32
+                            },
+                            {
+                              "value": "information_computer_science",
+                              "count": 28
+                            }
+                          ],
+                          "subCategory": [
+                            {
+                              "value": "physics",
+                              "count": 15
+                            },
+                            {
+                              "value": "biology",
+                              "count": 12
+                            },
+                            {
+                              "value": "mathematics",
+                              "count": 10
+                            }
+                          ]
+                        }
+                      ]
+                    },
                     "timestamp": {
                       "type": "string",
                       "format": "date-time",
@@ -14261,6 +14569,36 @@
                         },
                         "hasMore": true,
                         "count": 20
+                      },
+                      "facets": {
+                        "majorCategory": [
+                          {
+                            "value": "education_learning",
+                            "count": 45
+                          },
+                          {
+                            "value": "nature_environment",
+                            "count": 32
+                          },
+                          {
+                            "value": "information_computer_science",
+                            "count": 28
+                          }
+                        ],
+                        "subCategory": [
+                          {
+                            "value": "physics",
+                            "count": 15
+                          },
+                          {
+                            "value": "biology",
+                            "count": 12
+                          },
+                          {
+                            "value": "mathematics",
+                            "count": 10
+                          }
+                        ]
                       },
                       "timestamp": "2024-01-15T10:30:00.000Z",
                       "meta": {

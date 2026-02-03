@@ -23,7 +23,7 @@ import { createResourceSchema, updateResourceSchema } from '../validators/resour
 import { DEFAULT_RESOURCE_PAGE_LIMIT, MAX_RESOURCE_PAGE_LIMIT } from '../constants/mappings';
 import * as tagService from './tag.service';
 import { createSuccessResponse, createCursorPaginatedResponse } from '../utils/response-helper';
-import { ApiResponse, CursorPaginatedApiResponse } from '../types/api-response.types';
+import { ApiResponse, CursorPaginatedApiResponse, Facets, FacetValue } from '../types/api-response.types';
 
 // 定義篩選參數介面
 interface ResourceFilterParams {
@@ -451,13 +451,81 @@ export async function getResources(
 
   const transformedResources = await Promise.all(resourceList.map((resource) => transformResourceToApi(resource)));
 
+  // 查詢 facets（分類統計）- 基於基礎條件（排除 deleted_at）
+  const facetsBaseWhere: Prisma.resourcesWhereInput = {
+    deleted_at: null
+  };
+
+  // 並行查詢主分類和子分類的統計
+  const [majorCategoryStats, subCategoryStats] = await Promise.all([
+    prisma.resources.groupBy({
+      by: ['major_category_id'],
+      where: facetsBaseWhere,
+      _count: {
+        major_category_id: true
+      }
+    }),
+    prisma.resources.groupBy({
+      by: ['sub_category_id'],
+      where: facetsBaseWhere,
+      _count: {
+        sub_category_id: true
+      }
+    })
+  ]);
+
+  // 收集所有分類 ID
+  const majorCategoryIds = majorCategoryStats
+    .map(stat => stat.major_category_id)
+    .filter((id): id is number => id !== null);
+  const subCategoryIds = subCategoryStats
+    .map(stat => stat.sub_category_id)
+    .filter((id): id is number => id !== null);
+  const allCategoryIds = [...new Set([...majorCategoryIds, ...subCategoryIds])];
+
+  // 查詢分類名稱
+  const categories = allCategoryIds.length > 0
+    ? await prisma.categories.findMany({
+        where: { id: { in: allCategoryIds } },
+        select: { id: true, name: true }
+      })
+    : [];
+
+  const categoryNameMap = categories.reduce((acc, cat) => {
+    acc[cat.id] = cat.name;
+    return acc;
+  }, {} as Record<number, string>);
+
+  // 構建 facets 結構
+  const majorCategoryFacets: FacetValue[] = majorCategoryStats
+    .filter((stat): stat is typeof stat & { major_category_id: number } => stat.major_category_id !== null)
+    .map(stat => ({
+      value: categoryNameMap[stat.major_category_id] || `Unknown (${stat.major_category_id})`,
+      count: stat._count.major_category_id
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const subCategoryFacets: FacetValue[] = subCategoryStats
+    .filter((stat): stat is typeof stat & { sub_category_id: number } => stat.sub_category_id !== null)
+    .map(stat => ({
+      value: categoryNameMap[stat.sub_category_id] || `Unknown (${stat.sub_category_id})`,
+      count: stat._count.sub_category_id
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const facets: Facets = {
+    majorCategory: majorCategoryFacets,
+    subCategory: subCategoryFacets
+  };
+
   return createCursorPaginatedResponse(
     transformedResources,
     paginationMetadata,
     {
       searchQuery: filters.query,
       filters: filters
-    }
+    },
+    facets
   );
 }
 

@@ -173,18 +173,18 @@ const resourceBaseSchema = z.object({
     .nullable()
     .optional()
     .openapi({
-      description: "主要分類",
-      example: "前端開發",
-      examples: ["前端開發", "後端開發", "數據科學", "設計"]
+      description: "主要分類 key（用於 URL 路徑參數）",
+      example: "education_learning",
+      examples: ["education_learning", "nature_environment", "information_computer_science", "arts_design"]
     }),
   subCategory: z.string()
     .min(1, { message: "子分類名稱為必填" })
     .nullable()
     .optional()
     .openapi({
-      description: "子分類",
-      example: "React",
-      examples: ["React", "Vue.js", "Node.js", "Python"]
+      description: "子分類 key（用於 URL 路徑參數）",
+      example: "physics",
+      examples: ["physics", "biology", "mathematics", "chemistry"]
     }),
   tags: z.array(z.string())
     .nullable()
@@ -218,8 +218,8 @@ export const createResourceSchema = resourceBaseSchema.extend({
     type: "learning_platform_app",
     cost: "free",
     level: "intermediate",
-    majorCategory: "前端開發",
-    subCategory: "React",
+    majorCategory: "information_computer_science",
+    subCategory: "physics",
     tags: ["JavaScript", "React", "前端框架"],
     status: "active",
     review: {
@@ -314,16 +314,16 @@ export const updateResourceSchema = z.object({
     .nullable()
     .optional()
     .openapi({
-      description: "主要分類",
-      example: "前端開發"
+      description: "主要分類 key（用於 URL 路徑參數）",
+      example: "education_learning"
     }),
   subCategory: z.string()
     .min(1, { message: "子分類名稱不能為空" })
     .nullable()
     .optional()
     .openapi({
-      description: "子分類",
-      example: "React"
+      description: "子分類 key（用於 URL 路徑參數）",
+      example: "physics"
     }),
   tags: z.array(z.string())
     .nullable()
@@ -400,7 +400,11 @@ export type ResourceSchema = UpdateResourceSchema & {
 // 用戶基本資訊 schema - 匹配 transformResourceToApi 的 user 格式
 const userBasicInfoSchema = z.object({
   id: z.string().openapi({
-    description: '用戶外部 ID',
+    description: '用戶內部 ID',
+    example: '123'
+  }),
+  _id: z.string().openapi({
+    description: '用戶外部 ID (UUID)',
     example: '550e8400-e29b-41d4-a716-446655440000'
   }),
   name: z.string().openapi({
@@ -409,7 +413,7 @@ const userBasicInfoSchema = z.object({
   }),
   roleList: z.array(z.string()).optional().openapi({
     description: '用戶角色列表',
-    example: ['USER', 'EDUCATOR']
+    example: ['Mentor', 'citizen']
   }),
   photoURL: z.string().url().nullable().openapi({
     description: '用戶頭像 URL',
@@ -488,12 +492,12 @@ export const resourceResponseSchema = z.object({
   }),
   user: userBasicInfoSchema,
   majorCategory: z.string().nullable().openapi({
-    description: '主分類名稱',
-    example: '前端開發'
+    description: '主分類 key（用於 URL 路徑參數）',
+    example: 'education_learning'
   }),
   subCategory: z.string().nullable().openapi({
-    description: '子分類名稱',
-    example: 'React'
+    description: '子分類 key（用於 URL 路徑參數）',
+    example: 'physics'
   }),
   tags: z.array(z.string()).openapi({
     description: '標籤名稱列表',
@@ -554,12 +558,12 @@ export const resourceStatsResponseSchema = z.object({
     minimum: 0
   }),
   categoryStats: z.record(z.string(), z.number().int().min(0)).openapi({
-    description: '分類統計',
+    description: '分類統計（key 值對應資源數量）',
     example: {
-      '前端開發': 45,
-      '後端開發': 32,
-      '資料科學': 28,
-      '設計': 15
+      'education_learning': 45,
+      'nature_environment': 32,
+      'information_computer_science': 28,
+      'arts_design': 15
     }
   }),
   typeStats: z.record(z.string(), z.number().int().min(0)).openapi({
