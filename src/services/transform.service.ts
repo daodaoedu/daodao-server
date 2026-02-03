@@ -54,9 +54,9 @@ export async function transformResourceToApi(
     id: String(dbResource.external_id || dbResource.id), // 使用 external_id (UUID)，如果沒有則降級到 id
     name: String(dbResource.name || ''),
     url: String(dbResource.url || ''),
-    imageUrl: dbResource.image_url ? String(dbResource.image_url) : null,
+    imageUrl: (dbResource.image_url || dbResource.imageUrl) ? String(dbResource.image_url || dbResource.imageUrl) : null,
     description: String(dbResource.description || ''),
-    videoUrl: dbResource.video_url ? String(dbResource.video_url) : null,
+    videoUrl: (dbResource.video_url || dbResource.videoUrl) ? String(dbResource.video_url || dbResource.videoUrl) : null,
     type: String(dbResource.type || ''),
     cost: String(dbResource.cost || ''),
     level: String(dbResource.level || ''),
