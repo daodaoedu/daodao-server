@@ -3,4 +3,5 @@
  */
 
 export * from './collection.service';
+export * from './classifier.service';
 export * from './adapters';

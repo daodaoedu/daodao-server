@@ -361,6 +361,56 @@ router.get('/contents/:contentId', collectionController.getContentById);
  */
 router.post('/contents/:contentId/review', collectionController.reviewContent);
 
+/**
+ * @swagger
+ * /api/v1/collection/contents/{contentId}/classify:
+ *   post:
+ *     summary: 使用 AI 分類單一內容
+ *     tags: [Collection]
+ *     parameters:
+ *       - in: path
+ *         name: contentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: 成功分類內容
+ *       404:
+ *         description: 收集內容不存在
+ */
+router.post('/contents/:contentId/classify', collectionController.classifyContent);
+
+// ============================================
+// AI 分類
+// ============================================
+
+/**
+ * @swagger
+ * /api/v1/collection/classify-pending:
+ *   post:
+ *     summary: 批次分類待處理內容
+ *     tags: [Collection]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: 最大處理數量
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *           enum: [youtube, github, threads]
+ *         description: 只處理特定平台
+ *     responses:
+ *       200:
+ *         description: 批次分類完成
+ */
+router.post('/classify-pending', collectionController.classifyPendingContents);
+
 // ============================================
 // 統計
 // ============================================

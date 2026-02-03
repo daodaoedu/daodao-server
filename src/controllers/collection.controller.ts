@@ -5,6 +5,7 @@
 
 import { Request, Response } from 'express';
 import { collectionService } from '@/services/collection';
+import { CollectionPlatform } from '@/types/collection.types';
 import {
   createCollectionSourceSchema,
   updateCollectionSourceSchema,
@@ -346,6 +347,64 @@ export const getStats = async (_req: Request, res: Response): Promise<void> => {
   }
 };
 
+// ============================================
+// AI 分類
+// ============================================
+
+/**
+ * 分類單一內容
+ * POST /api/v1/collection/contents/:contentId/classify
+ */
+export const classifyContent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { contentId } = req.params;
+    const content = await collectionService.classifyContent(contentId);
+
+    if (!content) {
+      res.status(404).json(createErrorResponse('NOT_FOUND', 'Collected content not found'));
+      return;
+    }
+
+    res.json(createSuccessResponse(content, 'Content classified successfully'));
+  } catch (error) {
+    console.error('[CollectionController] classifyContent error:', error);
+    res.status(500).json(
+      createErrorResponse(
+        'INTERNAL_ERROR',
+        error instanceof Error ? error.message : 'Failed to classify content'
+      )
+    );
+  }
+};
+
+/**
+ * 批次分類待處理內容
+ * POST /api/v1/collection/classify-pending
+ */
+export const classifyPendingContents = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const platform = req.query.platform as string | undefined;
+
+    const result = await collectionService.classifyPendingContents({
+      limit,
+      platform: platform as CollectionPlatform | undefined,
+    });
+
+    res.json(
+      createSuccessResponse(
+        result,
+        `Classification completed: ${result.success} success, ${result.failed} failed`
+      )
+    );
+  } catch (error) {
+    console.error('[CollectionController] classifyPendingContents error:', error);
+    res.status(500).json(
+      createErrorResponse('INTERNAL_ERROR', 'Failed to classify pending contents')
+    );
+  }
+};
+
 // 匯出控制器物件
 export const collectionController = {
   // 來源管理
@@ -364,6 +423,10 @@ export const collectionController = {
   getContentById,
   reviewContent,
   bulkReviewContents,
+
+  // AI 分類
+  classifyContent,
+  classifyPendingContents,
 
   // 統計
   getStats,
