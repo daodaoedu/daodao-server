@@ -17,6 +17,7 @@ import imageRoutes from './image.routes';
 import mentorRoutes from './mentor.routes';
 import practiceRoutes from './practice.routes';
 import adminRoutes from './admin.routes';
+import collectionRoutes from './collection.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -174,6 +175,21 @@ router.use('/practices', practiceRoutes);
 // PUT    /api/v1/admin/users/:userId/role
 router.use('/admin', adminRoutes);
 
+// 學習資源收集路由
+// POST   /api/v1/collection/sources
+// GET    /api/v1/collection/sources
+// GET    /api/v1/collection/sources/:sourceId
+// PATCH  /api/v1/collection/sources/:sourceId
+// DELETE /api/v1/collection/sources/:sourceId
+// POST   /api/v1/collection/sources/:sourceId/fetch
+// POST   /api/v1/collection/fetch-all
+// GET    /api/v1/collection/contents
+// GET    /api/v1/collection/contents/:contentId
+// POST   /api/v1/collection/contents/:contentId/review
+// POST   /api/v1/collection/contents/bulk-review
+// GET    /api/v1/collection/stats
+router.use('/collection', collectionRoutes);
+
 /**
  * API 健康檢查端點
  * GET /api/v1/health
@@ -212,6 +228,7 @@ router.get('/info', (req, res) => {
         mentor: '/api/v1/mentor',
         practices: '/api/v1/practices',
         admin: '/api/v1/admin',
+        collection: '/api/v1/collection',
         health: '/api/v1/health'
       },
       features: [
@@ -233,7 +250,9 @@ router.get('/info', (req, res) => {
         '分頁查詢',
         '複雜過濾條件',
         'TypeScript 類型安全',
-        'Prisma ORM 整合'
+        'Prisma ORM 整合',
+        '學習資源收集系統',
+        'YouTube/GitHub/Threads 平台整合'
       ]
     }
   });

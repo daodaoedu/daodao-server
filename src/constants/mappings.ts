@@ -95,3 +95,33 @@ export const SORT_DIRECTIONS = {
   ASC: 'asc',
   DESC: 'desc'
 } as const;
+
+// ============================================
+// 學習資源收集功能常數
+// ============================================
+
+// 收集內容分頁限制
+export const DEFAULT_COLLECTION_PAGE_LIMIT = 20;
+export const MAX_COLLECTION_PAGE_LIMIT = 100;
+
+// 預設抓取間隔 (秒)
+export const DEFAULT_FETCH_INTERVAL = 3600; // 1 小時
+
+// 自動核准的最低信心分數
+export const AUTO_APPROVE_MIN_CONFIDENCE = 0.9;
+
+// 平台特定設定
+export const PLATFORM_CONFIG = {
+  youtube: {
+    maxResultsPerFetch: 50,
+    defaultFetchInterval: 3600,
+  },
+  github: {
+    maxResultsPerFetch: 100,
+    defaultFetchInterval: 7200,
+  },
+  threads: {
+    maxResultsPerFetch: 25,
+    defaultFetchInterval: 1800,
+  },
+} as const;
