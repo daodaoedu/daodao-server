@@ -535,28 +535,29 @@ model resource_review {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model resources {
-  id                                                 Int                @id @default(autoincrement())
-  external_id                                        String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                                                 Int                  @id @default(autoincrement())
+  external_id                                        String?              @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   created_by                                         Int
   major_category_id                                  Int?
   sub_category_id                                    Int?
-  name                                               String             @db.VarChar(255)
-  url                                                String             @db.VarChar(1000)
-  image_url                                          String?            @db.VarChar(1000)
+  name                                               String               @db.VarChar(255)
+  url                                                String               @db.VarChar(1000)
+  image_url                                          String?              @db.VarChar(1000)
   description                                        String
-  video_url                                          String?            @db.VarChar(1000)
-  type                                               String             @db.VarChar(100)
-  cost                                               String             @db.VarChar(50)
-  level                                              String             @default("all_levels") @db.VarChar(50)
-  status                                             String?            @default("active") @db.VarChar(20)
-  created_at                                         DateTime?          @default(now()) @db.Timestamptz(6)
-  updated_at                                         DateTime?          @default(now()) @db.Timestamptz(6)
-  deleted_at                                         DateTime?          @db.Timestamptz(6)
+  video_url                                          String?              @db.VarChar(1000)
+  type                                               String               @db.VarChar(100)
+  cost                                               String               @db.VarChar(50)
+  level                                              String               @default("all_levels") @db.VarChar(50)
+  status                                             String?              @default("active") @db.VarChar(20)
+  created_at                                         DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at                                         DateTime?            @default(now()) @db.Timestamptz(6)
+  deleted_at                                         DateTime?            @db.Timestamptz(6)
   entity_resources                                   entity_resources[]
   resource_review                                    resource_review[]
-  users                                              users              @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  categories_resources_major_category_idTocategories categories?        @relation("resources_major_category_idTocategories", fields: [major_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  categories_resources_sub_category_idTocategories   categories?        @relation("resources_sub_category_idTocategories", fields: [sub_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  collected_content                                  collected_contents?
+  users                                              users                @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories_resources_major_category_idTocategories categories?          @relation("resources_major_category_idTocategories", fields: [major_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  categories_resources_sub_category_idTocategories   categories?          @relation("resources_sub_category_idTocategories", fields: [sub_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([created_at], map: "idx_resource_created_at")
   @@index([created_by], map: "idx_resource_created_by")
@@ -1237,4 +1238,177 @@ enum want_to_do_list_t {
   find_student     @map("find-student")
   find_teacher     @map("find-teacher")
   find_group       @map("find-group")
+}
+
+// ============================================
+// 學習資源收集功能 (Learning Resource Collection)
+// ============================================
+
+/// 收集平台類型
+enum collection_platform_t {
+  youtube
+  github
+  threads
+  twitter
+  facebook
+  instagram
+  tiktok
+  podcast
+  medium
+  dcard
+  ptt
+  hahow
+  pressplay
+  rss
+  other
+}
+
+/// 收集來源類型
+enum collection_source_type_t {
+  channel      // YouTube 頻道
+  playlist     // YouTube 播放清單
+  user         // 用戶帳號
+  hashtag      // Hashtag
+  keyword      // 搜尋關鍵字
+  topic        // GitHub Topic
+  repository   // GitHub Repo
+  rss_feed     // RSS Feed
+  other
+}
+
+/// 收集內容狀態
+enum collected_content_status_t {
+  pending      // 待處理
+  classified   // 已分類
+  approved     // 已核准
+  rejected     // 已拒絕
+  converted    // 已轉換為 resource
+}
+
+/// 收集來源設定表
+/// 定義要從哪些平台/來源抓取學習資源
+model collection_sources {
+  id              Int                       @id @default(autoincrement())
+  external_id     String                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 平台類型
+  platform        collection_platform_t
+  /// 來源類型 (頻道、用戶、hashtag 等)
+  source_type     collection_source_type_t
+  /// 來源值 (頻道 ID、用戶名、hashtag 等)
+  source_value    String                    @db.VarChar(500)
+  /// 來源名稱 (顯示用)
+  source_name     String?                   @db.VarChar(255)
+  /// 來源描述
+  description     String?
+  /// 是否啟用
+  is_active       Boolean                   @default(true)
+  /// 抓取間隔 (秒)，預設 1 小時
+  fetch_interval  Int                       @default(3600)
+  /// 上次抓取時間
+  last_fetched_at DateTime?                 @db.Timestamptz(6)
+  /// 抓取成功次數
+  fetch_count     Int                       @default(0)
+  /// 抓取失敗次數
+  error_count     Int                       @default(0)
+  /// 最後一次錯誤訊息
+  last_error      String?
+  /// 額外設定 (JSON)
+  settings        Json?
+  created_by      Int?
+  created_at      DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime                  @updatedAt @db.Timestamptz(6)
+
+  collected_contents collected_contents[]
+
+  @@unique([platform, source_type, source_value])
+  @@index([platform])
+  @@index([is_active])
+  @@index([last_fetched_at])
+}
+
+/// 收集到的原始內容表
+/// 儲存從各平台抓取到的原始內容，待分類和審核
+model collected_contents {
+  id                  Int                         @id @default(autoincrement())
+  external_id         String                      @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 來源設定 ID
+  source_id           Int
+  /// 平台類型
+  platform            collection_platform_t
+  /// 平台上的原始 ID
+  platform_content_id String                      @db.VarChar(255)
+  /// 原始連結
+  original_url        String                      @db.VarChar(1000)
+  /// 標題
+  title               String?                     @db.VarChar(500)
+  /// 描述/內容
+  description         String?
+  /// 縮圖 URL
+  thumbnail_url       String?                     @db.VarChar(1000)
+  /// 影片 URL (如適用)
+  video_url           String?                     @db.VarChar(1000)
+  /// 作者名稱
+  author_name         String?                     @db.VarChar(255)
+  /// 作者連結
+  author_url          String?                     @db.VarChar(500)
+  /// 作者頭像
+  author_avatar_url   String?                     @db.VarChar(500)
+  /// 發布時間
+  published_at        DateTime?                   @db.Timestamptz(6)
+  /// 互動數 (觀看、按讚、星星等)
+  engagement_count    Int                         @default(0)
+  /// 額外統計資訊 (JSON)
+  stats               Json?
+  /// 原始 API 回應 (JSON)
+  raw_data            Json?
+  /// 內容語言
+  language            String?                     @db.VarChar(10)
+  /// 內容時長 (秒，影片/音訊適用)
+  duration_seconds    Int?
+
+  // ===== 處理狀態 =====
+  /// 處理狀態
+  status              collected_content_status_t  @default(pending)
+  /// 處理時間
+  processed_at        DateTime?                   @db.Timestamptz(6)
+  /// 審核者 ID
+  reviewed_by         Int?
+  /// 審核時間
+  reviewed_at         DateTime?                   @db.Timestamptz(6)
+  /// 審核備註
+  review_note         String?
+
+  // ===== AI 分類結果 =====
+  /// 是否為學習內容
+  is_learning_content Boolean?
+  /// AI 信心分數 (0.00 - 1.00)
+  confidence_score    Decimal?                    @db.Decimal(3, 2)
+  /// 建議的資源類型
+  suggested_type      String?                     @db.VarChar(100)
+  /// 建議的難度等級
+  suggested_level     String?                     @db.VarChar(50)
+  /// 建議的標籤
+  suggested_tags      String[]
+  /// 建議的分類 ID
+  suggested_category  Int?
+  /// AI 分類理由
+  classification_reason String?
+
+  // ===== 轉換結果 =====
+  /// 轉換後的 resource ID
+  resource_id         Int?                        @unique
+
+  created_at          DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime                    @updatedAt @db.Timestamptz(6)
+
+  source              collection_sources          @relation(fields: [source_id], references: [id], onDelete: Cascade)
+  resource            resources?                  @relation(fields: [resource_id], references: [id], onDelete: SetNull)
+
+  @@unique([platform, platform_content_id])
+  @@index([status])
+  @@index([platform])
+  @@index([is_learning_content])
+  @@index([confidence_score])
+  @@index([created_at])
+  @@index([source_id])
 }
