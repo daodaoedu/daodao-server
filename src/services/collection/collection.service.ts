@@ -23,9 +23,12 @@ import {
   CollectionStats,
 } from '@/types/collection.types';
 import { createAdapter, isPlatformImplemented } from './adapters';
+import { classifyContent, classifyContentBatch } from './classifier.service';
+import { ClassificationInput } from '@/types/classifier.types';
 import {
   DEFAULT_COLLECTION_PAGE_LIMIT,
   MAX_COLLECTION_PAGE_LIMIT,
+  AUTO_APPROVE_MIN_CONFIDENCE,
 } from '@/constants/mappings';
 
 // Prisma client instance
@@ -704,6 +707,168 @@ export const getCollectionStats = async (): Promise<CollectionStats> => {
   };
 };
 
+// ============================================
+// AI 分類
+// ============================================
+
+/**
+ * 分類單一內容
+ */
+export const classifySingleContent = async (
+  externalId: string
+): Promise<CollectedContentResponse | null> => {
+  const content = await prisma.collected_contents.findUnique({
+    where: { external_id: externalId },
+    include: {
+      source: {
+        select: { external_id: true },
+      },
+    },
+  });
+
+  if (!content) return null;
+
+  // 建立分類輸入
+  const input: ClassificationInput = {
+    platform: content.platform as CollectionPlatform,
+    title: content.title,
+    description: content.description,
+    authorName: content.author_name,
+    durationSeconds: content.duration_seconds,
+    engagementCount: content.engagement_count,
+    stats: content.stats as Record<string, unknown>,
+    originalUrl: content.original_url,
+  };
+
+  try {
+    // 執行 AI 分類
+    const result = await classifyContent(input);
+
+    // 更新資料庫
+    const updatedContent = await prisma.collected_contents.update({
+      where: { external_id: externalId },
+      data: {
+        status: COLLECTED_CONTENT_STATUS.CLASSIFIED,
+        processed_at: new Date(),
+        is_learning_content: result.isLearningContent,
+        confidence_score: result.confidenceScore,
+        suggested_type: result.suggestedType,
+        suggested_level: result.suggestedLevel,
+        suggested_tags: result.suggestedTags,
+        classification_reason: result.reasoning,
+        // 如果有優化後的標題/描述，更新
+        ...(result.optimizedTitle && { title: result.optimizedTitle }),
+        ...(result.optimizedDescription && { description: result.optimizedDescription }),
+      },
+      include: {
+        source: {
+          select: { external_id: true },
+        },
+      },
+    });
+
+    // 如果信心分數夠高且是學習內容，自動核准
+    if (
+      result.isLearningContent &&
+      result.confidenceScore >= AUTO_APPROVE_MIN_CONFIDENCE
+    ) {
+      console.log(`[Collection] Auto-approving content ${externalId} with confidence ${result.confidenceScore}`);
+      // 可以在這裡自動核准，但暫時保持為 classified 讓使用者確認
+    }
+
+    return transformContentToResponse(
+      updatedContent as unknown as CollectedContentDbModel & { source: { external_id: string } }
+    );
+  } catch (error) {
+    console.error(`[Collection] Classification failed for ${externalId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * 批次分類內容
+ */
+export const classifyPendingContents = async (
+  options: { limit?: number; platform?: CollectionPlatform } = {}
+): Promise<{ success: number; failed: number; results: Array<{ id: string; success: boolean; error?: string }> }> => {
+  const limit = options.limit || 10;
+
+  // 取得待分類的內容
+  const where: Record<string, unknown> = {
+    status: COLLECTED_CONTENT_STATUS.PENDING,
+  };
+
+  if (options.platform) {
+    where.platform = options.platform;
+  }
+
+  const contents = await prisma.collected_contents.findMany({
+    where,
+    take: limit,
+    orderBy: { created_at: 'asc' },
+    include: {
+      source: {
+        select: { external_id: true },
+      },
+    },
+  });
+
+  if (contents.length === 0) {
+    return { success: 0, failed: 0, results: [] };
+  }
+
+  // 建立批次分類輸入
+  const inputs = contents.map((content) => ({
+    id: content.external_id,
+    input: {
+      platform: content.platform as CollectionPlatform,
+      title: content.title,
+      description: content.description,
+      authorName: content.author_name,
+      durationSeconds: content.duration_seconds,
+      engagementCount: content.engagement_count,
+      stats: content.stats as Record<string, unknown>,
+      originalUrl: content.original_url,
+    } as ClassificationInput,
+  }));
+
+  // 執行批次分類
+  const batchResult = await classifyContentBatch(inputs);
+
+  // 更新資料庫
+  for (const result of batchResult.results) {
+    if (result.success && result.result) {
+      try {
+        await prisma.collected_contents.update({
+          where: { external_id: result.contentId },
+          data: {
+            status: COLLECTED_CONTENT_STATUS.CLASSIFIED,
+            processed_at: new Date(),
+            is_learning_content: result.result.isLearningContent,
+            confidence_score: result.result.confidenceScore,
+            suggested_type: result.result.suggestedType,
+            suggested_level: result.result.suggestedLevel,
+            suggested_tags: result.result.suggestedTags,
+            classification_reason: result.result.reasoning,
+          },
+        });
+      } catch (error) {
+        console.error(`[Collection] Failed to update ${result.contentId}:`, error);
+      }
+    }
+  }
+
+  return {
+    success: batchResult.success,
+    failed: batchResult.failed,
+    results: batchResult.results.map((r) => ({
+      id: r.contentId,
+      success: r.success,
+      error: r.error,
+    })),
+  };
+};
+
 // 匯出服務物件
 export const collectionService = {
   // 來源管理
@@ -722,6 +887,10 @@ export const collectionService = {
   getContentById: getCollectedContentById,
   reviewContent,
   bulkReviewContents,
+
+  // AI 分類
+  classifyContent: classifySingleContent,
+  classifyPendingContents,
 
   // 統計
   getStats: getCollectionStats,

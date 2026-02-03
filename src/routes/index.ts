@@ -186,7 +186,9 @@ router.use('/admin', adminRoutes);
 // GET    /api/v1/collection/contents
 // GET    /api/v1/collection/contents/:contentId
 // POST   /api/v1/collection/contents/:contentId/review
+// POST   /api/v1/collection/contents/:contentId/classify  (AI 分類)
 // POST   /api/v1/collection/contents/bulk-review
+// POST   /api/v1/collection/classify-pending  (批次 AI 分類)
 // GET    /api/v1/collection/stats
 router.use('/collection', collectionRoutes);
 
