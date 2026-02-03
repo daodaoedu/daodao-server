@@ -217,6 +217,52 @@ export const paginationInfoSchema = z.object({
 });
 
 /**
+ * Facet value schema for faceted search results
+ */
+export const facetValueSchema = z.object({
+  value: z.string()
+    .describe('Facet value key (used for URL path parameter)'),
+  count: z.number().int().min(0)
+    .describe('Number of items matching this facet value')
+})
+.describe('Single facet value with count')
+.meta({
+  title: 'Facet Value',
+  examples: [
+    { value: 'education_learning', count: 45 },
+    { value: 'physics', count: 15 }
+  ]
+});
+
+/**
+ * Facets schema for faceted search aggregations
+ */
+export const facetsSchema = z.object({
+  majorCategory: z.array(facetValueSchema).optional()
+    .describe('Major category facet values (parent_id is NULL)'),
+  subCategory: z.array(facetValueSchema).optional()
+    .describe('Sub category facet values (parent_id is NOT NULL)')
+}).catchall(z.array(facetValueSchema))
+.describe('Faceted search aggregations for category filtering')
+.meta({
+  title: 'Facets',
+  examples: [
+    {
+      majorCategory: [
+        { value: 'education_learning', count: 45 },
+        { value: 'nature_environment', count: 32 },
+        { value: 'information_computer_science', count: 28 }
+      ],
+      subCategory: [
+        { value: 'physics', count: 15 },
+        { value: 'biology', count: 12 },
+        { value: 'mathematics', count: 10 }
+      ]
+    }
+  ]
+});
+
+/**
  * Cursor pagination information schema
  */
 export const cursorPaginationInfoSchema = z.object({
@@ -351,6 +397,8 @@ export const cursorPaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSch
       .describe('Array of paginated data items'),
     pagination: cursorPaginationInfoSchema
       .describe('Cursor-based pagination information'),
+    facets: facetsSchema.optional()
+      .describe('Faceted search aggregations for filtering'),
     timestamp: z.string().datetime('時間戳格式不正確')
       .describe('ISO 8601 timestamp of the response'),
     meta: responseMetaSchema.optional()
@@ -383,6 +431,18 @@ export const cursorPaginatedApiResponseSchema = <T extends z.ZodTypeAny>(dataSch
           },
           hasMore: true,
           count: 20
+        },
+        facets: {
+          majorCategory: [
+            { value: 'education_learning', count: 45 },
+            { value: 'nature_environment', count: 32 },
+            { value: 'information_computer_science', count: 28 }
+          ],
+          subCategory: [
+            { value: 'physics', count: 15 },
+            { value: 'biology', count: 12 },
+            { value: 'mathematics', count: 10 }
+          ]
         },
         timestamp: '2024-01-15T10:30:00.000Z',
         meta: {
@@ -591,12 +651,13 @@ export const paginatedApiResponseExample = z.object({
 });
 
 /**
- * Simple cursor paginated response schema example for Swagger  
+ * Simple cursor paginated response schema example for Swagger
  */
 export const cursorPaginatedApiResponseExample = z.object({
   success: z.literal(true).describe('Indicates successful API response'),
   data: z.array(genericDataSchema).describe('Array of paginated data items'),
   pagination: cursorPaginationInfoSchema.describe('Cursor-based pagination information'),
+  facets: facetsSchema.optional().describe('Faceted search aggregations for filtering'),
   timestamp: z.string().datetime().describe('ISO 8601 timestamp of the response'),
   meta: responseMetaSchema.optional().describe('Optional metadata about the response')
 }).describe('Cursor paginated response format')
@@ -622,6 +683,18 @@ export const cursorPaginatedApiResponseExample = z.object({
       prevCursor: 'eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==',
       totalEstimate: 5,
       parentTotalEstimate: null
+    },
+    facets: {
+      majorCategory: [
+        { value: 'education_learning', count: 45 },
+        { value: 'nature_environment', count: 32 },
+        { value: 'information_computer_science', count: 28 }
+      ],
+      subCategory: [
+        { value: 'physics', count: 15 },
+        { value: 'biology', count: 12 },
+        { value: 'mathematics', count: 10 }
+      ]
     },
     timestamp: '2024-01-15T10:30:00.000Z',
     meta: {
@@ -758,6 +831,8 @@ export type ApiSuccessResponse<T> = z.infer<ReturnType<typeof apiSuccessResponse
 export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
 export type PaginationInfo = z.infer<typeof paginationInfoSchema>;
 export type CursorPaginationInfo = z.infer<typeof cursorPaginationInfoSchema>;
+export type FacetValue = z.infer<typeof facetValueSchema>;
+export type Facets = z.infer<typeof facetsSchema>;
 export type PaginatedApiResponse<T> = z.infer<ReturnType<typeof paginatedApiResponseSchema<z.ZodSchema<T>>>>;
 export type CursorPaginatedApiResponse<T> = z.infer<ReturnType<typeof cursorPaginatedApiResponseSchema<z.ZodSchema<T>>>>;
 export type ApiResponse<T> = z.infer<ReturnType<typeof apiResponseSchema<z.ZodSchema<T>>>>;

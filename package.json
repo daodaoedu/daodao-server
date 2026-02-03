@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "build": "tsc --skipLibCheck && tsc-alias && pnpm run openapi:generate && pnpm run openapi:generate-types",
+    "build": "pnpm run openapi:generate-types && tsc --skipLibCheck && tsc-alias",
     "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-swagger.ts",
     "openapi:generate-types": "openapi-typescript openapi.json -o generated/openapi-types.ts",
     "postbuild": "echo 'TypeScript compilation completed' && cp -r generated dist/",

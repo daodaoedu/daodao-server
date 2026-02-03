@@ -12,7 +12,8 @@ import {
   CursorPaginatedApiResponse,
   PaginationInfo,
   CursorPaginationInfo,
-  ResponseMeta
+  ResponseMeta,
+  Facets
 } from '../types/api-response.types';
 
 /**
@@ -49,11 +50,13 @@ export const createPaginatedResponse = <T>(
 export const createCursorPaginatedResponse = <T>(
   data: T[],
   pagination: CursorPaginationInfo,
-  meta?: Partial<ResponseMeta>
+  meta?: Partial<ResponseMeta>,
+  facets?: Facets
 ): CursorPaginatedApiResponse<T> => ({
   success: true,
   data,
   pagination,
+  ...(facets && { facets }),
   timestamp: new Date().toISOString(),
   meta
 });

@@ -70,6 +70,7 @@ export interface CursorPaginatedApiResponse<T> {
   success: true;
   data: T[];
   pagination: CursorPaginationInfo;
+  facets?: Facets;
   timestamp: string;
   meta?: ResponseMeta;
 }
@@ -84,16 +85,38 @@ export interface ResponseMeta {
   searchQuery?: string;
   searchTime?: number;
   filters?: Record<string, unknown>;
-  
+
   // Statistics info
   categoryCounts?: Record<string, number>;
   aggregateData?: Record<string, unknown>;
-  
+
   // System info
   requestId?: string;
   cacheHit?: boolean;
   processingTime?: number;
-  
+
   // Extension fields
   [key: string]: unknown;
+}
+
+// Faceted Search types
+export interface FacetValue {
+  value: string;
+  count: number;
+}
+
+export interface Facets {
+  majorCategory?: FacetValue[];
+  subCategory?: FacetValue[];
+  [key: string]: FacetValue[] | undefined;
+}
+
+// Cursor pagination response with facets (success only)
+export interface CursorPaginatedApiResponseWithFacets<T> {
+  success: true;
+  data: T[];
+  pagination: CursorPaginationInfo;
+  facets?: Facets;
+  timestamp: string;
+  meta?: ResponseMeta;
 }
