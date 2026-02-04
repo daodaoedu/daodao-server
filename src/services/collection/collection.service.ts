@@ -519,32 +519,26 @@ export const reviewContent = async (
       created_by: reviewerId,
     };
 
-    // 使用 transaction 確保原子性
-    const [resource, updatedContent] = await prisma.$transaction([
-      prisma.resources.create({
+    // 使用 interactive transaction 確保原子性並取得 resource.id
+    const resource = await prisma.$transaction(async (tx) => {
+      // 建立 resource
+      const newResource = await tx.resources.create({
         data: resourceData,
-      }),
-      prisma.collected_contents.update({
+      });
+
+      // 更新 collected_content 狀態和 resource_id
+      await tx.collected_contents.update({
         where: { external_id: externalId },
         data: {
           status: COLLECTED_CONTENT_STATUS.CONVERTED,
           reviewed_by: reviewerId,
           reviewed_at: new Date(),
           review_note: data.reviewNote,
-          resource_id: undefined, // 會在下面更新
+          resource_id: newResource.id,
         },
-        include: {
-          source: {
-            select: { external_id: true },
-          },
-        },
-      }),
-    ]);
+      });
 
-    // 更新 resource_id
-    await prisma.collected_contents.update({
-      where: { external_id: externalId },
-      data: { resource_id: resource.id },
+      return newResource;
     });
 
     // 如果有標籤，建立標籤關聯
@@ -570,8 +564,18 @@ export const reviewContent = async (
       }
     }
 
+    // 重新取得完整的 content 資料（含已更新的 resource_id）
+    const finalContent = await prisma.collected_contents.findUnique({
+      where: { external_id: externalId },
+      include: {
+        source: {
+          select: { external_id: true },
+        },
+      },
+    });
+
     return transformContentToResponse(
-      updatedContent as unknown as CollectedContentDbModel & { source: { external_id: string } }
+      finalContent as unknown as CollectedContentDbModel & { source: { external_id: string } }
     );
   } else {
     // 拒絕

@@ -12,6 +12,7 @@ import {
   updateCollectionSourceSchema,
   collectionSourceQuerySchema,
   collectedContentQuerySchema,
+  classifyPendingQuerySchema,
   reviewContentSchema,
   bulkReviewSchema,
 } from '@/validators/collection.validator';
@@ -27,9 +28,13 @@ import { createSuccessResponse, createErrorResponse } from '@/utils/response-hel
  */
 export const createSource = async (req: Request, res: Response): Promise<void> => {
   try {
-    const validatedData = createCollectionSourceSchema.parse(req.body);
-    const userId = req.user?.id || 1; // 開發模式使用 userId=1
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json(createErrorResponse('UNAUTHORIZED', 'User authentication is required'));
+      return;
+    }
 
+    const validatedData = createCollectionSourceSchema.parse(req.body);
     const source = await collectionService.createSource(validatedData, userId);
 
     res.status(201).json(
@@ -266,10 +271,14 @@ export const getContentById = async (req: Request, res: Response): Promise<void>
  */
 export const reviewContent = async (req: Request, res: Response): Promise<void> => {
   try {
+    const reviewerId = req.user?.id;
+    if (!reviewerId) {
+      res.status(401).json(createErrorResponse('UNAUTHORIZED', 'User authentication is required'));
+      return;
+    }
+
     const { contentId } = req.params;
     const validatedData = reviewContentSchema.parse(req.body);
-    const reviewerId = req.user?.id || 1; // 開發模式使用 userId=1
-
     const content = await collectionService.reviewContent(contentId, validatedData, reviewerId);
 
     if (!content) {
@@ -301,9 +310,13 @@ export const reviewContent = async (req: Request, res: Response): Promise<void> 
  */
 export const bulkReviewContents = async (req: Request, res: Response): Promise<void> => {
   try {
-    const validatedData = bulkReviewSchema.parse(req.body);
-    const reviewerId = req.user?.id || 1; // 開發模式使用 userId=1
+    const reviewerId = req.user?.id;
+    if (!reviewerId) {
+      res.status(401).json(createErrorResponse('UNAUTHORIZED', 'User authentication is required'));
+      return;
+    }
 
+    const validatedData = bulkReviewSchema.parse(req.body);
     const result = await collectionService.bulkReviewContents(validatedData, reviewerId);
 
     res.json(
@@ -389,20 +402,12 @@ export const classifyContent = async (req: Request, res: Response): Promise<void
  */
 export const classifyPendingContents = async (req: Request, res: Response): Promise<void> => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
-    const platform = req.query.platform as string | undefined;
-    const modeParam = req.query.mode as string | undefined;
-
-    // 驗證分類模式
-    const validModes = Object.values(CLASSIFICATION_MODES);
-    const mode: ClassificationMode = validModes.includes(modeParam as ClassificationMode)
-      ? (modeParam as ClassificationMode)
-      : CLASSIFICATION_MODES.AUTO;
+    const validatedQuery = classifyPendingQuerySchema.parse(req.query);
 
     const result = await collectionService.classifyPendingContents({
-      limit,
-      platform: platform as CollectionPlatform | undefined,
-      mode,
+      limit: validatedQuery.limit,
+      platform: validatedQuery.platform as CollectionPlatform | undefined,
+      mode: validatedQuery.mode as ClassificationMode,
     });
 
     res.json(
@@ -413,6 +418,14 @@ export const classifyPendingContents = async (req: Request, res: Response): Prom
     );
   } catch (error) {
     console.error('[CollectionController] classifyPendingContents error:', error);
+
+    if (error instanceof Error && error.name === 'ZodError') {
+      res.status(400).json(
+        createErrorResponse('VALIDATION_ERROR', 'Invalid query parameters', error)
+      );
+      return;
+    }
+
     res.status(500).json(
       createErrorResponse('INTERNAL_ERROR', 'Failed to classify pending contents')
     );
