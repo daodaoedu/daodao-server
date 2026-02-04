@@ -55,3 +55,34 @@ export {
   closePracticeStatusWorker,
   type PracticeStatusWorkerOptions
 } from './practice-status.worker';
+
+// Collection Queue（學習資源收集定時任務）
+export {
+  COLLECTION_QUEUE_NAME,
+  createCollectionQueue,
+  createCollectionQueueEvents,
+  registerCollectionScheduledJobs,
+  triggerFetchAllSources,
+  triggerFetchSingleSource,
+  triggerClassifyPending,
+  getCollectionQueueStats,
+  removeCollectionScheduledJobs,
+  cleanCollectionQueue,
+  // Singleton queue 管理
+  setCollectionQueue,
+  getCollectionQueue,
+  enqueueCollectionFetch,
+  enqueueCollectionClassify,
+  // 配置
+  DEFAULT_COLLECTION_SCHEDULES,
+  type CollectionJobData,
+  type CollectionJobType,
+  type CollectionScheduleConfig
+} from './collection.queue';
+
+// Collection Worker
+export {
+  createCollectionWorker,
+  closeCollectionWorker,
+  type CollectionWorkerOptions
+} from './collection.worker';

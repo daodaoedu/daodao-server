@@ -383,7 +383,7 @@ router.post('/contents/:contentId/review', collectionController.reviewContent);
 router.post('/contents/:contentId/classify', collectionController.classifyContent);
 
 // ============================================
-// AI 分類
+// 分類
 // ============================================
 
 /**
@@ -391,6 +391,11 @@ router.post('/contents/:contentId/classify', collectionController.classifyConten
  * /api/v1/collection/classify-pending:
  *   post:
  *     summary: 批次分類待處理內容
+ *     description: |
+ *       支援兩種分類模式：
+ *       - keyword: 關鍵字規則分類 (快速、免費)
+ *       - ai: AI 智能分類 (精確、需要 API key)
+ *       - auto: 自動選擇 (優先使用 AI，無 API key 時使用關鍵字)
  *     tags: [Collection]
  *     parameters:
  *       - in: query
@@ -405,6 +410,17 @@ router.post('/contents/:contentId/classify', collectionController.classifyConten
  *           type: string
  *           enum: [youtube, github, threads]
  *         description: 只處理特定平台
+ *       - in: query
+ *         name: mode
+ *         schema:
+ *           type: string
+ *           enum: [keyword, ai, auto]
+ *           default: auto
+ *         description: |
+ *           分類模式：
+ *           - keyword: 關鍵字規則分類
+ *           - ai: AI 智能分類
+ *           - auto: 自動選擇
  *     responses:
  *       200:
  *         description: 批次分類完成

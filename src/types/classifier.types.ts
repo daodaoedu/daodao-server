@@ -5,6 +5,20 @@
 import { CollectionPlatform } from './collection.types';
 
 /**
+ * 分類模式
+ */
+export const CLASSIFICATION_MODES = {
+  /** 關鍵字規則分類 (快速、免費) */
+  KEYWORD: 'keyword',
+  /** AI 智能分類 (精確、需要 API key) */
+  AI: 'ai',
+  /** 自動選擇 (優先使用 AI，無 API key 時使用關鍵字) */
+  AUTO: 'auto',
+} as const;
+
+export type ClassificationMode = typeof CLASSIFICATION_MODES[keyof typeof CLASSIFICATION_MODES];
+
+/**
  * AI 提供者類型
  */
 export const AI_PROVIDERS = {
