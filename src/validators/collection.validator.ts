@@ -142,6 +142,24 @@ export const collectedContentQuerySchema = z.object({
 });
 
 /**
+ * 分類模式列舉
+ */
+const classificationModeEnum = z.enum(['keyword', 'ai', 'auto']);
+
+/**
+ * 批次分類查詢參數 Schema
+ */
+export const classifyPendingQuerySchema = z.object({
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 10))
+    .refine((val) => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
+  platform: platformEnum.optional(),
+  mode: classificationModeEnum.optional().default('auto'),
+});
+
+/**
  * 審核內容 Schema
  */
 export const reviewContentSchema = z.object({
@@ -272,5 +290,6 @@ export type CreateCollectionSourceInput = z.infer<typeof createCollectionSourceS
 export type UpdateCollectionSourceInput = z.infer<typeof updateCollectionSourceSchema>;
 export type CollectionSourceQueryInput = z.infer<typeof collectionSourceQuerySchema>;
 export type CollectedContentQueryInput = z.infer<typeof collectedContentQuerySchema>;
+export type ClassifyPendingQueryInput = z.infer<typeof classifyPendingQuerySchema>;
 export type ReviewContentInput = z.infer<typeof reviewContentSchema>;
 export type BulkReviewInput = z.infer<typeof bulkReviewSchema>;

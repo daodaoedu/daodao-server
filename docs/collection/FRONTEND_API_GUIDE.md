@@ -115,7 +115,7 @@ POST /sources
 | github | user | "facebook" |
 | github | keyword | "awesome react" |
 | threads | user | "username" |
-| threads | keyword | "#programming" |
+| threads | hashtag | "#programming" |
 
 ### 1.3 更新收集來源
 
@@ -198,7 +198,7 @@ GET /contents
         "suggestedType": "video_content",
         "suggestedLevel": "beginner",
         "suggestedTags": ["react", "javascript", "前端", "教學"],
-        "suggestedCategory": "程式設計",
+        "suggestedCategory": 1,
         "classificationReason": "包含教學、入門等關鍵字，影片時長適合學習",
         "resourceId": null,
         "createdAt": "2024-01-15T10:00:00Z",
@@ -589,10 +589,10 @@ interface CollectedContent {
   reviewNote: string | null;
   isLearningContent: boolean | null;
   confidenceScore: number | null;
-  suggestedType: string | null;
-  suggestedLevel: string | null;
+  suggestedType: ResourceType | null;
+  suggestedLevel: LevelType | null;
   suggestedTags: string[];
-  suggestedCategory: string | null;
+  suggestedCategory: number | null;  // 分類 ID，參照 categories 表
   classificationReason: string | null;
   resourceId: string | null;
   createdAt: string;
