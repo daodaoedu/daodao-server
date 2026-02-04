@@ -23,8 +23,17 @@ import {
   CollectionStats,
 } from '@/types/collection.types';
 import { createAdapter, isPlatformImplemented } from './adapters';
-import { classifyContent, classifyContentBatch } from './classifier.service';
-import { ClassificationInput } from '@/types/classifier.types';
+import {
+  classifyContent,
+  classifyContentBatch,
+  classifyContentBatchWithMode,
+  getClassificationModeInfo,
+} from './classifier.service';
+import {
+  ClassificationInput,
+  ClassificationMode,
+  CLASSIFICATION_MODES,
+} from '@/types/classifier.types';
 import {
   DEFAULT_COLLECTION_PAGE_LIMIT,
   MAX_COLLECTION_PAGE_LIMIT,
@@ -787,11 +796,26 @@ export const classifySingleContent = async (
 
 /**
  * 批次分類內容
+ * @param options - 分類選項
+ * @param options.limit - 最大處理數量 (預設: 10)
+ * @param options.platform - 只處理特定平台
+ * @param options.mode - 分類模式: keyword (關鍵字), ai (AI), auto (自動選擇)
  */
 export const classifyPendingContents = async (
-  options: { limit?: number; platform?: CollectionPlatform } = {}
-): Promise<{ success: number; failed: number; results: Array<{ id: string; success: boolean; error?: string }> }> => {
+  options: { limit?: number; platform?: CollectionPlatform; mode?: ClassificationMode } = {}
+): Promise<{
+  success: number;
+  failed: number;
+  results: Array<{ id: string; success: boolean; error?: string }>;
+  mode: ClassificationMode;
+  modeInfo: { aiAvailable: boolean; aiProvider: string | null };
+}> => {
   const limit = options.limit || 10;
+  const mode = options.mode || CLASSIFICATION_MODES.AUTO;
+
+  // 取得分類模式資訊
+  const modeInfo = getClassificationModeInfo();
+  console.log(`[Collection] Classification mode: ${mode}, AI available: ${modeInfo.aiAvailable}, provider: ${modeInfo.aiProvider}`);
 
   // 取得待分類的內容
   const where: Record<string, unknown> = {
@@ -814,7 +838,13 @@ export const classifyPendingContents = async (
   });
 
   if (contents.length === 0) {
-    return { success: 0, failed: 0, results: [] };
+    return {
+      success: 0,
+      failed: 0,
+      results: [],
+      mode,
+      modeInfo: { aiAvailable: modeInfo.aiAvailable, aiProvider: modeInfo.aiProvider },
+    };
   }
 
   // 建立批次分類輸入
@@ -832,8 +862,8 @@ export const classifyPendingContents = async (
     } as ClassificationInput,
   }));
 
-  // 執行批次分類
-  const batchResult = await classifyContentBatch(inputs);
+  // 根據模式執行批次分類
+  const batchResult = await classifyContentBatchWithMode(inputs, mode);
 
   // 更新資料庫
   for (const result of batchResult.results) {
@@ -866,6 +896,8 @@ export const classifyPendingContents = async (
       success: r.success,
       error: r.error,
     })),
+    mode,
+    modeInfo: { aiAvailable: modeInfo.aiAvailable, aiProvider: modeInfo.aiProvider },
   };
 };
 

@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { collectionService } from '@/services/collection';
 import { CollectionPlatform } from '@/types/collection.types';
+import { ClassificationMode, CLASSIFICATION_MODES } from '@/types/classifier.types';
 import {
   createCollectionSourceSchema,
   updateCollectionSourceSchema,
@@ -380,21 +381,34 @@ export const classifyContent = async (req: Request, res: Response): Promise<void
 /**
  * 批次分類待處理內容
  * POST /api/v1/collection/classify-pending
+ *
+ * Query 參數:
+ * - limit: 最大處理數量 (預設: 10)
+ * - platform: 只處理特定平台 (youtube, github, threads)
+ * - mode: 分類模式 (keyword: 關鍵字, ai: AI, auto: 自動選擇)
  */
 export const classifyPendingContents = async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
     const platform = req.query.platform as string | undefined;
+    const modeParam = req.query.mode as string | undefined;
+
+    // 驗證分類模式
+    const validModes = Object.values(CLASSIFICATION_MODES);
+    const mode: ClassificationMode = validModes.includes(modeParam as ClassificationMode)
+      ? (modeParam as ClassificationMode)
+      : CLASSIFICATION_MODES.AUTO;
 
     const result = await collectionService.classifyPendingContents({
       limit,
       platform: platform as CollectionPlatform | undefined,
+      mode,
     });
 
     res.json(
       createSuccessResponse(
         result,
-        `Classification completed: ${result.success} success, ${result.failed} failed`
+        `Classification completed: ${result.success} success, ${result.failed} failed (mode: ${result.mode})`
       )
     );
   } catch (error) {

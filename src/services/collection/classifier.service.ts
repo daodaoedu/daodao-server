@@ -6,6 +6,8 @@
 import {
   AI_PROVIDERS,
   AIProvider,
+  CLASSIFICATION_MODES,
+  ClassificationMode,
   ClassificationInput,
   ClassificationResult,
   BatchClassificationResult,
@@ -615,4 +617,160 @@ export const classifyContentBatch = async (
 ): Promise<BatchClassificationResult> => {
   const classifier = getClassifier();
   return classifier.classifyBatch(inputs);
+};
+
+// ============================================
+// 分類模式 API
+// ============================================
+
+// 快取各模式的分類器實例
+let keywordClassifier: ClassifierService | null = null;
+let aiClassifier: ClassifierService | null = null;
+
+/**
+ * 取得關鍵字分類器
+ */
+export const getKeywordClassifier = (): ClassifierService => {
+  if (!keywordClassifier) {
+    keywordClassifier = new RuleBasedClassifier();
+  }
+  return keywordClassifier;
+};
+
+/**
+ * 取得 AI 分類器
+ * @throws 如果沒有設定任何 AI API key
+ */
+export const getAIClassifier = (): ClassifierService => {
+  if (!aiClassifier) {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+
+    if (geminiKey) {
+      aiClassifier = new GeminiClassifier({ provider: AI_PROVIDERS.GEMINI, apiKey: geminiKey });
+    } else if (openaiKey) {
+      aiClassifier = new OpenAIClassifier({ provider: AI_PROVIDERS.OPENAI, apiKey: openaiKey });
+    } else if (anthropicKey) {
+      aiClassifier = new ClaudeClassifier({ provider: AI_PROVIDERS.CLAUDE, apiKey: anthropicKey });
+    } else {
+      throw new Error('No AI API key configured. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY');
+    }
+  }
+  return aiClassifier;
+};
+
+/**
+ * 檢查 AI 分類器是否可用
+ */
+export const isAIClassifierAvailable = (): boolean => {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  return Boolean(geminiKey || openaiKey || anthropicKey);
+};
+
+/**
+ * 根據模式取得分類器
+ */
+export const getClassifierByMode = (mode: ClassificationMode): ClassifierService => {
+  switch (mode) {
+    case CLASSIFICATION_MODES.KEYWORD:
+      return getKeywordClassifier();
+    case CLASSIFICATION_MODES.AI:
+      return getAIClassifier();
+    case CLASSIFICATION_MODES.AUTO:
+    default:
+      return getClassifier();
+  }
+};
+
+/**
+ * 使用關鍵字模式分類單一內容
+ */
+export const classifyContentByKeyword = async (
+  input: ClassificationInput
+): Promise<ClassificationResult> => {
+  const classifier = getKeywordClassifier();
+  return classifier.classify(input);
+};
+
+/**
+ * 使用 AI 模式分類單一內容
+ */
+export const classifyContentByAI = async (
+  input: ClassificationInput
+): Promise<ClassificationResult> => {
+  const classifier = getAIClassifier();
+  return classifier.classify(input);
+};
+
+/**
+ * 使用指定模式分類單一內容
+ */
+export const classifyContentWithMode = async (
+  input: ClassificationInput,
+  mode: ClassificationMode = CLASSIFICATION_MODES.AUTO
+): Promise<ClassificationResult> => {
+  const classifier = getClassifierByMode(mode);
+  return classifier.classify(input);
+};
+
+/**
+ * 使用關鍵字模式批次分類
+ */
+export const classifyContentBatchByKeyword = async (
+  inputs: Array<{ id: string; input: ClassificationInput }>
+): Promise<BatchClassificationResult> => {
+  const classifier = getKeywordClassifier();
+  return classifier.classifyBatch(inputs);
+};
+
+/**
+ * 使用 AI 模式批次分類
+ */
+export const classifyContentBatchByAI = async (
+  inputs: Array<{ id: string; input: ClassificationInput }>
+): Promise<BatchClassificationResult> => {
+  const classifier = getAIClassifier();
+  return classifier.classifyBatch(inputs);
+};
+
+/**
+ * 使用指定模式批次分類
+ */
+export const classifyContentBatchWithMode = async (
+  inputs: Array<{ id: string; input: ClassificationInput }>,
+  mode: ClassificationMode = CLASSIFICATION_MODES.AUTO
+): Promise<BatchClassificationResult> => {
+  const classifier = getClassifierByMode(mode);
+  return classifier.classifyBatch(inputs);
+};
+
+/**
+ * 取得當前使用的分類模式資訊
+ */
+export const getClassificationModeInfo = (): {
+  aiAvailable: boolean;
+  aiProvider: string | null;
+  defaultMode: ClassificationMode;
+} => {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+
+  let aiProvider: string | null = null;
+  if (geminiKey) {
+    aiProvider = 'gemini';
+  } else if (openaiKey) {
+    aiProvider = 'openai';
+  } else if (anthropicKey) {
+    aiProvider = 'claude';
+  }
+
+  return {
+    aiAvailable: Boolean(aiProvider),
+    aiProvider,
+    defaultMode: aiProvider ? CLASSIFICATION_MODES.AUTO : CLASSIFICATION_MODES.KEYWORD,
+  };
 };
