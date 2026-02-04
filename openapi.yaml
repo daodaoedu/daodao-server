@@ -2411,8 +2411,8 @@ components:
                 type: string
               description: 用戶角色列表
               example:
-                - normal-student
-                - citizen
+                - normal_student
+                - educator
             educationStage:
               type: string
               nullable: true
@@ -3485,18 +3485,18 @@ components:
             - taichung
             - kaohsiung
             - tainan
-        roleList:
+        positionList:
           type: array
           items:
             type: string
           description: 角色清單
           example:
-            - normal-student
-            - citizen
+            - normal_student
+            - educator
           examples:
-            - - normal-student
-              - citizen
-            - - experimental-educator
+            - - normal_student
+              - educator
+            - - experimental_educator
             - - parents
               - other
         selfIntroduction:
@@ -3769,18 +3769,18 @@ components:
             - - 設計
               - UI/UX
               - 產品
-        roleList:
+        positionList:
           type: array
           items:
             type: string
           description: 角色清單
           example:
-            - normal-student
-            - citizen
+            - normal_student
+            - educator
           examples:
-            - - normal-student
-              - citizen
-            - - experimental-educator
+            - - normal_student
+              - educator
+            - - experimental_educator
             - - parents
               - other
         interestList:
@@ -4007,19 +4007,19 @@ components:
           nullable: true
           description: 角色 ID
           example: 2
-        roleList:
+        positionList:
           type: array
           nullable: true
           items:
             type: string
           description: 角色清單
           example:
-            - normal-student
-            - citizen
+            - normal_student
+            - educator
           examples:
-            - - normal-student
-              - citizen
-            - - experimental-educator
+            - - normal_student
+              - educator
+            - - experimental_educator
             - - parents
               - other
         basicInfo:
@@ -4265,7 +4265,7 @@ components:
         - interestList
         - preferences
         - role
-        - roleList
+        - positionList
         - basicInfo
         - contactList
         - customId
@@ -4658,8 +4658,8 @@ components:
             type: string
           description: 用戶角色列表
           example:
-            - Mentor
-            - citizen
+            - educator
+            - parents
         photoURL:
           type: string
           nullable: true
@@ -5423,8 +5423,8 @@ components:
                 type: string
               description: 用戶角色列表
               example:
-                - normal-student
-                - citizen
+                - normal_student
+                - educator
             photoURL:
               type: string
               nullable: true
@@ -6183,8 +6183,8 @@ components:
                 name: 學習者小明
                 photoURL: https://example.com/avatar/123.jpg
                 roleList:
-                  - normal-student
-                  - citizen
+                  - normal_student
+                  - educator
                 educationStage: university
                 tagList:
                   - 前端
@@ -6244,8 +6244,8 @@ components:
           name: 學習者小明
           photoURL: https://example.com/avatar/123.jpg
           roleList:
-            - normal-student
-            - citizen
+            - normal_student
+            - educator
           educationStage: university
           tagList:
             - 前端
@@ -7052,8 +7052,8 @@ components:
             type: string
           description: 角色列表
           example:
-            - normal-student
-            - citizen
+            - normal_student
+            - educator
         photoURL:
           type: string
           nullable: true
@@ -18971,10 +18971,10 @@ paths:
         - schema:
             type: string
             description: 過濾角色清單（以逗號分隔）
-            example: normal-student,citizen
+            example: normal_student,educator
           required: false
           description: 過濾角色清單（以逗號分隔）
-          name: roleList
+          name: positionList
           in: query
         - schema:
             type: string

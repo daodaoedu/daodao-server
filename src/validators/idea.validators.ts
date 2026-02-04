@@ -329,7 +329,7 @@ export const ideaDataSchema = z.object({
     }),
     roleList: z.array(z.string()).optional().openapi({
       description: '用戶角色列表',
-      example: ['normal-student', 'citizen']
+      example: ['normal_student', 'educator']
     }),
     educationStage: z.string().nullable().optional().openapi({
       description: '教育階段',

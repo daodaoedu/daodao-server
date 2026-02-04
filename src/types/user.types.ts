@@ -49,7 +49,7 @@ export interface UserQueryParams {
   page?: string | number;
   pageSize?: string | number;
   educationStage?: string;
-  roleList?: string;
+  positionList?: string;
   location?: string;
   search?: string;
 }
@@ -73,7 +73,7 @@ export interface CreateUserRequest {
   isOpenProfile?: boolean;
   isSubscribeEmail?: boolean;
   location?: string; // area code
-  roleList?: string[];
+  positionList?: string[];
   selfIntroduction?: string;
   share?: string | string[];
   wantToDoList?: string[];
@@ -114,7 +114,7 @@ export interface UpdateUserRequest {
   share?: string | string[];
   wantToDoList?: string[];
   tagList?: string[];
-  roleList?: string[];
+  positionList?: string[];
   interestList?: string[]; // category names 陣列 (例如: ["education_learning", "nature_environment"])
   preferences?: Record<string, string[]>; // e.g. { "learning_style": ["visual", "audio"] }
   customId?: string;
@@ -184,7 +184,7 @@ export interface FormattedUserResponse {
     shareList: string | string[] | null;
     wantToDoList: string[] | null;
   } | null;
-  roleList: string[] | null;
+  positionList: string[] | null;
   customId: string | null;
   customIdVerified: boolean | null;
   customIdCreatedAt: string | null;

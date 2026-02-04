@@ -97,6 +97,12 @@ describe('Resource Service', () => {
       pagination,
       meta
     }));
+
+    // Default mock for resources.groupBy (used in facets calculation)
+    prismaMock.resources.groupBy.mockResolvedValue([]);
+
+    // Default mock for categories.findMany (used in facets)
+    prismaMock.categories.findMany.mockResolvedValue([]);
   });
   
   // Test data factories matching Prisma schema

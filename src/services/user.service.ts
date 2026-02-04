@@ -401,7 +401,7 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
       wantToDoList: user.basic_info?.want_to_do_list ?
         user.basic_info.want_to_do_list.map(item => String(item)) : null
     },
-    roleList: user.user_positions?.map((up) => up.position.name) || null,
+    positionList: user.user_positions?.map((up) => up.position.name) || null,
     customId: user.custom_id || null,
     customIdVerified: user.custom_id_verified || null,
     customIdCreatedAt: user.custom_id_created_at ?
@@ -439,7 +439,7 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
     page = 1,
     pageSize = 10,
     educationStage,
-    roleList,
+    positionList,
     location,
     search
   } = params;
@@ -470,12 +470,12 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
   }
 
   // 角色過濾
-  if (roleList) {
+  if (positionList) {
     whereConditions.user_positions = {
       some: {
         position: {
           name: {
-            in: String(roleList).split(',')
+            in: String(positionList).split(',')
           }
         }
       }
@@ -600,7 +600,7 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
     searchQuery: search,
     filters: {
       educationStage: educationStage || undefined,
-      roleList: roleList || undefined,
+      positionList: positionList || undefined,
       location: location || undefined
     }
   };
@@ -720,7 +720,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       isOpenProfile,
       isSubscribeEmail,
       location: areaCode,
-      roleList,
+      positionList,
       selfIntroduction,
       share,
       wantToDoList,
@@ -847,9 +847,9 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     });
 
     // 處理職位關聯
-    if (roleList && roleList.length > 0) {
+    if (positionList && positionList.length > 0) {
       const positions = await tx.position.findMany({
-        where: { name: { in: roleList } }
+        where: { name: { in: positionList } }
       });
 
       if (positions.length > 0) {
@@ -983,7 +983,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       share,
       wantToDoList,
       tagList,
-      roleList,
+      positionList,
       preferences,
       // 新增欄位
       professionalField,
@@ -1119,16 +1119,16 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
     });
 
     // 更新職位關聯
-    if (roleList && Array.isArray(roleList)) {
+    if (positionList && Array.isArray(positionList)) {
       // 刪除現有關聯
       await tx.user_positions.deleteMany({
         where: { user_id: user.id }
       });
 
       // 添加新關聯
-      if (roleList.length > 0) {
+      if (positionList.length > 0) {
         const positions = await tx.position.findMany({
-          where: { name: { in: roleList } }
+          where: { name: { in: positionList } }
         });
 
         if (positions.length > 0) {

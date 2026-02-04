@@ -492,7 +492,7 @@ export const userBasicInfoResponseSchema = z.object({
   id: z.string().openapi({ description: '用戶外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000' }),
   name: z.string().openapi({ description: '用戶名稱', example: '學習者小明' }),
   photoURL: z.string().url().nullable().openapi({ description: '用戶頭像 URL', example: 'https://example.com/avatar/123.jpg', format: 'uri' }),
-  roleList: z.array(z.string()).optional().openapi({ description: '用戶角色列表', example: ['normal-student', 'citizen'] }),
+  roleList: z.array(z.string()).optional().openapi({ description: '用戶角色列表', example: ['normal_student', 'educator'] }),
   educationStage: z.string().nullable().optional().openapi({ description: '教育階段', example: 'university' }),
   tagList: z.array(z.string()).optional().openapi({ description: '用戶標籤列表', example: ['前端', 'React'] }),
   selfIntroduction: z.string().nullable().optional().openapi({ description: '自我介紹', example: '熱愛學習的開發者' })
@@ -502,7 +502,7 @@ export const userBasicInfoResponseSchema = z.object({
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: '學習者小明',
     photoURL: 'https://example.com/avatar/123.jpg',
-    roleList: ['normal-student', 'citizen'],
+    roleList: ['normal_student', 'educator'],
     educationStage: 'university',
     tagList: ['前端', 'React'],
     selfIntroduction: '熱愛學習的開發者'
@@ -608,7 +608,7 @@ export const practiceEntityResponseSchema = z.object({
       id: '123e4567-e89b-12d3-a456-426614174000',
       name: '學習者小明',
       photoURL: 'https://example.com/avatar/123.jpg',
-      roleList: ['normal-student', 'citizen'],
+      roleList: ['normal_student', 'educator'],
       educationStage: 'university',
       tagList: ['前端', 'React'],
       selfIntroduction: '熱愛學習的開發者'
