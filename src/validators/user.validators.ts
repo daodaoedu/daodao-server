@@ -183,12 +183,12 @@ export const createUserSchema = z.object({
       example: 'taipei',
       examples: ['taipei', 'taichung', 'kaohsiung', 'tainan']
     }),
-  roleList: z.array(z.string())
+  positionList: z.array(z.string())
     .optional()
     .openapi({
       description: '角色清單',
-      example: ['normal-student', 'citizen'],
-      examples: [['normal-student', 'citizen'], ['experimental-educator'], ['parents', 'other']]
+      example: ['normal_student', 'educator'],
+      examples: [['normal_student', 'educator'], ['experimental_educator'], ['parents', 'other']]
     }),
   selfIntroduction: z.string()
     .optional()
@@ -346,12 +346,12 @@ export const updateUserSchema = z.object({
       example: ['JavaScript', 'React', '前端'],
       examples: [['JavaScript', 'React', '前端'], ['設計', 'UI/UX', '產品']]
     }),
-  roleList: z.array(z.string())
+  positionList: z.array(z.string())
     .optional()
     .openapi({
       description: '角色清單',
-      example: ['normal-student', 'citizen'],
-      examples: [['normal-student', 'citizen'], ['experimental-educator'], ['parents', 'other']]
+      example: ['normal_student', 'educator'],
+      examples: [['normal_student', 'educator'], ['experimental_educator'], ['parents', 'other']]
     }),
   interestList: interestListSchema,
   preferences: z.record(z.string(), z.array(z.string()))
@@ -425,11 +425,11 @@ export const getUserQuerySchema = z.object({
       example: 'university',
       examples: ['elementary', 'junior_high', 'high', 'associate', 'university', 'master', 'doctorate', 'other']
     }),
-  roleList: z.string()
+  positionList: z.string()
     .optional()
     .openapi({
       description: '過濾角色清單（以逗號分隔）',
-      example: 'normal-student,citizen'
+      example: 'normal_student,educator'
     }),
   location: z.string()
     .optional()
@@ -557,10 +557,10 @@ const formattedUserResponseSchema = z.object({
     description: '角色 ID',
     example: 2
   }),
-  roleList: z.array(z.string()).nullable().openapi({
+  positionList: z.array(z.string()).nullable().openapi({
     description: '角色清單',
-    example: ['normal-student', 'citizen'],
-    examples: [['normal-student', 'citizen'], ['experimental-educator'], ['parents', 'other']]
+    example: ['normal_student', 'educator'],
+    examples: [['normal_student', 'educator'], ['experimental_educator'], ['parents', 'other']]
   }),
   basicInfo: z.object({
     selfIntroduction: z.string().nullable().openapi({

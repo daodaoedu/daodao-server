@@ -744,7 +744,7 @@ describe('User Service', () => {
       const mockUsers = createTestUsers(2);
       prismaMock.users.findMany.mockResolvedValue(mockUsers);
 
-      await userService.getAllUsers({ roleList: 'developer,designer' });
+      await userService.getAllUsers({ positionList: 'developer,designer' });
 
       expect(prismaMock.users.findMany).toHaveBeenCalledWith({
         where: expect.objectContaining({

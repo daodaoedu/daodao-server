@@ -3302,8 +3302,8 @@
                 },
                 "description": "用戶角色列表",
                 "example": [
-                  "normal-student",
-                  "citizen"
+                  "normal_student",
+                  "educator"
                 ]
               },
               "educationStage": {
@@ -4824,23 +4824,23 @@
               "tainan"
             ]
           },
-          "roleList": {
+          "positionList": {
             "type": "array",
             "items": {
               "type": "string"
             },
             "description": "角色清單",
             "example": [
-              "normal-student",
-              "citizen"
+              "normal_student",
+              "educator"
             ],
             "examples": [
               [
-                "normal-student",
-                "citizen"
+                "normal_student",
+                "educator"
               ],
               [
-                "experimental-educator"
+                "experimental_educator"
               ],
               [
                 "parents",
@@ -5228,23 +5228,23 @@
               ]
             ]
           },
-          "roleList": {
+          "positionList": {
             "type": "array",
             "items": {
               "type": "string"
             },
             "description": "角色清單",
             "example": [
-              "normal-student",
-              "citizen"
+              "normal_student",
+              "educator"
             ],
             "examples": [
               [
-                "normal-student",
-                "citizen"
+                "normal_student",
+                "educator"
               ],
               [
-                "experimental-educator"
+                "experimental_educator"
               ],
               [
                 "parents",
@@ -5584,7 +5584,7 @@
             "description": "角色 ID",
             "example": 2
           },
-          "roleList": {
+          "positionList": {
             "type": "array",
             "nullable": true,
             "items": {
@@ -5592,16 +5592,16 @@
             },
             "description": "角色清單",
             "example": [
-              "normal-student",
-              "citizen"
+              "normal_student",
+              "educator"
             ],
             "examples": [
               [
-                "normal-student",
-                "citizen"
+                "normal_student",
+                "educator"
               ],
               [
-                "experimental-educator"
+                "experimental_educator"
               ],
               [
                 "parents",
@@ -5917,7 +5917,7 @@
           "interestList",
           "preferences",
           "role",
-          "roleList",
+          "positionList",
           "basicInfo",
           "contactList",
           "customId",
@@ -6446,8 +6446,8 @@
             },
             "description": "用戶角色列表",
             "example": [
-              "Mentor",
-              "citizen"
+              "educator",
+              "parents"
             ]
           },
           "photoURL": {
@@ -7519,8 +7519,8 @@
                 },
                 "description": "用戶角色列表",
                 "example": [
-                  "normal-student",
-                  "citizen"
+                  "normal_student",
+                  "educator"
                 ]
               },
               "photoURL": {
@@ -8504,8 +8504,8 @@
                   "name": "學習者小明",
                   "photoURL": "https://example.com/avatar/123.jpg",
                   "roleList": [
-                    "normal-student",
-                    "citizen"
+                    "normal_student",
+                    "educator"
                   ],
                   "educationStage": "university",
                   "tagList": [
@@ -8581,8 +8581,8 @@
             "name": "學習者小明",
             "photoURL": "https://example.com/avatar/123.jpg",
             "roleList": [
-              "normal-student",
-              "citizen"
+              "normal_student",
+              "educator"
             ],
             "educationStage": "university",
             "tagList": [
@@ -9635,8 +9635,8 @@
             },
             "description": "角色列表",
             "example": [
-              "normal-student",
-              "citizen"
+              "normal_student",
+              "educator"
             ]
           },
           "photoURL": {
@@ -28345,11 +28345,11 @@
             "schema": {
               "type": "string",
               "description": "過濾角色清單（以逗號分隔）",
-              "example": "normal-student,citizen"
+              "example": "normal_student,educator"
             },
             "required": false,
             "description": "過濾角色清單（以逗號分隔）",
-            "name": "roleList",
+            "name": "positionList",
             "in": "query"
           },
           {

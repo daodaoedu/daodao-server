@@ -342,7 +342,7 @@ export const resourceReviewResponseSchema = z.object({
     }),
     roleList: z.array(z.string()).optional().openapi({
       description: '用戶角色列表',
-      example: ['normal-student', 'citizen']
+      example: ['normal_student', 'educator']
     }),
     photoURL: z.string().nullable().openapi({
       description: '用戶頭像 URL',

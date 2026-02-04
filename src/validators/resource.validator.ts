@@ -413,7 +413,7 @@ const userBasicInfoSchema = z.object({
   }),
   roleList: z.array(z.string()).optional().openapi({
     description: '用戶角色列表',
-    example: ['Mentor', 'citizen']
+    example: ['educator', 'parents']
   }),
   photoURL: z.string().url().nullable().openapi({
     description: '用戶頭像 URL',

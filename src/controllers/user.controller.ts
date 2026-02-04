@@ -150,7 +150,7 @@ const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => 
     }
 
     // 需要解析為 JSON 的欄位
-    const jsonFields = ['wantToDoList', 'tagList', 'roleList', 'interestList', 'preferences', 'contactList', 'professionalField'];
+    const jsonFields = ['wantToDoList', 'tagList', 'positionList', 'interestList', 'preferences', 'contactList', 'professionalField'];
 
     // 需要解析為 boolean 的欄位
     const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail'];
