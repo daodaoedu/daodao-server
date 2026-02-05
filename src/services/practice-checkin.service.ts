@@ -134,11 +134,15 @@ export async function createCheckIn(
         updated_at: new Date()
       };
 
-      // 決定新狀態
+      // 決定新狀態（FRD: 完成條件是到期日，不是進度）
+      // 檢查是否已過結束日期
+      const endDate = practice.end_date ? new Date(practice.end_date) : null;
+      const hasPassedEndDate = endDate ? today.getTime() > endDate.getTime() : false;
+
       const txNewStatus = determineNewStatus({
         currentStatus: practice.status as PracticeStatusType,
         hasCheckIns: true,
-        hasReachedTarget: txProgressResult.hasReachedMinTarget
+        hasPassedEndDate
       });
       practiceUpdateData.status = txNewStatus;
 
