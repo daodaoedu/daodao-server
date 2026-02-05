@@ -33,6 +33,7 @@ import {
 import {
   determineNewStatus,
   canEdit,
+  checkHasPassedEndDate,
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
@@ -1243,10 +1244,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     const hasCheckIns = checkInCount > 0;
 
     // 檢查是否已過結束日期（FRD: 完成條件是到期日）
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const endDate = practice.end_date ? new Date(practice.end_date) : null;
-    const hasPassedEndDate = endDate ? today.getTime() > endDate.getTime() : false;
+    const hasPassedEndDate = checkHasPassedEndDate(practice.end_date);
 
     // 根據是否有打卡記錄和是否過期決定恢復狀態
     const newStatus = determineNewStatus({
