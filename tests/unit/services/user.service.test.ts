@@ -301,6 +301,13 @@ describe('User Service', () => {
         contacts: { id: 1, email: 'old@example.com' }
       });
       const updatedUser = createTestUser();
+      const updateDataWithContactList = {
+        ...updateData,
+        contactList: {
+          instagram: 'test_ig',
+          discord: 'test_discord'
+        }
+      };
 
       prismaMock.users.findUnique
         .mockResolvedValueOnce(existingUser)
@@ -308,9 +315,39 @@ describe('User Service', () => {
       prismaMock.users.update.mockResolvedValue(updatedUser);
       prismaMock.contacts.update.mockResolvedValue(createTestContact());
 
-      await userService.updateUser(existingUser.external_id, updateData);
+      await userService.updateUser(existingUser.external_id, updateDataWithContactList);
 
       expect(prismaMock.contacts.update).toHaveBeenCalled();
+    });
+
+    it('should clear contact fields when empty strings are provided', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'old@example.com', ig: 'old_ig' }
+      });
+      const updatedUser = createTestUser();
+      const updateDataWithClearContact = {
+        contactList: {
+          instagram: '', // Clear instagram
+          discord: 'new_discord'
+        }
+      };
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+      prismaMock.contacts.update.mockResolvedValue(createTestContact());
+
+      await userService.updateUser(existingUser.external_id, updateDataWithClearContact);
+
+      expect(prismaMock.contacts.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            ig: null, // Empty string should be converted to null
+            discord: 'new_discord'
+          })
+        })
+      );
     });
 
     it('should update customId successfully', async () => {
