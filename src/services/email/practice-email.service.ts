@@ -935,7 +935,7 @@ function generateFirstCheckInEmailContent(
 
   return generateStandardEmail({
     title: '島島阿學 - 主題實踐',
-    subject: `你在 ${practiceTitle} 的第一步 ✨`,
+    subject: `你在【${practiceTitle}】的第一步 ✨`,
     preheader: `剛剛收到你的第一則打卡紀錄，真的很替你開心！`,
     content
   });
@@ -969,7 +969,7 @@ function generateWeeklySummaryEmailContent(
 
   switch (emailCode) {
     case 'PE03': // 週回顧（有打卡且有文字）
-      subject = `${practiceTitle} 每週回顧：看見生活中的成長微光 ✨`;
+      subject = `【${practiceTitle}】每週回顧：看見生活中的成長微光 ✨`;
       preheader = `這週你完成了 ${weeklyCount} 次打卡，累積 ${totalCount} 則記錄！`;
       content = `
         <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1017,7 +1017,7 @@ function generateWeeklySummaryEmailContent(
       break;
 
     case 'PE04': // 週回顧（有打卡但無文字）- 與 PE03 相同但移除 Highlight 區塊
-      subject = `${practiceTitle} 每週回顧：看見生活中的成長微光 ✨`;
+      subject = `【${practiceTitle}】每週回顧：看見生活中的成長微光 ✨`;
       preheader = `這週你完成了 ${weeklyCount} 次打卡，繼續加油！`;
       content = `
         <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1081,7 +1081,7 @@ function generateWeeklySummaryEmailContent(
 
     case 'PE06': // 週回顧（當週無打卡但累積有打卡）
     default:
-      subject = `關於 ${practiceTitle} 的下一步 🛤️`;
+      subject = `關於【${practiceTitle}】的下一步 🛤️`;
       preheader = `我們在這裡，隨時歡迎你回來`;
       content = `
         <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1148,7 +1148,7 @@ function generateFinalSummaryEmailContent(
 
   if (emailCode === 'PE07') {
     // PE07: 完成總結（有打卡）
-    subject = `這是你的 ${practiceTitle} 成長足跡`;
+    subject = `這是你的【${practiceTitle}】成長足跡`;
     preheader = `為期 ${durationDays} 天的旅程告一段落，你完成了 ${totalCheckIns} 次打卡！`;
     content = `
       <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1204,7 +1204,7 @@ function generateFinalSummaryEmailContent(
     `;
   } else {
     // PE08: 完成總結（無打卡）
-    subject = `關於 ${practiceTitle}`;
+    subject = `關於【${practiceTitle}】`;
     preheader = `為期 ${durationDays} 天的週期告一段落，我們隨時歡迎你回來`;
     content = `
       <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
