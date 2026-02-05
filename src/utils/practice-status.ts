@@ -34,8 +34,8 @@ export interface StatusTransitionContext {
   currentStatus: PracticeStatusType;
   /** 是否有打卡記錄 */
   hasCheckIns: boolean;
-  /** 是否達成目標 */
-  hasReachedTarget: boolean;
+  /** 是否已過結束日期（FRD: 完成條件是到期日，非進度） */
+  hasPassedEndDate?: boolean;
   /** 是否手動封存 */
   isArchiving?: boolean;
   /** 是否取消封存 */
@@ -88,11 +88,16 @@ export function isValidTransition(
 /**
  * 根據上下文決定新狀態
  *
+ * FRD 規定：
+ * - 完成條件是「到期日」，不是進度達到 100%
+ * - 即便進度已達 100%，若時間未到，狀態仍為「進行中」
+ * - 時間到達結束日，無論進度為何，狀態轉為「完成」
+ *
  * @param ctx 狀態轉換上下文
  * @returns 新狀態
  */
 export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatusType {
-  const { currentStatus, hasCheckIns, hasReachedTarget, isArchiving, isUnarchiving, previousStatus } = ctx;
+  const { currentStatus, hasCheckIns, hasPassedEndDate, isArchiving, isUnarchiving, previousStatus } = ctx;
 
   // 手動封存
   if (isArchiving) {
@@ -108,8 +113,8 @@ export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatus
     return hasCheckIns ? 'active' : 'not_started';
   }
 
-  // 達成目標
-  if (hasReachedTarget && currentStatus !== 'archived') {
+  // 已過結束日期：轉為完成（FRD: 到期日即完成日）
+  if (hasPassedEndDate && currentStatus !== 'archived') {
     return 'completed';
   }
 
