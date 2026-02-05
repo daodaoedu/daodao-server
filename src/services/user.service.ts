@@ -1080,31 +1080,32 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
 
     // 更新聯絡方式
     // 使用 emptyToNull 處理：undefined = 不更新，空字串 = 清空
-    if (user.contacts && contactList !== undefined) {
-      await tx.contacts.update({
-        where: { id: user.contacts.id },
-        data: {
-          photo_url: photoURL,
-          is_subscribe_email: isSubscribeEmail,
-          ig: emptyToNull(contactList.instagram),
-          discord: emptyToNull(contactList.discord),
-          line: emptyToNull(contactList.line),
-          fb: emptyToNull(contactList.facebook),
-          threads: emptyToNull(contactList.threads),
-          linkedin: emptyToNull(contactList.linkedin),
-          website: emptyToNull(contactList.website),
-          github: emptyToNull(contactList.github)
-        }
-      });
-    } else if (user.contacts && (photoURL !== undefined || isSubscribeEmail !== undefined)) {
-      // 只有當 photoURL 或 isSubscribeEmail 需要更新時才更新
-      await tx.contacts.update({
-        where: { id: user.contacts.id },
-        data: {
-          photo_url: photoURL,
-          is_subscribe_email: isSubscribeEmail
-        }
-      });
+    if (user.contacts) {
+      const contactData: Record<string, string | boolean | null | undefined> = {};
+
+      if (photoURL !== undefined) {
+        contactData.photo_url = photoURL;
+      }
+      if (isSubscribeEmail !== undefined) {
+        contactData.is_subscribe_email = isSubscribeEmail;
+      }
+      if (contactList !== undefined) {
+        contactData.ig = emptyToNull(contactList.instagram);
+        contactData.discord = emptyToNull(contactList.discord);
+        contactData.line = emptyToNull(contactList.line);
+        contactData.fb = emptyToNull(contactList.facebook);
+        contactData.threads = emptyToNull(contactList.threads);
+        contactData.linkedin = emptyToNull(contactList.linkedin);
+        contactData.website = emptyToNull(contactList.website);
+        contactData.github = emptyToNull(contactList.github);
+      }
+
+      if (Object.keys(contactData).length > 0) {
+        await tx.contacts.update({
+          where: { id: user.contacts.id },
+          data: contactData
+        });
+      }
     }
 
     // 更新基本資訊
