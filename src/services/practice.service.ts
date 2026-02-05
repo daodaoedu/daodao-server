@@ -305,8 +305,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       loggerService.info('Practice view recorded', { practiceId: id, userId });
     }
 
-    // 取得統計數據、標籤和資源 - 暫時只查詢存在的表格
-    const [comments, tags, checkInCounts, lastCheckInDates, entityResources] = await Promise.all([
+    // 取得統計數據、標籤和資源
+    const [comments, tags, checkInCounts, lastCheckInDates, resources] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -328,31 +328,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       // 查詢最後打卡時間
       getLastCheckInDates([id]),
       // 查詢資源
-      prismaClient.entity_resources.findMany({
-        where: {
-          entity_type: 'practice',
-          entity_id: id,
-          deleted_at: null
-        },
-        include: {
-          resources: {
-            select: {
-              id: true,
-              external_id: true,
-              name: true,
-              url: true
-            }
-          }
-        }
-      })
+      getResourcesForPractice(id)
     ]);
-
-    // 轉換資源為 API 格式
-    const resources: PracticeResourceEntity[] = entityResources.map(er => ({
-      id: er.resources.external_id || String(er.resources.id),
-      name: er.resources.name,
-      url: er.resources.url || undefined
-    }));
 
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
@@ -720,7 +697,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     }
 
     // 取得統計數據、標籤和資源
-    const [comments, updatedTags, checkInCounts, lastCheckInDates, entityResources] = await Promise.all([
+    const [comments, updatedTags, checkInCounts, lastCheckInDates, resources] = await Promise.all([
       getCommentCounts([id]),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
@@ -742,32 +719,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       // 查詢最後打卡時間
       getLastCheckInDates([id]),
       // 查詢資源
-      prismaClient.entity_resources.findMany({
-        where: {
-          entity_type: 'practice',
-          entity_id: id,
-          deleted_at: null
-        },
-        include: {
-          resources: {
-            select: {
-              id: true,
-              external_id: true,
-              name: true,
-              url: true
-            }
-          }
-        }
-      })
+      getResourcesForPractice(id)
     ]);
-
-    // 轉換資源為 API 格式
-    const resources: PracticeResourceEntity[] = entityResources.map(er => ({
-      id: er.resources.external_id || String(er.resources.id),
-      name: er.resources.name,
-      url: er.resources.url || undefined
-    }));
-
 
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
@@ -1170,6 +1123,42 @@ async function getLastCheckInDates(practiceIds: number[]): Promise<Record<number
   } catch (error) {
     loggerService.warn('Failed to get last check-in dates', { practiceIds, error });
     return {};
+  }
+}
+
+/**
+ * 取得實踐的資源列表
+ * @param practiceId 實踐 ID
+ * @returns 資源列表（API 格式）
+ */
+async function getResourcesForPractice(practiceId: number): Promise<PracticeResourceEntity[]> {
+  try {
+    const entityResources = await prismaClient.entity_resources.findMany({
+      where: {
+        entity_type: 'practice',
+        entity_id: practiceId,
+        deleted_at: null
+      },
+      include: {
+        resources: {
+          select: {
+            id: true,
+            external_id: true,
+            name: true,
+            url: true
+          }
+        }
+      }
+    });
+
+    return entityResources.map(er => ({
+      id: er.resources.external_id || String(er.resources.id),
+      name: er.resources.name,
+      url: er.resources.url || undefined
+    }));
+  } catch (error) {
+    loggerService.warn('Failed to get resources for practice', { practiceId, error });
+    return [];
   }
 }
 
