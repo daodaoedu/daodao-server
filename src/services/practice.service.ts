@@ -719,8 +719,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       });
     }
 
-    // 取得統計數據和標籤 - 暫時只查詢存在的表格
-    const [comments, updatedTags, checkInCounts, lastCheckInDates] = await Promise.all([
+    // 取得統計數據、標籤和資源
+    const [comments, updatedTags, checkInCounts, lastCheckInDates, entityResources] = await Promise.all([
       getCommentCounts([id]),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
@@ -740,8 +740,33 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       // 查詢打卡次數
       getCheckInCounts([id]),
       // 查詢最後打卡時間
-      getLastCheckInDates([id])
+      getLastCheckInDates([id]),
+      // 查詢資源
+      prismaClient.entity_resources.findMany({
+        where: {
+          entity_type: 'practice',
+          entity_id: id,
+          deleted_at: null
+        },
+        include: {
+          resources: {
+            select: {
+              id: true,
+              external_id: true,
+              name: true,
+              url: true
+            }
+          }
+        }
+      })
     ]);
+
+    // 轉換資源為 API 格式
+    const resources: PracticeResourceEntity[] = entityResources.map(er => ({
+      id: er.resources.external_id || String(er.resources.id),
+      name: er.resources.name,
+      url: er.resources.url || undefined
+    }));
 
 
     const practiceEntity: PracticeEntity = {
@@ -758,6 +783,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       hasResources: practice.has_resources || false,
+      resources: resources.length > 0 ? resources : undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
       lastCheckinAt: lastCheckInDates[id]?.toISOString(),
