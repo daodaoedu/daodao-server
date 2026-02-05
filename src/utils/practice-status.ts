@@ -34,8 +34,8 @@ export interface StatusTransitionContext {
   currentStatus: PracticeStatusType;
   /** 是否有打卡記錄 */
   hasCheckIns: boolean;
-  /** 是否達成目標 */
-  hasReachedTarget: boolean;
+  /** 是否已過結束日期（FRD: 完成條件是到期日，非進度） */
+  hasPassedEndDate?: boolean;
   /** 是否手動封存 */
   isArchiving?: boolean;
   /** 是否取消封存 */
@@ -88,29 +88,35 @@ export function isValidTransition(
 /**
  * 根據上下文決定新狀態
  *
+ * FRD 規定：
+ * - 完成條件是「到期日」，不是進度達到 100%
+ * - 即便進度已達 100%，若時間未到，狀態仍為「進行中」
+ * - 時間到達結束日，無論進度為何，狀態轉為「完成」
+ *
  * @param ctx 狀態轉換上下文
  * @returns 新狀態
  */
 export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatusType {
-  const { currentStatus, hasCheckIns, hasReachedTarget, isArchiving, isUnarchiving, previousStatus } = ctx;
+  const { currentStatus, hasCheckIns, hasPassedEndDate, isArchiving, isUnarchiving, previousStatus } = ctx;
 
   // 手動封存
   if (isArchiving) {
     return 'archived';
   }
 
-  // 取消封存：回到之前的狀態
+  // 已過結束日期：轉為完成（FRD: 到期日即完成日）
+  // 包含取消封存時，如果已過期也應該變成 completed
+  if (hasPassedEndDate && (currentStatus !== 'archived' || isUnarchiving)) {
+    return 'completed';
+  }
+
+  // 取消封存：回到之前的狀態（僅限未過期的實踐）
   if (isUnarchiving && currentStatus === 'archived') {
     if (previousStatus && previousStatus !== 'archived') {
       return previousStatus;
     }
     // 根據是否有打卡記錄決定回到哪個狀態
     return hasCheckIns ? 'active' : 'not_started';
-  }
-
-  // 達成目標
-  if (hasReachedTarget && currentStatus !== 'archived') {
-    return 'completed';
   }
 
   // 首次打卡：not_started → active
@@ -192,6 +198,33 @@ export function canDelete(status: PracticeStatusType): boolean {
  */
 export function isValidStatus(status: string): status is PracticeStatusType {
   return ['draft', 'not_started', 'active', 'completed', 'archived'].includes(status);
+}
+
+/**
+ * 檢查實踐是否已過結束日期
+ *
+ * 使用 UTC 日期比較，確保跨時區一致性。
+ * 邏輯：today > end_date（隔天才算過期，end_date 當天仍可打卡）
+ *
+ * @param endDate 結束日期（可為 null）
+ * @param referenceDate 參考日期（預設為今天 UTC 零點）
+ * @returns 是否已過結束日期
+ */
+export function checkHasPassedEndDate(
+  endDate: Date | null | undefined,
+  referenceDate?: Date
+): boolean {
+  if (!endDate) {
+    return false;
+  }
+
+  const today = referenceDate ? new Date(referenceDate) : new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const endDateTime = new Date(endDate);
+  endDateTime.setUTCHours(0, 0, 0, 0);
+
+  return today.getTime() > endDateTime.getTime();
 }
 
 /**
