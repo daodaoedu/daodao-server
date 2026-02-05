@@ -89,7 +89,8 @@ export async function sendPracticeCreatedEmail(
       durationDays,
       frequencyMinDays,
       frequencyMaxDays,
-      targetCheckIns
+      targetCheckIns,
+      action: practice.practice_action || undefined
     };
 
     // === 去重複檢查 ===
@@ -718,7 +719,8 @@ function generatePracticeCreatedEmailContent(
     startDate,
     durationDays,
     frequencyMinDays,
-    frequencyMaxDays
+    frequencyMaxDays,
+    action
   } = variables;
 
   const frequencyText = frequencyMinDays === frequencyMaxDays
@@ -726,7 +728,7 @@ function generatePracticeCreatedEmailContent(
     : `${frequencyMinDays}-${frequencyMaxDays} 天`;
 
   // 取得實踐行動描述（若有）
-  const actionText = (variables as { action?: string }).action || '學習';
+  const actionText = action || '學習';
 
   const content = `
     <!-- Greeting -->
@@ -797,7 +799,7 @@ function generatePracticeCreatedEmailContent(
       <tr>
         <td class="text-block" style="padding-bottom: 24px;">
           <p style="margin: 0; font-size: 16px; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
-            我們也會在每週日寄出當週星期一至星期六的打卡記錄摘要，幫助你回顧一週的收獲與成長！
+            我們也會在每7天寄出打卡記錄摘要，幫助你回顧過去幾天的收獲與成長！
           </p>
         </td>
       </tr>
@@ -875,32 +877,7 @@ function generateFirstCheckInEmailContent(
       <tr>
         <td class="text-block" style="padding-bottom: 16px;">
           <p style="margin: 0; font-size: 16px; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
-            每則紀錄的意義，或許比你想像的還要大。當你寫下你的想法和感受時，你也同時在幫助其他人！
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <!-- 三點意義 -->
-    <table role="presentation" width="100%" style="margin: 24px 0;">
-      <tr>
-        <td style="padding: 12px 0;">
-          <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">
-            <strong>✨ 提供靈感：</strong>你的觀點，可能剛好解開了某個人卡關已久的難題。
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px 0;">
-          <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">
-            <strong>🤝 創造共鳴：</strong>當你分享困惑或挑戰時，會讓正在經歷同樣狀況的人感到我不孤單。
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px 0;">
-          <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">
-            <strong>🎇 激盪火花：</strong>一個微小的想法，經常能引發其他人更深層的思考與對話。
+            每則紀錄的意義比你想像的還要大。當你寫下你的想法和感受時，是在幫助明天的自己，同時也可能為其他人帶來啟發！
           </p>
         </td>
       </tr>
@@ -933,7 +910,7 @@ function generateFirstCheckInEmailContent(
 
   return generateStandardEmail({
     title: '島島阿學 - 主題實踐',
-    subject: `你在 ${practiceTitle} 的第一步 ✨`,
+    subject: `你在【${practiceTitle}】的第一次打卡紀錄 ✨`,
     preheader: `剛剛收到你的第一則打卡紀錄，真的很替你開心！`,
     content
   });
@@ -967,7 +944,7 @@ function generateWeeklySummaryEmailContent(
 
   switch (emailCode) {
     case 'PE03': // 週回顧（有打卡且有文字）
-      subject = `${practiceTitle} 每週回顧：看見生活中的成長微光 ✨`;
+      subject = `【${practiceTitle}】每週回顧：看見生活中的成長微光 ✨`;
       preheader = `這週你完成了 ${weeklyCount} 次打卡，累積 ${totalCount} 則記錄！`;
       content = `
         <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1015,7 +992,7 @@ function generateWeeklySummaryEmailContent(
       break;
 
     case 'PE04': // 週回顧（有打卡但無文字）- 與 PE03 相同但移除 Highlight 區塊
-      subject = `${practiceTitle} 每週回顧：看見生活中的成長微光 ✨`;
+      subject = `【${practiceTitle}】每週回顧：看見生活中的成長微光 ✨`;
       preheader = `這週你完成了 ${weeklyCount} 次打卡，繼續加油！`;
       content = `
         <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1079,7 +1056,7 @@ function generateWeeklySummaryEmailContent(
 
     case 'PE06': // 週回顧（當週無打卡但累積有打卡）
     default:
-      subject = `關於 ${practiceTitle} 的下一步 🛤️`;
+      subject = `關於【${practiceTitle}】的下一步 🛤️`;
       preheader = `我們在這裡，隨時歡迎你回來`;
       content = `
         <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1146,7 +1123,7 @@ function generateFinalSummaryEmailContent(
 
   if (emailCode === 'PE07') {
     // PE07: 完成總結（有打卡）
-    subject = `這是你的 ${practiceTitle} 成長足跡`;
+    subject = `這是你的【${practiceTitle}】成長足跡`;
     preheader = `為期 ${durationDays} 天的旅程告一段落，你完成了 ${totalCheckIns} 次打卡！`;
     content = `
       <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
@@ -1202,7 +1179,7 @@ function generateFinalSummaryEmailContent(
     `;
   } else {
     // PE08: 完成總結（無打卡）
-    subject = `關於 ${practiceTitle}`;
+    subject = `關於【${practiceTitle}】`;
     preheader = `為期 ${durationDays} 天的週期告一段落，我們隨時歡迎你回來`;
     content = `
       <h2 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading};">
