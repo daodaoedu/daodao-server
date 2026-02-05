@@ -48,6 +48,20 @@ import {
 } from '../constants/validation';
 
 /**
+ * 將空字串轉換為 null，用於清空欄位
+ * undefined 表示不更新，空字串表示清空
+ */
+const emptyToNull = (value: string | undefined | null): string | null | undefined => {
+  if (value === undefined) {
+    return undefined; // 不更新
+  }
+  if (value === null || value === '') {
+    return null; // 清空
+  }
+  return value;
+};
+
+/**
  * 獲取用戶標籤
  */
 const getUserTags = async (userId: number): Promise<string[]> => {
@@ -1065,22 +1079,33 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
     }
 
     // 更新聯絡方式
+    // 使用 emptyToNull 處理：undefined = 不更新，空字串 = 清空
     if (user.contacts) {
-      await tx.contacts.update({
-        where: { id: user.contacts.id },
-        data: {
-          photo_url: photoURL,
-          is_subscribe_email: isSubscribeEmail,
-          ig: contactList?.instagram,
-          discord: contactList?.discord,
-          line: contactList?.line,
-          fb: contactList?.facebook,
-          threads: contactList?.threads,
-          linkedin: contactList?.linkedin,
-          website: contactList?.website,
-          github: contactList?.github
-        }
-      });
+      const contactData: Record<string, string | boolean | null | undefined> = {};
+
+      if (photoURL !== undefined) {
+        contactData.photo_url = photoURL;
+      }
+      if (isSubscribeEmail !== undefined) {
+        contactData.is_subscribe_email = isSubscribeEmail;
+      }
+      if (contactList !== undefined) {
+        contactData.ig = emptyToNull(contactList.instagram);
+        contactData.discord = emptyToNull(contactList.discord);
+        contactData.line = emptyToNull(contactList.line);
+        contactData.fb = emptyToNull(contactList.facebook);
+        contactData.threads = emptyToNull(contactList.threads);
+        contactData.linkedin = emptyToNull(contactList.linkedin);
+        contactData.website = emptyToNull(contactList.website);
+        contactData.github = emptyToNull(contactList.github);
+      }
+
+      if (Object.keys(contactData).length > 0) {
+        await tx.contacts.update({
+          where: { id: user.contacts.id },
+          data: contactData
+        });
+      }
     }
 
     // 更新基本資訊
