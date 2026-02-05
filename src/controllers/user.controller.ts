@@ -151,8 +151,6 @@ const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => 
   const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail'];
 
   for (const [key, value] of Object.entries(body)) {
-    // 對於 JSON 欄位，空字串應該跳過（代表未提供）
-    // 對於其他欄位，空字串也應該跳過（undefined/null 會被處理）
     if (value === undefined || value === null) {
       continue;
     }
