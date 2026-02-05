@@ -57,20 +57,29 @@ export const COMPLETED_PROGRESS = 100;
 /**
  * 計算最低目標打卡次數
  *
- * 公式：Math.floor(durationDays / frequencyMaxDays)
- * 例如：30 天實踐，每 3-7 天打卡 → 最低 30/7 = 4 次
+ * 公式：Math.ceil(週數 × 每週最少打卡天數)
+ * - frequencyMinDays 代表「每週最少打卡幾天」
+ * - 週數 = durationDays / 7
  *
+ * 例如：14 天實踐，每週 4-7 天打卡
+ * - 週數 = 14 / 7 = 2
+ * - 最低目標 = Math.ceil(2 × 4) = 8 次
+ *
+ * @see FRD：docs/practice-mvp/主題實踐_ 建立與打卡 - FRD.md
  * @param config 實踐配置
  * @returns 最低目標打卡次數
  */
 export function calculateMinTargetCheckIns(config: PracticeProgressConfig): number {
-  const { durationDays, frequencyMaxDays } = config;
+  const { durationDays, frequencyMinDays } = config;
 
-  if (frequencyMaxDays <= 0) {
+  if (frequencyMinDays <= 0 || durationDays <= 0) {
     return 1;
   }
 
-  const minTarget = Math.floor(durationDays / frequencyMaxDays);
+  // 計算週數（可以是小數）
+  const weeks = durationDays / 7;
+  // 最低目標 = 週數 × 每週最少打卡天數，向上取整
+  const minTarget = Math.ceil(weeks * frequencyMinDays);
   return Math.max(minTarget, 1); // 至少 1 次
 }
 
