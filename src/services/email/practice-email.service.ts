@@ -877,32 +877,7 @@ function generateFirstCheckInEmailContent(
       <tr>
         <td class="text-block" style="padding-bottom: 16px;">
           <p style="margin: 0; font-size: 16px; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
-            每則紀錄的意義，或許比你想像的還要大。當你寫下你的想法和感受時，你也同時在幫助其他人！
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <!-- 三點意義 -->
-    <table role="presentation" width="100%" style="margin: 24px 0;">
-      <tr>
-        <td style="padding: 12px 0;">
-          <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">
-            <strong>✨ 提供靈感：</strong>你的觀點，可能剛好解開了某個人卡關已久的難題。
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px 0;">
-          <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">
-            <strong>🤝 創造共鳴：</strong>當你分享困惑或挑戰時，會讓正在經歷同樣狀況的人感到我不孤單。
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px 0;">
-          <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">
-            <strong>🎇 激盪火花：</strong>一個微小的想法，經常能引發其他人更深層的思考與對話。
+            每則紀錄的意義比你想像的還要大。當你寫下你的想法和感受時，是在幫助明天的自己，同時也可能為其他人帶來啟發！
           </p>
         </td>
       </tr>
@@ -935,7 +910,7 @@ function generateFirstCheckInEmailContent(
 
   return generateStandardEmail({
     title: '島島阿學 - 主題實踐',
-    subject: `你在【${practiceTitle}】的第一步 ✨`,
+    subject: `你在【${practiceTitle}】的第一次打卡紀錄 ✨`,
     preheader: `剛剛收到你的第一則打卡紀錄，真的很替你開心！`,
     content
   });
