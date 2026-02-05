@@ -104,18 +104,19 @@ export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatus
     return 'archived';
   }
 
-  // 取消封存：回到之前的狀態
+  // 已過結束日期：轉為完成（FRD: 到期日即完成日）
+  // 包含取消封存時，如果已過期也應該變成 completed
+  if (hasPassedEndDate && (currentStatus !== 'archived' || isUnarchiving)) {
+    return 'completed';
+  }
+
+  // 取消封存：回到之前的狀態（僅限未過期的實踐）
   if (isUnarchiving && currentStatus === 'archived') {
     if (previousStatus && previousStatus !== 'archived') {
       return previousStatus;
     }
     // 根據是否有打卡記錄決定回到哪個狀態
     return hasCheckIns ? 'active' : 'not_started';
-  }
-
-  // 已過結束日期：轉為完成（FRD: 到期日即完成日）
-  if (hasPassedEndDate && currentStatus !== 'archived') {
-    return 'completed';
   }
 
   // 首次打卡：not_started → active
@@ -197,6 +198,33 @@ export function canDelete(status: PracticeStatusType): boolean {
  */
 export function isValidStatus(status: string): status is PracticeStatusType {
   return ['draft', 'not_started', 'active', 'completed', 'archived'].includes(status);
+}
+
+/**
+ * 檢查實踐是否已過結束日期
+ *
+ * 使用 UTC 日期比較，確保跨時區一致性。
+ * 邏輯：today > end_date（隔天才算過期，end_date 當天仍可打卡）
+ *
+ * @param endDate 結束日期（可為 null）
+ * @param referenceDate 參考日期（預設為今天 UTC 零點）
+ * @returns 是否已過結束日期
+ */
+export function checkHasPassedEndDate(
+  endDate: Date | null | undefined,
+  referenceDate?: Date
+): boolean {
+  if (!endDate) {
+    return false;
+  }
+
+  const today = referenceDate ? new Date(referenceDate) : new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const endDateTime = new Date(endDate);
+  endDateTime.setUTCHours(0, 0, 0, 0);
+
+  return today.getTime() > endDateTime.getTime();
 }
 
 /**
