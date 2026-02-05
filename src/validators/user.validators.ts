@@ -75,56 +75,61 @@ const referralSourceSchema = z
     examples: ['instagram', 'facebook', 'friend_referral', 'others']
   });
 
+// 允許清空欄位的字串 schema（空字串轉換為空字串保留，用於清空欄位）
+const clearableStringSchema = z.string()
+  .optional()
+  .transform(val => val === '' ? '' : val);
+
+// 允許清空的 URL schema（空字串或非 URL 跳過驗證）
+const clearableUrlSchema = z.string()
+  .optional()
+  .refine(
+    (val) => val === undefined || val === '' || z.string().url().safeParse(val).success,
+    { message: '無效的網址格式' }
+  )
+  .transform(val => val === '' ? '' : val);
+
 // 聯絡資訊 schema
 const contactListSchema = z.object({
-  instagram: z.string()
-    .optional()
+  instagram: clearableStringSchema
     .openapi({
-      description: 'Instagram 帳號',
+      description: 'Instagram 帳號（傳空字串清空）',
       example: '@john_doe'
     }),
-  discord: z.string()
-    .optional()
+  discord: clearableStringSchema
     .openapi({
-      description: 'Discord 帳號',
+      description: 'Discord 帳號（傳空字串清空）',
       example: 'JohnDoe#1234'
     }),
-  line: z.string()
-    .optional()
+  line: clearableStringSchema
     .openapi({
-      description: 'LINE ID',
+      description: 'LINE ID（傳空字串清空）',
       example: 'john_doe_line'
     }),
-  facebook: z.string()
-    .optional()
+  facebook: clearableStringSchema
     .openapi({
-      description: 'Facebook 帳號',
+      description: 'Facebook 帳號（傳空字串清空）',
       example: 'john.doe.fb'
     }),
-  threads: z.string()
-    .optional()
+  threads: clearableStringSchema
     .openapi({
-      description: 'Threads 帳號',
+      description: 'Threads 帳號（傳空字串清空）',
       example: '@john_doe'
     }),
-  linkedin: z.string()
-    .optional()
+  linkedin: clearableStringSchema
     .openapi({
-      description: 'LinkedIn 個人檔案網址或用戶名',
+      description: 'LinkedIn 個人檔案網址或用戶名（傳空字串清空）',
       example: 'john-doe-123456'
     }),
-  website: z.string()
-    .url("無效的網址格式")
-    .optional()
+  website: clearableUrlSchema
     .openapi({
-      description: '個人網站網址',
+      description: '個人網站網址（傳空字串清空）',
       example: 'https://johndoe.com',
       format: 'uri'
     }),
-  github: z.string()
-    .optional()
+  github: clearableStringSchema
     .openapi({
-      description: 'GitHub 帳號或網址',
+      description: 'GitHub 帳號或網址（傳空字串清空）',
       example: 'johndoe'
     })
 }).optional().openapi('ContactList', {
