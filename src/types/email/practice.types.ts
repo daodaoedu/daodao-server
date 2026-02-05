@@ -82,6 +82,8 @@ export interface PracticeCreatedEmailVariables extends PracticeEmailBaseVariable
   frequencyMaxDays: number;
   /** 目標打卡次數 */
   targetCheckIns: number;
+  /** 實踐行動描述 */
+  action?: string;
 }
 
 /**

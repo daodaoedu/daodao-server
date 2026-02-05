@@ -89,7 +89,8 @@ export async function sendPracticeCreatedEmail(
       durationDays,
       frequencyMinDays,
       frequencyMaxDays,
-      targetCheckIns
+      targetCheckIns,
+      action: practice.practice_action || undefined
     };
 
     // === 去重複檢查 ===
@@ -718,7 +719,8 @@ function generatePracticeCreatedEmailContent(
     startDate,
     durationDays,
     frequencyMinDays,
-    frequencyMaxDays
+    frequencyMaxDays,
+    action
   } = variables;
 
   const frequencyText = frequencyMinDays === frequencyMaxDays
@@ -726,7 +728,7 @@ function generatePracticeCreatedEmailContent(
     : `${frequencyMinDays}-${frequencyMaxDays} 天`;
 
   // 取得實踐行動描述（若有）
-  const actionText = (variables as { action?: string }).action || '學習';
+  const actionText = action || '學習';
 
   const content = `
     <!-- Greeting -->
@@ -797,7 +799,7 @@ function generatePracticeCreatedEmailContent(
       <tr>
         <td class="text-block" style="padding-bottom: 24px;">
           <p style="margin: 0; font-size: 16px; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
-            我們也會在每週日寄出當週星期一至星期六的打卡記錄摘要，幫助你回顧一週的收獲與成長！
+            我們也會在每7天寄出打卡記錄摘要，幫助你回顧過去幾天的收獲與成長！
           </p>
         </td>
       </tr>
