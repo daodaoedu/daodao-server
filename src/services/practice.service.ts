@@ -618,7 +618,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     // 檢查狀態是否允許編輯
     if (!canEdit(existingPractice.status as PracticeStatusType)) {
-      throw new BadRequestError('此實踐狀態不允許編輯');
+      throw new BadRequestError('此實踐已封存，請先取消封存再進行編輯');
     }
 
     // 檢查是否有打卡記錄

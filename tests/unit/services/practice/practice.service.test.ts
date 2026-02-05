@@ -440,7 +440,7 @@ describe('Practice Service', () => {
 
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
 
-      await expect(update(1, mockUpdateRequest, 1)).rejects.toThrow('此實踐狀態不允許編輯');
+      await expect(update(1, mockUpdateRequest, 1)).rejects.toThrow('此實踐已封存，請先取消封存再進行編輯');
     });
 
     it('should throw error when trying to modify locked fields after check-in', async () => {
