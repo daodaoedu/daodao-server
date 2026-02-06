@@ -267,6 +267,12 @@ export function setupTypescriptRoutes(app: express.Application) {
   });
   console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
 
+  // 刪除帳號頁面（供 PM/設計師測試用）
+  app.get('/api/v1/delete-account', (req, res) => {
+    const filePath = path.resolve(process.cwd(), 'public/delete-account.html');
+    res.sendFile(filePath);
+  });
+
   // 資料庫資訊 HTML 頁面的直接路由
   app.get('/api/v1/db-info.html', (req, res) => {
     const filePath = path.resolve(process.cwd(), 'public/db-info.html');
