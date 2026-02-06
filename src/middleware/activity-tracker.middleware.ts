@@ -78,7 +78,7 @@ export const trackActivity = async (
 
     // 非同步更新資料庫（不阻塞請求）
     // 透過 user_activity_stats 關聯更新
-    (async () => {
+    (async (): Promise<void> => {
       try {
         const user = await prisma.users.findUnique({
           where: { id: userId },

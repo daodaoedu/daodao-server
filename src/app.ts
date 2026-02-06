@@ -267,12 +267,6 @@ export function setupTypescriptRoutes(app: express.Application) {
   });
   console.log('📄 監控頁面路由已註冊 - 可在 /api/v1/monitor.html 訪問');
 
-  // 刪除帳號頁面（供 PM/設計師測試用）
-  app.get('/api/v1/delete-account', (req, res) => {
-    const filePath = path.resolve(process.cwd(), 'public/delete-account.html');
-    res.sendFile(filePath);
-  });
-
   // 資料庫資訊 HTML 頁面的直接路由
   app.get('/api/v1/db-info.html', (req, res) => {
     const filePath = path.resolve(process.cwd(), 'public/db-info.html');
@@ -294,7 +288,9 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('✅ 已啟用 Prisma 資料庫架構');
 
   // 靜態文件服務（必須在錯誤處理之前）
-  app.use(express.static(path.join(__dirname, '../public')));
+  // 使用 process.cwd() 而不是 __dirname，因為編譯後 __dirname 會指向 dist/src/
+  // 而 public 資料夾在 /app/public（專案根目錄）
+  app.use(express.static(path.join(process.cwd(), 'public')));
   console.log('📁 靜態文件服務已初始化');
 
   // 註冊錯誤日誌中間件（必須在所有路由之後）

@@ -1212,11 +1212,11 @@ export const randomTemplateQuerySchema = z.object({
 export const randomTemplatesApiResponseSchema = apiSuccessResponseSchema(z.array(practiceTemplateResponseSchema));
 
 // 驗證函數
-export const validatePracticeTemplateQuery = (data: unknown) => practiceTemplateQuerySchema.parse(data);
-export const validatePracticeTemplateParams = (data: unknown) => practiceTemplateParamsSchema.parse(data);
-export const validateCreatePracticeTemplate = (data: unknown) => createPracticeTemplateSchema.parse(data);
-export const validateUpdatePracticeTemplate = (data: unknown) => updatePracticeTemplateSchema.parse(data);
-export const validateTagPromptQuery = (data: unknown) => tagPromptQuerySchema.parse(data);
+export const validatePracticeTemplateQuery = (data: unknown): PracticeTemplateQuery => practiceTemplateQuerySchema.parse(data);
+export const validatePracticeTemplateParams = (data: unknown): PracticeTemplateParams => practiceTemplateParamsSchema.parse(data);
+export const validateCreatePracticeTemplate = (data: unknown): CreatePracticeTemplateRequest => createPracticeTemplateSchema.parse(data);
+export const validateUpdatePracticeTemplate = (data: unknown): UpdatePracticeTemplateRequest => updatePracticeTemplateSchema.parse(data);
+export const validateTagPromptQuery = (data: unknown): TagPromptQuery => tagPromptQuerySchema.parse(data);
 export const validateRandomTemplateQuery = (data: unknown): RandomTemplateQuery => randomTemplateQuerySchema.parse(data);
 
 // 類型導出

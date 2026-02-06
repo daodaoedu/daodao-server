@@ -772,14 +772,6 @@ export const deleteUserResponseSchema = apiSuccessResponseSchema(
   })
 );
 
-// 偏好設定選項 schema
-const preferenceOptionSchema = z.object({
-  name: z.string().openapi({ description: '選項名稱' }),
-  value: z.string().openapi({ description: '選項值' })
-}).openapi({
-  description: '偏好選項'
-});
-
 // 完整的偏好選項 schema（包含 ID）
 const preferenceOptionWithIdSchema = z.object({
   id: z.number().openapi({
