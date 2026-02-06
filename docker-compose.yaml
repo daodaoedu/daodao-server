@@ -1,7 +1,7 @@
 
 # ===== 共用配置模板 =====
-# prod_app 和 production_app 共用相同的基礎設定
-# 差異只有 image tag（prod vs production）
+# prod_app 使用 redis_prod
+# production_app 使用獨立的 redis_production
 x-prod-app-base: &prod-app-base
   env_file:
     - .env.prod
@@ -14,10 +14,7 @@ x-prod-app-base: &prod-app-base
   volumes:
     - ./logs:/app/logs
   depends_on:
-    # MongoDB 現在是可選的，不等待健康檢查
-    mongo_prod:
-      condition: service_started
-    # Redis 仍然是必須的（核心業務邏輯依賴）
+    # Redis 是必須的（核心業務邏輯依賴）
     redis_prod:
       condition: service_healthy
   # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
@@ -36,6 +33,10 @@ services:
   production_app:
     <<: *prod-app-base
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-production}${COMMIT_SHA:+-}${COMMIT_SHA}
+    # 覆蓋 depends_on，使用獨立的 redis_production
+    depends_on:
+      redis_production:
+        condition: service_healthy
 
   dev_app:
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-dev}${COMMIT_SHA:+-}${COMMIT_SHA}
@@ -54,10 +55,7 @@ services:
       - dev-daodao-network
       - dev_network
     depends_on:
-      # MongoDB 現在是可選的，不等待健康檢查
-      mongo_dev:
-        condition: service_started
-      # Redis 仍然是必須的（核心業務邏輯依賴）
+      # Redis 是必須的（核心業務邏輯依賴）
       redis_dev:
         condition: service_healthy
     # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
@@ -68,37 +66,24 @@ services:
       retries: 3
       start_period: 30s
 
-  mongo_prod:
-    image: mongo:4.4
-    container_name: mongo_prod
-    volumes:
-      - mongo_prod_data:/data/db
-    networks:
-      - prod-daodao-network
-    healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
-  mongo_dev:
-    image: mongo:4.4
-    container_name: mongo_dev
-    volumes:
-      - mongo_dev_data:/data/db
-    networks:
-      - dev-daodao-network
-    healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
   redis_prod:
     image: redis:6
     container_name: redis_prod
     volumes:
       - redis_prod_data:/data
+    networks:
+      - prod-daodao-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis_production:
+    image: redis:6
+    container_name: redis_production
+    volumes:
+      - redis_production_data:/data
     networks:
       - prod-daodao-network
     healthcheck:
@@ -139,9 +124,8 @@ services:
       - dev-daodao-network
 
 volumes:
-  mongo_prod_data:
-  mongo_dev_data:
   redis_prod_data:
+  redis_production_data:
   redis_dev_data:
 
 networks:
