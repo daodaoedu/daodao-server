@@ -13,9 +13,6 @@ export {
   testConnection as postgresTestConnection
 } from './postgres.service';
 
-// MongoDB 服務
-export { default as mongo, mongoConnect, mongoDisconnect, mongoClient } from './mongo.service';
-
 // Redis 服務
 export { default as redis, redisDisconnect } from './redis.service';
 
