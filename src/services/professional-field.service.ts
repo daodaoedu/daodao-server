@@ -52,12 +52,15 @@ export const setUserProfessionalFields = async (
 /**
  * 獲取用戶的專業領域 (返回值陣列)
  * @param userId - 用戶 ID
+ * @param tx - 可選的 Prisma transaction client
  * @returns 專業領域值陣列 (例如: ['education', 'business_administration_and_law'])
  */
 export const getUserProfessionalFields = async (
-  userId: number
+  userId: number,
+  tx?: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
 ): Promise<ProfessionalField[] | null> => {
-  const userFields = await prisma.user_professional_fields.findMany({
+  const client = tx || prisma;
+  const userFields = await client.user_professional_fields.findMany({
     where: { user_id: userId },
     include: {
       professional_fields: {

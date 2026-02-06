@@ -54,6 +54,8 @@ import { responseEnhancerMiddleware } from './middleware/response-enhancer';
 // 引入資料庫資訊和監控路由
 import dbInfoRoutes from './routes/db-info.routes';
 import monitorRoutes from './routes/monitor.routes';
+// 引入城市路由
+import cityRoutes from './routes/city.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 
@@ -253,6 +255,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊管理員路由（角色、權限管理）
   app.use('/api/v1/admin', adminRoutes);
   console.log('🔐 v1 管理員路由已註冊 - 可在 /api/v1/admin 訪問');
+
+  // 註冊城市路由
+  app.use('/api/v1/cities', cityRoutes);
+  console.log('🌍 v1 城市路由已註冊 - 可在 /api/v1/cities 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {

@@ -37,6 +37,7 @@ import {
   BadRequestError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
+import { setAuthCookie } from '../utils/cookie-config';
 
 /**
  * 取得所有用戶
@@ -130,6 +131,11 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 
   // 將數字 id 轉換為字串傳遞給 service
   const result = await userService.createUser(requestData, currentUser.id.toString());
+
+  // 設置新的 auth cookie
+  if (result.data?.token) {
+    setAuthCookie(res, result.data.token);
+  }
 
   // 驗證響應格式確保符合 OpenAPI schema
   const validatedResponse = createUserResponseSchema.parse(result);

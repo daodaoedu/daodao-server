@@ -50,6 +50,7 @@ export const createTestUser = (overrides: Partial<any> = {}) => {
     referral_source: overrides.referral_source || null,
     // Activity stats are in user_activity_stats table, linked via activity_stats_id
     activity_stats_id: overrides.activity_stats_id || null,
+    custom_position: overrides.custom_position || null,
     ...overrides
   };
 };

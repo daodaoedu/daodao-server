@@ -13,6 +13,7 @@ import {
   UnauthorizedError,
   BadRequestError
 } from '../../middleware/error.middleware';
+import { loggerService } from '../logging/logger.service';
 
 /**
  * Apple ID Token 解碼後的 payload 結構
@@ -164,7 +165,9 @@ export const verifyAppleIdToken = async (
       throw error;
     }
 
-    console.error('Apple ID Token 驗證失敗:', error);
+    loggerService.error('Apple ID Token 驗證失敗', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw new UnauthorizedError('Apple ID Token 驗證失敗');
   }
 };
@@ -221,11 +224,19 @@ export const handleAppleSignIn = async (
 
     if (isDirectLoginEnabled) {
       // 直接建立正式用戶
+      // 傳遞 Apple 的 email 驗證狀態
+      const emailVerified = applePayload.email_verified === true ||
+                            applePayload.email_verified === 'true';
+      const isPrivateEmail = applePayload.is_private_email === true ||
+                             applePayload.is_private_email === 'true';
+
       const newUserResult = await authService.createUserFromAppleOAuth({
         appleId,
         email: appleEmail || userInfo?.email,
         name: userInfo?.name || 'Apple User',
-        photoUrl: undefined
+        photoUrl: undefined,
+        emailVerified,
+        isPrivateEmail
       });
 
       if (newUserResult.success && newUserResult.data) {
@@ -286,7 +297,10 @@ export const handleAppleSignIn = async (
         userRoles = rolesResponse.data;
       }
     } catch (error) {
-      console.error('Failed to fetch user roles:', error);
+      loggerService.error('Failed to fetch user roles', {
+        userId: resultUser.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
 
     try {
@@ -295,7 +309,10 @@ export const handleAppleSignIn = async (
         userPermissions = permissionsResponse.data;
       }
     } catch (error) {
-      console.error('Failed to fetch user permissions:', error);
+      loggerService.error('Failed to fetch user permissions', {
+        userId: resultUser.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -316,7 +333,10 @@ export const handleAppleSignIn = async (
     try {
       await authService.updateLastLogin(resultUser.id, deviceInfo);
     } catch (error) {
-      console.error('Failed to update last login:', error);
+      loggerService.error('Failed to update last login', {
+        userId: resultUser.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

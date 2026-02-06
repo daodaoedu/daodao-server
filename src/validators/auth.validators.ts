@@ -580,6 +580,7 @@ export type RegisterRequest = z.infer<typeof registerValidator>;
 export type ForgotPasswordRequest = z.infer<typeof forgotPasswordValidator>;
 export type ResetPasswordRequest = z.infer<typeof resetPasswordValidator>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailValidator>;
+export type ResendVerificationRequest = z.infer<typeof resendVerificationValidator>;
 export type ChangePasswordRequest = z.infer<typeof changePasswordValidator>;
 export type UpdateProfileRequest = z.infer<typeof updateProfileValidator>;
 export type TokenRequest = z.infer<typeof tokenValidator>;
@@ -803,6 +804,47 @@ export const verifyEmailResponseSchema = apiSuccessResponseSchema(
   }
 });
 
+/**
+ * 重新發送驗證郵件請求驗證器
+ */
+export const resendVerificationValidator = z.object({
+  email: z
+    .string()
+    .min(1, '電子郵件為必填欄位')
+    .email('請輸入有效的電子郵件格式')
+    .max(254, '電子郵件長度不能超過 254 個字符')
+    .trim()
+    .toLowerCase()
+    .openapi({
+      description: '需要重新發送驗證郵件的電子郵件地址',
+      example: 'user@example.com'
+    })
+}).openapi('ResendVerificationRequest', {
+  description: '重新發送驗證郵件請求資料',
+  example: {
+    email: 'user@example.com'
+  }
+});
+
+// 重新發送驗證郵件回應 schema
+export const resendVerificationResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    message: z.string().openapi({
+      description: "發送結果訊息",
+      example: "驗證郵件已重新發送"
+    })
+  })
+).openapi('ResendVerificationResponse', {
+  description: "重新發送驗證郵件回應",
+  example: {
+    success: true,
+    data: {
+      message: "驗證郵件已重新發送"
+    },
+    timestamp: "2024-01-15T10:30:00.000Z"
+  }
+});
+
 // ===================================
 // 🎯 註冊 schemas 到 OpenAPI registry
 // ===================================
@@ -813,6 +855,7 @@ registry.register('RegisterRequest', registerValidator);
 registry.register('ForgotPasswordRequest', forgotPasswordValidator);
 registry.register('ResetPasswordRequest', resetPasswordValidator);
 registry.register('VerifyEmailRequest', verifyEmailValidator);
+registry.register('ResendVerificationRequest', resendVerificationValidator);
 registry.register('ChangePasswordRequest', changePasswordValidator);
 registry.register('UpdateProfileRequest', updateProfileValidator);
 registry.register('TokenRequest', tokenValidator);
@@ -827,6 +870,7 @@ registry.register('LogoutResponse', logoutResponseSchema);
 registry.register('RefreshTokenResponse', refreshTokenResponseSchema);
 registry.register('GetCurrentUserResponse', getCurrentUserResponseSchema);
 registry.register('VerifyEmailResponse', verifyEmailResponseSchema);
+registry.register('ResendVerificationResponse', resendVerificationResponseSchema);
 registry.register('AppleSignInResponse', appleSignInResponseSchema);
 
 // 統一導出
@@ -836,6 +880,7 @@ export const authValidators = {
   forgotPasswordValidator,
   resetPasswordValidator,
   verifyEmailValidator,
+  resendVerificationValidator,
   changePasswordValidator,
   updateProfileValidator,
   tokenValidator,

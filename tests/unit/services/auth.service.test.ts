@@ -15,6 +15,11 @@ const mockUserService = {
   updateLastLogin: jest.fn()
 };
 
+// Mock emailService
+const mockEmailService = {
+  sendWelcomeEmail: jest.fn().mockResolvedValue(undefined)
+};
+
 // Mock external dependencies
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: prismaMock
@@ -29,6 +34,10 @@ jest.mock('@/services/jwt.service', () => ({
 
 jest.mock('@/services/user.service', () => ({
   userService: mockUserService
+}));
+
+jest.mock('@/services/email/email.service', () => ({
+  emailService: mockEmailService
 }));
 
 // Import mocked modules
@@ -153,7 +162,7 @@ describe('Auth Service', () => {
         where: { google_id: 'google-123' }
       });
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(existingTempUser);
+      expect(result.data).toEqual({ user: existingTempUser, isNewUser: false });
       expect(prismaMock.temp_users.create).not.toHaveBeenCalled();
     });
 
@@ -182,7 +191,7 @@ describe('Auth Service', () => {
         }
       });
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(newTempUser);
+      expect(result.data).toEqual({ user: newTempUser, isNewUser: true });
     });
 
     it('should throw ConflictError when email already exists', async () => {
@@ -231,7 +240,7 @@ describe('Auth Service', () => {
         }
       });
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(newTempUser);
+      expect(result.data).toEqual({ user: newTempUser, isNewUser: true });
     });
 
     it('should handle database errors during creation', async () => {
@@ -797,6 +806,193 @@ describe('Auth Service', () => {
     });
   });
 
+  describe('createUserFromAppleOAuth', () => {
+    const mockAppleProfile = {
+      appleId: 'apple-oauth-123',
+      email: 'appleuser@example.com',
+      name: 'Apple User',
+      photoUrl: 'https://example.com/apple-photo.jpg',
+      emailVerified: true,
+      isPrivateEmail: false
+    };
+
+    beforeEach(() => {
+      setupTransactionMock();
+      mockEmailService.sendWelcomeEmail.mockClear();
+    });
+
+    it('should create a new user with verified=true when emailVerified is true', async () => {
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 1,
+        apple_id: mockAppleProfile.appleId,
+        email: mockAppleProfile.email,
+        photo_url: mockAppleProfile.photoUrl,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({
+        id: 1,
+        nickname: mockAppleProfile.name,
+        contact_id: mockContact.id,
+        basic_info_id: mockBasicInfo.id,
+        role_id: 2,
+        verified: true
+      });
+      const mockUserWithRelations = {
+        ...mockUser,
+        roles: { id: 2, name: 'user' },
+        contacts: mockContact,
+        basic_info: mockBasicInfo,
+        location: null,
+        user_positions: []
+      };
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUserWithRelations);
+
+      const result = await authService.createUserFromAppleOAuth(mockAppleProfile);
+
+      expect(result.success).toBe(true);
+      // Verify user is created with verified=true
+      expect(prismaMock.users.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          verified: true
+        })
+      });
+    });
+
+    it('should send welcome email after creating user', async () => {
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 1,
+        apple_id: mockAppleProfile.appleId,
+        email: mockAppleProfile.email,
+        photo_url: mockAppleProfile.photoUrl,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({
+        id: 1,
+        nickname: mockAppleProfile.name,
+        verified: true
+      });
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
+
+      await authService.createUserFromAppleOAuth(mockAppleProfile);
+
+      // Wait for async email to be called
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(mockEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        mockAppleProfile.email,
+        {
+          name: mockAppleProfile.name,
+          hasCompletedQuiz: false
+        }
+      );
+    });
+
+    it('should not send welcome email when email is not provided', async () => {
+      const profileWithoutEmail = {
+        appleId: 'apple-no-email-456',
+        name: 'No Email User',
+        emailVerified: false
+      };
+
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 1,
+        apple_id: profileWithoutEmail.appleId,
+        email: undefined,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({
+        id: 1,
+        nickname: profileWithoutEmail.name,
+        verified: true
+      });
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
+
+      await authService.createUserFromAppleOAuth(profileWithoutEmail);
+
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(mockEmailService.sendWelcomeEmail).not.toHaveBeenCalled();
+    });
+
+    it('should not fail if welcome email fails', async () => {
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 1,
+        apple_id: mockAppleProfile.appleId,
+        email: mockAppleProfile.email,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({
+        id: 1,
+        nickname: mockAppleProfile.name,
+        verified: true
+      });
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
+
+      // Mock email failure
+      mockEmailService.sendWelcomeEmail.mockRejectedValue(new Error('SMTP connection failed'));
+
+      // Should not throw error
+      const result = await authService.createUserFromAppleOAuth(mockAppleProfile);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should use "User" as default name if name is empty', async () => {
+      const profileWithEmptyName = {
+        appleId: 'apple-empty-name-789',
+        email: 'emptyname@example.com',
+        name: '',
+        emailVerified: true
+      };
+
+      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
+      const mockContact = {
+        id: 1,
+        apple_id: profileWithEmptyName.appleId,
+        email: profileWithEmptyName.email,
+        is_subscribe_email: false
+      };
+      const mockUser = createTestUser({ id: 1, nickname: '', verified: true });
+
+      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
+      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
+      prismaMock.users.create.mockResolvedValue(mockUser);
+      prismaMock.users.findUnique.mockResolvedValue(mockUser);
+
+      await authService.createUserFromAppleOAuth(profileWithEmptyName);
+
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(mockEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        profileWithEmptyName.email,
+        {
+          name: 'User',
+          hasCompletedQuiz: false
+        }
+      );
+    });
+  });
+
   describe('Business logic integration', () => {
     describe('OAuth flow for new temp user', () => {
       it('should create temp user when formal user not found', async () => {
@@ -825,9 +1021,9 @@ describe('Auth Service', () => {
         expect(userResult.data).toBeNull();
 
         const tempUserResult = await authService.findOrCreateTempUser(profile);
-        expect(tempUserResult.data).toEqual(newTempUser);
+        expect(tempUserResult.data).toEqual({ user: newTempUser, isNewUser: true });
 
-        const tempUserData = tempUserResult.data as { id: number; email: string };
+        const tempUserData = (tempUserResult.data as { user: { id: number; email: string }; isNewUser: boolean }).user;
         const token = authService.generateAuthToken({
           id: tempUserData.id,
           email: tempUserData.email,

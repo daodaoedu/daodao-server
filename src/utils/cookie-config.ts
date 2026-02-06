@@ -63,15 +63,28 @@ export const setAuthCookie = (
   res.cookie(AUTH_COOKIE_NAME, token, cookieOptions);
 };
 
+/** 所有可能的認證相關 Cookie 名稱（向下相容） */
+const AUTH_COOKIE_NAMES = [
+  AUTH_COOKIE_NAME,  // 'auth_token' - 主要使用
+  'access_token',    // 舊版本可能使用
+  'refresh_token',   // 舊版本可能使用
+  'session'          // Session cookie
+] as const;
+
 /**
  * 清除認證 Cookie
  * 復用 getCookieOptions 以確保 domain, path 等屬性與設定時一致
+ * 清除所有可能的認證相關 cookies 以確保完全登出
  * @param res - Express Response
  */
 export const clearAuthCookie = (res: Response): void => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { maxAge, ...clearOptions } = getCookieOptions();
-  res.clearCookie(AUTH_COOKIE_NAME, clearOptions);
+
+  // 清除所有可能的認證相關 cookies
+  for (const cookieName of AUTH_COOKIE_NAMES) {
+    res.clearCookie(cookieName, clearOptions);
+  }
 };
 
 /**

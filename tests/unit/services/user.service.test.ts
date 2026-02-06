@@ -29,6 +29,12 @@ const mockProfessionalFieldService = {
   setUserProfessionalFields: jest.fn()
 };
 
+const mockCityService = {
+  findOrCreateLocation: jest.fn(),
+  validateCityCode: jest.fn(),
+  getCityByCode: jest.fn()
+};
+
 const mockR2Service = {
   uploadToR2: jest.fn(),
   deleteFromR2: jest.fn()
@@ -66,6 +72,10 @@ jest.mock('@/services/professional-field.service', () => ({
   ...mockProfessionalFieldService
 }));
 
+jest.mock('@/services/city.service', () => ({
+  cityService: mockCityService
+}));
+
 import { userService } from '@/services/user.service';
 import { mockResponses, PRISMA_ERRORS, mockPrismaError } from '@tests/utils/prisma-mock';
 import { createTestUser, createTestUsers, createTestUserWithRelations, createApiResponse } from '@tests/utils/test-factories';
@@ -87,6 +97,8 @@ describe('User Service', () => {
     mockProfessionalFieldService.setUserProfessionalFields.mockResolvedValue(undefined);
     mockR2Service.uploadToR2.mockResolvedValue('avatars/test-avatar.jpg');
     mockR2Service.deleteFromR2.mockResolvedValue(undefined);
+    mockCityService.findOrCreateLocation.mockResolvedValue(1); // Default location ID
+    mockCityService.validateCityCode.mockResolvedValue(true);
 
     // Setup common Prisma mock returns for formatUserResponse dependencies
     prismaMock.user_interests.findMany.mockResolvedValue([]);
@@ -220,7 +232,7 @@ describe('User Service', () => {
 
       expect(mockEmailService.sendVerificationEmail).toHaveBeenCalledWith(
         newUser.contacts.email,
-        expect.stringContaining('/email/verify?token=')
+        expect.stringContaining('/api/v1/auth/verify-email?token=')
       );
     });
 
@@ -228,12 +240,49 @@ describe('User Service', () => {
       const tempUser = createTestTempUser();
       prismaMock.temp_users.findUnique.mockResolvedValue(tempUser);
       prismaMock.users.findFirst.mockResolvedValue(null);
-      
+
       const dbError = mockPrismaError(PRISMA_ERRORS.UNIQUE_CONSTRAINT, 'Unique constraint violation');
       prismaMock.basic_info.create.mockRejectedValue(dbError);
 
       await expect(userService.createUser(validUserData, '1'))
         .rejects.toThrow('Unique constraint violation');
+    });
+
+    it('should use cityService to find or create location when location is provided', async () => {
+      const tempUser = createTestTempUser();
+      const newUser = createTestUser();
+      const userDataWithLocation = { ...validUserData, location: 'taipei_city' };
+
+      prismaMock.temp_users.findUnique.mockResolvedValue(tempUser);
+      prismaMock.users.findFirst.mockResolvedValue(null);
+      prismaMock.basic_info.create.mockResolvedValue(createTestBasicInfo());
+      prismaMock.contacts.create.mockResolvedValue(createTestContact());
+      prismaMock.users.create.mockResolvedValue(newUser);
+      prismaMock.users.findUnique.mockResolvedValue(newUser);
+      mockCityService.findOrCreateLocation.mockResolvedValue(10);
+
+      await userService.createUser(userDataWithLocation, '1');
+
+      // Verify cityService was called with the location code
+      expect(mockCityService.findOrCreateLocation).toHaveBeenCalled();
+      expect(mockCityService.findOrCreateLocation.mock.calls[0][0]).toBe('taipei_city');
+      expect(prismaMock.users.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          location_id: 10
+        })
+      });
+    });
+
+    it('should throw ConflictError when location code is invalid', async () => {
+      const tempUser = createTestTempUser();
+      const userDataWithInvalidLocation = { ...validUserData, location: 'invalid_city' };
+
+      prismaMock.temp_users.findUnique.mockResolvedValue(tempUser);
+      prismaMock.users.findFirst.mockResolvedValue(null);
+      mockCityService.findOrCreateLocation.mockResolvedValue(null);
+
+      await expect(userService.createUser(userDataWithInvalidLocation, '1'))
+        .rejects.toThrow("'invalid_city' 不是有效的城市代碼");
     });
   });
 
@@ -394,6 +443,74 @@ describe('User Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.data.customId).toBeNull();
+    });
+
+    it('should use cityService to update location when location is provided', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 }
+      });
+      const updatedUser = createTestUser({ location_id: 20 });
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+      mockCityService.findOrCreateLocation.mockResolvedValue(20);
+
+      await userService.updateUser(existingUser.external_id, {
+        location: 'new_taipei_city'
+      });
+
+      // Verify cityService was called with the location code
+      expect(mockCityService.findOrCreateLocation).toHaveBeenCalled();
+      expect(mockCityService.findOrCreateLocation.mock.calls[0][0]).toBe('new_taipei_city');
+      expect(prismaMock.users.update).toHaveBeenCalledWith({
+        where: { id: existingUser.id },
+        data: expect.objectContaining({
+          location_id: 20
+        })
+      });
+    });
+
+    it('should throw ConflictError when updating with invalid location code', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 }
+      });
+
+      prismaMock.users.findUnique.mockResolvedValueOnce(existingUser);
+      mockCityService.findOrCreateLocation.mockResolvedValue(null);
+
+      await expect(userService.updateUser(existingUser.external_id, {
+        location: 'invalid_city_code'
+      })).rejects.toThrow("'invalid_city_code' 不是有效的城市代碼");
+    });
+
+    it('should clear location when location is empty string', async () => {
+      const existingUser = createTestUser({
+        contacts: { id: 1, email: 'test@example.com' },
+        basic_info: { id: 1 },
+        location_id: 10
+      });
+      const updatedUser = createTestUser({ location_id: null });
+
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
+      prismaMock.users.update.mockResolvedValue(updatedUser);
+
+      await userService.updateUser(existingUser.external_id, {
+        location: ''
+      });
+
+      expect(mockCityService.findOrCreateLocation).not.toHaveBeenCalled();
+      expect(prismaMock.users.update).toHaveBeenCalledWith({
+        where: { id: existingUser.id },
+        data: expect.objectContaining({
+          location_id: null
+        })
+      });
     });
   });
 

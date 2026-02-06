@@ -137,7 +137,10 @@ if (authOptions) {
 
         if (userResult && userResult.success && userResult.data) {
           console.log('用戶已註冊，返回正式用戶');
-          return done(null, userResult.data.user as unknown as Express.User);
+          // 已存在的用戶不是新用戶
+          const user = userResult.data.user as Express.User & { _isNewUser?: boolean };
+          user._isNewUser = false;
+          return done(null, user);
         }
 
         // 檢查是否啟用直接建立正式用戶
@@ -151,8 +154,11 @@ if (authOptions) {
           });
 
           if (newUserResult.success && newUserResult.data) {
-            console.log('正式用戶已建立:', newUserResult.data);
-            return done(null, newUserResult.data as unknown as Express.User);
+            const userData = newUserResult.data as { user: unknown; isNewUser: boolean };
+            const user = userData.user as Express.User & { _isNewUser?: boolean };
+            user._isNewUser = userData.isNewUser;
+            console.log('正式用戶已建立, isNewUser:', userData.isNewUser);
+            return done(null, user);
           } else {
             return done(new Error('Failed to create user from OAuth'), false);
           }
@@ -169,7 +175,11 @@ if (authOptions) {
         console.log('臨時用戶:', tempUserResult);
 
         if (tempUserResult.success && tempUserResult.data) {
-          return done(null, tempUserResult.data as unknown as Express.User);
+          const userData = tempUserResult.data as { user: unknown; isNewUser: boolean };
+          const user = userData.user as Express.User & { _isNewUser?: boolean };
+          user._isNewUser = userData.isNewUser;
+          console.log('臨時用戶 isNewUser:', userData.isNewUser);
+          return done(null, user);
         } else {
           return done(new Error('Failed to create temp user'), false);
         }
@@ -321,7 +331,8 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
   // 動態呼叫 passport.authenticate 並傳入 state
   passport.authenticate('google', {
     scope: ['profile', 'email'],
-    state: stateParam
+    state: stateParam,
+    prompt: 'select_account'  // 強制顯示帳號選擇頁面
   })(req, res, next);
 };
 
