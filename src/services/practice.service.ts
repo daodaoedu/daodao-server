@@ -33,6 +33,7 @@ import {
 import {
   determineNewStatus,
   canEdit,
+  checkHasPassedEndDate,
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
@@ -129,9 +130,9 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       prismaClient.practices.count({ where })
     ]);
 
-    // 取得統計數據 - 暫時只查詢存在的表格
+    // 取得統計數據、標籤和資源
     const practiceIds: number[] = practices.map(p => p.id);
-    const [comments, allTags, checkInCounts, lastCheckInDates, allResources] = await Promise.all([
+    const [comments, allTags, checkInCounts, lastCheckInDates, resourcesByPracticeId] = await Promise.all([
       getCommentCounts(practiceIds),
       // 批量查詢標籤
       prismaClient.entity_tags.findMany({
@@ -153,23 +154,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       // 批量查詢最後打卡時間
       getLastCheckInDates(practiceIds),
       // 批量查詢資源
-      prismaClient.entity_resources.findMany({
-        where: {
-          entity_type: 'practice',
-          entity_id: { in: practiceIds },
-          deleted_at: null
-        },
-        include: {
-          resources: {
-            select: {
-              id: true,
-              external_id: true,
-              name: true,
-              url: true
-            }
-          }
-        }
-      })
+      getPracticeResources(practiceIds)
     ]);
 
     // 將標籤按實踐 ID 分組
@@ -183,19 +168,6 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       });
       return acc;
     }, {} as Record<number, Array<{ id: number; name: string }>>);
-
-    // 將資源按實踐 ID 分組
-    const resourcesByPracticeId = allResources.reduce((acc, er) => {
-      if (!acc[er.entity_id]) {
-        acc[er.entity_id] = [];
-      }
-      acc[er.entity_id].push({
-        id: er.resources.external_id || String(er.resources.id),
-        name: er.resources.name,
-        url: er.resources.url || undefined
-      });
-      return acc;
-    }, {} as Record<number, PracticeResourceEntity[]>);
 
 
     // 轉換為 API 格式 - 基於 Prisma schema practices 表
@@ -212,8 +184,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
-      hasResources: practice.has_resources || false,
-      resources: resourcesByPracticeId[practice.id] || undefined,
+      hasResources: (resourcesByPracticeId[practice.id]?.length || 0) > 0,
+      resources: resourcesByPracticeId[practice.id]?.length ? resourcesByPracticeId[practice.id] : undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
       lastCheckinAt: lastCheckInDates[practice.id]?.toISOString(),
@@ -304,8 +276,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       loggerService.info('Practice view recorded', { practiceId: id, userId });
     }
 
-    // 取得統計數據、標籤和資源 - 暫時只查詢存在的表格
-    const [comments, tags, checkInCounts, lastCheckInDates, entityResources] = await Promise.all([
+    // 取得統計數據、標籤和資源
+    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -327,31 +299,10 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       // 查詢最後打卡時間
       getLastCheckInDates([id]),
       // 查詢資源
-      prismaClient.entity_resources.findMany({
-        where: {
-          entity_type: 'practice',
-          entity_id: id,
-          deleted_at: null
-        },
-        include: {
-          resources: {
-            select: {
-              id: true,
-              external_id: true,
-              name: true,
-              url: true
-            }
-          }
-        }
-      })
+      getPracticeResources([id])
     ]);
 
-    // 轉換資源為 API 格式
-    const resources: PracticeResourceEntity[] = entityResources.map(er => ({
-      id: er.resources.external_id || String(er.resources.id),
-      name: er.resources.name,
-      url: er.resources.url || undefined
-    }));
+    const resources = resourcesMap[id] || [];
 
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
@@ -366,7 +317,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
-      hasResources: practice.has_resources || false,
+      hasResources: resources.length > 0,
       resources: resources.length > 0 ? resources : undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
@@ -617,7 +568,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     // 檢查狀態是否允許編輯
     if (!canEdit(existingPractice.status as PracticeStatusType)) {
-      throw new BadRequestError('此實踐狀態不允許編輯');
+      throw new BadRequestError('此實踐已封存，請先取消封存再進行編輯');
     }
 
     // 檢查是否有打卡記錄
@@ -718,8 +669,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       });
     }
 
-    // 取得統計數據和標籤 - 暫時只查詢存在的表格
-    const [comments, updatedTags, checkInCounts, lastCheckInDates] = await Promise.all([
+    // 取得統計數據、標籤和資源
+    const [comments, updatedTags, checkInCounts, lastCheckInDates, resourcesMap] = await Promise.all([
       getCommentCounts([id]),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
@@ -739,9 +690,12 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       // 查詢打卡次數
       getCheckInCounts([id]),
       // 查詢最後打卡時間
-      getLastCheckInDates([id])
+      getLastCheckInDates([id]),
+      // 查詢資源
+      getPracticeResources([id])
     ]);
 
+    const resources = resourcesMap[id] || [];
 
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
@@ -756,7 +710,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       practiceTimePeriods: practice.practice_time_periods || [],
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
-      hasResources: practice.has_resources || false,
+      hasResources: resources.length > 0,
+      resources: resources.length > 0 ? resources : undefined,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
       firstCheckinAt: practice.first_checkin_at?.toISOString(),
       lastCheckinAt: lastCheckInDates[id]?.toISOString(),
@@ -1147,6 +1102,50 @@ async function getLastCheckInDates(practiceIds: number[]): Promise<Record<number
 }
 
 /**
+ * 批次取得實踐的資源列表
+ * @param practiceIds 實踐 ID 陣列
+ * @returns 以實踐 ID 為 key 的資源列表 Record
+ */
+async function getPracticeResources(practiceIds: number[]): Promise<Record<number, PracticeResourceEntity[]>> {
+  if (!practiceIds.length) return {};
+
+  try {
+    const entityResources = await prismaClient.entity_resources.findMany({
+      where: {
+        entity_type: 'practice',
+        entity_id: { in: practiceIds },
+        deleted_at: null
+      },
+      include: {
+        resources: {
+          select: {
+            id: true,
+            external_id: true,
+            name: true,
+            url: true
+          }
+        }
+      }
+    });
+
+    return entityResources.reduce((acc, er) => {
+      if (!acc[er.entity_id]) {
+        acc[er.entity_id] = [];
+      }
+      acc[er.entity_id].push({
+        id: er.resources.external_id || String(er.resources.id),
+        name: er.resources.name,
+        url: er.resources.url || undefined
+      });
+      return acc;
+    }, {} as Record<number, PracticeResourceEntity[]>);
+  } catch (error) {
+    loggerService.warn('Failed to get practice resources', { practiceIds, error });
+    return {};
+  }
+}
+
+/**
  * 封存實踐
  */
 export async function archive(id: number, userId: number): Promise<ApiSuccessResponse<{ success: boolean }>> {
@@ -1242,11 +1241,14 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     });
     const hasCheckIns = checkInCount > 0;
 
-    // 根據是否有打卡記錄決定恢復狀態
+    // 檢查是否已過結束日期（FRD: 完成條件是到期日）
+    const hasPassedEndDate = checkHasPassedEndDate(practice.end_date);
+
+    // 根據是否有打卡記錄和是否過期決定恢復狀態
     const newStatus = determineNewStatus({
       currentStatus: 'archived',
       hasCheckIns,
-      hasReachedTarget: false,
+      hasPassedEndDate,
       isUnarchiving: true
     });
 

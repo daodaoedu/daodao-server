@@ -150,18 +150,22 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => {
   const result: Record<string, unknown> = {};
 
+  // 需要解析為 JSON 的欄位
+  const jsonFields = ['wantToDoList', 'tagList', 'positionList', 'interestList', 'preferences', 'contactList', 'professionalField'];
+
+  // 需要解析為 boolean 的欄位
+  const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail'];
+
   for (const [key, value] of Object.entries(body)) {
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null) {
       continue;
     }
 
-    // 需要解析為 JSON 的欄位
-    const jsonFields = ['wantToDoList', 'tagList', 'positionList', 'interestList', 'preferences', 'contactList', 'professionalField'];
-
-    // 需要解析為 boolean 的欄位
-    const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail'];
-
     if (jsonFields.includes(key) && typeof value === 'string') {
+      // 空字串代表未提供 JSON 欄位，跳過
+      if (value === '') {
+        continue;
+      }
       try {
         result[key] = JSON.parse(value);
       } catch {
@@ -170,6 +174,9 @@ const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => 
       }
     } else if (booleanFields.includes(key)) {
       result[key] = value === 'true' || value === true;
+    } else if (value === '') {
+      // 非 JSON 欄位的空字串，保留為空字串以便清除欄位
+      result[key] = '';
     } else {
       result[key] = value;
     }
