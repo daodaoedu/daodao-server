@@ -21741,43 +21741,43 @@ export interface components {
         /** @description 用戶聯絡資訊 */
         ContactList: {
             /**
-             * @description Instagram 帳號
+             * @description Instagram 帳號（傳空字串清空）
              * @example @john_doe
              */
             instagram?: string;
             /**
-             * @description Discord 帳號
+             * @description Discord 帳號（傳空字串清空）
              * @example JohnDoe#1234
              */
             discord?: string;
             /**
-             * @description LINE ID
+             * @description LINE ID（傳空字串清空）
              * @example john_doe_line
              */
             line?: string;
             /**
-             * @description Facebook 帳號
+             * @description Facebook 帳號（傳空字串清空）
              * @example john.doe.fb
              */
             facebook?: string;
             /**
-             * @description Threads 帳號
+             * @description Threads 帳號（傳空字串清空）
              * @example @john_doe
              */
             threads?: string;
             /**
-             * @description LinkedIn 個人檔案網址或用戶名
+             * @description LinkedIn 個人檔案網址或用戶名（傳空字串清空）
              * @example john-doe-123456
              */
             linkedin?: string;
             /**
              * Format: uri
-             * @description 個人網站網址
+             * @description 個人網站網址（傳空字串清空）
              * @example https://johndoe.com
              */
             website?: string;
             /**
-             * @description GitHub 帳號或網址
+             * @description GitHub 帳號或網址（傳空字串清空）
              * @example johndoe
              */
             github?: string;
