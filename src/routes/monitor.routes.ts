@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import os from 'os';
 import { prismaService } from '../services/database/prisma.service';
-import { mongoClient } from '../services/database/mongo.service';
 
 const router = Router();
 
@@ -24,23 +23,6 @@ interface SystemInfo {
   processId: number;
   processTitle: string;
   processArgs: string[];
-}
-
-interface MongoInfo {
-  status?: string;
-  database?: string;
-  collections?: Array<{
-    name: string;
-    type?: string;
-    options?: Record<string, unknown>;
-    info?: {
-      readOnly?: boolean;
-      uuid?: unknown;
-    };
-    idIndex?: Record<string, unknown>;
-  }>;
-  error?: string;
-  details?: string;
 }
 
 interface PostgresInfo {
@@ -71,7 +53,6 @@ interface DiskInfo {
 
 interface MonitorResponse {
   system: SystemInfo;
-  mongo: MongoInfo;
   postgres: PostgresInfo;
   disk: DiskInfo[];
 }
@@ -88,7 +69,7 @@ registry.registerPath({
   path: '/api/v1/monitor',
   tags: ['System Monitor'],
   summary: '取得系統監控資訊',
-  description: '取得系統資源使用情況，包括 CPU、記憶體、磁碟、MongoDB 和 PostgreSQL 狀態',
+  description: '取得系統資源使用情況，包括 CPU、記憶體、磁碟和 PostgreSQL 狀態',
   responses: {
     200: {
       description: '成功獲取系統監控資訊',
@@ -112,13 +93,6 @@ registry.registerPath({
               processId: z.number(),
               processTitle: z.string(),
               processArgs: z.array(z.string())
-            }),
-            mongo: z.object({
-              status: z.string().optional(),
-              database: z.string().optional(),
-              collections: z.array(z.any()).optional(),
-              error: z.string().optional(),
-              details: z.string().optional()
             }),
             postgres: z.object({
               version: z.string().optional(),
@@ -175,29 +149,6 @@ router.get('/', async (req: Request, res: Response) => {
       processTitle: process.title,
       processArgs: process.argv,
     };
-
-    // 取得 MongoDB 伺服器資訊
-    let mongoInfo: MongoInfo = {};
-    try {
-      if (mongoClient.readyState === 1) {
-        const db = mongoClient.db;
-        mongoInfo = {
-          status: 'MongoDB 已連線',
-          database: db.databaseName,
-          collections: await db.listCollections().toArray()
-        };
-      } else {
-        mongoInfo = { 
-          error: 'MongoDB 連線不可用', 
-          details: `readyState: ${mongoClient.readyState}` 
-        };
-      }
-    } catch (err) {
-      mongoInfo = { 
-        error: 'MongoDB 連線不可用', 
-        details: err instanceof Error ? err.message : '未知錯誤'
-      };
-    }
 
     // 取得 PostgreSQL 版本資訊
     let postgresInfo: PostgresInfo = {};
@@ -297,7 +248,6 @@ router.get('/', async (req: Request, res: Response) => {
 
     const response: MonitorResponse = {
       system: systemInfo,
-      mongo: mongoInfo,
       postgres: postgresInfo,
       disk: diskInfo,
     };

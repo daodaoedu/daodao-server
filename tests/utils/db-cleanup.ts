@@ -1,6 +1,5 @@
 import { PrismaClient } from '@generated/prisma';
 import Redis from 'ioredis';
-import mongoose from 'mongoose';
 
 // Initialize database clients
 let prisma: PrismaClient | null = null;
@@ -35,7 +34,7 @@ export const cleanupPostgres = async () => {
   }
 
   const client = getPrismaClient();
-  
+
   try {
     // Delete in correct order to respect foreign key constraints
     // Start with dependent tables
@@ -43,41 +42,28 @@ export const cleanupPostgres = async () => {
       // Comments and interactions
       client.comments.deleteMany(),
       client.resource_review.deleteMany(),
-      
+
       // Practice-related tables
       client.practice_checkins.deleteMany(),
-      // client.practice_events.deleteMany(), // Model doesn't exist
-      // client.practice_interactions.deleteMany(), // Model doesn't exist
-      // client.practice_milestones.deleteMany(), // Model doesn't exist
-      // client.practice_outcomes.deleteMany(), // Model doesn't exist
-      // client.practice_notes.deleteMany(), // Model doesn't exist
       client.practices.deleteMany(),
-      
+
       // Resource-related tables
-      // client.resource_tags.deleteMany(), // Model doesn't exist
       client.resources.deleteMany(),
-      
+
       // Project-related tables
-      // client.project_members.deleteMany(), // Model doesn't exist
-      // client.project_tags.deleteMany(), // Model doesn't exist
       client.project.deleteMany(),
-      
+
       // Ideas
       client.ideas.deleteMany(),
-      
+
       // User-related tables
-      // client.user_follows.deleteMany(), // Model doesn't exist
-      // client.user_tags.deleteMany(), // Model doesn't exist
       client.temp_users.deleteMany(),
       client.users.deleteMany(),
-      
+
       // Tags (standalone)
       client.tags.deleteMany(),
-      
-      // Mentors (if exists)
-      // client.mentors.deleteMany(),
     ]);
-    
+
     console.log('✅ PostgreSQL database cleaned');
   } catch (error) {
     console.warn('⚠️ PostgreSQL cleanup failed:', error);
@@ -110,7 +96,7 @@ const fallbackCleanup = async (client: PrismaClient) => {
     'users',
     'tags'
   ];
-  
+
   for (const table of tables) {
     try {
       await (client as any)[table].deleteMany();
@@ -120,36 +106,14 @@ const fallbackCleanup = async (client: PrismaClient) => {
   }
 };
 
-// Clean up MongoDB
-export const cleanupMongoDB = async () => {
-  if (process.env.NODE_ENV !== 'test') {
-    throw new Error('Database cleanup should only run in test environment');
-  }
-  
-  try {
-    if (mongoose.connection.readyState === 1) {
-      // Drop all collections
-      const collections = await mongoose.connection.db.collections();
-      
-      for (const collection of collections) {
-        await collection.drop();
-      }
-      
-      console.log('✅ MongoDB database cleaned');
-    }
-  } catch (error) {
-    console.warn('⚠️ MongoDB cleanup failed:', error);
-  }
-};
-
 // Clean up Redis cache
 export const cleanupRedis = async () => {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('Database cleanup should only run in test environment');
   }
-  
+
   const client = getRedisClient();
-  
+
   try {
     await client.flushdb();
     console.log('✅ Redis cache cleaned');
@@ -161,25 +125,19 @@ export const cleanupRedis = async () => {
 // Main cleanup function - cleans all databases
 export const cleanupDatabase = async (options?: {
   postgres?: boolean;
-  mongodb?: boolean;
   redis?: boolean;
 }) => {
   const defaults = {
     postgres: true,
-    mongodb: false, // Disabled by default as it's less commonly used in tests
     redis: false    // Disabled by default as it's less commonly used in tests
   };
-  
+
   const config = { ...defaults, ...options };
-  
+
   if (config.postgres) {
     await cleanupPostgres();
   }
-  
-  if (config.mongodb) {
-    await cleanupMongoDB();
-  }
-  
+
   if (config.redis) {
     await cleanupRedis();
   }
@@ -194,45 +152,45 @@ export const seedTestData = async (data: {
   comments?: any[];
 }) => {
   const client = getPrismaClient();
-  
+
   try {
     const results: any = {};
-    
+
     if (data.users) {
       results.users = await client.users.createMany({
         data: data.users,
         skipDuplicates: true
       });
     }
-    
+
     if (data.projects) {
       results.projects = await client.project.createMany({
         data: data.projects,
         skipDuplicates: true
       });
     }
-    
+
     if (data.resources) {
       results.resources = await client.resources.createMany({
         data: data.resources,
         skipDuplicates: true
       });
     }
-    
+
     if (data.practices) {
       results.practices = await client.practices.createMany({
         data: data.practices,
         skipDuplicates: true
       });
     }
-    
+
     if (data.comments) {
       results.comments = await client.comments.createMany({
         data: data.comments,
         skipDuplicates: true
       });
     }
-    
+
     return results;
   } catch (error) {
     console.error('Seeding failed:', error);
@@ -243,7 +201,7 @@ export const seedTestData = async (data: {
 // Reset database sequences (useful for consistent IDs in tests)
 export const resetSequences = async () => {
   const client = getPrismaClient();
-  
+
   try {
     // Reset auto-increment sequences for PostgreSQL
     const sequences = [
@@ -254,7 +212,7 @@ export const resetSequences = async () => {
       'comments_id_seq',
       'tags_id_seq'
     ];
-    
+
     for (const seq of sequences) {
       try {
         await client.$executeRawUnsafe(
@@ -275,14 +233,10 @@ export const closeConnections = async () => {
     await prisma.$disconnect();
     prisma = null;
   }
-  
+
   if (redis) {
     redis.disconnect();
     redis = null;
-  }
-  
-  if (mongoose.connection.readyState === 1) {
-    await mongoose.connection.close();
   }
 };
 
@@ -291,7 +245,7 @@ export const withTestTransaction = async <T>(
   fn: (tx: PrismaClient) => Promise<T>
 ): Promise<T> => {
   const client = getPrismaClient();
-  
+
   return client.$transaction(async (tx) => {
     try {
       const result = await fn(tx as PrismaClient);
@@ -311,7 +265,6 @@ export const withTestTransaction = async <T>(
 export default {
   cleanupDatabase,
   cleanupPostgres,
-  cleanupMongoDB,
   cleanupRedis,
   seedTestData,
   resetSequences,

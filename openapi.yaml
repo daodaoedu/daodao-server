@@ -30245,7 +30245,7 @@ paths:
       tags:
         - Database Info
       summary: 取得資料庫資訊
-      description: 取得 MongoDB、PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等
+      description: 取得 PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等
       responses:
         '200':
           description: 成功獲取資料庫資訊
@@ -30254,24 +30254,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  mongo:
-                    anyOf:
-                      - type: object
-                        additionalProperties:
-                          type: object
-                          properties:
-                            fields:
-                              type: array
-                              items:
-                                type: string
-                          required:
-                            - fields
-                      - type: object
-                        properties:
-                          error:
-                            type: string
-                        required:
-                          - error
                   postgres:
                     anyOf:
                       - type: object
@@ -30334,7 +30316,6 @@ paths:
                         required:
                           - error
                 required:
-                  - mongo
                   - postgres
                   - redis
                 description: 資料庫資訊響應
@@ -30345,7 +30326,7 @@ paths:
       tags:
         - System Monitor
       summary: 取得系統監控資訊
-      description: 取得系統資源使用情況，包括 CPU、記憶體、磁碟、MongoDB 和 PostgreSQL 狀態
+      description: 取得系統資源使用情況，包括 CPU、記憶體、磁碟和 PostgreSQL 狀態
       responses:
         '200':
           description: 成功獲取系統監控資訊
@@ -30409,21 +30390,6 @@ paths:
                       - processId
                       - processTitle
                       - processArgs
-                  mongo:
-                    type: object
-                    properties:
-                      status:
-                        type: string
-                      database:
-                        type: string
-                      collections:
-                        type: array
-                        items:
-                          nullable: true
-                      error:
-                        type: string
-                      details:
-                        type: string
                   postgres:
                     type: object
                     properties:
@@ -30489,7 +30455,6 @@ paths:
                         - mount
                 required:
                   - system
-                  - mongo
                   - postgres
                   - disk
                 description: 系統監控資訊響應
