@@ -1,0 +1,49 @@
+schema: spec-driven
+
+# Project context
+context: |
+  # DaoDao Learning Platform Backend
+
+  ## Tech Stack
+  - Runtime: Node.js + Express.js
+  - Language: TypeScript (migrating from JavaScript)
+  - Databases: PostgreSQL (Prisma ORM), MongoDB (Mongoose), Redis (ioredis)
+  - Authentication: JWT, Passport.js with Google OAuth
+  - File Storage: Cloudflare R2
+  - Validation: Zod schemas
+  - Documentation: Swagger/OpenAPI
+
+  ## Architecture
+  - Hybrid JS/TS architecture (legacy JS at root, modern TS in src/)
+  - Path aliases: @/* → src/*, @types/* → src/types/*, @services/* → src/services/*
+  - Auto-generated types: Prisma at generated/prisma, OpenAPI at generated/openapi-types.ts
+
+  ## Conventions
+  - Strictly avoid `any` types - use `unknown` instead
+  - Use factory functions and object literals instead of classes
+  - Prefer const objects with `as const` over enums
+  - Use Zod schemas for validation and type inference
+  - Follow functional programming principles
+  - Write JSDoc for all functions, methods, and types
+  - Use conventional commits
+
+  ## API Response Format
+  - Success: { success: true, data: T, timestamp, meta? }
+  - Error: { success: false, data: null, error: { code, message, details? }, timestamp }
+  - Paginated: includes pagination object with cursors
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Keep proposals concise and focused
+    - Always include "Non-goals" section to clarify scope
+    - Consider impact on both legacy JS and modern TS code
+  spec:
+    - Define Zod schemas for validation
+    - Include API response format specifications
+    - Document database schema changes if applicable
+  tasks:
+    - Break tasks into small, testable units
+    - Include type checking step (pnpm run typecheck)
+    - Include linting step (pnpm run lint)
+    - Run prisma:generate after schema changes
