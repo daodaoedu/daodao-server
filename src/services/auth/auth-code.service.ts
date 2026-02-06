@@ -13,6 +13,7 @@ interface AuthCodeData {
   state: string;
   createdAt: number;
   used: boolean;
+  isNewUser: boolean;
 }
 
 /** Auth Code 有效期限（秒） */
@@ -34,17 +35,20 @@ export const generateAuthCode = (): string => {
  * @param code - Authorization code
  * @param token - JWT token
  * @param state - OAuth state
+ * @param isNewUser - 是否為新用戶
  */
 export const storeAuthCode = async (
   code: string,
   token: string,
-  state: string
+  state: string,
+  isNewUser: boolean = false
 ): Promise<void> => {
   const data: AuthCodeData = {
     token,
     state,
     createdAt: Date.now(),
-    used: false
+    used: false,
+    isNewUser
   };
 
   await redis.setex(
@@ -57,11 +61,11 @@ export const storeAuthCode = async (
 /**
  * 交換 authorization code 獲取 token
  * @param code - Authorization code
- * @returns token 或 null（如果 code 無效或已使用）
+ * @returns token、state 和 isNewUser，或 null（如果 code 無效或已使用）
  */
 export const exchangeAuthCode = async (
   code: string
-): Promise<{ token: string; state: string } | null> => {
+): Promise<{ token: string; state: string; isNewUser: boolean } | null> => {
   const key = `${AUTH_CODE_PREFIX}${code}`;
   const dataStr = await redis.get(key);
 
@@ -85,7 +89,8 @@ export const exchangeAuthCode = async (
 
     return {
       token: data.token,
-      state: data.state
+      state: data.state,
+      isNewUser: data.isNewUser || false
     };
   } catch (error) {
     console.error('Failed to parse auth code data:', error);

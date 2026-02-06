@@ -22,7 +22,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "build": "pnpm run openapi:generate-types && tsc --skipLibCheck && tsc-alias",
-    "openapi:generate": "ts-node -r tsconfig-paths/register scripts/generate-swagger.ts",
+    "openapi:generate": "ts-node --transpile-only -r tsconfig-paths/register scripts/generate-swagger.ts",
     "openapi:generate-types": "openapi-typescript openapi.json -o generated/openapi-types.ts",
     "postbuild": "echo 'TypeScript compilation completed' && cp -r generated dist/",
     "prisma:generate": "prisma generate",

@@ -94,36 +94,6 @@ async function loadAllRoutes() {
 }
 
 /**
- * 添加標籤定義
- */
-function addTags(document: any) {
-  document.tags = [
-    { name: 'Authentication', description: '用戶認證相關操作', 'x-order': 1 },
-    { name: 'Me', description: '個人資料相關操作', 'x-order': 2 },
-    { name: 'Users', description: '用戶管理相關操作', 'x-order': 3 },
-    { name: 'Ideas', description: '想法分享相關操作', 'x-order': 4 },
-    { name: 'Practice', description: '實踐管理相關操作', 'x-order': 5 },
-    { name: 'Practice Check-ins', description: '實踐簽到相關操作', 'x-order': 6 },
-    { name: 'Practice Interactions', description: '實踐互動相關操作（點讚、收藏、分享等）', 'x-order': 7 },
-    { name: 'Projects', description: '專案管理相關操作', 'x-order': 8 },
-    { name: 'Milestones', description: '里程碑管理相關操作', 'x-order': 9 },
-    { name: 'Notes', description: '便利貼相關操作', 'x-order': 10 },
-    { name: 'Outcomes', description: '成果相關操作', 'x-order': 11 },
-    { name: 'Reviews', description: '覆盤相關操作', 'x-order': 12 },
-    { name: 'Mentor', description: '導師系統相關操作', 'x-order': 13 },
-    { name: 'Resources', description: '資源管理相關操作', 'x-order': 14 },
-    { name: 'Resource Reviews', description: '資源評價和心得相關操作', 'x-order': 15 },
-    { name: 'Tags', description: '標籤管理相關操作', 'x-order': 16 },
-    { name: 'Comments', description: '評論系統相關操作', 'x-order': 17 },
-    { name: 'Email', description: '郵件服務相關操作', 'x-order': 18 },
-    { name: 'Images', description: '圖片管理相關操作', 'x-order': 19 },
-    { name: 'System', description: '系統狀態和資訊相關操作', 'x-order': 20 },
-    { name: 'Database Info', description: '資料庫資訊查詢相關操作', 'x-order': 21 },
-    { name: 'System Monitor', description: '系統監控相關操作', 'x-order': 22 }
-  ];
-}
-
-/**
  * 主要執行函數
  */
 async function main() {
@@ -140,14 +110,11 @@ async function main() {
     console.log('\n📊 Registry 統計:');
     console.log(`  - Schemas: ${Object.keys(registry.definitions).length} 個`);
 
-    // 3. 生成 OpenAPI 文檔
+    // 3. 生成 OpenAPI 文檔（tags 定義在 openapi-registry.ts 中）
     console.log('\n📝 生成 OpenAPI 文檔...');
     const openApiDocument = generateOpenApiDocument();
 
-    // 4. 添加標籤定義
-    addTags(openApiDocument);
-
-    // 5. 輸出文件
+    // 4. 輸出文件
     const outputDir = path.join(__dirname, '..');
     const jsonPath = path.join(outputDir, 'openapi.json');
     const yamlPath = path.join(outputDir, 'openapi.yaml');
@@ -170,7 +137,7 @@ async function main() {
     );
     console.log(`  ✅ YAML: ${yamlPath}`);
 
-    // 6. 統計資訊
+    // 5. 統計資訊
     console.log('\n================================================');
     console.log('🎉 OpenAPI 文檔生成完成！');
     console.log(`📊 總計:`);
@@ -179,7 +146,7 @@ async function main() {
     console.log(`  - API Paths: ${Object.keys(openApiDocument.paths || {}).length} 個`);
     console.log(`  - Tags: ${(openApiDocument.tags || []).length} 個`);
 
-    // 7. 完成提示
+    // 6. 完成提示
     console.log('\n💡 提示:');
     console.log('  - 文檔已更新: openapi.json / openapi.yaml');
     console.log('  - 可在 /api-docs 或 /api/docs 查看 Swagger UI');

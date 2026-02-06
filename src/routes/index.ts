@@ -17,6 +17,7 @@ import imageRoutes from './image.routes';
 import mentorRoutes from './mentor.routes';
 import practiceRoutes from './practice.routes';
 import adminRoutes from './admin.routes';
+import cityRoutes from './city.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -174,6 +175,15 @@ router.use('/practices', practiceRoutes);
 // PUT    /api/v1/admin/users/:userId/role
 router.use('/admin', adminRoutes);
 
+// 城市路由
+// GET    /api/v1/cities
+// GET    /api/v1/cities?country=TW
+// GET    /api/v1/cities?search=tokyo
+// GET    /api/v1/cities?locale=en
+// GET    /api/v1/cities/countries
+// GET    /api/v1/cities/validate/:code
+router.use('/cities', cityRoutes);
+
 /**
  * API 健康檢查端點
  * GET /api/v1/health
@@ -212,6 +222,7 @@ router.get('/info', (req, res) => {
         mentor: '/api/v1/mentor',
         practices: '/api/v1/practices',
         admin: '/api/v1/admin',
+        cities: '/api/v1/cities',
         health: '/api/v1/health'
       },
       features: [

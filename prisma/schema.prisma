@@ -35,12 +35,19 @@ model categories {
 }
 
 model city {
-  id       Int        @id @default(autoincrement())
-  name     String     @unique(map: "city_name_unique") @db.VarChar(100)
-  groups   groups[]
-  location location[]
+  id         Int        @id @default(autoincrement())
+  name       String     @unique(map: "city_name_unique") @db.VarChar(100)
+  name_en    String?    @db.VarChar(100)
+  name_zh_tw String?    @db.VarChar(100)
+  country_id Int?
+  is_active  Boolean?   @default(true)
+  country    country?   @relation(fields: [country_id], references: [id])
+  groups     groups[]
+  location   location[]
 
   @@index([name], map: "idx_city_name")
+  @@index([country_id], map: "idx_city_country")
+  @@index([is_active], map: "idx_city_active")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -74,9 +81,9 @@ model contacts {
   discord            String?  @db.VarChar(255)
   line               String?  @db.VarChar(255)
   fb                 String?  @db.VarChar(255)
-  threads            String?  @db.VarChar(30)
+  threads            String?  @db.VarChar(255)
   linkedin           String?  @db.VarChar(255)
-  github             String?  @db.VarChar(50)
+  github             String?  @db.VarChar(255)
   website            String?  @db.VarChar(2048)
   users              users[]
 }
@@ -86,6 +93,8 @@ model country {
   alpha2   String?    @unique(map: "idx_country_alpha2") @db.Char(2)
   alpha3   String?    @unique(map: "idx_country_alpha3") @db.Char(3)
   name     String     @db.VarChar(100)
+  name_en  String?    @db.VarChar(100)
+  city     city[]
   location location[]
 }
 
@@ -783,6 +792,7 @@ model users {
   custom_id_verified                                            Boolean?                   @default(false)
   professional_field                                            String?                    @db.VarChar(255)
   activity_stats_id                                             Int?
+  custom_position                                               String?                    @db.VarChar(100)
   comments                                                      comments[]
   email_logs                                                    email_logs[]
   entity_resources                                              entity_resources[]
@@ -1045,6 +1055,15 @@ model user_activity_stats {
 
   @@index([last_active_at(sort: Desc)], map: "idx_user_activity_stats_last_active")
   @@index([last_login_at(sort: Desc)], map: "idx_user_activity_stats_last_login")
+}
+
+model migration_history {
+  id                Int      @id @default(autoincrement())
+  migration_name    String   @unique @db.VarChar(255)
+  checksum          String?  @db.VarChar(64)
+  executed_at       DateTime @default(now()) @db.Timestamptz(6)
+  execution_time_ms Int?
+  success           Boolean? @default(true)
 }
 
 enum age_t {

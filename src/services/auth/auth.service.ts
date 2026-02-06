@@ -15,6 +15,8 @@ import {
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
 import { userService } from '../user.service';
+import { emailService } from '../email/email.service';
+import { loggerService } from '../logging/logger.service';
 
 /**
  * 根據 email 查找用戶及其聯絡資訊
@@ -51,14 +53,17 @@ export const findUserByEmail = async (email: string): Promise<ApiResponse<{ cont
 
 /**
  * 根據 Google ID 查找或創建臨時用戶
+ * @returns 包含 user 和 isNewUser 標記的回應
  */
 export const findOrCreateTempUser = async (profile: {
   googleId: string;
   email: string;
   name: string;
   photoUrl?: string;
-}): Promise<ApiResponse<unknown>> => {
+}): Promise<ApiResponse<{ user: unknown; isNewUser: boolean }>> => {
   const { googleId, email, name, photoUrl } = profile;
+
+  let isNewUser = false;
 
   // 先檢查是否已存在
   let tempUser = await prisma.temp_users.findFirst({
@@ -84,9 +89,11 @@ export const findOrCreateTempUser = async (profile: {
         photo_url: photoUrl
       }
     });
+
+    isNewUser = true;
   }
 
-  return createSuccessResponse(tempUser);
+  return createSuccessResponse({ user: tempUser, isNewUser });
 };
 
 /**
@@ -174,14 +181,27 @@ export const findOrCreateTempUserFromApple = async (profile: {
 /**
  * 直接從 Apple OAuth 建立正式用戶（跳過臨時用戶階段）
  * 在事務中建立 basic_info、contacts 和 users 記錄
+ *
+ * @param profile.emailVerified - Apple 提供的 email_verified 狀態
+ *   - 如果為 true，表示 Apple 已驗證此 email，設定 verified: true
+ *   - 如果為 false 或未提供，設定 verified: false
+ *   - 注意：private relay email (@privaterelay.appleid.com) 雖然 emailVerified 可能為 true，
+ *     但由於是轉發地址，建議仍視為未驗證
  */
 export const createUserFromAppleOAuth = async (profile: {
   appleId: string;
   email?: string;
   name: string;
   photoUrl?: string;
+  emailVerified?: boolean;
+  isPrivateEmail?: boolean;
 }): Promise<ApiResponse<unknown>> => {
-  const { appleId, email, name, photoUrl } = profile;
+  const { appleId, email, name, photoUrl, emailVerified, isPrivateEmail } = profile;
+
+  // 判斷是否應設定 verified: true
+  // Apple private relay email 雖然 email_verified 可能為 true，但實際上是轉發地址
+  // 為了確保用戶能收到重要通知，private relay email 不自動標記為已驗證
+  const shouldMarkVerified = emailVerified === true && isPrivateEmail !== true;
 
   // 使用事務確保資料一致性
   const newUser = await prisma.$transaction(async (tx) => {
@@ -208,6 +228,7 @@ export const createUserFromAppleOAuth = async (profile: {
     const mongoId = crypto.randomBytes(12).toString('hex');
 
     // 4. 建立 users 記錄
+    // 根據 Apple 回傳的 email_verified 狀態和是否為 private relay email 決定 verified 欄位
     const user = await tx.users.create({
       data: {
         mongo_id: mongoId,
@@ -217,7 +238,8 @@ export const createUserFromAppleOAuth = async (profile: {
         role_id: 2, // 一般用戶
         is_open_location: false,
         is_open_profile: false,
-        verified: false,
+        verified: shouldMarkVerified,
+        verified_at: shouldMarkVerified ? new Date() : null,
         is_active: true
       }
     });
@@ -246,6 +268,19 @@ export const createUserFromAppleOAuth = async (profile: {
     return createdUser;
   });
 
+  // 發送歡迎郵件（事務完成後，避免影響註冊流程）
+  if (email) {
+    emailService.sendWelcomeEmail(email, {
+      name: name || 'User',
+      hasCompletedQuiz: false
+    }).catch(error => {
+      loggerService.error('Failed to send welcome email for Apple OAuth user', {
+        error: error instanceof Error ? error.message : String(error),
+        email
+      });
+    });
+  }
+
   return createSuccessResponse(newUser);
 };
 
@@ -273,13 +308,14 @@ export const linkAppleIdToUser = async (userId: number, appleId: string): Promis
 /**
  * 直接從 OAuth 建立正式用戶（跳過臨時用戶階段）
  * 在事務中建立 basic_info、contacts 和 users 記錄
+ * @returns 包含 user 和 isNewUser 標記的回應（新建用戶必定是 isNewUser = true）
  */
 export const createUserFromOAuth = async (profile: {
   googleId: string;
   email: string;
   name: string;
   photoUrl?: string;
-}): Promise<ApiResponse<unknown>> => {
+}): Promise<ApiResponse<{ user: unknown; isNewUser: boolean }>> => {
   const { googleId, email, name, photoUrl } = profile;
 
   // 使用事務確保資料一致性
@@ -345,7 +381,7 @@ export const createUserFromOAuth = async (profile: {
     return createdUser;
   });
 
-  return createSuccessResponse(newUser);
+  return createSuccessResponse({ user: newUser, isNewUser: true });
 };
 
 /**

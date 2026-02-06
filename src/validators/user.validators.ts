@@ -23,12 +23,12 @@ const professionalFieldSchema = z
   .max(3, '最多選擇 3 個專業領域')
   .optional()
   .openapi({
-    description: 'ESCO 專業領域分類 (可複選，最多 3 個)',
-    example: ['information_and_communication_technologies_icts'],
+    description: '專業領域分類 (可複選，最多 3 個)',
+    example: ['technology_ict'],
     examples: [
-      ['information_and_communication_technologies_icts'],
-      ['education', 'business_administration_and_law'],
-      ['arts_and_humanities', 'social_sciences_journalism_and_information', 'language_skills_and_knowledge']
+      ['technology_ict'],
+      ['education_learning', 'business_management'],
+      ['arts_creative_design', 'social_sciences', 'languages']
     ]
   });
 
@@ -514,7 +514,15 @@ const formattedUserResponseSchema = z.object({
   }),
   location: z.string().nullable().openapi({
     description: '地區代碼',
-    example: 'taipei'
+    example: 'taipei_city'
+  }),
+  locationNameZh: z.string().nullable().openapi({
+    description: '地區顯示名稱（繁體中文）',
+    example: '台北市, 台灣'
+  }),
+  locationNameEn: z.string().nullable().openapi({
+    description: '地區顯示名稱（英文）',
+    example: 'Taipei City, Taiwan'
   }),
   selfIntroduction: z.string().nullable().openapi({
     description: '自我介紹',
@@ -644,8 +652,8 @@ const formattedUserResponseSchema = z.object({
   professionalField: z.array(z.enum(PROFESSIONAL_FIELDS))
     .nullable()
     .openapi({
-      description: 'ESCO 專業領域分類 (陣列)',
-      example: ['information_and_communication_technologies_icts']
+      description: '專業領域分類 (陣列)',
+      example: ['technology_ict']
     }),
   personalSlogan: z.string()
     .nullable()

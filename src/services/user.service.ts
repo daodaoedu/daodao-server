@@ -6,6 +6,7 @@
 import { prisma } from './database/prisma.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
+import { cityService } from './city.service';
 import {
   UserQueryParams,
   CreateUserRequest,
@@ -37,7 +38,7 @@ import {
   BadRequestError
 } from '../middleware/error.middleware';
 import { loggerService } from './logging/logger.service';
-import { city_t, want_to_do_list_t } from '../../generated/prisma';
+import { want_to_do_list_t } from '../../generated/prisma';
 import moment from 'moment-timezone';
 import { validate as isUuid } from 'uuid';
 import tagService from './tag.service';
@@ -91,9 +92,15 @@ const setUserInterests = async (
 
 /**
  * 獲取用戶興趣 (返回 category names 陣列)
+ * @param userId - 用戶 ID
+ * @param tx - 可選的 Prisma transaction client
  */
-const getUserInterests = async (userId: number): Promise<string[] | null> => {
-  const interests = await prisma.user_interests.findMany({
+const getUserInterests = async (
+  userId: number,
+  tx?: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+): Promise<string[] | null> => {
+  const client = tx || prisma;
+  const interests = await client.user_interests.findMany({
     where: { user_id: userId },
     include: {
       categories: {
@@ -150,65 +157,6 @@ const handleUserPreferences = async (
   }
 };
 
-/**
- * 城市名稱映射表
- * 支持中文名稱和英文枚舉值的映射
- */
-/**
- * 獲取城市名稱映射表（惰性初始化）
- */
-const getCityNameMapping = (): Record<string, city_t> => {
-  return {
-    // 中文名稱映射
-    '台北市': 'taipei_city' as city_t,
-    '基隆市': 'keelung_city' as city_t,
-    '新北市': 'new_taipei_city' as city_t,
-    '連江縣': 'lianjiang_county' as city_t,
-    '桃園市': 'taoyuan_city' as city_t,
-    '新竹市': 'hsinchu_city' as city_t,
-    '新竹縣': 'hsinchu_county' as city_t,
-    '苗栗縣': 'miaoli_county' as city_t,
-    '台中市': 'taichung_city' as city_t,
-    '彰化縣': 'changhua_county' as city_t,
-    '雲林縣': 'yunlin_county' as city_t,
-    '嘉義縣': 'chiayi_county' as city_t,
-    '嘉義市': 'chiayi_city' as city_t,
-    '台南市': 'tainan_city' as city_t,
-    '南投縣': 'nantou_county' as city_t,
-    '高雄市': 'kaohsiung_city' as city_t,
-    '屏東縣': 'pingtung_county' as city_t,
-    '海南島': 'hainan_island' as city_t,
-    '澎湖縣': 'penghu_county' as city_t,
-    '金門縣': 'kinmen_county' as city_t,
-    // 英文枚舉值直接映射
-    'taipei_city': 'taipei_city' as city_t,
-    'keelung_city': 'keelung_city' as city_t,
-    'new_taipei_city': 'new_taipei_city' as city_t,
-    'lianjiang_county': 'lianjiang_county' as city_t,
-    'taoyuan_city': 'taoyuan_city' as city_t,
-    'hsinchu_city': 'hsinchu_city' as city_t,
-    'hsinchu_county': 'hsinchu_county' as city_t,
-    'miaoli_county': 'miaoli_county' as city_t,
-    'taichung_city': 'taichung_city' as city_t,
-    'changhua_county': 'changhua_county' as city_t,
-    'yunlin_county': 'yunlin_county' as city_t,
-    'chiayi_county': 'chiayi_county' as city_t,
-    'chiayi_city': 'chiayi_city' as city_t,
-    'tainan_city': 'tainan_city' as city_t,
-    'nantou_county': 'nantou_county' as city_t,
-    'kaohsiung_city': 'kaohsiung_city' as city_t,
-    'pingtung_county': 'pingtung_county' as city_t,
-    'hainan_island': 'hainan_island' as city_t,
-    'penghu_county': 'penghu_county' as city_t,
-    'kinmen_county': 'kinmen_county' as city_t,
-    'yilan_county': 'yilan_county' as city_t,
-    'hualien_county': 'hualien_county' as city_t,
-    'taitung_county': 'taitung_county' as city_t,
-    'other': 'other' as city_t,
-    'tbd': 'tbd' as city_t,
-    'online': 'online' as city_t
-  };
-};
 
 /**
  * 驗證是否為有效的 want_to_do_list_t 值
@@ -315,6 +263,12 @@ interface PrismaUserWithRelations {
   location?: {
     city?: {
       name: string | null;
+      name_en: string | null;
+      name_zh_tw: string | null;
+    } | null;
+    country?: {
+      name: string | null;
+      name_en: string | null;
     } | null;
   } | null;
   user_positions?: Array<{
@@ -324,7 +278,15 @@ interface PrismaUserWithRelations {
   }>;
 }
 
-const formatUserResponse = async (user: PrismaUserWithRelations): Promise<FormattedUserResponse> => {
+/**
+ * 格式化用戶回應資料
+ * @param user - Prisma 用戶資料（含關聯）
+ * @param tx - 可選的 Prisma transaction client，用於在 transaction 中讀取最新資料
+ */
+const formatUserResponse = async (
+  user: PrismaUserWithRelations,
+  tx?: Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+): Promise<FormattedUserResponse> => {
   // 格式化偏好設定
   const preferences = user.user_preferences?.reduce((acc, pref) => {
     const typeValue = pref.preference_options.preference_types.value;
@@ -350,14 +312,39 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     return moment(date).toISOString();
   };
 
-  // 獲取用戶興趣
-  const interestList = await getUserInterests(user.id);
+  // 組合城市和國家名稱（繁體中文）
+  const getLocationNameZh = (): string | null => {
+    const city = user.location?.city;
+    const country = user.location?.country;
+    if (!city) return null;
 
-  // 獲取專業領域（新增）
-  const professionalField = await professionalFieldService.getUserProfessionalFields(user.id);
+    const cityName = city.name_zh_tw || city.name_en || city.name;
+    const countryName = country?.name || null;
 
-  // 獲取最新測驗結果
-  const latestQuizResult = await prisma.quiz_results.findFirst({
+    return countryName ? `${cityName}, ${countryName}` : cityName;
+  };
+
+  // 組合城市和國家名稱（英文）
+  const getLocationNameEn = (): string | null => {
+    const city = user.location?.city;
+    const country = user.location?.country;
+    if (!city) return null;
+
+    const cityName = city.name_en || city.name;
+    const countryName = country?.name_en || country?.name || null;
+
+    return countryName ? `${cityName}, ${countryName}` : cityName;
+  };
+
+  // 獲取用戶興趣（傳遞 tx 以在 transaction 中讀取最新資料）
+  const interestList = await getUserInterests(user.id, tx);
+
+  // 獲取專業領域（傳遞 tx 以在 transaction 中讀取最新資料）
+  const professionalField = await professionalFieldService.getUserProfessionalFields(user.id, tx);
+
+  // 獲取最新測驗結果（使用 tx 或普通 prisma）
+  const client = tx || prisma;
+  const latestQuizResult = await client.quiz_results.findFirst({
     where: { user_id: user.id },
     orderBy: { completed_at: 'desc' }
   });
@@ -374,6 +361,8 @@ const formatUserResponse = async (user: PrismaUserWithRelations): Promise<Format
     isSubscribeEmail: user.contacts?.is_subscribe_email ?? false,
     role: user.roles?.id || null,
     location: user.location?.city?.name || null,
+    locationNameZh: getLocationNameZh(),
+    locationNameEn: getLocationNameEn(),
     tagList: await getUserTags(user.id) || null,
     wantToDoList: user.basic_info?.want_to_do_list ?
       user.basic_info.want_to_do_list.map(item => String(item)) : null,
@@ -632,6 +621,13 @@ const getMe = async (externalId: string): Promise<ApiSuccessResponse<FormattedUs
         include: {
           position: true
         }
+      },
+      user_professional_fields: {
+        include: {
+          professional_fields: {
+            select: { value: true }
+          }
+        }
       }
     }
   });
@@ -668,6 +664,13 @@ const getOneUser = async (
       user_positions: {
         include: {
           position: true
+        }
+      },
+      user_professional_fields: {
+        include: {
+          professional_fields: {
+            select: { value: true }
+          }
         }
       }
     }
@@ -713,7 +716,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
   return await prisma.$transaction(async (tx) => {
     const {
       gender,
-      birthDate,
+      birthDay,
       contactList,
       educationStage,
       isOpenLocation,
@@ -726,7 +729,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       wantToDoList,
       tagList,
       preferences,
-      isSendEmail,
+      isSendEmail = true,  // 預設發送驗證郵件
       // 新增欄位
       professionalField,
       personalSlogan,
@@ -769,29 +772,14 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       }
     }
 
-    // 處理地區
+    // 處理地區 - 使用 cityService 查找或建立 location
     let locationId: number | null = null;
     if (areaCode) {
-      // 根據城市名稱映射獲取對應的枚舉值
-      const cityEnum = getCityNameMapping()[areaCode];
-      
-      if (!cityEnum) {
-        throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
+      locationId = await cityService.findOrCreateLocation(areaCode, tx);
+
+      if (locationId === null) {
+        throw new ConflictError(`'${areaCode}' 不是有效的城市代碼`);
       }
-      
-      // 查找對應的 location
-      const location = await tx.location.findFirst({
-        where: {
-          city: {
-            name: cityEnum
-          }
-        }
-      });
-      
-      if (!location) {
-        throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
-      }
-      locationId = location.id;
     }
 
     // 創建基本資訊
@@ -824,7 +812,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     // 創建用戶
     const newUser = await tx.users.create({
       data: {
-        mongo_id: tempUser.id.toString(), // Use temp user ID as mongo_id
+        mongo_id: crypto.randomUUID(),
         nickname: tempUser.name,
         gender: gender as 'male' | 'female' | 'other' | undefined,
         education_stage: (educationStage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other') || 'other',
@@ -834,7 +822,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         location_id: locationId,
         role_id: 2, // 默認角色
         is_open_profile: isOpenProfile ?? true,
-        birth_date: birthDate ? new Date(birthDate) : null,
+        birth_date: birthDay ? new Date(birthDay) : null,
         basic_info_id: basicInfo.id,
 
         // 新增欄位
@@ -922,8 +910,8 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     if (isSendEmail && createdUser.contacts?.email) {
       // 發送驗證郵件
       await emailService.sendVerificationEmail(
-        createdUser.contacts.email, 
-        `${process.env.BACKEND_URL}/email/verify?token=${newToken}`
+        createdUser.contacts.email,
+        `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`
       );
       
       // 刪除臨時用戶
@@ -931,7 +919,8 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     }
 
     const result = {
-      user: await formatUserResponse(createdUser),
+      // 傳遞 tx 以在 transaction 中讀取最新創建的資料
+      user: await formatUserResponse(createdUser, tx),
       token: newToken
     };
 
@@ -972,7 +961,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       name: nickname,
       photoURL,
       gender,
-      birthDate,
+      birthDay,
       contactList,
       educationStage,
       isOpenLocation,
@@ -993,32 +982,17 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       customId
     } = userData;
 
-    // 處理地區更新
+    // 處理地區更新 - 使用 cityService 查找或建立 location
     let locationId: number | null | undefined = undefined;
     if (areaCode !== undefined) {
       if (areaCode === null || areaCode === '') {
         locationId = null;
       } else {
-        // 根據城市名稱映射獲取對應的枚舉值
-        const cityEnum = getCityNameMapping()[areaCode];
+        locationId = await cityService.findOrCreateLocation(areaCode, tx);
 
-        if (!cityEnum) {
-          throw new ConflictError(`'${areaCode}' 不是有效的城市名稱`);
+        if (locationId === null) {
+          throw new ConflictError(`'${areaCode}' 不是有效的城市代碼`);
         }
-
-        // 查找對應的 location
-        const location = await tx.location.findFirst({
-          where: {
-            city: {
-              name: cityEnum
-            }
-          }
-        });
-
-        if (!location) {
-          throw new ConflictError(`找不到城市 '${areaCode}' 對應的地區資料`);
-        }
-        locationId = location.id;
       }
     }
 
@@ -1105,7 +1079,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         education_stage: educationStage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other' | undefined,
         is_open_location: isOpenLocation,
         is_open_profile: isOpenProfile,
-        birth_date: birthDate ? new Date(birthDate) : undefined,
+        birth_date: birthDay ? new Date(birthDay) : undefined,
         location_id: locationId,
         updated_at: new Date(),
 
@@ -1195,6 +1169,13 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
               }
             }
           }
+        },
+        user_professional_fields: {
+          include: {
+            professional_fields: {
+              select: { value: true }
+            }
+          }
         }
       }
     });
@@ -1203,7 +1184,8 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       throw new Error('Failed to retrieve updated user');
     }
 
-    const formattedUser = await formatUserResponse(updatedUser);
+    // 傳遞 tx 以在 transaction 中讀取最新更新的資料
+    const formattedUser = await formatUserResponse(updatedUser, tx);
     return createSuccessResponse(formattedUser);
   });
 };
@@ -1335,23 +1317,27 @@ const deleteMe = async (externalId: string): Promise<ApiSuccessResponse<{ messag
       where: { user_id: user.id }
     });
 
-    // 刪除關聯資料
-    if (user.contact_id) {
-      await tx.contacts.delete({
-        where: { id: user.contact_id }
-      });
-    }
+    // 保存關聯 ID 以便稍後刪除
+    const contactId = user.contact_id;
+    const basicInfoId = user.basic_info_id;
 
-    if (user.basic_info_id) {
-      await tx.basic_info.delete({
-        where: { id: user.basic_info_id }
-      });
-    }
-
-    // 刪除用戶
+    // 先刪除用戶（解除外鍵引用）
     await tx.users.delete({
       where: { id: user.id }
     });
+
+    // 再刪除關聯資料
+    if (contactId) {
+      await tx.contacts.delete({
+        where: { id: contactId }
+      });
+    }
+
+    if (basicInfoId) {
+      await tx.basic_info.delete({
+        where: { id: basicInfoId }
+      });
+    }
   });
 
   return createSuccessResponse({ message: '用戶已成功刪除' });
@@ -1391,23 +1377,27 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
       where: { user_id: userId }
     });
 
-    // 刪除關聯資料
-    if (user.contacts) {
-      await tx.contacts.delete({
-        where: { id: user.contacts.id }
-      });
-    }
+    // 保存關聯資料以便稍後刪除
+    const contacts = user.contacts;
+    const basicInfo = user.basic_info;
 
-    if (user.basic_info) {
-      await tx.basic_info.delete({
-        where: { id: user.basic_info.id }
-      });
-    }
-
-    // 刪除用戶
+    // 先刪除用戶（解除外鍵引用）
     await tx.users.delete({
       where: { id: userId }
     });
+
+    // 再刪除關聯資料
+    if (contacts) {
+      await tx.contacts.delete({
+        where: { id: contacts.id }
+      });
+    }
+
+    if (basicInfo) {
+      await tx.basic_info.delete({
+        where: { id: basicInfo.id }
+      });
+    }
   });
 
   return createSuccessResponse({ message: '用戶已成功刪除' });

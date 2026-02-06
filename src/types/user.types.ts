@@ -14,20 +14,21 @@ import 'multer';
  */
 type MulterFile = Express.Multer.File;
 
-// ESCO 專業領域常數定義 (使用 snake_case 格式,對應 categories 命名規則)
+// 專業領域常數定義 (對應資料庫 professional_fields 表的 value 欄位)
 export const PROFESSIONAL_FIELDS = [
-  'information_and_communication_technologies_icts',  // 資訊與通訊技術
-  'business_administration_and_law',                  // 商業、行政與法律
-  'arts_and_humanities',                              // 藝術與人文
-  'natural_sciences_mathematics_and_statistics',      // 自然科學、數學與統計
-  'engineering_manufacturing_and_construction',       // 工程、製造與營造
-  'health_and_welfare',                               // 健康與福祉
-  'education',                                        // 教育
-  'social_sciences_journalism_and_information',       // 社會科學、新聞與資訊
-  'language_skills_and_knowledge',                    // 語言技能與知識
-  'services',                                         // 服務
-  'agriculture_forestry_fisheries_and_veterinary',    // 農業、林業、漁業與獸醫
-  'others',                                           // 其他
+  'technology_ict',                      // 資訊與資訊通信科技(ICT)
+  'business_management',                 // 商業與管理
+  'arts_creative_design',                // 藝術、創意與設計
+  'science_research',                    // 科學與研究
+  'engineering_manufacturing',           // 工程與製造
+  'health_medicine',                     // 健康與醫學
+  'education_learning',                  // 教育與學習
+  'social_sciences',                     // 社會科學
+  'languages',                           // 語言
+  'law',                                 // 法律
+  'customer_service_hospitality',        // 客戶服務與餐飲
+  'agriculture_environmental_sciences',  // 農業與環境科學
+  'others',                              // 其他
 ] as const;
 
 export type ProfessionalField = typeof PROFESSIONAL_FIELDS[number];
@@ -57,7 +58,7 @@ export interface UserQueryParams {
 // 用戶創建請求介面
 export interface CreateUserRequest {
   gender?: string;
-  birthDate?: Date | string;
+  birthDay?: Date | string;
   contactList?: {
     instagram?: string;
     discord?: string;
@@ -94,7 +95,7 @@ export interface UpdateUserRequest {
   name?: string;
   photoURL?: string;
   gender?: string;
-  birthDate?: Date | string;
+  birthDay?: Date | string;
   contactList?: {
     instagram?: string;
     discord?: string;
@@ -159,6 +160,8 @@ export interface FormattedUserResponse {
   isSubscribeEmail: boolean;
   role: number | null;
   location: string | null;
+  locationNameZh: string | null;  // 地區顯示名稱（繁體中文）
+  locationNameEn: string | null;  // 地區顯示名稱（英文）
   tagList: string[] | null;
   wantToDoList: string[] | null;
   educationStage: 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other' | null;

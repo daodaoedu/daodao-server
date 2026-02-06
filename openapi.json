@@ -467,6 +467,26 @@
           "email": "user@example.com"
         }
       },
+      "ResendVerificationRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 254,
+            "format": "email",
+            "description": "需要重新發送驗證郵件的電子郵件地址",
+            "example": "user@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "description": "重新發送驗證郵件請求資料",
+        "example": {
+          "email": "user@example.com"
+        }
+      },
       "ChangePasswordRequest": {
         "type": "object",
         "properties": {
@@ -1623,6 +1643,150 @@
           "success": true,
           "data": {
             "message": "郵件驗證成功"
+          },
+          "timestamp": "2024-01-15T10:30:00.000Z"
+        }
+      },
+      "ResendVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "發送結果訊息",
+                "example": "驗證郵件已重新發送"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "description": "The main response data"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "description": "Search query used for filtering results"
+              },
+              "searchTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Time taken to execute the search query in milliseconds"
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Applied filters for the request"
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Count of items per category"
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Aggregated statistical data"
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Unique identifier for request tracking"
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "description": "Whether the response was served from cache"
+              },
+              "processingTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Total processing time in milliseconds"
+              }
+            },
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Optional metadata about the response",
+            "examples": [
+              {
+                "searchQuery": "JavaScript教程",
+                "searchTime": 45,
+                "cacheHit": false,
+                "processingTime": 123.5,
+                "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+              },
+              {
+                "categoryCounts": {
+                  "前端開發": 25,
+                  "後端開發": 18,
+                  "資料科學": 12
+                },
+                "filters": {
+                  "difficulty": "intermediate",
+                  "language": "zh-TW"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "重新發送驗證郵件回應",
+        "examples": [
+          {
+            "success": true,
+            "data": {
+              "id": 123,
+              "_id": "550e8400-e29b-41d4-a716-446655440000",
+              "name": "JavaScript 基礎教程",
+              "description": "從零開始學習 JavaScript 程式設計",
+              "status": "published"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          },
+          {
+            "success": true,
+            "data": {
+              "userId": 456,
+              "username": "john_doe",
+              "email": "john@example.com",
+              "role": "student"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z",
+            "meta": {
+              "cacheHit": true,
+              "processingTime": 23.1
+            }
+          }
+        ],
+        "example": {
+          "success": true,
+          "data": {
+            "message": "驗證郵件已重新發送"
           },
           "timestamp": "2024-01-15T10:30:00.000Z"
         }
@@ -4965,37 +5129,38 @@
             "items": {
               "type": "string",
               "enum": [
-                "information_and_communication_technologies_icts",
-                "business_administration_and_law",
-                "arts_and_humanities",
-                "natural_sciences_mathematics_and_statistics",
-                "engineering_manufacturing_and_construction",
-                "health_and_welfare",
-                "education",
-                "social_sciences_journalism_and_information",
-                "language_skills_and_knowledge",
-                "services",
-                "agriculture_forestry_fisheries_and_veterinary",
+                "technology_ict",
+                "business_management",
+                "arts_creative_design",
+                "science_research",
+                "engineering_manufacturing",
+                "health_medicine",
+                "education_learning",
+                "social_sciences",
+                "languages",
+                "law",
+                "customer_service_hospitality",
+                "agriculture_environmental_sciences",
                 "others"
               ]
             },
             "maxItems": 3,
-            "description": "ESCO 專業領域分類 (可複選，最多 3 個)",
+            "description": "專業領域分類 (可複選，最多 3 個)",
             "example": [
-              "information_and_communication_technologies_icts"
+              "technology_ict"
             ],
             "examples": [
               [
-                "information_and_communication_technologies_icts"
+                "technology_ict"
               ],
               [
-                "education",
-                "business_administration_and_law"
+                "education_learning",
+                "business_management"
               ],
               [
-                "arts_and_humanities",
-                "social_sciences_journalism_and_information",
-                "language_skills_and_knowledge"
+                "arts_creative_design",
+                "social_sciences",
+                "languages"
               ]
             ]
           },
@@ -5299,37 +5464,38 @@
             "items": {
               "type": "string",
               "enum": [
-                "information_and_communication_technologies_icts",
-                "business_administration_and_law",
-                "arts_and_humanities",
-                "natural_sciences_mathematics_and_statistics",
-                "engineering_manufacturing_and_construction",
-                "health_and_welfare",
-                "education",
-                "social_sciences_journalism_and_information",
-                "language_skills_and_knowledge",
-                "services",
-                "agriculture_forestry_fisheries_and_veterinary",
+                "technology_ict",
+                "business_management",
+                "arts_creative_design",
+                "science_research",
+                "engineering_manufacturing",
+                "health_medicine",
+                "education_learning",
+                "social_sciences",
+                "languages",
+                "law",
+                "customer_service_hospitality",
+                "agriculture_environmental_sciences",
                 "others"
               ]
             },
             "maxItems": 3,
-            "description": "ESCO 專業領域分類 (可複選，最多 3 個)",
+            "description": "專業領域分類 (可複選，最多 3 個)",
             "example": [
-              "information_and_communication_technologies_icts"
+              "technology_ict"
             ],
             "examples": [
               [
-                "information_and_communication_technologies_icts"
+                "technology_ict"
               ],
               [
-                "education",
-                "business_administration_and_law"
+                "education_learning",
+                "business_management"
               ],
               [
-                "arts_and_humanities",
-                "social_sciences_journalism_and_information",
-                "language_skills_and_knowledge"
+                "arts_creative_design",
+                "social_sciences",
+                "languages"
               ]
             ]
           },
@@ -5472,7 +5638,19 @@
             "type": "string",
             "nullable": true,
             "description": "地區代碼",
-            "example": "taipei"
+            "example": "taipei_city"
+          },
+          "locationNameZh": {
+            "type": "string",
+            "nullable": true,
+            "description": "地區顯示名稱（繁體中文）",
+            "example": "台北市, 台灣"
+          },
+          "locationNameEn": {
+            "type": "string",
+            "nullable": true,
+            "description": "地區顯示名稱（英文）",
+            "example": "Taipei City, Taiwan"
           },
           "selfIntroduction": {
             "type": "string",
@@ -5766,23 +5944,24 @@
             "items": {
               "type": "string",
               "enum": [
-                "information_and_communication_technologies_icts",
-                "business_administration_and_law",
-                "arts_and_humanities",
-                "natural_sciences_mathematics_and_statistics",
-                "engineering_manufacturing_and_construction",
-                "health_and_welfare",
-                "education",
-                "social_sciences_journalism_and_information",
-                "language_skills_and_knowledge",
-                "services",
-                "agriculture_forestry_fisheries_and_veterinary",
+                "technology_ict",
+                "business_management",
+                "arts_creative_design",
+                "science_research",
+                "engineering_manufacturing",
+                "health_medicine",
+                "education_learning",
+                "social_sciences",
+                "languages",
+                "law",
+                "customer_service_hospitality",
+                "agriculture_environmental_sciences",
                 "others"
               ]
             },
-            "description": "ESCO 專業領域分類 (陣列)",
+            "description": "專業領域分類 (陣列)",
             "example": [
-              "information_and_communication_technologies_icts"
+              "technology_ict"
             ]
           },
           "personalSlogan": {
@@ -5910,6 +6089,8 @@
           "isOpenProfile",
           "isSubscribeEmail",
           "location",
+          "locationNameZh",
+          "locationNameEn",
           "selfIntroduction",
           "share",
           "wantToDoList",
@@ -11210,6 +11391,115 @@
         ],
         "description": "用戶 ID 參數"
       },
+      "CityData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "城市 ID",
+            "example": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "城市代碼（唯一識別）",
+            "example": "taipei_city"
+          },
+          "name": {
+            "type": "string",
+            "description": "城市顯示名稱（依語系）",
+            "example": "台北市"
+          },
+          "nameEn": {
+            "type": "string",
+            "nullable": true,
+            "description": "英文名稱",
+            "example": "Taipei City"
+          },
+          "nameZhTw": {
+            "type": "string",
+            "nullable": true,
+            "description": "繁體中文名稱",
+            "example": "台北市"
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "國家代碼",
+            "example": "TW"
+          },
+          "countryName": {
+            "type": "string",
+            "nullable": true,
+            "description": "國家名稱",
+            "example": "Taiwan"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "是否啟用",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "nameEn",
+          "nameZhTw",
+          "countryCode",
+          "countryName",
+          "isActive"
+        ],
+        "description": "城市資料",
+        "example": {
+          "id": 1,
+          "code": "taipei_city",
+          "name": "台北市",
+          "nameEn": "Taipei City",
+          "nameZhTw": "台北市",
+          "countryCode": "TW",
+          "countryName": "Taiwan",
+          "isActive": true
+        }
+      },
+      "CountryData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "國家 ID",
+            "example": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "國家代碼（ISO 3166-1 alpha-2）",
+            "example": "TW"
+          },
+          "name": {
+            "type": "string",
+            "description": "國家名稱",
+            "example": "Taiwan"
+          },
+          "nameEn": {
+            "type": "string",
+            "nullable": true,
+            "description": "英文名稱",
+            "example": "Taiwan"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "nameEn"
+        ],
+        "description": "國家資料",
+        "example": {
+          "id": 1,
+          "code": "TW",
+          "name": "Taiwan",
+          "nameEn": "Taiwan"
+        }
+      },
       "MyPracticeItem": {
         "type": "object",
         "properties": {
@@ -12209,6 +12499,131 @@
           "deleted"
         ],
         "description": "The main response data"
+      },
+      "GetCitiesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CityData"
+            },
+            "description": "城市資料陣列"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string"
+              },
+              "processingTime": {
+                "type": "number"
+              }
+            },
+            "description": "Optional metadata"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "城市列表回應",
+        "example": {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "code": "taipei_city",
+              "name": "台北市",
+              "nameEn": "Taipei City",
+              "nameZhTw": "台北市",
+              "countryCode": "TW",
+              "countryName": "Taiwan",
+              "isActive": true
+            },
+            {
+              "id": 2,
+              "code": "new_taipei_city",
+              "name": "新北市",
+              "nameEn": "New Taipei City",
+              "nameZhTw": "新北市",
+              "countryCode": "TW",
+              "countryName": "Taiwan",
+              "isActive": true
+            }
+          ],
+          "timestamp": "2024-01-15T10:30:00.000Z"
+        }
+      },
+      "GetCountriesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryData"
+            },
+            "description": "國家資料陣列"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "processingTime": {
+                "type": "number"
+              }
+            },
+            "description": "Optional metadata"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "國家列表回應",
+        "example": {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "code": "TW",
+              "name": "Taiwan",
+              "nameEn": "Taiwan"
+            },
+            {
+              "id": 2,
+              "code": "JP",
+              "name": "Japan",
+              "nameEn": "Japan"
+            }
+          ],
+          "timestamp": "2024-01-15T10:30:00.000Z"
+        }
       }
     },
     "parameters": {}
@@ -20764,6 +21179,79 @@
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "驗證電子郵件（連結點擊）",
+        "description": "用於郵件中的點擊連結驗證，驗證後重定向到前端頁面",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "電子郵件驗證令牌",
+              "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            },
+            "required": true,
+            "description": "電子郵件驗證令牌",
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "驗證後重定向到前端頁面"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "重新發送驗證郵件",
+        "description": "重新發送電子郵件驗證連結到指定郵箱",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "驗證郵件已重新發送",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendVerificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -46218,6 +46706,142 @@
         }
       }
     },
+    "/api/v1/cities": {
+      "get": {
+        "tags": [
+          "Cities"
+        ],
+        "summary": "取得城市列表",
+        "description": "取得可用的城市列表。支援按國家篩選、關鍵字搜尋、指定語系。\n\n**查詢參數：**\n- `country`: 國家代碼篩選 (ISO 3166-1 alpha-2，如 TW, JP, US)\n- `search`: 搜尋關鍵字（支援城市代碼、中文名、英文名）\n- `locale`: 語系 (zh-TW, en, default)，決定城市名稱顯示語言\n- `limit`: 回傳數量限制 (預設 50，最大 200)\n\n**使用範例：**\n- 取得台灣所有城市: `?country=TW`\n- 搜尋東京: `?search=tokyo` 或 `?search=東京`\n- 英文顯示: `?locale=en`",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "description": "國家代碼（ISO 3166-1 alpha-2）",
+              "examples": [
+                "TW",
+                "JP",
+                "US",
+                "KR"
+              ]
+            },
+            "required": false,
+            "description": "國家代碼（ISO 3166-1 alpha-2）",
+            "name": "country",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "description": "搜尋關鍵字（支援城市代碼、中文名、英文名）",
+              "examples": [
+                "tokyo",
+                "東京",
+                "taipei"
+              ]
+            },
+            "required": false,
+            "description": "搜尋關鍵字（支援城市代碼、中文名、英文名）",
+            "name": "search",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "zh-TW",
+                "en",
+                "default"
+              ],
+              "default": "default",
+              "description": "語系，決定城市名稱顯示語言",
+              "examples": [
+                "zh-TW",
+                "en",
+                "default"
+              ],
+              "enumDescriptions": {
+                "zh-TW": "繁體中文",
+                "en": "英文",
+                "default": "預設（優先繁中，次英文，最後代碼）"
+              }
+            },
+            "required": false,
+            "description": "語系，決定城市名稱顯示語言",
+            "name": "locale",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "description": "回傳數量限制",
+              "examples": [
+                "20",
+                "50",
+                "100"
+              ]
+            },
+            "required": false,
+            "description": "回傳數量限制",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得城市列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCitiesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/cities/countries": {
+      "get": {
+        "tags": [
+          "Cities"
+        ],
+        "summary": "取得國家列表",
+        "description": "取得所有可用的國家列表，用於國家選擇下拉選單。",
+        "responses": {
+          "200": {
+            "description": "成功取得國家列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCountriesResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -46389,19 +47013,24 @@
       "x-order": 26
     },
     {
+      "name": "Cities",
+      "description": "城市與地區相關操作",
+      "x-order": 27
+    },
+    {
       "name": "System",
       "description": "系統狀態和資訊相關操作",
-      "x-order": 27
+      "x-order": 28
     },
     {
       "name": "Database Info",
       "description": "資料庫資訊查詢相關操作",
-      "x-order": 28
+      "x-order": 29
     },
     {
       "name": "System Monitor",
       "description": "系統監控相關操作",
-      "x-order": 29
+      "x-order": 30
     }
   ]
 }

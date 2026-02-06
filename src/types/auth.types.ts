@@ -152,7 +152,42 @@ export interface OAuthProfile {
   email: string;
   name: string;
   photoUrl?: string;
-  provider: 'google' | 'facebook' | 'github';
+  provider: 'google' | 'facebook' | 'github' | 'apple';
+}
+
+/**
+ * OAuth 回調後的用戶資料
+ * 用於 Google/Apple OAuth callback 時統一處理用戶資料
+ */
+export interface OAuthCallbackUser {
+  /** 用戶 ID (正式用戶或臨時用戶) */
+  id?: number;
+  /** 外部 ID (external_id) */
+  _id?: string;
+  /** Google ID */
+  googleID?: string;
+  /** Apple ID */
+  appleID?: string;
+  /** 角色 ID */
+  roleId?: number;
+  /** 用戶名稱 */
+  name?: string;
+  /** 暱稱 */
+  nickname?: string;
+  /** 是否為新用戶 (首次登入) */
+  _isNewUser?: boolean;
+}
+
+/**
+ * OAuth 提供者的郵件驗證資訊
+ */
+export interface OAuthEmailVerification {
+  /** 郵件地址 */
+  email?: string;
+  /** 郵件是否已由 OAuth 提供者驗證 */
+  emailVerified: boolean;
+  /** 是否為 private relay email (Apple) */
+  isPrivateEmail?: boolean;
 }
 
 // 認證回應介面

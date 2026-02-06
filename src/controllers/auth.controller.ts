@@ -28,6 +28,7 @@ import {
   OAuthState
 } from '../utils/oauth-state';
 import { appleAuthService } from '../services/auth/apple-auth.service';
+import { loggerService } from '../services/logging/logger.service';
 import { isCustomScheme, buildRedirectUrl } from '../utils/redirect-validation';
 import { oauthNonceService } from '../services/auth/oauth-nonce.service';
 import { authCodeService } from '../services/auth/auth-code.service';
@@ -61,7 +62,7 @@ export const register = asyncHandler(async (_req: Request, _res: Response) => {
  * 設定 HTTP-only Cookie 並重定向到前端
  */
 export const googleCallback = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user as { googleID?: string; _id?: string; id?: number; external_id?: string; roleId?: number; name?: string };
+  const user = req.user as { googleID?: string; _id?: string; id?: number; external_id?: string; roleId?: number; name?: string; _isNewUser?: boolean };
 
   if (!user) {
     throw new UnauthorizedError('Google 認證失敗');
@@ -72,7 +73,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
   if (!stateParam) {
-    console.error('OAuth callback - missing state parameter');
+    loggerService.warn('OAuth callback - missing state parameter');
     res.redirect(`${frontendUrl}/auth/error?reason=missing_state`);
     return;
   }
@@ -80,7 +81,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   // 驗證 state 格式
   const validationResult = validateOAuthState(stateParam);
   if (!validationResult.valid || !validationResult.state) {
-    console.error('OAuth callback - invalid state:', validationResult.error);
+    loggerService.warn('OAuth callback - invalid state', { error: validationResult.error });
     res.redirect(`${frontendUrl}/auth/error?reason=invalid_state`);
     return;
   }
@@ -90,7 +91,9 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   // 驗證 nonce（CSRF 保護）
   const nonceData = await oauthNonceService.verifyAndConsumeNonce(oauthState.nonce);
   if (!nonceData) {
-    console.error('OAuth callback - nonce verification failed:', oauthState.nonce.substring(0, 8) + '...');
+    loggerService.warn('OAuth callback - nonce verification failed', {
+      noncePrefix: oauthState.nonce.substring(0, 8)
+    });
     res.redirect(`${frontendUrl}/auth/error?reason=invalid_nonce`);
     return;
   }
@@ -107,6 +110,9 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
   const isTemp = !isUserExit;
 
+  // 從 OAuth callback 取得 isNewUser 標記
+  const isNewUser = user._isNewUser || false;
+
   // 獲取用戶角色和權限（如果是正式用戶）
   let userRoles: Array<{ name: string }> = [];
   let userPermissions: Array<{ name: string }> = [];
@@ -118,7 +124,10 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
         userRoles = rolesResponse.data;
       }
     } catch (error) {
-      console.error('Failed to fetch user roles:', error);
+      loggerService.error('Failed to fetch user roles', {
+        userId: id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
 
     try {
@@ -127,7 +136,10 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
         userPermissions = permissionsResponse.data;
       }
     } catch (error) {
-      console.error('Failed to fetch user permissions:', error);
+      loggerService.error('Failed to fetch user permissions', {
+        userId: id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -151,7 +163,10 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
       const deviceInfo = extractDeviceInfo(req);
       await authService.updateLastLogin(id, deviceInfo);
     } catch (error) {
-      console.error('Failed to update login history:', error);
+      loggerService.error('Failed to update login history', {
+        userId: id,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -162,21 +177,23 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     // App 登入：使用 authorization code flow
     // 生成一次性授權碼，App 用 code 換取 token（避免 token 暴露在 URL）
     const authCode = authCodeService.generateAuthCode();
-    await authCodeService.storeAuthCode(authCode, token, stateParam);
+    await authCodeService.storeAuthCode(authCode, token, stateParam, isNewUser);
 
     redirectTarget = buildRedirectUrl(oauthState.redirectUrl, {
       code: authCode,
       state: stateParam
     });
 
-    console.log('OAuth callback - app redirect with auth code');
+    loggerService.debug('OAuth callback - app redirect with auth code', { isNewUser });
   } else {
     // Web 登入：重定向到前端 callback 頁面（token 已在 cookie 中）
+    // 在 URL 參數中傳遞 isNewUser
     redirectTarget = buildRedirectUrl(`${frontendUrl}/auth/callback`, {
-      state: stateParam
+      state: stateParam,
+      isNewUser: String(isNewUser)
     });
 
-    console.log('OAuth callback - web redirect');
+    loggerService.debug('OAuth callback - web redirect', { isNewUser });
   }
 
   res.redirect(redirectTarget);
@@ -284,7 +301,7 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
     try {
       const rolesResponse = await authService.getUserRoles(user.id);
       const permissionsResponse = await authService.getUserPermissions(user.id);
-      
+
       if (rolesResponse.success) {
         userRoles = rolesResponse.data;
       }
@@ -292,7 +309,10 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
         userPermissions = permissionsResponse.data;
       }
     } catch (error) {
-      console.error('Failed to fetch user roles/permissions:', error);
+      loggerService.error('Failed to fetch user roles/permissions', {
+        userId: user.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
       // 繼續執行，但不會有權限
     }
   }
@@ -305,8 +325,8 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
       name: (user as { name?: string; nickname?: string }).name || (user as { nickname?: string }).nickname,
       photo_url: (user as { photo_url?: string }).photo_url || contact?.photo_url || '',
       is_active: isTemporary ? true : ((user as { is_active?: boolean }).is_active || true),
-      email_verified: isTemporary ? false : ((user as { email_verified?: boolean }).email_verified || false),
-      email_verified_at: isTemporary ? null : ((user as { email_verified_at?: Date | null }).email_verified_at?.toISOString() || null),
+      email_verified: isTemporary ? false : ((user as { verified?: boolean }).verified || false),
+      email_verified_at: isTemporary ? null : ((user as { verified_at?: Date | null }).verified_at?.toISOString() || null),
       roles: userRoles.map(role => role.name),
       permissions: userPermissions.map(permission => permission.name)
     },
@@ -353,9 +373,8 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 
   try {
     const cleanedToken = token.replace('Bearer', '').trim();
-    
+
     const decoded = jwtService.verifyToken(cleanedToken);
-    console.log("decoded", decoded);
 
     if (decoded.error) {
       throw new BadRequestError('無效的驗證令牌');
@@ -363,7 +382,6 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 
     // 使用 external_id 查找用戶
     const userResponse = await authService.findUserByExternalId(decoded._id || '');
-    console.log("userResponse", userResponse);
 
     if (!userResponse.success || !userResponse.data) {
       throw new NotFoundError('用戶不存在');
@@ -381,8 +399,8 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     if (!verifyResponse.success) {
       throw new BadRequestError('郵件驗證失敗');
     }
-    console.log("user_verification_updated", user.id);
-    
+    loggerService.info('User email verification updated', { userId: user.id });
+
     // 發送歡迎郵件
     const contact = user.contacts;
     if (contact?.email) {
@@ -400,9 +418,123 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     const validatedResponse = verifyEmailResponseSchema.parse(response);
     res.json(validatedResponse);
   } catch (err) {
-    console.error("verifyEmail error:", err);
+    loggerService.error('verifyEmail error', {
+      error: err instanceof Error ? err.message : String(err)
+    });
     throw err;
   }
+});
+
+/**
+ * 驗證電子郵件（GET 版本）
+ * GET /api/auth/verify-email?token=xxx
+ * 用於郵件中的點擊連結驗證，驗證後重定向到前端
+ */
+export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.query;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  if (!token || typeof token !== 'string') {
+    return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=missing_token`);
+  }
+
+  try {
+    const cleanedToken = token.replace('Bearer', '').trim();
+
+    const decoded = jwtService.verifyToken(cleanedToken);
+
+    if (decoded.error) {
+      return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=invalid_token`);
+    }
+
+    // 使用 external_id 查找用戶
+    const userResponse = await authService.findUserByExternalId(decoded._id || '');
+
+    if (!userResponse.success || !userResponse.data) {
+      return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=user_not_found`);
+    }
+
+    const user = userResponse.data;
+
+    // 檢查是否已驗證
+    if (user.verified) {
+      return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=already_verified`);
+    }
+
+    // 更新用戶郵件驗證狀態
+    const verifyResponse = await authService.verifyUserEmail(user.id);
+    if (!verifyResponse.success) {
+      return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
+    }
+
+    // 發送歡迎郵件
+    const contact = user.contacts;
+    if (contact?.email) {
+      await emailService.sendWelcomeEmail(contact.email, {
+        name: user.nickname || 'User',
+        hasCompletedQuiz: false
+      });
+    }
+
+    return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=verified`);
+  } catch (err) {
+    loggerService.error('verifyEmailGet error', {
+      error: err instanceof Error ? err.message : String(err)
+    });
+    return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=unknown_error`);
+  }
+});
+
+/**
+ * 重新發送驗證郵件
+ * POST /api/auth/resend-verification
+ */
+export const resendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new BadRequestError('電子郵件為必填欄位');
+  }
+
+  // 透過 email 查找用戶
+  const user = await prisma.users.findFirst({
+    where: {
+      contacts: {
+        email: email
+      }
+    },
+    include: {
+      contacts: true
+    }
+  });
+
+  if (!user) {
+    throw new NotFoundError('找不到此電子郵件對應的用戶');
+  }
+
+  // 檢查是否已驗證
+  if (user.verified) {
+    throw new BadRequestError('此郵件已經驗證過了');
+  }
+
+  // 生成新的驗證 token
+  const newToken = jwtService.generateToken({
+    id: user.id,
+    _id: user.external_id || '',
+    isTemp: false,
+  });
+
+  // 發送驗證郵件
+  await emailService.sendVerificationEmail(
+    email,
+    `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`
+  );
+
+  const response = createSuccessResponse({
+    message: '驗證郵件已重新發送'
+  });
+
+  res.json(response);
 });
 
 /**
@@ -489,7 +621,8 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     tokenType: 'Bearer',
     expiresIn: 86400, // 24 小時
     refreshToken: result.token, // 目前使用相同 token
-    user: userInfo
+    user: userInfo,
+    isNewUser: result.isNewUser
   });
 });
 
@@ -503,6 +636,8 @@ export const authController = {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  verifyEmailGet,
+  resendVerificationEmail,
   appleSignIn,
   exchangeToken
 };

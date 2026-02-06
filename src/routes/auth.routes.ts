@@ -15,18 +15,21 @@ import {
   authenticateGoogleCallback
 } from '../services/auth/oauth.service';
 import { validate } from '../middleware/validation.middleware';
+import { strictLimiter } from '../middleware/rate-limit.middleware';
 import {
   loginValidator,
   registerValidator,
   forgotPasswordValidator,
   resetPasswordValidator,
   verifyEmailValidator,
+  resendVerificationValidator,
   oauthStateValidator,
   appleSignInValidator,
   loginSuccessResponseSchema,
   logoutResponseSchema,
   refreshTokenResponseSchema,
   verifyEmailResponseSchema,
+  resendVerificationResponseSchema,
   getCurrentUserResponseSchema,
   appleSignInResponseSchema
 } from '../validators/auth.validators';
@@ -376,6 +379,86 @@ registry.registerPath({
 router.post('/verify-email',
   validate(verifyEmailValidator, 'body'),
   authController.verifyEmail
+);
+
+/**
+ * GET /api/v1/auth/verify-email - 驗證電子郵件（連結點擊）
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/auth/verify-email',
+  tags: ['Authentication'],
+  summary: '驗證電子郵件（連結點擊）',
+  description: '用於郵件中的點擊連結驗證，驗證後重定向到前端頁面',
+  request: {
+    query: z.object({
+      token: z.string().openapi({
+        description: '電子郵件驗證令牌',
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+      })
+    })
+  },
+  responses: {
+    302: {
+      description: '驗證後重定向到前端頁面'
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /auth/verify-email
+ * 驗證電子郵件（從郵件連結點擊）
+ * 查詢參數：token
+ * 驗證後重定向到前端頁面
+ */
+router.get('/verify-email', authController.verifyEmailGet);
+
+/**
+ * POST /api/v1/auth/resend-verification - 重新發送驗證郵件
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/resend-verification',
+  tags: ['Authentication'],
+  summary: '重新發送驗證郵件',
+  description: '重新發送電子郵件驗證連結到指定郵箱',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: resendVerificationValidator
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '驗證郵件已重新發送',
+      content: {
+        'application/json': {
+          schema: resendVerificationResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * POST /auth/resend-verification
+ * 重新發送驗證郵件
+ * 請求體：{ email }
+ * 使用嚴格速率限制防止郵件濫發
+ */
+router.post('/resend-verification',
+  strictLimiter,
+  validate(resendVerificationValidator, 'body'),
+  authController.resendVerificationEmail
 );
 
 // Google OAuth 路由
