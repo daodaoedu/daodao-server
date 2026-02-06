@@ -25,6 +25,7 @@ on:
   pull_request:
     branches:
       - main
+      - production
       - dev
   # 被其他 workflow 調用時執行
   workflow_call:
