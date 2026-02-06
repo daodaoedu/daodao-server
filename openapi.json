@@ -8449,6 +8449,82 @@
           ]
         }
       },
+      "UpdateCheckInRequest": {
+        "type": "object",
+        "properties": {
+          "mood": {
+            "type": "string",
+            "enum": [
+              "give_up",
+              "frustrated",
+              "bored",
+              "neutral",
+              "good",
+              "happy"
+            ],
+            "description": "學習心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)",
+            "example": "happy",
+            "examples": [
+              "give_up",
+              "frustrated",
+              "bored",
+              "neutral",
+              "good",
+              "happy"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "詳細描述（最多300字）",
+            "example": "今天閱讀了第三章，學到了很多新概念"
+          },
+          "imageUrls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 3,
+            "description": "打卡圖片 URL（最多3張）",
+            "example": [
+              "https://example.com/image1.jpg"
+            ]
+          },
+          "ogImageUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500,
+            "format": "uri",
+            "description": "OG 圖片 URL（用於社群分享）",
+            "example": null
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxItems": 10,
+            "description": "打卡標籤（最多10個）",
+            "example": [
+              "專注",
+              "有收穫"
+            ]
+          }
+        },
+        "description": "更新簽到記錄請求",
+        "example": {
+          "mood": "happy",
+          "note": "今天閱讀了第三章，學到了很多新概念",
+          "imageUrls": [],
+          "ogImageUrl": null,
+          "tags": [
+            "專注",
+            "有收穫"
+          ]
+        }
+      },
       "PracticeStats": {
         "type": "object",
         "properties": {
@@ -38151,6 +38227,250 @@
       }
     },
     "/api/v1/practices/{id}/checkins/{checkInId}": {
+      "put": {
+        "tags": [
+          "Practice Check-ins"
+        ],
+        "summary": "更新簽到記錄",
+        "description": "更新指定的簽到記錄，需要身份驗證且只能編輯自己的記錄。支援 multipart/form-data 格式以便上傳新圖片。注意：打卡日期不可編輯。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "實踐 ID（UUID 格式）",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "實踐 ID（UUID 格式）",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$",
+              "description": "簽到記錄 ID",
+              "example": "123"
+            },
+            "required": true,
+            "description": "簽到記錄 ID",
+            "name": "checkInId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mood": {
+                    "type": "string",
+                    "enum": [
+                      "give_up",
+                      "frustrated",
+                      "bored",
+                      "neutral",
+                      "good",
+                      "happy"
+                    ],
+                    "description": "學習心情"
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "詳細描述（最多 300 字）"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "標籤（JSON 字串陣列，最多 10 個）"
+                  },
+                  "ogImageUrl": {
+                    "type": "string",
+                    "description": "OG 圖片 URL（用於社群分享）"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "maxItems": 3,
+                    "description": "圖片檔案（最多 3 張，每張最大 500KB）"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCheckInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功更新簽到記錄",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/CheckInEntity"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
       "delete": {
         "tags": [
           "Practice Check-ins"

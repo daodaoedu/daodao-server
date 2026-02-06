@@ -439,6 +439,79 @@ export const deleteCheckInParamsSchema = z.object({
   description: '刪除簽到記錄路徑參數'
 });
 
+// 更新簽到記錄參數 Schema
+export const updateCheckInParamsSchema = z.object({
+  id: z.string().uuid('Practice ID must be a valid UUID').openapi({
+    description: '實踐 ID（UUID 格式）',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  }),
+  checkInId: z.string().regex(/^[1-9]\d*$/, 'Check-in ID must be a positive integer').openapi({
+    description: '簽到記錄 ID',
+    example: '123'
+  })
+}).openapi('UpdateCheckInParams', {
+  description: '更新簽到記錄路徑參數'
+});
+
+// 更新簽到記錄請求 Schema（所有欄位可選）
+export const updateCheckInSchema = z.object({
+  mood: z.enum(['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy'])
+    .optional()
+    .openapi({
+      description: '學習心情 (give_up: 想放棄, frustrated: 挫折, bored: 無聊, neutral: 普通, good: 不錯, happy: 開心)',
+      example: 'happy',
+      examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
+    }),
+  note: z.string()
+    .max(300, '詳細描述不可超過300字')
+    .optional()
+    .openapi({
+      description: '詳細描述（最多300字）',
+      example: '今天閱讀了第三章，學到了很多新概念'
+    }),
+  imageUrls: z.array(z.string().url('請輸入有效的圖片網址'))
+    .max(3, '圖片最多3張')
+    .optional()
+    .openapi({
+      description: '打卡圖片 URL（最多3張）',
+      example: ['https://example.com/image1.jpg']
+    }),
+  ogImageUrl: z.string()
+    .url('請輸入有效的 OG 圖片網址')
+    .max(500, 'OG 圖片網址不可超過 500 字')
+    .nullable()
+    .optional()
+    .openapi({
+      description: 'OG 圖片 URL（用於社群分享）',
+      example: null,
+      format: 'uri'
+    }),
+  tags: z.array(z.string().max(50, '標籤名稱不可超過50字'))
+    .max(10, '標籤最多10個')
+    .optional()
+    .openapi({
+      description: '打卡標籤（最多10個）',
+      example: ['專注', '有收穫']
+    })
+}).openapi('UpdateCheckInRequest', {
+  description: '更新簽到記錄請求',
+  example: {
+    mood: 'happy',
+    note: '今天閱讀了第三章，學到了很多新概念',
+    imageUrls: [],
+    ogImageUrl: null,
+    tags: ['專注', '有收穫']
+  }
+}).refine(data => {
+  // 至少要更新一個欄位
+  return Object.keys(data).length > 0;
+}, {
+  message: '至少需要提供一個要更新的欄位'
+});
+
+// 註冊 UpdateCheckInRequest
+registry.register('UpdateCheckInRequest', updateCheckInSchema);
+
 // 我的實踐查詢參數 Schema
 export const myPracticesQuerySchema = practiceQuerySchema.extend({
   status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all']).default('all')
@@ -462,6 +535,8 @@ export type PracticeCommentParamsRequest = z.infer<typeof practiceCommentParamsS
 export type MyPracticesQueryParams = z.infer<typeof myPracticesQuerySchema>;
 export type UserPracticesParamsRequest = z.infer<typeof userPracticesParamsSchema>;
 export type DeleteCheckInParamsRequest = z.infer<typeof deleteCheckInParamsSchema>;
+export type UpdateCheckInParamsRequest = z.infer<typeof updateCheckInParamsSchema>;
+export type UpdateCheckInRequest = z.infer<typeof updateCheckInSchema>;
 
 // 驗證函數
 export const validateCreatePractice = (data: unknown): CreatePracticeRequest => createPracticeSchema.parse(data);
@@ -1247,6 +1322,9 @@ export const checkInApiResponseSchema = apiSuccessResponseSchema(checkInEntityRe
 // 創建簽到回應（含鼓勵句和進度）
 export const createCheckInApiResponseSchema = apiSuccessResponseSchema(checkInWithEncouragementResponseSchema);
 
+// 更新簽到回應
+export const updateCheckInApiResponseSchema = apiSuccessResponseSchema(checkInEntityResponseSchema);
+
 // 簽到列表回應
 export const checkInsListApiResponseSchema = paginatedApiResponseSchema(checkInEntityResponseSchema);
 
@@ -1290,6 +1368,8 @@ export const practiceValidators = {
   practiceCommentParamsSchema,
   userPracticesParamsSchema,
   deleteCheckInParamsSchema,
+  updateCheckInParamsSchema,
+  updateCheckInSchema,
 
   // 子組件 schemas
   practiceResourceInputSchema,
@@ -1341,6 +1421,7 @@ export const practiceValidators = {
   practicesListApiResponseSchema,
   checkInApiResponseSchema,
   createCheckInApiResponseSchema,
+  updateCheckInApiResponseSchema,
   checkInsListApiResponseSchema,
   practiceStatsApiResponseSchema,
   checkInStatsApiResponseSchema,

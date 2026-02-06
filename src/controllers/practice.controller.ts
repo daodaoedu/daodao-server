@@ -43,10 +43,12 @@ import {
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
   createCheckInApiResponseSchema,
+  updateCheckInApiResponseSchema,
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
   // Request validation schemas
-  checkInSchema
+  checkInSchema,
+  updateCheckInSchema
 } from '../validators/practice.validators';
 
 // ===== 參數驗證 Schemas =====
@@ -343,6 +345,60 @@ export class PracticeController {
     const validatedResponse = createCheckInApiResponseSchema.parse(result);
 
     res.status(201).json(validatedResponse);
+  });
+
+  /**
+   * 更新簽到記錄
+   * PUT /api/v1/practices/:id/checkins/:checkInId
+   */
+  updateCheckIn = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user?.id) {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const checkInId = parseInt(req.params.checkInId, 10);
+
+    if (isNaN(checkInId) || checkInId <= 0) {
+      throw new BadRequestError('無效的簽到記錄 ID');
+    }
+
+    // 檢查是否為 multipart/form-data
+    const contentType = req.headers['content-type'] || '';
+    const isFormData = contentType.includes('multipart/form-data');
+
+    // 解析表單資料
+    const parsedBody = isFormData
+      ? this.parseCheckInFormData(req.body)
+      : req.body;
+
+    // 驗證請求資料
+    const validation = updateCheckInSchema.safeParse(parsedBody);
+    if (!validation.success) {
+      const errorMessage = validation.error.issues
+        .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      throw new BadRequestError(`驗證失敗: ${errorMessage}`);
+    }
+
+    const updateData = validation.data;
+    const result = await practiceCheckInService.updateCheckIn(
+      checkInId,
+      practiceId,
+      req.user.id,
+      {
+        mood: updateData.mood as CheckInMood | undefined,
+        note: updateData.note,
+        imageUrls: updateData.imageUrls,
+        ogImageUrl: updateData.ogImageUrl,
+        tags: updateData.tags
+      }
+    );
+
+    // 驗證響應格式
+    const validatedResponse = updateCheckInApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**

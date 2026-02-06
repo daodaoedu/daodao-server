@@ -741,6 +741,139 @@ export async function getMonthlyCheckInCalendar(practiceId: number, userId: numb
 }
 
 /**
+ * 更新簽到記錄請求類型
+ */
+export interface UpdateCheckInData {
+  mood?: 'give_up' | 'frustrated' | 'bored' | 'neutral' | 'good' | 'happy';
+  note?: string;
+  imageUrls?: string[];
+  ogImageUrl?: string | null;
+  tags?: string[];
+}
+
+/**
+ * 更新簽到記錄
+ * 只允許擁有者編輯自己的打卡記錄
+ */
+export async function updateCheckIn(
+  checkInId: number,
+  practiceId: number,
+  userId: number,
+  data: UpdateCheckInData
+): Promise<ApiSuccessResponse<CheckInEntity>> {
+  // 驗證簽到記錄存在且屬於該用戶
+  const existingCheckIn = await prismaClient.practice_checkins.findFirst({
+    where: {
+      id: checkInId,
+      practice_id: practiceId,
+      user_id: userId
+    }
+  });
+
+  if (!existingCheckIn) {
+    throw new NotFoundError('簽到記錄不存在或沒有權限編輯');
+  }
+
+  try {
+    // 使用事務更新簽到記錄和標籤
+    const updatedCheckIn = await prismaClient.$transaction(async (tx) => {
+      // 準備更新資料
+      const updateData: {
+        mood?: string;
+        note?: string;
+        image_urls?: string[];
+        og_image_url?: string | null;
+        updated_at: Date;
+      } = {
+        updated_at: new Date()
+      };
+
+      if (data.mood !== undefined) {
+        updateData.mood = data.mood;
+      }
+      if (data.note !== undefined) {
+        updateData.note = data.note;
+      }
+      if (data.imageUrls !== undefined) {
+        updateData.image_urls = data.imageUrls;
+      }
+      if (data.ogImageUrl !== undefined) {
+        updateData.og_image_url = data.ogImageUrl;
+      }
+
+      // 更新簽到記錄
+      const checkIn = await tx.practice_checkins.update({
+        where: { id: checkInId },
+        data: updateData
+      });
+
+      // 如果有提供 tags，更新標籤
+      if (data.tags !== undefined) {
+        // 先清除現有標籤
+        await tx.entity_tags.deleteMany({
+          where: {
+            entity_type: CHECKIN_ENTITY_TYPE,
+            entity_id: checkInId
+          }
+        });
+
+        // 設置新標籤
+        if (data.tags.length > 0) {
+          await setEntityTags(CHECKIN_ENTITY_TYPE, checkInId, data.tags, userId);
+        }
+      }
+
+      return checkIn;
+    });
+
+    // 取得更新後的標籤
+    let tags: string[] = [];
+    if (data.tags !== undefined) {
+      tags = data.tags;
+    } else {
+      // 從資料庫取得現有標籤
+      const entityTags = await prismaClient.entity_tags.findMany({
+        where: {
+          entity_type: CHECKIN_ENTITY_TYPE,
+          entity_id: checkInId
+        },
+        include: {
+          tags: true
+        }
+      });
+      tags = entityTags.map(et => et.tags.name);
+    }
+
+    const response: CheckInEntity = {
+      id: updatedCheckIn.id,
+      practiceId: updatedCheckIn.practice_id,
+      userId: updatedCheckIn.user_id,
+      checkinDate: updatedCheckIn.checkin_date.toISOString().split('T')[0],
+      mood: updatedCheckIn.mood as CheckInMood,
+      note: updatedCheckIn.note || undefined,
+      imageUrls: updatedCheckIn.image_urls || [],
+      ogImageUrl: updatedCheckIn.og_image_url ?? null,
+      tags,
+      createdAt: updatedCheckIn.created_at?.toISOString() || new Date().toISOString(),
+      updatedAt: updatedCheckIn.updated_at?.toISOString()
+    };
+
+    loggerService.info('Check-in updated', {
+      checkInId,
+      practiceId,
+      userId,
+      updatedFields: Object.keys(data)
+    });
+
+    return createSuccessResponse(response);
+
+  } catch (error) {
+    loggerService.error('Failed to update check-in', { checkInId, practiceId, userId, error });
+    throw new InternalServerError('更新簽到記錄失敗');
+  }
+}
+
+/**
  * 刪除簽到記錄
  */
 export async function deleteCheckIn(
