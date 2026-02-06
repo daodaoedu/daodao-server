@@ -495,7 +495,31 @@ jobs:
             # 清理舊映像
             echo "Cleaning up old images..."
             docker image prune -f --filter "until=24h"
-            
+
+            # ===== 條件式重載 Nginx 配置 =====
+            # 只在 nginx.conf 有變更時才重載
+            # 使用 git diff 檢測本次部署是否包含 nginx 配置變更
+            # ==================================
+            echo "=== Checking Nginx Configuration Changes ==="
+            if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "nginx.conf"; then
+              echo "📝 nginx.conf changed, reloading configuration..."
+              if docker ps -q -f name=nginx | grep -q .; then
+                if docker exec nginx nginx -t 2>&1; then
+                  echo "✅ Nginx configuration syntax is valid"
+                  docker exec nginx nginx -s reload
+                  echo "✅ Nginx configuration reloaded successfully"
+                else
+                  echo "❌ Nginx configuration syntax error!"
+                  docker exec nginx nginx -t
+                  exit 1
+                fi
+              else
+                echo "⚠️  Nginx container not running, skipping reload"
+              fi
+            else
+              echo "ℹ️  nginx.conf unchanged, skipping reload"
+            fi
+
             echo "=== Deployment completed successfully ==="
           ENDSSH
 
