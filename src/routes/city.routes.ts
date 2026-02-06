@@ -14,11 +14,8 @@ import { validate } from '../middleware/validation.middleware';
 import {
   getCitiesQuerySchema,
   getCitiesApiResponseSchema,
-  getCountriesApiResponseSchema,
-  cityDataSchema,
-  countryDataSchema
+  getCountriesApiResponseSchema
 } from '../validators/city.validators';
-import { z } from 'zod';
 
 const router = Router();
 

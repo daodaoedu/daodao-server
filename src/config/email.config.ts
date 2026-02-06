@@ -95,7 +95,7 @@ export function getEmailConfig(): EmailConfig {
 }
 
 // 導出默認配置實例（僅在需要時使用，初始化失敗時為 null）
-export const emailConfig = (() => {
+export const emailConfig = ((): EmailConfig | null => {
   try {
     return createEmailConfig();
   } catch (error) {

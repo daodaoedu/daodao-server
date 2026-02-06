@@ -89,7 +89,7 @@ const formatCityData = (
  */
 const getAllCitiesApi = async (
   locale: Locale = 'default',
-  limit: number = 50
+  limit = 50
 ): Promise<ApiSuccessResponse<CityData[]>> => {
   const cities = await prisma.city.findMany({
     where: {
@@ -124,7 +124,7 @@ const getAllCitiesApi = async (
 const getCitiesByCountryApi = async (
   countryCode: string,
   locale: Locale = 'default',
-  limit: number = 50
+  limit = 50
 ): Promise<ApiSuccessResponse<CityData[]>> => {
   const cities = await prisma.city.findMany({
     where: {
@@ -161,7 +161,7 @@ const getCitiesByCountryApi = async (
 const searchCitiesApi = async (
   query: string,
   locale: Locale = 'default',
-  limit: number = 20
+  limit = 20
 ): Promise<ApiSuccessResponse<CityData[]>> => {
   const cities = await prisma.city.findMany({
     where: {
