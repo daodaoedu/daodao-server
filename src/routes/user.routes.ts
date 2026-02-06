@@ -762,7 +762,7 @@ registry.registerPath({
   path: '/api/v1/users/me',
   tags: ['Me'],
   summary: '刪除當前用戶',
-  description: '刪除當前已登入用戶的帳號',
+  description: '完全刪除當前用戶帳號及所有關聯資料，同時清除 OAuth 臨時用戶記錄以允許重新註冊。呼叫後會自動登出。',
   responses: {
     200: {
       description: '用戶已成功刪除',

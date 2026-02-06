@@ -37,7 +37,7 @@ import {
   BadRequestError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
-import { setAuthCookie } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
 
 /**
  * 取得所有用戶
@@ -247,8 +247,9 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * 刪除當前用戶
+ * 刪除當前用戶（軟刪除）
  * DELETE /api/users/me
+ * 停用帳號、匿名化個人資料、清除認證 Cookie
  */
 export const deleteMe = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
@@ -258,6 +259,9 @@ export const deleteMe = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const result = await userService.deleteMe(currentUser._id);
+
+  // 清除認證 Cookie，讓用戶自動登出
+  clearAuthCookie(res);
 
   // 驗證響應格式
   const validatedResponse = deleteUserResponseSchema.parse(result);
