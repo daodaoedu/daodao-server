@@ -1325,43 +1325,71 @@ const updateUserWithAvatar = async (
 };
 
 /**
- * 刪除當前用戶
+ * 刪除當前用戶（硬刪除）
+ * 完全移除用戶及所有關聯資料，同時清除 temp_users 以允許重新註冊
+ * 主要用途：讓 PM/設計師可以重複測試註冊流程
  */
 const deleteMe = async (externalId: string): Promise<ApiSuccessResponse<{ message: string }>> => {
   await prisma.$transaction(async (tx) => {
     const user = await tx.users.findUnique({
-      where: { external_id: externalId }
+      where: { external_id: externalId },
+      include: { contacts: true }
     });
 
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
-    // 刪除用戶職位關聯
-    await tx.user_positions.deleteMany({
-      where: { user_id: user.id }
+    const userId = user.id;
+
+    // --- 1. 刪除 onDelete: NoAction 的關聯表（DB 不會自動 cascade） ---
+    await tx.rating.deleteMany({ where: { user_id: userId } });
+    await tx.user_preferences.deleteMany({ where: { user_id: userId } });
+    await tx.user_positions.deleteMany({ where: { user_id: userId } });
+    await tx.user_permissions.deleteMany({ where: { user_id: userId } });
+    await tx.user_join_group.deleteMany({ where: { user_id: userId } });
+    await tx.store.deleteMany({ where: { user_id: userId } });
+    await tx.project.deleteMany({ where: { user_id: userId } });
+    await tx.groups.updateMany({
+      where: { created_by: userId },
+      data: { created_by: null }
+    });
+    await tx.marathon.updateMany({
+      where: { created_by: userId },
+      data: { created_by: null }
     });
 
-    // 保存關聯 ID 以便稍後刪除
+    // --- 2. 保存關聯 ID ---
     const contactId = user.contact_id;
     const basicInfoId = user.basic_info_id;
+    const activityStatsId = user.activity_stats_id;
+    const googleId = user.contacts?.google_id;
+    const appleId = user.contacts?.apple_id;
+    const email = user.contacts?.email;
 
-    // 先刪除用戶（解除外鍵引用）
-    await tx.users.delete({
-      where: { id: user.id }
-    });
+    // --- 3. 刪除用戶（其餘 onDelete: Cascade 的關聯會由 DB 自動處理） ---
+    await tx.users.delete({ where: { id: userId } });
 
-    // 再刪除關聯資料
+    // --- 4. 刪除用戶指向的關聯資料（contacts, basic_info, activity_stats） ---
     if (contactId) {
-      await tx.contacts.delete({
-        where: { id: contactId }
-      });
+      await tx.contacts.delete({ where: { id: contactId } });
+    }
+    if (basicInfoId) {
+      await tx.basic_info.delete({ where: { id: basicInfoId } });
+    }
+    if (activityStatsId) {
+      await tx.user_activity_stats.delete({ where: { id: activityStatsId } });
     }
 
-    if (basicInfoId) {
-      await tx.basic_info.delete({
-        where: { id: basicInfoId }
-      });
+    // --- 5. 刪除 temp_users（允許同一 OAuth 帳號重新註冊） ---
+    if (googleId) {
+      await tx.temp_users.deleteMany({ where: { google_id: googleId } });
+    }
+    if (appleId) {
+      await tx.temp_users.deleteMany({ where: { apple_id: appleId } });
+    }
+    if (email) {
+      await tx.temp_users.deleteMany({ where: { email } });
     }
   });
 
