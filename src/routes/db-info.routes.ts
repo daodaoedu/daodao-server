@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { prismaService } from '../services/database/prisma.service';
-import { mongoClient } from '../services/database/mongo.service';
 import { redis as redisClient } from '../services/database/redis.service';
 
 const router = Router();
@@ -47,10 +46,6 @@ interface PostgresTableInfo {
   row_count: number;
 }
 
-interface MongoCollectionInfo {
-  fields: string[];
-}
-
 interface RedisInfo {
   version: string;
   uptime_in_seconds: number;
@@ -60,7 +55,6 @@ interface RedisInfo {
 }
 
 interface DatabaseInfoResponse {
-  mongo: Record<string, MongoCollectionInfo> | { error: string };
   postgres: Record<string, PostgresTableInfo> | { error: string };
   redis: RedisInfo | { error: string };
 }
@@ -77,16 +71,13 @@ registry.registerPath({
   path: '/api/v1/db-info',
   tags: ['Database Info'],
   summary: '取得資料庫資訊',
-  description: '取得 MongoDB、PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等',
+  description: '取得 PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等',
   responses: {
     200: {
       description: '成功獲取資料庫資訊',
       content: {
         'application/json': {
           schema: z.object({
-            mongo: z.record(z.string(), z.object({
-              fields: z.array(z.string())
-            })).or(z.object({ error: z.string() })),
             postgres: z.record(z.string(), z.object({
               columns: z.array(z.any()),
               constraints: z.array(z.any()),
@@ -114,33 +105,9 @@ registry.registerPath({
 router.get('/', async (req: Request, res: Response) => {
   try {
     const response: DatabaseInfoResponse = {
-      mongo: {},
       postgres: {},
       redis: { error: 'Redis 連線不可用' }
     };
-
-    // 取得 MongoDB 各 collection 的欄位資訊
-    try {
-      if (mongoClient && mongoClient.readyState === 1) {
-        // 使用 mongoose.connection.db 存取底層 driver
-        const collections = await mongoClient.db.listCollections().toArray();
-        
-        const mongoData: Record<string, MongoCollectionInfo> = {};
-        for (const coll of collections) {
-          // 以 sample document 的 key 當作欄位資訊
-          const sampleDoc = await mongoClient.db.collection(coll.name).findOne();
-          mongoData[coll.name] = {
-            fields: sampleDoc ? Object.keys(sampleDoc) : []
-          };
-        }
-        response.mongo = mongoData;
-      } else {
-        response.mongo = { error: 'MongoDB 連線不可用' };
-      }
-    } catch (mongoError) {
-      console.error('MongoDB info error:', mongoError);
-      response.mongo = { error: 'MongoDB 查詢失敗' };
-    }
 
     // 取得 PostgreSQL 各 table 的欄位資訊
     try {

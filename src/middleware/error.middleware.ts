@@ -132,11 +132,6 @@ export const globalErrorHandler = (
       errors = prismaErrorInfo.details;
     }
   }
-  // 處理 MongoDB 重複鍵錯誤
-  else if (error.name === 'MongoServerError' && 'code' in error && error.code === 11000) {
-    statusCode = 409;
-    message = '資料衝突，資源已存在';
-  }
   // 處理 Zod 驗證錯誤
   else if (error.name === 'ZodError') {
     statusCode = 400;
@@ -238,8 +233,6 @@ export const globalErrorHandler = (
         return 'TOKEN_EXPIRED';
       case 'ZodError':
         return 'VALIDATION_ERROR';
-      case 'MongoServerError':
-        return 'DATABASE_ERROR';
       case 'MulterError':
         return 'FILE_UPLOAD_ERROR';
       default:
