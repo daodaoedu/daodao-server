@@ -16,6 +16,9 @@ import {
   practiceParamsSchema,
   userPracticesParamsSchema,
   deleteCheckInParamsSchema,
+  updateCheckInParamsSchema,
+  updateCheckInSchema,
+  updateCheckInApiResponseSchema,
   createPracticeSchema,
   updatePracticeSchema,
   checkInSchema,
@@ -353,6 +356,64 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: checkInApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * PUT /api/v1/practices/{id}/checkins/{checkInId} - 更新簽到記錄
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/practices/{id}/checkins/{checkInId}',
+  tags: ['Practice Check-ins'],
+  summary: '更新簽到記錄',
+  description: '更新指定的簽到記錄，需要身份驗證且只能編輯自己的記錄。支援 multipart/form-data 格式以便上傳新圖片。注意：打卡日期不可編輯。',
+  request: {
+    params: updateCheckInParamsSchema,
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: {
+              mood: {
+                type: 'string',
+                enum: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy'],
+                description: '學習心情'
+              },
+              note: { type: 'string', description: '詳細描述（最多 300 字）' },
+              tags: { type: 'string', description: '標籤（JSON 字串陣列，最多 10 個）' },
+              ogImageUrl: { type: 'string', description: 'OG 圖片 URL（用於社群分享）' },
+              images: {
+                type: 'array',
+                items: { type: 'string', format: 'binary' },
+                maxItems: 3,
+                description: '圖片檔案（最多 3 張，每張最大 500KB）'
+              }
+            }
+          }
+        },
+        'application/json': {
+          schema: updateCheckInSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '成功更新簽到記錄',
+      content: {
+        'application/json': {
+          schema: updateCheckInApiResponseSchema
         }
       }
     },
@@ -1109,6 +1170,19 @@ router.post('/:id/checkins',
   validate(practiceParamsSchema, 'params'),
   // TODO: requirePracticeOwnership middleware
   practiceController.createCheckIn as RequestHandler);
+
+/**
+ * PUT /practices/:id/checkins/:checkInId
+ * 更新簽到記錄
+ * 路徑參數：id - 實踐 ID, checkInId - 簽到記錄 ID
+ * 支援 multipart/form-data（含 images 檔案，最多 3 張）或 application/json
+ * 需要身份驗證和擁有權驗證
+ */
+router.put('/:id/checkins/:checkInId',
+  authenticate,
+  upload.array('images', 3),
+  validate(updateCheckInParamsSchema, 'params'),
+  practiceController.updateCheckIn as RequestHandler);
 
 /**
  * DELETE /practices/:id/checkins/:checkInId
