@@ -21,6 +21,7 @@ on:
   push:
     branches:
       - main
+      - production
       - dev
   # 手動觸發部署
   workflow_dispatch:
@@ -119,7 +120,7 @@ jobs:
       - name: Set Environment Variables
         id: meta
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.ref }}" = "refs/heads/production" ]; then
             echo "IMAGE_TAG=prod" >> $GITHUB_ENV
             echo "NODE_ENV=prod" >> $GITHUB_ENV
             echo "CACHE_TAG=prod" >> $GITHUB_ENV
