@@ -287,7 +287,7 @@ jobs:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
           BRANCH_NAME: ${{ github.ref_name }}
           IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
-          APP_ENV: ${{ needs.build.outputs.image-tag == 'dev' && 'dev' || 'prod' }}
+          APP_ENV: ${{ needs.build.outputs.image-tag == 'dev' && 'dev' || (needs.build.outputs.image-tag == 'production' && 'production' || 'prod') }}
           APP_SERVICE: ${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || (needs.build.outputs.image-tag == 'production' && 'production_app' || 'dev_app') }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
@@ -373,7 +373,7 @@ jobs:
               # 只獲取最新的變更
               git fetch --depth 1 origin ${{ env.BRANCH_NAME }}
               git reset --hard FETCH_HEAD
-              git clean -fd
+              git clean -fd -e '.env*' -e 'logs/'
             else
               echo "Cloning repository..."
               # 淺層克隆
@@ -383,11 +383,13 @@ jobs:
               cd $APP_DIR
             fi
 
-            # 檢查環境文件
-            if [ ! -f .env.${APP_ENV} ] && [ -f .env.${APP_ENV}_temp ]; then
-              cp .env.${APP_ENV}_temp .env.${APP_ENV}
-              echo "Created .env.${APP_ENV} from template"
-            fi
+            # 檢查環境文件（docker compose 會驗證所有 service 的 env_file）
+            for env in prod production dev; do
+              if [ ! -f .env.${env} ] && [ -f .env.${env}_temp ]; then
+                cp .env.${env}_temp .env.${env}
+                echo "Created .env.${env} from template"
+              fi
+            done
 
             # 載入環境變數
             set -o allexport && source .env.${APP_ENV} && set +o allexport
@@ -549,7 +551,7 @@ jobs:
         run: |
           echo "APP_DIR=/root/daodao-server" >> $GITHUB_ENV
           echo "COMPOSE_FILE=docker-compose.yaml" >> $GITHUB_ENV
-          echo "APP_ENV=${{ needs.build.outputs.image-tag == 'dev' && 'dev' || 'prod' }}" >> $GITHUB_ENV
+          echo "APP_ENV=${{ needs.build.outputs.image-tag == 'dev' && 'dev' || (needs.build.outputs.image-tag == 'production' && 'production' || 'prod') }}" >> $GITHUB_ENV
           echo "APP_SERVICE=${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || (needs.build.outputs.image-tag == 'production' && 'production_app' || 'dev_app') }}" >> $GITHUB_ENV
 
       - name: Comprehensive Deployment Verification
