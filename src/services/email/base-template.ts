@@ -28,14 +28,14 @@ export const EMAIL_COLORS = {
  * 郵件資源連結
  */
 export const EMAIL_ASSETS = {
-  logo: 'https://daodao.so/images/emails/logo.png',
-  banner: 'https://daodao.so/images/emails/banner.png',
-  mascot: 'https://daodao.so/images/emails/joyride.png',
-  arrow: 'https://daodao.so/images/emails/arrow-right-outline.png',
-  threads: 'https://daodao.so/images/emails/threads.png',
-  facebook: 'https://daodao.so/images/emails/facebook.png',
-  instagram: 'https://daodao.so/images/emails/instagram.png',
-  linkedin: 'https://daodao.so/images/emails/linkedin.png',
+  logo: 'https://assets.daodao.so/images/emails/logo.png',
+  banner: 'https://assets.daodao.so/images/emails/banner.png',
+  mascot: 'https://assets.daodao.so/images/emails/joyride.png',
+  arrow: 'https://assets.daodao.so/images/emails/arrow-right-outline.png',
+  threads: 'https://assets.daodao.so/images/emails/threads.png',
+  facebook: 'https://assets.daodao.so/images/emails/facebook.png',
+  instagram: 'https://assets.daodao.so/images/emails/instagram.png',
+  linkedin: 'https://assets.daodao.so/images/emails/linkedin.png',
 } as const;
 
 /**
