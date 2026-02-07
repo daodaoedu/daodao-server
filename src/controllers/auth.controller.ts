@@ -70,7 +70,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
   // 解析並驗證 state 參數
   const stateParam = req.query.state as string | undefined;
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://app.daodao.so';
 
   if (!stateParam) {
     loggerService.warn('OAuth callback - missing state parameter');
@@ -432,7 +432,7 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
  */
 export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) => {
   const { token } = req.query;
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://app.daodao.so';
 
   if (!token || typeof token !== 'string') {
     return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=missing_token`);

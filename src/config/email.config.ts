@@ -72,7 +72,7 @@ export function createEmailConfig(): EmailConfig {
     },
     
     urls: {
-      frontend: process.env.FRONTEND_URL || '',
+      frontend: process.env.FRONTEND_URL || 'https://app.daodao.so',
       backend: process.env.BACKEND_URL || 'http://localhost:3000'
     },
     
