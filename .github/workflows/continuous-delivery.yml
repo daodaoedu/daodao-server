@@ -373,7 +373,7 @@ jobs:
               # 只獲取最新的變更
               git fetch --depth 1 origin ${{ env.BRANCH_NAME }}
               git reset --hard FETCH_HEAD
-              git clean -fd
+              git clean -fd -e '.env*' -e 'logs/'
             else
               echo "Cloning repository..."
               # 淺層克隆
@@ -383,11 +383,13 @@ jobs:
               cd $APP_DIR
             fi
 
-            # 檢查環境文件
-            if [ ! -f .env.${APP_ENV} ] && [ -f .env.${APP_ENV}_temp ]; then
-              cp .env.${APP_ENV}_temp .env.${APP_ENV}
-              echo "Created .env.${APP_ENV} from template"
-            fi
+            # 檢查環境文件（docker compose 會驗證所有 service 的 env_file）
+            for env in prod production dev; do
+              if [ ! -f .env.${env} ] && [ -f .env.${env}_temp ]; then
+                cp .env.${env}_temp .env.${env}
+                echo "Created .env.${env} from template"
+              fi
+            done
 
             # 載入環境變數
             set -o allexport && source .env.${APP_ENV} && set +o allexport
