@@ -1241,10 +1241,9 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     });
     const hasCheckIns = checkInCount > 0;
 
-    // 檢查是否已過期（小時制：first_checkin_at + duration_days * 24h）
+    // 檢查是否已過期（小時制：created_at + duration_days * 24h）
     const durationDays = (practice as { duration_days?: number }).duration_days || 14;
     const hasPassedEndDate = checkHasPassedEndDate(practice.end_date, {
-      firstCheckinAt: practice.first_checkin_at,
       createdAt: practice.created_at,
       durationDays
     });
@@ -1370,27 +1369,29 @@ export async function completeExpiredPractices(): Promise<{
 }> {
   try {
     // 使用事務確保原子性：查詢並更新在同一個事務中
+    const now = new Date();
+
     const result = await prismaClient.$transaction(async (tx) => {
-      // 查詢所有未完成的實踐（小時制需要逐筆檢查是否到期）
+      // 預篩：end_date <= now 是小時制到期的必要條件（利用 idx_practices_dates 索引）
+      // 因為 created_at + duration * 24h 一定 >= end_date，所以 end_date <= now 才可能到期
       const activePractices = await tx.practices.findMany({
         where: {
           status: { in: ['not_started', 'active'] },
+          end_date: { lte: now },
           deleted_at: null
         },
         select: {
           id: true,
           user_id: true,
-          first_checkin_at: true,
           created_at: true,
           duration_days: true,
           end_date: true
         }
       });
 
-      // 小時制：逐筆檢查是否已過期
+      // 小時制：逐筆精確檢查是否已過期（created_at + duration * 24h）
       const expiredPractices = activePractices.filter(p =>
         checkHasPassedEndDate(p.end_date, {
-          firstCheckinAt: p.first_checkin_at,
           createdAt: p.created_at,
           durationDays: p.duration_days || 14
         })

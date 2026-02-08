@@ -203,9 +203,8 @@ export function isValidStatus(status: string): status is PracticeStatusType {
 /**
  * 檢查實踐是否已過期（小時制）
  *
- * 優先使用精確時間計算：first_checkin_at + duration_days * 24h
- * 若無 first_checkin_at，則使用 created_at + duration_days * 24h
- * 若都無法計算，退回到 end_date 日期比較
+ * 使用 created_at + duration_days * 24h 計算精確到期時間。
+ * 若無法計算，退回到 end_date 日期比較（相容舊資料）。
  *
  * @param endDate 結束日期（可為 null，用作 fallback）
  * @param options 小時制計算所需的額外參數
@@ -214,20 +213,16 @@ export function isValidStatus(status: string): status is PracticeStatusType {
 export function checkHasPassedEndDate(
   endDate: Date | null | undefined,
   options?: {
-    firstCheckinAt?: Date | null;
     createdAt?: Date | null;
     durationDays?: number | null;
   }
 ): boolean {
   const now = new Date();
 
-  // 小時制：使用 first_checkin_at 或 createdAt + durationDays 計算精確到期時間
-  if (options?.durationDays) {
-    const baseTime = options.firstCheckinAt || options.createdAt;
-    if (baseTime) {
-      const expiresAt = new Date(baseTime.getTime() + options.durationDays * 24 * 60 * 60 * 1000);
-      return now.getTime() > expiresAt.getTime();
-    }
+  // 小時制：created_at + durationDays * 24h
+  if (options?.durationDays && options.createdAt) {
+    const expiresAt = new Date(options.createdAt.getTime() + options.durationDays * 24 * 60 * 60 * 1000);
+    return now.getTime() > expiresAt.getTime();
   }
 
   // Fallback: 使用 end_date 日期比較（相容舊資料）
