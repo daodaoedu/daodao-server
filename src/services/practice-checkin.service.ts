@@ -41,14 +41,12 @@ import {
 } from '../utils/practice-status';
 import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
+import { MS_PER_DAY } from '../utils/date-utils';
 
 const prismaClient = prisma;
 
 /** 打卡記錄的 entity_type */
 const CHECKIN_ENTITY_TYPE = 'practice_checkin';
-
-/** 一天的毫秒數 */
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * 建立簽到記錄

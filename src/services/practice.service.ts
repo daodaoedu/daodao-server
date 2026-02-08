@@ -1369,15 +1369,12 @@ export async function completeExpiredPractices(): Promise<{
 }> {
   try {
     // 使用事務確保原子性：查詢並更新在同一個事務中
-    const now = new Date();
-
     const result = await prismaClient.$transaction(async (tx) => {
-      // 預篩：end_date <= now 是小時制到期的必要條件（利用 idx_practices_dates 索引）
-      // 因為 created_at + duration * 24h 一定 >= end_date，所以 end_date <= now 才可能到期
+      // 小時制到期 = created_at + duration * 24h
+      // 無法用 end_date 預篩（start_date 在未來時 end_date 可能遠大於到期時間）
       const activePractices = await tx.practices.findMany({
         where: {
           status: { in: ['not_started', 'active'] },
-          end_date: { lte: now },
           deleted_at: null
         },
         select: {
