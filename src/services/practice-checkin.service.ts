@@ -85,25 +85,7 @@ export async function createCheckIn(
       throw new ConflictError('此實踐狀態不允許打卡');
     }
 
-    // 小時制：檢查距離上次打卡是否已過 24 小時
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - MS_PER_DAY);
-
-    const recentCheckIn = await prismaClient.practice_checkins.findFirst({
-      where: {
-        practice_id: practiceId,
-        user_id: userId,
-        created_at: {
-          gte: twentyFourHoursAgo
-        }
-      }
-    });
-
-    if (recentCheckIn) {
-      throw new ConflictError('距離上次打卡未滿 24 小時');
-    }
-
-    // 用於日期位移邏輯（保留 UTC 零點）
+    // 用於日期位移與 checkin_date（UTC 零點）
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
@@ -117,6 +99,24 @@ export async function createCheckIn(
 
     // 使用交易確保資料一致性，避免 race condition
     const { checkIn, isFirstCheckIn, progressResult, newStatus, streakInfo, newCheckInCount } = await prismaClient.$transaction(async (tx) => {
+      // 小時制：在 transaction 內檢查距離上次打卡是否已過 24 小時
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - MS_PER_DAY);
+
+      const recentCheckIn = await tx.practice_checkins.findFirst({
+        where: {
+          practice_id: practiceId,
+          user_id: userId,
+          created_at: {
+            gte: twentyFourHoursAgo
+          }
+        }
+      });
+
+      if (recentCheckIn) {
+        throw new ConflictError('距離上次打卡未滿 24 小時');
+      }
+
       // 在 transaction 內查詢打卡數量，確保原子性
       const currentCheckInCount = await tx.practice_checkins.count({
         where: {
@@ -137,9 +137,8 @@ export async function createCheckIn(
         updated_at: new Date()
       };
 
-      // 決定新狀態（小時制：first_checkin_at + duration_days * 24h）
+      // 決定新狀態（小時制：created_at + duration_days * 24h）
       const hasPassedEndDate = checkHasPassedEndDate(practice.end_date, {
-        firstCheckinAt: practice.first_checkin_at,
         createdAt: practice.created_at,
         durationDays: durationDays
       });
