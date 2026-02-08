@@ -1,3 +1,5 @@
+import { MS_PER_DAY } from './date-utils';
+
 /**
  * Practice 狀態流轉管理
  *
@@ -221,7 +223,7 @@ export function checkHasPassedEndDate(
 
   // 小時制：created_at + durationDays * 24h
   if (options?.durationDays && options.createdAt) {
-    const expiresAt = new Date(options.createdAt.getTime() + options.durationDays * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(options.createdAt.getTime() + options.durationDays * MS_PER_DAY);
     return now.getTime() > expiresAt.getTime();
   }
 
