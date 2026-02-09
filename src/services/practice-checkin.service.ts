@@ -41,14 +41,12 @@ import {
 } from '../utils/practice-status';
 import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
+import { MS_PER_DAY } from '../utils/date-utils';
 
 const prismaClient = prisma;
 
 /** 打卡記錄的 entity_type */
 const CHECKIN_ENTITY_TYPE = 'practice_checkin';
-
-/** 一天的毫秒數 */
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * 建立簽到記錄
@@ -85,25 +83,9 @@ export async function createCheckIn(
       throw new ConflictError('此實踐狀態不允許打卡');
     }
 
-    // 使用 UTC 時間確保跨時區一致性
+    // 用於日期位移與 checkin_date（UTC 零點）
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
-
-    // 檢查當日是否已簽到
-    const existingCheckIn = await prismaClient.practice_checkins.findFirst({
-      where: {
-        practice_id: practiceId,
-        user_id: userId,
-        checkin_date: {
-          gte: today,
-          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
-        }
-      }
-    });
-
-    if (existingCheckIn) {
-      throw new ConflictError('今日已完成簽到');
-    }
 
     // 取得實踐配置用於進度計算
     const durationDays = (practice as { duration_days?: number }).duration_days || 14;
@@ -115,6 +97,24 @@ export async function createCheckIn(
 
     // 使用交易確保資料一致性，避免 race condition
     const { checkIn, isFirstCheckIn, progressResult, newStatus, streakInfo, newCheckInCount } = await prismaClient.$transaction(async (tx) => {
+      // 小時制：在 transaction 內檢查距離上次打卡是否已過 24 小時
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - MS_PER_DAY);
+
+      const recentCheckIn = await tx.practice_checkins.findFirst({
+        where: {
+          practice_id: practiceId,
+          user_id: userId,
+          created_at: {
+            gte: twentyFourHoursAgo
+          }
+        }
+      });
+
+      if (recentCheckIn) {
+        throw new ConflictError('距離上次打卡未滿 24 小時');
+      }
+
       // 在 transaction 內查詢打卡數量，確保原子性
       const currentCheckInCount = await tx.practice_checkins.count({
         where: {
@@ -135,8 +135,11 @@ export async function createCheckIn(
         updated_at: new Date()
       };
 
-      // 決定新狀態（FRD: 完成條件是到期日，不是進度）
-      const hasPassedEndDate = checkHasPassedEndDate(practice.end_date, today);
+      // 決定新狀態（小時制：created_at + duration_days * 24h）
+      const hasPassedEndDate = checkHasPassedEndDate(practice.end_date, {
+        createdAt: practice.created_at,
+        durationDays: durationDays
+      });
 
       const txNewStatus = determineNewStatus({
         currentStatus: practice.status as PracticeStatusType,
@@ -646,29 +649,27 @@ export async function updatePracticeProgress(
 }
 
 /**
- * 驗證每日簽到限制
+ * 驗證打卡間隔限制（小時制：24 小時）
  */
 export async function validateDailyCheckIn(practiceId: number, userId: number): Promise<boolean> {
   try {
-    // 使用 UTC 時間確保跨時區一致性
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - MS_PER_DAY);
 
-    const existingCheckIn = await prismaClient.practice_checkins.findFirst({
+    const recentCheckIn = await prismaClient.practice_checkins.findFirst({
       where: {
         practice_id: practiceId,
         user_id: userId,
-        checkin_date: {
-          gte: today,
-          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        created_at: {
+          gte: twentyFourHoursAgo
         }
       }
     });
 
-    return !existingCheckIn;
+    return !recentCheckIn;
 
   } catch (error) {
-    loggerService.error('Failed to validate daily check-in', { practiceId, userId, error });
+    loggerService.error('Failed to validate check-in interval', { practiceId, userId, error });
     return false;
   }
 }
