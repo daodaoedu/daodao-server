@@ -437,8 +437,7 @@ export class PracticeController {
       mood: req.query.mood as CheckInMood
     };
 
-    const userId = req.user?.id;
-    const result = await practiceCheckInService.getCheckIns(practiceId, queryParams, userId);
+    const result = await practiceCheckInService.getCheckIns(practiceId, queryParams);
 
     // 驗證響應格式
     const validatedResponse = checkInsListApiResponseSchema.parse(result);
