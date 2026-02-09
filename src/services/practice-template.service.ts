@@ -324,12 +324,7 @@ export async function getTemplateById(
 ): Promise<ApiSuccessResponse<PracticeTemplateEntity | null>> {
   try {
     const template = await prismaClient.practice_templates.findFirst({
-      where: {
-        OR: [
-          { external_id: id },
-          { id: parseInt(id, 10) || -1 }
-        ]
-      },
+      where: { external_id: id },
       include: {
         practice_template_categories: {
           include: {
@@ -720,12 +715,7 @@ export async function updateTemplate(
 
   // 查找模板
   const existingTemplate = await prismaClient.practice_templates.findFirst({
-    where: {
-      OR: [
-        { external_id: id },
-        { id: parseInt(id, 10) || -1 }
-      ]
-    }
+    where: { external_id: id }
   });
 
   if (!existingTemplate) {
@@ -816,12 +806,7 @@ export async function deleteTemplate(
 ): Promise<ApiSuccessResponse<{ deleted: boolean }>> {
   // 查找模板
   const existingTemplate = await prismaClient.practice_templates.findFirst({
-    where: {
-      OR: [
-        { external_id: id },
-        { id: parseInt(id, 10) || -1 }
-      ]
-    }
+    where: { external_id: id }
   });
 
   if (!existingTemplate) {
@@ -874,12 +859,7 @@ export async function getTemplateUsageStats(
   try {
     // 查找模板
     const template = await prismaClient.practice_templates.findFirst({
-      where: {
-        OR: [
-          { external_id: templateId },
-          { id: parseInt(templateId, 10) || -1 }
-        ]
-      },
+      where: { external_id: templateId },
       select: {
         id: true,
         external_id: true,
