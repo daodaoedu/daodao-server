@@ -8,7 +8,7 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
-import { ConflictError, NotFoundError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
+import { ConflictError, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import {
   CheckInEntity,
   CheckInResponseWithEncouragement,
@@ -363,9 +363,29 @@ export async function createCheckInWithImages(
 
 /**
  * 取得簽到記錄列表
+ *
+ * 存取規則：
+ * - 草稿狀態(draft)的實踐：僅擁有者可查看打卡紀錄
+ * - 其他狀態的實踐：所有人皆可查看打卡紀錄
+ * - 已刪除的實踐：不可查看
  */
-export async function getCheckIns(practiceId: number, params: CheckInQueryParams, userId?: number): Promise<PaginatedApiResponse<CheckInEntity>> {
+export async function getCheckIns(practiceId: number, params: CheckInQueryParams, requestUserId?: number): Promise<PaginatedApiResponse<CheckInEntity>> {
   try {
+    // 驗證實踐存在且未被刪除
+    const practice = await prismaClient.practices.findUnique({
+      where: { id: practiceId },
+      select: { id: true, user_id: true, status: true, deleted_at: true }
+    });
+
+    if (!practice || practice.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    // 草稿狀態僅允許擁有者查看打卡紀錄
+    if (practice.status === 'draft' && practice.user_id !== requestUserId) {
+      throw new ForbiddenError('沒有權限查看此實踐的打卡紀錄');
+    }
+
     const {
       page = 1,
       limit = 20,
@@ -377,10 +397,9 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
     const skip = (page - 1) * limit;
     const take = Math.min(limit, 100);
 
-    // 建構查詢條件
+    // 建構查詢條件（不依請求者身份過濾，回傳該實踐所有打卡紀錄）
     const where: Prisma.practice_checkinsWhereInput = {
       practice_id: practiceId,
-      ...(userId && { user_id: userId }),
       ...(startDate && {
         checkin_date: {
           gte: new Date(startDate)
