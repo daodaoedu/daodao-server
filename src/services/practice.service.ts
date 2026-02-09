@@ -37,7 +37,7 @@ import {
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
-  validateUpdateFields
+  stripLockedFields
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 
@@ -577,11 +577,13 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     });
     const hasCheckIns = checkInCount > 0;
 
-    // 驗證更新欄位是否允許（有打卡後部分欄位不可修改）
+    // 有打卡記錄時，自動移除鎖定欄位，允許其餘欄位正常更新
+    data = stripLockedFields(data, hasCheckIns);
+
+    // 檢查移除鎖定欄位後是否還有可更新的欄位
     const updateFields = Object.keys(data);
-    const validation = validateUpdateFields(updateFields, hasCheckIns);
-    if (!validation.isValid) {
-      throw new BadRequestError(validation.errorMessage || '無法修改已鎖定的欄位');
+    if (updateFields.length === 0) {
+      throw new BadRequestError('沒有可更新的欄位（計算相關欄位在有打卡記錄後不可修改）');
     }
 
     const updateData: Prisma.practicesUpdateInput = {};
