@@ -2,6 +2,9 @@
  * 日期處理工具函數
  */
 
+/** 一天的毫秒數 */
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 /**
  * 格式化日期為 YYYY-MM-DD
  * @param date - 日期物件
@@ -51,8 +54,7 @@ export function getYearStart(date: Date): Date {
  * @returns 天數差（絕對值）
  */
 export function daysBetween(date1: Date, date2: Date): number {
-  const oneDay = 24 * 60 * 60 * 1000;
-  return Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
+  return Math.round(Math.abs((date1.getTime() - date2.getTime()) / MS_PER_DAY));
 }
 
 /**
