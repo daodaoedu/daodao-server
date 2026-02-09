@@ -443,7 +443,7 @@ describe('Practice Service', () => {
       await expect(update(1, mockUpdateRequest, 1)).rejects.toThrow('此實踐已封存，請先取消封存再進行編輯');
     });
 
-    it('should throw error when trying to modify locked fields after check-in', async () => {
+    it('should strip locked fields and throw when no updatable fields remain after check-in', async () => {
       const mockPractice = {
         id: 1,
         user_id: 1,
@@ -455,8 +455,45 @@ describe('Practice Service', () => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
       prismaMock.practice_checkins.count.mockResolvedValue(1); // Has check-ins
 
-      // startDate is a locked field after check-in
-      await expect(update(1, { startDate: '2025-03-01' }, 1)).rejects.toThrow();
+      // startDate is a locked field - after stripping, no fields remain
+      await expect(update(1, { startDate: '2025-03-01' }, 1)).rejects.toThrow('沒有可更新的欄位');
+    });
+
+    it('should allow updating non-locked fields when locked fields are also present after check-in', async () => {
+      const mockExistingPractice = {
+        id: 1,
+        user_id: 1,
+        status: 'active',
+        first_checkin_at: new Date(),
+        practice_time_periods: ['morning'],
+        created_at: new Date(),
+        deleted_at: null
+      };
+      const mockUpdatedPractice = {
+        id: 1,
+        external_id: 'practice-uuid',
+        title: 'Updated Title',
+        status: 'active',
+        progress_percentage: 50,
+        practice_time_periods: ['morning'],
+        theme_color: '#FCDD84',
+        created_at: new Date(),
+        deleted_at: null,
+        users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
+      } as any;
+
+      prismaMock.practices.findUnique.mockResolvedValue(mockExistingPractice as any);
+      prismaMock.practice_checkins.count.mockResolvedValue(1); // Has check-ins
+      prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice);
+      prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+
+      // Send both locked (startDate) and non-locked (title) fields
+      const result = await update(1, { title: 'Updated Title', startDate: '2025-03-01' }, 1);
+
+      expect(result.success).toBe(true);
+      expect(result.data.title).toBe('Updated Title');
     });
 
     it('should send PE01 email when publishing draft (draft -> not_started)', async () => {
