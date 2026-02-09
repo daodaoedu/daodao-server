@@ -144,6 +144,30 @@ export function validateUpdateFields(
 }
 
 /**
+ * 從更新資料中移除已鎖定的欄位
+ *
+ * 有打卡記錄時，自動移除不可修改的欄位，允許其餘欄位正常更新。
+ *
+ * @param data 更新資料物件
+ * @param hasCheckIns 是否有打卡記錄
+ * @returns 移除鎖定欄位後的資料
+ */
+export function stripLockedFields<T extends object>(
+  data: T,
+  hasCheckIns: boolean
+): T {
+  if (!hasCheckIns) {
+    return data;
+  }
+
+  const stripped = { ...data } as Record<string, unknown>;
+  for (const field of LOCKED_FIELDS_AFTER_CHECKIN) {
+    delete stripped[field];
+  }
+  return stripped as T;
+}
+
+/**
  * 計算日期位移（提早打卡時使用）
  *
  * 當使用者在 start_date 之前打卡時，自動將實踐日期往前調整

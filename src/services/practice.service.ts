@@ -37,7 +37,7 @@ import {
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
-  validateUpdateFields
+  stripLockedFields
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 
@@ -577,11 +577,13 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     });
     const hasCheckIns = checkInCount > 0;
 
-    // 驗證更新欄位是否允許（有打卡後部分欄位不可修改）
+    // 有打卡記錄時，自動移除鎖定欄位，允許其餘欄位正常更新
+    data = stripLockedFields(data, hasCheckIns);
+
+    // 檢查移除鎖定欄位後是否還有可更新的欄位
     const updateFields = Object.keys(data);
-    const validation = validateUpdateFields(updateFields, hasCheckIns);
-    if (!validation.isValid) {
-      throw new BadRequestError(validation.errorMessage || '無法修改已鎖定的欄位');
+    if (updateFields.length === 0) {
+      throw new BadRequestError('沒有可更新的欄位（計算相關欄位在有打卡記錄後不可修改）');
     }
 
     const updateData: Prisma.practicesUpdateInput = {};
@@ -1241,8 +1243,12 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     });
     const hasCheckIns = checkInCount > 0;
 
-    // 檢查是否已過結束日期（FRD: 完成條件是到期日）
-    const hasPassedEndDate = checkHasPassedEndDate(practice.end_date);
+    // 檢查是否已過期（小時制：created_at + duration_days * 24h）
+    const durationDays = (practice as { duration_days?: number }).duration_days || 14;
+    const hasPassedEndDate = checkHasPassedEndDate(practice.end_date, {
+      createdAt: practice.created_at,
+      durationDays
+    });
 
     // 根據是否有打卡記錄和是否過期決定恢復狀態
     const newStatus = determineNewStatus({
@@ -1363,20 +1369,32 @@ export async function completeExpiredPractices(): Promise<{
   completedCount: number;
   practiceIds: number[];
 }> {
-  const now = new Date();
-
   try {
     // 使用事務確保原子性：查詢並更新在同一個事務中
     const result = await prismaClient.$transaction(async (tx) => {
-      // 查詢所有已到期但尚未完成的實踐
-      const expiredPractices = await tx.practices.findMany({
+      // 小時制到期 = created_at + duration * 24h
+      // 無法用 end_date 預篩（start_date 在未來時 end_date 可能遠大於到期時間）
+      const activePractices = await tx.practices.findMany({
         where: {
           status: { in: ['not_started', 'active'] },
-          end_date: { lte: now },
           deleted_at: null
         },
-        select: { id: true, user_id: true }
+        select: {
+          id: true,
+          user_id: true,
+          created_at: true,
+          duration_days: true,
+          end_date: true
+        }
       });
+
+      // 小時制：逐筆精確檢查是否已過期（created_at + duration * 24h）
+      const expiredPractices = activePractices.filter(p =>
+        checkHasPassedEndDate(p.end_date, {
+          createdAt: p.created_at,
+          durationDays: p.duration_days || 14
+        })
+      );
 
       if (expiredPractices.length === 0) {
         return { expiredPractices: [], updatedCount: 0 };

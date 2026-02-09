@@ -77,6 +77,11 @@ describe('Practice CheckIn Service', () => {
   };
 
   // Test data factories matching Prisma schema
+  // 使用未來日期以避免小時制到期判定
+  const futureStart = new Date();
+  futureStart.setUTCHours(0, 0, 0, 0);
+  const futureEnd = new Date(futureStart.getTime() + 13 * 24 * 60 * 60 * 1000); // +13 days
+
   const createTestPractice = (overrides = {}) => ({
     id: 1,
     external_id: 'practice-uuid',
@@ -84,12 +89,12 @@ describe('Practice CheckIn Service', () => {
     template_id: null,
     title: 'TypeScript 學習',
     practice_action: '閱讀技術書籍',
-    start_date: new Date('2024-01-01'),
-    end_date: new Date('2024-01-14'),
+    start_date: futureStart,
+    end_date: futureEnd,
     duration_days: 14,
     frequency_min_days: 4,
     frequency_max_days: 7,
-        session_duration_minutes: 30,
+    session_duration_minutes: 30,
     practice_time_periods: ['morning', 'evening'],
     other_context: null,
     status: 'not_started',
@@ -97,8 +102,8 @@ describe('Practice CheckIn Service', () => {
     progress_percentage: createDecimalMock(20),
     first_checkin_at: null,
     theme_color: '#FCDD84',
-    created_at: new Date('2024-01-01'),
-    updated_at: new Date('2024-01-01'),
+    created_at: new Date(),
+    updated_at: new Date(),
     deleted_at: null,
     ...overrides
   });
@@ -199,7 +204,7 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
 
       await expect(createCheckIn(1, createCheckInRequest(), 1))
-        .rejects.toThrow('今日已完成簽到');
+        .rejects.toThrow('距離上次打卡未滿 24 小時');
     });
 
     it('should calculate progress based on check-in count', async () => {
@@ -477,24 +482,20 @@ describe('Practice CheckIn Service', () => {
   });
 
   describe('validateDailyCheckIn', () => {
-    it('should return true when no check-in exists today', async () => {
+    it('should return true when no check-in within 24 hours', async () => {
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
 
       const result = await validateDailyCheckIn(1, 1);
 
       expect(result).toBe(true);
-      
-      // Verify correct date range query
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-      
+
+      // 小時制：查詢 created_at >= 24小時前
       expect(prismaMock.practice_checkins.findFirst).toHaveBeenCalledWith({
         where: {
           practice_id: 1,
           user_id: 1,
-          checkin_date: {
-            gte: today,
-            lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+          created_at: {
+            gte: expect.any(Date)
           }
         }
       });
@@ -519,7 +520,7 @@ describe('Practice CheckIn Service', () => {
 
       expect(result).toBe(false);
       expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Failed to validate daily check-in',
+        'Failed to validate check-in interval',
         expect.objectContaining({ practiceId: 1, userId: 1, error })
       );
     });
@@ -895,7 +896,7 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
 
       await expect(createCheckInWithImages(1, request, 1))
-        .rejects.toThrow('今日已完成簽到');
+        .rejects.toThrow('距離上次打卡未滿 24 小時');
 
       // Images should be cleaned up
       expect(mockUploadToR2).toHaveBeenCalledTimes(1);
