@@ -532,7 +532,19 @@ describe('Practice Business Logic Tests', () => {
         expectSuccess(response);
       });
 
-      it('嘗試修改 startDate 應返回 400 錯誤', async () => {
+      it('應可修改非鎖定欄位（如 sessionDurationMinutes），即使同時包含鎖定欄位', async () => {
+        prismaMock.practices.update.mockResolvedValue(createMockPractice(true) as any);
+        prismaMock.comments.groupBy.mockResolvedValue([]);
+
+        const response = await authPut(`${API_BASE}/${practiceId}`, {
+          sessionDurationMinutes: 60,
+          startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+        }, userToken);
+
+        expectSuccess(response);
+      });
+
+      it('僅送出鎖定欄位時應返回 400 錯誤（無可更新欄位）', async () => {
         const response = await authPut(`${API_BASE}/${practiceId}`, {
           startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0]
         }, userToken);
@@ -540,19 +552,19 @@ describe('Practice Business Logic Tests', () => {
         expectError(response, 400);
       });
 
-      it('嘗試修改 frequencyMinDays 應返回 400 錯誤', async () => {
+      it('僅送出 frequencyMinDays 應返回 400 錯誤', async () => {
         const response = await authPut(`${API_BASE}/${practiceId}`, { frequencyMinDays: 2 }, userToken);
 
         expectError(response, 400);
       });
 
-      it('嘗試修改 frequencyMaxDays 應返回 400 錯誤', async () => {
+      it('僅送出 frequencyMaxDays 應返回 400 錯誤', async () => {
         const response = await authPut(`${API_BASE}/${practiceId}`, { frequencyMaxDays: 3 }, userToken);
 
         expectError(response, 400);
       });
 
-      it('嘗試修改 durationDays 應返回 400 錯誤', async () => {
+      it('僅送出 durationDays 應返回 400 錯誤', async () => {
         const response = await authPut(`${API_BASE}/${practiceId}`, { durationDays: 28 }, userToken);
 
         expectError(response, 400);
