@@ -182,9 +182,20 @@ const generateQuizCompletedContent = (data: {
 
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
-        <td class="text-block" style="padding-bottom: 24px;">
+        <td class="text-block" style="padding-bottom: 16px;">
           <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
             準備好開始美好的學習生活了嗎？
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Discord Feedback -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 24px;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.6;">
+            若在功能使用上有任何問題和建議，歡迎至 <a href="https://discord.com/invite/8GnqSZZxp7" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">Discord</a> 的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
           </p>
         </td>
       </tr>
@@ -314,9 +325,20 @@ const generateQuizPendingContent = (data: {
     <!-- Closing Text -->
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
-        <td class="text-block" style="padding-bottom: 24px;">
+        <td class="text-block" style="padding-bottom: 16px;">
           <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
             準備好開始美好的學習生活了嗎？
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Discord Feedback -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 24px;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.6;">
+            若在功能使用上有任何問題和建議，歡迎至 <a href="https://discord.com/invite/8GnqSZZxp7" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">Discord</a> 的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
           </p>
         </td>
       </tr>
