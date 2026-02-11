@@ -827,20 +827,9 @@ export async function updateCheckIn(
         data: updateData
       });
 
-      // 如果有提供 tags，更新標籤
+      // 如果有提供 tags，更新標籤（傳入 tx 避免 deadlock）
       if (data.tags !== undefined) {
-        // 先清除現有標籤
-        await tx.entity_tags.deleteMany({
-          where: {
-            entity_type: CHECKIN_ENTITY_TYPE,
-            entity_id: checkInId
-          }
-        });
-
-        // 設置新標籤
-        if (data.tags.length > 0) {
-          await setEntityTags(CHECKIN_ENTITY_TYPE, checkInId, data.tags, userId);
-        }
+        await setEntityTags(CHECKIN_ENTITY_TYPE, checkInId, data.tags, userId, tx);
       }
 
       return checkIn;
