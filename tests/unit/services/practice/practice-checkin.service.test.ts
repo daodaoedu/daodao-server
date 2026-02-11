@@ -196,17 +196,6 @@ describe('Practice CheckIn Service', () => {
         .rejects.toThrow('此實踐狀態不允許打卡');
     });
 
-    it('should throw DuplicateError when already checked in today', async () => {
-      const testPractice = createTestPractice({ status: 'active' });
-      const existingCheckIn = { id: 1, checkin_date: new Date() };
-
-      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
-      prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
-
-      await expect(createCheckIn(1, createCheckInRequest(), 1))
-        .rejects.toThrow('距離上次打卡未滿 24 小時');
-    });
-
     it('should calculate progress based on check-in count', async () => {
       // With 2 check-ins (after this one), progress should increase from 50%
       const testPractice = createTestPractice({
@@ -482,47 +471,10 @@ describe('Practice CheckIn Service', () => {
   });
 
   describe('validateDailyCheckIn', () => {
-    it('should return true when no check-in within 24 hours', async () => {
-      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
-
+    it('should always return true (24-hour limit removed)', async () => {
       const result = await validateDailyCheckIn(1, 1);
 
       expect(result).toBe(true);
-
-      // 小時制：查詢 created_at >= 24小時前
-      expect(prismaMock.practice_checkins.findFirst).toHaveBeenCalledWith({
-        where: {
-          practice_id: 1,
-          user_id: 1,
-          created_at: {
-            gte: expect.any(Date)
-          }
-        }
-      });
-    });
-
-    it('should return false when check-in exists today', async () => {
-      prismaMock.practice_checkins.findFirst.mockResolvedValue({
-        id: 1,
-        checkin_date: new Date()
-      } as any);
-
-      const result = await validateDailyCheckIn(1, 1);
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle database errors gracefully', async () => {
-      const error = new Error('Database error');
-      prismaMock.practice_checkins.findFirst.mockRejectedValue(error);
-
-      const result = await validateDailyCheckIn(1, 1);
-
-      expect(result).toBe(false);
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Failed to validate check-in interval',
-        expect.objectContaining({ practiceId: 1, userId: 1, error })
-      );
     });
   });
 
@@ -881,22 +833,6 @@ describe('Practice CheckIn Service', () => {
 
       await expect(createCheckInWithImages(1, request, 1))
         .rejects.toThrow('實踐不存在或沒有權限');
-
-      // Images should be cleaned up
-      expect(mockUploadToR2).toHaveBeenCalledTimes(1);
-      expect(mockDeleteFromR2).toHaveBeenCalledTimes(1);
-    });
-
-    it('should throw ConflictError when already checked in today', async () => {
-      const testPractice = createTestPractice({ status: 'active' });
-      const existingCheckIn = { id: 1, checkin_date: new Date() };
-      const request = createCheckInWithFilesRequest();
-
-      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
-      prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
-
-      await expect(createCheckInWithImages(1, request, 1))
-        .rejects.toThrow('距離上次打卡未滿 24 小時');
 
       // Images should be cleaned up
       expect(mockUploadToR2).toHaveBeenCalledTimes(1);
