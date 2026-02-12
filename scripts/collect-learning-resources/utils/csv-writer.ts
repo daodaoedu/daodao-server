@@ -1,31 +1,31 @@
 /**
  * CSV writer utility.
  * Writes CollectedResource arrays to CSV files without external dependencies.
+ * Follows RFC 4180 for proper escaping.
  */
 
 import { writeFileSync } from 'node:fs';
 import type { CollectedResource } from '../types';
 
-/** CSV column headers matching CollectedResource fields */
-const CSV_HEADERS: (keyof CollectedResource)[] = [
-  'name',
-  'url',
-  'image_url',
-  'description',
-  'video_url',
-  'type',
-  'cost',
-  'level',
-  'tags',
-  'source_platform',
-  'source_id',
-  'published_at',
+/** CSV column definitions: [header, accessor function] */
+const CSV_COLUMNS: [string, (r: CollectedResource) => string][] = [
+  ['name', (r) => r.name],
+  ['url', (r) => r.url],
+  ['image_url', (r) => r.image_url],
+  ['description', (r) => r.description],
+  ['video_url', (r) => r.video_url],
+  ['type', (r) => r.type],
+  ['cost', (r) => r.cost],
+  ['level', (r) => r.level],
+  ['tags', (r) => r.tags],
+  ['source_platform', (r) => r.source_platform],
+  ['source_id', (r) => r.source_id],
+  ['published_at', (r) => r.published_at],
+  ['quality_score', (r) => String(r.quality_score)],
 ];
 
 /**
  * Escape a value for CSV format (RFC 4180).
- * Wraps in double quotes if the value contains commas, quotes, or newlines.
- * @param value - String value to escape
  */
 function escapeCsvValue(value: string): string {
   if (
@@ -40,24 +40,18 @@ function escapeCsvValue(value: string): string {
 }
 
 /**
- * Convert a CollectedResource to a CSV row string.
- * @param resource - Resource to convert
- */
-function resourceToCsvRow(resource: CollectedResource): string {
-  return CSV_HEADERS.map((header) => escapeCsvValue(resource[header])).join(',');
-}
-
-/**
  * Write collected resources to a CSV file.
- * @param resources - Array of resources to write
+ * @param resources - Array of resources to write (should already be scored and deduped)
  * @param outputPath - File path for the CSV output
  */
 export function writeCsv(
   resources: CollectedResource[],
   outputPath: string,
 ): void {
-  const headerRow = CSV_HEADERS.join(',');
-  const dataRows = resources.map(resourceToCsvRow);
+  const headerRow = CSV_COLUMNS.map(([header]) => header).join(',');
+  const dataRows = resources.map((resource) =>
+    CSV_COLUMNS.map(([, accessor]) => escapeCsvValue(accessor(resource))).join(','),
+  );
   const csvContent = [headerRow, ...dataRows].join('\n');
 
   writeFileSync(outputPath, csvContent, 'utf-8');

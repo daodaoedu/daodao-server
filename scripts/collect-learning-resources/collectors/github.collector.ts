@@ -1,7 +1,7 @@
 /**
  * GitHub Search API collector.
  * Searches for educational repositories (awesome lists, tutorials, courses)
- * and maps them to CollectedResource format.
+ * and maps them to CollectedResource format with metrics for quality scoring.
  *
  * GITHUB_TOKEN env var is optional but recommended (increases rate limit from 10 to 30 req/min).
  * API docs: https://docs.github.com/en/rest/search/search#search-repositories
@@ -24,7 +24,12 @@ interface GitHubRepo {
   description: string | null;
   topics: string[];
   stargazers_count: number;
+  forks_count: number;
+  open_issues_count: number;
   language: string | null;
+  license: { spdx_id: string } | null;
+  has_wiki: boolean;
+  has_pages: boolean;
   owner: {
     login: string;
     avatar_url: string;
@@ -33,7 +38,6 @@ interface GitHubRepo {
   updated_at: string;
 }
 
-/** GitHub search API response */
 interface GitHubSearchResponse {
   total_count: number;
   items: GitHubRepo[];
@@ -56,9 +60,6 @@ const TYPE_HINTS: Record<string, ResourceType> = {
 
 /**
  * Search GitHub repositories for a given query.
- * @param query - Search query string
- * @param maxResults - Maximum number of results (max 100 per page)
- * @returns Array of repository items
  */
 async function searchRepos(
   query: string,
@@ -81,22 +82,17 @@ async function searchRepos(
   }
 
   const response = await fetch(
-    `${githubConfig.baseUrl}/search/repositories?${params.toString()}`,
+    `${githubConfig.baseUrl}/search/repositories?${params}`,
     { headers },
   );
 
   const data = (await response.json()) as GitHubSearchResponse;
-
-  if (data.message) {
-    throw new Error(`GitHub API error: ${data.message}`);
-  }
-
+  if (data.message) throw new Error(`GitHub API: ${data.message}`);
   return data.items ?? [];
 }
 
 /**
  * Infer resource type from repo topics and name.
- * @param repo - GitHub repository data
  */
 function inferResourceType(repo: GitHubRepo): ResourceType {
   const searchText = [
@@ -108,17 +104,13 @@ function inferResourceType(repo: GitHubRepo): ResourceType {
     .toLowerCase();
 
   for (const [hint, type] of Object.entries(TYPE_HINTS)) {
-    if (searchText.includes(hint)) {
-      return type;
-    }
+    if (searchText.includes(hint)) return type;
   }
-
   return RESOURCE_TYPE.OTHER;
 }
 
 /**
- * Map a GitHub repo to a CollectedResource.
- * @param repo - GitHub repository data
+ * Map a GitHub repo to a CollectedResource with metrics.
  */
 function mapToResource(repo: GitHubRepo): CollectedResource {
   const tags = [
@@ -127,11 +119,13 @@ function mapToResource(repo: GitHubRepo): CollectedResource {
     `stars:${repo.stargazers_count}`,
   ].filter((t): t is string => t != null);
 
+  const description = (repo.description ?? `GitHub repository: ${repo.full_name}`).slice(0, 2000);
+
   return {
     name: repo.full_name.slice(0, 255),
     url: repo.html_url,
     image_url: repo.owner.avatar_url,
-    description: (repo.description ?? `GitHub repository: ${repo.full_name}`).slice(0, 2000),
+    description,
     video_url: '',
     type: inferResourceType(repo),
     cost: COST_TYPE.FREE,
@@ -140,13 +134,22 @@ function mapToResource(repo: GitHubRepo): CollectedResource {
     source_platform: 'github',
     source_id: String(repo.id),
     published_at: repo.created_at,
+    quality_score: 0,
+    metrics: {
+      stars: repo.stargazers_count,
+      forks: repo.forks_count,
+      open_issues: repo.open_issues_count,
+      last_updated: repo.updated_at,
+      has_wiki: repo.has_wiki,
+      has_pages: repo.has_pages,
+      has_license: repo.license != null,
+      description_length: description.length,
+    },
   };
 }
 
 /**
  * Collect learning resources from GitHub.
- * @param config - Collector configuration with keywords and limits
- * @returns CollectorResult with collected resources and any errors
  */
 export async function collectGitHub(
   config: CollectorConfig,
@@ -155,12 +158,10 @@ export async function collectGitHub(
   const errors: string[] = [];
   const seenIds = new Set<number>();
 
-  // Append education-related qualifiers to user keywords
   const educationQueries = config.keywords.map(
     (kw) => `${kw} topic:education OR topic:tutorial OR topic:awesome-list OR topic:learning`,
   );
 
-  // Also search for well-known educational topic patterns
   const extraQueries = [
     'awesome-list topic:education',
     'tutorial topic:learning',
@@ -180,11 +181,10 @@ export async function collectGitHub(
         resources.push(mapToResource(repo));
       }
 
-      // GitHub search API rate limit: pause between requests
+      // Respect GitHub search API rate limit
       await new Promise((resolve) => setTimeout(resolve, 2000));
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       errors.push(`[GitHub] query="${query}": ${msg}`);
       console.error(`  [GitHub] Error for "${query}": ${msg}`);
     }

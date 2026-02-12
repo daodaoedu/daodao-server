@@ -1,2 +1,5 @@
 # Ignore collected CSV output files
 output/*.csv
+
+# Ignore deduplication history (local state)
+data/collected-history.json
