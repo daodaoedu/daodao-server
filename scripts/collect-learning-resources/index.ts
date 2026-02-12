@@ -2,7 +2,9 @@
  * Learning Resources Collector CLI
  *
  * Collects learning resources from YouTube, GitHub, and Threads,
- * then outputs them as a CSV file matching the `resources` table schema.
+ * applies deduplication and quality scoring, then outputs as CSV.
+ *
+ * Pipeline: Collect → Deduplicate → Score & Filter → CSV
  *
  * Usage:
  *   npx tsx scripts/collect-learning-resources/index.ts
@@ -10,6 +12,7 @@
  *   npx tsx scripts/collect-learning-resources/index.ts --keywords "React,TypeScript,學習"
  *   npx tsx scripts/collect-learning-resources/index.ts --output ./data/resources.csv
  *   npx tsx scripts/collect-learning-resources/index.ts --max-results 20
+ *   npx tsx scripts/collect-learning-resources/index.ts --min-score 50
  *
  * Environment variables:
  *   YOUTUBE_API_KEY       - YouTube Data API v3 key
@@ -17,11 +20,14 @@
  *   THREADS_ACCESS_TOKEN  - Meta Threads API long-lived access token
  */
 
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { buildCollectorConfig } from './config';
 import { collectYouTube } from './collectors/youtube.collector';
 import { collectGitHub } from './collectors/github.collector';
 import { collectThreads } from './collectors/threads.collector';
+import { deduplicateResources } from './utils/dedup';
+import { scoreAndFilter, MIN_QUALITY_SCORE } from './utils/quality-scorer';
 import { writeCsv } from './utils/csv-writer';
 import type { CollectedResource, CollectorResult, SourcePlatform } from './types';
 
@@ -34,12 +40,14 @@ function parseArgs(): {
   keywords: string[] | undefined;
   output: string;
   maxResults: number;
+  minScore: number;
 } {
   const args = process.argv.slice(2);
   let platforms: SourcePlatform[] = [...VALID_PLATFORMS];
   let keywords: string[] | undefined;
   let output = '';
   let maxResults = 10;
+  let minScore = MIN_QUALITY_SCORE;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -48,9 +56,7 @@ function parseArgs(): {
         const val = args[++i];
         if (val) {
           const requested = val.split(',') as SourcePlatform[];
-          const invalid = requested.filter(
-            (p) => !VALID_PLATFORMS.includes(p),
-          );
+          const invalid = requested.filter((p) => !VALID_PLATFORMS.includes(p));
           if (invalid.length > 0) {
             console.error(
               `Invalid platform(s): ${invalid.join(', ')}. Valid: ${VALID_PLATFORMS.join(', ')}`,
@@ -64,9 +70,7 @@ function parseArgs(): {
       case '--keywords':
       case '-k': {
         const val = args[++i];
-        if (val) {
-          keywords = val.split(',').map((k) => k.trim());
-        }
+        if (val) keywords = val.split(',').map((k) => k.trim());
         break;
       }
       case '--output':
@@ -80,6 +84,12 @@ function parseArgs(): {
         if (val) maxResults = parseInt(val, 10);
         break;
       }
+      case '--min-score':
+      case '-s': {
+        const val = args[++i];
+        if (val) minScore = parseInt(val, 10);
+        break;
+      }
       case '--help':
       case '-h': {
         console.log(`
@@ -89,11 +99,19 @@ Usage:
   npx tsx scripts/collect-learning-resources/index.ts [options]
 
 Options:
-  -p, --platform <name>       Platform(s) to collect from: youtube,github,threads (default: all)
+  -p, --platform <name>       Platform(s): youtube,github,threads (default: all)
   -k, --keywords <list>       Comma-separated search keywords
-  -o, --output <path>         Output CSV file path (default: ./output/resources-<timestamp>.csv)
+  -o, --output <path>         Output CSV file path
   -m, --max-results <number>  Max results per keyword per platform (default: 10)
+  -s, --min-score <number>    Minimum quality score 0-100 (default: ${MIN_QUALITY_SCORE})
   -h, --help                  Show this help message
+
+Pipeline:
+  1. Collect     - Fetch resources from each platform via API
+  2. Deduplicate - Remove duplicates (local history + URL normalization)
+  3. Score       - Calculate quality (engagement, content, authority, freshness)
+  4. Filter      - Keep only resources above --min-score threshold
+  5. Output      - Write to CSV sorted by quality score
         `);
         process.exit(0);
       }
@@ -109,7 +127,7 @@ Options:
     );
   }
 
-  return { platforms, keywords, output, maxResults };
+  return { platforms, keywords, output, maxResults, minScore };
 }
 
 /** Collector function lookup */
@@ -124,19 +142,20 @@ const collectors: Record<
 
 /** Main entry point */
 async function main(): Promise<void> {
-  const { platforms, keywords, output, maxResults } = parseArgs();
+  const { platforms, keywords, output, maxResults, minScore } = parseArgs();
   const config = buildCollectorConfig(keywords, maxResults);
 
   console.log('=== Learning Resources Collector ===');
-  console.log(`Platforms: ${platforms.join(', ')}`);
-  console.log(`Keywords: ${config.keywords.join(', ')}`);
-  console.log(`Max results per keyword: ${config.maxResultsPerKeyword}`);
-  console.log(`Output: ${output}\n`);
+  console.log(`Platforms:   ${platforms.join(', ')}`);
+  console.log(`Keywords:    ${config.keywords.join(', ')}`);
+  console.log(`Max results: ${config.maxResultsPerKeyword} per keyword`);
+  console.log(`Min score:   ${minScore}`);
+  console.log(`Output:      ${output}\n`);
 
+  // Step 1: Collect from all platforms
   const allResources: CollectedResource[] = [];
   const allErrors: string[] = [];
 
-  // Run collectors sequentially to respect rate limits
   for (const platform of platforms) {
     console.log(`--- Collecting from ${platform} ---`);
     const result = await collectors[platform](config);
@@ -144,21 +163,37 @@ async function main(): Promise<void> {
     allErrors.push(...result.errors);
   }
 
-  // Ensure output directory exists
-  const { mkdirSync } = await import('node:fs');
-  const { dirname } = await import('node:path');
-  mkdirSync(dirname(output), { recursive: true });
+  // Step 2: Deduplicate (history file + URL normalization + cross-platform)
+  console.log(`\n--- Deduplication ---`);
+  const { unique, skippedExisting, skippedDuplicate } =
+    deduplicateResources(allResources);
 
-  // Write CSV
-  writeCsv(allResources, output);
+  // Step 3: Score and filter
+  console.log(`\n--- Quality Scoring ---`);
+  const { passed, filtered } = scoreAndFilter(unique, minScore);
+
+  // Step 4: Write CSV
+  mkdirSync(dirname(output), { recursive: true });
+  writeCsv(passed, output);
 
   // Summary
   console.log('\n=== Summary ===');
+  console.log('Collection:');
   for (const platform of platforms) {
-    const count = allResources.filter(
-      (r) => r.source_platform === platform,
-    ).length;
-    console.log(`  ${platform}: ${count} resources`);
+    const count = allResources.filter((r) => r.source_platform === platform).length;
+    console.log(`  ${platform}: ${count} raw`);
+  }
+  console.log(`\nDeduplication:`);
+  console.log(`  Already collected: ${skippedExisting}`);
+  console.log(`  Batch duplicates:  ${skippedDuplicate}`);
+  console.log(`  Unique:            ${unique.length}`);
+  console.log(`\nQuality filter (min ${minScore}):`);
+  console.log(`  Passed:   ${passed.length}`);
+  console.log(`  Filtered: ${filtered}`);
+
+  if (passed.length > 0) {
+    const scores = passed.map((r) => r.quality_score);
+    console.log(`  Score range: ${Math.min(...scores)} - ${Math.max(...scores)}`);
   }
 
   if (allErrors.length > 0) {

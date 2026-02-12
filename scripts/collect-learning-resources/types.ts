@@ -65,6 +65,37 @@ export interface CollectedResource {
   source_id: string;
   /** When the resource was originally published */
   published_at: string;
+  /** Platform-specific metrics used for quality scoring */
+  metrics: PlatformMetrics;
+  /** Quality score (0-100), calculated after collection */
+  quality_score: number;
+}
+
+/** Platform-specific engagement and authority metrics */
+export interface PlatformMetrics {
+  // YouTube
+  view_count?: number;
+  like_count?: number;
+  subscriber_count?: number;
+  duration_seconds?: number;
+
+  // GitHub
+  stars?: number;
+  forks?: number;
+  open_issues?: number;
+  last_updated?: string;
+  has_wiki?: boolean;
+  has_pages?: boolean;
+  has_license?: boolean;
+
+  // Threads
+  thread_likes?: number;
+  reply_count?: number;
+  has_media?: boolean;
+
+  // Shared
+  description_length?: number;
+  url_count?: number;
 }
 
 /** Configuration for a collector */
