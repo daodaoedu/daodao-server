@@ -1,0 +1,2 @@
+# Ignore collected CSV output files
+output/*.csv
