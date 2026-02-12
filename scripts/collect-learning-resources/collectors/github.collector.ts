@@ -60,13 +60,26 @@ const TYPE_HINTS: Record<string, ResourceType> = {
 
 /**
  * Search GitHub repositories for a given query.
+ * @param query - Search query string
+ * @param maxResults - Maximum number of results
+ * @param recentDays - Only include repos created/pushed in the last N days (0 = no limit)
  */
 async function searchRepos(
   query: string,
   maxResults: number,
+  recentDays: number,
 ): Promise<GitHubRepo[]> {
+  let q = `${query} stars:>50`;
+
+  // Apply time window filter — search for recently pushed repos
+  if (recentDays > 0) {
+    const cutoff = new Date(Date.now() - recentDays * 24 * 60 * 60 * 1000);
+    const dateStr = cutoff.toISOString().split('T')[0];
+    q += ` pushed:>${dateStr}`;
+  }
+
   const params = new URLSearchParams({
-    q: `${query} stars:>50`,
+    q,
     sort: 'stars',
     order: 'desc',
     per_page: String(Math.min(maxResults, 100)),
@@ -173,7 +186,7 @@ export async function collectGitHub(
   for (const query of allQueries) {
     try {
       console.log(`  [GitHub] Searching: "${query}"`);
-      const repos = await searchRepos(query, config.maxResultsPerKeyword);
+      const repos = await searchRepos(query, config.maxResultsPerKeyword, config.recentDays);
 
       for (const repo of repos) {
         if (seenIds.has(repo.id)) continue;

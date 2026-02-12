@@ -35,7 +35,8 @@
     "validators/**/*",
     "src/types/**/*.d.ts",
     "tests/**/*",
-    "generated/**/*"
+    "generated/**/*",
+    "scripts/**/*"
   ],
   "exclude": [
     "node_modules",

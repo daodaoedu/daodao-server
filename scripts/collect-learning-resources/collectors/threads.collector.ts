@@ -146,6 +146,22 @@ function mapToResource(post: ThreadsPost): CollectedResource {
 }
 
 /**
+ * Check if a post is within the recent time window.
+ * @param post - Threads post with timestamp
+ * @param recentDays - Number of days to look back (0 = no limit)
+ */
+function isWithinTimeWindow(post: ThreadsPost, recentDays: number): boolean {
+  if (recentDays <= 0) return true;
+  if (!post.timestamp) return true; // Unknown date, keep it
+
+  const postDate = new Date(post.timestamp).getTime();
+  if (isNaN(postDate)) return true;
+
+  const cutoff = Date.now() - recentDays * 24 * 60 * 60 * 1000;
+  return postDate >= cutoff;
+}
+
+/**
  * Collect learning resources from Threads.
  */
 export async function collectThreads(
@@ -175,6 +191,7 @@ export async function collectThreads(
         if (seenIds.has(post.id)) continue;
         seenIds.add(post.id);
         if (!isLearningRelated(post)) continue;
+        if (!isWithinTimeWindow(post, config.recentDays)) continue;
         resources.push(mapToResource(post));
       }
 

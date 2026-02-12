@@ -34,7 +34,7 @@ export const LEVEL_TYPE = {
 export type ResourceType = (typeof RESOURCE_TYPE)[keyof typeof RESOURCE_TYPE];
 export type CostType = (typeof COST_TYPE)[keyof typeof COST_TYPE];
 export type LevelType = (typeof LEVEL_TYPE)[keyof typeof LEVEL_TYPE];
-export type SourcePlatform = 'youtube' | 'github' | 'threads';
+export type SourcePlatform = 'youtube' | 'github' | 'threads' | 'reddit' | 'hackernews';
 
 /**
  * A collected resource ready for CSV output.
@@ -93,6 +93,20 @@ export interface PlatformMetrics {
   reply_count?: number;
   has_media?: boolean;
 
+  // Reddit
+  upvotes?: number;
+  upvote_ratio?: number;
+  num_comments?: number;
+  subreddit?: string;
+
+  // Hacker News
+  points?: number;
+  hn_num_comments?: number;
+
+  // Cross-platform
+  /** Number of platforms this resource appeared on (set during dedup) */
+  cross_platform_count?: number;
+
   // Shared
   description_length?: number;
   url_count?: number;
@@ -104,6 +118,8 @@ export interface CollectorConfig {
   keywords: string[];
   /** Maximum number of results to fetch per keyword */
   maxResultsPerKeyword: number;
+  /** Only collect resources published within this many days (0 = no limit) */
+  recentDays: number;
 }
 
 /** Result from a collector run */
