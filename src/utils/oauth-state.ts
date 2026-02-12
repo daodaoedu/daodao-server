@@ -29,8 +29,8 @@ export interface StateValidationResult {
   error?: string;
 }
 
-/** State 有效期限（5分鐘） */
-const STATE_EXPIRY_MS = 5 * 60 * 1000;
+/** State 有效期限（10分鐘，與前端一致） */
+const STATE_EXPIRY_MS = 10 * 60 * 1000;
 
 /**
  * 生成 nonce 隨機字串
