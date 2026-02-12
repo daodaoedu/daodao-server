@@ -97,24 +97,6 @@ export async function createCheckIn(
 
     // 使用交易確保資料一致性，避免 race condition
     const { checkIn, isFirstCheckIn, progressResult, newStatus, streakInfo, newCheckInCount } = await prismaClient.$transaction(async (tx) => {
-      // 小時制：在 transaction 內檢查距離上次打卡是否已過 24 小時
-      const now = new Date();
-      const twentyFourHoursAgo = new Date(now.getTime() - MS_PER_DAY);
-
-      const recentCheckIn = await tx.practice_checkins.findFirst({
-        where: {
-          practice_id: practiceId,
-          user_id: userId,
-          created_at: {
-            gte: twentyFourHoursAgo
-          }
-        }
-      });
-
-      if (recentCheckIn) {
-        throw new ConflictError('距離上次打卡未滿 24 小時');
-      }
-
       // 在 transaction 內查詢打卡數量，確保原子性
       const currentCheckInCount = await tx.practice_checkins.count({
         where: {
@@ -649,29 +631,11 @@ export async function updatePracticeProgress(
 }
 
 /**
- * 驗證打卡間隔限制（小時制：24 小時）
+ * 驗證是否可以打卡（已移除 24 小時限制，隨時可打卡）
  */
-export async function validateDailyCheckIn(practiceId: number, userId: number): Promise<boolean> {
-  try {
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - MS_PER_DAY);
-
-    const recentCheckIn = await prismaClient.practice_checkins.findFirst({
-      where: {
-        practice_id: practiceId,
-        user_id: userId,
-        created_at: {
-          gte: twentyFourHoursAgo
-        }
-      }
-    });
-
-    return !recentCheckIn;
-
-  } catch (error) {
-    loggerService.error('Failed to validate check-in interval', { practiceId, userId, error });
-    return false;
-  }
+export async function validateDailyCheckIn(_practiceId: number, _userId: number): Promise<boolean> {
+  // 已移除 24 小時限制，隨時可以打卡
+  return true;
 }
 
 /**
@@ -827,20 +791,9 @@ export async function updateCheckIn(
         data: updateData
       });
 
-      // 如果有提供 tags，更新標籤
+      // 如果有提供 tags，更新標籤（傳入 tx 避免 deadlock）
       if (data.tags !== undefined) {
-        // 先清除現有標籤
-        await tx.entity_tags.deleteMany({
-          where: {
-            entity_type: CHECKIN_ENTITY_TYPE,
-            entity_id: checkInId
-          }
-        });
-
-        // 設置新標籤
-        if (data.tags.length > 0) {
-          await setEntityTags(CHECKIN_ENTITY_TYPE, checkInId, data.tags, userId);
-        }
+        await setEntityTags(CHECKIN_ENTITY_TYPE, checkInId, data.tags, userId, tx);
       }
 
       return checkIn;

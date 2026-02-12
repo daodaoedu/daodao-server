@@ -63,7 +63,7 @@ export const generateVerificationEmail = (data: VerificationEmailData): EmailTem
       <tr>
         <td style="padding-bottom: 24px;">
           <p style="margin: 0; font-size: 14px; color: ${EMAIL_COLORS.textSecondary}; line-height: 175%;">
-            如果您無法點擊按鈕，歡迎到 Discord 裡的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
+            如果您無法點擊按鈕，歡迎到 <a href="https://discord.com/invite/8GnqSZZxp7" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">Discord</a> 裡的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
           </p>
         </td>
       </tr>
