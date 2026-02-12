@@ -86,10 +86,14 @@ function parseDuration(iso: string): number {
 
 /**
  * Search YouTube for videos matching a keyword.
+ * @param keyword - Search term
+ * @param maxResults - Maximum number of results
+ * @param recentDays - Only include videos from the last N days (0 = no limit)
  */
 async function searchVideos(
   keyword: string,
   maxResults: number,
+  recentDays: number,
 ): Promise<YouTubeSearchItem[]> {
   const params = new URLSearchParams({
     part: 'snippet',
@@ -100,6 +104,12 @@ async function searchVideos(
     videoCategoryId: '27',
     key: youtubeConfig.apiKey,
   });
+
+  // Apply time window filter
+  if (recentDays > 0) {
+    const cutoff = new Date(Date.now() - recentDays * 24 * 60 * 60 * 1000);
+    params.set('publishedAfter', cutoff.toISOString());
+  }
 
   const response = await fetch(`${youtubeConfig.baseUrl}/search?${params}`);
   const data = (await response.json()) as YouTubeSearchResponse;
@@ -140,7 +150,7 @@ async function fetchChannelStats(
 ): Promise<Map<string, number>> {
   if (channelIds.length === 0) return new Map();
 
-  const uniqueIds = [...new Set(channelIds)];
+  const uniqueIds = Array.from(new Set(channelIds));
   const params = new URLSearchParams({
     part: 'statistics',
     id: uniqueIds.join(','),
@@ -175,7 +185,7 @@ function mapToResource(
 
   const tags = details?.snippet.tags ?? [];
   const channelTag = item.snippet.channelTitle;
-  const allTags = [...new Set([channelTag, ...tags.slice(0, 9)])];
+  const allTags = Array.from(new Set([channelTag, ...tags.slice(0, 9)]));
 
   const viewCount = parseInt(details?.statistics.viewCount ?? '0', 10);
   const likeCount = parseInt(details?.statistics.likeCount ?? '0', 10);
@@ -226,7 +236,7 @@ export async function collectYouTube(
   for (const keyword of config.keywords) {
     try {
       console.log(`  [YouTube] Searching: "${keyword}"`);
-      const items = await searchVideos(keyword, config.maxResultsPerKeyword);
+      const items = await searchVideos(keyword, config.maxResultsPerKeyword, config.recentDays);
 
       const videoIds = items
         .map((item) => item.id.videoId)

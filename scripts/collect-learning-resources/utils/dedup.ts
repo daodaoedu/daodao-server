@@ -6,6 +6,10 @@
  * 1. History file — skip URLs already collected in previous runs
  * 2. URL normalization — catch equivalent URLs with different formats
  * 3. Cross-platform dedup — same resource shared on multiple platforms
+ *
+ * Cross-platform counting:
+ * Before removing duplicates, counts how many platforms each URL appeared on.
+ * The surviving resource gets a cross_platform_count metric for quality scoring.
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -15,7 +19,7 @@ import type { CollectedResource } from '../types';
 
 /** Path to the local history file that tracks collected URLs */
 const HISTORY_FILE = resolve(
-  dirname(new URL(import.meta.url).pathname),
+  __dirname,
   '../data/collected-history.json',
 );
 
@@ -45,6 +49,8 @@ interface CollectionHistory {
  *   - http vs https
  *   - www vs non-www
  *   - utm_* tracking params
+ *   - reddit short links and old/new reddit domains
+ *   - news.ycombinator.com item links
  *
  * @param rawUrl - URL string to normalize
  * @returns Normalized URL string for comparison
@@ -78,21 +84,32 @@ export function normalizeUrl(rawUrl: string): string {
       url.pathname = url.pathname.toLowerCase().replace(/\.git$/, '');
     }
 
-    // 6. Remove tracking params
-    const trackingPrefixes = ['utm_', 'ref', 'fbclid', 'gclid', 'si'];
-    for (const key of [...url.searchParams.keys()]) {
-      if (trackingPrefixes.some((prefix) => key.startsWith(prefix))) {
-        url.searchParams.delete(key);
-      }
+    // 6. Reddit — normalize old.reddit.com, new.reddit.com, redd.it
+    if (url.hostname === 'old.reddit.com' || url.hostname === 'new.reddit.com') {
+      url.hostname = 'reddit.com';
+    }
+    if (url.hostname === 'redd.it') {
+      // redd.it/abc123 → reddit.com short link, keep as-is for dedup
+      url.hostname = 'reddit.com';
     }
 
-    // 7. Sort remaining params for consistent comparison
+    // 7. Remove tracking params
+    const trackingPrefixes = ['utm_', 'ref', 'fbclid', 'gclid', 'si'];
+    const keysToRemove: string[] = [];
+    url.searchParams.forEach((_, key) => {
+      if (trackingPrefixes.some((prefix) => key.startsWith(prefix))) {
+        keysToRemove.push(key);
+      }
+    });
+    keysToRemove.forEach((key) => url.searchParams.delete(key));
+
+    // 8. Sort remaining params for consistent comparison
     url.searchParams.sort();
 
-    // 8. Remove trailing slash
+    // 9. Remove trailing slash
     url.pathname = url.pathname.replace(/\/+$/, '') || '/';
 
-    // 9. Remove hash
+    // 10. Remove hash
     url.hash = '';
 
     return url.toString();
@@ -142,7 +159,35 @@ export interface DedupResult {
 }
 
 /**
+ * Count how many unique platforms each URL appears on.
+ * Used to set cross_platform_count before dedup removes duplicates.
+ *
+ * @param resources - All collected resources from all platforms
+ * @returns Map of normalized URL → number of unique platforms
+ */
+function countCrossPlatform(
+  resources: CollectedResource[],
+): Map<string, number> {
+  const urlPlatforms = new Map<string, Set<string>>();
+
+  for (const resource of resources) {
+    const normalized = normalizeUrl(resource.url);
+    const platforms = urlPlatforms.get(normalized) ?? new Set<string>();
+    platforms.add(resource.source_platform);
+    urlPlatforms.set(normalized, platforms);
+  }
+
+  const counts = new Map<string, number>();
+  urlPlatforms.forEach((platforms, url) => {
+    counts.set(url, platforms.size);
+  });
+
+  return counts;
+}
+
+/**
  * Deduplicate collected resources against history file and within the batch.
+ * Also tracks cross-platform appearances for quality scoring.
  *
  * @param resources - All collected resources from all platforms
  * @returns DedupResult with unique resources and skip counts
@@ -150,6 +195,13 @@ export interface DedupResult {
 export function deduplicateResources(resources: CollectedResource[]): DedupResult {
   const history = loadHistory();
   const existingUrls = new Set(Object.keys(history.entries));
+
+  // Count cross-platform appearances before dedup removes duplicates
+  const crossPlatformCounts = countCrossPlatform(resources);
+  const crossPlatformHits = Array.from(crossPlatformCounts.values()).filter((c) => c >= 2).length;
+  if (crossPlatformHits > 0) {
+    console.log(`  [Dedup] Found ${crossPlatformHits} URLs appearing on 2+ platforms`);
+  }
 
   const seenUrls = new Set<string>();
   const unique: CollectedResource[] = [];
@@ -160,6 +212,11 @@ export function deduplicateResources(resources: CollectedResource[]): DedupResul
 
   for (const resource of resources) {
     const normalized = normalizeUrl(resource.url);
+
+    // Set cross-platform count on the resource (even if it gets skipped,
+    // this ensures the surviving copy has the correct count)
+    const cpCount = crossPlatformCounts.get(normalized) ?? 1;
+    resource.metrics.cross_platform_count = cpCount;
 
     // Skip if exists in history
     if (existingUrls.has(normalized)) {

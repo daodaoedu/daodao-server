@@ -9,19 +9,19 @@ import type { CollectedResource } from '../types';
 
 /** CSV column definitions: [header, accessor function] */
 const CSV_COLUMNS: [string, (r: CollectedResource) => string][] = [
-  ['name', (r) => r.name],
-  ['url', (r) => r.url],
-  ['image_url', (r) => r.image_url],
-  ['description', (r) => r.description],
-  ['video_url', (r) => r.video_url],
-  ['type', (r) => r.type],
-  ['cost', (r) => r.cost],
-  ['level', (r) => r.level],
-  ['tags', (r) => r.tags],
-  ['source_platform', (r) => r.source_platform],
-  ['source_id', (r) => r.source_id],
-  ['published_at', (r) => r.published_at],
-  ['quality_score', (r) => String(r.quality_score)],
+  ['name', (r): string => r.name],
+  ['url', (r): string => r.url],
+  ['image_url', (r): string => r.image_url],
+  ['description', (r): string => r.description],
+  ['video_url', (r): string => r.video_url],
+  ['type', (r): string => r.type],
+  ['cost', (r): string => r.cost],
+  ['level', (r): string => r.level],
+  ['tags', (r): string => r.tags],
+  ['source_platform', (r): string => r.source_platform],
+  ['source_id', (r): string => r.source_id],
+  ['published_at', (r): string => r.published_at],
+  ['quality_score', (r): string => String(r.quality_score)],
 ];
 
 /**

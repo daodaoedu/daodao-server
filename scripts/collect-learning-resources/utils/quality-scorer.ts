@@ -1,16 +1,18 @@
 /**
  * Quality scoring module for collected resources.
  *
- * Calculates a 0-100 score based on four dimensions:
- *   - Engagement (0-30): platform-specific popularity signals
- *   - Content    (0-30): description quality and educational signals
- *   - Authority  (0-20): source credibility
- *   - Freshness  (0-20): recency of publication/update
+ * Calculates a 0-100 score based on five dimensions:
+ *   - Engagement      (0-30): platform-specific popularity signals
+ *   - Content         (0-30): description quality and educational signals
+ *   - Authority       (0-20): source credibility
+ *   - Freshness       (0-20): recency of publication/update
+ *   - Cross-platform  (0-10): bonus for appearing on multiple platforms
  *
+ * The cross-platform bonus can push scores above 100; they are clamped to 100.
  * Resources below the minimum threshold are filtered out.
  */
 
-import type { CollectedResource, SourcePlatform } from '../types';
+import type { CollectedResource } from '../types';
 
 /** Minimum quality score to include in output */
 export const MIN_QUALITY_SCORE = 40;
@@ -86,6 +88,20 @@ function scoreEngagement(resource: CollectedResource): number {
       const replyScore = logScore(m.reply_count ?? 0, 10, 10);
       return likeScore + replyScore;
     }
+    case 'reddit': {
+      // Upvotes: baseline 100 → ~20pts at 1000
+      const upvoteScore = logScore(m.upvotes ?? 0, 100, 20);
+      // Comments: baseline 20 → ~10pts at 200 (high discussion signal)
+      const commentScore = logScore(m.num_comments ?? 0, 20, 10);
+      return upvoteScore + commentScore;
+    }
+    case 'hackernews': {
+      // Points: baseline 50 → ~20pts at 500 (HN is selective)
+      const pointScore = logScore(m.points ?? 0, 50, 20);
+      // Comments: baseline 20 → ~10pts at 200
+      const commentScore = logScore(m.hn_num_comments ?? 0, 20, 10);
+      return pointScore + commentScore;
+    }
     default:
       return 0;
   }
@@ -125,8 +141,11 @@ function scoreContent(resource: CollectedResource): number {
   ).length;
   score -= negativeCount * 4;
 
-  // URL in description bonus for Threads (suggests sharing actual resources)
-  if (resource.source_platform === 'threads' && (resource.metrics.url_count ?? 0) > 0) {
+  // URL in description bonus for community platforms (suggests sharing actual resources)
+  const isCommunityPlatform =
+    resource.source_platform === 'threads' ||
+    resource.source_platform === 'reddit';
+  if (isCommunityPlatform && (resource.metrics.url_count ?? 0) > 0) {
     score += 4;
   }
 
@@ -160,6 +179,29 @@ function scoreAuthority(resource: CollectedResource): number {
       // Has media = more effort (+10)
       if (m.has_media) return 10;
       return 5; // Text-only posts get baseline
+    }
+    case 'reddit': {
+      let score = 0;
+      // High upvote ratio = community agrees (>0.85 = strong signal)
+      const ratio = m.upvote_ratio ?? 0;
+      if (ratio >= 0.90) score += 10;
+      else if (ratio >= 0.80) score += 7;
+      else if (ratio >= 0.70) score += 4;
+      else score += 2;
+      // Active discussion = valuable (>10 comments)
+      if ((m.num_comments ?? 0) >= 50) score += 10;
+      else if ((m.num_comments ?? 0) >= 20) score += 7;
+      else if ((m.num_comments ?? 0) >= 5) score += 4;
+      return clamp(score, 0, 20);
+    }
+    case 'hackernews': {
+      // HN's community is highly selective — high points = strong signal
+      const points = m.points ?? 0;
+      if (points >= 200) return 20;
+      if (points >= 100) return 16;
+      if (points >= 50) return 12;
+      if (points >= 20) return 8;
+      return 4;
     }
     default:
       return 0;
@@ -200,6 +242,21 @@ function scoreFreshness(resource: CollectedResource): number {
 }
 
 /**
+ * Calculate cross-platform bonus score (0-10).
+ * Resources that appear on multiple platforms are more likely to be genuinely valuable.
+ *
+ * @param resource - Resource with cross_platform_count set during dedup
+ * @returns Bonus score 0-10
+ */
+function scoreCrossPlatform(resource: CollectedResource): number {
+  const count = resource.metrics.cross_platform_count ?? 1;
+  if (count >= 4) return 10;
+  if (count >= 3) return 7;
+  if (count >= 2) return 4;
+  return 0;
+}
+
+/**
  * Calculate overall quality score for a resource.
  * @param resource - Collected resource with metrics
  * @returns Score between 0-100
@@ -209,8 +266,11 @@ export function calculateQualityScore(resource: CollectedResource): number {
   const content = scoreContent(resource);
   const authority = scoreAuthority(resource);
   const freshness = scoreFreshness(resource);
+  const crossPlatform = scoreCrossPlatform(resource);
 
-  return Math.round(clamp(engagement + content + authority + freshness, 0, 100));
+  return Math.round(
+    clamp(engagement + content + authority + freshness + crossPlatform, 0, 100),
+  );
 }
 
 /**
