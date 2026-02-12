@@ -1,7 +1,7 @@
 # PRD: 主題實踐與使用者推薦系統
 
 > **Product Requirements Document**
-> **Version**: 1.0
+> **Version**: 1.1
 > **Date**: 2026-02-12
 > **Status**: Draft
 > **Backend**: Python AI Service
@@ -36,6 +36,8 @@
 | 推薦後參與率 (Adoption Rate) | N/A | ≥ 3% | ≥ 8% |
 | 推薦實踐打卡率 (Checkin Rate) | N/A | ≥ 20% | ≥ 35% |
 | 有推薦的使用者覆蓋率 | N/A | ≥ 80% | ≥ 95% |
+| 推薦 Tag 點擊率 | N/A | ≥ 10% | ≥ 20% |
+| Tag 建議採用率 (建立實踐時) | N/A | ≥ 40% | ≥ 60% |
 | 推薦 API 延遲 (P95) | N/A | < 500ms | < 200ms |
 
 ---
@@ -343,6 +345,151 @@ Response 200:
 
 ---
 
+### 3.6 Feature: 探索頁推薦 Tag (Tag Discovery Recommendations)
+
+**優先級**：P1 (Phase 2)
+
+#### 描述
+在首頁或探索頁為使用者推薦可能感興趣的 Tag，作為內容探索的入口。使用者點擊推薦的 Tag 後可瀏覽該 Tag 下的所有實踐。
+
+#### User Stories
+
+**US-6.1** 使用者透過推薦 Tag 探索內容
+> 作為一個使用者，我想在探索頁看到「你可能感興趣的主題」標籤列表，點擊後能瀏覽該標籤下的實踐，讓我更容易發現新領域。
+
+**US-6.2** 新使用者透過熱門 Tag 了解平台內容
+> 作為一個新使用者，我想看到目前平台上熱門的 Tag，以便快速了解有哪些學習主題。
+
+#### 接受標準 (Acceptance Criteria)
+
+| # | 條件 | 預期結果 |
+|---|------|---------|
+| AC-6.1 | 有興趣/歷史的使用者 | 回傳 ≤ 15 筆推薦 Tag，按相關度排序 |
+| AC-6.2 | 新使用者（無歷史） | 回傳熱門 Tag 列表（依使用次數 + 近期趨勢排序） |
+| AC-6.3 | 每筆結果 | 包含 `tag_id`、`tag_name`、`score`、`reason`、`practice_count`（該 Tag 下的活躍實踐數） |
+| AC-6.4 | 推薦依據 | 綜合使用者興趣匹配、歷史實踐標籤、相似用戶的標籤偏好 |
+| AC-6.5 | 排除空 Tag | 不推薦 practice_count = 0 的 Tag |
+| AC-6.6 | 多樣性 | 推薦結果應跨不同主題領域，避免過度集中 |
+
+#### API 規格
+
+```
+GET /api/v1/recommendations/tags
+
+Query Parameters:
+  - user_id: string (optional) - 有則個人化，無則回傳熱門
+  - limit: integer (optional, default=15, max=30)
+  - context: string (optional) - "explore_page" | "homepage"
+
+Response 200:
+{
+  "success": true,
+  "data": [
+    {
+      "tag_id": 42,
+      "tag_name": "閱讀",
+      "score": 0.85,
+      "practice_count": 23,
+      "trending": true,
+      "reason": {
+        "type": "interest_match" | "history_based" | "similar_users" | "trending" | "popular",
+        "detail": "符合你對『教育學習』的興趣"
+      }
+    }
+  ],
+  "meta": {
+    "personalized": true,
+    "model_version": "v1.0.0"
+  }
+}
+```
+
+---
+
+### 3.7 Feature: 建立實踐時推薦 Tag (Practice Tag Auto-Suggestion)
+
+**優先級**：P1 (Phase 2)
+
+#### 描述
+使用者新建或編輯實踐時，根據填寫的標題和描述，自動建議適合的 Tag。降低使用者手動選標籤的門檻，同時提升 Tag 的使用品質與一致性。
+
+#### User Stories
+
+**US-7.1** 使用者建立實踐時獲得 Tag 建議
+> 作為一個正在建立實踐的使用者，我輸入標題「每天閱讀30分鐘」後，系統自動建議「閱讀」「自我成長」「習慣養成」等 Tag，我只需點選確認，不用自己想要打什麼標籤。
+
+**US-7.2** 使用者編輯實踐時獲得 Tag 建議
+> 作為一個正在編輯實踐的使用者，當我修改標題或描述後，系統能根據新內容更新 Tag 建議。
+
+#### 接受標準 (Acceptance Criteria)
+
+| # | 條件 | 預期結果 |
+|---|------|---------|
+| AC-7.1 | 使用者輸入標題（≥ 2 字） | 回傳 ≤ 10 筆建議 Tag，按相關度排序 |
+| AC-7.2 | 同時提供標題 + practice_action | 結合兩者語意提升建議準確度 |
+| AC-7.3 | 每筆結果 | 包含 `tag_id`、`tag_name`、`confidence`（0-1 信心度） |
+| AC-7.4 | 優先推薦既有 Tag | 優先建議已存在的 Tag，減少重複/近似標籤 |
+| AC-7.5 | 支援即時回應 | 延遲 < 300ms，適合打字時即時建議 |
+| AC-7.6 | 語意理解 | 「每天跑步5公里」→ 建議「運動」「跑步」「健康」，而非純字面匹配 |
+| AC-7.7 | 可提供使用者資訊 | 若提供 user_id，可參考使用者常用標籤微調排序 |
+
+#### API 規格
+
+```
+GET /api/v1/recommendations/tags/suggest
+
+Query Parameters:
+  - title: string (required) - 實踐標題
+  - practice_action: string (optional) - 實踐行動描述
+  - user_id: string (optional) - 用於個人化排序
+  - limit: integer (optional, default=10, max=15)
+
+Response 200:
+{
+  "success": true,
+  "data": [
+    {
+      "tag_id": 42,
+      "tag_name": "閱讀",
+      "confidence": 0.92,
+      "source": "semantic" | "keyword" | "template_category" | "user_history"
+    }
+  ],
+  "meta": {
+    "input_analyzed": "每天閱讀30分鐘",
+    "model_version": "v1.0.0"
+  }
+}
+```
+
+#### 演算法策略
+
+```
+建議 Tag 的多路來源：
+
+1. 關鍵字匹配 (Keyword)
+   - 標題/描述分詞 → 比對現有 tag name
+   - 快速、高精確度，但召回率低
+
+2. 語意匹配 (Semantic) — Phase 3
+   - 標題 embedding vs 所有 tag embedding → cosine similarity
+   - 理解「每天跑步」→「運動」的語意關聯
+
+3. 模板類別關聯 (Template Category)
+   - 若使用者選了模板，用模板的 content_categories 關聯 tag
+   - 高精確度
+
+4. 使用者歷史 (User History)
+   - 使用者過去實踐常用的 tag，在信心度相近時優先推薦
+   - 個人化加分
+
+5. 共現統計 (Co-occurrence)
+   - 統計哪些 tag 經常一起出現在同一個實踐
+   - 當已選了 tag A，推薦常與 A 共現的 tag B
+```
+
+---
+
 ## 4. 非功能需求 (Non-Functional Requirements)
 
 ### 4.1 效能 (Performance)
@@ -510,7 +657,25 @@ Response 200:
   - 使用者頭像 + 暱稱 + 共同興趣標籤
   - 顯示共同實踐數量
 
-### 7.4 建立實踐頁
+### 7.4 首頁 / 探索頁 - 推薦 Tag
+- **位置**：探索頁頂部「你可能感興趣的主題」
+- **API**：`GET /api/v1/recommendations/tags?user_id={uuid}`
+- **UI 需求**：
+  - 橫向可滾動的 Tag 膠囊列表
+  - 每個 Tag 顯示名稱 + 實踐數量（如「閱讀 · 23個實踐」）
+  - 熱門/趨勢 Tag 標示 trending 標記
+  - 點擊後導航至該 Tag 的實踐列表頁
+
+### 7.5 建立/編輯實踐頁 - Tag 自動建議
+- **位置**：標籤輸入欄位
+- **API**：`GET /api/v1/recommendations/tags/suggest?title={text}`
+- **UI 需求**：
+  - 使用者輸入標題後（debounce 300ms），下拉顯示建議 Tag
+  - 每個 Tag 顯示名稱 + 信心度指示（高/中）
+  - 點擊即選取，支援多選
+  - 已選取的 Tag 可觸發「共現推薦」（選了 A 後推薦常與 A 一起出現的 B）
+
+### 7.6 建立實踐頁 - 模板推薦
 - **位置**：模板選擇步驟
 - **API**：`GET /api/v1/recommendations/templates?user_id={uuid}`
 - **UI 需求**：
@@ -540,6 +705,7 @@ Response 200:
 - 協同過濾
 - 相似使用者推薦
 - 模板推薦
+- Tag 推薦
 - 使用者回饋
 - NLP text embedding
 
@@ -555,6 +721,8 @@ Response 200:
 | Hybrid Ranking | 多路召回 + 混合排序 |
 | 相似使用者推薦 (3.2) | 基於 interest + behavior similarity |
 | 模板推薦 (3.4) | 個人化模板排序 |
+| 探索頁推薦 Tag (3.6) | 基於興趣 + 熱門度的個人化 Tag 推薦 |
+| 建立實踐 Tag 建議 (3.7) | 基於標題關鍵字匹配 + 模板類別 + 使用者歷史 |
 | 使用者區段 | cold_start / normal / active 動態權重 |
 | 推薦多樣性 | 同類別不超過 40% |
 
@@ -567,6 +735,8 @@ Response 200:
 | 功能 | 說明 |
 |------|------|
 | Text Embedding | sentence-transformers 語意匹配 |
+| Tag 語意建議增強 (3.7) | 用 embedding 理解「跑步」→「運動」的語意關聯 |
+| Tag 共現推薦 (3.7) | 選了 Tag A 後推薦常共現的 Tag B |
 | 推薦回饋 (3.5) | 負向回饋收集與應用 |
 | 即時特徵更新 | Event-driven cache invalidation |
 | A/B Testing 框架 | 多策略對比測試 |
@@ -625,6 +795,15 @@ ReasonType = (
   "pattern_similar"     # 實踐模式相似
   "preference_match"    # 學習偏好匹配
   "professional_match"  # 專業領域匹配
+  "history_based"       # 基於使用者歷史行為 (Tag 推薦)
+)
+
+TagSuggestionSource = (
+  "keyword"             # 標題/描述關鍵字直接匹配
+  "semantic"            # 語意匹配 (embedding-based)
+  "template_category"   # 模板分類關聯
+  "user_history"        # 使用者常用標籤
+  "co_occurrence"       # Tag 共現統計
 )
 ```
 
