@@ -286,11 +286,10 @@ export const myPracticeItemSchema = z.object({
     description: "是否有相關資源",
     example: true
   }),
-  progressPercentage: z.number().min(0).max(100).optional().openapi({
-    description: "進度百分比 (0-100)",
+  progressPercentage: z.number().min(0).optional().openapi({
+    description: "進度百分比 (可超過 100%，表示超額完成)",
     example: 45,
-    minimum: 0,
-    maximum: 100
+    minimum: 0
   }),
   firstCheckinAt: z.string().datetime().optional().openapi({
     description: "首次打卡時間",
