@@ -7,7 +7,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import userStatsController from '@/controllers/user-stats-controller';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticateAny } from '../middleware/auth';
+import { requireAdmin } from '../middleware/permission.middleware';
 import { validate } from '../middleware/validation.middleware';
 import {
   registrationStatsQuerySchema,
@@ -435,8 +436,8 @@ registry.registerPath({
 // Express 路由定義
 // ============================================================================
 
-// 所有路由都需要管理員權限（支援大小寫及 SuperAdmin）
-const adminOnly = [authenticate, requireRole(['Admin', 'admin', 'SuperAdmin', 'superadmin'])];
+// 所有路由都需要管理員權限（使用資料庫級別權限檢查，與 admin.routes.ts 一致）
+const adminOnly = [authenticateAny, requireAdmin];
 
 /**
  * GET /api/v1/admin/user-stats/overview
