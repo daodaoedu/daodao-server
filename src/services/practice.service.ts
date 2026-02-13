@@ -1430,11 +1430,17 @@ export async function completeExpiredPractices(): Promise<{
       practiceIds
     });
 
-    // 觸發 PE04 完成郵件（非阻塞）
+    // 觸發結束總結郵件（非阻塞）
+    // 有打卡 → PE07，無打卡 → PE08
     // enqueuePracticeEmail 內部使用 jobId 去重，不會重複發送
     for (const practice of result.expiredPractices) {
-      enqueuePracticeEmail('PE04', practice.id, practice.user_id).catch(err => {
-        loggerService.error('Failed to enqueue PE04 email', {
+      prismaClient.practice_checkins.count({
+        where: { practice_id: practice.id }
+      }).then(checkInCount => {
+        const emailCode = checkInCount > 0 ? 'PE07' : 'PE08';
+        return enqueuePracticeEmail(emailCode, practice.id, practice.user_id);
+      }).catch(err => {
+        loggerService.error('Failed to enqueue final summary email', {
           practiceId: practice.id,
           error: err
         });
