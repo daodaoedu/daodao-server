@@ -594,12 +594,15 @@ export async function sendPendingFinalSummaries(): Promise<void> {
   try {
     loggerService.info('Starting final summary batch');
 
-    // 查詢最近完成且尚未發送 PE07/PE08 的實踐
+    // 查詢最近 7 天內完成且尚未發送 PE07/PE08 的實踐
     // completeExpiredPractices() 已將狀態設為 completed，因此查詢 completed 狀態
+    // 限制時間範圍避免隨資料庫增長載入全部歷史記錄
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const completedPractices = await prismaClient.practices.findMany({
       where: {
         status: 'completed',
-        deleted_at: null
+        deleted_at: null,
+        updated_at: { gte: sevenDaysAgo }
       },
       include: {
         users: {
