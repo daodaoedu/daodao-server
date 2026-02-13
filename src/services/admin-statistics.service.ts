@@ -134,25 +134,47 @@ const getActiveUsersTrend = async (filters: ActiveUsersTrendFilters): Promise<Ac
   startDate.setDate(startDate.getDate() - days + 1);
   startDate.setHours(0, 0, 0, 0);
 
-  // 使用 raw SQL 計算每日 DAU
-  // DAU: 當天有登入的不重複用戶數
-  const dauQuery = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
+  // WAU/MAU 計算需要額外回溯 29 天的資料
+  const extendedStart = new Date(startDate);
+  extendedStart.setDate(startDate.getDate() - 29);
+
+  // 一次查出整個時間範圍（含回溯期）的每日不重複用戶數
+  const dailyUsers = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
     SELECT DATE(login_at AT TIME ZONE 'UTC') as date, COUNT(DISTINCT user_id) as count
     FROM user_login_history
-    WHERE login_at >= ${startDate}
+    WHERE login_at >= ${extendedStart}
       AND login_at <= ${endDate}
     GROUP BY DATE(login_at AT TIME ZONE 'UTC')
     ORDER BY date ASC
   `;
 
-  // 將結果轉換為 Map
+  // 一次查出整個時間範圍（含回溯期）的每日登入用戶 ID 集合
+  const dailyUserIds = await prisma.$queryRaw<Array<{ date: Date; user_id: number }>>`
+    SELECT DISTINCT DATE(login_at AT TIME ZONE 'UTC') as date, user_id
+    FROM user_login_history
+    WHERE login_at >= ${extendedStart}
+      AND login_at <= ${endDate}
+    ORDER BY date ASC
+  `;
+
+  // 建立每日 DAU Map
   const dauMap = new Map<string, number>();
-  for (const row of dauQuery) {
+  for (const row of dailyUsers) {
     const dateStr = row.date.toISOString().split('T')[0];
     dauMap.set(dateStr, Number(row.count));
   }
 
-  // 計算每天的 WAU 和 MAU
+  // 建立每日用戶 ID Set Map（用於計算滑動視窗的 WAU/MAU）
+  const dailyUserSetMap = new Map<string, Set<number>>();
+  for (const row of dailyUserIds) {
+    const dateStr = row.date.toISOString().split('T')[0];
+    if (!dailyUserSetMap.has(dateStr)) {
+      dailyUserSetMap.set(dateStr, new Set());
+    }
+    dailyUserSetMap.get(dateStr)!.add(row.user_id);
+  }
+
+  // 在記憶體中計算每天的 DAU/WAU/MAU
   const trend: ActiveUsersTrendDataPoint[] = [];
 
   for (let i = 0; i < days; i++) {
@@ -163,41 +185,39 @@ const getActiveUsersTrend = async (filters: ActiveUsersTrendFilters): Promise<Ac
     // DAU - 當天
     const dau = dauMap.get(dateStr) ?? 0;
 
-    // WAU - 過去 7 天（含當天）
-    const wauStart = new Date(currentDate);
-    wauStart.setDate(currentDate.getDate() - 6);
-
-    const wauCount = await prisma.user_login_history.groupBy({
-      by: ['user_id'],
-      where: {
-        login_at: {
-          gte: wauStart,
-          lte: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000 - 1)
+    // WAU - 過去 7 天（含當天）的不重複用戶
+    const wauUsers = new Set<number>();
+    for (let d = 0; d < 7; d++) {
+      const lookbackDate = new Date(currentDate);
+      lookbackDate.setDate(currentDate.getDate() - d);
+      const lookbackStr = lookbackDate.toISOString().split('T')[0];
+      const users = dailyUserSetMap.get(lookbackStr);
+      if (users) {
+        for (const uid of users) {
+          wauUsers.add(uid);
         }
       }
-    });
-    const wau = wauCount.length;
+    }
 
-    // MAU - 過去 30 天（含當天）
-    const mauStart = new Date(currentDate);
-    mauStart.setDate(currentDate.getDate() - 29);
-
-    const mauCount = await prisma.user_login_history.groupBy({
-      by: ['user_id'],
-      where: {
-        login_at: {
-          gte: mauStart,
-          lte: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000 - 1)
+    // MAU - 過去 30 天（含當天）的不重複用戶
+    const mauUsers = new Set<number>();
+    for (let d = 0; d < 30; d++) {
+      const lookbackDate = new Date(currentDate);
+      lookbackDate.setDate(currentDate.getDate() - d);
+      const lookbackStr = lookbackDate.toISOString().split('T')[0];
+      const users = dailyUserSetMap.get(lookbackStr);
+      if (users) {
+        for (const uid of users) {
+          mauUsers.add(uid);
         }
       }
-    });
-    const mau = mauCount.length;
+    }
 
     trend.push({
       date: dateStr,
       dau,
-      wau,
-      mau
+      wau: wauUsers.size,
+      mau: mauUsers.size
     });
   }
 
