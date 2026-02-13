@@ -2,7 +2,7 @@
  * Admin 使用者管理相關型別定義
  */
 
-import type { FormattedUserResponse, LoginHistoryRecord, UserActivityStats } from './user.types';
+import type { LoginHistoryRecord, UserActivityStats } from './user.types';
 
 /**
  * Admin 使用者列表查詢參數
@@ -70,13 +70,61 @@ export interface AdminUserListResponse {
 
 /**
  * Admin 使用者詳情回應
- * 擴展公開的 FormattedUserResponse
+ * 僅包含實際從資料庫查詢並填充的欄位
  */
-export interface AdminUserDetailResponse extends FormattedUserResponse {
+export interface AdminUserDetailResponse {
+  /** 外部 ID (UUID) */
+  id: string;
   /** 內部 ID */
   internalId: number;
+  /** 用戶名稱 */
+  name: string | null;
   /** 完整 email */
   email: string | null;
+  /** 頭像 URL */
+  photoURL: string | null;
+  /** 性別 */
+  gender: 'male' | 'female' | 'other' | null;
+  /** 生日 */
+  birthDay: string | null;
+  /** 教育階段 */
+  educationStage: 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other' | null;
+  /** 是否公開位置 */
+  isOpenLocation: boolean;
+  /** 是否公開個人檔案 */
+  isOpenProfile: boolean;
+  /** 是否訂閱 Email */
+  isSubscribeEmail: boolean;
+  /** 角色 ID */
+  role: number | null;
+  /** 自訂 ID */
+  customId: string | null;
+  /** 自訂 ID 是否已驗證 */
+  customIdVerified: boolean | null;
+  /** 自訂 ID 建立時間 */
+  customIdCreatedAt: string | null;
+  /** 個人標語 */
+  personalSlogan: string | null;
+  /** 來源 */
+  referralSource: string | null;
+  /** 聯絡資訊 */
+  contactList: {
+    email: string | null;
+    photoURL: string | null;
+    isSubscribeEmail: boolean | null;
+    instagram: string | null;
+    discord: string | null;
+    line: string | null;
+    facebook: string | null;
+    threads: string | null;
+    linkedin: string | null;
+    website: string | null;
+    github: string | null;
+  } | null;
+  /** 建立時間 */
+  createdAt: string;
+  /** 更新時間 */
+  updatedAt: string;
   /** Email 是否已驗證 */
   emailVerified: boolean;
   /** Email 驗證時間 */
