@@ -35,17 +35,16 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
     next(new UnauthorizedError('缺少認證令牌'));
     return;
   }
-  
+
   try {
     // 驗證 token
     const secret = process.env.JWT_SECRET || process.env.JWT_SECURITY;
-    console.log('🔑 JWT secret being used:', secret ? `${secret.substring(0, 10)}...` : 'undefined');
     if (!secret) {
       throw new Error('JWT secret not configured');
     }
-    
+
     const decoded = jwt.verify(token, secret);
-    
+
     // 將解碼後的用戶信息添加到請求對象中
     if (typeof decoded === 'object' && decoded !== null) {
       req.user = decoded as UserJwtPayload;
@@ -53,7 +52,7 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
     } else {
       throw new Error('Invalid token payload');
     }
-    
+
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
@@ -128,11 +127,12 @@ export const authorizeRoles = (roles: string[]): RequestHandler => {
     const userRoles = req.user.roles || [];
     const hasRequiredRole = roles.some(role => userRoles.includes(role));
 
+
     if (!hasRequiredRole) {
       next(new UnauthorizedError('沒有權限執行此操作'));
       return;
     }
-    
+
     next();
   };
 };
@@ -179,7 +179,7 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
       }
 
       const decoded = jwt.verify(token, secret);
-      
+
       if (typeof decoded === 'object' && decoded !== null) {
         const payload = decoded as UserJwtPayload;
         req.user = payload;

@@ -6,6 +6,9 @@
 import { Router, RequestHandler } from 'express';
 import { registry } from '../config/openapi-registry';
 import adminController from '@/controllers/admin.controller';
+import adminUserController from '@/controllers/admin-user.controller';
+import adminStatisticsController from '@/controllers/admin-statistics.controller';
+import emailHistoryController from '@/controllers/email-history.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '@/middleware/permission.middleware';
@@ -33,6 +36,27 @@ import {
   getUserRoleApiResponseSchema,
   updateUserRoleApiResponseSchema
 } from '@/validators/admin.validators';
+import {
+  adminUserListQuerySchema,
+  adminUserIdParamSchema,
+  adminLoginHistoryQuerySchema,
+  updateUserStatusSchema,
+  adminUserListResponseSchema,
+  adminUserDetailResponseSchema,
+  adminLoginHistoryResponseSchema,
+  adminActivityStatsResponseSchema,
+  updateUserStatusResponseSchema
+} from '@/validators/admin-user.validator';
+import {
+  practiceStatsQuerySchema,
+  activeUsersTrendQuerySchema,
+  practiceStatsResponseSchema,
+  activeUsersTrendResponseSchema
+} from '@/validators/admin-statistics.validator';
+import {
+  emailHistoryQuerySchema,
+  emailHistoryResponseSchema
+} from '@/validators/email-history.validator';
 
 const router = Router();
 
@@ -504,6 +528,249 @@ registry.registerPath({
   security: [{ bearerAuth: [] }]
 });
 
+// ===== Admin 使用者管理 =====
+
+/**
+ * GET /api/v1/admin/users - 取得使用者列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/users',
+  tags: ['Admin - User Management'],
+  summary: '取得使用者列表',
+  description: '取得使用者列表，支援搜尋、篩選、分頁。包含 email_verified、is_active、roles、permissions 等管理欄位。需要管理員權限。',
+  request: {
+    query: adminUserListQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得使用者列表',
+      content: {
+        'application/json': {
+          schema: adminUserListResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/admin/users/:userId - 取得使用者詳情
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/users/{userId}',
+  tags: ['Admin - User Management'],
+  summary: '取得使用者詳情',
+  description: '取得使用者完整詳情，包含 roles、permissions、loginHistory、activityStats 等管理欄位。需要管理員權限。',
+  request: {
+    params: adminUserIdParamSchema
+  },
+  responses: {
+    200: {
+      description: '成功取得使用者詳情',
+      content: {
+        'application/json': {
+          schema: adminUserDetailResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/admin/users/:userId/login-history - 取得使用者登入歷史
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/users/{userId}/login-history',
+  tags: ['Admin - User Management'],
+  summary: '取得使用者登入歷史',
+  description: '取得指定使用者的登入歷史記錄，支援日期範圍篩選。需要管理員權限。',
+  request: {
+    params: adminUserIdParamSchema,
+    query: adminLoginHistoryQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得登入歷史',
+      content: {
+        'application/json': {
+          schema: adminLoginHistoryResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/admin/users/:userId/activity-stats - 取得使用者活躍統計
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/users/{userId}/activity-stats',
+  tags: ['Admin - User Management'],
+  summary: '取得使用者活躍統計',
+  description: '取得指定使用者的活躍統計數據。需要管理員權限。',
+  request: {
+    params: adminUserIdParamSchema
+  },
+  responses: {
+    200: {
+      description: '成功取得活躍統計',
+      content: {
+        'application/json': {
+          schema: adminActivityStatsResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * PUT /api/v1/admin/users/:userId/status - 更新使用者狀態
+ */
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/admin/users/{userId}/status',
+  tags: ['Admin - User Management'],
+  summary: '更新使用者狀態',
+  description: '啟用或停用使用者帳號。需要超級管理員權限。',
+  request: {
+    params: adminUserIdParamSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: updateUserStatusSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '使用者狀態更新成功',
+      content: {
+        'application/json': {
+          schema: updateUserStatusResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+// ===== Admin 統計 =====
+
+/**
+ * GET /api/v1/admin/practices/stats - 取得實踐統計
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/practices/stats',
+  tags: ['Admin - Statistics'],
+  summary: '取得實踐統計',
+  description: '取得全站實踐統計數據，包含總數、各狀態數量、分類統計等。需要管理員權限。',
+  request: {
+    query: practiceStatsQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得實踐統計',
+      content: {
+        'application/json': {
+          schema: practiceStatsResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /api/v1/admin/user-stats/active-users/trend - 取得活躍用戶趨勢
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/user-stats/active-users/trend',
+  tags: ['Admin - Statistics'],
+  summary: '取得活躍用戶趨勢',
+  description: '取得 DAU/WAU/MAU 時間序列資料，用於繪製趨勢圖表。預設 30 天，最多 90 天。需要管理員權限。',
+  request: {
+    query: activeUsersTrendQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得活躍用戶趨勢',
+      content: {
+        'application/json': {
+          schema: activeUsersTrendResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+// ===== 郵件歷史 =====
+
+/**
+ * GET /api/v1/admin/email/history - 取得郵件發送歷史
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/email/history',
+  tags: ['Admin - Email'],
+  summary: '取得郵件發送歷史',
+  description: '取得郵件發送歷史記錄，支援多條件篩選、分頁、排序。包含統計摘要。需要管理員權限。',
+  request: {
+    query: emailHistoryQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得郵件歷史',
+      content: {
+        'application/json': {
+          schema: emailHistoryResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
 // ============================================================================
 // Express 路由定義
 // ============================================================================
@@ -674,6 +941,100 @@ router.put('/users/:userId/role',
   requireSuperAdmin,
   validate(updateUserRoleSchema, 'body'),
   adminController.updateUserRole as RequestHandler
+);
+
+// ===== Admin 使用者管理路由 =====
+
+/**
+ * GET /admin/users
+ * 取得使用者列表
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/users',
+  authenticateAny,
+  requireAdmin,
+  adminUserController.listUsers as RequestHandler
+);
+
+/**
+ * GET /admin/users/:userId
+ * 取得使用者詳情
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/users/:userId',
+  authenticateAny,
+  requireAdmin,
+  adminUserController.getUserDetail as RequestHandler
+);
+
+/**
+ * GET /admin/users/:userId/login-history
+ * 取得使用者登入歷史
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/users/:userId/login-history',
+  authenticateAny,
+  requireAdmin,
+  adminUserController.getLoginHistory as RequestHandler
+);
+
+/**
+ * GET /admin/users/:userId/activity-stats
+ * 取得使用者活躍統計
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/users/:userId/activity-stats',
+  authenticateAny,
+  requireAdmin,
+  adminUserController.getActivityStats as RequestHandler
+);
+
+/**
+ * PUT /admin/users/:userId/status
+ * 更新使用者狀態（啟用/停用）
+ * 需要：SuperAdmin
+ */
+router.put('/users/:userId/status',
+  authenticateAny,
+  requireSuperAdmin,
+  adminUserController.updateStatus as RequestHandler
+);
+
+// ===== Admin 統計路由 =====
+
+/**
+ * GET /admin/practices/stats
+ * 取得實踐統計
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/practices/stats',
+  authenticateAny,
+  requireAdmin,
+  adminStatisticsController.getPracticeStats as RequestHandler
+);
+
+/**
+ * GET /admin/user-stats/active-users/trend
+ * 取得活躍用戶趨勢
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/user-stats/active-users/trend',
+  authenticateAny,
+  requireAdmin,
+  adminStatisticsController.getActiveUsersTrend as RequestHandler
+);
+
+// ===== 郵件歷史路由 =====
+
+/**
+ * GET /admin/email/history
+ * 取得郵件發送歷史
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/email/history',
+  authenticateAny,
+  requireAdmin,
+  emailHistoryController.getEmailHistory as RequestHandler
 );
 
 export default router;

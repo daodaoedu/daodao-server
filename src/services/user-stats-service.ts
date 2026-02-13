@@ -795,7 +795,7 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
  * 獲取熱門檔案排行
  */
 export async function getPopularProfiles(query: PopularProfilesQuery): Promise<PopularProfilesStats> {
-  const { limit = 10, offset = 0, minViews = 1 } = query;
+  const { limit = 10, offset = 0, minViews = 0 } = query;
 
   const profiles = await prisma.users.findMany({
     where: {

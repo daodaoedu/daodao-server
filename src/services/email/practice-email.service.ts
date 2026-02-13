@@ -594,15 +594,15 @@ export async function sendPendingFinalSummaries(): Promise<void> {
   try {
     loggerService.info('Starting final summary batch');
 
-    // 查詢今天結束的實踐
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-
-    // 一次性查詢所有進行中的實踐，並載入打卡資料（優化 N+1 查詢）
-    const activePractices = await prismaClient.practices.findMany({
+    // 查詢最近 7 天內完成且尚未發送 PE07/PE08 的實踐
+    // completeExpiredPractices() 已將狀態設為 completed，因此查詢 completed 狀態
+    // 限制時間範圍避免隨資料庫增長載入全部歷史記錄
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const completedPractices = await prismaClient.practices.findMany({
       where: {
-        status: 'active'
+        status: 'completed',
+        deleted_at: null,
+        updated_at: { gte: sevenDaysAgo }
       },
       include: {
         users: {
@@ -614,17 +614,9 @@ export async function sendPendingFinalSummaries(): Promise<void> {
       }
     });
 
-    // 過濾今天結束的實踐
-    const endingToday = activePractices.filter(practice => {
-      if (!practice.start_date) return false;
-      const durationDays = practice.duration_days ?? 30;
-      const endDate = new Date(practice.start_date.getTime() + durationDays * 24 * 60 * 60 * 1000);
-      return endDate >= today && endDate < tomorrow;
-    });
+    loggerService.info('Found completed practices for final summary check', { count: completedPractices.length });
 
-    loggerService.info('Found practices ending today', { count: endingToday.length });
-
-    for (const practice of endingToday) {
+    for (const practice of completedPractices) {
       try {
         // 使用已載入的打卡資料（避免額外查詢）
         const totalCheckIns = practice.practice_checkins.length;
@@ -663,24 +655,9 @@ export async function sendPendingFinalSummaries(): Promise<void> {
           status: EMAIL_STATUS.SENT
         });
 
-        // 更新實踐狀態
-        const durationDays = practice.duration_days ?? 30;
-        const frequencyMaxDays = practice.frequency_max_days ?? 7;
-        const targetCheckIns = Math.floor(durationDays / frequencyMaxDays);
-        const reachedTarget = totalCheckIns >= targetCheckIns;
-
-        await prismaClient.practices.update({
-          where: { id: practice.id },
-          data: {
-            status: reachedTarget ? 'completed' : 'archived',
-            updated_at: new Date()
-          }
-        });
-
-        loggerService.info('Final summary sent and practice status updated', {
+        loggerService.info('Final summary sent', {
           practiceId: practice.id,
-          emailCode,
-          newStatus: reachedTarget ? 'completed' : 'archived'
+          emailCode
         });
 
       } catch (error) {
@@ -1172,7 +1149,7 @@ function generateFinalSummaryEmailContent(
         謝謝你，讓我們參與了這段旅程。
       </p>
 
-      ${generateCtaButton({ text: '開始新的實踐', url: `${process.env.FRONTEND_URL}/practices/new`, color: 'orange' })}
+      ${generateCtaButton({ text: '觀看你的實踐總結', url: `${process.env.FRONTEND_URL}/practices/${variables.practiceId}`, color: 'orange' })}
 
       ${generateDivider()}
       ${generateAuthorSection()}
