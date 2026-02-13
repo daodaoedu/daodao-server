@@ -1397,7 +1397,7 @@ export async function completeExpiredPractices(): Promise<{
       );
 
       if (expiredPractices.length === 0) {
-        return { expiredPractices: [], updatedCount: 0 };
+        return { expiredPractices: [], updatedCount: 0, checkInCounts: [] };
       }
 
       const practiceIds = expiredPractices.map(p => p.id);
@@ -1415,7 +1415,16 @@ export async function completeExpiredPractices(): Promise<{
         }
       });
 
-      return { expiredPractices, updatedCount: updateResult.count };
+      // 在 transaction 內查詢各實踐的打卡數，避免與並行打卡請求產生競態條件
+      const checkInCounts = await Promise.all(
+        expiredPractices.map(async (p) => ({
+          practiceId: p.id,
+          userId: p.user_id,
+          count: await tx.practice_checkins.count({ where: { practice_id: p.id } })
+        }))
+      );
+
+      return { expiredPractices, updatedCount: updateResult.count, checkInCounts };
     });
 
     if (result.updatedCount === 0) {
@@ -1430,12 +1439,15 @@ export async function completeExpiredPractices(): Promise<{
       practiceIds
     });
 
-    // 觸發 PE04 完成郵件（非阻塞）
+    // 觸發結束總結郵件（非阻塞）
+    // 有打卡 → PE07，無打卡 → PE08
     // enqueuePracticeEmail 內部使用 jobId 去重，不會重複發送
-    for (const practice of result.expiredPractices) {
-      enqueuePracticeEmail('PE04', practice.id, practice.user_id).catch(err => {
-        loggerService.error('Failed to enqueue PE04 email', {
-          practiceId: practice.id,
+    // 打卡數在 transaction 內已查詢，避免競態條件
+    for (const item of result.checkInCounts) {
+      const emailCode = item.count > 0 ? 'PE07' : 'PE08';
+      enqueuePracticeEmail(emailCode, item.practiceId, item.userId).catch(err => {
+        loggerService.error('Failed to enqueue final summary email', {
+          practiceId: item.practiceId,
           error: err
         });
       });

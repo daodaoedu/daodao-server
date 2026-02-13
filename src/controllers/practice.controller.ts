@@ -254,12 +254,14 @@ export class PracticeController {
 
   /**
    * 解析 FormData 中的 JSON 欄位
+   * 注意：空字串應該被保留，以便使用者可以清空欄位
    */
   private parseCheckInFormData(body: Record<string, unknown>): Partial<CheckInRequest> {
     const result: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(body)) {
-      if (value === undefined || value === null || value === '') {
+      // 只跳過 undefined 和 null，保留空字串以支援清空欄位
+      if (value === undefined || value === null) {
         continue;
       }
 
