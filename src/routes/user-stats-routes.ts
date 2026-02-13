@@ -435,8 +435,8 @@ registry.registerPath({
 // Express 路由定義
 // ============================================================================
 
-// 所有路由都需要管理員權限（支援大小寫：Admin, admin）
-const adminOnly = [authenticate, requireRole(['Admin', 'admin'])];
+// 所有路由都需要管理員權限（支援大小寫及 SuperAdmin）
+const adminOnly = [authenticate, requireRole(['Admin', 'admin', 'SuperAdmin', 'superadmin'])];
 
 /**
  * GET /api/v1/admin/user-stats/overview
