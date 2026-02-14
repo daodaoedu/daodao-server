@@ -702,8 +702,8 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
 
   const cohortResults: Array<{
     cohortDate: string;
-    cohortSize: number;
-    retentionByDay: Array<{ day: number; retainedUsers: number; retentionRate: number }>;
+    size: number;
+    retention: Record<string, number>;
   }> = [];
 
   // 獲取最近 N 個群組
@@ -731,7 +731,7 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
     if (cohortSize === 0) continue;
 
     const userIds = cohortUsers.map(u => u.id);
-    const retentionByDay: Array<{ day: number; retainedUsers: number; retentionRate: number }> = [];
+    const retention: Record<string, number> = {};
 
     // 計算各天的留存
     const daysToTrack = [1, 3, 7, 14, 30].filter(d => d <= (trackDays as number));
@@ -751,30 +751,23 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
         }
       }).then(result => result.length);
 
-      retentionByDay.push({
-        day,
-        retainedUsers: retainedCount,
-        retentionRate: Math.round((retainedCount / cohortSize) * 100 * 100) / 100
-      });
+      retention[`day${day}`] = Math.round((retainedCount / cohortSize) * 100 * 100) / 100;
     }
 
     cohortResults.push({
       cohortDate: formatDate(cohortStart),
-      cohortSize,
-      retentionByDay
+      size: cohortSize,
+      retention
     });
   }
 
   // 計算平均留存率
-  const calculateAverageRetention = (day: number): number => {
-    const validCohorts = cohortResults.filter(c =>
-      c.retentionByDay.some(r => r.day === day)
-    );
+  const calculateAverageRetention = (dayKey: string): number => {
+    const validCohorts = cohortResults.filter(c => c.retention[dayKey] !== undefined);
     if (validCohorts.length === 0) return 0;
 
     const sum = validCohorts.reduce((total, c) => {
-      const retention = c.retentionByDay.find(r => r.day === day);
-      return total + (retention?.retentionRate || 0);
+      return total + (c.retention[dayKey] || 0);
     }, 0);
 
     return Math.round((sum / validCohorts.length) * 100) / 100;
@@ -783,10 +776,10 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
   return {
     cohorts: cohortResults,
     averageRetention: {
-      day1: calculateAverageRetention(1),
-      day7: calculateAverageRetention(7),
-      day14: calculateAverageRetention(14),
-      day30: calculateAverageRetention(30)
+      day1: calculateAverageRetention('day1'),
+      day7: calculateAverageRetention('day7'),
+      day14: calculateAverageRetention('day14'),
+      day30: calculateAverageRetention('day30')
     }
   };
 }

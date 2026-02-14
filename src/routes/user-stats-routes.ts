@@ -316,12 +316,8 @@ registry.registerPath({
             data: z.object({
               cohorts: z.array(z.object({
                 cohortDate: z.string(),
-                cohortSize: z.number(),
-                retentionByDay: z.array(z.object({
-                  day: z.number(),
-                  retainedUsers: z.number(),
-                  retentionRate: z.number()
-                }))
+                size: z.number(),
+                retention: z.record(z.string(), z.number())
               })),
               averageRetention: z.object({
                 day1: z.number(),
