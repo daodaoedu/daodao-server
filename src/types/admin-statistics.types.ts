@@ -7,11 +7,13 @@
  */
 export interface PracticeStatsResponse {
   /** 總實踐數 */
-  totalPractices: number;
+  total: number;
   /** 進行中的實踐數 */
-  activePractices: number;
+  active: number;
   /** 已完成的實踐數 */
-  completedPractices: number;
+  completed: number;
+  /** 總簽到數 */
+  totalCheckIns: number;
   /** 平均完成率 */
   averageCompletionRate: number;
   /** 依分類統計 */
