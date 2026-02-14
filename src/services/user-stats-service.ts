@@ -29,6 +29,12 @@ import {
 } from '@/validators/user-stats.validator';
 import { formatDate, getMonthStart, getDaysAgo } from '@/utils/date-utils';
 
+/** 地區統計查詢的最大回傳筆數 */
+const LOCATION_STATS_LIMIT = 20;
+
+/** 標準留存追蹤天數區間 */
+const RETENTION_TRACKING_DAYS = [1, 3, 7, 14, 30] as const;
+
 /**
  * 獲取總覽統計
  */
@@ -554,7 +560,7 @@ export async function getActivityStats(
           LEFT JOIN user_activity_stats uas ON u.activity_stats_id = uas.id
           GROUP BY location_label
           ORDER BY total_count DESC
-          LIMIT 20
+          LIMIT ${LOCATION_STATS_LIMIT}
         `;
         for (const r of results) {
           const total = Number(r.total_count);
@@ -783,7 +789,7 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
     const retention: Record<string, number> = {};
 
     // 計算各天的留存
-    const daysToTrack = [1, 3, 7, 14, 30].filter(d => d <= (trackDays as number));
+    const daysToTrack = RETENTION_TRACKING_DAYS.filter(d => d <= (trackDays as number));
 
     for (const day of daysToTrack) {
       const checkDate = new Date(cohortStart);
