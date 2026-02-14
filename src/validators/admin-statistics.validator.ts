@@ -88,17 +88,21 @@ const practicesByStatusSchema = z.object({
  * 實踐統計資料 schema
  */
 const practiceStatsDataSchema = z.object({
-  totalPractices: z.number().int().openapi({
+  total: z.number().int().openapi({
     description: '總實踐數',
     example: 500
   }),
-  activePractices: z.number().int().openapi({
+  active: z.number().int().openapi({
     description: '進行中的實踐數',
     example: 150
   }),
-  completedPractices: z.number().int().openapi({
+  completed: z.number().int().openapi({
     description: '已完成的實踐數',
     example: 300
+  }),
+  totalCheckIns: z.number().int().openapi({
+    description: '總簽到數',
+    example: 1200
   }),
   averageCompletionRate: z.number().openapi({
     description: '平均完成率（百分比）',
