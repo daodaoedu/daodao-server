@@ -13,6 +13,11 @@ import type {
   ActiveUsersTrendFilters
 } from '../types/admin-statistics.types';
 
+/** 視為「進行中」的實踐狀態 */
+const ACTIVE_PRACTICE_STATUSES = ['active', 'in_progress'] as const;
+/** 視為「已完成」的實踐狀態 */
+const COMPLETED_PRACTICE_STATUSES = ['completed', 'done'] as const;
+
 /**
  * 取得全站實踐統計
  * @param filters - 查詢參數
@@ -62,9 +67,9 @@ const getPracticeStats = async (filters: PracticeStatsFilters): Promise<Practice
     const count = group._count.id;
     practicesByStatus.push({ status, count });
 
-    if (status === 'active' || status === 'in_progress') {
+    if ((ACTIVE_PRACTICE_STATUSES as readonly string[]).includes(status)) {
       active += count;
-    } else if (status === 'completed' || status === 'done') {
+    } else if ((COMPLETED_PRACTICE_STATUSES as readonly string[]).includes(status)) {
       completed += count;
     }
   }

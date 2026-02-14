@@ -21,8 +21,8 @@ const trackOpen = async (req: Request, res: Response): Promise<void> => {
 
   // 非同步記錄，不阻塞回應
   if (token && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
-    recordEmailOpen(token).catch(() => {
-      // 記錄失敗不影響回應
+    recordEmailOpen(token).catch((error) => {
+      console.error('記錄 email 開啟事件失敗:', error);
     });
   }
 

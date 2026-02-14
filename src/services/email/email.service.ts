@@ -203,7 +203,7 @@ export class EmailService {
       logRecord = await createEmailLog({
         userId,
         emailType: EMAIL_TYPES.AUTH_REGISTER,
-        subject: '歡迎加入島島阿學',
+        subject: '【島島阿學】歡迎來到島島阿學！',
         status: 'pending',
       });
     } catch (error) {
