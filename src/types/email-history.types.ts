@@ -26,6 +26,12 @@ export interface EmailHistoryRecord {
   entityType: string | null;
   /** 實體 ID（關聯物件 ID） */
   entityId: number | null;
+  /** 追蹤 Token */
+  trackingToken: string | null;
+  /** 首次開啟時間 */
+  openedAt: string | null;
+  /** 開啟次數 */
+  openCount: number;
 }
 
 /**
@@ -52,6 +58,8 @@ export interface EmailHistoryFilters {
   sortBy?: 'sentAt' | 'createdAt';
   /** 排序方向 */
   sortOrder?: 'asc' | 'desc';
+  /** 是否已開啟篩選 */
+  opened?: 'true' | 'false';
 }
 
 /**
@@ -68,6 +76,10 @@ export interface EmailHistoryStats {
   pendingCount: number;
   /** 成功率（百分比） */
   successRate: number;
+  /** 已開啟數量 */
+  openedCount: number;
+  /** 開啟率（百分比） */
+  openRate: number;
 }
 
 /**

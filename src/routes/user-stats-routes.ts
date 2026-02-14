@@ -138,7 +138,11 @@ registry.registerPath({
               inactiveUsers: z.number().describe('非活躍使用者數'),
               totalUsers: z.number().describe('總使用者數'),
               activeRate: z.number().describe('活躍率（百分比）'),
-              breakdown: z.any().optional().describe('細分統計')
+              groups: z.array(z.object({
+                group: z.string(),
+                activeUsers: z.number(),
+                inactiveUsers: z.number()
+              })).optional().describe('分組統計（按角色/地區/教育階段）')
             }),
             metadata: z.object({
               activeWithinDays: z.number().optional(),
@@ -316,12 +320,8 @@ registry.registerPath({
             data: z.object({
               cohorts: z.array(z.object({
                 cohortDate: z.string(),
-                cohortSize: z.number(),
-                retentionByDay: z.array(z.object({
-                  day: z.number(),
-                  retainedUsers: z.number(),
-                  retentionRate: z.number()
-                }))
+                size: z.number(),
+                retention: z.record(z.string(), z.number())
               })),
               averageRetention: z.object({
                 day1: z.number(),

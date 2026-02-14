@@ -12,6 +12,8 @@ import { isValidEmail } from '../../utils/sanitize';
 import {
   createEmailLog,
   hasEmailBeenSent,
+  recordEmailOpen,
+  updateEmailLogStatus,
 } from './email-log.service';
 import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
 import { EMAIL_TYPES } from '../../types/email';
@@ -195,28 +197,38 @@ export class EmailService {
       };
     }
 
-    // 2. 產生郵件內容
-    const template = this.templateService.generateWelcomeEmail(templateData);
+    // 2. 先建立發送紀錄（含 tracking_token），狀態為 pending
+    let logRecord;
+    try {
+      logRecord = await createEmailLog({
+        userId,
+        emailType: EMAIL_TYPES.AUTH_REGISTER,
+        subject: '【島島阿學】歡迎來到島島阿學！',
+        status: 'pending',
+      });
+    } catch (error) {
+      this.logger?.error(`建立歡迎信發送紀錄失敗 - 用戶 ID: ${userId}`);
+      return { success: false, error: '建立郵件紀錄失敗' };
+    }
 
-    // 3. 發送郵件
+    // 3. 用 tracking_token 產生帶追蹤像素的郵件內容
+    const template = this.templateService.generateWelcomeEmail(templateData, logRecord.tracking_token ?? undefined);
+
+    // 4. 發送郵件
     const result = await this.sendEmail({
       to,
       subject: template.subject,
       html: template.html,
     });
 
-    // 4. 記錄發送紀錄
-    if (result.success) {
-      try {
-        await createEmailLog({
-          userId,
-          emailType: EMAIL_TYPES.AUTH_REGISTER,
-          subject: template.subject,
-        });
-      } catch (error) {
-        // 記錄失敗不影響郵件發送結果
-        this.logger?.error(`記錄歡迎信發送紀錄失敗 - 用戶 ID: ${userId}`);
-      }
+    // 5. 更新發送紀錄狀態
+    try {
+      await updateEmailLogStatus(
+        logRecord.id,
+        result.success ? 'sent' : 'failed'
+      );
+    } catch (error) {
+      this.logger?.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}`);
     }
 
     return result;
@@ -541,6 +553,7 @@ export const sendWelcomeEmailWithLog = emailService.sendWelcomeEmailWithLog.bind
 export {
   createEmailLog,
   hasEmailBeenSent,
+  recordEmailOpen,
 } from './email-log.service';
 
 export default emailService;

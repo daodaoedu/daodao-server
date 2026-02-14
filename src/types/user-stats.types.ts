@@ -59,11 +59,11 @@ export interface ActivityStats {
   inactiveUsers: number;
   totalUsers: number;
   activeRate: number; // 百分比
-  breakdown?: {
-    role?: RoleStats[];
-    location?: LocationStats[];
-    educationStage?: EducationStageStats[];
-  };
+  groups?: Array<{
+    group: string;
+    activeUsers: number;
+    inactiveUsers: number;
+  }>;
 }
 
 /**
@@ -148,12 +148,8 @@ export interface DeviceAnalytics {
  */
 export interface RetentionData {
   cohortDate: string;      // 群組日期
-  cohortSize: number;      // 群組大小（當天新註冊用戶數）
-  retentionByDay: {
-    day: number;           // 第 N 天
-    retainedUsers: number; // 留存用戶數
-    retentionRate: number; // 留存率
-  }[];
+  size: number;            // 群組大小（當天新註冊用戶數）
+  retention: Record<string, number>; // 各天留存率，例如 { day1: 84.44, day7: 55.56 }
 }
 
 /**

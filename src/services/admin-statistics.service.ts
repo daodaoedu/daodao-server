@@ -13,6 +13,11 @@ import type {
   ActiveUsersTrendFilters
 } from '../types/admin-statistics.types';
 
+/** 視為「進行中」的實踐狀態 */
+const ACTIVE_PRACTICE_STATUSES = ['active', 'in_progress'] as const;
+/** 視為「已完成」的實踐狀態 */
+const COMPLETED_PRACTICE_STATUSES = ['completed', 'done'] as const;
+
 /**
  * 取得全站實踐統計
  * @param filters - 查詢參數
@@ -36,7 +41,14 @@ const getPracticeStats = async (filters: PracticeStatsFilters): Promise<Practice
   }
 
   // 查詢總數
-  const totalPractices = await prisma.practices.count({ where });
+  const total = await prisma.practices.count({ where });
+
+  // 查詢總簽到數
+  const totalCheckIns = await prisma.practice_checkins.count({
+    where: where.created_at ? {
+      practices: { created_at: where.created_at }
+    } : undefined
+  });
 
   // 依狀態分組統計
   const statusGroups = await prisma.practices.groupBy({
@@ -46,8 +58,8 @@ const getPracticeStats = async (filters: PracticeStatsFilters): Promise<Practice
   });
 
   // 計算各狀態數量
-  let activePractices = 0;
-  let completedPractices = 0;
+  let active = 0;
+  let completed = 0;
   const practicesByStatus: Array<{ status: string; count: number }> = [];
 
   for (const group of statusGroups) {
@@ -55,16 +67,16 @@ const getPracticeStats = async (filters: PracticeStatsFilters): Promise<Practice
     const count = group._count.id;
     practicesByStatus.push({ status, count });
 
-    if (status === 'active' || status === 'in_progress') {
-      activePractices += count;
-    } else if (status === 'completed' || status === 'done') {
-      completedPractices += count;
+    if ((ACTIVE_PRACTICE_STATUSES as readonly string[]).includes(status)) {
+      active += count;
+    } else if ((COMPLETED_PRACTICE_STATUSES as readonly string[]).includes(status)) {
+      completed += count;
     }
   }
 
   // 計算平均完成率
-  const averageCompletionRate = totalPractices > 0
-    ? Number(((completedPractices / totalPractices) * 100).toFixed(2))
+  const averageCompletionRate = total > 0
+    ? Number(((completed / total) * 100).toFixed(2))
     : 0;
 
   // 依分類統計（透過 template）
@@ -106,9 +118,10 @@ const getPracticeStats = async (filters: PracticeStatsFilters): Promise<Practice
     .sort((a, b) => b.count - a.count);
 
   return {
-    totalPractices,
-    activePractices,
-    completedPractices,
+    total,
+    active,
+    completed,
+    totalCheckIns,
     averageCompletionRate,
     practicesByCategory,
     practicesByStatus

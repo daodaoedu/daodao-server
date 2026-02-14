@@ -11921,20 +11921,25 @@
       "PracticeStatsData": {
         "type": "object",
         "properties": {
-          "totalPractices": {
+          "total": {
             "type": "integer",
             "description": "總實踐數",
             "example": 500
           },
-          "activePractices": {
+          "active": {
             "type": "integer",
             "description": "進行中的實踐數",
             "example": 150
           },
-          "completedPractices": {
+          "completed": {
             "type": "integer",
             "description": "已完成的實踐數",
             "example": 300
+          },
+          "totalCheckIns": {
+            "type": "integer",
+            "description": "總簽到數",
+            "example": 1200
           },
           "averageCompletionRate": {
             "type": "number",
@@ -11957,9 +11962,10 @@
           }
         },
         "required": [
-          "totalPractices",
-          "activePractices",
-          "completedPractices",
+          "total",
+          "active",
+          "completed",
+          "totalCheckIns",
           "averageCompletionRate",
           "practicesByCategory",
           "practicesByStatus"
@@ -12164,6 +12170,15 @@
             "default": "desc",
             "description": "排序方向",
             "example": "desc"
+          },
+          "opened": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "開啟狀態篩選",
+            "example": "true"
           }
         }
       },
@@ -12230,6 +12245,23 @@
             "nullable": true,
             "description": "關聯實體 ID",
             "example": 456
+          },
+          "trackingToken": {
+            "type": "string",
+            "nullable": true,
+            "description": "追蹤 Token",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "openedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "首次開啟時間",
+            "example": "2024-01-15T12:00:00.000Z"
+          },
+          "openCount": {
+            "type": "integer",
+            "description": "開啟次數",
+            "example": 3
           }
         },
         "required": [
@@ -12242,7 +12274,10 @@
           "sentAt",
           "createdAt",
           "entityType",
-          "entityId"
+          "entityId",
+          "trackingToken",
+          "openedAt",
+          "openCount"
         ]
       },
       "EmailHistoryStats": {
@@ -12272,6 +12307,16 @@
             "type": "number",
             "description": "成功率（百分比）",
             "example": 95
+          },
+          "openedCount": {
+            "type": "integer",
+            "description": "已開啟數量",
+            "example": 800
+          },
+          "openRate": {
+            "type": "number",
+            "description": "開啟率（百分比）",
+            "example": 84.21
           }
         },
         "required": [
@@ -12279,7 +12324,9 @@
           "sentCount",
           "failedCount",
           "pendingCount",
-          "successRate"
+          "successRate",
+          "openedCount",
+          "openRate"
         ]
       },
       "EmailHistoryResponseData": {
@@ -34386,6 +34433,44 @@
         }
       }
     },
+    "/api/v1/email/track/open/{token}": {
+      "get": {
+        "tags": [
+          "Email Tracking"
+        ],
+        "summary": "追蹤 email 開啟事件",
+        "description": "透過追蹤像素記錄 email 開啟事件，回傳 1x1 透明 GIF。此為公開 endpoint，不需認證。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "追蹤 Token (UUID)",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "追蹤 Token (UUID)",
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "1x1 透明 GIF 圖片",
+            "content": {
+              "image/gif": {
+                "schema": {
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "請求過於頻繁"
+          }
+        }
+      }
+    },
     "/api/v1/comments": {
       "post": {
         "tags": [
@@ -44935,9 +45020,28 @@
                           "type": "number",
                           "description": "活躍率（百分比）"
                         },
-                        "breakdown": {
-                          "nullable": true,
-                          "description": "細分統計"
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "group": {
+                                "type": "string"
+                              },
+                              "activeUsers": {
+                                "type": "number"
+                              },
+                              "inactiveUsers": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "group",
+                              "activeUsers",
+                              "inactiveUsers"
+                            ]
+                          },
+                          "description": "分組統計（按角色/地區/教育階段）"
                         }
                       },
                       "required": [
@@ -45479,36 +45583,20 @@
                               "cohortDate": {
                                 "type": "string"
                               },
-                              "cohortSize": {
+                              "size": {
                                 "type": "number"
                               },
-                              "retentionByDay": {
-                                "type": "array",
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "day": {
-                                      "type": "number"
-                                    },
-                                    "retainedUsers": {
-                                      "type": "number"
-                                    },
-                                    "retentionRate": {
-                                      "type": "number"
-                                    }
-                                  },
-                                  "required": [
-                                    "day",
-                                    "retainedUsers",
-                                    "retentionRate"
-                                  ]
+                              "retention": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "number"
                                 }
                               }
                             },
                             "required": [
                               "cohortDate",
-                              "cohortSize",
-                              "retentionByDay"
+                              "size",
+                              "retention"
                             ]
                           }
                         },
@@ -49322,6 +49410,21 @@
             "required": false,
             "description": "排序方向",
             "name": "sortOrder",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "description": "開啟狀態篩選",
+              "example": "true"
+            },
+            "required": false,
+            "description": "開啟狀態篩選",
+            "name": "opened",
             "in": "query"
           }
         ],
