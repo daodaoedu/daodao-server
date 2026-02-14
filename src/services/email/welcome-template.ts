@@ -24,7 +24,7 @@ import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
  * 產生歡迎信模板
  * 根據 hasCompletedQuiz 決定使用哪個版本
  */
-export const generateWelcomeEmail = (data: WelcomeEmailData): EmailTemplateContent => {
+export const generateWelcomeEmail = (data: WelcomeEmailData, trackingToken?: string): EmailTemplateContent => {
   const { name, hasCompletedQuiz, practiceUrl, quizUrl, illustrationUrl, unsubscribeUrl } = data;
   const config = getEmailConfig();
 
@@ -59,6 +59,7 @@ export const generateWelcomeEmail = (data: WelcomeEmailData): EmailTemplateConte
   const html = `${generateEmailHead(title)}
 ${generateEmailWrapper({
   preheader,
+  trackingToken,
   content: `
     ${generateBanner()}
     <tr>

@@ -83,6 +83,12 @@ export const emailHistoryQuerySchema = z.object({
     .openapi({
       description: '排序方向',
       example: 'desc'
+    }),
+  opened: z.enum(['true', 'false'])
+    .optional()
+    .openapi({
+      description: '開啟狀態篩選',
+      example: 'true'
     })
 }).openapi('EmailHistoryQuery');
 
@@ -135,6 +141,18 @@ const emailHistoryRecordSchema = z.object({
   entityId: z.number().int().nullable().openapi({
     description: '關聯實體 ID',
     example: 456
+  }),
+  trackingToken: z.string().nullable().openapi({
+    description: '追蹤 Token',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  }),
+  openedAt: z.string().nullable().openapi({
+    description: '首次開啟時間',
+    example: '2024-01-15T12:00:00.000Z'
+  }),
+  openCount: z.number().int().openapi({
+    description: '開啟次數',
+    example: 3
   })
 }).openapi('EmailHistoryRecord');
 
@@ -163,6 +181,14 @@ const emailHistoryStatsSchema = z.object({
   successRate: z.number().openapi({
     description: '成功率（百分比）',
     example: 95.0
+  }),
+  openedCount: z.number().int().openapi({
+    description: '已開啟數量',
+    example: 800
+  }),
+  openRate: z.number().openapi({
+    description: '開啟率（百分比）',
+    example: 84.21
   })
 }).openapi('EmailHistoryStats');
 

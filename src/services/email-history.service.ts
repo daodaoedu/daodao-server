@@ -27,7 +27,8 @@ const getEmailHistory = async (filters: EmailHistoryFilters): Promise<EmailHisto
     page = 1,
     limit = 50,
     sortBy = 'sentAt',
-    sortOrder = 'desc'
+    sortOrder = 'desc',
+    opened
   } = filters;
 
   // 建構 where 條件
@@ -52,6 +53,13 @@ const getEmailHistory = async (filters: EmailHistoryFilters): Promise<EmailHisto
         email: { contains: recipient, mode: 'insensitive' }
       }
     };
+  }
+
+  // 開啟狀態篩選
+  if (opened === 'true') {
+    where.open_count = { gt: 0 };
+  } else if (opened === 'false') {
+    where.open_count = 0;
   }
 
   if (startDate || endDate) {
@@ -111,7 +119,10 @@ const getEmailHistory = async (filters: EmailHistoryFilters): Promise<EmailHisto
     sentAt: log.sent_at?.toISOString() ?? null,
     createdAt: log.created_at?.toISOString() ?? null,
     entityType: log.entity_type,
-    entityId: log.entity_id
+    entityId: log.entity_id,
+    trackingToken: log.tracking_token,
+    openedAt: log.opened_at?.toISOString() ?? null,
+    openCount: log.open_count
   }));
 
   // 計算統計
@@ -176,12 +187,26 @@ const getEmailHistoryStats = async (
     ? Number(((sentCount / totalRecords) * 100).toFixed(2))
     : 0;
 
+  // 計算開啟統計
+  const openedCount = await prisma.email_logs.count({
+    where: {
+      ...where,
+      open_count: { gt: 0 },
+    },
+  });
+
+  const openRate = sentCount > 0
+    ? Number(((openedCount / sentCount) * 100).toFixed(2))
+    : 0;
+
   return {
     totalRecords,
     sentCount,
     failedCount,
     pendingCount,
-    successRate
+    successRate,
+    openedCount,
+    openRate
   };
 };
 

@@ -1002,22 +1002,26 @@ model quiz_results {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model email_logs {
-  id          Int       @id @default(autoincrement())
-  user_id     Int
-  email_type  String    @db.VarChar(50)
-  entity_type String?   @db.VarChar(50)
-  entity_id   Int?
-  email_code  String?   @db.VarChar(20)
-  subject     String?   @db.VarChar(255)
-  status      String?   @default("sent") @db.VarChar(20)
-  sent_at     DateTime? @default(now()) @db.Timestamptz(6)
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  email_type     String    @db.VarChar(50)
+  entity_type    String?   @db.VarChar(50)
+  entity_id      Int?
+  email_code     String?   @db.VarChar(20)
+  subject        String?   @db.VarChar(255)
+  status         String?   @default("sent") @db.VarChar(20)
+  tracking_token String?   @unique @db.VarChar(36)
+  opened_at      DateTime? @db.Timestamptz(6)
+  open_count     Int       @default(0)
+  sent_at        DateTime? @default(now()) @db.Timestamptz(6)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id], map: "idx_email_logs_user_id")
   @@index([email_type], map: "idx_email_logs_type")
   @@index([entity_type, entity_id], map: "idx_email_logs_entity")
   @@index([sent_at], map: "idx_email_logs_sent_at")
+  @@index([tracking_token], map: "idx_email_logs_tracking_token")
 }
 
 /// 用戶登入歷史表：記錄每次登入的時間和裝置資訊
