@@ -4,6 +4,7 @@
  * @see docs/email/implementation-guide.md 第 0 章
  */
 
+import crypto from 'crypto';
 import { prisma } from '../database/prisma.service';
 import type { EmailLogData, EmailTypeValue, EmailStatusValue } from '../../types/email';
 import { EMAIL_STATUS } from '../../types/email';
@@ -12,6 +13,8 @@ import { EMAIL_STATUS } from '../../types/email';
  * 記錄郵件發送
  */
 export const createEmailLog = async (data: EmailLogData) => {
+  const trackingToken = data.trackingToken ?? crypto.randomUUID();
+
   return prisma.email_logs.create({
     data: {
       user_id: data.userId,
@@ -21,7 +24,29 @@ export const createEmailLog = async (data: EmailLogData) => {
       email_code: data.emailCode ?? null,
       subject: data.subject,
       status: data.status || EMAIL_STATUS.SENT,
+      tracking_token: trackingToken,
       sent_at: new Date(),
+    },
+  });
+};
+
+/**
+ * 記錄 email 開啟事件
+ * 首次開啟時設定 opened_at，每次開啟時遞增 open_count
+ */
+export const recordEmailOpen = async (trackingToken: string) => {
+  const log = await prisma.email_logs.findUnique({
+    where: { tracking_token: trackingToken },
+    select: { id: true, opened_at: true },
+  });
+
+  if (!log) return null;
+
+  return prisma.email_logs.update({
+    where: { id: log.id },
+    data: {
+      opened_at: log.opened_at ?? new Date(),
+      open_count: { increment: 1 },
     },
   });
 };

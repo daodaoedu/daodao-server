@@ -7,9 +7,12 @@
 import { Router, RequestHandler } from 'express';
 import { registry } from '../config/openapi-registry';
 import { emailController } from '../controllers/email.controller';
+import { emailTrackingController } from '../controllers/email-tracking.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/permission.middleware';
 import { validate } from '../middleware/validation.middleware';
+import { strictLimiter } from '../middleware/rate-limit.middleware';
+import { z } from 'zod';
 import {
   contactEmailSchema,
   verificationEmailSchema,
@@ -437,9 +440,50 @@ registry.registerPath({
   security: [{ bearerAuth: [] }]
 });
 
+/**
+ * GET /api/v1/email/track/open/:token - 追蹤 email 開啟
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/email/track/open/{token}',
+  tags: ['Email Tracking'],
+  summary: '追蹤 email 開啟事件',
+  description: '透過追蹤像素記錄 email 開啟事件，回傳 1x1 透明 GIF。此為公開 endpoint，不需認證。',
+  request: {
+    params: z.object({
+      token: z.string().uuid().openapi({
+        description: '追蹤 Token (UUID)',
+        example: '550e8400-e29b-41d4-a716-446655440000'
+      })
+    })
+  },
+  responses: {
+    200: {
+      description: '1x1 透明 GIF 圖片',
+      content: {
+        'image/gif': {
+          schema: z.any()
+        }
+      }
+    },
+    429: {
+      description: '請求過於頻繁'
+    }
+  }
+});
+
 // ============================================================================
 // Express 路由定義（與之前相同）
 // ============================================================================
+
+/**
+ * GET /email/track/open/:token
+ * 追蹤 email 開啟事件（公開 endpoint）
+ */
+router.get('/track/open/:token',
+  strictLimiter,
+  emailTrackingController.trackOpen as RequestHandler
+);
 
 /**
  * POST /email/contact

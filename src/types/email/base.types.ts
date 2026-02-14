@@ -54,4 +54,5 @@ export interface EmailLogData {
   emailCode?: string;
   subject: string;
   status?: EmailStatusValue;
+  trackingToken?: string;
 }
