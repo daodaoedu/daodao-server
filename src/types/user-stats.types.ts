@@ -59,11 +59,11 @@ export interface ActivityStats {
   inactiveUsers: number;
   totalUsers: number;
   activeRate: number; // 百分比
-  breakdown?: {
-    role?: RoleStats[];
-    location?: LocationStats[];
-    educationStage?: EducationStageStats[];
-  };
+  groups?: Array<{
+    group: string;
+    activeUsers: number;
+    inactiveUsers: number;
+  }>;
 }
 
 /**
