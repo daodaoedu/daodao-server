@@ -29,6 +29,12 @@ import {
 } from '@/validators/user-stats.validator';
 import { formatDate, getMonthStart, getDaysAgo } from '@/utils/date-utils';
 
+/** 地區統計查詢的最大回傳筆數 */
+const LOCATION_STATS_LIMIT = 20;
+
+/** 標準留存追蹤天數區間 */
+const RETENTION_TRACKING_DAYS = [1, 3, 7, 14, 30] as const;
+
 /**
  * 獲取總覽統計
  */
@@ -504,7 +510,7 @@ export async function getActivityStats(
     activeRate: Math.round(activeRate * 100) / 100
   };
 
-  // 如果有 groupBy，添加細分統計
+  // 如果有 groupBy，計算每組的活躍與非活躍人數
   if (groupBy) {
     const activeWhere: Prisma.usersWhereInput = {
       user_activity_stats: {
@@ -515,25 +521,74 @@ export async function getActivityStats(
       }
     };
 
-    const breakdown: ActivityStats['breakdown'] = {};
+    const groups: Array<{ group: string; activeUsers: number; inactiveUsers: number }> = [];
 
     switch (groupBy) {
-      case 'role':
-        breakdown.role = await getRoleStats(activeWhere, 100, 0);
+      case 'role': {
+        const [totalByRole, activeByRole, roles] = await Promise.all([
+          prisma.users.groupBy({ by: ['role_id'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+          prisma.users.groupBy({ by: ['role_id'], where: activeWhere, _count: { id: true } }),
+          prisma.roles.findMany({ select: { id: true, name: true } })
+        ]);
+        const roleMap = new Map(roles.map(r => [r.id, r.name]));
+        const activeMap = new Map(activeByRole.map(r => [r.role_id, r._count.id]));
+        for (const row of totalByRole) {
+          const total = row._count.id;
+          const active = activeMap.get(row.role_id) ?? 0;
+          groups.push({
+            group: roleMap.get(row.role_id) ?? `Role ${row.role_id}`,
+            activeUsers: active,
+            inactiveUsers: total - active
+          });
+        }
         break;
-      case 'location':
-        breakdown.location = await getLocationStats(activeWhere, 100, 0);
+      }
+      case 'location': {
+        const results = await prisma.$queryRaw<Array<{
+          location_label: string;
+          total_count: bigint;
+          active_count: bigint;
+        }>>`
+          SELECT
+            COALESCE(co.name || ' - ' || ci.name, 'Unknown') as location_label,
+            COUNT(u.id)::bigint as total_count,
+            COUNT(CASE WHEN uas.last_active_at >= ${activeThreshold} OR uas.last_login_at >= ${activeThreshold} THEN 1 END)::bigint as active_count
+          FROM users u
+          LEFT JOIN location l ON u.location_id = l.id
+          LEFT JOIN city ci ON l.city_id = ci.id
+          LEFT JOIN country co ON l.country_id = co.id
+          LEFT JOIN user_activity_stats uas ON u.activity_stats_id = uas.id
+          GROUP BY location_label
+          ORDER BY total_count DESC
+          LIMIT ${LOCATION_STATS_LIMIT}
+        `;
+        for (const r of results) {
+          const total = Number(r.total_count);
+          const active = Number(r.active_count);
+          groups.push({ group: r.location_label, activeUsers: active, inactiveUsers: total - active });
+        }
         break;
-      case 'education_stage':
-        breakdown.educationStage = await getEducationStageStats(
-          activeWhere,
-          100,
-          0
-        );
+      }
+      case 'education_stage': {
+        const [totalByStage, activeByStage] = await Promise.all([
+          prisma.users.groupBy({ by: ['education_stage'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+          prisma.users.groupBy({ by: ['education_stage'], where: activeWhere, _count: { id: true } })
+        ]);
+        const activeMap = new Map(activeByStage.map(r => [r.education_stage, r._count.id]));
+        for (const row of totalByStage) {
+          const total = row._count.id;
+          const active = activeMap.get(row.education_stage) ?? 0;
+          groups.push({
+            group: row.education_stage || 'Unknown',
+            activeUsers: active,
+            inactiveUsers: total - active
+          });
+        }
         break;
+      }
     }
 
-    baseStats.breakdown = breakdown;
+    baseStats.groups = groups;
   }
 
   return baseStats;
@@ -702,8 +757,8 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
 
   const cohortResults: Array<{
     cohortDate: string;
-    cohortSize: number;
-    retentionByDay: Array<{ day: number; retainedUsers: number; retentionRate: number }>;
+    size: number;
+    retention: Record<string, number>;
   }> = [];
 
   // 獲取最近 N 個群組
@@ -731,10 +786,10 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
     if (cohortSize === 0) continue;
 
     const userIds = cohortUsers.map(u => u.id);
-    const retentionByDay: Array<{ day: number; retainedUsers: number; retentionRate: number }> = [];
+    const retention: Record<string, number> = {};
 
     // 計算各天的留存
-    const daysToTrack = [1, 3, 7, 14, 30].filter(d => d <= (trackDays as number));
+    const daysToTrack = RETENTION_TRACKING_DAYS.filter(d => d <= (trackDays as number));
 
     for (const day of daysToTrack) {
       const checkDate = new Date(cohortStart);
@@ -751,30 +806,23 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
         }
       }).then(result => result.length);
 
-      retentionByDay.push({
-        day,
-        retainedUsers: retainedCount,
-        retentionRate: Math.round((retainedCount / cohortSize) * 100 * 100) / 100
-      });
+      retention[`day${day}`] = Math.round((retainedCount / cohortSize) * 100 * 100) / 100;
     }
 
     cohortResults.push({
       cohortDate: formatDate(cohortStart),
-      cohortSize,
-      retentionByDay
+      size: cohortSize,
+      retention
     });
   }
 
   // 計算平均留存率
-  const calculateAverageRetention = (day: number): number => {
-    const validCohorts = cohortResults.filter(c =>
-      c.retentionByDay.some(r => r.day === day)
-    );
+  const calculateAverageRetention = (dayKey: string): number => {
+    const validCohorts = cohortResults.filter(c => c.retention[dayKey] !== undefined);
     if (validCohorts.length === 0) return 0;
 
     const sum = validCohorts.reduce((total, c) => {
-      const retention = c.retentionByDay.find(r => r.day === day);
-      return total + (retention?.retentionRate || 0);
+      return total + (c.retention[dayKey] || 0);
     }, 0);
 
     return Math.round((sum / validCohorts.length) * 100) / 100;
@@ -783,10 +831,10 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
   return {
     cohorts: cohortResults,
     averageRetention: {
-      day1: calculateAverageRetention(1),
-      day7: calculateAverageRetention(7),
-      day14: calculateAverageRetention(14),
-      day30: calculateAverageRetention(30)
+      day1: calculateAverageRetention('day1'),
+      day7: calculateAverageRetention('day7'),
+      day14: calculateAverageRetention('day14'),
+      day30: calculateAverageRetention('day30')
     }
   };
 }

@@ -5,6 +5,8 @@
 
 import { Request, Response } from 'express';
 import { emailService, sendWelcomeEmailApi, sendVerificationEmailApi } from '../services/email/email.service';
+import { emailHistoryService } from '../services/email-history.service';
+import { prisma } from '../services/database/prisma.service';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
 
@@ -344,26 +346,48 @@ export const previewEmailTemplate = asyncHandler(async (req: Request, res: Respo
 export const getEmailStats = asyncHandler(async (req: Request, res: Response) => {
   const { startDate, endDate } = req.query;
 
-  let start: Date | undefined;
-  let end: Date | undefined;
+  // 建構日期篩選條件
+  const where: { sent_at?: { gte?: Date; lte?: Date } } = {};
 
   if (startDate) {
-    start = new Date(startDate as string);
+    const start = new Date(startDate as string);
     if (isNaN(start.getTime())) {
       throw new BadRequestError('startDate 格式無效');
     }
+    where.sent_at = { ...where.sent_at, gte: start };
   }
 
   if (endDate) {
-    end = new Date(endDate as string);
+    const end = new Date(endDate as string);
     if (isNaN(end.getTime())) {
       throw new BadRequestError('endDate 格式無效');
     }
+    end.setHours(23, 59, 59, 999);
+    where.sent_at = { ...where.sent_at, lte: end };
   }
 
-  const stats = emailService.getStats();
+  // 從資料庫取得統計（非記憶體）
+  const historyStats = await emailHistoryService.getEmailHistoryStats(where);
 
-  const response = createSuccessResponse(stats, {
+  // 依模板（email_type）分組統計
+  const templateGroups = await prisma.email_logs.groupBy({
+    by: ['email_type'],
+    where,
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } }
+  });
+
+  const byTemplate = templateGroups.map(group => ({
+    template: group.email_type,
+    count: group._count.id
+  }));
+
+  const response = createSuccessResponse({
+    totalSent: historyStats.sentCount,
+    totalFailed: historyStats.failedCount,
+    successRate: historyStats.successRate,
+    byTemplate
+  }, {
     message: '郵件統計獲取成功'
   });
 
