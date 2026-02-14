@@ -504,7 +504,7 @@ export async function getActivityStats(
     activeRate: Math.round(activeRate * 100) / 100
   };
 
-  // 如果有 groupBy，添加細分統計
+  // 如果有 groupBy，計算每組的活躍與非活躍人數
   if (groupBy) {
     const activeWhere: Prisma.usersWhereInput = {
       user_activity_stats: {
@@ -515,25 +515,74 @@ export async function getActivityStats(
       }
     };
 
-    const breakdown: ActivityStats['breakdown'] = {};
+    const groups: Array<{ group: string; activeUsers: number; inactiveUsers: number }> = [];
 
     switch (groupBy) {
-      case 'role':
-        breakdown.role = await getRoleStats(activeWhere, 100, 0);
+      case 'role': {
+        const [totalByRole, activeByRole, roles] = await Promise.all([
+          prisma.users.groupBy({ by: ['role_id'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+          prisma.users.groupBy({ by: ['role_id'], where: activeWhere, _count: { id: true } }),
+          prisma.roles.findMany({ select: { id: true, name: true } })
+        ]);
+        const roleMap = new Map(roles.map(r => [r.id, r.name]));
+        const activeMap = new Map(activeByRole.map(r => [r.role_id, r._count.id]));
+        for (const row of totalByRole) {
+          const total = row._count.id;
+          const active = activeMap.get(row.role_id) ?? 0;
+          groups.push({
+            group: roleMap.get(row.role_id) ?? `Role ${row.role_id}`,
+            activeUsers: active,
+            inactiveUsers: total - active
+          });
+        }
         break;
-      case 'location':
-        breakdown.location = await getLocationStats(activeWhere, 100, 0);
+      }
+      case 'location': {
+        const results = await prisma.$queryRaw<Array<{
+          location_label: string;
+          total_count: bigint;
+          active_count: bigint;
+        }>>`
+          SELECT
+            COALESCE(co.name || ' - ' || ci.name, 'Unknown') as location_label,
+            COUNT(u.id)::bigint as total_count,
+            COUNT(CASE WHEN uas.last_active_at >= ${activeThreshold} OR uas.last_login_at >= ${activeThreshold} THEN 1 END)::bigint as active_count
+          FROM users u
+          LEFT JOIN location l ON u.location_id = l.id
+          LEFT JOIN city ci ON l.city_id = ci.id
+          LEFT JOIN country co ON l.country_id = co.id
+          LEFT JOIN user_activity_stats uas ON u.activity_stats_id = uas.id
+          GROUP BY location_label
+          ORDER BY total_count DESC
+          LIMIT 20
+        `;
+        for (const r of results) {
+          const total = Number(r.total_count);
+          const active = Number(r.active_count);
+          groups.push({ group: r.location_label, activeUsers: active, inactiveUsers: total - active });
+        }
         break;
-      case 'education_stage':
-        breakdown.educationStage = await getEducationStageStats(
-          activeWhere,
-          100,
-          0
-        );
+      }
+      case 'education_stage': {
+        const [totalByStage, activeByStage] = await Promise.all([
+          prisma.users.groupBy({ by: ['education_stage'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+          prisma.users.groupBy({ by: ['education_stage'], where: activeWhere, _count: { id: true } })
+        ]);
+        const activeMap = new Map(activeByStage.map(r => [r.education_stage, r._count.id]));
+        for (const row of totalByStage) {
+          const total = row._count.id;
+          const active = activeMap.get(row.education_stage) ?? 0;
+          groups.push({
+            group: row.education_stage || 'Unknown',
+            activeUsers: active,
+            inactiveUsers: total - active
+          });
+        }
         break;
+      }
     }
 
-    baseStats.breakdown = breakdown;
+    baseStats.groups = groups;
   }
 
   return baseStats;
