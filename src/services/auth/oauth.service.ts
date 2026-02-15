@@ -29,12 +29,6 @@ const isOAuthConfigured = () => {
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
 };
 
-// 檢查是否啟用 OAuth 直接建立正式用戶
-const isOAuthDirectLoginEnabled = (): boolean => {
-  const value = process.env.OAUTH_DIRECT_LOGIN;
-  return value === 'true' || value === '1';
-};
-
 // OAuth 配置選項（只在配置可用時創建）
 const getAuthOptions = (): AuthOptions | null => {
   if (!isOAuthConfigured()) {
@@ -143,28 +137,7 @@ if (authOptions) {
           return done(null, user);
         }
 
-        // 檢查是否啟用直接建立正式用戶
-        if (isOAuthDirectLoginEnabled()) {
-          console.log('OAUTH_DIRECT_LOGIN 已啟用，直接建立正式用戶');
-          const newUserResult = await authService.createUserFromOAuth({
-            googleId: profile.id,
-            email,
-            name: profile.displayName,
-            photoUrl
-          });
-
-          if (newUserResult.success && newUserResult.data) {
-            const userData = newUserResult.data as { user: unknown; isNewUser: boolean };
-            const user = userData.user as Express.User & { _isNewUser?: boolean };
-            user._isNewUser = userData.isNewUser;
-            console.log('正式用戶已建立, isNewUser:', userData.isNewUser);
-            return done(null, user);
-          } else {
-            return done(new Error('Failed to create user from OAuth'), false);
-          }
-        }
-
-        // 原有流程：如果沒有正式用戶，則檢查或創建臨時用戶
+        // 如果沒有正式用戶，則檢查或創建臨時用戶
         const tempUserResult = await authService.findOrCreateTempUser({
           googleId: profile.id,
           email,
