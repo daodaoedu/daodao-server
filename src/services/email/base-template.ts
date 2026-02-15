@@ -5,7 +5,6 @@
  */
 
 import { sanitizeUrl } from '../../utils/sanitize';
-import { emailConfig } from '../../config/email.config';
 import type { EmailTemplateContent } from '../../types/email';
 
 /**
@@ -155,20 +154,14 @@ export const generateEmailHead = (title: string): string => `
 export const generateEmailWrapper = (options: {
   content: string;
   preheader?: string;
-  trackingToken?: string;
 }): string => {
-  const { content, preheader, trackingToken } = options;
+  const { content, preheader } = options;
 
   const preheaderHtml = preheader
     ? `<div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all;">
         ${preheader}
         &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
       </div>`
-    : '';
-
-  const backendUrl = emailConfig?.urls.backend || process.env.BACKEND_URL || 'http://localhost:3000';
-  const trackingPixel = trackingToken
-    ? `<img src="${backendUrl}/api/v1/email/track/open/${trackingToken}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
     : '';
 
   return `
@@ -184,7 +177,6 @@ export const generateEmailWrapper = (options: {
       </td>
     </tr>
   </table>
-  ${trackingPixel}
 </body>
 </html>`;
 };
@@ -393,8 +385,6 @@ export interface StandardEmailOptions {
   content: string;
   /** 取消訂閱連結（可選） */
   unsubscribeUrl?: string;
-  /** 追蹤 Token（可選） */
-  trackingToken?: string;
 }
 
 /**
@@ -403,12 +393,11 @@ export interface StandardEmailOptions {
  * 減少各模板的重複程式碼
  */
 export const generateStandardEmail = (options: StandardEmailOptions): EmailTemplateContent => {
-  const { title, subject, preheader, content, unsubscribeUrl, trackingToken } = options;
+  const { title, subject, preheader, content, unsubscribeUrl } = options;
 
   const html = `${generateEmailHead(title)}
 ${generateEmailWrapper({
     preheader,
-    trackingToken,
     content: `
     ${generateBanner()}
     <tr>

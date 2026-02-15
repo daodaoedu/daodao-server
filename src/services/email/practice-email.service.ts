@@ -12,7 +12,7 @@
 import { prisma } from '../database/prisma.service';
 import { loggerService } from '../logging/logger.service';
 import { generateStandardEmail, generateCtaButton, generateDivider, generateAuthorSection, EMAIL_COLORS } from './base-template';
-import { createEmailLog, hasEmailBeenSent, getEntityEmailLogs } from './email-log.service';
+import { createEmailLog, hasEmailBeenSent, getEntityEmailLogs, updateEmailLogStatus } from './email-log.service';
 import type {
   PracticeEmailCode,
   WeeklySummaryEmailCode,
@@ -110,19 +110,22 @@ export async function sendPracticeCreatedEmail(
     // 生成郵件內容
     const emailContent = generatePracticeCreatedEmailContent(variables);
 
-    // 發送郵件
-    await sendEmail(email, emailContent.subject, emailContent.html);
-
-    // 記錄到 email_logs
-    await createEmailLog({
+    // 先建立 pending 紀錄，取得 trackingToken
+    const logRecord = await createEmailLog({
       userId,
       emailType: EMAIL_TYPES.PRACTICE_CREATED,
       entityType: 'practice',
       entityId: practiceId,
       emailCode: 'PE01',
       subject: emailContent.subject,
-      status: EMAIL_STATUS.SENT
+      status: EMAIL_STATUS.PENDING
     });
+
+    // 發送郵件（帶 trackingToken）
+    await sendEmail(email, emailContent.subject, emailContent.html, logRecord.tracking_token ?? undefined);
+
+    // 更新狀態為 sent
+    await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
 
     loggerService.info('PE01 email sent', { practiceId, userId, email });
 
@@ -194,18 +197,23 @@ export async function sendFirstCheckInEmail(
     };
 
     const emailContent = generateFirstCheckInEmailContent(variables);
-    await sendEmail(email, emailContent.subject, emailContent.html);
 
-    // 記錄到 email_logs
-    await createEmailLog({
+    // 先建立 pending 紀錄，取得 trackingToken
+    const logRecord = await createEmailLog({
       userId,
       emailType: EMAIL_TYPES.PRACTICE_FIRST_CHECKIN,
       entityType: 'practice',
       entityId: practiceId,
       emailCode: 'PE02',
       subject: emailContent.subject,
-      status: EMAIL_STATUS.SENT
+      status: EMAIL_STATUS.PENDING
     });
+
+    // 發送郵件（帶 trackingToken）
+    await sendEmail(email, emailContent.subject, emailContent.html, logRecord.tracking_token ?? undefined);
+
+    // 更新狀態為 sent
+    await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
 
     loggerService.info('PE02 email sent', { practiceId, userId, email });
 
@@ -225,11 +233,16 @@ export async function sendFirstCheckInEmail(
 
 /**
  * 發送週報郵件 (PE03-PE06)
+ * @param emailCode 郵件代碼
+ * @param practiceId 實踐 ID
+ * @param userId 用戶 ID
+ * @param trackingToken 追蹤 Token（可選，由外部先建立 log 取得）
  */
 export async function sendWeeklySummaryEmail(
   emailCode: WeeklySummaryEmailCode,
   practiceId: number,
-  userId: number
+  userId: number,
+  trackingToken?: string
 ): Promise<void> {
   try {
     const [practice, user] = await Promise.all([
@@ -298,7 +311,7 @@ export async function sendWeeklySummaryEmail(
     };
 
     const emailContent = generateWeeklySummaryEmailContent(emailCode, variables);
-    await sendEmail(email, emailContent.subject, emailContent.html);
+    await sendEmail(email, emailContent.subject, emailContent.html, trackingToken);
 
     loggerService.info('Weekly summary email sent', { emailCode, practiceId, userId, email });
 
@@ -463,19 +476,22 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
           continue;
         }
 
-        // 發送週報
-        await sendWeeklySummaryEmail(emailCode, practice.id, practice.user_id);
-
-        // 記錄到 email_logs
-        await createEmailLog({
+        // 先建立 pending 紀錄，取得 trackingToken
+        const logRecord = await createEmailLog({
           userId: practice.user_id,
           emailType: EMAIL_TYPES.PRACTICE_WEEKLY_SUMMARY,
           entityType: 'practice',
           entityId: practice.id,
           emailCode,
           subject: `週報 - ${practice.title}`,
-          status: EMAIL_STATUS.SENT
+          status: EMAIL_STATUS.PENDING
         });
+
+        // 發送週報（帶 trackingToken）
+        await sendWeeklySummaryEmail(emailCode, practice.id, practice.user_id, logRecord.tracking_token ?? undefined);
+
+        // 更新狀態為 sent
+        await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
 
       } catch (error) {
         loggerService.error('Failed to send weekly summary for practice', {
@@ -501,11 +517,16 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
 
 /**
  * 發送結束總結郵件 (PE07-PE08)
+ * @param emailCode 郵件代碼
+ * @param practiceId 實踐 ID
+ * @param userId 用戶 ID
+ * @param trackingToken 追蹤 Token（可選，由外部先建立 log 取得）
  */
 export async function sendFinalSummaryEmail(
   emailCode: FinalSummaryEmailCode,
   practiceId: number,
-  userId: number
+  userId: number,
+  trackingToken?: string
 ): Promise<void> {
   try {
     const [practice, user] = await Promise.all([
@@ -565,7 +586,7 @@ export async function sendFinalSummaryEmail(
     };
 
     const emailContent = generateFinalSummaryEmailContent(emailCode, variables);
-    await sendEmail(email, emailContent.subject, emailContent.html);
+    await sendEmail(email, emailContent.subject, emailContent.html, trackingToken);
 
     loggerService.info('Final summary email sent', { emailCode, practiceId, userId, email });
 
@@ -641,19 +662,22 @@ export async function sendPendingFinalSummaries(): Promise<void> {
           continue;
         }
 
-        // 發送結束總結
-        await sendFinalSummaryEmail(emailCode, practice.id, practice.user_id);
-
-        // 記錄到 email_logs
-        await createEmailLog({
+        // 先建立 pending 紀錄，取得 trackingToken
+        const logRecord = await createEmailLog({
           userId: practice.user_id,
           emailType: EMAIL_TYPES.PRACTICE_FINAL_SUMMARY,
           entityType: 'practice',
           entityId: practice.id,
           emailCode,
           subject: `實踐總結 - ${practice.title}`,
-          status: EMAIL_STATUS.SENT
+          status: EMAIL_STATUS.PENDING
         });
+
+        // 發送結束總結（帶 trackingToken）
+        await sendFinalSummaryEmail(emailCode, practice.id, practice.user_id, logRecord.tracking_token ?? undefined);
+
+        // 更新狀態為 sent
+        await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
 
         loggerService.info('Final summary sent', {
           practiceId: practice.id,
@@ -1218,15 +1242,19 @@ function generateFinalSummaryEmailContent(
 
 /**
  * 發送郵件（使用現有的郵件服務）
+ * @param to 收件人
+ * @param subject 主旨
+ * @param html HTML 內容
+ * @param trackingToken 追蹤 Token（可選，由 sendEmail 統一注入 pixel）
  */
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+async function sendEmail(to: string, subject: string, html: string, trackingToken?: string): Promise<void> {
   try {
-    // 使用現有的郵件服務
     const { emailService } = await import('./email.service');
     const result = await emailService.sendEmail({
       to,
       subject,
-      html
+      html,
+      trackingToken,
     });
 
     if (!result.success) {
