@@ -17,6 +17,7 @@ import {
 } from './email-log.service';
 import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
 import { EMAIL_TYPES } from '../../types/email';
+import type { EmailTypeValue } from '../../types/email';
 import { EMAIL_ERROR_CODES, getErrorMessage } from '../../constants/errors';
 import type { Logger } from '../../types/logger.types';
 
@@ -29,6 +30,8 @@ export interface EmailSendOptions {
   cc?: string[];
   bcc?: string[];
   attachments?: any[];
+  /** 追蹤 Token，若提供則自動在 </body> 前注入 1x1 tracking pixel */
+  trackingToken?: string;
 }
 
 export interface EmailSendResult {
@@ -111,11 +114,19 @@ export class EmailService {
         };
       }
 
+      // 若有 trackingToken，在 </body> 前注入 1x1 tracking pixel
+      let html = options.html;
+      if (options.trackingToken) {
+        const backendUrl = emailConfig?.urls.backend || process.env.BACKEND_URL || 'http://localhost:3000';
+        const trackingPixel = `<img src="${backendUrl}/api/v1/email/track/open/${options.trackingToken}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`;
+        html = html.replace('</body>', `${trackingPixel}</body>`);
+      }
+
       const mailOptions = {
         from: options.from || `${emailConfig?.sender.name} <${emailConfig?.sender.email}>`,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
-        html: options.html,
+        html,
         replyTo: options.replyTo,
         cc: options.cc?.join(', '),
         bcc: options.bcc?.join(', '),
@@ -211,14 +222,15 @@ export class EmailService {
       return { success: false, error: '建立郵件紀錄失敗' };
     }
 
-    // 3. 用 tracking_token 產生帶追蹤像素的郵件內容
-    const template = this.templateService.generateWelcomeEmail(templateData, logRecord.tracking_token ?? undefined);
+    // 3. 產生郵件內容
+    const template = this.templateService.generateWelcomeEmail(templateData);
 
-    // 4. 發送郵件
+    // 4. 發送郵件（trackingToken 由 sendEmail 統一注入 pixel）
     const result = await this.sendEmail({
       to,
       subject: template.subject,
       html: template.html,
+      trackingToken: logRecord.tracking_token ?? undefined,
     });
 
     // 5. 更新發送紀錄狀態
@@ -264,14 +276,20 @@ export class EmailService {
 
   /**
    * 發送驗證郵件
+   * @param to 收件人 Email
+   * @param verifyLink 驗證連結
+   * @param name 用戶名稱
+   * @param userId 用戶 ID（提供時會記錄到 email_logs 並注入追蹤像素）
    */
-  async sendVerificationEmail(to: string, verifyLink: string, name?: string): Promise<EmailSendResult> {
+  async sendVerificationEmail(to: string, verifyLink: string, name?: string, userId?: number): Promise<EmailSendResult> {
     const template = this.templateService.generateVerificationEmail({ verifyLink, name });
-    
-    return this.sendEmail({
+
+    return this.sendWithOptionalLog({
       to,
       subject: template.subject,
-      html: template.html
+      html: template.html,
+      userId,
+      emailType: EMAIL_TYPES.AUTH_EMAIL_VERIFY,
     });
   }
 
@@ -301,13 +319,20 @@ export class EmailService {
 
   /**
    * 發送聯絡郵件
+   * @param to 收件人 Email
+   * @param fromName 寄件人名稱
+   * @param message 訊息內容
+   * @param userInfo 用戶資訊
+   * @param activityTitle 活動標題
+   * @param userId 用戶 ID（提供時會記錄到 email_logs 並注入追蹤像素）
    */
   async sendContactEmail(
-    to: string, 
-    fromName: string, 
-    message: string, 
-    userInfo?: string | string[], 
-    activityTitle?: string
+    to: string,
+    fromName: string,
+    message: string,
+    userInfo?: string | string[],
+    activityTitle?: string,
+    userId?: number
   ): Promise<EmailSendResult> {
     const template = this.templateService.generateContactEmail({
       name: fromName,
@@ -315,23 +340,32 @@ export class EmailService {
       userInfo,
       activityTitle
     });
-    
-    return this.sendEmail({
+
+    return this.sendWithOptionalLog({
       to,
       subject: template.subject,
-      html: template.html
+      html: template.html,
+      userId,
+      emailType: EMAIL_TYPES.CONTACT,
     });
   }
 
   /**
    * 發送馬拉松郵件
+   * @param to 收件人 Email
+   * @param name 用戶名稱
+   * @param marathonTitle 馬拉松標題
+   * @param marathonDate 馬拉松日期
+   * @param marathonDescription 馬拉松描述
+   * @param userId 用戶 ID（提供時會記錄到 email_logs 並注入追蹤像素）
    */
   async sendMarathonEmail(
-    to: string, 
-    name: string, 
-    marathonTitle: string, 
-    marathonDate?: string, 
-    marathonDescription?: string
+    to: string,
+    name: string,
+    marathonTitle: string,
+    marathonDate?: string,
+    marathonDescription?: string,
+    userId?: number
   ): Promise<EmailSendResult> {
     const template = this.templateService.generateMarathonEmail({
       name,
@@ -339,25 +373,86 @@ export class EmailService {
       marathonDate,
       marathonDescription
     });
-    
-    return this.sendEmail({
+
+    return this.sendWithOptionalLog({
       to,
       subject: template.subject,
-      html: template.html
+      html: template.html,
+      userId,
+      emailType: EMAIL_TYPES.MARATHON,
     });
   }
 
   /**
    * 發送密碼重設郵件
+   * @param to 收件人 Email
+   * @param resetLink 重設連結
+   * @param name 用戶名稱
+   * @param userId 用戶 ID（提供時會記錄到 email_logs 並注入追蹤像素）
    */
-  async sendPasswordResetEmail(to: string, resetLink: string, name?: string): Promise<EmailSendResult> {
+  async sendPasswordResetEmail(to: string, resetLink: string, name?: string, userId?: number): Promise<EmailSendResult> {
     const template = this.templateService.generatePasswordResetEmail({ resetLink, name });
-    
-    return this.sendEmail({
+
+    return this.sendWithOptionalLog({
       to,
       subject: template.subject,
-      html: template.html
+      html: template.html,
+      userId,
+      emailType: EMAIL_TYPES.AUTH_PASSWORD_RESET,
     });
+  }
+
+  /**
+   * 內部輔助方法：若有 userId，先建立 email_logs (pending) 取得 trackingToken，
+   * 再發送郵件，最後更新 log 狀態。若無 userId，直接發送。
+   */
+  private async sendWithOptionalLog(params: {
+    to: string;
+    subject: string;
+    html: string;
+    userId?: number;
+    emailType: EmailTypeValue;
+  }): Promise<EmailSendResult> {
+    const { to, subject, html, userId, emailType } = params;
+
+    if (!userId) {
+      return this.sendEmail({ to, subject, html });
+    }
+
+    // 1. 建立 pending 紀錄，取得 trackingToken
+    let logRecord;
+    try {
+      logRecord = await createEmailLog({
+        userId,
+        emailType,
+        subject,
+        status: 'pending',
+      });
+    } catch (error) {
+      this.logger?.error(`建立郵件紀錄失敗 - emailType: ${emailType}, userId: ${userId}`);
+      // 紀錄失敗仍嘗試發送，只是沒有追蹤
+      return this.sendEmail({ to, subject, html });
+    }
+
+    // 2. 發送郵件（帶 trackingToken）
+    const result = await this.sendEmail({
+      to,
+      subject,
+      html,
+      trackingToken: logRecord.tracking_token ?? undefined,
+    });
+
+    // 3. 更新 log 狀態
+    try {
+      await updateEmailLogStatus(
+        logRecord.id,
+        result.success ? 'sent' : 'failed'
+      );
+    } catch (error) {
+      this.logger?.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}`);
+    }
+
+    return result;
   }
 
   /**
