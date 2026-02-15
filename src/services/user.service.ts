@@ -922,10 +922,12 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
 
     // 發送註冊郵件
     if (isSendEmail && createdUser.contacts?.email) {
-      // 發送驗證郵件
+      // 發送驗證郵件（含 log 記錄）
       await emailService.sendVerificationEmail(
         createdUser.contacts.email,
-        `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`
+        `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
+        createdUser.nickname || undefined,
+        createdUser.id
       );
       
       // 刪除臨時用戶

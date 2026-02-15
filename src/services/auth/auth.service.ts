@@ -15,7 +15,7 @@ import {
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
 import { userService } from '../user.service';
-import { emailService } from '../email/email.service';
+import { emailService, sendWelcomeEmailWithLog } from '../email/email.service';
 import { loggerService } from '../logging/logger.service';
 
 /**
@@ -268,11 +268,12 @@ export const createUserFromAppleOAuth = async (profile: {
     return createdUser;
   });
 
-  // 發送歡迎郵件（事務完成後，避免影響註冊流程）
-  if (email) {
-    emailService.sendWelcomeEmail(email, {
+  // 發送歡迎郵件（含 log 記錄，事務完成後避免影響註冊流程）
+  if (email && newUser) {
+    sendWelcomeEmailWithLog(email, {
       name: name || 'User',
-      hasCompletedQuiz: false
+      hasCompletedQuiz: false,
+      userId: newUser.id
     }).catch(error => {
       loggerService.error('Failed to send welcome email for Apple OAuth user', {
         error: error instanceof Error ? error.message : String(error),
