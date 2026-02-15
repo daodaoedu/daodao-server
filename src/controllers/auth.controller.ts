@@ -5,7 +5,7 @@
 
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
-import { emailService } from '../services/email/email.service';
+import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
@@ -401,12 +401,13 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     }
     loggerService.info('User email verification updated', { userId: user.id });
 
-    // 發送歡迎郵件
+    // 發送歡迎郵件（含 log 記錄）
     const contact = user.contacts;
     if (contact?.email) {
-      await emailService.sendWelcomeEmail(contact.email, {
+      await sendWelcomeEmailWithLog(contact.email, {
         name: user.nickname || 'User',
-        hasCompletedQuiz: false
+        hasCompletedQuiz: false,
+        userId: user.id
       });
     }
 
@@ -467,12 +468,13 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
       return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
     }
 
-    // 發送歡迎郵件
+    // 發送歡迎郵件（含 log 記錄）
     const contact = user.contacts;
     if (contact?.email) {
-      await emailService.sendWelcomeEmail(contact.email, {
+      await sendWelcomeEmailWithLog(contact.email, {
         name: user.nickname || 'User',
-        hasCompletedQuiz: false
+        hasCompletedQuiz: false,
+        userId: user.id
       });
     }
 
@@ -524,10 +526,12 @@ export const resendVerificationEmail = asyncHandler(async (req: Request, res: Re
     isTemp: false,
   });
 
-  // 發送驗證郵件
+  // 發送驗證郵件（含 log 記錄）
   await emailService.sendVerificationEmail(
     email,
-    `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`
+    `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
+    user.nickname || undefined,
+    user.id
   );
 
   const response = createSuccessResponse({

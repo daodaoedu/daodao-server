@@ -20,8 +20,8 @@ export class EmailTemplateService {
   /**
    * 生成歡迎郵件模板
    */
-  generateWelcomeEmail(data: WelcomeEmailData, trackingToken?: string): EmailTemplateContent {
-    return generateWelcomeEmail(data, trackingToken);
+  generateWelcomeEmail(data: WelcomeEmailData): EmailTemplateContent {
+    return generateWelcomeEmail(data);
   }
 
   /**

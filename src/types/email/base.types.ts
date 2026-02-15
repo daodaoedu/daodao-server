@@ -25,6 +25,9 @@ export const EMAIL_TYPES = {
   PRACTICE_FIRST_CHECKIN: 'practice_first_checkin',
   PRACTICE_WEEKLY_SUMMARY: 'practice_weekly_summary',
   PRACTICE_FINAL_SUMMARY: 'practice_final_summary',
+  // 聯絡 / 活動
+  CONTACT: 'contact',
+  MARATHON: 'marathon',
   // 其他
   NOTIFICATION: 'notification',
 } as const;
