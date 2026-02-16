@@ -218,7 +218,9 @@ export class EmailService {
         status: 'pending',
       });
     } catch (error) {
-      this.logger?.error(`建立歡迎信發送紀錄失敗 - 用戶 ID: ${userId}`);
+      const errorMsg = `建立歡迎信發送紀錄失敗 - 用戶 ID: ${userId}`;
+      console.error(errorMsg, error instanceof Error ? error.message : error);
+      this.logger?.error(errorMsg);
       return { success: false, error: '建立郵件紀錄失敗' };
     }
 
@@ -240,6 +242,7 @@ export class EmailService {
         result.success ? 'sent' : 'failed'
       );
     } catch (error) {
+      console.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}`, error instanceof Error ? error.message : error);
       this.logger?.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}`);
     }
 
@@ -429,7 +432,9 @@ export class EmailService {
         status: 'pending',
       });
     } catch (error) {
-      this.logger?.error(`建立郵件紀錄失敗 - emailType: ${emailType}, userId: ${userId}`);
+      const errorMsg = `建立郵件紀錄失敗 - emailType: ${emailType}, userId: ${userId}`;
+      console.error(errorMsg, error instanceof Error ? error.message : error);
+      this.logger?.error(errorMsg);
       // 紀錄失敗仍嘗試發送，只是沒有追蹤
       return this.sendEmail({ to, subject, html });
     }
@@ -449,6 +454,7 @@ export class EmailService {
         result.success ? 'sent' : 'failed'
       );
     } catch (error) {
+      console.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}`, error instanceof Error ? error.message : error);
       this.logger?.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}`);
     }
 
