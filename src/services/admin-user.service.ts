@@ -108,7 +108,8 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       },
       user_activity_stats: {
         select: {
-          last_login_at: true
+          last_login_at: true,
+          last_active_at: true
         }
       }
     }
@@ -145,7 +146,8 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       roles,
       permissions,
       createdAt: user.created_at?.toISOString() ?? new Date().toISOString(),
-      lastLoginAt: user.user_activity_stats?.last_login_at?.toISOString() ?? null
+      lastLoginAt: user.user_activity_stats?.last_login_at?.toISOString() ?? null,
+      lastActiveAt: user.user_activity_stats?.last_active_at?.toISOString() ?? null
     };
   });
 
