@@ -69,7 +69,7 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       orderBy.contacts = { email: sortOrder };
       break;
     case 'lastLoginAt':
-      orderBy.user_activity_stats = { last_login_at: sortOrder };
+      orderBy.user_activity_stats = { last_login_at: { sort: sortOrder, nulls: 'last' } };
       break;
     case 'createdAt':
     default:
