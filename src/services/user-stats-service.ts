@@ -788,20 +788,22 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
     const userIds = cohortUsers.map(u => u.id);
     const retention: Record<string, number> = {};
 
-    // 計算各天的留存
+    // 計算各天的累積留存（Day N = 註冊後第 1 天到第 N 天之間是否回來過）
     const daysToTrack = RETENTION_TRACKING_DAYS.filter(d => d <= (trackDays as number));
 
     for (const day of daysToTrack) {
-      const checkDate = new Date(cohortStart);
-      checkDate.setDate(checkDate.getDate() + day);
+      // 從註冊隔天開始算（排除註冊當天），到第 N 天結束
+      const rangeStart = new Date(cohortEnd.getTime()); // cohortEnd = 群組結束日，即註冊期間結束
+      const rangeEnd = new Date(cohortStart);
+      rangeEnd.setDate(rangeEnd.getDate() + day + 1);
 
       const retainedCount = await prisma.user_login_history.groupBy({
         by: ['user_id'],
         where: {
           user_id: { in: userIds },
           login_at: {
-            gte: checkDate,
-            lt: new Date(checkDate.getTime() + 24 * 60 * 60 * 1000)
+            gte: rangeStart,
+            lt: rangeEnd
           }
         }
       }).then(result => result.length);
