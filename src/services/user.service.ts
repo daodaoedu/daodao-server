@@ -48,6 +48,14 @@ import {
   CUSTOM_ID_ERROR_MESSAGES
 } from '../constants/validation';
 
+/** 郵件發送待處理資料 */
+type PendingEmailData = {
+  email: string;
+  verifyLink: string;
+  nickname?: string;
+  userId: number;
+};
+
 /**
  * 將空字串轉換為 null，用於清空欄位
  * undefined 表示不更新，空字串表示清空
@@ -840,6 +848,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         is_open_profile: isOpenProfile ?? true,
         birth_date: birthDay ? new Date(birthDay) : null,
         basic_info_id: basicInfo.id,
+        created_at: new Date(),
 
         // 新增欄位
         personal_slogan: personalSlogan,
@@ -923,7 +932,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     });
 
     // 收集郵件發送資料，在 transaction commit 後才發送
-    let pendingEmail: { email: string; verifyLink: string; nickname?: string; userId: number } | null = null;
+    let pendingEmail: PendingEmailData | null = null;
     if (isSendEmail && createdUser.contacts?.email) {
       pendingEmail = {
         email: createdUser.contacts.email,
@@ -931,10 +940,10 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         nickname: createdUser.nickname || undefined,
         userId: createdUser.id
       };
-
-      // 刪除臨時用戶（仍在 transaction 內）
-      await tx.temp_users.delete({ where: { id: tempUser.id } });
     }
+
+    // 刪除臨時用戶（應在 user 創建成功後執行，不論是否發送郵件）
+    await tx.temp_users.delete({ where: { id: tempUser.id } });
 
     const result = {
       // 傳遞 tx 以在 transaction 中讀取最新創建的資料
