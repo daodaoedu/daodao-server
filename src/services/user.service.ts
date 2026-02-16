@@ -727,7 +727,9 @@ const getOneUser = async (
  * 創建用戶
  */
 const createUser = async (userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>> => {
-  return await prisma.$transaction(async (tx) => {
+  // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
+  // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
+  const { response, emailData } = await prisma.$transaction(async (tx) => {
     const {
       gender,
       birthDay,
@@ -920,17 +922,17 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       isTemp: false,
     });
 
-    // 發送註冊郵件
+    // 收集郵件發送資料，在 transaction commit 後才發送
+    let pendingEmail: { email: string; verifyLink: string; nickname?: string; userId: number } | null = null;
     if (isSendEmail && createdUser.contacts?.email) {
-      // 發送驗證郵件（含 log 記錄）
-      await emailService.sendVerificationEmail(
-        createdUser.contacts.email,
-        `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
-        createdUser.nickname || undefined,
-        createdUser.id
-      );
-      
-      // 刪除臨時用戶
+      pendingEmail = {
+        email: createdUser.contacts.email,
+        verifyLink: `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
+        nickname: createdUser.nickname || undefined,
+        userId: createdUser.id
+      };
+
+      // 刪除臨時用戶（仍在 transaction 內）
       await tx.temp_users.delete({ where: { id: tempUser.id } });
     }
 
@@ -940,8 +942,20 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       token: newToken
     };
 
-    return createSuccessResponse(result);
+    return { response: createSuccessResponse(result), emailData: pendingEmail };
   });
+
+  // Transaction 已 commit，現在發送驗證郵件（含 email_logs 記錄）
+  if (emailData) {
+    await emailService.sendVerificationEmail(
+      emailData.email,
+      emailData.verifyLink,
+      emailData.nickname,
+      emailData.userId
+    );
+  }
+
+  return response;
 };
 
 /**
