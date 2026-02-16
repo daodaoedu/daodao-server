@@ -761,15 +761,17 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
     retention: Record<string, number>;
   }> = [];
 
-  // 獲取最近 N 個群組
+  const now = new Date();
+
+  // 從最近的群組開始，往回推 N 個群組（不偏移 trackDays）
   for (let i = 0; i < (cohorts as number); i++) {
     const cohortStart = granularity === 'day'
-      ? getDaysAgo(i + (trackDays as number))
-      : getDaysAgo((i + 1) * 7 + (trackDays as number));
+      ? getDaysAgo(i + 1)
+      : getDaysAgo((i + 1) * 7);
 
     const cohortEnd = granularity === 'day'
-      ? getDaysAgo(i + (trackDays as number) - 1)
-      : getDaysAgo(i * 7 + (trackDays as number));
+      ? getDaysAgo(i)
+      : getDaysAgo(i * 7);
 
     // 該群組的新用戶
     const cohortUsers = await prisma.users.findMany({
@@ -783,32 +785,37 @@ export async function getRetentionStats(query: RetentionQuery): Promise<Retentio
     });
 
     const cohortSize = cohortUsers.length;
-    if (cohortSize === 0) continue;
 
     const userIds = cohortUsers.map(u => u.id);
     const retention: Record<string, number> = {};
 
-    // 計算各天的累積留存（Day N = 註冊後第 1 天到第 N 天之間是否回來過）
-    const daysToTrack = RETENTION_TRACKING_DAYS.filter(d => d <= (trackDays as number));
+    // 計算各天的累積留存（Day N = 群組結束後到第 N 天內是否回來過）
+    if (cohortSize > 0) {
+      const daysToTrack = RETENTION_TRACKING_DAYS.filter(d => d <= (trackDays as number));
+      // 群組距今天數
+      const daysSinceCohort = Math.floor((now.getTime() - cohortEnd.getTime()) / (24 * 60 * 60 * 1000));
 
-    for (const day of daysToTrack) {
-      // 從註冊隔天開始算（排除註冊當天），到第 N 天結束
-      const rangeStart = new Date(cohortEnd.getTime()); // cohortEnd = 群組結束日，即註冊期間結束
-      const rangeEnd = new Date(cohortStart);
-      rangeEnd.setDate(rangeEnd.getDate() + day + 1);
+      for (const day of daysToTrack) {
+        // 時間不夠測量該留存天數，跳過（前端會顯示 —）
+        if (daysSinceCohort < day) continue;
 
-      const retainedCount = await prisma.user_login_history.groupBy({
-        by: ['user_id'],
-        where: {
-          user_id: { in: userIds },
-          login_at: {
-            gte: rangeStart,
-            lt: rangeEnd
+        const rangeStart = new Date(cohortEnd.getTime());
+        const rangeEnd = new Date(cohortEnd.getTime());
+        rangeEnd.setDate(rangeEnd.getDate() + day);
+
+        const retainedCount = await prisma.user_login_history.groupBy({
+          by: ['user_id'],
+          where: {
+            user_id: { in: userIds },
+            login_at: {
+              gte: rangeStart,
+              lt: rangeEnd
+            }
           }
-        }
-      }).then(result => result.length);
+        }).then(result => result.length);
 
-      retention[`day${day}`] = Math.round((retainedCount / cohortSize) * 100 * 100) / 100;
+        retention[`day${day}`] = Math.round((retainedCount / cohortSize) * 100 * 100) / 100;
+      }
     }
 
     cohortResults.push({
