@@ -51,6 +51,7 @@ export interface AdminUserListItem {
   permissions: string[];
   createdAt: string;
   lastLoginAt: string | null;
+  lastActiveAt: string | null;
 }
 
 /**
