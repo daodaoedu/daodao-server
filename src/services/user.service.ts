@@ -48,6 +48,14 @@ import {
   CUSTOM_ID_ERROR_MESSAGES
 } from '../constants/validation';
 
+/** 郵件發送待處理資料 */
+type PendingEmailData = {
+  email: string;
+  verifyLink: string;
+  nickname?: string;
+  userId: number;
+};
+
 /**
  * 將空字串轉換為 null，用於清空欄位
  * undefined 表示不更新，空字串表示清空
@@ -727,7 +735,9 @@ const getOneUser = async (
  * 創建用戶
  */
 const createUser = async (userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>> => {
-  return await prisma.$transaction(async (tx) => {
+  // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
+  // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
+  const { response, emailData } = await prisma.$transaction(async (tx) => {
     const {
       gender,
       birthDay,
@@ -838,6 +848,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
         is_open_profile: isOpenProfile ?? true,
         birth_date: birthDay ? new Date(birthDay) : null,
         basic_info_id: basicInfo.id,
+        created_at: new Date(),
 
         // 新增欄位
         personal_slogan: personalSlogan,
@@ -920,19 +931,19 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       isTemp: false,
     });
 
-    // 發送註冊郵件
+    // 收集郵件發送資料，在 transaction commit 後才發送
+    let pendingEmail: PendingEmailData | null = null;
     if (isSendEmail && createdUser.contacts?.email) {
-      // 發送驗證郵件（含 log 記錄）
-      await emailService.sendVerificationEmail(
-        createdUser.contacts.email,
-        `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
-        createdUser.nickname || undefined,
-        createdUser.id
-      );
-      
-      // 刪除臨時用戶
-      await tx.temp_users.delete({ where: { id: tempUser.id } });
+      pendingEmail = {
+        email: createdUser.contacts.email,
+        verifyLink: `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
+        nickname: createdUser.nickname || undefined,
+        userId: createdUser.id
+      };
     }
+
+    // 刪除臨時用戶（應在 user 創建成功後執行，不論是否發送郵件）
+    await tx.temp_users.delete({ where: { id: tempUser.id } });
 
     const result = {
       // 傳遞 tx 以在 transaction 中讀取最新創建的資料
@@ -940,8 +951,20 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       token: newToken
     };
 
-    return createSuccessResponse(result);
+    return { response: createSuccessResponse(result), emailData: pendingEmail };
   });
+
+  // Transaction 已 commit，現在發送驗證郵件（含 email_logs 記錄）
+  if (emailData) {
+    await emailService.sendVerificationEmail(
+      emailData.email,
+      emailData.verifyLink,
+      emailData.nickname,
+      emailData.userId
+    );
+  }
+
+  return response;
 };
 
 /**

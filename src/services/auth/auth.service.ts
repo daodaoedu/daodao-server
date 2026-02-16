@@ -240,7 +240,8 @@ export const createUserFromAppleOAuth = async (profile: {
         is_open_profile: false,
         verified: shouldMarkVerified,
         verified_at: shouldMarkVerified ? new Date() : null,
-        is_active: true
+        is_active: true,
+        created_at: new Date()
       }
     });
 
@@ -354,7 +355,8 @@ export const createUserFromOAuth = async (profile: {
         is_open_location: false,
         is_open_profile: false,
         verified: false,
-        is_active: true
+        is_active: true,
+        created_at: new Date()
       }
     });
 
