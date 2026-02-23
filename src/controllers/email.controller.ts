@@ -4,11 +4,31 @@
  */
 
 import { Request, Response } from 'express';
-import { emailService, sendWelcomeEmailApi, sendVerificationEmailApi } from '../services/email/email.service';
+import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
+import { createEmailLog, updateEmailLogStatus } from '../services/email/email-log.service';
+import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
+import type { EmailTypeValue } from '../types/email';
 import { emailHistoryService } from '../services/email-history.service';
 import { prisma } from '../services/database/prisma.service';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
+
+/**
+ * 透過 email 查找對應的用戶 ID
+ * @param email - 收件人 email
+ * @returns userId 或 null（找不到用戶時）
+ */
+const resolveUserIdByEmail = async (email: string): Promise<number | null> => {
+  const user = await prisma.users.findFirst({
+    where: {
+      contacts: {
+        email: { equals: email, mode: 'insensitive' }
+      }
+    },
+    select: { id: true }
+  });
+  return user?.id ?? null;
+};
 
 /**
  * 發送聯絡郵件
@@ -30,8 +50,11 @@ export const sendContactEmail = asyncHandler(async (req: Request, res: Response)
     throw new BadRequestError('缺少必要的郵件資訊：from, to, subject, text, name');
   }
 
+  // 查找用戶 ID 以啟用 email_logs 記錄
+  const userId = await resolveUserIdByEmail(to) ?? undefined;
+
   // 發送郵件
-  const result = await emailService.sendContactEmail(to, name, text, information, activityTitle);
+  const result = await emailService.sendContactEmail(to, name, text, information, activityTitle, userId);
 
   if (!result.success) {
     throw new Error(result.error || '聯絡郵件發送失敗');
@@ -68,9 +91,29 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
     throw new BadRequestError('驗證連結為必填項');
   }
 
-  // 使用 API 版本
-  const result = await sendVerificationEmailApi(email, verifyLink, name);
-  res.json(result);
+  // 查找用戶 ID 以啟用 email_logs 記錄
+  const userId = await resolveUserIdByEmail(email) ?? undefined;
+
+  const result = await emailService.sendVerificationEmail(email, verifyLink, name, userId);
+
+  if (!result.success) {
+    throw new Error(result.error || '發送驗證郵件失敗');
+  }
+
+  const response = createSuccessResponse({
+    messageId: result.messageId
+  }, {
+    message: '驗證郵件發送成功',
+    aggregateData: {
+      emailInfo: {
+        recipient: email,
+        template: 'verification',
+        sentAt: new Date().toISOString()
+      }
+    }
+  });
+
+  res.json(response);
 });
 
 /**
@@ -84,16 +127,52 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
     throw new BadRequestError('email 和 name 為必填項');
   }
 
-  // 使用 API 版本，傳入完整的 WelcomeEmailData 物件
-  const result = await sendWelcomeEmailApi(email, {
-    name,
-    hasCompletedQuiz: hasCompletedQuiz ?? false,
-    practiceUrl,
-    quizUrl,
-    illustrationUrl,
-    unsubscribeUrl
+  // 查找用戶 ID 以啟用 email_logs 記錄
+  const userId = await resolveUserIdByEmail(email);
+
+  let result;
+
+  if (userId) {
+    // 有用戶 ID 時使用含 log 記錄的版本
+    result = await sendWelcomeEmailWithLog(email, {
+      name,
+      hasCompletedQuiz: hasCompletedQuiz ?? false,
+      practiceUrl,
+      quizUrl,
+      illustrationUrl,
+      unsubscribeUrl,
+      userId
+    });
+  } else {
+    // 找不到用戶時直接發送（不記錄）
+    result = await emailService.sendWelcomeEmail(email, {
+      name,
+      hasCompletedQuiz: hasCompletedQuiz ?? false,
+      practiceUrl,
+      quizUrl,
+      illustrationUrl,
+      unsubscribeUrl
+    });
+  }
+
+  if (!result.success) {
+    throw new Error(result.error || '發送歡迎郵件失敗');
+  }
+
+  const response = createSuccessResponse({
+    messageId: result.messageId
+  }, {
+    message: '歡迎郵件發送成功',
+    aggregateData: {
+      emailInfo: {
+        recipient: email,
+        template: hasCompletedQuiz ? 'welcome-completed' : 'welcome-pending',
+        sentAt: new Date().toISOString()
+      }
+    }
   });
-  res.json(result);
+
+  res.json(response);
 });
 
 /**
@@ -111,8 +190,11 @@ export const sendPasswordResetEmail = asyncHandler(async (req: Request, res: Res
     throw new BadRequestError('resetLink 為必填項');
   }
 
+  // 查找用戶 ID 以啟用 email_logs 記錄
+  const userId = await resolveUserIdByEmail(email) ?? undefined;
+
   // 發送密碼重設郵件
-  const result = await emailService.sendPasswordResetEmail(email, resetLink, name);
+  const result = await emailService.sendPasswordResetEmail(email, resetLink, name, userId);
 
   if (!result.success) {
     throw new Error(result.error || '密碼重設郵件發送失敗');
@@ -139,8 +221,11 @@ export const sendMarathonEmail = asyncHandler(async (req: Request, res: Response
   }
 
 
+  // 查找用戶 ID 以啟用 email_logs 記錄
+  const userId = await resolveUserIdByEmail(email) ?? undefined;
+
   // 發送馬拉松郵件
-  const result = await emailService.sendMarathonEmail(email, name, marathonTitle, marathonDate, marathonDescription);
+  const result = await emailService.sendMarathonEmail(email, name, marathonTitle, marathonDate, marathonDescription, userId);
 
   if (!result.success) {
     throw new Error(result.error || '馬拉松郵件發送失敗');
@@ -166,7 +251,12 @@ export const sendCustomEmail = asyncHandler(async (req: Request, res: Response) 
     throw new BadRequestError('to 和 subject 為必填項');
   }
 
+  // 查找用戶 ID 以啟用 email_logs 記錄
+  const recipientEmail = Array.isArray(to) ? to[0] : to;
+  const userId = await resolveUserIdByEmail(recipientEmail);
+
   let result;
+  let finalSubject = subject;
 
   if (template && data) {
     // 使用模板發送
@@ -194,18 +284,68 @@ export const sendCustomEmail = asyncHandler(async (req: Request, res: Response) 
         throw new BadRequestError('不支援的模板類型');
     }
 
+    finalSubject = emailTemplate.subject;
+
+    // 建立 email_logs 記錄（若有用戶 ID）
+    let logRecord;
+    if (userId) {
+      try {
+        logRecord = await createEmailLog({
+          userId,
+          emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
+          subject: finalSubject,
+          status: EMAIL_STATUS.PENDING,
+        });
+      } catch {
+        // 記錄失敗不影響發送
+      }
+    }
+
     result = await emailService.sendEmail({
       to,
-      subject: emailTemplate.subject,
-      html: emailTemplate.html
+      subject: finalSubject,
+      html: emailTemplate.html,
+      trackingToken: logRecord?.tracking_token ?? undefined,
     });
+
+    if (logRecord) {
+      try {
+        await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+      } catch {
+        // 更新失敗不影響回應
+      }
+    }
   } else if (htmlContent) {
+    // 建立 email_logs 記錄（若有用戶 ID）
+    let logRecord;
+    if (userId) {
+      try {
+        logRecord = await createEmailLog({
+          userId,
+          emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
+          subject: finalSubject,
+          status: EMAIL_STATUS.PENDING,
+        });
+      } catch {
+        // 記錄失敗不影響發送
+      }
+    }
+
     // 發送自定義 HTML 內容
     result = await emailService.sendEmail({
       to,
       subject,
-      html: htmlContent
+      html: htmlContent,
+      trackingToken: logRecord?.tracking_token ?? undefined,
     });
+
+    if (logRecord) {
+      try {
+        await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+      } catch {
+        // 更新失敗不影響回應
+      }
+    }
   } else {
     throw new BadRequestError('必須提供 htmlContent 或 (template + data)');
   }
@@ -243,8 +383,53 @@ export const sendBulkEmail = asyncHandler(async (req: Request, res: Response) =>
   }
 
 
+  // 批次查找用戶 ID 以啟用 email_logs 記錄
+  const recipientEmails = recipients.map((r: { email: string }) => r.email);
+  const users = await prisma.users.findMany({
+    where: {
+      contacts: {
+        email: { in: recipientEmails, mode: 'insensitive' }
+      }
+    },
+    select: { id: true, contacts: { select: { email: true } } }
+  });
+  const emailToUserId = new Map(
+    users.map(u => [u.contacts?.email?.toLowerCase() ?? '', u.id])
+  );
+
+  // 為每個收件人建立 pending 的 email_logs 記錄
+  const logRecords: Map<string, number> = new Map();
+  for (const recipient of recipients) {
+    const uid = emailToUserId.get(recipient.email.toLowerCase());
+    if (uid) {
+      try {
+        const log = await createEmailLog({
+          userId: uid,
+          emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
+          subject: template,
+          status: EMAIL_STATUS.PENDING,
+        });
+        logRecords.set(recipient.email.toLowerCase(), log.id);
+      } catch {
+        // 記錄失敗不影響發送
+      }
+    }
+  }
+
   // 發送批量郵件
   const results = await emailService.sendBulkEmail(recipients, template as 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom');
+
+  // 更新 email_logs 狀態
+  for (let i = 0; i < recipients.length; i++) {
+    const logId = logRecords.get(recipients[i].email.toLowerCase());
+    if (logId) {
+      try {
+        await updateEmailLogStatus(logId, results.results[i]?.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+      } catch {
+        // 更新失敗不影響回應
+      }
+    }
+  }
 
   const successCount = results.success;
   const failureCount = results.failed;
