@@ -457,13 +457,13 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
           }
         }
 
-        // === 保護機制 3: 去重複檢查（本週內是否已發送） ===
+        // === 保護機制 3: 去重複檢查（本週內是否已發送任何週報） ===
+        // 不限定 emailCode，避免同一週因狀態變化發出兩封不同類型的週報
         const alreadySent = await hasEmailBeenSent({
           userId: practice.user_id,
           emailType: EMAIL_TYPES.PRACTICE_WEEKLY_SUMMARY,
           entityType: 'practice',
           entityId: practice.id,
-          emailCode,
           since: weekStart
         });
 
