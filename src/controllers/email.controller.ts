@@ -5,7 +5,13 @@
 
 import { Request, Response } from 'express';
 import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
-import { createEmailLog, updateEmailLogStatus } from '../services/email/email-log.service';
+import type { EmailSendResult } from '../services/email/email.service';
+import {
+  createEmailLog,
+  updateEmailLogStatus,
+  batchUpdateEmailLogStatus,
+  resolveUserIdByEmail,
+} from '../services/email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
 import type { EmailTypeValue } from '../types/email';
 import { emailHistoryService } from '../services/email-history.service';
@@ -14,20 +20,47 @@ import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
 
 /**
- * 透過 email 查找對應的用戶 ID
- * @param email - 收件人 email
- * @returns userId 或 null（找不到用戶時）
+ * 建立 email_log、發送郵件、更新 log 狀態的共用輔助函式
+ * @param userId - 用戶 ID（null 時跳過日誌記錄）
+ * @param emailType - 郵件類型
+ * @param subject - 郵件主題
+ * @param sendFn - 實際發送郵件的函式，接收 trackingToken
  */
-const resolveUserIdByEmail = async (email: string): Promise<number | null> => {
-  const user = await prisma.users.findFirst({
-    where: {
-      contacts: {
-        email: { equals: email, mode: 'insensitive' }
-      }
-    },
-    select: { id: true }
-  });
-  return user?.id ?? null;
+const sendEmailWithLog = async (params: {
+  userId: number | null;
+  emailType: EmailTypeValue;
+  subject: string;
+  sendFn: (trackingToken?: string) => Promise<EmailSendResult>;
+}): Promise<EmailSendResult> => {
+  const { userId, emailType, subject, sendFn } = params;
+
+  if (!userId) {
+    return sendFn();
+  }
+
+  let logRecord: { id: number; tracking_token: string | null } | undefined;
+  try {
+    logRecord = await createEmailLog({
+      userId,
+      emailType,
+      subject,
+      status: EMAIL_STATUS.PENDING,
+    });
+  } catch (error) {
+    console.error('建立郵件日誌記錄失敗:', error);
+  }
+
+  const result = await sendFn(logRecord?.tracking_token ?? undefined);
+
+  if (logRecord) {
+    try {
+      await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+    } catch (error) {
+      console.error('更新郵件日誌狀態失敗:', error);
+    }
+  }
+
+  return result;
 };
 
 /**
@@ -130,30 +163,18 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
   // 查找用戶 ID 以啟用 email_logs 記錄
   const userId = await resolveUserIdByEmail(email);
 
-  let result;
+  const emailData = {
+    name,
+    hasCompletedQuiz: hasCompletedQuiz ?? false,
+    practiceUrl,
+    quizUrl,
+    illustrationUrl,
+    unsubscribeUrl,
+  };
 
-  if (userId) {
-    // 有用戶 ID 時使用含 log 記錄的版本
-    result = await sendWelcomeEmailWithLog(email, {
-      name,
-      hasCompletedQuiz: hasCompletedQuiz ?? false,
-      practiceUrl,
-      quizUrl,
-      illustrationUrl,
-      unsubscribeUrl,
-      userId
-    });
-  } else {
-    // 找不到用戶時直接發送（不記錄）
-    result = await emailService.sendWelcomeEmail(email, {
-      name,
-      hasCompletedQuiz: hasCompletedQuiz ?? false,
-      practiceUrl,
-      quizUrl,
-      illustrationUrl,
-      unsubscribeUrl
-    });
-  }
+  const result = userId
+    ? await sendWelcomeEmailWithLog(email, { ...emailData, userId })
+    : await emailService.sendWelcomeEmail(email, emailData);
 
   if (!result.success) {
     throw new Error(result.error || '發送歡迎郵件失敗');
@@ -286,66 +307,30 @@ export const sendCustomEmail = asyncHandler(async (req: Request, res: Response) 
 
     finalSubject = emailTemplate.subject;
 
-    // 建立 email_logs 記錄（若有用戶 ID）
-    let logRecord;
-    if (userId) {
-      try {
-        logRecord = await createEmailLog({
-          userId,
-          emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
-          subject: finalSubject,
-          status: EMAIL_STATUS.PENDING,
-        });
-      } catch {
-        // 記錄失敗不影響發送
-      }
-    }
-
-    result = await emailService.sendEmail({
-      to,
+    result = await sendEmailWithLog({
+      userId,
+      emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
       subject: finalSubject,
-      html: emailTemplate.html,
-      trackingToken: logRecord?.tracking_token ?? undefined,
+      sendFn: (trackingToken) => emailService.sendEmail({
+        to,
+        subject: finalSubject,
+        html: emailTemplate.html,
+        trackingToken,
+      }),
     });
-
-    if (logRecord) {
-      try {
-        await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
-      } catch {
-        // 更新失敗不影響回應
-      }
-    }
   } else if (htmlContent) {
-    // 建立 email_logs 記錄（若有用戶 ID）
-    let logRecord;
-    if (userId) {
-      try {
-        logRecord = await createEmailLog({
-          userId,
-          emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
-          subject: finalSubject,
-          status: EMAIL_STATUS.PENDING,
-        });
-      } catch {
-        // 記錄失敗不影響發送
-      }
-    }
-
     // 發送自定義 HTML 內容
-    result = await emailService.sendEmail({
-      to,
-      subject,
-      html: htmlContent,
-      trackingToken: logRecord?.tracking_token ?? undefined,
+    result = await sendEmailWithLog({
+      userId,
+      emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
+      subject: finalSubject,
+      sendFn: (trackingToken) => emailService.sendEmail({
+        to,
+        subject,
+        html: htmlContent,
+        trackingToken,
+      }),
     });
-
-    if (logRecord) {
-      try {
-        await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
-      } catch {
-        // 更新失敗不影響回應
-      }
-    }
   } else {
     throw new BadRequestError('必須提供 htmlContent 或 (template + data)');
   }
@@ -397,38 +382,52 @@ export const sendBulkEmail = asyncHandler(async (req: Request, res: Response) =>
     users.map(u => [u.contacts?.email?.toLowerCase() ?? '', u.id])
   );
 
-  // 為每個收件人建立 pending 的 email_logs 記錄
+  // 為每個收件人平行建立 pending 的 email_logs 記錄
   const logRecords: Map<string, number> = new Map();
-  for (const recipient of recipients) {
-    const uid = emailToUserId.get(recipient.email.toLowerCase());
-    if (uid) {
-      try {
-        const log = await createEmailLog({
-          userId: uid,
-          emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
-          subject: template,
-          status: EMAIL_STATUS.PENDING,
-        });
-        logRecords.set(recipient.email.toLowerCase(), log.id);
-      } catch {
-        // 記錄失敗不影響發送
-      }
-    }
+  const logCreationResults = await Promise.allSettled(
+    recipients.map(async (recipient: { email: string }) => {
+      const uid = emailToUserId.get(recipient.email.toLowerCase());
+      if (!uid) return;
+      const log = await createEmailLog({
+        userId: uid,
+        emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
+        subject: template,
+        status: EMAIL_STATUS.PENDING,
+      });
+      logRecords.set(recipient.email.toLowerCase(), log.id);
+    })
+  );
+
+  const logCreationFailures = logCreationResults.filter(r => r.status === 'rejected');
+  if (logCreationFailures.length > 0) {
+    console.error(`批次建立郵件日誌失敗 ${logCreationFailures.length} 筆:`, logCreationFailures.map(r => (r as PromiseRejectedResult).reason));
   }
 
   // 發送批量郵件
   const results = await emailService.sendBulkEmail(recipients, template as 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom');
 
-  // 更新 email_logs 狀態
+  // 依發送結果分組，批次更新 email_logs 狀態
+  const sentLogIds: number[] = [];
+  const failedLogIds: number[] = [];
+
   for (let i = 0; i < recipients.length; i++) {
     const logId = logRecords.get(recipients[i].email.toLowerCase());
     if (logId) {
-      try {
-        await updateEmailLogStatus(logId, results.results[i]?.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
-      } catch {
-        // 更新失敗不影響回應
+      if (results.results[i]?.success) {
+        sentLogIds.push(logId);
+      } else {
+        failedLogIds.push(logId);
       }
     }
+  }
+
+  try {
+    await Promise.all([
+      batchUpdateEmailLogStatus(sentLogIds, EMAIL_STATUS.SENT),
+      batchUpdateEmailLogStatus(failedLogIds, EMAIL_STATUS.FAILED),
+    ]);
+  } catch (error) {
+    console.error('批次更新郵件日誌狀態失敗:', error);
   }
 
   const successCount = results.success;
