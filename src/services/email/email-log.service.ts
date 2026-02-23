@@ -155,6 +155,7 @@ export const getEntityEmailLogs = async (params: {
 
 /**
  * 透過 email 查找對應的用戶 ID
+ * 注意：contacts.email 無唯一約束，若有多筆匹配將回傳最早建立的用戶
  * @param email - 收件人 email
  * @returns userId 或 null（找不到用戶時）
  */
@@ -165,9 +166,29 @@ export const resolveUserIdByEmail = async (email: string): Promise<number | null
         email: { equals: email, mode: 'insensitive' }
       }
     },
-    select: { id: true }
+    select: { id: true },
+    orderBy: { id: 'asc' },
   });
   return user?.id ?? null;
+};
+
+/**
+ * 批次更新郵件日誌狀態
+ * @param logIds - 要更新的 log ID 陣列
+ * @param status - 目標狀態
+ */
+export const batchUpdateEmailLogStatus = async (
+  logIds: number[],
+  status: EmailStatusValue
+) => {
+  if (logIds.length === 0) return;
+  return prisma.email_logs.updateMany({
+    where: { id: { in: logIds } },
+    data: {
+      status,
+      ...(status === EMAIL_STATUS.SENT && { sent_at: new Date() }),
+    },
+  });
 };
 
 /**
