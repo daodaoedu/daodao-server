@@ -154,6 +154,23 @@ export const getEntityEmailLogs = async (params: {
 };
 
 /**
+ * 透過 email 查找對應的用戶 ID
+ * @param email - 收件人 email
+ * @returns userId 或 null（找不到用戶時）
+ */
+export const resolveUserIdByEmail = async (email: string): Promise<number | null> => {
+  const user = await prisma.users.findFirst({
+    where: {
+      contacts: {
+        email: { equals: email, mode: 'insensitive' }
+      }
+    },
+    select: { id: true }
+  });
+  return user?.id ?? null;
+};
+
+/**
  * 取得最近一次特定類型郵件的發送時間
  */
 export const getLastEmailSentAt = async (params: {
