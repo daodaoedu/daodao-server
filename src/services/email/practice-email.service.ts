@@ -258,14 +258,12 @@ export async function sendWeeklySummaryEmail(
     ]);
 
     if (!practice || !user) {
-      loggerService.warn('Practice or user not found for weekly summary', { emailCode, practiceId, userId });
-      return;
+      throw new Error(`Practice or user not found for weekly summary: practiceId=${practiceId}, userId=${userId}`);
     }
 
     const email = user.contacts?.email;
     if (!email) {
-      loggerService.warn('User has no email for weekly summary', { userId });
-      return;
+      throw new Error(`User has no email for weekly summary: userId=${userId}`);
     }
 
     // 計算本週打卡統計（統一使用 UTC）
@@ -459,13 +457,14 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
           }
         }
 
-        // === 保護機制 3: 去重複檢查 ===
+        // === 保護機制 3: 去重複檢查（本週內是否已發送任何週報） ===
+        // 不限定 emailCode，避免同一週因狀態變化發出兩封不同類型的週報
         const alreadySent = await hasEmailBeenSent({
           userId: practice.user_id,
           emailType: EMAIL_TYPES.PRACTICE_WEEKLY_SUMMARY,
           entityType: 'practice',
           entityId: practice.id,
-          emailCode
+          since: weekStart
         });
 
         if (alreadySent) {
@@ -542,14 +541,12 @@ export async function sendFinalSummaryEmail(
     ]);
 
     if (!practice || !user) {
-      loggerService.warn('Practice or user not found for final summary', { emailCode, practiceId, userId });
-      return;
+      throw new Error(`Practice or user not found for final summary: practiceId=${practiceId}, userId=${userId}`);
     }
 
     const email = user.contacts?.email;
     if (!email) {
-      loggerService.warn('User has no email for final summary', { userId });
-      return;
+      throw new Error(`User has no email for final summary: userId=${userId}`);
     }
 
     // 取得打卡統計和最佳筆記

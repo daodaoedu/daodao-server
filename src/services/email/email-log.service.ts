@@ -69,6 +69,7 @@ export const updateEmailLogStatus = async (
 
 /**
  * 檢查是否已發送過特定郵件（避免重複發送）
+ * @param params.since 若提供，只檢查此日期之後的發送紀錄（用於週報等週期性郵件）
  */
 export const hasEmailBeenSent = async (params: {
   userId: number;
@@ -76,8 +77,9 @@ export const hasEmailBeenSent = async (params: {
   entityType?: string;
   entityId?: number;
   emailCode?: string;
+  since?: Date;
 }): Promise<boolean> => {
-  const { userId, emailType, entityType, entityId, emailCode } = params;
+  const { userId, emailType, entityType, entityId, emailCode, since } = params;
 
   const existing = await prisma.email_logs.findFirst({
     where: {
@@ -87,6 +89,7 @@ export const hasEmailBeenSent = async (params: {
       ...(entityId && { entity_id: entityId }),
       ...(emailCode && { email_code: emailCode }),
       status: EMAIL_STATUS.SENT,
+      ...(since && { sent_at: { gte: since } }),
     },
   });
 
