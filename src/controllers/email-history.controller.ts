@@ -26,7 +26,8 @@ export const getEmailHistory = asyncHandler(async (req: Request, res: Response) 
     page: query.page,
     limit: query.limit,
     sortBy: query.sortBy,
-    sortOrder: query.sortOrder
+    sortOrder: query.sortOrder,
+    opened: query.opened
   });
 
   const response = createSuccessResponse(result);

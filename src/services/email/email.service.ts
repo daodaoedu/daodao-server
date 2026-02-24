@@ -13,6 +13,7 @@ import {
   createEmailLog,
   hasEmailBeenSent,
   recordEmailOpen,
+  resolveUserIdByEmail,
   updateEmailLogStatus,
 } from './email-log.service';
 import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
@@ -406,8 +407,8 @@ export class EmailService {
   }
 
   /**
-   * 內部輔助方法：若有 userId，先建立 email_logs (pending) 取得 trackingToken，
-   * 再發送郵件，最後更新 log 狀態。若無 userId，直接發送。
+   * 內部輔助方法：先建立 email_logs (pending) 取得 trackingToken，
+   * 再發送郵件，最後更新 log 狀態。若無 userId 會自動從收件人 email 解析。
    */
   private async sendWithOptionalLog(params: {
     to: string;
@@ -416,7 +417,20 @@ export class EmailService {
     userId?: number;
     emailType: EmailTypeValue;
   }): Promise<EmailSendResult> {
-    const { to, subject, html, userId, emailType } = params;
+    const { to, subject, html, emailType } = params;
+    let { userId } = params;
+
+    // 若無 userId，嘗試從收件人 email 自動解析
+    if (!userId) {
+      try {
+        const resolvedId = await resolveUserIdByEmail(to);
+        if (resolvedId) {
+          userId = resolvedId;
+        }
+      } catch (error) {
+        console.warn(`自動解析收件人用戶 ID 失敗 - email: ${to}`, error instanceof Error ? error.message : error);
+      }
+    }
 
     if (!userId) {
       return this.sendEmail({ to, subject, html });
