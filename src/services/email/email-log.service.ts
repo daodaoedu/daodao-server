@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { prisma } from '../database/prisma.service';
 import type { EmailLogData, EmailTypeValue, EmailStatusValue } from '../../types/email';
 import { EMAIL_STATUS } from '../../types/email';
+import loggerService from '../logging/logger.service';
 
 /**
  * 記錄郵件發送
@@ -192,6 +193,48 @@ export const batchUpdateEmailLogStatus = async (
       ...(status === EMAIL_STATUS.SENT && { sent_at: new Date() }),
     },
   });
+};
+
+/**
+ * 批次為多個收件人建立 pending email_logs
+ * 找不到對應用戶的 email 會略過（不報錯）
+ * @returns Map<email 小寫, logId>
+ */
+export const prepareBulkEmailLogs = async (
+  emails: string[],
+  emailType: EmailTypeValue,
+  subject: string,
+): Promise<Map<string, number>> => {
+  const users = await prisma.users.findMany({
+    where: { contacts: { email: { in: emails, mode: 'insensitive' } } },
+    select: { id: true, contacts: { select: { email: true } } },
+  });
+
+  const emailToUserId = new Map(
+    users.map(u => [(u.contacts?.email ?? '').toLowerCase(), u.id])
+  );
+
+  const logRecords = new Map<string, number>();
+  const results = await Promise.allSettled(
+    emails.map(async (email) => {
+      const uid = emailToUserId.get(email.toLowerCase());
+      if (!uid) return;
+      const log = await createEmailLog({
+        userId: uid,
+        emailType,
+        subject,
+        status: EMAIL_STATUS.PENDING,
+      });
+      logRecords.set(email.toLowerCase(), log.id);
+    })
+  );
+
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length > 0) {
+    loggerService.error(`批次建立郵件日誌失敗 ${failures.length} 筆`);
+  }
+
+  return logRecords;
 };
 
 /**

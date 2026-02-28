@@ -9,45 +9,42 @@ import type { EmailSendResult } from '../services/email/email.service';
 import {
   createEmailLog,
   updateEmailLogStatus,
-  batchUpdateEmailLogStatus,
   resolveUserIdByEmail,
+  prepareBulkEmailLogs,
 } from '../services/email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
-import type { EmailTypeValue } from '../types/email';
 import { emailHistoryService } from '../services/email-history.service';
 import { prisma } from '../services/database/prisma.service';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
+import loggerService from '../services/logging/logger.service';
 
 /**
- * 建立 email_log、發送郵件、更新 log 狀態的共用輔助函式
- * @param userId - 用戶 ID（null 時跳過日誌記錄）
- * @param emailType - 郵件類型
- * @param subject - 郵件主題
- * @param sendFn - 實際發送郵件的函式，接收 trackingToken
+ * 發送郵件並記錄到 email_logs（內部輔助函式）
+ * 若能解析出 userId，則建立 pending log、注入 tracking token、更新最終狀態；
+ * 若無法解析，則直接發送不記錄。
  */
-const sendEmailWithLog = async (params: {
-  userId: number | null;
-  emailType: EmailTypeValue;
+const sendEmailAndLog = async (params: {
+  to: string;
   subject: string;
   sendFn: (trackingToken?: string) => Promise<EmailSendResult>;
 }): Promise<EmailSendResult> => {
-  const { userId, emailType, subject, sendFn } = params;
-
-  if (!userId) {
-    return sendFn();
-  }
+  const { to, subject, sendFn } = params;
 
   let logRecord: { id: number; tracking_token: string | null } | undefined;
   try {
-    logRecord = await createEmailLog({
-      userId,
-      emailType,
-      subject,
-      status: EMAIL_STATUS.PENDING,
-    });
+    const userId = await resolveUserIdByEmail(to);
+    if (userId) {
+      logRecord = await createEmailLog({
+        userId,
+        emailType: EMAIL_TYPES.NOTIFICATION,
+        subject,
+        status: EMAIL_STATUS.PENDING,
+      });
+    }
   } catch (error) {
-    console.error('建立郵件日誌記錄失敗:', error);
+    const errorDetail = error instanceof Error ? error.message : String(error);
+    loggerService.error(`建立郵件日誌記錄失敗 - email: ${to}: ${errorDetail}`);
   }
 
   const result = await sendFn(logRecord?.tracking_token ?? undefined);
@@ -56,7 +53,8 @@ const sendEmailWithLog = async (params: {
     try {
       await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
     } catch (error) {
-      console.error('更新郵件日誌狀態失敗:', error);
+      const errorDetail = error instanceof Error ? error.message : String(error);
+      loggerService.error(`更新郵件日誌狀態失敗 - email: ${to}: ${errorDetail}`);
     }
   }
 
@@ -272,12 +270,9 @@ export const sendCustomEmail = asyncHandler(async (req: Request, res: Response) 
     throw new BadRequestError('to 和 subject 為必填項');
   }
 
-  // 查找用戶 ID 以啟用 email_logs 記錄
-  const recipientEmail = Array.isArray(to) ? to[0] : to;
-  const userId = await resolveUserIdByEmail(recipientEmail);
-
-  let result;
-  let finalSubject = subject;
+  // 組裝郵件內容
+  let emailHtml: string;
+  let emailSubject: string = subject;
 
   if (template && data) {
     // 使用模板發送
@@ -304,43 +299,42 @@ export const sendCustomEmail = asyncHandler(async (req: Request, res: Response) 
       default:
         throw new BadRequestError('不支援的模板類型');
     }
-
-    finalSubject = emailTemplate.subject;
-
-    result = await sendEmailWithLog({
-      userId,
-      emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
-      subject: finalSubject,
-      sendFn: (trackingToken) => emailService.sendEmail({
-        to,
-        subject: finalSubject,
-        html: emailTemplate.html,
-        trackingToken,
-      }),
-    });
+    emailHtml = emailTemplate.html;
+    emailSubject = emailTemplate.subject;
   } else if (htmlContent) {
-    // 發送自定義 HTML 內容
-    result = await sendEmailWithLog({
-      userId,
-      emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
-      subject: finalSubject,
-      sendFn: (trackingToken) => emailService.sendEmail({
-        to,
-        subject,
-        html: htmlContent,
-        trackingToken,
-      }),
-    });
+    emailHtml = htmlContent;
   } else {
     throw new BadRequestError('必須提供 htmlContent 或 (template + data)');
   }
 
-  if (!result.success) {
-    throw new Error(result.error || '自定義郵件發送失敗');
+  // 對每位收件人分別發送並記錄日誌
+  const recipients = Array.isArray(to) ? to : [to];
+  const sendResults = await Promise.allSettled(
+    recipients.map(recipientEmail =>
+      sendEmailAndLog({
+        to: recipientEmail,
+        subject: emailSubject,
+        sendFn: (trackingToken) => emailService.sendEmail({
+          to: recipientEmail,
+          subject: emailSubject,
+          html: emailHtml,
+          trackingToken,
+        }),
+      })
+    )
+  );
+
+  const firstResult = sendResults[0];
+  if (firstResult?.status === 'rejected') {
+    throw new Error(String(firstResult.reason) || '自定義郵件發送失敗');
+  }
+  const emailResult = firstResult?.status === 'fulfilled' ? firstResult.value : null;
+  if (emailResult && !emailResult.success) {
+    throw new Error(emailResult.error || '自定義郵件發送失敗');
   }
 
   const response = createSuccessResponse({
-    messageId: result.messageId
+    messageId: emailResult?.messageId
   }, {
     message: '自定義郵件發送成功'
   });
@@ -368,67 +362,27 @@ export const sendBulkEmail = asyncHandler(async (req: Request, res: Response) =>
   }
 
 
-  // 批次查找用戶 ID 以啟用 email_logs 記錄
+  // 為有對應帳號的收件人預先建立 pending email_logs
   const recipientEmails = recipients.map((r: { email: string }) => r.email);
-  const users = await prisma.users.findMany({
-    where: {
-      contacts: {
-        email: { in: recipientEmails, mode: 'insensitive' }
-      }
-    },
-    select: { id: true, contacts: { select: { email: true } } }
-  });
-  const emailToUserId = new Map(
-    users.map(u => [u.contacts?.email?.toLowerCase() ?? '', u.id])
+  const logRecords = await prepareBulkEmailLogs(
+    recipientEmails,
+    EMAIL_TYPES.NOTIFICATION,
+    subject,
   );
-
-  // 為每個收件人平行建立 pending 的 email_logs 記錄
-  const logRecords: Map<string, number> = new Map();
-  const logCreationResults = await Promise.allSettled(
-    recipients.map(async (recipient: { email: string }) => {
-      const uid = emailToUserId.get(recipient.email.toLowerCase());
-      if (!uid) return;
-      const log = await createEmailLog({
-        userId: uid,
-        emailType: EMAIL_TYPES.NOTIFICATION as EmailTypeValue,
-        subject: template,
-        status: EMAIL_STATUS.PENDING,
-      });
-      logRecords.set(recipient.email.toLowerCase(), log.id);
-    })
-  );
-
-  const logCreationFailures = logCreationResults.filter(r => r.status === 'rejected');
-  if (logCreationFailures.length > 0) {
-    console.error(`批次建立郵件日誌失敗 ${logCreationFailures.length} 筆:`, logCreationFailures.map(r => (r as PromiseRejectedResult).reason));
-  }
 
   // 發送批量郵件
   const results = await emailService.sendBulkEmail(recipients, template as 'welcome' | 'verification' | 'contact' | 'marathon' | 'custom');
 
-  // 依發送結果分組，批次更新 email_logs 狀態
-  const sentLogIds: number[] = [];
-  const failedLogIds: number[] = [];
-
-  for (let i = 0; i < recipients.length; i++) {
-    const logId = logRecords.get(recipients[i].email.toLowerCase());
-    if (logId) {
-      if (results.results[i]?.success) {
-        sentLogIds.push(logId);
-      } else {
-        failedLogIds.push(logId);
-      }
-    }
-  }
-
-  try {
-    await Promise.all([
-      batchUpdateEmailLogStatus(sentLogIds, EMAIL_STATUS.SENT),
-      batchUpdateEmailLogStatus(failedLogIds, EMAIL_STATUS.FAILED),
-    ]);
-  } catch (error) {
-    console.error('批次更新郵件日誌狀態失敗:', error);
-  }
+  // 根據發送結果批次更新 log 狀態
+  await Promise.allSettled(
+    recipients.map(async (recipient: { email: string }, index: number) => {
+      const logId = logRecords.get(recipient.email.toLowerCase());
+      if (!logId) return;
+      const sendResult = results.results[index];
+      if (!sendResult) return;
+      await updateEmailLogStatus(logId, sendResult.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+    })
+  );
 
   const successCount = results.success;
   const failureCount = results.failed;
