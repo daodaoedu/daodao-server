@@ -13,6 +13,7 @@ import {
   createEmailLog,
   hasEmailBeenSent,
   recordEmailOpen,
+  resolveUserIdByEmail,
   updateEmailLogStatus,
 } from './email-log.service';
 import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
@@ -20,6 +21,7 @@ import { EMAIL_TYPES } from '../../types/email';
 import type { EmailTypeValue } from '../../types/email';
 import { EMAIL_ERROR_CODES, getErrorMessage } from '../../constants/errors';
 import type { Logger } from '../../types/logger.types';
+import loggerService from '../logging/logger.service';
 
 export interface EmailSendOptions {
   to: string | string[];
@@ -87,7 +89,7 @@ export class EmailService {
     
     // 創建 nodemailer 傳輸器（如果配置可用）
     if (!emailConfig) {
-      console.warn('郵件配置初始化失敗，將在實際使用時重試: 缺少必要的郵件環境變數: EMAIL_ADDRESS, EMAIL_PASSWORD, FRONTEND_URL');
+      this.logger?.warn('郵件配置初始化失敗，將在實際使用時重試: 缺少必要的郵件環境變數: EMAIL_ADDRESS, EMAIL_PASSWORD, FRONTEND_URL');
       return;
     }
     
@@ -218,9 +220,8 @@ export class EmailService {
         status: 'pending',
       });
     } catch (error) {
-      const errorMsg = `建立歡迎信發送紀錄失敗 - 用戶 ID: ${userId}`;
-      console.error(errorMsg, error instanceof Error ? error.message : error);
-      this.logger?.error(errorMsg);
+      const errorDetail = error instanceof Error ? error.message : String(error);
+      this.logger?.error(`建立歡迎信發送紀錄失敗 - 用戶 ID: ${userId}: ${errorDetail}`);
       return { success: false, error: '建立郵件紀錄失敗' };
     }
 
@@ -242,8 +243,8 @@ export class EmailService {
         result.success ? 'sent' : 'failed'
       );
     } catch (error) {
-      console.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}`, error instanceof Error ? error.message : error);
-      this.logger?.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}`);
+      const errorDetail = error instanceof Error ? error.message : String(error);
+      this.logger?.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}: ${errorDetail}`);
     }
 
     return result;
@@ -406,8 +407,8 @@ export class EmailService {
   }
 
   /**
-   * 內部輔助方法：若有 userId，先建立 email_logs (pending) 取得 trackingToken，
-   * 再發送郵件，最後更新 log 狀態。若無 userId，直接發送。
+   * 內部輔助方法：先建立 email_logs (pending) 取得 trackingToken，
+   * 再發送郵件，最後更新 log 狀態。若無 userId 會自動從收件人 email 解析。
    */
   private async sendWithOptionalLog(params: {
     to: string;
@@ -416,7 +417,21 @@ export class EmailService {
     userId?: number;
     emailType: EmailTypeValue;
   }): Promise<EmailSendResult> {
-    const { to, subject, html, userId, emailType } = params;
+    const { to, subject, html, emailType } = params;
+    let { userId } = params;
+
+    // 若無 userId，嘗試從收件人 email 自動解析
+    if (!userId) {
+      try {
+        const resolvedId = await resolveUserIdByEmail(to);
+        if (resolvedId) {
+          userId = resolvedId;
+        }
+      } catch (error) {
+        const errorDetail = error instanceof Error ? error.message : String(error);
+        this.logger?.warn(`自動解析收件人用戶 ID 失敗 - email: ${to}: ${errorDetail}`);
+      }
+    }
 
     if (!userId) {
       return this.sendEmail({ to, subject, html });
@@ -432,9 +447,8 @@ export class EmailService {
         status: 'pending',
       });
     } catch (error) {
-      const errorMsg = `建立郵件紀錄失敗 - emailType: ${emailType}, userId: ${userId}`;
-      console.error(errorMsg, error instanceof Error ? error.message : error);
-      this.logger?.error(errorMsg);
+      const errorDetail = error instanceof Error ? error.message : String(error);
+      this.logger?.error(`建立郵件紀錄失敗 - emailType: ${emailType}, userId: ${userId}: ${errorDetail}`);
       // 紀錄失敗仍嘗試發送，只是沒有追蹤
       return this.sendEmail({ to, subject, html });
     }
@@ -454,8 +468,8 @@ export class EmailService {
         result.success ? 'sent' : 'failed'
       );
     } catch (error) {
-      console.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}`, error instanceof Error ? error.message : error);
-      this.logger?.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}`);
+      const errorDetail = error instanceof Error ? error.message : String(error);
+      this.logger?.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}: ${errorDetail}`);
     }
 
     return result;
@@ -641,7 +655,7 @@ export class EmailService {
 
 // 創建並導出郵件服務實例
 const templateService = new EmailTemplateService();
-export const emailService = new EmailService(templateService);
+export const emailService = new EmailService(templateService, loggerService);
 
 // 導出 API 版本的郵件服務函數
 export const sendWelcomeEmailApi = emailService.sendWelcomeEmailApi.bind(emailService);
