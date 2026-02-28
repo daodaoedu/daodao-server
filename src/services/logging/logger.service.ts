@@ -78,6 +78,7 @@ class LoggerService {
     let logPrefix: string;
     switch (env) {
       case 'prod':
+      case 'production':  // 支援 production 作為 prod 的別名
         logPrefix = 'prod';
         break;
       case 'dev':
