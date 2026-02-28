@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { prisma } from '../database/prisma.service';
 import type { EmailLogData, EmailTypeValue, EmailStatusValue } from '../../types/email';
 import { EMAIL_STATUS } from '../../types/email';
+import loggerService from '../logging/logger.service';
 
 /**
  * 記錄郵件發送
@@ -69,6 +70,7 @@ export const updateEmailLogStatus = async (
 
 /**
  * 檢查是否已發送過特定郵件（避免重複發送）
+ * @param params.since 若提供，只檢查此日期之後的發送紀錄（用於週報等週期性郵件）
  */
 export const hasEmailBeenSent = async (params: {
   userId: number;
@@ -76,8 +78,9 @@ export const hasEmailBeenSent = async (params: {
   entityType?: string;
   entityId?: number;
   emailCode?: string;
+  since?: Date;
 }): Promise<boolean> => {
-  const { userId, emailType, entityType, entityId, emailCode } = params;
+  const { userId, emailType, entityType, entityId, emailCode, since } = params;
 
   const existing = await prisma.email_logs.findFirst({
     where: {
@@ -87,6 +90,7 @@ export const hasEmailBeenSent = async (params: {
       ...(entityId && { entity_id: entityId }),
       ...(emailCode && { email_code: emailCode }),
       status: EMAIL_STATUS.SENT,
+      ...(since && { sent_at: { gte: since } }),
     },
   });
 
@@ -151,6 +155,86 @@ export const getEntityEmailLogs = async (params: {
     },
     orderBy: { sent_at: 'desc' },
   });
+};
+
+/**
+ * 透過 email 查找對應的用戶 ID
+ * 注意：contacts.email 無唯一約束，若有多筆匹配將回傳最早建立的用戶
+ * @param email - 收件人 email
+ * @returns userId 或 null（找不到用戶時）
+ */
+export const resolveUserIdByEmail = async (email: string): Promise<number | null> => {
+  const user = await prisma.users.findFirst({
+    where: {
+      contacts: {
+        email: { equals: email, mode: 'insensitive' }
+      }
+    },
+    select: { id: true },
+    orderBy: { id: 'asc' },
+  });
+  return user?.id ?? null;
+};
+
+/**
+ * 批次更新郵件日誌狀態
+ * @param logIds - 要更新的 log ID 陣列
+ * @param status - 目標狀態
+ */
+export const batchUpdateEmailLogStatus = async (
+  logIds: number[],
+  status: EmailStatusValue
+) => {
+  if (logIds.length === 0) return;
+  return prisma.email_logs.updateMany({
+    where: { id: { in: logIds } },
+    data: {
+      status,
+      ...(status === EMAIL_STATUS.SENT && { sent_at: new Date() }),
+    },
+  });
+};
+
+/**
+ * 批次為多個收件人建立 pending email_logs
+ * 找不到對應用戶的 email 會略過（不報錯）
+ * @returns Map<email 小寫, logId>
+ */
+export const prepareBulkEmailLogs = async (
+  emails: string[],
+  emailType: EmailTypeValue,
+  subject: string,
+): Promise<Map<string, number>> => {
+  const users = await prisma.users.findMany({
+    where: { contacts: { email: { in: emails, mode: 'insensitive' } } },
+    select: { id: true, contacts: { select: { email: true } } },
+  });
+
+  const emailToUserId = new Map(
+    users.map(u => [(u.contacts?.email ?? '').toLowerCase(), u.id])
+  );
+
+  const logRecords = new Map<string, number>();
+  const results = await Promise.allSettled(
+    emails.map(async (email) => {
+      const uid = emailToUserId.get(email.toLowerCase());
+      if (!uid) return;
+      const log = await createEmailLog({
+        userId: uid,
+        emailType,
+        subject,
+        status: EMAIL_STATUS.PENDING,
+      });
+      logRecords.set(email.toLowerCase(), log.id);
+    })
+  );
+
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length > 0) {
+    loggerService.error(`批次建立郵件日誌失敗 ${failures.length} 筆`);
+  }
+
+  return logRecords;
 };
 
 /**

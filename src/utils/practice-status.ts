@@ -203,13 +203,24 @@ export function isValidStatus(status: string): status is PracticeStatusType {
 }
 
 /**
- * 檢查實踐是否已過期（小時制）
+ * 取得指定日期在 Asia/Taipei 時區的日期字串 (YYYY-MM-DD)
  *
- * 使用 created_at + duration_days * 24h 計算精確到期時間。
- * 若無法計算，退回到 end_date 日期比較（相容舊資料）。
+ * @param date 日期物件
+ * @returns Asia/Taipei 時區的日期字串
+ */
+function toTaipeiDateString(date: Date): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+}
+
+/**
+ * 檢查實踐是否已過期
  *
- * @param endDate 結束日期（可為 null，用作 fallback）
- * @param options 小時制計算所需的額外參數
+ * 優先使用 end_date（使用者可見的到期日）以 Asia/Taipei 時區判斷，
+ * 確保實踐在到期日當天全天維持進行中狀態，隔天零時才轉為完成。
+ * 若無 end_date，退回到 created_at + duration_days * 24h（相容舊資料）。
+ *
+ * @param endDate 結束日期（使用者可見的最後一天）
+ * @param options 小時制計算所需的額外參數（fallback 用）
  * @returns 是否已過期
  */
 export function checkHasPassedEndDate(
@@ -221,24 +232,21 @@ export function checkHasPassedEndDate(
 ): boolean {
   const now = new Date();
 
-  // 小時制：created_at + durationDays * 24h
+  // 優先使用 end_date（使用者可見的到期日）
+  // 以 Asia/Taipei 時區比較日期，到期日當天仍為進行中，隔天才算過期
+  if (endDate) {
+    const todayTaipei = toTaipeiDateString(now);
+    const endDateTaipei = toTaipeiDateString(new Date(endDate));
+    return todayTaipei > endDateTaipei;
+  }
+
+  // Fallback: 小時制（created_at + durationDays * 24h），用於無 end_date 的舊資料
   if (options?.durationDays && options.createdAt) {
     const expiresAt = new Date(options.createdAt.getTime() + options.durationDays * MS_PER_DAY);
     return now.getTime() > expiresAt.getTime();
   }
 
-  // Fallback: 使用 end_date 日期比較（相容舊資料）
-  if (!endDate) {
-    return false;
-  }
-
-  const today = new Date(now);
-  today.setUTCHours(0, 0, 0, 0);
-
-  const endDateTime = new Date(endDate);
-  endDateTime.setUTCHours(0, 0, 0, 0);
-
-  return today.getTime() > endDateTime.getTime();
+  return false;
 }
 
 /**
