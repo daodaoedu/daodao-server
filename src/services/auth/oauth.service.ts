@@ -190,8 +190,9 @@ export const initializePassportSession = () => {
 export const authenticateGoogle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // 檢測 Chrome 預載請求（Speculative Loading）
   // 預載請求會帶有 Sec-Purpose 或 Purpose header
-  const secPurpose = req.headers['sec-purpose'] || req.headers['purpose'];
-  if (secPurpose === 'prefetch' || secPurpose === 'prerender') {
+  // Chrome 可能傳送 'prefetch;prerender' 等複合值，使用 includes() 比對
+  const secPurpose = String(req.headers['sec-purpose'] || req.headers['purpose'] || '');
+  if (secPurpose.includes('prefetch') || secPurpose.includes('prerender')) {
     console.log('OAuth - Ignoring speculative prefetch/prerender request');
     res.status(204).end();
     return;
@@ -216,27 +217,18 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     // 前端傳入了 state 參數，需要解析並存儲 nonce 到 Redis
     const validationResult = validateOAuthState(stateParam);
     if (!validationResult.valid || !validationResult.state) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_STATE',
-          message: 'The provided state parameter is invalid'
-        }
-      });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const reason = validationResult.error === 'State has expired' ? 'state_expired' : 'invalid_state';
+      res.redirect(`${frontendUrl}/auth/error?reason=${reason}`);
       return;
     }
 
     const existingState = validationResult.state;
 
     // 驗證 redirect URL
+    const frontendUrlForError = process.env.FRONTEND_URL || 'http://localhost:3000';
     if (!isValidRedirectUri(existingState.redirectUrl)) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_REDIRECT_URI',
-          message: 'The provided redirect URI is not allowed'
-        }
-      });
+      res.redirect(`${frontendUrlForError}/auth/error?reason=invalid_redirect_uri`);
       return;
     }
 
@@ -249,13 +241,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
       );
     } catch (error) {
       console.error('Failed to store OAuth nonce from frontend state:', error);
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'NONCE_STORAGE_FAILED',
-          message: 'Failed to initialize OAuth flow'
-        }
-      });
+      res.redirect(`${frontendUrlForError}/auth/error?reason=server_error`);
       return;
     }
   } else {
@@ -265,15 +251,11 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     const redirectUrlParam = validateRedirectParam(req.query.redirectUrl);
     const redirectUrl = redirectUrlParam || redirectUri || '/dashboard';
 
+    const frontendUrlForError = process.env.FRONTEND_URL || 'http://localhost:3000';
+
     // 安全性檢查：驗證 redirect URI 是否在白名單中
     if (!isValidRedirectUri(redirectUrl)) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_REDIRECT_URI',
-          message: 'The provided redirect URI is not allowed'
-        }
-      });
+      res.redirect(`${frontendUrlForError}/auth/error?reason=invalid_redirect_uri`);
       return;
     }
 
@@ -288,13 +270,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
       await oauthNonceService.storeNonce(state.nonce, redirectUrl, source);
     } catch (error) {
       console.error('Failed to store OAuth nonce:', error);
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'NONCE_STORAGE_FAILED',
-          message: 'Failed to initialize OAuth flow'
-        }
-      });
+      res.redirect(`${frontendUrlForError}/auth/error?reason=server_error`);
       return;
     }
 
