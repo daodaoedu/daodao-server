@@ -146,6 +146,8 @@ async function handleWeeklySummaryBatch(): Promise<void> {
 
 /**
  * 處理結束總結郵件
+ * 與 sendPendingFinalSummaries 共用相同的 email_log 去重機制，
+ * 防止「到期觸發」與「每日 10:00 批次」兩條路徑重複發送
  */
 async function handleFinalSummaryEmail(
   emailCode: PracticeEmailCode,
@@ -156,8 +158,39 @@ async function handleFinalSummaryEmail(
   if (!['PE07', 'PE08'].includes(emailCode)) {
     throw new Error(`Invalid final summary email code: ${emailCode}`);
   }
+
+  const { hasEmailBeenSent, createEmailLog, updateEmailLogStatus } = await import('../services/email/email-log.service');
+  const { EMAIL_TYPES, EMAIL_STATUS } = await import('../types/email');
   const { sendFinalSummaryEmail } = await import('../services/email/practice-email.service');
-  await sendFinalSummaryEmail(emailCode as FinalSummaryEmailCode, practiceId, userId);
+
+  // 去重複檢查：若 sendPendingFinalSummaries 已發送，跳過
+  const alreadySent = await hasEmailBeenSent({
+    userId,
+    emailType: EMAIL_TYPES.PRACTICE_FINAL_SUMMARY,
+    entityType: 'practice',
+    entityId: practiceId,
+    emailCode
+  });
+
+  if (alreadySent) {
+    loggerService.info('Skipping duplicate final summary email', { practiceId, emailCode, userId });
+    return;
+  }
+
+  // 建立 PENDING log，取得 trackingToken（與 sendPendingFinalSummaries 流程一致）
+  const logRecord = await createEmailLog({
+    userId,
+    emailType: EMAIL_TYPES.PRACTICE_FINAL_SUMMARY,
+    entityType: 'practice',
+    entityId: practiceId,
+    emailCode,
+    subject: '實踐總結',
+    status: EMAIL_STATUS.PENDING
+  });
+
+  await sendFinalSummaryEmail(emailCode as FinalSummaryEmailCode, practiceId, userId, logRecord.tracking_token ?? undefined);
+
+  await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
 }
 
 /**
