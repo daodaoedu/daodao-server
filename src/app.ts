@@ -31,6 +31,8 @@ import userRoutes from './routes/user.routes';
 import emailRoutes from './routes/email.routes';
 // 引入留言路由
 import commentRoutes from './routes/comment.routes';
+// 引入反應路由
+import reactionRoutes from './routes/reaction.routes';
 // 引入圖片路由
 import imageRoutes from './routes/image.routes';
 // 引入導師路由
@@ -45,8 +47,6 @@ import quizRoutes from './routes/quiz.routes';
 import userStatsRoutes from './routes/user-stats-routes';
 // 引入管理員路由（角色、權限管理）
 import adminRoutes from './routes/admin.routes';
-// 引入 OAuth 服務初始化
-import { initializePassport, initializePassportSession } from './services/auth/oauth.service';
 // 引入日誌中間件
 import { requestLogger, errorLogger, logApplicationEvent } from './middleware/logging.middleware';
 // 引入回應增強中間件
@@ -81,11 +81,6 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use(responseEnhancerMiddleware);
   console.log('🔄 Response Enhancer Middleware 已初始化');
 
-  // 初始化 Passport 認證
-  app.use(initializePassport());
-  app.use(initializePassportSession());
-  console.log('🔐 Passport 認證系統已初始化');
-
   // 活動追蹤中間件（自動更新 last_active_at）
   app.use(trackActivity);
   console.log('📊 活動追蹤中間件已初始化');
@@ -111,7 +106,7 @@ export function setupTypescriptRoutes(app: express.Application) {
   const routes = [
     resourceRoutes, resourceReviewRoutes, ideaRoutes, meRoutes,
     tagRoutes, authRoutes, projectRoutes, userRoutes, emailRoutes,
-    commentRoutes, imageRoutes, mentorRoutes, practiceRoutes,
+    commentRoutes, reactionRoutes, imageRoutes, mentorRoutes, practiceRoutes,
     quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes
   ];
   console.log('✅ 路由模組已載入');
@@ -213,6 +208,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊留言路由
   app.use('/api/v1/comments', commentRoutes);
   console.log('💬 v1 留言路由已註冊 - 可在 /api/v1/comments 訪問');
+
+  // 註冊反應路由
+  app.use('/api/v1/reactions', reactionRoutes);
+  console.log('👍 v1 反應路由已註冊 - 可在 /api/v1/reactions 訪問');
 
   // 註冊圖片路由
   app.use('/api/v1/images', imageRoutes);
