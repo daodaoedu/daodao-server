@@ -520,6 +520,15 @@ export class CommentService implements CommentServiceInterface {
           return resource?.external_id || internalId.toString();
         }
 
+        case 'practice': {
+          // Practice uses external_id (UUID)
+          const practice = await prisma.practices.findUnique({
+            where: { id: internalId },
+            select: { external_id: true }
+          });
+          return practice?.external_id || internalId.toString();
+        }
+
         case 'portfolio':
           // Portfolio handling would go here when implemented
           return internalId.toString();

@@ -5674,6 +5674,7 @@ components:
             - review
             - circle
             - idea
+            - practice
             - portfolio
           description: 目標對象類型
           example: resource
@@ -5745,6 +5746,7 @@ components:
             - review
             - circle
             - idea
+            - practice
             - portfolio
           description: 留言目標類型
           example: resource
@@ -23006,6 +23008,7 @@ paths:
               - review
               - circle
               - idea
+              - practice
               - portfolio
             description: 查詢的目標類型
             example: resource
