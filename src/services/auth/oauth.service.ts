@@ -229,6 +229,12 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     if (!validationResult.valid || !validationResult.state) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const reason = validationResult.error === 'State has expired' ? 'state_expired' : 'invalid_state';
+      loggerService.warn('OAuth initiation - invalid state from frontend', {
+        error: validationResult.error,
+        reason,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
       res.redirect(`${frontendUrl}/auth/error?reason=${reason}`);
       return;
     }
