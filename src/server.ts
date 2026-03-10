@@ -147,11 +147,17 @@ app.use(globalLimiter);
 app.use(speedLimiter);
 
 // Session 配置
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false }, // 開發環境設為 false
+  cookie: {
+    secure: isProduction,
+    httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 10 * 60 * 1000 // 10 分鐘，與 nonce/state 有效期一致
+  }
 }));
 
 // Passport 初始化
