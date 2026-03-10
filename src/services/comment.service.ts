@@ -72,6 +72,11 @@ export class CommentService implements CommentServiceInterface {
           if (!parentComment) {
             throw new NotFoundError('Parent comment not found');
           }
+
+          // Enforce two-level limit: replies cannot have their own replies
+          if (parentComment.parent_id) {
+            throw new BadRequestError('Replies cannot have their own replies');
+          }
           
           // Ensure parent comment belongs to the same target (using internal ID)
           if (parentComment.target_type !== targetType || parentComment.target_id !== internalTargetId) {
