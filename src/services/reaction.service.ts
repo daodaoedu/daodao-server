@@ -19,6 +19,8 @@ import {
   GetReactionsResponse,
   ReactionCount,
   REACTION_TYPE_VALUES,
+  ReactionListItem,
+  GetReactionsListResponse,
 } from '../types/reaction.types';
 
 /**
@@ -144,8 +146,45 @@ export async function getReactionsByTarget(params: GetReactionsByTargetParams): 
   }
 }
 
+/**
+ * 取得目標的個別用戶反應列表
+ */
+export async function getReactionsListByTarget(params: GetReactionsByTargetParams): Promise<ApiSuccessResponse<GetReactionsListResponse>> {
+  const { targetType, targetId } = params;
+
+  try {
+    const allReactions = await prisma.reactions.findMany({
+      where: { target_type: targetType, target_id: targetId },
+      include: {
+        users: {
+          select: {
+            external_id: true,
+            nickname: true,
+            contacts: { select: { photo_url: true } },
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const items: ReactionListItem[] = allReactions.map((r) => ({
+      userId: r.users.external_id ?? String(r.user_id),
+      name: r.users.nickname ?? '未知用戶',
+      photoURL: r.users.contacts?.photo_url ?? null,
+      reactionType: r.reaction_type as ReactionListItem['reactionType'],
+      reactedAt: r.created_at.toISOString(),
+    }));
+
+    return createSuccessResponse({ items });
+  } catch (error) {
+    loggerService.error('Failed to get reactions list', { params, error });
+    throw new InternalServerError('取得反應列表失敗');
+  }
+}
+
 export const reactionService = {
   upsertReaction,
   removeReaction,
   getReactionsByTarget,
+  getReactionsListByTarget,
 };

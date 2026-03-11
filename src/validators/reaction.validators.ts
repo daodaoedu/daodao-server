@@ -76,6 +76,33 @@ export type UpsertReactionSchema = z.infer<typeof upsertReactionSchema>;
 export type RemoveReactionSchema = z.infer<typeof removeReactionSchema>;
 export type GetReactionsQuerySchema = z.infer<typeof getReactionsQuerySchema>;
 
+export const getReactionsListQuerySchema = z.object({
+  targetType: z.enum(REACTION_TARGET_TYPES).openapi({
+    description: '反應目標類型',
+    example: 'practice',
+  }),
+  targetId: z.string().min(1).openapi({
+    description: '目標外部 ID（UUID）',
+    example: '32859587-f159-43fd-93e7-fcc890661781',
+  }),
+}).openapi('GetReactionsListQuery', { description: '查詢個別反應列表的參數' });
+
+const reactionListItemSchema = z.object({
+  userId: z.string().openapi({ description: '用戶外部 ID（UUID）' }),
+  name: z.string().openapi({ description: '用戶名稱' }),
+  photoURL: z.string().nullable().openapi({ description: '用戶頭像 URL' }),
+  reactionType: z.string().openapi({ description: '反應類型', example: 'fire' }),
+  reactedAt: z.string().openapi({ description: '反應時間（ISO 8601）' }),
+}).openapi('ReactionListItem', { description: '單筆用戶反應資料' });
+
+const getReactionsListResponseSchema = z.object({
+  items: z.array(reactionListItemSchema).openapi({ description: '反應列表' }),
+}).openapi('GetReactionsListResponse', { description: '個別用戶反應列表回應' });
+
+export const getReactionsListApiResponseSchema = apiSuccessResponseSchema(getReactionsListResponseSchema);
+
+export type GetReactionsListQuerySchema = z.infer<typeof getReactionsListQuerySchema>;
+
 // ============================================================================
 // Register with OpenAPI registry
 // ============================================================================
@@ -84,3 +111,5 @@ registry.register('ReactionCount', reactionCountSchema);
 registry.register('GetReactionsResponse', getReactionsResponseSchema);
 registry.register('UpsertReactionRequest', upsertReactionSchema);
 registry.register('RemoveReactionRequest', removeReactionSchema);
+registry.register('ReactionListItem', reactionListItemSchema);
+registry.register('GetReactionsListResponse', getReactionsListResponseSchema);

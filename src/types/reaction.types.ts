@@ -35,6 +35,20 @@ export interface GetReactionsResponse {
   currentUserReaction: ReactionTypeValue | null;
 }
 
+// API 回應：GET /api/v1/reactions/list 的單筆項目
+export interface ReactionListItem {
+  userId: string;
+  name: string;
+  photoURL: string | null;
+  reactionType: ReactionTypeValue;
+  reactedAt: string;
+}
+
+// API 回應：GET /api/v1/reactions/list
+export interface GetReactionsListResponse {
+  items: ReactionListItem[];
+}
+
 // Service 層參數
 export interface UpsertReactionParams {
   targetType: ReactionTargetTypeValue;
