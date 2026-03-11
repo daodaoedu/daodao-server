@@ -13,6 +13,7 @@ import {
   UpsertReactionSchema,
   RemoveReactionSchema,
   GetReactionsQuerySchema,
+  GetReactionsListQuerySchema,
 } from '../validators/reaction.validators';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import { externalToInternalId, EntityType } from '../services/id-converter.service';
@@ -83,8 +84,26 @@ async function getReactions(req: Request, res: Response): Promise<void> {
   res.status(200).json(result);
 }
 
+/**
+ * GET /api/v1/reactions/list?targetType=practice&targetId=xxx
+ * 取得目標的個別用戶反應列表（可選登入）
+ */
+async function getReactionsList(req: Request, res: Response): Promise<void> {
+  const { targetType, targetId } = req.query as unknown as GetReactionsListQuerySchema;
+  const internalTargetId = await resolveTargetId(targetType, targetId);
+
+  const result = await reactionService.getReactionsListByTarget({
+    targetType: targetType as ReactionTargetTypeValue,
+    targetId: internalTargetId,
+    currentUserId: req.user?.id ?? null,
+  });
+
+  res.status(200).json(result);
+}
+
 export const reactionController = {
   upsertReaction,
   removeReaction,
   getReactions,
+  getReactionsList,
 };

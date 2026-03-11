@@ -16,6 +16,8 @@ import {
   removeReactionSchema,
   getReactionsQuerySchema,
   getReactionsApiResponseSchema,
+  getReactionsListQuerySchema,
+  getReactionsListApiResponseSchema,
 } from '../validators/reaction.validators';
 
 const router = Router();
@@ -89,6 +91,25 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reactions/list',
+  tags: ['Reactions'],
+  summary: '取得個別用戶反應列表',
+  description: '取得指定目標的每位反應用戶詳細資料（含名稱、頭像、反應類型、時間）',
+  request: {
+    query: getReactionsListQuerySchema,
+  },
+  responses: {
+    200: {
+      description: '成功取得反應列表',
+      content: { 'application/json': { schema: getReactionsListApiResponseSchema } },
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' },
+  },
+});
+
 // ============================================================================
 // Express 路由定義
 // ============================================================================
@@ -112,6 +133,13 @@ router.get(
   optionalAuth,
   validate(getReactionsQuerySchema, 'query'),
   reactionController.getReactions as RequestHandler,
+);
+
+router.get(
+  '/list',
+  optionalAuth,
+  validate(getReactionsListQuerySchema, 'query'),
+  reactionController.getReactionsList as RequestHandler,
 );
 
 export default router;
