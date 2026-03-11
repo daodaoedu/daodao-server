@@ -9,7 +9,6 @@
 
 import { Request, Response } from 'express';
 import { reactionService } from '../services/reaction.service';
-import { UnauthorizedError } from '../middleware/error.middleware';
 import {
   UpsertReactionSchema,
   RemoveReactionSchema,
@@ -17,6 +16,16 @@ import {
 } from '../validators/reaction.validators';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import { externalToInternalId, EntityType } from '../services/id-converter.service';
+import { UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
+
+async function resolveTargetId(targetType: string, targetId: string): Promise<number> {
+  if (targetType === 'comment') {
+    const id = parseInt(targetId, 10);
+    if (isNaN(id)) throw new BadRequestError('Invalid comment ID');
+    return id;
+  }
+  return externalToInternalId(targetType as EntityType, targetId);
+}
 
 /**
  * POST /api/v1/reactions
@@ -26,7 +35,7 @@ async function upsertReaction(req: Request, res: Response): Promise<void> {
   if (!req.user?.id) throw new UnauthorizedError('Authentication required');
 
   const { targetType, targetId, reactionType } = req.body as UpsertReactionSchema;
-  const internalTargetId = await externalToInternalId(targetType as EntityType, targetId);
+  const internalTargetId = await resolveTargetId(targetType, targetId);
 
   const result = await reactionService.upsertReaction({
     targetType: targetType as ReactionTargetTypeValue,
@@ -46,7 +55,7 @@ async function removeReaction(req: Request, res: Response): Promise<void> {
   if (!req.user?.id) throw new UnauthorizedError('Authentication required');
 
   const { targetType, targetId } = req.body as RemoveReactionSchema;
-  const internalTargetId = await externalToInternalId(targetType as EntityType, targetId);
+  const internalTargetId = await resolveTargetId(targetType, targetId);
 
   const result = await reactionService.removeReaction({
     targetType: targetType as ReactionTargetTypeValue,
@@ -63,7 +72,7 @@ async function removeReaction(req: Request, res: Response): Promise<void> {
  */
 async function getReactions(req: Request, res: Response): Promise<void> {
   const { targetType, targetId } = req.query as unknown as GetReactionsQuerySchema;
-  const internalTargetId = await externalToInternalId(targetType as EntityType, targetId);
+  const internalTargetId = await resolveTargetId(targetType, targetId);
 
   const result = await reactionService.getReactionsByTarget({
     targetType: targetType as ReactionTargetTypeValue,
