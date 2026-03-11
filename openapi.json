@@ -11532,11 +11532,10 @@
             "example": "practice"
           },
           "targetId": {
-            "type": "integer",
-            "minimum": 0,
-            "exclusiveMinimum": true,
-            "description": "目標內部 ID",
-            "example": 1
+            "type": "string",
+            "minLength": 1,
+            "description": "目標外部 ID（UUID）",
+            "example": "32859587-f159-43fd-93e7-fcc890661781"
           },
           "reactionType": {
             "type": "string",
@@ -11576,11 +11575,10 @@
             "example": "practice"
           },
           "targetId": {
-            "type": "integer",
-            "minimum": 0,
-            "exclusiveMinimum": true,
-            "description": "目標內部 ID",
-            "example": 1
+            "type": "string",
+            "minLength": 1,
+            "description": "目標外部 ID（UUID）",
+            "example": "32859587-f159-43fd-93e7-fcc890661781"
           }
         },
         "required": [
@@ -35897,14 +35895,13 @@
           },
           {
             "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true,
-              "description": "目標內部 ID",
-              "example": 1
+              "type": "string",
+              "minLength": 1,
+              "description": "目標外部 ID（UUID）",
+              "example": "32859587-f159-43fd-93e7-fcc890661781"
             },
             "required": true,
-            "description": "目標內部 ID",
+            "description": "目標外部 ID（UUID）",
             "name": "targetId",
             "in": "query"
           }

@@ -18,9 +18,9 @@ export const upsertReactionSchema = z.object({
     description: '反應目標類型',
     example: 'practice',
   }),
-  targetId: z.coerce.number().int().positive().openapi({
-    description: '目標內部 ID',
-    example: 1,
+  targetId: z.string().min(1).openapi({
+    description: '目標外部 ID（UUID）',
+    example: '32859587-f159-43fd-93e7-fcc890661781',
   }),
   reactionType: z.enum(REACTION_TYPE_VALUES as [string, ...string[]]).openapi({
     description: '反應類型',
@@ -34,9 +34,9 @@ export const removeReactionSchema = z.object({
     description: '反應目標類型',
     example: 'practice',
   }),
-  targetId: z.coerce.number().int().positive().openapi({
-    description: '目標內部 ID',
-    example: 1,
+  targetId: z.string().min(1).openapi({
+    description: '目標外部 ID（UUID）',
+    example: '32859587-f159-43fd-93e7-fcc890661781',
   }),
 }).openapi('RemoveReactionRequest', { description: '刪除反應的請求資料' });
 
@@ -45,9 +45,9 @@ export const getReactionsQuerySchema = z.object({
     description: '反應目標類型',
     example: 'practice',
   }),
-  targetId: z.coerce.number().int().positive().openapi({
-    description: '目標內部 ID',
-    example: 1,
+  targetId: z.string().min(1).openapi({
+    description: '目標外部 ID（UUID）',
+    example: '32859587-f159-43fd-93e7-fcc890661781',
   }),
 }).openapi('GetReactionsQuery', { description: '查詢反應的參數' });
 

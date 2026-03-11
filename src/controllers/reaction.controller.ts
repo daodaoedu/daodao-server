@@ -16,6 +16,7 @@ import {
   GetReactionsQuerySchema,
 } from '../validators/reaction.validators';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
+import { externalToInternalId, EntityType } from '../services/id-converter.service';
 
 /**
  * POST /api/v1/reactions
@@ -25,10 +26,11 @@ async function upsertReaction(req: Request, res: Response): Promise<void> {
   if (!req.user?.id) throw new UnauthorizedError('Authentication required');
 
   const { targetType, targetId, reactionType } = req.body as UpsertReactionSchema;
+  const internalTargetId = await externalToInternalId(targetType as EntityType, targetId);
 
   const result = await reactionService.upsertReaction({
     targetType: targetType as ReactionTargetTypeValue,
-    targetId,
+    targetId: internalTargetId,
     userId: req.user.id,
     reactionType: reactionType as ReactionTypeValue,
   });
@@ -44,10 +46,11 @@ async function removeReaction(req: Request, res: Response): Promise<void> {
   if (!req.user?.id) throw new UnauthorizedError('Authentication required');
 
   const { targetType, targetId } = req.body as RemoveReactionSchema;
+  const internalTargetId = await externalToInternalId(targetType as EntityType, targetId);
 
   const result = await reactionService.removeReaction({
     targetType: targetType as ReactionTargetTypeValue,
-    targetId,
+    targetId: internalTargetId,
     userId: req.user.id,
   });
 
@@ -60,10 +63,11 @@ async function removeReaction(req: Request, res: Response): Promise<void> {
  */
 async function getReactions(req: Request, res: Response): Promise<void> {
   const { targetType, targetId } = req.query as unknown as GetReactionsQuerySchema;
+  const internalTargetId = await externalToInternalId(targetType as EntityType, targetId);
 
   const result = await reactionService.getReactionsByTarget({
     targetType: targetType as ReactionTargetTypeValue,
-    targetId,
+    targetId: internalTargetId,
     currentUserId: req.user?.id ?? null,
   });
 
