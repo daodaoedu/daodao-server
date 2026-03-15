@@ -192,11 +192,16 @@ async function startServer() {
     });
 
     // 啟動服務器
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 TypeScript Server running on port ${PORT}`);
       console.log(`📖 API docs available at http://localhost:${PORT}/api-docs`);
       console.log(`📖 API docs also available at http://localhost:${PORT}/api/docs`);
     });
+
+    // 避免 nginx keepalive 連線池持有過期連線導致 502
+    // Node.js 預設 keepAliveTimeout 為 5s，nginx 複用到已關閉的連線會 502
+    server.keepAliveTimeout = 75000;  // 75s，大於 nginx 連線池回收時間
+    server.headersTimeout = 76000;    // 必須大於 keepAliveTimeout
 
     // 初始化 BullMQ（非阻塞）
     initializeBullMQ().catch(error => {
