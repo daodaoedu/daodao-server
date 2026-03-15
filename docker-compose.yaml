@@ -25,6 +25,11 @@ services:
   prod_app:
     <<: *prod-app-base
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-prod}${COMMIT_SHA:+-}${COMMIT_SHA}
+    networks:
+      prod-daodao-network:
+        aliases:
+          - prod_app
+      prod_network:
     depends_on:
       redis_prod:
         condition: service_healthy
@@ -34,6 +39,11 @@ services:
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-production}${COMMIT_SHA:+-}${COMMIT_SHA}
     env_file:
       - .env.production
+    networks:
+      prod-daodao-network:
+        aliases:
+          - production_app
+      prod_network:
     depends_on:
       redis_production:
         condition: service_healthy
@@ -52,8 +62,10 @@ services:
         max-size: "1m"
         max-file: "1"
     networks:
-      - dev-daodao-network
-      - dev_network
+      dev-daodao-network:
+        aliases:
+          - dev_app
+      dev_network:
     depends_on:
       # Redis 是必須的（核心業務邏輯依賴）
       redis_dev:
