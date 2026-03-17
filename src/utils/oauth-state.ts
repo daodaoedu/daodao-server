@@ -130,8 +130,8 @@ export const validateOAuthState = (
     if (age > expiryMs) {
       return { valid: false, error: 'State has expired' };
     }
-    // 允許最多 5 秒的 clock skew（Android 裝置時鐘常比 server 快）
-    const CLOCK_SKEW_TOLERANCE_MS = 5000;
+    // 允許最多 30 秒的 clock skew（裝置時鐘偏差常超過 5 秒）
+    const CLOCK_SKEW_TOLERANCE_MS = 30 * 1000;
     if (age < -CLOCK_SKEW_TOLERANCE_MS) {
       return { valid: false, error: 'Invalid timestamp' };
     }
