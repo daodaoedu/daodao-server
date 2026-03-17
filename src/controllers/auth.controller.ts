@@ -81,8 +81,9 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   // 驗證 state 格式
   const validationResult = validateOAuthState(stateParam);
   if (!validationResult.valid || !validationResult.state) {
-    loggerService.warn('OAuth callback - invalid state', { error: validationResult.error });
-    res.redirect(`${frontendUrl}/auth/error?reason=invalid_state`);
+    const reason = validationResult.error === 'State has expired' ? 'state_expired' : 'invalid_state';
+    loggerService.warn('OAuth callback - invalid state', { error: validationResult.error, reason });
+    res.redirect(`${frontendUrl}/auth/error?reason=${reason}`);
     return;
   }
 
