@@ -17,6 +17,7 @@ export type CommentTargetType =
   | 'review' 
   | 'circle' 
   | 'idea' 
+  | 'practice'
   | 'portfolio';
 
 // Comment visibility options

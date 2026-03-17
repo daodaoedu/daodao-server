@@ -8,6 +8,8 @@
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
 import { NotFoundError, InternalServerError } from '../middleware/error.middleware';
+import { upsertReaction, removeReaction, getReactionsByTarget } from './reaction.service';
+import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import {
   ApiSuccessResponse
 } from '../types/api-response.types';
@@ -20,9 +22,8 @@ const prismaClient = prisma;
 /**
  * 點讚/取消點讚
  */
-export async function toggleLike(practiceId: number, userId: number): Promise<ApiSuccessResponse<{ isLiked: boolean; likeCount: number }>> {
+export async function toggleLike(practiceId: number, userId: number, reactionType?: ReactionTypeValue): Promise<ApiSuccessResponse<{ isLiked: boolean; likeCount: number }>> {
   try {
-    // 檢查實踐是否存在
     const practice = await prismaClient.practices.findUnique({
       where: { id: practiceId }
     });
@@ -31,23 +32,33 @@ export async function toggleLike(practiceId: number, userId: number): Promise<Ap
       throw new NotFoundError('實踐不存在');
     }
 
-    // TODO: 實作 reaction 表格後再啟用點讚功能
-    // 暫時返回固定值
-    const isLiked = false; // 暫時固定為未點讚
-    const likeCount = 0; // 暫時固定為 0
+    const targetType: ReactionTargetTypeValue = 'practice';
+    const type = reactionType ?? 'useful';
 
-    loggerService.info('Practice like toggled', {
-      practiceId,
-      userId,
-      isLiked,
-      likeCount
+    // 查詢當前用戶是否已有此反應
+    const existing = await prismaClient.reactions.findUnique({
+      where: {
+        target_type_target_id_user_id: {
+          target_type: targetType,
+          target_id: practiceId,
+          user_id: userId,
+        },
+      },
     });
 
-    return createSuccessResponse({
-      isLiked,
-      likeCount
-    });
-
+    if (existing && existing.reaction_type === type) {
+      // 相同反應 → 取消
+      await removeReaction({ targetType, targetId: practiceId, userId });
+      const stats = await getReactionsByTarget({ targetType, targetId: practiceId, currentUserId: userId });
+      const total = stats.data.reactions.reduce((sum, r) => sum + r.count, 0);
+      return createSuccessResponse({ isLiked: false, likeCount: total });
+    } else {
+      // 不同或無反應 → upsert
+      await upsertReaction({ targetType, targetId: practiceId, userId, reactionType: type });
+      const stats = await getReactionsByTarget({ targetType, targetId: practiceId, currentUserId: userId });
+      const total = stats.data.reactions.reduce((sum, r) => sum + r.count, 0);
+      return createSuccessResponse({ isLiked: true, likeCount: total });
+    }
   } catch (error) {
     loggerService.error('Failed to toggle practice like', { practiceId, userId, error });
     throw error;
