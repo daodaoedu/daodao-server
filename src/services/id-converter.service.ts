@@ -489,6 +489,17 @@ export async function getTargetEntity(
         break;
       }
 
+      case 'practice': {
+        const practice = await prisma.practices.findUnique({
+          where: { external_id: targetId },
+          select: { id: true, user_id: true }
+        });
+        if (practice) {
+          entity = { id: practice.id, user_id: practice.user_id };
+        }
+        break;
+      }
+
       default:
         throw new Error(`不支援的目標實體類型: ${targetType}`);
     }

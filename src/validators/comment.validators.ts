@@ -25,6 +25,7 @@ const COMMENT_TARGET_TYPES = [
   'review',
   'circle',
   'idea',
+  'practice',
   'portfolio'
 ] as const;
 

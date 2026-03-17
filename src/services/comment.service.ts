@@ -72,6 +72,11 @@ export class CommentService implements CommentServiceInterface {
           if (!parentComment) {
             throw new NotFoundError('Parent comment not found');
           }
+
+          // Enforce two-level limit: replies cannot have their own replies
+          if (parentComment.parent_id) {
+            throw new BadRequestError('Replies cannot have their own replies');
+          }
           
           // Ensure parent comment belongs to the same target (using internal ID)
           if (parentComment.target_type !== targetType || parentComment.target_id !== internalTargetId) {
@@ -518,6 +523,15 @@ export class CommentService implements CommentServiceInterface {
             select: { external_id: true }
           });
           return resource?.external_id || internalId.toString();
+        }
+
+        case 'practice': {
+          // Practice uses external_id (UUID)
+          const practice = await prisma.practices.findUnique({
+            where: { id: internalId },
+            select: { external_id: true }
+          });
+          return practice?.external_id || internalId.toString();
         }
 
         case 'portfolio':

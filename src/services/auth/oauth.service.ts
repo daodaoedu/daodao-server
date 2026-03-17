@@ -4,7 +4,7 @@
  */
 
 import passport from 'passport';
-import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
+import { Strategy as GoogleStrategy, Profile, StrategyOptions as GoogleStrategyOptions } from 'passport-google-oauth20';
 import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
@@ -12,6 +12,8 @@ import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection
 import { createOAuthState, encodeOAuthState, validateOAuthState } from '../../utils/oauth-state';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
 import { oauthNonceService } from './oauth-nonce.service';
+import { redisOAuthStateStore } from './oauth-redis-state-store.service';
+import { loggerService } from '../logging/logger.service';
 
 interface AuthOptions {
   clientID: string;
@@ -32,7 +34,7 @@ const isOAuthConfigured = () => {
 // OAuth 配置選項（只在配置可用時創建）
 const getAuthOptions = (): AuthOptions | null => {
   if (!isOAuthConfigured()) {
-    console.warn('OAuth 配置初始化失敗，將在實際使用時重試: 缺少必要的 OAuth 環境變數: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL');
+    loggerService.warn('OAuth 配置初始化失敗，將在實際使用時重試: 缺少必要的 OAuth 環境變數: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL');
     return null;
   }
 
@@ -48,7 +50,7 @@ const getAuthOptions = (): AuthOptions | null => {
  * 將用戶物件轉換為可存儲的標識符
  */
 passport.serializeUser((user: any, done) => {
-  console.log('SerializeUser:', user);
+  loggerService.debug('SerializeUser', { id: user.external_id || user.id, type: user.external_id ? 'user' : 'temp' });
 
   // 優先檢查是否為 PostgreSQL 正式用戶（有 external_id）
   if (user.external_id) {
@@ -77,7 +79,7 @@ passport.serializeUser((user: any, done) => {
  */
 passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user' }, done) => {
   try {
-    console.log('DeserializeUser:', sessionData);
+    loggerService.debug('DeserializeUser', { id: sessionData.id, type: sessionData.type });
 
     let foundUser;
 
@@ -87,7 +89,7 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
       if (userResult.success && userResult.data) {
         foundUser = userResult.data;
       } else {
-        console.warn('Failed to find user by external_id:', sessionData.id);
+        loggerService.warn('DeserializeUser - user not found', { externalId: sessionData.id });
         foundUser = null;
       }
     } else if (sessionData.type === 'temp') {
@@ -97,10 +99,10 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
       });
     }
 
-    console.log('DeserializeUser result:', foundUser);
+    loggerService.debug('DeserializeUser result', { found: !!foundUser, id: foundUser ? (foundUser as any).id : null, type: sessionData.type });
     done(null, foundUser as unknown as Express.User);
   } catch (error) {
-    console.error('Deserialize user error:', error);
+    loggerService.error('DeserializeUser error', { error: error instanceof Error ? error.message : String(error) });
     done(error, null);
   }
 });
@@ -112,10 +114,13 @@ passport.deserializeUser(async (sessionData: { id: string; type: 'temp' | 'user'
 const authOptions = getAuthOptions();
 if (authOptions) {
   passport.use('google', new GoogleStrategy(
-    authOptions,
+    {
+      ...authOptions,
+      store: redisOAuthStateStore,
+    } as unknown as GoogleStrategyOptions,
     async (accessToken: string, refreshToken: string, profile: Profile, done) => {
       try {
-        console.log('Google OAuth profile:', profile);
+        loggerService.debug('Google OAuth profile received', { profileId: profile.id, displayName: profile.displayName });
 
         if (!profile.emails || profile.emails.length === 0) {
           throw new Error('No email found in Google profile');
@@ -127,10 +132,8 @@ if (authOptions) {
         // 首先檢查是否存在正式用戶
         const userResult = await authService.findUserByEmail(email);
 
-        console.log('Found user result:', userResult);
-
         if (userResult && userResult.success && userResult.data) {
-          console.log('用戶已註冊，返回正式用戶');
+          loggerService.info('Google OAuth - existing user found', { profileId: profile.id });
           // 已存在的用戶不是新用戶
           const user = userResult.data.user as Express.User & { _isNewUser?: boolean };
           user._isNewUser = false;
@@ -145,25 +148,23 @@ if (authOptions) {
           photoUrl
         });
 
-        console.log('臨時用戶:', tempUserResult);
-
         if (tempUserResult.success && tempUserResult.data) {
           const userData = tempUserResult.data as { user: unknown; isNewUser: boolean };
           const user = userData.user as Express.User & { _isNewUser?: boolean };
           user._isNewUser = userData.isNewUser;
-          console.log('臨時用戶 isNewUser:', userData.isNewUser);
+          loggerService.info('Google OAuth - temp user', { profileId: profile.id, isNewUser: userData.isNewUser });
           return done(null, user);
         } else {
           return done(new Error('Failed to create temp user'), false);
         }
       } catch (error) {
-        console.error('Google OAuth 策略錯誤:', error);
+        loggerService.error('Google OAuth strategy error', { error: error instanceof Error ? error.message : String(error) });
         return done(error, false);
       }
     }
   ));
 } else {
-  console.warn('⚠️ 跳過 Google OAuth 策略設定');
+  loggerService.warn('跳過 Google OAuth 策略設定：OAuth 未配置');
 }
 
 /**
@@ -193,10 +194,19 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
   // Chrome 可能傳送 'prefetch;prerender' 等複合值，使用 includes() 比對
   const secPurpose = String(req.headers['sec-purpose'] || req.headers['purpose'] || '');
   if (secPurpose.includes('prefetch') || secPurpose.includes('prerender')) {
-    console.log('OAuth - Ignoring speculative prefetch/prerender request');
+    loggerService.debug('OAuth - ignoring speculative prefetch/prerender request');
     res.status(204).end();
     return;
   }
+
+  // 診斷 log：記錄 OAuth 請求來源
+  loggerService.info('OAuth google - request initiated', {
+    userAgent: req.get('User-Agent'),
+    ip: req.ip,
+    hasState: !!req.query.state,
+    hasRedirectUri: !!req.query.redirect_uri,
+    sessionID: (req as unknown as { sessionID: string }).sessionID || 'none'
+  });
 
   if (!isOAuthConfigured()) {
     res.status(500).json({ error: 'OAuth not configured' });
@@ -219,6 +229,12 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     if (!validationResult.valid || !validationResult.state) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const reason = validationResult.error === 'State has expired' ? 'state_expired' : 'invalid_state';
+      loggerService.warn('OAuth initiation - invalid state from frontend', {
+        error: validationResult.error,
+        reason,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
       res.redirect(`${frontendUrl}/auth/error?reason=${reason}`);
       return;
     }
@@ -240,7 +256,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
         existingState.source
       );
     } catch (error) {
-      console.error('Failed to store OAuth nonce from frontend state:', error);
+      loggerService.error('Failed to store OAuth nonce from frontend state', { error: error instanceof Error ? error.message : String(error) });
       res.redirect(`${frontendUrlForError}/auth/error?reason=server_error`);
       return;
     }
@@ -269,7 +285,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     try {
       await oauthNonceService.storeNonce(state.nonce, redirectUrl, source);
     } catch (error) {
-      console.error('Failed to store OAuth nonce:', error);
+      loggerService.error('Failed to store OAuth nonce', { error: error instanceof Error ? error.message : String(error) });
       res.redirect(`${frontendUrlForError}/auth/error?reason=server_error`);
       return;
     }
@@ -290,12 +306,43 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
  * 處理 Google OAuth 回調
  */
 export const authenticateGoogleCallback = isOAuthConfigured()
-  ? passport.authenticate('google', {
-    failureRedirect: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/auth/failure'
-  })
-  : (req: any, res: any, next: any) => {
-    res.status(500).json({ error: 'OAuth not configured' });
-  };
+  ? (req: Request, res: Response, next: NextFunction): void => {
+      passport.authenticate('google', (err: Error | null, user: Express.User | false, info: unknown) => {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+        if (err) {
+          loggerService.error('OAuth callback - passport error', {
+            error: err.message,
+            stack: err.stack,
+            userAgent: req.get('User-Agent'),
+            ip: req.ip,
+            stateParam: req.query.state ? String(req.query.state).substring(0, 20) + '...' : 'missing'
+          });
+          res.redirect(`${frontendUrl}/auth/error?reason=passport_error`);
+          return;
+        }
+
+        if (!user) {
+          loggerService.warn('OAuth callback - authentication failed (no user)', {
+            info: JSON.stringify(info),
+            userAgent: req.get('User-Agent'),
+            ip: req.ip,
+            hasState: !!req.query.state,
+            hasCode: !!req.query.code,
+            sessionExists: !!(req as unknown as { session: unknown }).session,
+            sessionID: (req as unknown as { sessionID: string }).sessionID || 'none'
+          });
+          res.redirect(`${frontendUrl}/auth/error?reason=auth_failed`);
+          return;
+        }
+
+        req.user = user;
+        next();
+      })(req, res, next);
+    }
+  : (req: Request, res: Response, _next: NextFunction): void => {
+      res.status(500).json({ error: 'OAuth not configured' });
+    };
 
 /**
  * OAuth 服務導出
