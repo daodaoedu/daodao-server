@@ -42,6 +42,7 @@ import {
 import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
 import { MS_PER_DAY } from '../utils/date-utils';
+import { notificationEventService } from './notification-event.service';
 
 const prismaClient = prisma;
 
@@ -247,6 +248,37 @@ export async function createCheckIn(
         loggerService.error('Failed to enqueue PE02 email', { practiceId, error: err });
       });
     }
+
+    // 通知關注此實踐的 followers（非阻塞）
+    const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
+    prismaClient.follows.findMany({
+      where:  { target_type: 'practice', target_id: practiceId },
+      select: { follower_id: true },
+    }).then((followers) => {
+      for (const { follower_id } of followers) {
+        notificationEventService.createEvent({
+          type:        'update-practice-checkin',
+          actorId:     userId,
+          recipientId: follower_id,
+          entityType:  'practice',
+          entityId:    practiceId,
+          payload:     { practice_title: practiceTitle },
+          priority:    'P2',
+        }).catch(() => {});
+
+        if (newStatus === 'completed') {
+          notificationEventService.createEvent({
+            type:        'update-practice-finish',
+            actorId:     userId,
+            recipientId: follower_id,
+            entityType:  'practice',
+            entityId:    practiceId,
+            payload:     { practice_title: practiceTitle },
+            priority:    'P2',
+          }).catch(() => {});
+        }
+      }
+    }).catch(() => {});
 
     return createSuccessResponse(response);
 

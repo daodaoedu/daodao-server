@@ -16,6 +16,12 @@ const mockLoggerService = {
   debug: jest.fn()
 };
 
+const mockTrackView = jest.fn().mockResolvedValue(1);
+jest.mock('@/services/view-tracking.service', () => ({
+  recordView: mockTrackView,
+  getViewCount: jest.fn().mockResolvedValue(0),
+}));
+
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: prismaMock
 }));
@@ -45,6 +51,7 @@ import { Prisma } from '@generated/prisma';
 describe('Practice Event Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTrackView.mockResolvedValue(1);
     setupTransactionMock();
   });
 
@@ -103,13 +110,7 @@ describe('Practice Event Service', () => {
       expect(prismaMock.practices.findUnique).toHaveBeenCalledWith({
         where: { id: 1 }
       });
-      expect(mockLoggerService.info).toHaveBeenCalledWith('View event recorded', {
-        entityId: 1,
-        entityType: 'practice',
-        userId: 1,
-        duration: 120,
-        referrer: 'https://example.com'
-      });
+      expect(mockTrackView).toHaveBeenCalledWith('practice', 1, 1);
       expect(result.success).toBe(true);
       expect(result.data.success).toBe(true);
     });
@@ -141,13 +142,6 @@ describe('Practice Event Service', () => {
       const result = await recordViewEvent(viewData, 1);
 
       // Assert
-      expect(mockLoggerService.info).toHaveBeenCalledWith('View event recorded', {
-        entityId: 1,
-        entityType: 'practice',
-        userId: 1,
-        duration: undefined,
-        referrer: undefined
-      });
       expect(result.success).toBe(true);
     });
   });

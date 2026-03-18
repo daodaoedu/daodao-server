@@ -270,6 +270,7 @@ export const updatePracticeSchema = z.object({
   tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
   resources: z.array(practiceResourceInputSchema).max(5, '資源最多5個').optional(),
   status: practiceStatusSchema.optional(),
+  privacyStatus: z.enum(['private', 'public', 'delayed']).optional(),
   isDraft: z.boolean().optional().openapi({
     description: '是否存為草稿（true: 設為草稿, false: 發布）',
     example: false

@@ -8,6 +8,7 @@
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
 import { NotFoundError, InternalServerError } from '../middleware/error.middleware';
+import { recordView as trackView, getViewCount } from './view-tracking.service';
 import { upsertReaction, removeReaction, getReactionsByTarget } from './reaction.service';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import {
@@ -158,17 +159,7 @@ export async function recordView(practiceId: number, userId: number, viewData?: 
       throw new NotFoundError('實踐不存在');
     }
 
-    // TODO: 實作 view 表格後再啟用瀏覽記錄功能
-    // 暫時只記錄日誌
-    const viewCount = 0; // 暫時固定為 0
-
-    loggerService.info('Practice view recorded', {
-      practiceId,
-      userId,
-      duration: viewData?.duration,
-      viewCount
-    });
-
+    const viewCount = await trackView('practice', practiceId, userId);
     return createSuccessResponse({ viewCount });
 
   } catch (error) {
@@ -253,13 +244,13 @@ export async function getInteractionStats(practiceId: number): Promise<ApiSucces
   commentCount: number;
 }>> {
   try {
-    // TODO: 實作 reaction、favorite、share、view 表格後再啟用完整統計
+    // TODO: 實作 reaction、favorite、share 表格後再啟用完整統計
     // 暫時只查詢存在的表格
     const likeCount = 0; // 暫時固定為 0
     const favoriteCount = 0; // 暫時固定為 0
     const shareCount = 0; // 暫時固定為 0
-    const viewCount = 0; // 暫時固定為 0
-    
+    const viewCount = await getViewCount('practice', practiceId);
+
     // 查詢評論數（comments 表格存在）
     const commentCount = await prismaClient.comments.count({
       where: {

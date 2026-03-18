@@ -1018,12 +1018,10 @@ router.get('/me',
 
 /**
  * GET /practices/stats
- * 取得實踐統計資訊
- * 查詢參數：userId（可選）
- * 支援可選身份驗證
+ * 取得實踐統計資訊（僅限本人）
  */
 router.get('/stats',
-  optionalAuth,
+  authenticate,
   practiceController.getUserPracticeStats as RequestHandler);
 
 /**

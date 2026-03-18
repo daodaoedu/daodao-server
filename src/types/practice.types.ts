@@ -162,6 +162,7 @@ export interface UpdatePracticeRequest {
     url?: string;
   }>;
   status?: PracticeStatus;
+  privacyStatus?: 'private' | 'public' | 'delayed';
   isDraft?: boolean;
 }
 
@@ -235,6 +236,7 @@ export interface PracticeQueryParams {
   userId?: number;
   sortBy?: SortField;
   sortOrder?: SortOrder;
+  excludePrivate?: boolean;
 }
 
 export interface CheckInQueryParams {

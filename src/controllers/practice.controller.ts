@@ -236,13 +236,7 @@ export class PracticeController {
    * GET /api/v1/practices/stats
    */
   getUserPracticeStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const userId = req.query.userId
-      ? parseInt(req.query.userId as string)
-      : req.user?.id;
-
-    if (!userId) {
-      throw new BadRequestError('需要指定使用者 ID');
-    }
+    const userId = req.user!.id;
 
     const result = await practiceService.getUserStats(userId);
 
