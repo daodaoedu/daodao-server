@@ -502,6 +502,42 @@ export const myPreferencesApiResponseSchema = z.object({
   description: "我的偏好設定API回應"
 });
 
+// 學習足跡查詢參數 Schema
+export const myFootprintsQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1)
+    .openapi({
+      description: "分頁頁碼，從1開始",
+      example: 1,
+      minimum: 1
+    }),
+  limit: z.coerce.number().min(1).max(100).default(20)
+    .openapi({
+      description: "每頁顯示的足跡數量",
+      example: 20,
+      minimum: 1,
+      maximum: 100
+    })
+}).openapi('MyFootprintsQuery', {
+  description: "個人學習足跡查詢參數"
+});
+
+export type MyFootprintsQueryParams = z.infer<typeof myFootprintsQuerySchema>;
+
+// 學習足跡項目 Schema
+export const myLearningFootprintItemSchema = z.object({
+  id: z.number().int().describe("留言ID"),
+  content: z.string().describe("留言內容"),
+  createdAt: z.string().datetime().describe("留言時間"),
+  practiceId: z.string().uuid().describe("關聯實踐的外部UUID"),
+  practiceTitle: z.string().describe("關聯實踐的標題"),
+  practiceDeleted: z.boolean().describe("關聯實踐是否已刪除")
+}).describe("學習足跡項目").openapi('MyLearningFootprintItem', {
+  description: "學習足跡項目"
+});
+
+// 學習足跡列表回應 Schema
+export const myFootprintsApiResponseSchema = paginatedApiResponseSchema(myLearningFootprintItemSchema);
+
 // 更新偏好設定回應
 export const updatePreferencesApiResponseSchema = z.object({
   success: z.literal(true),
