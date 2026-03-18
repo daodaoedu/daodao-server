@@ -285,6 +285,10 @@ export const commentUserSchema = z.object({
     description: "用戶頭像 URL",
     example: "https://example.com/avatar.jpg",
     format: 'uri'
+  }),
+  customId: z.string().nullable().openapi({
+    description: "用戶自訂 ID，用於 @mention",
+    example: "my_custom_id"
   })
 }).openapi('CommentUser', {
   description: '留言用戶資訊'
