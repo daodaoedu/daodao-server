@@ -91,14 +91,17 @@ const followUser = async (
   });
 
   // Fire-and-forget: P2 UserFollowed event
-  notificationEventService.createEvent({
-    type: 'UserFollowed',
-    actorId: followerId,
-    recipientId: targetId,
-    entityType: 'user',
-    entityId: targetId,
-    priority: 'P2',
-  }).catch(() => {});
+  prisma.users.findUnique({ where: { id: followerId }, select: { nickname: true } })
+    .then(actor => notificationEventService.createEvent({
+      type: 'UserFollowed',
+      actorId: followerId,
+      recipientId: targetId,
+      entityType: 'user',
+      entityId: targetId,
+      payload: { actorName: actor?.nickname ?? null },
+      priority: 'P2',
+    }))
+    .catch(() => {});
 
   return createSuccessResponse({ message: '關注成功' });
 };
@@ -164,15 +167,17 @@ const followPractice = async (
   });
 
   // Fire-and-forget: P2 PracticeFollowed event to practice owner
-  notificationEventService.createEvent({
-    type: 'PracticeFollowed',
-    actorId: followerId,
-    recipientId: practice.user_id,
-    entityType: 'practice',
-    entityId: practiceId,
-    payload: { practice_id: practiceId, practice_title: practice.title },
-    priority: 'P2',
-  }).catch(() => {});
+  prisma.users.findUnique({ where: { id: followerId }, select: { nickname: true } })
+    .then(actor => notificationEventService.createEvent({
+      type: 'PracticeFollowed',
+      actorId: followerId,
+      recipientId: practice.user_id,
+      entityType: 'practice',
+      entityId: practiceId,
+      payload: { actorName: actor?.nickname ?? null, practice_id: practiceId, practice_title: practice.title },
+      priority: 'P2',
+    }))
+    .catch(() => {});
 
   return createSuccessResponse({ message: '關注主題實踐成功' });
 };
