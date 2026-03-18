@@ -22,6 +22,8 @@ import {
   ReactionListItem,
   GetReactionsListResponse,
 } from '../types/reaction.types';
+import { enqueueReactionNotification } from '../queues/reaction-notification.queue';
+import { notificationEventService } from './notification-event.service';
 
 /**
  * 新增或更換反應（UPSERT）
@@ -31,6 +33,16 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
   const { targetType, targetId, userId, reactionType } = params;
 
   try {
+    const existing = await prisma.reactions.findUnique({
+      where: {
+        target_type_target_id_user_id: {
+          target_type: targetType,
+          target_id: targetId,
+          user_id: userId,
+        },
+      },
+    });
+
     await prisma.reactions.upsert({
       where: {
         target_type_target_id_user_id: {
@@ -49,6 +61,53 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
     });
 
     loggerService.info('Reaction upserted', { targetType, targetId, userId, reactionType });
+
+    // 若目標為 practice，且 actor 不是 practice owner，且為新增反應（非更換類型），則排入 reaction 通知 job
+    if (targetType === 'practice' && existing === null) {
+      try {
+        const practice = await prisma.practices.findUnique({
+          where: { id: targetId },
+          select: { user_id: true, title: true, external_id: true },
+        });
+
+        if (practice && practice.user_id !== userId) {
+          // In-app 通知事件（即時）
+          notificationEventService.createEvent({
+            type: 'reaction',
+            actorId: userId,
+            recipientId: practice.user_id,
+            entityType: 'practice',
+            entityId: targetId,
+            payload: {
+              reactionType,
+              practice_title: practice.title ?? '',
+              entity_external_id: practice.external_id ?? '',
+            },
+            priority: 'P2',
+          }).catch(() => {});
+
+          const totalReactionCount = await prisma.reactions.count({
+            where: { target_type: 'practice', target_id: targetId },
+          });
+
+          await enqueueReactionNotification({
+            practiceId: targetId,
+            actorUserId: userId,
+            practiceOwnerId: practice.user_id,
+            practiceTitle: practice.title ?? '',
+            reactionType,
+            totalReactionCount,
+          });
+        }
+      } catch (enqueueError) {
+        // 通知排隊失敗不影響主流程，只記錄警告
+        loggerService.warn('Failed to enqueue reaction notification', {
+          targetId,
+          userId,
+          error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+        });
+      }
+    }
 
     return getReactionsByTarget({ targetType, targetId, currentUserId: userId });
   } catch (error) {
@@ -172,7 +231,7 @@ export async function getReactionsListByTarget(params: GetReactionsByTargetParam
       name: r.users.nickname ?? '未知用戶',
       photoURL: r.users.contacts?.photo_url ?? null,
       reactionType: r.reaction_type as ReactionListItem['reactionType'],
-      reactedAt: r.created_at.toISOString(),
+      reactedAt: (r.created_at ?? new Date()).toISOString(),
     }));
 
     return createSuccessResponse({ items });
