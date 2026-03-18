@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
 import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
+import { getReferralGroup } from '../services/email/welcome-template';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
@@ -402,13 +403,18 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     }
     loggerService.info('User email verification updated', { userId: user.id });
 
-    // 發送歡迎郵件（含 log 記錄）
+    // 發送歡迎郵件（fire-and-forget，不阻斷驗證回應）
     const contact = user.contacts;
     if (contact?.email) {
-      await sendWelcomeEmailWithLog(contact.email, {
+      sendWelcomeEmailWithLog(contact.email, {
         name: user.nickname || 'User',
-        hasCompletedQuiz: false,
+        referralGroup: getReferralGroup(user.referral_source ?? undefined),
         userId: user.id
+      }).catch(error => {
+        loggerService.error('Failed to send welcome email after email verification', {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user.id
+        });
       });
     }
 
@@ -469,13 +475,18 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
       return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
     }
 
-    // 發送歡迎郵件（含 log 記錄）
+    // 發送歡迎郵件（fire-and-forget，不阻斷 redirect 回應）
     const contact = user.contacts;
     if (contact?.email) {
-      await sendWelcomeEmailWithLog(contact.email, {
+      sendWelcomeEmailWithLog(contact.email, {
         name: user.nickname || 'User',
-        hasCompletedQuiz: false,
+        referralGroup: getReferralGroup(user.referral_source ?? undefined),
         userId: user.id
+      }).catch(error => {
+        loggerService.error('Failed to send welcome email after email verification (GET)', {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user.id
+        });
       });
     }
 
