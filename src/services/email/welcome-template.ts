@@ -1,6 +1,6 @@
 /**
  * 歡迎信模板
- * 根據用戶是否完成學習類型測驗，產生不同版本的歡迎信
+ * 根據用戶來源管道群組（referralGroup），產生不同版本的歡迎信
  * @see docs/email/implementation-guide.md
  * @see docs/email/Welcome Letter - 202601.md
  */
@@ -22,41 +22,75 @@ import { escapeHtml, sanitizeUrl } from '../../utils/sanitize';
 import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
 
 /**
+ * 來源管道對應群組的映射表
+ * 注意：此處的 key 必須與 onboarding 表單中 referral_source 欄位的允許值保持一致。
+ * 若新增來源選項，需同步更新此映射表，否則新來源會 fallback 至 'default' 群組。
+ */
+export const REFERRAL_GROUP_MAP: Record<string, 'social-media' | 'community' | 'default'> = {
+  instagram: 'social-media',
+  facebook: 'social-media',
+  linkedin: 'social-media',
+  discord: 'community',
+  friend_referral: 'community',
+};
+
+/**
+ * 根據 referralSource 取得對應的 referralGroup
+ */
+export const getReferralGroup = (referralSource?: string | null): 'social-media' | 'community' | 'default' => {
+  if (!referralSource) return 'default';
+  return REFERRAL_GROUP_MAP[referralSource] ?? 'default';
+};
+
+/**
  * 產生歡迎信模板
- * 根據 hasCompletedQuiz 決定使用哪個版本
+ * 根據 referralGroup 決定使用哪個版本
  */
 export const generateWelcomeEmail = (data: WelcomeEmailData): EmailTemplateContent => {
-  const { name, hasCompletedQuiz, practiceUrl, quizUrl, illustrationUrl, unsubscribeUrl } = data;
+  const { name, referralGroup, practiceUrl, illustrationUrl, unsubscribeUrl } = data;
   const config = getEmailConfig();
 
   const subject = '【島島阿學】歡迎來到島島阿學！';
   const title = '歡迎來到島島阿學';
 
   // 預設值
-  const defaultPracticeUrl = 'https://app.daodao.so/practices/create';
-  const defaultQuizUrl = 'https://daodao.so/quiz';
+  const defaultPracticeUrl = `${config.urls.frontend}/practices`;
   const defaultIllustrationUrl = EMAIL_ASSETS.mascot;
   const defaultUnsubscribeUrl = `${config.urls.frontend}/unsubscribe`;
 
-  // 根據測驗狀態選擇內容
-  const content = hasCompletedQuiz
-    ? generateQuizCompletedContent({
+  // 根據來源群組選擇內容
+  let content: string;
+  let preheader: string;
+
+  switch (referralGroup) {
+    case 'social-media':
+      content = generateSocialMediaContent({
         name,
-        practiceUrl: practiceUrl || defaultPracticeUrl,
-        illustrationUrl: illustrationUrl || defaultIllustrationUrl,
-      })
-    : generateQuizPendingContent({
-        name,
-        quizUrl: quizUrl || defaultQuizUrl,
         practiceUrl: practiceUrl || defaultPracticeUrl,
         illustrationUrl: illustrationUrl || defaultIllustrationUrl,
       });
+      preheader = '歡迎加入島島阿學！找到志同道合的學習夥伴，一起在這裡探索與成長。';
+      break;
+    case 'community':
+      content = generateCommunityContent({
+        name,
+        practiceUrl: practiceUrl || defaultPracticeUrl,
+        illustrationUrl: illustrationUrl || defaultIllustrationUrl,
+      });
+      preheader = '歡迎加入島島阿學！和學習夥伴一起走，學習之路更有力量。';
+      break;
+    default:
+      content = generateDefaultContent({
+        name,
+        practiceUrl: practiceUrl || defaultPracticeUrl,
+        illustrationUrl: illustrationUrl || defaultIllustrationUrl,
+      });
+      preheader = '歡迎加入島島阿學！了解自己的學習類型，開始主題實踐之旅。';
+      break;
+  }
 
-  // 組合完整 HTML
-  const preheader = hasCompletedQuiz
-    ? '歡迎加入島島阿學！開始你的學習生活提案之旅，用 7-30 天輕鬆探索新領域。'
-    : '歡迎加入島島阿學！了解自己的學習類型，開始主題實踐之旅。';
-
+  // 組合完整 HTML（使用低階 generateEmailHead + generateEmailWrapper 而非 generateStandardEmail，
+  // 因為歡迎信需要在 wrapper 內嵌入 generateBanner()，此結構不符合 generateStandardEmail 的假設）
   const html = `${generateEmailHead(title)}
 ${generateEmailWrapper({
   preheader,
@@ -77,15 +111,14 @@ ${generateEmailWrapper({
 };
 
 /**
- * 已做測驗版本內容
- * 簡短引導，直接推薦「主題實踐」
+ * 社群媒體來源版本內容
+ * 強調找到志同道合的學習夥伴
  */
-const generateQuizCompletedContent = (data: {
+const generateSocialMediaContent = (data: {
   name: string;
   practiceUrl: string;
   illustrationUrl: string;
 }): string => {
-  // 安全處理用戶輸入
   const safeName = escapeHtml(data.name);
   const safePracticeUrl = sanitizeUrl(data.practiceUrl);
   const safeIllustrationUrl = sanitizeUrl(data.illustrationUrl);
@@ -105,20 +138,9 @@ const generateQuizCompletedContent = (data: {
     <!-- Intro Paragraph -->
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
-        <td class="text-block" style="padding-bottom: 20px;">
-          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
-            在這個資訊爆炸的時代，我們相信「學習」不該只是為了考取證書或完成課程，而是讓生活更豐富。
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <!-- Transition Text -->
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-      <tr>
         <td class="text-block" style="padding-bottom: 28px;">
           <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
-            為了讓你更輕鬆地展開這段旅程，以下是我們想邀請你做的暖身活動：
+            在社群媒體上認識我們，現在你也是這個充滿活力的學習社群的一員了！在這裡，你可以找到志同道合的學習夥伴，一起探索與成長。
           </p>
         </td>
       </tr>
@@ -129,33 +151,26 @@ const generateQuizCompletedContent = (data: {
       <tr>
         <td class="text-block" style="padding-bottom: 20px;">
           <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: ${EMAIL_COLORS.brandCyan}; line-height: 150%; mso-line-height-rule: exactly;">
-            把「想做」變成「生活」
+            「找到你的學習社群」
           </h3>
         </td>
       </tr>
     </table>
 
-    <!-- Quote Block -->
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="quote-block">
+    <!-- Body -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
-        <td style="padding-top: 10px; padding-bottom: 28px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="border-left: 4px solid ${EMAIL_COLORS.brandCyan}; padding: 14px 18px; background-color: ${EMAIL_COLORS.bgQuote};">
-                <p style="margin: 0; font-size: 15px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
-                  不需要大目標。<br>
-                  試著用我們的「主題實踐」模板，開啟一段 7 到 30 天的小旅程。無論是讀一本書還是練習一個新習慣，重點不在於完成，而在於開始。
-                </p>
-              </td>
-            </tr>
-          </table>
+        <td class="text-block" style="padding-bottom: 28px;">
+          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
+            在社群媒體上認識我們，現在也歡迎你加入這個充滿活力的學習社群，和大家一起分享學習歷程。
+          </p>
         </td>
       </tr>
     </table>
 
     <!-- CTA Button (Orange) -->
     ${generateCtaButton({
-      text: '挑選一個學習生活提案',
+      text: '開始探索社群',
       url: safePracticeUrl,
       color: 'orange',
     })}
@@ -184,7 +199,7 @@ const generateQuizCompletedContent = (data: {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
         <td class="text-block" style="padding-bottom: 16px;">
-          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
+          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 160%;">
             準備好開始美好的學習生活了嗎？
           </p>
         </td>
@@ -195,7 +210,7 @@ const generateQuizCompletedContent = (data: {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
         <td class="text-block" style="padding-bottom: 24px;">
-          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.6;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 160%;">
             若在功能使用上有任何問題和建議，歡迎至 <a href="https://discord.com/invite/8GnqSZZxp7" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">Discord</a> 的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
           </p>
         </td>
@@ -205,18 +220,124 @@ const generateQuizCompletedContent = (data: {
 };
 
 /**
- * 未做測驗版本內容
- * 較詳細引導，包含測驗連結和功能介紹
+ * 社群/朋友介紹來源版本內容
+ * 強調和學習夥伴一起走
  */
-const generateQuizPendingContent = (data: {
+const generateCommunityContent = (data: {
   name: string;
-  quizUrl: string;
   practiceUrl: string;
   illustrationUrl: string;
 }): string => {
-  // 安全處理用戶輸入
   const safeName = escapeHtml(data.name);
-  const safeQuizUrl = sanitizeUrl(data.quizUrl);
+  const safePracticeUrl = sanitizeUrl(data.practiceUrl);
+  const safeIllustrationUrl = sanitizeUrl(data.illustrationUrl);
+
+  return `
+    <!-- Greeting (h2) -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 20px;">
+          <h2 style="margin: 0; font-size: 24px; font-weight: 700; color: ${EMAIL_COLORS.textHeading}; line-height: 150%; mso-line-height-rule: exactly;">
+            Hello ${safeName}，<br>歡迎來到島島阿學！
+          </h2>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Intro Paragraph -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 28px;">
+          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
+            學習這條路，有夥伴陪著走會更有力量。
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Subtitle (h3) -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 20px;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: ${EMAIL_COLORS.brandCyan}; line-height: 150%; mso-line-height-rule: exactly;">
+            「和學習夥伴一起走」
+          </h3>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Body -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 28px;">
+          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 180%;">
+            在這裡，你可以找到正在學習類似事物的夥伴，透過主題實踐一起探索、記錄成長歷程。
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA Button (Cyan) -->
+    ${generateCtaButton({
+      text: '探索主題實踐',
+      url: safePracticeUrl,
+      color: 'cyan',
+    })}
+
+    <!-- Illustration -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="padding-top: 16px; padding-bottom: 32px;">
+          <img src="${safeIllustrationUrl}" alt="島島阿學吉祥物 - 騎著紙飛機的黃色海星" width="160" height="160"
+            class="illustration" style="display: block; width: 160px; height: auto; max-width: 160px;">
+        </td>
+      </tr>
+    </table>
+
+    <!-- Closing Text -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 16px;">
+          <p style="margin: 0; font-size: 16px; font-weight: 500; color: ${EMAIL_COLORS.textPrimary}; line-height: 160%; font-style: italic; mso-line-height-rule: exactly;">
+            在這裡，按照你喜歡的樣子，<br>慢慢走，比較快。
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 16px;">
+          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 160%;">
+            準備好開始美好的學習生活了嗎？
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Discord Feedback -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td class="text-block" style="padding-bottom: 24px;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 160%;">
+            若在功能使用上有任何問題和建議，歡迎至 <a href="https://discord.com/invite/8GnqSZZxp7" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">Discord</a> 的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
+};
+
+/**
+ * 預設版本內容（原 generateQuizPendingContent）
+ * 較詳細引導，包含功能介紹
+ */
+const generateDefaultContent = (data: {
+  name: string;
+  practiceUrl: string;
+  illustrationUrl: string;
+}): string => {
+  const safeName = escapeHtml(data.name);
   const safePracticeUrl = sanitizeUrl(data.practiceUrl);
   const safeIllustrationUrl = sanitizeUrl(data.illustrationUrl);
 
@@ -264,33 +385,14 @@ const generateQuizPendingContent = (data: {
       </tr>
     </table>
 
-    <!-- Feature Card 1: Quiz -->
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 16px;">
-      <tr>
-        <td style="border: 1px solid ${EMAIL_COLORS.divider}; border-radius: 8px; padding: 16px;">
-          <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: ${EMAIL_COLORS.textPrimary};">
-            了解自己的學習類型
-          </p>
-          <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.5;">
-            來做學習類型測驗，找到更適合的學習策略
-          </p>
-          ${generateCtaButton({
-            text: '開始測驗',
-            url: safeQuizUrl,
-            color: 'cyan',
-          })}
-        </td>
-      </tr>
-    </table>
-
-    <!-- Feature Card 2: Practice -->
+    <!-- Feature Card: Practice -->
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td style="border: 1px solid ${EMAIL_COLORS.divider}; border-radius: 8px; padding: 16px;">
           <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: ${EMAIL_COLORS.textPrimary};">
             主題實踐
           </p>
-          <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.5;">
+          <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 150%;">
             登入「我的小島」，用 7-30 天輕鬆探索新領域，也歡迎從我們的模板獲得靈感哦！
           </p>
           ${generateCtaButton({
@@ -306,7 +408,7 @@ const generateQuizPendingContent = (data: {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
         <td class="text-block" style="padding-bottom: 24px;">
-          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.6;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 160%;">
             還有，別忘了完成帳號設定和偏好設定，獲得更好的體驗...
           </p>
         </td>
@@ -327,7 +429,7 @@ const generateQuizPendingContent = (data: {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
         <td class="text-block" style="padding-bottom: 16px;">
-          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.6;">
+          <p style="margin: 0; font-size: 16px; font-weight: 400; color: ${EMAIL_COLORS.textPrimary}; line-height: 160%;">
             準備好開始美好的學習生活了嗎？
           </p>
         </td>
@@ -338,7 +440,7 @@ const generateQuizPendingContent = (data: {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
       <tr>
         <td class="text-block" style="padding-bottom: 24px;">
-          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.6;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; color: ${EMAIL_COLORS.textSecondary}; line-height: 160%;">
             若在功能使用上有任何問題和建議，歡迎至 <a href="https://discord.com/invite/8GnqSZZxp7" style="color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">Discord</a> 的 <strong style="color: ${EMAIL_COLORS.textPrimary};">#島島網站回饋</strong> 頻道讓我們知道唷！
           </p>
         </td>

@@ -5,22 +5,20 @@
 
 /**
  * 歡迎信資料
- * 根據 hasCompletedQuiz 決定使用哪個版本：
- * - true: 已做測驗版本（簡短，1 個 CTA）
- * - false: 未做測驗版本（詳細，2 個 CTA）
+ * 根據 referralGroup 決定使用哪個版本：
+ * - 'social-media': 社群媒體來源版本（強調學習社群）
+ * - 'community': 社群/朋友介紹版本（強調學習夥伴）
+ * - 'default': 預設版本（詳細引導）
  */
 export interface WelcomeEmailData {
   /** 使用者名稱 */
   name: string;
 
-  /** 是否已完成學習類型測驗 */
-  hasCompletedQuiz: boolean;
+  /** 來源管道群組（由 referral_source 決定） */
+  referralGroup: 'social-media' | 'community' | 'default';
 
-  /** 主題實踐連結（兩版本共用） */
+  /** 主題實踐連結 */
   practiceUrl?: string;
-
-  /** 學習類型測驗連結（僅未做測驗版本使用） */
-  quizUrl?: string;
 
   /** 海星插圖 URL */
   illustrationUrl?: string;
