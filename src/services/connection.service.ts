@@ -186,15 +186,17 @@ const sendRequest = async (
     select: { id: true },
   });
   if (newRequest) {
-    notificationEventService.createEvent({
-      type: 'Connect',
-      actorId: requesterId,
-      recipientId: receiverId,
-      entityType: 'connection',
-      entityId: newRequest.id,
-      payload: { intent: intent?.trim() ?? null, connection_request_id: newRequest.id },
-      priority: 'P1',
-    }).catch(() => {});
+    prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
+      .then(actor => notificationEventService.createEvent({
+        type: 'Connect',
+        actorId: requesterId,
+        recipientId: receiverId,
+        entityType: 'connection',
+        entityId: newRequest.id,
+        payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: newRequest.id },
+        priority: 'P1',
+      }))
+      .catch(() => {});
   }
 
   return createSuccessResponse({ message: '連結請求已送出' });
@@ -243,14 +245,17 @@ const acceptRequest = async (
   }
 
   // Fire-and-forget: P1 ConnectAccepted event — notify the original requester
-  notificationEventService.createEvent({
-    type: 'ConnectAccepted',
-    actorId: currentUserId,
-    recipientId: request.requester_id,
-    entityType: 'connection',
-    entityId: requestId,
-    priority: 'P1',
-  }).catch(() => {});
+  prisma.users.findUnique({ where: { id: currentUserId }, select: { nickname: true } })
+    .then(actor => notificationEventService.createEvent({
+      type: 'ConnectAccepted',
+      actorId: currentUserId,
+      recipientId: request.requester_id,
+      entityType: 'connection',
+      entityId: requestId,
+      payload: { actorName: actor?.nickname ?? null },
+      priority: 'P1',
+    }))
+    .catch(() => {});
 
   // 更新接收者的 Connect 通知狀態，讓重整後仍顯示「已同意」
   prisma.notifications.updateMany({
