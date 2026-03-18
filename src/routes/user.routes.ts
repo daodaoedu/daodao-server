@@ -43,6 +43,7 @@ import {
   preferencesQuerySchema,
   updatePreferencesSchema
 } from '../validators/me.validators';
+import { userFollowRouter } from './follow.routes';
 
 const router = Router();
 
@@ -589,6 +590,53 @@ router.get('/me/activity-stats',
 );
 
 /**
+ * GET /api/v1/users/settings-summary - 獲取設定頁完整度摘要
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/settings-summary',
+  tags: ['Me'],
+  summary: '獲取設定頁完整度摘要',
+  description: '回傳用戶個人設定的完整度，包含 onboarding、偏好、帳號、公開資訊四個區塊的完成狀態',
+  responses: {
+    200: {
+      description: '成功獲取設定完整度',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              completed: z.number(),
+              total: z.number(),
+              sections: z.object({
+                onboarding: z.boolean(),
+                preferences: z.boolean(),
+                account: z.boolean(),
+                publicInfo: z.boolean()
+              })
+            }),
+            timestamp: z.string()
+          })
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * GET /users/settings-summary
+ * 獲取設定頁完整度摘要
+ * 需要身份驗證
+ */
+router.get('/settings-summary',
+  authenticate,
+  userController.getSettingsSummary as RequestHandler
+);
+
+/**
  * GET /api/v1/users/preferences/available - 獲取所有可用的偏好選項
  */
 registry.registerPath({
@@ -617,6 +665,75 @@ registry.registerPath({
  */
 router.get('/preferences/available',
   userController.getAvailablePreferences as RequestHandler
+);
+
+/**
+ * GET /api/v1/users/profile/{identifier} - 取得 Profile 聚合資料
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/profile/{identifier}',
+  tags: ['Users'],
+  summary: '取得 Profile 聚合資料',
+  description: '根據 custom_id 或 external_id 取得用戶 Profile 聚合資訊，包含近期實踐數、共同 circle 數等。無需登入，但帶 JWT 可取得 commonCirclesCount。',
+  request: {
+    params: z.object({
+      identifier: z.string().openapi({
+        description: '用戶 custom_id 或 external_id（UUID）',
+        example: 'my_custom_id'
+      })
+    }).openapi({
+      description: 'Profile 查詢路徑參數'
+    })
+  },
+  responses: {
+    200: {
+      description: '成功取得 Profile 聚合資料',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              id: z.string(),
+              name: z.string().nullable(),
+              customId: z.string().nullable(),
+              photoURL: z.string().nullable(),
+              headline: z.string().nullable(),
+              educationStage: z.string().nullable(),
+              recentPracticeCount: z.number(),
+              commonCirclesCount: z.number().nullable(),
+              hideConnectionsCount: z.boolean(),
+              connectionsCount: z.number().nullable(),
+              contactList: z.object({
+                instagram: z.string().nullable(),
+                discord: z.string().nullable(),
+                line: z.string().nullable(),
+                facebook: z.string().nullable(),
+                threads: z.string().nullable(),
+                linkedin: z.string().nullable(),
+                github: z.string().nullable(),
+                website: z.string().nullable()
+              })
+            }),
+            timestamp: z.string()
+          })
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /users/profile/:identifier
+ * 取得 Profile 聚合資料
+ * 路徑參數：identifier - 用戶 custom_id 或 external_id
+ * 無需強制登入，但若帶 JWT 則解析 viewerId
+ */
+router.get('/profile/:identifier',
+  optionalAuth,
+  userController.getUserProfile as RequestHandler
 );
 
 /**
@@ -835,6 +952,12 @@ router.delete('/:id',
   requireAdmin,
   userController.deleteUser as RequestHandler
 );
+
+// ============================================================================
+// 關注子路由
+// ============================================================================
+
+router.use('/', userFollowRouter);
 
 // ============================================================================
 // Express 路由定義完成
