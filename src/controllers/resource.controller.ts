@@ -8,6 +8,8 @@ import { asyncHandler, BadRequestError, NotFoundError } from '../middleware/erro
 import * as resourceService from '../services/resource.service';
 import * as tagService from '../services/tag.service';
 import type { tags } from '../../generated/prisma';
+import { recordView as trackView } from '../services/view-tracking.service';
+import { prisma } from '../services/database/prisma.service';
 
 /**
  * 獲取用戶 ID，開發環境下提供測試用戶
@@ -43,7 +45,8 @@ import {
   validateUpdateResourceResponse,
   validateGetResourceStatsResponse,
   validateGetResourceTagsResponse,
-  validateDeleteResourceResponse
+  validateDeleteResourceResponse,
+  validateRecordResourceViewResponse
 } from '../validators/resource.validator';
 
 /**
@@ -287,6 +290,30 @@ export const getResourceTags = asyncHandler(async (req: Request, res: Response) 
   res.json(validatedResponse);
 });
 
+/**
+ * 記錄資源瀏覽
+ * POST /resources/:resourceId/view
+ */
+export const recordResourceView = asyncHandler(async (req: Request, res: Response) => {
+  const { resourceId } = req.params;
+  const userId = getUserIdOrTestUser(req);
+
+  // 以 external_id (UUID) 查詢內部數字 ID
+  const resource = await prisma.resources.findFirst({
+    where: { external_id: resourceId, deleted_at: null },
+    select: { id: true }
+  });
+
+  if (!resource) {
+    throw new NotFoundError('資源不存在');
+  }
+
+  const viewCount = await trackView('resource', resource.id, userId);
+
+  const validatedResponse = validateRecordResourceViewResponse({ success: true, data: { viewCount }, timestamp: new Date().toISOString() });
+  res.json(validatedResponse);
+});
+
 // 導出所有控制器函數
 export default {
   getResources,
@@ -296,5 +323,6 @@ export default {
   updateResourceStatus,
   deleteResource,
   getResourceStats,
-  getResourceTags
+  getResourceTags,
+  recordResourceView
 };

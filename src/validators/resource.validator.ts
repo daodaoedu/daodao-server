@@ -607,6 +607,15 @@ export const deleteResourceResponseSchema = apiSuccessResponseSchema(
   })
 );
 
+export const recordResourceViewResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    viewCount: z.number().openapi({
+      description: '目前瀏覽數',
+      example: 42
+    })
+  })
+);
+
 // ===================================
 // 🎯 註冊 schemas 到 OpenAPI registry
 // ===================================
@@ -634,3 +643,4 @@ export const validateUpdateResourceResponse = (data: unknown): z.infer<typeof up
 export const validateGetResourceStatsResponse = (data: unknown): z.infer<typeof getResourceStatsResponseSchema> => getResourceStatsResponseSchema.parse(data);
 export const validateGetResourceTagsResponse = (data: unknown): z.infer<typeof getResourceTagsResponseSchema> => getResourceTagsResponseSchema.parse(data);
 export const validateDeleteResourceResponse = (data: unknown): z.infer<typeof deleteResourceResponseSchema> => deleteResourceResponseSchema.parse(data);
+export const validateRecordResourceViewResponse = (data: unknown): z.infer<typeof recordResourceViewResponseSchema> => recordResourceViewResponseSchema.parse(data);
