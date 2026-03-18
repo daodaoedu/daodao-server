@@ -1548,20 +1548,16 @@ components:
             - 王小明
             - Alice
             - 新成員
-        hasCompletedQuiz:
-          type: boolean
-          description: 是否已完成學習類型測驗（決定使用哪個版本歡迎信）
-          example: false
+        referralSource:
+          type: string
+          maxLength: 100
+          description: 用戶來源管道（如 instagram, discord, friend_referral 等），用於決定歡迎信版本
+          example: instagram
         practiceUrl:
           type: string
           format: uri
-          description: 主題實踐連結（兩版本共用）
-          example: https://daodao.so/practice/create
-        quizUrl:
-          type: string
-          format: uri
-          description: 學習類型測驗連結（僅未做測驗版本使用）
-          example: https://daodao.so/quiz
+          description: 主題實踐連結
+          example: https://daodao.so/practices
         illustrationUrl:
           type: string
           format: uri
@@ -1581,8 +1577,7 @@ components:
       required:
         - email
         - name
-        - hasCompletedQuiz
-      description: 寄送歡迎信給新用戶的請求資料。根據 hasCompletedQuiz 決定使用哪個版本：已做測驗版本（簡短，1 個 CTA）或未做測驗版本（詳細，2 個 CTA）
+      description: 寄送歡迎信給新用戶的請求資料。根據 referralSource 決定使用哪個版本：social-media（找到你的學習社群）、community（和學習夥伴一起走）或 default（詳細引導）
     PasswordResetEmailRequest:
       type: object
       properties:
@@ -3710,7 +3705,7 @@ components:
         personalSlogan:
           type: string
           minLength: 1
-          maxLength: 200
+          maxLength: 150
           description: 個人標語 (一句話介紹自己)
           example: 終身學習者,熱愛程式設計與教育
           examples: &ref_7
@@ -3837,6 +3832,7 @@ components:
           example: true
         selfIntroduction:
           type: string
+          maxLength: 350
           description: 自我介紹
           example: 我是一名前端工程師，熱愛學習新技術
         share:
@@ -3937,7 +3933,7 @@ components:
         personalSlogan:
           type: string
           minLength: 1
-          maxLength: 200
+          maxLength: 150
           description: 個人標語 (一句話介紹自己)
           example: 終身學習者,熱愛程式設計與教育
           examples: *ref_7
@@ -3957,6 +3953,10 @@ components:
           description: 資訊來源 (如何得知島島阿學)
           example: instagram
           examples: *ref_8
+        hideConnectionsCount:
+          type: boolean
+          description: 是否隱藏人脈數量
+          example: false
         customId:
           type: string
           minLength: 3
@@ -5643,11 +5643,17 @@ components:
           format: uri
           description: 用戶頭像 URL
           example: https://example.com/avatar.jpg
+        customId:
+          type: string
+          nullable: true
+          description: 用戶自訂 ID，用於 @mention
+          example: my_custom_id
       required:
         - id
         - name
         - roleList
         - photoURL
+        - customId
       description: 留言用戶資訊
     CommentBase:
       type: object
@@ -8446,6 +8452,210 @@ components:
       required:
         - userId
       description: 用戶 ID 參數
+    FollowTargetBody:
+      type: object
+      properties:
+        targetType:
+          type: string
+          enum:
+            - user
+            - practice
+          description: 關注對象類型
+          example: user
+        targetId:
+          type: string
+          minLength: 1
+          description: 關注對象的唯一識別碼（external_id）
+          example: abc123
+      required:
+        - targetType
+        - targetId
+    FollowListApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FollowItem'
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    FollowItem:
+      type: object
+      properties:
+        userId:
+          type: number
+          description: 用戶內部 ID
+        externalId:
+          type: string
+          description: 用戶 external_id
+        nickname:
+          type: string
+          nullable: true
+          description: 用戶暱稱
+        followedAt:
+          type: string
+          description: 關注時間 ISO 8601
+      required:
+        - userId
+        - externalId
+        - nickname
+        - followedAt
+    FollowActionApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
     ReactionCount:
       type: object
       properties:
@@ -8502,9 +8712,11 @@ components:
         reactionType:
           type: string
           enum:
-            - useful
-            - fire
+            - encourage
             - touched
+            - fire
+            - useful
+            - sameHere
             - curious
           description: 反應類型
           example: fire
@@ -8537,6 +8749,44 @@ components:
         - targetType
         - targetId
       description: 刪除反應的請求資料
+    ReactionListItem:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: 用戶外部 ID（UUID）
+        name:
+          type: string
+          description: 用戶名稱
+        photoURL:
+          type: string
+          nullable: true
+          description: 用戶頭像 URL
+        reactionType:
+          type: string
+          description: 反應類型
+          example: fire
+        reactedAt:
+          type: string
+          description: 反應時間（ISO 8601）
+      required:
+        - userId
+        - name
+        - photoURL
+        - reactionType
+        - reactedAt
+      description: 單筆用戶反應資料
+    GetReactionsListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReactionListItem'
+          description: 反應列表
+      required:
+        - items
+      description: 個別用戶反應列表回應
     AdminUserListQuery:
       type: object
       properties:
@@ -9357,6 +9607,785 @@ components:
         code: TW
         name: Taiwan
         nameEn: Taiwan
+    NotificationItem:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 通知 ID
+          example: 1
+        type:
+          type: string
+          description: 通知類型
+          example: buddy_request
+        entity_type:
+          type: string
+          nullable: true
+          description: 關聯實體類型
+          example: practice
+        entity_id:
+          type: string
+          nullable: true
+          description: 關聯實體 ID
+          example: '550e8400'
+        priority:
+          type: string
+          description: 優先級
+          example: normal
+        is_read:
+          type: boolean
+          description: 是否已讀
+          example: false
+        aggregation_key:
+          type: string
+          nullable: true
+          description: 聚合鍵
+          example: null
+        aggregation_count:
+          type: number
+          description: 聚合數量
+          example: 1
+        created_at:
+          type: string
+          description: 建立時間（ISO 8601）
+          example: '2024-01-15T10:30:00.000Z'
+        actor:
+          $ref: '#/components/schemas/NotificationActor'
+      required:
+        - id
+        - type
+        - entity_type
+        - entity_id
+        - priority
+        - is_read
+        - aggregation_key
+        - aggregation_count
+        - created_at
+        - actor
+    NotificationActor:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: number
+          description: 發送者 ID
+          example: 42
+        nickname:
+          type: string
+          nullable: true
+          description: 發送者暱稱
+          example: 小明
+      required:
+        - id
+        - nickname
+      description: 發送者資訊
+    NotificationListData:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationItem'
+          description: 通知列表
+        nextCursor:
+          type: string
+          nullable: true
+          description: 下一頁游標
+          example: null
+        unreadCount:
+          type: number
+          description: 未讀通知數
+          example: 3
+      required:
+        - notifications
+        - nextCursor
+        - unreadCount
+    NotificationListApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          allOf:
+            - $ref: '#/components/schemas/NotificationListData'
+            - description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    NotificationPreferencesApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationPreferenceItem'
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    NotificationPreferenceItem:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 通知類型
+          example: buddy_request
+        channel:
+          type: string
+          description: 通知渠道
+          example: N01
+        isEnabled:
+          type: boolean
+          description: 是否啟用
+          example: true
+      required:
+        - type
+        - channel
+        - isEnabled
+    SendConnectionRequestBody:
+      type: object
+      properties:
+        receiverExternalId:
+          type: string
+          minLength: 1
+          description: 收到請求的用戶 external_id
+          example: abc123
+        intent:
+          type: string
+          maxLength: 50
+          description: 連結原因（標準門檻下必填，最多 50 字）
+          example: 我們都在學 React，希望能互相鼓勵
+        contextPracticeExternalId:
+          type: string
+          description: 從主題實踐頁發出時帶入的實踐 external_id（選填）
+      required:
+        - receiverExternalId
+    ConnectionListApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectionItem'
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    ConnectionItem:
+      type: object
+      properties:
+        connectionId:
+          type: number
+        userId:
+          type: number
+        externalId:
+          type: string
+        nickname:
+          type: string
+          nullable: true
+        connectedAt:
+          type: string
+      required:
+        - connectionId
+        - userId
+        - externalId
+        - nickname
+        - connectedAt
+    ConnectionRequestListApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectionRequestItem'
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    ConnectionRequestItem:
+      type: object
+      properties:
+        requestId:
+          type: number
+        requesterExternalId:
+          type: string
+        requesterNickname:
+          type: string
+          nullable: true
+        intent:
+          type: string
+          nullable: true
+        interactionCount:
+          type: number
+        createdAt:
+          type: string
+      required:
+        - requestId
+        - requesterExternalId
+        - requesterNickname
+        - intent
+        - interactionCount
+        - createdAt
+    ConnectionActionApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    CreateBuddyRequestBody:
+      type: object
+      properties:
+        receiverExternalId:
+          type: string
+          minLength: 1
+          description: 被請求的用戶 external_id
+          example: abc123
+      required:
+        - receiverExternalId
+    BuddyRequestListApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuddyRequestItem'
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    BuddyRequestItem:
+      type: object
+      properties:
+        requestId:
+          type: number
+        requesterExternalId:
+          type: string
+        requesterNickname:
+          type: string
+          nullable: true
+        practiceId:
+          type: number
+        practiceTitle:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - requestId
+        - requesterExternalId
+        - requesterNickname
+        - practiceId
+        - practiceTitle
+        - createdAt
+    BuddyRequestActionApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
     MyPracticeItem:
       type: object
       properties:
@@ -9489,6 +10518,37 @@ components:
         - createdAt
         - tags
       description: 我的實踐項目
+    MyLearningFootprintItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 留言ID
+        content:
+          type: string
+          description: 留言內容
+        createdAt:
+          type: string
+          format: date-time
+          description: 留言時間
+        practiceId:
+          type: string
+          format: uuid
+          description: 關聯實踐的外部UUID
+        practiceTitle:
+          type: string
+          description: 關聯實踐的標題
+        practiceDeleted:
+          type: boolean
+          description: 關聯實踐是否已刪除
+      required:
+        - id
+        - content
+        - createdAt
+        - practiceId
+        - practiceTitle
+        - practiceDeleted
+      description: 學習足跡項目
     UpdatePreferencesRequest:
       type: object
       properties:
@@ -10783,6 +11843,147 @@ components:
             name: Japan
             nameEn: Japan
         timestamp: '2024-01-15T10:30:00.000Z'
+    NotificationActionApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    UpdateNotificationPreferencesBody:
+      type: object
+      properties:
+        globalEnabled:
+          type: boolean
+          description: 是否全域啟用通知
+          example: true
+        preferences:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                description: 通知類型
+                example: buddy_request
+              channel:
+                type: string
+                enum:
+                  - N01
+                  - N02
+                  - N03
+                description: 通知渠道（N01=Email, N02=In-App, N03=Push）
+                example: N01
+              isEnabled:
+                type: boolean
+                description: 是否啟用
+                example: true
+            required:
+              - type
+              - channel
+              - isEnabled
+          description: 通知偏好設定列表
+    UpdateConnectionRequestBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - accept
+            - reject
+          description: 對連結請求的回應動作
+          example: accept
+      required:
+        - action
+    UpdateBuddyRequestBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - accepted
+            - ignored
+          description: 對 Buddy 請求的回應動作
+          example: accepted
+      required:
+        - status
   parameters: {}
 paths:
   /api/v1/resources:
@@ -11832,6 +13033,118 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/resources/{resourceId}/view:
+    post:
+      tags:
+        - Resources
+      summary: 記錄資源瀏覽
+      description: 記錄使用者瀏覽資源事件（24h 去重）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: 資源 ID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 資源 ID
+          name: resourceId
+          in: path
+      responses:
+        '200':
+          description: 記錄成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      viewCount:
+                        type: number
+                        description: 目前瀏覽數
+                        example: 42
+                    required:
+                      - viewCount
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/resources/{resourceId}/tags:
     get:
       tags:
@@ -14749,6 +16062,168 @@ paths:
                 description: 更新偏好設定API回應
         '400':
           $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/me/footprints:
+    get:
+      tags:
+        - Me
+      summary: 取得我的學習足跡
+      description: 取得當前用戶在實踐上留下的留言（學習足跡），依留言時間倒序排列，支援分頁
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: number
+            minimum: 1
+            default: 1
+            description: 分頁頁碼，從1開始
+            example: 1
+          required: false
+          description: 分頁頁碼，從1開始
+          name: page
+          in: query
+        - schema:
+            type: number
+            minimum: 1
+            maximum: 100
+            default: 20
+            description: 每頁顯示的足跡數量
+            example: 20
+          required: false
+          description: 每頁顯示的足跡數量
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功獲取學習足跡列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MyLearningFootprintItem'
+                    description: Array of paginated data items
+                  pagination:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                        minimum: 1
+                        description: Current page number (1-based)
+                      totalPages:
+                        type: integer
+                        minimum: 0
+                        description: Total number of pages
+                      totalItems:
+                        type: integer
+                        minimum: 0
+                        description: Total number of items across all pages
+                      itemsPerPage:
+                        type: integer
+                        minimum: 1
+                        description: Number of items per page
+                      hasNext:
+                        type: boolean
+                        description: Whether there are more pages after current page
+                      hasPrev:
+                        type: boolean
+                        description: Whether there are pages before current page
+                    required:
+                      - currentPage
+                      - totalPages
+                      - totalItems
+                      - itemsPerPage
+                      - hasNext
+                      - hasPrev
+                    description: Pagination information
+                    examples: *ref_26
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - pagination
+                  - timestamp
+                description: Paginated response format for page-based pagination
+                examples:
+                  - success: true
+                    data:
+                      - id: 1
+                        title: React 入門教程
+                        category: 前端開發
+                        createdAt: '2024-01-10T10:00:00Z'
+                      - id: 2
+                        title: Vue.js 進階指南
+                        category: 前端開發
+                        createdAt: '2024-01-11T10:00:00Z'
+                    pagination:
+                      currentPage: 1
+                      totalPages: 5
+                      totalItems: 50
+                      itemsPerPage: 10
+                      hasNext: true
+                      hasPrev: false
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      searchTime: 45
+                      cacheHit: false
+                      categoryCounts:
+                        前端開發: 25
+                        後端開發: 18
+                        資料科學: 7
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -20809,6 +22284,66 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/follows:
+    post:
+      tags:
+        - Follow
+      summary: 關注用戶或主題實踐
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FollowTargetBody'
+      responses:
+        '201':
+          description: 關注成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowActionApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/follows/{targetType}/{targetId}:
+    delete:
+      tags:
+        - Follow
+      summary: 取消關注
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - user
+              - practice
+          required: true
+          name: targetType
+          in: path
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: targetId
+          in: path
+      responses:
+        '200':
+          description: 取消關注成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowActionApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/users:
     get:
       tags:
@@ -22196,6 +23731,61 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/users/settings-summary:
+    get:
+      tags:
+        - Me
+      summary: 獲取設定頁完整度摘要
+      description: 回傳用戶個人設定的完整度，包含 onboarding、偏好、帳號、公開資訊四個區塊的完成狀態
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功獲取設定完整度
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      completed:
+                        type: number
+                      total:
+                        type: number
+                      sections:
+                        type: object
+                        properties:
+                          onboarding:
+                            type: boolean
+                          preferences:
+                            type: boolean
+                          account:
+                            type: boolean
+                          publicInfo:
+                            type: boolean
+                        required:
+                          - onboarding
+                          - preferences
+                          - account
+                          - publicInfo
+                    required:
+                      - completed
+                      - total
+                      - sections
+                  timestamp:
+                    type: string
+                required:
+                  - success
+                  - data
+                  - timestamp
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/users/preferences/available:
     get:
       tags:
@@ -22348,6 +23938,119 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/users/profile/{identifier}:
+    get:
+      tags:
+        - Users
+      summary: 取得 Profile 聚合資料
+      description: 根據 custom_id 或 external_id 取得用戶 Profile 聚合資訊，包含近期實踐數、共同 circle 數等。無需登入，但帶 JWT 可取得 commonCirclesCount。
+      parameters:
+        - schema:
+            type: string
+            description: 用戶 custom_id 或 external_id（UUID）
+            example: my_custom_id
+          required: true
+          description: 用戶 custom_id 或 external_id（UUID）
+          name: identifier
+          in: path
+      responses:
+        '200':
+          description: 成功取得 Profile 聚合資料
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                        nullable: true
+                      customId:
+                        type: string
+                        nullable: true
+                      photoURL:
+                        type: string
+                        nullable: true
+                      headline:
+                        type: string
+                        nullable: true
+                      educationStage:
+                        type: string
+                        nullable: true
+                      recentPracticeCount:
+                        type: number
+                      commonCirclesCount:
+                        type: number
+                        nullable: true
+                      hideConnectionsCount:
+                        type: boolean
+                      connectionsCount:
+                        type: number
+                        nullable: true
+                      contactList:
+                        type: object
+                        properties:
+                          instagram:
+                            type: string
+                            nullable: true
+                          discord:
+                            type: string
+                            nullable: true
+                          line:
+                            type: string
+                            nullable: true
+                          facebook:
+                            type: string
+                            nullable: true
+                          threads:
+                            type: string
+                            nullable: true
+                          linkedin:
+                            type: string
+                            nullable: true
+                          github:
+                            type: string
+                            nullable: true
+                          website:
+                            type: string
+                            nullable: true
+                        required:
+                          - instagram
+                          - discord
+                          - line
+                          - facebook
+                          - threads
+                          - linkedin
+                          - github
+                          - website
+                    required:
+                      - id
+                      - name
+                      - customId
+                      - photoURL
+                      - headline
+                      - educationStage
+                      - recentPracticeCount
+                      - commonCirclesCount
+                      - hideConnectionsCount
+                      - connectionsCount
+                      - contactList
+                  timestamp:
+                    type: string
+                required:
+                  - success
+                  - data
+                  - timestamp
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/users/{id}:
@@ -23837,6 +25540,122 @@ paths:
                   - timestamp
                 description: Standard success response format
                 examples: *ref_81
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/reactions/list:
+    get:
+      tags:
+        - Reactions
+      summary: 取得個別用戶反應列表
+      description: 取得指定目標的每位反應用戶詳細資料（含名稱、頭像、反應類型、時間）
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - practice
+              - comment
+            description: 反應目標類型
+            example: practice
+          required: true
+          description: 反應目標類型
+          name: targetType
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            description: 目標外部 ID（UUID）
+            example: 32859587-f159-43fd-93e7-fcc890661781
+          required: true
+          description: 目標外部 ID（UUID）
+          name: targetId
+          in: query
+      responses:
+        '200':
+          description: 成功取得反應列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/GetReactionsListResponse'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -26279,6 +28098,12 @@ paths:
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
                   examples: *ref_18
+                privacyStatus:
+                  type: string
+                  enum:
+                    - private
+                    - public
+                    - delayed
                 isDraft:
                   type: boolean
                   description: '是否存為草稿（true: 設為草稿, false: 發布）'
@@ -32842,6 +34667,498 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetCountriesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/notifications/unsubscribe:
+    get:
+      tags:
+        - Notification
+      summary: 取消訂閱 Email 通知
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: token
+          in: query
+      responses:
+        '200':
+          description: 退訂成功 HTML 頁面
+          content:
+            text/html:
+              schema:
+                type: object
+                properties:
+                  html:
+                    type: string
+                required:
+                  - html
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/notifications/preferences:
+    get:
+      tags:
+        - Notification
+      summary: 取得通知偏好設定
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferencesApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Notification
+      summary: 更新通知偏好設定
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferencesBody'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationActionApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/notifications/read-all:
+    patch:
+      tags:
+        - Notification
+      summary: 全部標記已讀
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationActionApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/notifications/{id}/read:
+    patch:
+      tags:
+        - Notification
+      summary: 標記單則通知已讀
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            description: 通知 ID
+            example: 1
+          required: true
+          description: 通知 ID
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationActionApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/notifications:
+    get:
+      tags:
+        - Notification
+      summary: 取得 In-App 通知列表（含 cursor 分頁與未讀數）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: 分頁游標（上一頁最後一筆通知的 cursor）
+          required: false
+          description: 分頁游標（上一頁最後一筆通知的 cursor）
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            description: 每頁筆數（1-100，預設 20）
+            example: 20
+          required: false
+          description: 每頁筆數（1-100，預設 20）
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/connections/request:
+    post:
+      tags:
+        - Connection
+      summary: 發送連結請求
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendConnectionRequestBody'
+      responses:
+        '201':
+          description: 請求已送出
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionActionApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/connections/request/{requestId}:
+    patch:
+      tags:
+        - Connection
+      summary: 接受或拒絕連結請求
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            description: 連結請求 ID
+            example: 1
+          required: true
+          description: 連結請求 ID
+          name: requestId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConnectionRequestBody'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionActionApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Connection
+      summary: 撤回連結請求
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            description: 連結請求 ID
+            example: 1
+          required: true
+          description: 連結請求 ID
+          name: requestId
+          in: path
+      responses:
+        '200':
+          description: 撤回成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionActionApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/connections/{userId}:
+    delete:
+      tags:
+        - Connection
+      summary: 解除連結（取消夥伴關係）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            description: 用戶 external_id
+          required: true
+          description: 用戶 external_id
+          name: userId
+          in: path
+      responses:
+        '200':
+          description: 解除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionActionApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/connections:
+    get:
+      tags:
+        - Connection
+      summary: 取得我的夥伴列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionListApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/connections/requests/incoming:
+    get:
+      tags:
+        - Connection
+      summary: 取得收到的連結請求
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionRequestListApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/connections/requests/outgoing:
+    get:
+      tags:
+        - Connection
+      summary: 取得發出的連結請求
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionRequestListApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/buddy-requests/{id}:
+    patch:
+      tags:
+        - BuddyRequest
+      summary: 接受或忽略 Buddy 請求
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            description: Buddy 請求 ID
+            example: 1
+          required: true
+          description: Buddy 請求 ID
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBuddyRequestBody'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuddyRequestActionApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/buddy-requests:
+    get:
+      tags:
+        - BuddyRequest
+      summary: 查詢收到的待處理 Buddy 請求列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuddyRequestListApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/practices/{id}/buddy-requests:
+    post:
+      tags:
+        - BuddyRequest
+      summary: 發送 Buddy 請求
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            description: 實踐 external_id
+            example: practice-uuid-123
+          required: true
+          description: 實踐 external_id
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBuddyRequestBody'
+      responses:
+        '201':
+          description: 請求已送出
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuddyRequestActionApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/health:

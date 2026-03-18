@@ -5,6 +5,7 @@
 
 import { Request, Response } from 'express';
 import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
+import { getReferralGroup } from '../services/email/welcome-template';
 import type { EmailSendResult } from '../services/email/email.service';
 import {
   createEmailLog,
@@ -13,7 +14,10 @@ import {
   prepareBulkEmailLogs,
 } from '../services/email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
+import { EMAIL_ERROR_CODES, getErrorMessage } from '../constants/errors';
 import { emailHistoryService } from '../services/email-history.service';
+
+const EMAIL_ALREADY_SENT_MESSAGE = getErrorMessage(EMAIL_ERROR_CODES.ALREADY_SENT);
 import { prisma } from '../services/database/prisma.service';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
@@ -152,7 +156,7 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
  * POST /api/v1/email/welcome
  */
 export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response) => {
-  const { email, name, hasCompletedQuiz, practiceUrl, quizUrl, illustrationUrl, unsubscribeUrl } = req.body;
+  const { email, name, referralSource, practiceUrl, illustrationUrl, unsubscribeUrl } = req.body;
 
   if (!email || !name) {
     throw new BadRequestError('email 和 name 為必填項');
@@ -161,11 +165,12 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
   // 查找用戶 ID 以啟用 email_logs 記錄
   const userId = await resolveUserIdByEmail(email);
 
+  const referralGroup = getReferralGroup(referralSource);
+
   const emailData = {
     name,
-    hasCompletedQuiz: hasCompletedQuiz ?? false,
+    referralGroup,
     practiceUrl,
-    quizUrl,
     illustrationUrl,
     unsubscribeUrl,
   };
@@ -175,6 +180,11 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
     : await emailService.sendWelcomeEmail(email, emailData);
 
   if (!result.success) {
+    // 已寄送過：視為冪等成功，不拋出錯誤
+    if (result.error === EMAIL_ALREADY_SENT_MESSAGE) {
+      res.json(createSuccessResponse({ messageId: undefined }, { message: '歡迎郵件已於先前寄送' }));
+      return;
+    }
     throw new Error(result.error || '發送歡迎郵件失敗');
   }
 
@@ -185,7 +195,7 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
     aggregateData: {
       emailInfo: {
         recipient: email,
-        template: hasCompletedQuiz ? 'welcome-completed' : 'welcome-pending',
+        template: `welcome-${referralGroup}`,
         sentAt: new Date().toISOString()
       }
     }
