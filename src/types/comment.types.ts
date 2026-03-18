@@ -42,6 +42,7 @@ export interface CommentUser {
   name: string;
   roleList: string[];
   photoURL: string | null;
+  customId: string | null;
 }
 
 // Comment response interface with user information and nested replies
@@ -230,6 +231,7 @@ export interface DatabaseComment {
     id: number;
     nickname: string | null;
     external_id: string | null;
+    custom_id: string | null;
     user_positions?: Array<{
       position: {
         name: string;
