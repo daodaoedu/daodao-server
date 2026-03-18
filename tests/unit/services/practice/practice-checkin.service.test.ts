@@ -98,10 +98,13 @@ describe('Practice CheckIn Service', () => {
     practice_time_periods: ['morning', 'evening'],
     other_context: null,
     status: 'not_started',
+    privacy_status: 'private',
+    visibility: 'public',
     has_resources: false,
     progress_percentage: createDecimalMock(20),
     first_checkin_at: null,
     theme_color: '#FCDD84',
+    reflection: null,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
@@ -238,12 +241,21 @@ describe('Practice CheckIn Service', () => {
   describe('getCheckIns', () => {
     const mockCheckIns = [createTestCheckIn()] as any;
 
+    // 每個測試需要 mock practices.findUnique，否則 getCheckIns 會因找不到實踐而拋出 NotFoundError
+    const mockActivePractice = {
+      id: 1,
+      user_id: 99,
+      status: 'active',
+      deleted_at: null,
+    };
+
     it('should return check-ins with pagination', async () => {
       const params: CheckInQueryParams = {
         page: 1,
         limit: 20
       };
 
+      prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
@@ -274,6 +286,7 @@ describe('Practice CheckIn Service', () => {
         endDate: '2024-01-31'
       };
 
+      prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
@@ -297,6 +310,7 @@ describe('Practice CheckIn Service', () => {
         mood: 'happy'
       };
 
+      prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
@@ -312,22 +326,19 @@ describe('Practice CheckIn Service', () => {
       );
     });
 
-    it('should apply user filter when userId provided', async () => {
+    it('should allow owner to view draft practice check-ins', async () => {
       const params: CheckInQueryParams = {};
+      const draftPractice = { ...mockActivePractice, status: 'draft', user_id: 1 };
 
+      prismaMock.practices.findUnique.mockResolvedValue(draftPractice as any);
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
 
-      await getCheckIns(1, params, 1);
+      // 擁有者（requestUserId = 1 = practice.user_id）可以查看草稿打卡
+      const result = await getCheckIns(1, params, 1);
 
-      expect(prismaMock.practice_checkins.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            user_id: 1
-          })
-        })
-      );
+      expect(result.success).toBe(true);
     });
 
     it('should limit maximum page size to 100', async () => {
@@ -335,6 +346,7 @@ describe('Practice CheckIn Service', () => {
         limit: 150
       };
 
+      prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.count.mockResolvedValue(0);
 
@@ -349,6 +361,7 @@ describe('Practice CheckIn Service', () => {
 
     it('should handle database errors gracefully', async () => {
       const error = new Error('Database error');
+      prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
       prismaMock.practice_checkins.findMany.mockRejectedValue(error);
 
       await expect(getCheckIns(1, {}))

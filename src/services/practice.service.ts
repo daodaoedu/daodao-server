@@ -40,6 +40,9 @@ import {
   stripLockedFields
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
+import { privacyService } from './privacy.service';
+import { getViewCount } from './view-tracking.service';
+import { notificationEventService } from './notification-event.service';
 
 const prismaClient = prisma;
 
@@ -59,7 +62,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       status,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      userId
+      userId,
+      excludePrivate
     } = params;
 
     const skip = (page - 1) * limit;
@@ -84,6 +88,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
           ? { status }
           : { status: { not: 'archived' } }),
       ...(userId && { user_id: userId }),
+      // 公開存取時排除私人練習
+      ...(excludePrivate && { privacy_status: { not: 'private' } }),
       // 排除已刪除的實踐（deleted_at 不為 null 表示已刪除）
       deleted_at: null
     };
@@ -271,13 +277,29 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       throw new NotFoundError('實踐不存在');
     }
 
+    // 隱私控制：依 visibility 欄位判斷存取權限
+    const visibility = practice.visibility ?? 'public';
+    if (visibility !== 'public') {
+      const canAccess = await privacyService.canAccessContent(
+        userId ?? null,
+        practice.user_id,
+        visibility,
+      );
+      if (!canAccess) {
+        if (visibility === 'private') {
+          throw new ForbiddenError('此實踐為私人');
+        }
+        throw new ForbiddenError('此實踐僅限夥伴可見');
+      }
+    }
+
     // 記錄瀏覽事件（暫時只記錄日誌）
     if (userId) {
       loggerService.info('Practice view recorded', { practiceId: id, userId });
     }
 
     // 取得統計數據、標籤和資源
-    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap] = await Promise.all([
+    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap, viewCount] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -299,7 +321,9 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       // 查詢最後打卡時間
       getLastCheckInDates([id]),
       // 查詢資源
-      getPracticeResources([id])
+      getPracticeResources([id]),
+      // 查詢瀏覽數
+      getViewCount('practice', id)
     ]);
 
     const resources = resourcesMap[id] || [];
@@ -335,7 +359,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       tags: tags.map(tag => tag.tags.name),
       stats: {
         likeCount: 0, // TODO: 待實作 reaction 表格
-        viewCount: 0, // TODO: 待實作 view 表格
+        viewCount,
         favoriteCount: 0, // TODO: 待實作 favorite 表格
         shareCount: 0, // TODO: 待實作 share 表格
         commentCount: comments[id] || 0
@@ -532,6 +556,23 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       enqueuePracticeEmail('PE01', practice.id, userId).catch(err => {
         loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
       });
+
+      // 通知關注此用戶的 followers（非阻塞）
+      prismaClient.follows.findMany({
+        where:  { target_type: 'user', target_id: userId },
+        select: { follower_id: true },
+      }).then((followers) => {
+        for (const { follower_id } of followers) {
+          notificationEventService.createEvent({
+            type:        'PracticeCreated',
+            actorId:     userId,
+            recipientId: follower_id,
+            entityType:  'practice',
+            entityId:    practice.id,
+            priority:    'P2',
+          }).catch(() => {});
+        }
+      }).catch(() => {});
     }
 
     return createSuccessResponse(practiceEntity);
@@ -598,6 +639,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     } else if (data.status !== undefined) {
       updateData.status = data.status;
     }
+
+    if (data.privacyStatus !== undefined) updateData.privacy_status = data.privacyStatus;
 
     // 處理頻率相關欄位
     if (data.frequencyMinDays !== undefined) updateData.frequency_min_days = data.frequencyMinDays;
@@ -747,6 +790,23 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       enqueuePracticeEmail('PE01', id, userId).catch(err => {
         loggerService.error('Failed to enqueue PE01 email for published draft', { practiceId: id, error: err });
       });
+
+      // 通知關注此用戶的 followers（非阻塞）
+      prismaClient.follows.findMany({
+        where:  { target_type: 'user', target_id: userId },
+        select: { follower_id: true },
+      }).then((followers) => {
+        for (const { follower_id } of followers) {
+          notificationEventService.createEvent({
+            type:        'PracticeCreated',
+            actorId:     userId,
+            recipientId: follower_id,
+            entityType:  'practice',
+            entityId:    id,
+            priority:    'P2',
+          }).catch(() => {});
+        }
+      }).catch(() => {});
     }
 
     return createSuccessResponse(practiceEntity);
@@ -798,7 +858,7 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
  * 取得使用者的實踐列表
  */
 export async function findUserPractices(userId: number, params: PracticeQueryParams): Promise<PaginatedApiResponse<PracticeEntity>> {
-  return findAll({ ...params, userId });
+  return findAll({ ...params, userId, excludePrivate: false });
 }
 
 /**
@@ -1460,3 +1520,19 @@ export async function completeExpiredPractices(): Promise<{
   }
 }
 
+/**
+ * 查詢特定用戶在最近 N 天內的實踐數
+ */
+export async function getRecentPracticeCount(userId: number, days: number = 7): Promise<number> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  return prismaClient.practices.count({
+    where: {
+      user_id: userId,
+      created_at: {
+        gte: since
+      }
+    }
+  });
+}

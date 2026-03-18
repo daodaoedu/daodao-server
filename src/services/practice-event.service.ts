@@ -8,6 +8,7 @@
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
 import { NotFoundError, BadRequestError, InternalServerError } from '../middleware/error.middleware';
+import { recordView as trackView } from './view-tracking.service';
 import {
   ViewEventRequest,
   ClickEventRequest,
@@ -37,17 +38,9 @@ export async function recordViewEvent(data: ViewEventRequest, userId: number): P
       throw new NotFoundError('實踐不存在');
     }
 
-    // 記錄瀏覽事件（暫時只記錄日誌）
-    // TODO: 實作 view 表格後再啟用資料庫記錄
-
-    loggerService.info('View event recorded', {
-      entityId: data.entityId,
-      entityType: data.entityType,
-      userId,
-      duration: data.duration,
-      referrer: data.referrer
+    trackView('practice', data.entityId, userId).catch((err: unknown) => {
+      loggerService.warn('Failed to track view event', { entityId: data.entityId, userId, err });
     });
-
     return createSuccessResponse({ success: true });
 
   } catch (error) {
