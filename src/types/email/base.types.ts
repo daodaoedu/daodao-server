@@ -30,6 +30,7 @@ export const EMAIL_TYPES = {
   MARATHON: 'marathon',
   // 其他
   NOTIFICATION: 'notification',
+  WELCOME_LETTER: 'welcome_letter',
 } as const;
 
 export type EmailTypeValue = (typeof EMAIL_TYPES)[keyof typeof EMAIL_TYPES];

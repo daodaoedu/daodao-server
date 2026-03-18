@@ -171,24 +171,19 @@ export const welcomeEmailSchema = z.object({
       minLength: 1,
       maxLength: 100
     }),
-  hasCompletedQuiz: z.boolean().openapi({
-    description: '是否已完成學習類型測驗（決定使用哪個版本歡迎信）',
-    example: false
-  }),
+  referralSource: z.string()
+    .max(100)
+    .optional()
+    .openapi({
+      description: '用戶來源管道（如 instagram, discord, friend_referral 等），用於決定歡迎信版本',
+      example: 'instagram'
+    }),
   practiceUrl: z.string()
     .url('請提供有效的連結')
     .optional()
     .openapi({
-      description: '主題實踐連結（兩版本共用）',
-      example: 'https://daodao.so/practice/create',
-      format: 'uri'
-    }),
-  quizUrl: z.string()
-    .url('請提供有效的連結')
-    .optional()
-    .openapi({
-      description: '學習類型測驗連結（僅未做測驗版本使用）',
-      example: 'https://daodao.so/quiz',
+      description: '主題實踐連結',
+      example: 'https://daodao.so/practices',
       format: 'uri'
     }),
   illustrationUrl: z.string()
@@ -215,15 +210,8 @@ export const welcomeEmailSchema = z.object({
       description: '用戶 ID（用於記錄到 email_logs）',
       example: 123
     })
-}).refine(
-  // 如果未做測驗，quizUrl 應該要有值（或使用預設值）
-  (data) => data.hasCompletedQuiz || data.quizUrl !== undefined || true, // 允許使用預設值
-  {
-    message: '未做測驗版本建議提供 quizUrl',
-    path: ['quizUrl'],
-  }
-).openapi('WelcomeEmailRequest', {
-  description: '寄送歡迎信給新用戶的請求資料。根據 hasCompletedQuiz 決定使用哪個版本：已做測驗版本（簡短，1 個 CTA）或未做測驗版本（詳細，2 個 CTA）'
+}).openapi('WelcomeEmailRequest', {
+  description: '寄送歡迎信給新用戶的請求資料。根據 referralSource 決定使用哪個版本：social-media（找到你的學習社群）、community（和學習夥伴一起走）或 default（詳細引導）'
 });
 
 registry.register('WelcomeEmailRequest', welcomeEmailSchema);
