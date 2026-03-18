@@ -1,0 +1,363 @@
+/**
+ * Follow Service
+ * 關注系統業務邏輯：支援關注「用戶」或「主題實踐」
+ * 關注為單向、低承諾行為，無需對方同意
+ */
+
+import { prisma } from './database/prisma.service';
+import { externalToInternalId } from './id-converter.service';
+import { notificationEventService } from './notification-event.service';
+import {
+  BadRequestError,
+  NotFoundError,
+} from '../middleware/error.middleware';
+import {
+  createSuccessResponse,
+  createPaginatedResponse,
+} from '../utils/response-helper';
+import { calculatePagination } from '../utils/pagination-helper';
+import type { ApiSuccessResponse, PaginatedApiResponse } from '../types/api-response.types';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface FollowUserItem {
+  userId:     number;
+  externalId: string;
+  nickname:   string | null;
+  followedAt: string;
+}
+
+export interface FollowingUserProfile {
+  id:         string;
+  name:       string;
+  photoURL:   string | null;
+  bio:        string | null;
+  identifier: string | null;
+}
+
+export interface FollowingPracticeProfile {
+  id:            string;
+  title:         string;
+  ownerName:     string;
+  ownerPhotoURL: string | null;
+}
+
+export interface FollowingItem {
+  targetType: 'user' | 'practice';
+  user?:      FollowingUserProfile;
+  practice?:  FollowingPracticeProfile;
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+
+// ============================================================================
+// Service Functions
+// ============================================================================
+
+/**
+ * 關注用戶
+ * @throws BadRequestError 自我關注
+ * @throws NotFoundError 目標用戶不存在
+ */
+const followUser = async (
+  followerId: number,
+  targetExternalId: string
+): Promise<ApiSuccessResponse<{ message: string }>> => {
+  const targetId = await externalToInternalId('user', targetExternalId);
+
+  if (followerId === targetId) {
+    throw new BadRequestError('無法關注自己');
+  }
+
+  await prisma.follows.upsert({
+    where: {
+      follower_id_target_type_target_id: {
+        follower_id: followerId,
+        target_type: 'user',
+        target_id:   targetId,
+      },
+    },
+    update: {},   // 已存在則不變動
+    create: {
+      follower_id: followerId,
+      target_type: 'user',
+      target_id:   targetId,
+    },
+  });
+
+  // Fire-and-forget: P2 UserFollowed event
+  notificationEventService.createEvent({
+    type: 'UserFollowed',
+    actorId: followerId,
+    recipientId: targetId,
+    entityType: 'user',
+    entityId: targetId,
+    priority: 'P2',
+  }).catch(() => {});
+
+  return createSuccessResponse({ message: '關注成功' });
+};
+
+/**
+ * 取消關注用戶
+ */
+const unfollowUser = async (
+  followerId: number,
+  targetExternalId: string
+): Promise<ApiSuccessResponse<{ message: string }>> => {
+  const targetId = await externalToInternalId('user', targetExternalId);
+
+  await prisma.follows.deleteMany({
+    where: {
+      follower_id: followerId,
+      target_type: 'user',
+      target_id:   targetId,
+    },
+  });
+
+  return createSuccessResponse({ message: '已取消關注' });
+};
+
+/**
+ * 關注主題實踐
+ * @throws BadRequestError 關注自己的實踐
+ */
+const followPractice = async (
+  followerId: number,
+  practiceExternalId: string
+): Promise<ApiSuccessResponse<{ message: string }>> => {
+  const practiceId = await externalToInternalId('practice', practiceExternalId);
+
+  // 防止關注自己擁有的實踐（followerId 是 practice 的 owner 時）
+  const practice = await prisma.practices.findUnique({
+    where:  { id: practiceId },
+    select: { user_id: true, title: true },
+  });
+
+  if (!practice) {
+    throw new NotFoundError(`主題實踐不存在: ${practiceExternalId}`);
+  }
+
+  if (practice.user_id === followerId) {
+    throw new BadRequestError('無法關注自己的主題實踐');
+  }
+
+  await prisma.follows.upsert({
+    where: {
+      follower_id_target_type_target_id: {
+        follower_id: followerId,
+        target_type: 'practice',
+        target_id:   practiceId,
+      },
+    },
+    update: {},
+    create: {
+      follower_id: followerId,
+      target_type: 'practice',
+      target_id:   practiceId,
+    },
+  });
+
+  // Fire-and-forget: P2 PracticeFollowed event to practice owner
+  notificationEventService.createEvent({
+    type: 'PracticeFollowed',
+    actorId: followerId,
+    recipientId: practice.user_id,
+    entityType: 'practice',
+    entityId: practiceId,
+    payload: { practice_id: practiceId, practice_title: practice.title },
+    priority: 'P2',
+  }).catch(() => {});
+
+  return createSuccessResponse({ message: '關注主題實踐成功' });
+};
+
+/**
+ * 取消關注主題實踐
+ */
+const unfollowPractice = async (
+  followerId: number,
+  practiceExternalId: string
+): Promise<ApiSuccessResponse<{ message: string }>> => {
+  const practiceId = await externalToInternalId('practice', practiceExternalId);
+
+  await prisma.follows.deleteMany({
+    where: {
+      follower_id: followerId,
+      target_type: 'practice',
+      target_id:   practiceId,
+    },
+  });
+
+  return createSuccessResponse({ message: '已取消關注主題實踐' });
+};
+
+/**
+ * 取得某用戶的「關注者」列表（誰關注了這個用戶）
+ */
+const getFollowers = async (
+  userExternalId: string,
+  page: number,
+  limit: number
+): Promise<PaginatedApiResponse<FollowUserItem>> => {
+  const userId = await externalToInternalId('user', userExternalId);
+
+  const [total, rows] = await Promise.all([
+    prisma.follows.count({
+      where: { target_type: 'user', target_id: userId },
+    }),
+    prisma.follows.findMany({
+      where: { target_type: 'user', target_id: userId },
+      orderBy: { created_at: 'desc' },
+      skip:  (page - 1) * limit,
+      take:  limit,
+      include: {
+        follower: { select: { id: true, external_id: true, nickname: true } },
+      },
+    }),
+  ]);
+
+  const items: FollowUserItem[] = rows.map(r => ({
+    userId:     r.follower.id,
+    externalId: r.follower.external_id ?? '',
+    nickname:   r.follower.nickname,
+    followedAt: (r.created_at ?? new Date()).toISOString(),
+  }));
+
+  const pagination = calculatePagination(total, page, limit);
+  return createPaginatedResponse(items, pagination);
+};
+
+/**
+ * 取得某用戶「正在關注」的用戶與實踐列表
+ */
+const getFollowing = async (
+  userExternalId: string,
+  page: number,
+  limit: number
+): Promise<PaginatedApiResponse<FollowingItem>> => {
+  const userId = await externalToInternalId('user', userExternalId);
+
+  const [total, rows] = await Promise.all([
+    prisma.follows.count({
+      where: { follower_id: userId },
+    }),
+    prisma.follows.findMany({
+      where:   { follower_id: userId },
+      orderBy: { created_at: 'desc' },
+      skip:    (page - 1) * limit,
+      take:    limit,
+    }),
+  ]);
+
+  const userTargetIds    = rows.filter(r => r.target_type === 'user').map(r => r.target_id);
+  const practiceTargetIds = rows.filter(r => r.target_type === 'practice').map(r => r.target_id);
+
+  const [targetUsers, targetPractices] = await Promise.all([
+    userTargetIds.length > 0
+      ? prisma.users.findMany({
+          where:  { id: { in: userTargetIds } },
+          select: {
+            id:              true,
+            external_id:     true,
+            nickname:        true,
+            custom_id:       true,
+            personal_slogan: true,
+            contacts:        { select: { photo_url: true } },
+          },
+        })
+      : [],
+    practiceTargetIds.length > 0
+      ? prisma.practices.findMany({
+          where:  { id: { in: practiceTargetIds } },
+          select: {
+            id:          true,
+            external_id: true,
+            title:       true,
+            users: {
+              select: {
+                nickname: true,
+                contacts: { select: { photo_url: true } },
+              },
+            },
+          },
+        })
+      : [],
+  ]);
+
+  const userMap     = new Map(targetUsers.map(u => [u.id, u]));
+  const practiceMap = new Map(targetPractices.map(p => [p.id, p]));
+
+  const items: FollowingItem[] = rows.map(r => {
+    if (r.target_type === 'user') {
+      const u = userMap.get(r.target_id);
+      return {
+        targetType: 'user',
+        user: u ? {
+          id:         u.external_id ?? '',
+          name:       u.nickname ?? '',
+          photoURL:   u.contacts?.photo_url ?? null,
+          bio:        u.personal_slogan ?? null,
+          identifier: u.custom_id ?? null,
+        } : undefined,
+      };
+    } else {
+      const p = practiceMap.get(r.target_id);
+      return {
+        targetType: 'practice',
+        practice: p ? {
+          id:            p.external_id ?? '',
+          title:         p.title,
+          ownerName:     p.users.nickname ?? '',
+          ownerPhotoURL: p.users.contacts?.photo_url ?? null,
+        } : undefined,
+      };
+    }
+  });
+
+  const pagination = calculatePagination(total, page, limit);
+  return createPaginatedResponse(items, pagination);
+};
+
+/**
+ * 查詢當前用戶是否已關注某目標
+ */
+const checkFollowStatus = async (
+  followerId: number,
+  targetType: 'user' | 'practice',
+  targetExternalId: string
+): Promise<ApiSuccessResponse<{ isFollowing: boolean }>> => {
+  const targetId = await externalToInternalId(targetType, targetExternalId);
+
+  const existing = await prisma.follows.findUnique({
+    where: {
+      follower_id_target_type_target_id: {
+        follower_id: followerId,
+        target_type: targetType,
+        target_id:   targetId,
+      },
+    },
+    select: { follower_id: true },
+  });
+
+  return createSuccessResponse({ isFollowing: existing !== null });
+};
+
+// ============================================================================
+// Export
+// ============================================================================
+
+export const followService = {
+  followUser,
+  unfollowUser,
+  followPractice,
+  unfollowPractice,
+  getFollowers,
+  getFollowing,
+  checkFollowStatus,
+};
