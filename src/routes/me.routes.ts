@@ -15,11 +15,13 @@ import {
   resourcesQuerySchema,
   preferencesQuerySchema,
   updatePreferencesSchema,
+  myFootprintsQuerySchema,
   myPracticesApiResponseSchema,
   myPracticeStatsApiResponseSchema,
   myResourcesApiResponseSchema,
   myPreferencesApiResponseSchema,
-  updatePreferencesApiResponseSchema
+  updatePreferencesApiResponseSchema,
+  myFootprintsApiResponseSchema
 } from '@/validators/me.validators';
 import ideaController from '@/controllers/idea.controller';
 import meController from '@/controllers/me.controller';
@@ -242,6 +244,33 @@ registry.registerPath({
 });
 
 /**
+ * GET /api/v1/me/footprints - 取得我的學習足跡
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/me/footprints',
+  tags: ['Me'],
+  summary: '取得我的學習足跡',
+  description: '取得當前用戶在實踐上留下的留言（學習足跡），依留言時間倒序排列，支援分頁',
+  request: {
+    query: myFootprintsQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取學習足跡列表',
+      content: {
+        'application/json': {
+          schema: myFootprintsApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * PUT /api/v1/me/preferences - 更新我的個人偏好設定
  */
 registry.registerPath({
@@ -370,6 +399,18 @@ router.put('/preferences',
   authenticate,
   validate(updatePreferencesSchema, 'body'),
   meController.updateMyPreferences as RequestHandler
+);
+
+/**
+ * GET /me/footprints
+ * 獲取我的學習足跡（在實踐上留下的留言）
+ * 查詢參數：page, limit
+ * 需要身份驗證
+ */
+router.get('/footprints',
+  authenticate,
+  validate(myFootprintsQuerySchema, 'query'),
+  meController.getMyLearningFootprints as RequestHandler
 );
 
 export default router;

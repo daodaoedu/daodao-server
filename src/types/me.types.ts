@@ -149,6 +149,16 @@ export interface UpdatePreferencesResponse {
   message: string;
 }
 
+// Learning footprint item type
+export interface MyLearningFootprintItem {
+  id: number;
+  content: string;
+  createdAt: string; // ISO
+  practiceId: string; // practices.external_id (UUID)
+  practiceTitle: string;
+  practiceDeleted: boolean; // deleted_at !== null
+}
+
 // Common error response
 export interface ErrorResponse {
   success: false;

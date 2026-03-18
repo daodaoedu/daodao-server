@@ -10,6 +10,7 @@ import * as practiceService from './practice.service';
 import * as resourceService from './resource.service';
 import {
   MyPracticeItem,
+  MyLearningFootprintItem,
   PracticeStatsData,
   MyResourceItem,
   UserPreference
@@ -29,6 +30,7 @@ import {
   PracticeStatsQueryParams,
   ResourcesQueryParams,
   PreferencesQueryParams,
+  MyFootprintsQueryParams,
   myResourcesApiResponseSchema,
   myPreferencesApiResponseSchema,
   updatePreferencesApiResponseSchema
@@ -393,6 +395,86 @@ const updateMyPreferences = async (userId: number, request: { preferences: Array
   }
 };
 
+/**
+ * Get user's learning footprints (comments on practices), paginated
+ */
+const getMyLearningFootprints = async (
+  userId: number,
+  params: MyFootprintsQueryParams
+): Promise<PaginatedApiResponse<MyLearningFootprintItem>> => {
+  try {
+    const { page, limit } = params;
+    const skip = (page - 1) * limit;
+
+    // Fetch comments left by the user on practices
+    const [comments, totalItems] = await Promise.all([
+      prisma.comments.findMany({
+        where: {
+          user_id: userId,
+          target_type: 'practice'
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          content: true,
+          created_at: true,
+          target_id: true
+        }
+      }),
+      prisma.comments.count({
+        where: {
+          user_id: userId,
+          target_type: 'practice'
+        }
+      })
+    ]);
+
+    // Batch-fetch associated practices to avoid N+1
+    const practiceIds = [...new Set(comments.map(c => c.target_id))];
+    const practices = practiceIds.length > 0
+      ? await prisma.practices.findMany({
+          where: { id: { in: practiceIds } },
+          select: {
+            id: true,
+            external_id: true,
+            title: true,
+            deleted_at: true
+          }
+        })
+      : [];
+
+    const practicesById = new Map(practices.map(p => [p.id, p]));
+
+    const footprints: MyLearningFootprintItem[] = comments.map(comment => {
+      const practice = practicesById.get(comment.target_id);
+      return {
+        id: comment.id,
+        content: comment.content,
+        createdAt: comment.created_at?.toISOString() ?? new Date().toISOString(),
+        practiceId: practice?.external_id ?? '',
+        practiceTitle: practice?.title ?? '',
+        practiceDeleted: practice === undefined || (practice.deleted_at !== null && practice.deleted_at !== undefined)
+      };
+    });
+
+    loggerService.info('User learning footprints retrieved', {
+      userId,
+      count: footprints.length,
+      page,
+      limit
+    });
+
+    const paginationInfo = calculatePagination(page, limit, totalItems);
+
+    return createPaginatedResponse(footprints, paginationInfo);
+  } catch (error) {
+    loggerService.error('Failed to get user learning footprints', { userId, error });
+    throw error;
+  }
+};
+
 // Helper functions
 
 const getPracticesByCategory = async (userId: number, includeArchived: boolean): Promise<Array<{ category: string; count: number; avgProgress: number }>> => {
@@ -581,7 +663,8 @@ export const meService = {
   getMyPracticeStats,
   getMyResources,
   getMyPreferences,
-  updateMyPreferences
+  updateMyPreferences,
+  getMyLearningFootprints
 } as const;
 
 export default meService;
