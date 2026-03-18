@@ -237,7 +237,7 @@ describe('OAuth State Utils', () => {
     });
 
     it('should return invalid for expired state', () => {
-      const expiredTimestamp = Date.now() - 6 * 60 * 1000; // 6 minutes ago
+      const expiredTimestamp = Date.now() - 11 * 60 * 1000; // 11 minutes ago (expiry is 10 minutes)
       const encoded = createValidEncodedState({ timestamp: expiredTimestamp });
 
       const result = validateOAuthState(encoded);
