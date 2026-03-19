@@ -150,6 +150,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
         { notification_type: 'Reaction', channel: 'N01', is_enabled: false } as any,
       ]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 

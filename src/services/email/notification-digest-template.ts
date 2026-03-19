@@ -47,22 +47,18 @@ export interface NotificationDigestData {
  */
 function getEventLabel(type: string): string {
   const labels: Record<string, string> = {
-    // 實際儲存的事件類型（來自 service 層）
-    Connect:                '想與你連結',
-    ConnectAccepted:        '接受了你的連結邀請',
-    UserFollowed:           '開始追蹤你',
-    PracticeFollowed:       '追蹤了你的主題實踐',
-    // legacy / 預留類型
-    comment_on_practice:    '在你的主題實踐留言',
-    comment_on_post:        '在你的文章留言',
-    connect_request:        '想與你連結',
-    connect_accepted:       '接受了你的連結邀請',
-    follow:                 '開始追蹤你',
-    like_practice:          '對你的主題實踐按了共鳴',
-    like_post:              '對你的文章按了共鳴',
-    like_comment:           '對你的留言按了共鳴',
-    checkin_milestone:      '達成打卡里程碑',
-    practice_completed:     '完成了主題實踐',
+    Connect:                      '想與你連結',
+    ConnectAccepted:              '接受了你的連結邀請',
+    UserFollowed:                 '開始追蹤你',
+    PracticeFollowed:             '追蹤了你的主題實踐',
+    comment:                      '在你的內容留言',
+    reaction:                     '對你的內容按了共鳴',
+    PracticeCreated:              '建立了新的主題實踐',
+    BuddyRequest:                 '想成為你的學習夥伴',
+    BuddyRequestFollower:         '想成為學習夥伴（追蹤通知）',
+    BuddyAccepted:                '接受了你的夥伴邀請',
+    'update-practice-checkin':    '更新了實踐打卡',
+    'update-practice-finish':     '完成了主題實踐',
   };
   return labels[type] ?? type;
 }
