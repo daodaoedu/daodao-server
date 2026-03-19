@@ -1523,7 +1523,7 @@ export async function completeExpiredPractices(): Promise<{
 /**
  * 查詢特定用戶在最近 N 天內的實踐數
  */
-export async function getRecentPracticeCount(userId: number, days: number = 7): Promise<number> {
+export async function getRecentPracticeCount(userId: number, days = 7): Promise<number> {
   const since = new Date();
   since.setDate(since.getDate() - days);
 

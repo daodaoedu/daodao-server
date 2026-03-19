@@ -144,7 +144,7 @@ export async function toggleFavorite(practiceId: number, userId: number): Promis
 /**
  * 記錄瀏覽事件
  */
-export async function recordView(practiceId: number, userId: number, viewData?: {
+export async function recordView(practiceId: number, userId: number, _viewData?: {
   duration?: number;
   referrer?: string;
   metadata?: Record<string, unknown>;
