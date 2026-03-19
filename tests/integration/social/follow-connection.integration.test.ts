@@ -98,6 +98,7 @@ const makePractice = (overrides = {}) => ({
   title: '他人的實踐',
   description: '描述',
   privacy_status: 'connections_only',
+  visibility: 'connections_only',
   deleted_at: null,
   created_at: new Date(),
   updated_at: new Date(),
@@ -262,6 +263,8 @@ describe('Follow & Connection API Integration Tests', () => {
         .mockResolvedValueOnce(makeRequest() as any);  // notification entityId lookup
       prismaMock.connection_requests.upsert.mockResolvedValue(makeRequest() as any);
       prismaMock.follows.findMany.mockResolvedValue([]);
+      // Fire-and-forget: sendRequest calls prisma.users.findUnique().then(...)
+      prismaMock.users.findUnique.mockResolvedValue(null as any);
 
       const res = await request(app)
         .post('/api/v1/connections/request')

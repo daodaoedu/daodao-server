@@ -148,6 +148,8 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue([]); // No recent check-ins for streak calculation
       prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn); // Created check-in
       prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' }); // Updated practice
+      // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
       // Note: setupTransactionMock() handles interactive transaction by passing prismaMock as tx
 
       // Mock encouragement service
@@ -213,6 +215,8 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
       prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+      // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
       // Note: setupTransactionMock() handles interactive transaction by passing prismaMock as tx
 
       const result = await createCheckIn(1, createCheckInRequest(), 1);
@@ -230,6 +234,8 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
       prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+      // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
       // Note: setupTransactionMock() handles interactive transaction by passing prismaMock as tx
 
       await createCheckIn(1, createCheckInRequest(), 1);
@@ -642,6 +648,8 @@ describe('Practice CheckIn Service', () => {
         prismaMock.practice_checkins.findMany.mockResolvedValue([]);
         prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
         prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+        // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+        prismaMock.follows.findMany.mockResolvedValue([] as any);
         // Note: setupTransactionMock() handles interactive transaction by passing prismaMock as tx
 
         const result = await createCheckIn(1, createCheckInRequest(), 1);
@@ -693,6 +701,8 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
       prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+      // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       const result = await createCheckInWithImages(1, request, 1);
 
@@ -729,6 +739,8 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
       prismaMock.practices.update.mockResolvedValue(testPractice);
+      // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       const result = await createCheckInWithImages(1, request, 1);
 
@@ -830,6 +842,8 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
       prismaMock.practices.update.mockResolvedValue(testPractice);
+      // Fire-and-forget: createCheckIn calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       await createCheckInWithImages(1, request, 1);
 

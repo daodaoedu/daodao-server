@@ -76,6 +76,7 @@ describe('Practice Business Logic Tests', () => {
     jest.clearAllMocks();
     setupTransactionMock();
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
+    prismaMock.follows.findMany.mockResolvedValue([]);
   });
 
   // Helper functions - 使用正確的鏈式調用
@@ -215,10 +216,11 @@ describe('Practice Business Logic Tests', () => {
     });
 
     describe('後續打卡進度計算', () => {
-      // 每次增加 = 50 / (2 - 1) = 50%（因為 minTarget = floor(14/7) = 2）
-      // 首次打卡：50%，第二次達成目標：100%
+      // minTarget = ceil(14/7 * 4) = 8（2 週 × 每週最少 4 天）
+      // 每次增加 = 50 / (8 - 1) ≈ 7.14%
+      // 首次打卡：50%，第 8 次達成目標：100%
       const expectedProgress = [
-        { checkIns: 2, progress: 100 }  // 達成最低目標 2 次
+        { checkIns: 8, progress: 100 }  // 達成最低目標 8 次
       ];
 
       expectedProgress.forEach(({ checkIns, progress }) => {
@@ -268,7 +270,7 @@ describe('Practice Business Logic Tests', () => {
         });
       });
 
-      it('第 3 次打卡（超額）進度應超過 100%', async () => {
+      it('第 9 次打卡（超額）進度應超過 100%', async () => {
         const mockPractice = {
           ...basePractice,
           status: 'active',
@@ -277,7 +279,7 @@ describe('Practice Business Logic Tests', () => {
         };
 
         const mockCheckIn = {
-          id: 3,
+          id: 9,
           practice_id: 1,
           user_id: userId,
           checkin_date: new Date(),
@@ -292,12 +294,12 @@ describe('Practice Business Logic Tests', () => {
 
         const mockUpdatedPractice = {
           ...mockPractice,
-          progress_percentage: createDecimalMock(150) // 超過 100%
+          progress_percentage: createDecimalMock(107) // 超過 100%
         };
 
         prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
         prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
-        prismaMock.practice_checkins.count.mockResolvedValue(2); // Already has 2 check-ins
+        prismaMock.practice_checkins.count.mockResolvedValue(8); // Already has 8 check-ins (minTarget reached)
         prismaMock.practice_checkins.findMany.mockResolvedValue([]);
         prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
         prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice as any);

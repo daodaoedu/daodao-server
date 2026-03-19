@@ -66,6 +66,8 @@ describe('Follow Service', () => {
         target_id: 2,
         created_at: new Date(),
       } as any);
+      // Fire-and-forget: followUser calls prisma.users.findUnique().then(...)
+      prismaMock.users.findUnique.mockResolvedValue(null as any);
 
       const result = await followService.followUser(1, 'ext-2');
 
@@ -106,6 +108,8 @@ describe('Follow Service', () => {
         target_id: 10,
         created_at: new Date(),
       } as any);
+      // Fire-and-forget: followPractice calls prisma.users.findUnique().then(...)
+      prismaMock.users.findUnique.mockResolvedValue(null as any);
 
       const result = await followService.followPractice(1, 'ext-10');
 
@@ -185,7 +189,14 @@ describe('Follow Service', () => {
         },
       ] as any);
       prismaMock.users.findMany.mockResolvedValue([
-        { id: 2, external_id: 'ext-2', nickname: '用戶B' },
+        {
+          id: 2,
+          external_id: 'ext-2',
+          nickname: '用戶B',
+          custom_id: null,
+          personal_slogan: null,
+          contacts: null,
+        },
       ] as any);
 
       const result = await followService.getFollowing('ext-1', 1, 10);
@@ -193,9 +204,11 @@ describe('Follow Service', () => {
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
       expect(result.data[0]).toMatchObject({
-        userId: 2,
-        externalId: 'ext-2',
-        nickname: '用戶B',
+        targetType: 'user',
+        user: {
+          id: 'ext-2',
+          name: '用戶B',
+        },
       });
     });
 

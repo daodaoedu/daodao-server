@@ -89,6 +89,9 @@ describe('Practice E2E Tests', () => {
     // 設置 id-converter 的默認 mock 行為
     mockIdConverter.externalToInternalId.mockResolvedValue(1);
     mockIdConverter.internalToExternalId.mockResolvedValue(practiceExternalId);
+
+    // Default mock for fire-and-forget calls in create/update/createCheckIn
+    prismaMock.follows.findMany.mockResolvedValue([] as any);
   });
 
   // Helper functions
@@ -396,19 +399,40 @@ describe('Practice E2E Tests', () => {
     });
 
     describe('業務邏輯錯誤 (ERR-4)', () => {
-      it('ERR-4-a: 同一天重複打卡應返回錯誤', async () => {
-        prismaMock.practices.findUnique.mockResolvedValue({
+      it('ERR-4-a: 同一天再次打卡應成功（系統允許多次打卡）', async () => {
+        const mockPractice = {
           id: 1,
           external_id: practiceExternalId,
           user_id: userId,
           status: 'active',
           first_checkin_at: new Date(),
-          deleted_at: null
-        } as any);
-        prismaMock.practice_checkins.findFirst.mockResolvedValue({
-          id: 1,
+          start_date: new Date(),
+          end_date: new Date(Date.now() + 13 * 86400000),
+          duration_days: 14,
+          frequency_min_days: 4,
+          frequency_max_days: 7,
+          deleted_at: null,
+          progress_percentage: { toNumber: () => 50 }
+        };
+        prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
+        prismaMock.practice_checkins.count.mockResolvedValue(1); // Already has 1 checkin
+        prismaMock.practice_checkins.findMany.mockResolvedValue([]); // For streak
+        prismaMock.practice_checkins.create.mockResolvedValue({
+          id: 2,
           practice_id: 1,
-          checkin_date: new Date()
+          user_id: userId,
+          checkin_date: new Date(),
+          mood: 'happy',
+          note: null,
+          image_urls: [],
+          og_image_url: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+          practices: { title: '每日閱讀 30 分鐘' }
+        } as any);
+        prismaMock.practices.update.mockResolvedValue(mockPractice as any);
+        prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
+          id: 1, message: '加油！'
         } as any);
 
         const response = await authPost(
@@ -417,8 +441,8 @@ describe('Practice E2E Tests', () => {
           userToken
         );
 
-        // ConflictError 返回 409
-        expectError(response, 409);
+        // 系統允許同一天多次打卡
+        expectSuccess(response, 201);
       });
 
       it('ERR-4-b: 修改已鎖定欄位應返回錯誤', async () => {

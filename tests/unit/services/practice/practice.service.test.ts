@@ -282,6 +282,8 @@ describe('Practice Service', () => {
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
       prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
       prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
+      // Fire-and-forget: create calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       const result = await create(mockCreateRequest, 1);
 
@@ -314,6 +316,8 @@ describe('Practice Service', () => {
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
       prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
       prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
+      // Fire-and-forget: create calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       await create(mockCreateRequest, 1);
 
@@ -349,6 +353,8 @@ describe('Practice Service', () => {
       prismaMock.practices.create.mockResolvedValue(mockCreatedPractice);
       prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
       prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
+      // Fire-and-forget: create calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       await create({ ...mockCreateRequest, isDraft: false }, 1);
 
@@ -524,6 +530,8 @@ describe('Practice Service', () => {
       prismaMock.comments.groupBy.mockResolvedValue([]);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
       prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      // Fire-and-forget: update calls prisma.follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
 
       await update(1, { status: 'not_started' }, 1);
 
