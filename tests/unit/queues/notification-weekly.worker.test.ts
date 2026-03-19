@@ -144,7 +144,6 @@ describe('NotificationWeeklyWorker', () => {
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
       prismaMock.practices.findMany.mockResolvedValue([]);
-      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -320,6 +319,37 @@ describe('NotificationWeeklyWorker', () => {
       expect(callArg.recipientName).toBe('Alice');
       expect(typeof callArg.weekStart).toBe('string'); // 格式 M/D
       expect(typeof callArg.weekEnd).toBe('string');
+    });
+
+    it('practiceProgress 正確映射實踐打卡資料', async () => {
+      const { generateWeeklyDigestHtml } = require('@/services/email/notification-weekly-template');
+
+      prismaMock.notification_events.findMany.mockResolvedValue([
+        makeWeeklyEvent('Reaction'),
+      ] as any);
+      prismaMock.notification_preferences.findMany.mockResolvedValue([]);
+      prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([
+        { title: '每日閱讀', status: 'active', practice_checkins: [{ id: 1 }, { id: 2 }, { id: 3 }] },
+        { title: '英文學習', status: 'completed', practice_checkins: [] },
+        { title: '無動態實踐', status: 'active', practice_checkins: [] },
+      ] as any);
+
+      await capturedProcessor!(makeJob());
+
+      const callArg = (generateWeeklyDigestHtml as jest.Mock).mock.calls[0][0];
+      // 「無動態實踐」應被過濾掉（active 但本週無打卡）
+      expect(callArg.practiceProgress).toHaveLength(2);
+      expect(callArg.practiceProgress[0]).toEqual({
+        title: '每日閱讀',
+        checkInCount: 3,
+        isCompleted: false,
+      });
+      expect(callArg.practiceProgress[1]).toEqual({
+        title: '英文學習',
+        checkInCount: 0,
+        isCompleted: true,
+      });
     });
 
     it('多位 recipient 各自收到週報', async () => {
