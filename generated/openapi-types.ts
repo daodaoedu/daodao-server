@@ -8559,6 +8559,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/follows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 關注用戶或主題實踐 */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["FollowTargetBody"];
+                };
+            };
+            responses: {
+                /** @description 關注成功 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FollowActionApiResponse"];
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follows/{targetType}/{targetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 取消關注 */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    targetType: "user" | "practice";
+                    targetId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 取消關注成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FollowActionApiResponse"];
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -20144,91 +20229,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/follows": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 關注用戶或主題實踐 */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["FollowTargetBody"];
-                };
-            };
-            responses: {
-                /** @description 關注成功 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["FollowActionApiResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-                500: components["responses"]["InternalServerError"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/follows/{targetType}/{targetId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 取消關注 */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    targetType: "user" | "practice";
-                    targetId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 取消關注成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["FollowActionApiResponse"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                500: components["responses"]["InternalServerError"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/connections/request": {
         parameters: {
             query?: never;
@@ -25935,6 +25935,15 @@ export interface components {
              * @example 100
              */
             parentId?: number;
+            /**
+             * @description 被 @mention 的使用者 ID 列表（最多 10 人）
+             * @example [
+             *       1,
+             *       2,
+             *       3
+             *     ]
+             */
+            mentionedUserIds?: number[];
         };
         /** @description 更新留言的請求資料 */
         UpdateCommentRequest: {
@@ -28325,6 +28334,209 @@ export interface components {
              */
             userId: string;
         };
+        FollowTargetBody: {
+            /**
+             * @description 關注對象類型
+             * @example user
+             * @enum {string}
+             */
+            targetType: "user" | "practice";
+            /**
+             * @description 關注對象的唯一識別碼（external_id）
+             * @example abc123
+             */
+            targetId: string;
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        FollowListApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            /** @description The main response data */
+            data: components["schemas"]["FollowItem"][];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        FollowItem: {
+            /** @description 用戶內部 ID */
+            userId: number;
+            /** @description 用戶 external_id */
+            externalId: string;
+            /** @description 用戶暱稱 */
+            nickname: string | null;
+            /** @description 關注時間 ISO 8601 */
+            followedAt: string;
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        FollowActionApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            /** @description The main response data */
+            data: {
+                message: string;
+            };
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
         /** @description 單種反應的計數資訊 */
         ReactionCount: {
             /**
@@ -29351,209 +29563,6 @@ export interface components {
              * @example true
              */
             isEnabled: boolean;
-        };
-        FollowTargetBody: {
-            /**
-             * @description 關注對象類型
-             * @example user
-             * @enum {string}
-             */
-            targetType: "user" | "practice";
-            /**
-             * @description 關注對象的唯一識別碼（external_id）
-             * @example abc123
-             */
-            targetId: string;
-        };
-        /**
-         * @description Standard success response format
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "id": 123,
-         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
-         *         "name": "JavaScript 基礎教程",
-         *         "description": "從零開始學習 JavaScript 程式設計",
-         *         "status": "published"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z"
-         *     }
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "userId": 456,
-         *         "username": "john_doe",
-         *         "email": "john@example.com",
-         *         "role": "student"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z",
-         *       "meta": {
-         *         "cacheHit": true,
-         *         "processingTime": 23.1
-         *       }
-         *     }
-         */
-        FollowListApiResponse: {
-            /**
-             * @description Indicates successful API response
-             * @enum {boolean}
-             */
-            success: true;
-            /** @description The main response data */
-            data: components["schemas"]["FollowItem"][];
-            /**
-             * Format: date-time
-             * @description ISO 8601 timestamp of the response
-             */
-            timestamp: string;
-            /**
-             * @description Optional metadata about the response
-             * @example {
-             *       "searchQuery": "JavaScript教程",
-             *       "searchTime": 45,
-             *       "cacheHit": false,
-             *       "processingTime": 123.5,
-             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-             *     }
-             * @example {
-             *       "categoryCounts": {
-             *         "前端開發": 25,
-             *         "後端開發": 18,
-             *         "資料科學": 12
-             *       },
-             *       "filters": {
-             *         "difficulty": "intermediate",
-             *         "language": "zh-TW"
-             *       }
-             *     }
-             */
-            meta?: {
-                /** @description Search query used for filtering results */
-                searchQuery?: string;
-                /** @description Time taken to execute the search query in milliseconds */
-                searchTime?: number;
-                /** @description Applied filters for the request */
-                filters?: {
-                    [key: string]: unknown;
-                };
-                /** @description Count of items per category */
-                categoryCounts?: {
-                    [key: string]: number;
-                };
-                /** @description Aggregated statistical data */
-                aggregateData?: {
-                    [key: string]: unknown;
-                };
-                /** @description Unique identifier for request tracking */
-                requestId?: string;
-                /** @description Whether the response was served from cache */
-                cacheHit?: boolean;
-                /** @description Total processing time in milliseconds */
-                processingTime?: number;
-            } & {
-                [key: string]: unknown;
-            };
-        };
-        FollowItem: {
-            /** @description 用戶內部 ID */
-            userId: number;
-            /** @description 用戶 external_id */
-            externalId: string;
-            /** @description 用戶暱稱 */
-            nickname: string | null;
-            /** @description 關注時間 ISO 8601 */
-            followedAt: string;
-        };
-        /**
-         * @description Standard success response format
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "id": 123,
-         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
-         *         "name": "JavaScript 基礎教程",
-         *         "description": "從零開始學習 JavaScript 程式設計",
-         *         "status": "published"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z"
-         *     }
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "userId": 456,
-         *         "username": "john_doe",
-         *         "email": "john@example.com",
-         *         "role": "student"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z",
-         *       "meta": {
-         *         "cacheHit": true,
-         *         "processingTime": 23.1
-         *       }
-         *     }
-         */
-        FollowActionApiResponse: {
-            /**
-             * @description Indicates successful API response
-             * @enum {boolean}
-             */
-            success: true;
-            /** @description The main response data */
-            data: {
-                message: string;
-            };
-            /**
-             * Format: date-time
-             * @description ISO 8601 timestamp of the response
-             */
-            timestamp: string;
-            /**
-             * @description Optional metadata about the response
-             * @example {
-             *       "searchQuery": "JavaScript教程",
-             *       "searchTime": 45,
-             *       "cacheHit": false,
-             *       "processingTime": 123.5,
-             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-             *     }
-             * @example {
-             *       "categoryCounts": {
-             *         "前端開發": 25,
-             *         "後端開發": 18,
-             *         "資料科學": 12
-             *       },
-             *       "filters": {
-             *         "difficulty": "intermediate",
-             *         "language": "zh-TW"
-             *       }
-             *     }
-             */
-            meta?: {
-                /** @description Search query used for filtering results */
-                searchQuery?: string;
-                /** @description Time taken to execute the search query in milliseconds */
-                searchTime?: number;
-                /** @description Applied filters for the request */
-                filters?: {
-                    [key: string]: unknown;
-                };
-                /** @description Count of items per category */
-                categoryCounts?: {
-                    [key: string]: number;
-                };
-                /** @description Aggregated statistical data */
-                aggregateData?: {
-                    [key: string]: unknown;
-                };
-                /** @description Unique identifier for request tracking */
-                requestId?: string;
-                /** @description Whether the response was served from cache */
-                cacheHit?: boolean;
-                /** @description Total processing time in milliseconds */
-                processingTime?: number;
-            } & {
-                [key: string]: unknown;
-            };
         };
         SendConnectionRequestBody: {
             /**
