@@ -47,6 +47,12 @@ export interface NotificationDigestData {
  */
 function getEventLabel(type: string): string {
   const labels: Record<string, string> = {
+    // 實際儲存的事件類型（來自 service 層）
+    Connect:                '想與你連結',
+    ConnectAccepted:        '接受了你的連結邀請',
+    UserFollowed:           '開始追蹤你',
+    PracticeFollowed:       '追蹤了你的主題實踐',
+    // legacy / 預留類型
     comment_on_practice:    '在你的主題實踐留言',
     comment_on_post:        '在你的文章留言',
     connect_request:        '想與你連結',
