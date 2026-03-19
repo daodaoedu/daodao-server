@@ -166,6 +166,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]); // 無記錄
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -181,6 +182,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
         { notification_type: 'Reaction', channel: 'N01', is_enabled: false } as any,
       ]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -203,6 +205,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
         nickname: 'Bob',
         contacts: { email: null },
       } as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -222,6 +225,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
         nickname: 'Bob',
         contacts: null,
       } as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -240,6 +244,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -259,6 +264,7 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
       prismaMock.users.findUnique
         .mockResolvedValueOnce({ nickname: 'Alice', contacts: { email: 'alice@example.com' } } as any)
         .mockResolvedValueOnce({ nickname: 'Bob', contacts: { email: 'bob@example.com' } } as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -277,10 +283,11 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
         makeEvent({ recipient_id: 3, type: 'Reaction' }),
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
-      // recipient 2 查詢失敗
+      // recipient 2 的偏好查詢成功，但 findUnique 查詢失敗
       prismaMock.users.findUnique
         .mockRejectedValueOnce(new Error('DB error'))
         .mockResolvedValueOnce({ nickname: 'Bob', contacts: { email: 'bob@example.com' } } as any);
+      prismaMock.users.findMany.mockResolvedValue([]);
 
       await expect(capturedProcessor!(makeJob())).resolves.toBeUndefined();
 

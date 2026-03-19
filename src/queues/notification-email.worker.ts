@@ -133,17 +133,49 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
           continue;
         }
 
-        // 4e. 組裝 NotificationDigestData 並產生 HTML（MVP：只 log subject，不實際發送）
+        // 4e. 批次查詢 payload 中缺少 actorName 的 actor 暱稱
+        const allEvents = [...p1Events, ...p2Events];
+        const missingActorIds = new Set<number>();
+        for (const e of allEvents) {
+          const payload = e.payload as Record<string, unknown> | null;
+          if (!payload?.actorName) {
+            missingActorIds.add(e.actor_id);
+          }
+        }
+
+        const actorNameMap = new Map<number, string>();
+        if (missingActorIds.size > 0) {
+          const actors = await prisma.users.findMany({
+            where: { id: { in: [...missingActorIds] } },
+            select: { id: true, nickname: true },
+          });
+          for (const actor of actors) {
+            if (actor.nickname) {
+              actorNameMap.set(actor.id, actor.nickname);
+            }
+          }
+        }
+
+        /**
+         * 解析 actor 名稱：優先使用 payload 中的 actorName，
+         * 其次從資料庫查詢結果取得，最後才用 "用戶 {id}" 作為 fallback。
+         */
+        const resolveActorName = (payload: Record<string, unknown> | null, actorId: number): string => {
+          if (payload?.actorName) return String(payload.actorName);
+          return actorNameMap.get(actorId) ?? `用戶 ${actorId}`;
+        };
+
+        // 4f. 組裝 NotificationDigestData 並產生 HTML
         const digestData: NotificationDigestData = {
           recipientName,
           p1Events: p1Events.map((e) => {
             const payload = e.payload as Record<string, unknown> | null;
             return {
               type:           e.type,
-              actorName:      String(payload?.actorName ?? `用戶 ${e.actor_id}`),
+              actorName:      resolveActorName(payload, e.actor_id),
               entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : undefined,
               content:        payload?.content    ? String(payload.content)    : undefined,
-              connectMessage: payload?.message    ? String(payload.message)    : undefined,
+              connectMessage: payload?.intent     ? String(payload.intent)     : payload?.message ? String(payload.message) : undefined,
               url:            String(payload?.url ?? `https://daodao.cc`),
             };
           }),
@@ -151,7 +183,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
             const payload = e.payload as Record<string, unknown> | null;
             return {
               type:        e.type,
-              actorName:   String(payload?.actorName ?? `用戶 ${e.actor_id}`),
+              actorName:   resolveActorName(payload, e.actor_id),
               count:       typeof payload?.count === 'number' ? payload.count : 1,
               entityTitle: payload?.entityTitle ? String(payload.entityTitle) : undefined,
             };
