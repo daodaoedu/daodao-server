@@ -108,6 +108,10 @@ describe('Practice Helpers & Interaction API Integration Tests', () => {
 
     beforeEach(() => {
       prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
+      // reactions 相關 mock，讓 toggleLike 流程不拋出錯誤
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'useful' } as any);
+      prismaMock.reactions.deleteMany.mockResolvedValue({ count: 1 } as any);
+      prismaMock.reactions.findMany.mockResolvedValue([] as any);
     });
 
     // C-1: 點讚/取消點讚
@@ -121,7 +125,7 @@ describe('Practice Helpers & Interaction API Integration Tests', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        // TODO 狀態下返回固定值
+        // 點讚後取消（same reaction type = cancel），返回 isLiked: false, likeCount: 0
         expect(response.body.data.isLiked).toBe(false);
         expect(response.body.data.likeCount).toBe(0);
       });

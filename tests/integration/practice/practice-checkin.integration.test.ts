@@ -79,6 +79,9 @@ describe('Practice Check-in API Integration Tests', () => {
 
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
     otherUserToken = createAuthToken({ id: otherUserId, email: 'other@test.com' });
+
+    // Default mock for fire-and-forget calls in createCheckIn
+    prismaMock.follows.findMany.mockResolvedValue([] as any);
   });
 
   // Helper functions
@@ -173,15 +176,29 @@ describe('Practice Check-in API Integration Tests', () => {
       expect(response.body.data.encouragement).toBeDefined();
     });
 
-    it('B-1-c: 同一天重複打卡應返回 409 錯誤', async () => {
-      const existingCheckIn = {
-        id: 1,
+    it('B-1-c: 同一天再次打卡應成功（系統允許多次打卡）', async () => {
+      const mockCheckIn = {
+        id: 2,
         practice_id: 1,
-        checkin_date: new Date()
+        user_id: userId,
+        checkin_date: new Date(),
+        mood: 'happy',
+        note: validCheckInData.note,
+        image_urls: [],
+        created_at: new Date(),
+        updated_at: new Date(),
+        practices: { title: '每日閱讀' }
       };
 
       prismaMock.practices.findUnique.mockResolvedValue(mockPracticeActive as any);
-      prismaMock.practice_checkins.findFirst.mockResolvedValue(existingCheckIn as any);
+      prismaMock.practice_checkins.count.mockResolvedValue(1); // Already has 1 checkin
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]); // For streak calculation
+      prismaMock.practice_checkins.create.mockResolvedValue(mockCheckIn as any);
+      prismaMock.practices.update.mockResolvedValue(mockPracticeActive as any);
+      prismaMock.checkin_encouragements.findFirst.mockResolvedValue({
+        id: 1,
+        message: '加油！'
+      } as any);
 
       const response = await authPost(
         `${API_BASE}/${practiceId}/checkins`,
@@ -189,9 +206,9 @@ describe('Practice Check-in API Integration Tests', () => {
         userToken
       );
 
-      // ConflictError 返回 409
-      expect(response.status).toBe(409);
-      expect(response.body.success).toBe(false);
+      // 系統允許同一天多次打卡
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
     });
 
     it('B-1-d: 他人實踐打卡應返回 404 錯誤', async () => {
@@ -285,7 +302,8 @@ describe('Practice Check-in API Integration Tests', () => {
       external_id: practiceId,
       user_id: userId,
       title: '每日閱讀',
-      status: 'active'
+      status: 'active',
+      deleted_at: null
     };
 
     const mockCheckIns = [

@@ -31,9 +31,21 @@ import { notificationPreferenceService } from '@/services/notification-preferenc
 // ============================================================================
 
 const ALL_TYPES = [
-  'Reaction', 'Comment', 'Mention', 'UserFollowed', 'PracticeFollowed',
-  'Connect', 'ConnectAccepted', 'PracticeStarted', 'PracticeCheckin',
-  'BuddyRequest', 'BuddyRequestFollower', 'BuddyAccepted', 'WeeklyDigest',
+  'Reaction',
+  'comment',
+  'Mention',
+  'UserFollowed',
+  'PracticeFollowed',
+  'Connect',
+  'ConnectAccepted',
+  'PracticeStarted',
+  'update-practice-checkin',
+  'update-practice-finish',
+  'BuddyRequest',
+  'BuddyRequestFollower',
+  'BuddyAccepted',
+  'PracticeCreated',
+  'WeeklyDigest',
 ] as const;
 
 const CHANNELS = ['N01', 'N02', 'N03'] as const;
@@ -53,7 +65,7 @@ describe('NotificationPreferenceService', () => {
   // --------------------------------------------------------------------------
 
   describe('getPreferences', () => {
-    it('DB 無記錄時回傳所有 type × channel 的預設值（13 × 3 = 39 筆）', async () => {
+    it('DB 無記錄時回傳所有 type × channel 的預設值（15 × 3 = 45 筆）', async () => {
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
 
       const result = await notificationPreferenceService.getPreferences(1);
@@ -93,13 +105,13 @@ describe('NotificationPreferenceService', () => {
     it('DB 有記錄時，以 DB 值覆蓋預設值', async () => {
       prismaMock.notification_preferences.findMany.mockResolvedValue([
         { notification_type: 'Reaction', channel: 'N01', is_enabled: false } as any,
-        { notification_type: 'Comment',  channel: 'N02', is_enabled: false } as any,
+        { notification_type: 'comment',  channel: 'N02', is_enabled: false } as any,
       ]);
 
       const result = await notificationPreferenceService.getPreferences(1);
 
       const reactionN01 = result.data.find(p => p.type === 'Reaction' && p.channel === 'N01');
-      const commentN02  = result.data.find(p => p.type === 'Comment'  && p.channel === 'N02');
+      const commentN02  = result.data.find(p => p.type === 'comment'  && p.channel === 'N02');
       expect(reactionN01?.isEnabled).toBe(false);
       expect(commentN02?.isEnabled).toBe(false);
     });
@@ -192,12 +204,12 @@ describe('NotificationPreferenceService', () => {
       expect(channels).not.toContain('N02');
     });
 
-    it('更新筆數 = 13 types × 2 channels = 26', async () => {
+    it('更新筆數 = 15 types × 2 channels = 30', async () => {
       prismaMock.notification_preferences.upsert.mockResolvedValue({} as any);
 
       const result = await notificationPreferenceService.setGlobalEnabled(3, false);
 
-      expect(result.data.updated).toBe(ALL_TYPES.length * 2); // 26
+      expect(result.data.updated).toBe(ALL_TYPES.length * 2); // 30
     });
 
     it('全部設定 is_enabled 為傳入值', async () => {

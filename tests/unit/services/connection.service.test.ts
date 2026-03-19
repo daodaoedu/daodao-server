@@ -129,6 +129,8 @@ describe('Connection Service', () => {
       // findUnique for notification entityId
       prismaMock.connection_requests.findUnique.mockResolvedValueOnce(null)  // reverse check
         .mockResolvedValueOnce(makePendingRequest() as any);                  // entityId lookup
+      // Fire-and-forget: sendRequest calls prisma.users.findUnique().then(...)
+      prismaMock.users.findUnique.mockResolvedValue(null as any);
 
       const result = await connectionService.sendRequest(1, 'ext-2', '你好');
 
@@ -140,6 +142,8 @@ describe('Connection Service', () => {
       (interactionCountService.hasFamiliarityBypass as jest.Mock).mockResolvedValue(true);
       prismaMock.connection_requests.findUnique.mockResolvedValueOnce(null)
         .mockResolvedValueOnce(makePendingRequest() as any);
+      // Fire-and-forget: sendRequest calls prisma.users.findUnique().then(...)
+      prismaMock.users.findUnique.mockResolvedValue(null as any);
 
       const result = await connectionService.sendRequest(1, 'ext-2');
 
@@ -282,6 +286,10 @@ describe('Connection Service', () => {
       prismaMock.connections.upsert.mockResolvedValue({
         id: 7, user_a_id: 1, user_b_id: 3, connected_at: new Date(),
       } as any);
+      // Fire-and-forget: acceptRequest calls prisma.users.findUnique().then(...)
+      prismaMock.users.findUnique.mockResolvedValue(null as any);
+      // Fire-and-forget: acceptRequest calls prisma.notifications.updateMany(...).catch(...)
+      prismaMock.notifications.updateMany.mockResolvedValue({ count: 0 } as any);
 
       const result = await connectionService.acceptRequest(1, 20);
 
@@ -312,6 +320,8 @@ describe('Connection Service', () => {
       prismaMock.connection_requests.update.mockResolvedValue({
         ...request, status: 'rejected',
       } as any);
+      // Fire-and-forget: rejectRequest calls prisma.notifications.updateMany(...).catch(...)
+      prismaMock.notifications.updateMany.mockResolvedValue({ count: 0 } as any);
 
       const result = await connectionService.rejectRequest(1, 30);
 
