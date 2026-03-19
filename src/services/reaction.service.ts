@@ -9,7 +9,7 @@
 
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
-import { NotFoundError, InternalServerError } from '../middleware/error.middleware';
+import { InternalServerError } from '../middleware/error.middleware';
 import { ApiSuccessResponse } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
 import {
