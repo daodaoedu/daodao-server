@@ -39,6 +39,7 @@ import {
 import { createSuccessResponse } from '../utils/response-helper';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
+import { loggerService } from './logging/logger.service';
 
 /**
  * Comment Service Class
@@ -174,6 +175,9 @@ export class CommentService implements CommentServiceInterface {
               };
               const frontendUrl = process.env.FRONTEND_URL ?? 'https://daodao.cc';
               const segment = pathSegmentMap[targetType];
+              if (!segment) {
+                loggerService.warn(`[CommentService] Missing URL path segment for targetType: "${targetType}"`);
+              }
               const url = segment
                 ? `${frontendUrl}/${segment}/${targetId}`
                 : frontendUrl;
@@ -188,10 +192,13 @@ export class CommentService implements CommentServiceInterface {
                   entityId:    createdComment.id,
                   priority:    'P1',
                   payload:     { content, actorName, url },
-                }).catch(() => {});
+                });
               }
-            } catch {
-              // best-effort: mention failure does not affect comment creation
+            } catch (error) {
+              loggerService.error('[CommentService] Failed to create mention notification events', {
+                error,
+                commentId: createdComment.id,
+              });
             }
           }
         }
