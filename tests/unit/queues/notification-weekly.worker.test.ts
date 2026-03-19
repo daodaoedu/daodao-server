@@ -143,6 +143,8 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -159,6 +161,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -176,6 +179,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -192,6 +196,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -207,6 +212,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -230,6 +236,7 @@ describe('NotificationWeeklyWorker', () => {
         { notification_type: 'Reaction', channel: 'N01', is_enabled: false } as any,
       ]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -242,6 +249,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -285,6 +293,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -303,6 +312,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -321,6 +331,7 @@ describe('NotificationWeeklyWorker', () => {
       prismaMock.users.findUnique
         .mockResolvedValueOnce({ nickname: 'Alice', contacts: { email: 'alice@example.com' } } as any)
         .mockResolvedValueOnce({ nickname: 'Bob', contacts: { email: 'bob@example.com' } } as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -342,6 +353,7 @@ describe('NotificationWeeklyWorker', () => {
       prismaMock.users.findUnique
         .mockRejectedValueOnce(new Error('DB error'))
         .mockResolvedValueOnce({ nickname: 'Bob', contacts: { email: 'bob@example.com' } } as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await expect(capturedProcessor!(makeJob())).resolves.toBeUndefined();
 
