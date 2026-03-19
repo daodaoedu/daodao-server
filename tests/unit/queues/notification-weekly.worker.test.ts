@@ -143,6 +143,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -159,6 +160,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -176,6 +178,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -192,6 +195,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -207,6 +211,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -230,6 +235,7 @@ describe('NotificationWeeklyWorker', () => {
         { notification_type: 'Reaction', channel: 'N01', is_enabled: false } as any,
       ]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -242,6 +248,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -285,6 +292,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -303,6 +311,7 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -310,6 +319,36 @@ describe('NotificationWeeklyWorker', () => {
       expect(callArg.recipientName).toBe('Alice');
       expect(typeof callArg.weekStart).toBe('string'); // 格式 M/D
       expect(typeof callArg.weekEnd).toBe('string');
+    });
+
+    it('practiceProgress 正確映射實踐打卡資料', async () => {
+      const { generateWeeklyDigestHtml } = require('@/services/email/notification-weekly-template');
+
+      prismaMock.notification_events.findMany.mockResolvedValue([
+        makeWeeklyEvent('Reaction'),
+      ] as any);
+      prismaMock.notification_preferences.findMany.mockResolvedValue([]);
+      prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      // DB 查詢已在 where 條件中過濾（active 但本週無打卡的實踐不會被回傳）
+      prismaMock.practices.findMany.mockResolvedValue([
+        { title: '每日閱讀', status: 'active', practice_checkins: [{ id: 1 }, { id: 2 }, { id: 3 }] },
+        { title: '英文學習', status: 'completed', practice_checkins: [] },
+      ] as any);
+
+      await capturedProcessor!(makeJob());
+
+      const callArg = (generateWeeklyDigestHtml as jest.Mock).mock.calls[0][0];
+      expect(callArg.practiceProgress).toHaveLength(2);
+      expect(callArg.practiceProgress[0]).toEqual({
+        title: '每日閱讀',
+        checkInCount: 3,
+        isCompleted: false,
+      });
+      expect(callArg.practiceProgress[1]).toEqual({
+        title: '英文學習',
+        checkInCount: 0,
+        isCompleted: true,
+      });
     });
 
     it('多位 recipient 各自收到週報', async () => {
@@ -321,6 +360,7 @@ describe('NotificationWeeklyWorker', () => {
       prismaMock.users.findUnique
         .mockResolvedValueOnce({ nickname: 'Alice', contacts: { email: 'alice@example.com' } } as any)
         .mockResolvedValueOnce({ nickname: 'Bob', contacts: { email: 'bob@example.com' } } as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await capturedProcessor!(makeJob());
 
@@ -342,6 +382,7 @@ describe('NotificationWeeklyWorker', () => {
       prismaMock.users.findUnique
         .mockRejectedValueOnce(new Error('DB error'))
         .mockResolvedValueOnce({ nickname: 'Bob', contacts: { email: 'bob@example.com' } } as any);
+      prismaMock.practices.findMany.mockResolvedValue([]);
 
       await expect(capturedProcessor!(makeJob())).resolves.toBeUndefined();
 

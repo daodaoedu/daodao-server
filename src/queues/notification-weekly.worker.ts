@@ -182,12 +182,49 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
           connectRequests: allowedStats['Connect'] ?? 0,
         };
 
+        // 3d. 查詢該用戶進行中的實踐及本週打卡次數
+        // 過濾條件直接放在 DB 查詢中，避免 take: 5 在記憶體過濾前就截斷結果
+        const practices = await prisma.practices.findMany({
+          where: {
+            user_id: recipientId,
+            OR: [
+              { status: 'completed' },
+              {
+                status: 'active',
+                practice_checkins: {
+                  some: {
+                    checkin_date: { gte: weekStart, lte: weekEnd },
+                  },
+                },
+              },
+            ],
+          },
+          select: {
+            title: true,
+            status: true,
+            practice_checkins: {
+              where: {
+                checkin_date: { gte: weekStart, lte: weekEnd },
+              },
+              select: { id: true },
+            },
+          },
+          orderBy: { updated_at: 'desc' },
+          take: 5,
+        });
+
+        const practiceProgress = practices.map((p) => ({
+          title: p.title,
+          checkInCount: p.practice_checkins.length,
+          isCompleted: p.status === 'completed',
+        }));
+
         const weeklyData: WeeklyDigestData = {
           recipientName,
           weekStart:       toUtc8Label(weekStart),
           weekEnd:         toUtc8Label(weekEnd),
           stats:           statsTyped,
-          practiceProgress: [], // MVP：不查詢實踐進度，留給後續完整版實作
+          practiceProgress,
           unsubscribeUrl:  generateUnsubscribeUrl(recipientId, 'weekly'),
           settingsUrl:     generateSettingsUrl(),
         };
