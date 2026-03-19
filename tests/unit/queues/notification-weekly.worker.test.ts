@@ -329,16 +329,15 @@ describe('NotificationWeeklyWorker', () => {
       ] as any);
       prismaMock.notification_preferences.findMany.mockResolvedValue([]);
       prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as any);
+      // DB 查詢已在 where 條件中過濾（active 但本週無打卡的實踐不會被回傳）
       prismaMock.practices.findMany.mockResolvedValue([
         { title: '每日閱讀', status: 'active', practice_checkins: [{ id: 1 }, { id: 2 }, { id: 3 }] },
         { title: '英文學習', status: 'completed', practice_checkins: [] },
-        { title: '無動態實踐', status: 'active', practice_checkins: [] },
       ] as any);
 
       await capturedProcessor!(makeJob());
 
       const callArg = (generateWeeklyDigestHtml as jest.Mock).mock.calls[0][0];
-      // 「無動態實踐」應被過濾掉（active 但本週無打卡）
       expect(callArg.practiceProgress).toHaveLength(2);
       expect(callArg.practiceProgress[0]).toEqual({
         title: '每日閱讀',
