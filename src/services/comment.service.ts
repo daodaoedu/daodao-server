@@ -143,6 +143,59 @@ export class CommentService implements CommentServiceInterface {
           }).catch(() => {});
         }
 
+        // Fire-and-forget: mention 通知給被 @mention 的使用者
+        const mentionedUserIds = params.mentionedUserIds;
+        if (mentionedUserIds && mentionedUserIds.length > 0) {
+          const ownerId = targetEntity.user_id ?? null;
+          const uniqueIds = [...new Set(mentionedUserIds)].filter(
+            (id) => id !== userId && id !== ownerId
+          );
+
+          if (uniqueIds.length > 0) {
+            try {
+              const foundUsers = await tx.users.findMany({
+                where: { id: { in: uniqueIds } },
+                select: { id: true },
+              });
+              const validIds = foundUsers.map((u) => u.id);
+
+              // targetType → URL path mapping
+              const pathSegmentMap: Record<string, string> = {
+                check_in: 'check-ins',
+                practice:  'practices',
+                post:      'posts',
+                resource:  'resources',
+                note:      'notes',
+                outcome:   'outcomes',
+                review:    'reviews',
+                circle:    'circles',
+                idea:      'ideas',
+                portfolio: 'portfolios',
+              };
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://daodao.cc';
+              const segment = pathSegmentMap[targetType];
+              const url = segment
+                ? `${frontendUrl}/${segment}/${targetId}`
+                : frontendUrl;
+              const actorName = createdComment.users.nickname ?? undefined;
+
+              for (const recipientId of validIds) {
+                notificationEventService.createEvent({
+                  type:        'mention',
+                  actorId:     userId,
+                  recipientId,
+                  entityType:  'comment',
+                  entityId:    createdComment.id,
+                  priority:    'P1',
+                  payload:     { content, actorName, url },
+                }).catch(() => {});
+              }
+            } catch {
+              // best-effort: mention failure does not affect comment creation
+            }
+          }
+        }
+
         // Format and return the response
         const formattedComment = await this.formatCommentResponse(createdComment);
         return createSuccessResponse(formattedComment);
