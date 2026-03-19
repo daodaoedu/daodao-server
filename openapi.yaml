@@ -5801,6 +5801,18 @@ components:
             - 1
             - 25
             - 100
+        mentionedUserIds:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          maxItems: 10
+          description: 被 @mention 的使用者 ID 列表（最多 10 人）
+          example:
+            - 1
+            - 2
+            - 3
       required:
         - targetType
         - targetId
