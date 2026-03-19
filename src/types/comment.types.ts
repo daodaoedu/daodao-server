@@ -69,6 +69,7 @@ export interface CommentCreateRequest {
   content: string;
   visibility?: CommentVisibility;
   parentId?: number;
+  mentionedUserIds?: number[];
 }
 
 // Update comment request interface

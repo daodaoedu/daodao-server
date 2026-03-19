@@ -62,6 +62,10 @@ export const createCommentSchema = z.object({
     description: "父留言ID（用於回覆）",
     example: 1,
     examples: [1, 25, 100]
+  }),
+  mentionedUserIds: z.array(z.number().int().positive()).max(10).optional().openapi({
+    description: "被 @mention 的使用者 ID 列表（最多 10 人）",
+    example: [1, 2, 3],
   })
 }).openapi('CreateCommentRequest', {
   description: "創建留言的請求資料"
