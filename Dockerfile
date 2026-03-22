@@ -73,14 +73,19 @@ COPY --from=builder /app/public ./public
 COPY --from=prisma /app/generated ./generated
 COPY prisma ./prisma
 
+# 創建非 root 用戶
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser --ingroup nodejs
+
 # 創建必要的目錄和確保 generated 目錄可訪問
 RUN mkdir -p /app/logs /app/dist/generated && \
     if [ -d "/app/generated" ] && [ "$(ls -A /app/generated 2>/dev/null)" ]; then \
         cp -r /app/generated/* /app/dist/generated/; \
-    fi
+    fi && \
+    chown -R appuser:nodejs /app/logs
 
-# 注意：容器以 root 用戶運行，以避免權限問題
-# 適合開發和測試環境，生產環境建議使用非 root 用戶
+# 切換到非 root 用戶
+USER appuser
 
 # 健康檢查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
@@ -88,5 +93,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 EXPOSE 3000
 
-# 使用 PM2 啟動（以 root 用戶運行）
+# 使用 PM2 啟動（以非 root 用戶運行）
 CMD ["./node_modules/.bin/pm2-runtime", "start", "ecosystem.config.js"]

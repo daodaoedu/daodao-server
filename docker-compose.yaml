@@ -20,6 +20,11 @@ x-prod-app-base: &prod-app-base
     timeout: 5s
     retries: 3
     start_period: 30s
+  deploy:
+    resources:
+      limits:
+        memory: 1G
+        cpus: "1.0"
 
 services:
   prod_app:
@@ -77,12 +82,22 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
 
   redis_prod:
-    image: redis:6
+    image: redis:6.2.16-alpine
     container_name: redis_prod
     volumes:
       - redis_prod_data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - prod-daodao-network
     healthcheck:
@@ -90,12 +105,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   redis_production:
-    image: redis:6
+    image: redis:6.2.16-alpine
     container_name: redis_production
     volumes:
       - redis_production_data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - prod-daodao-network
     healthcheck:
@@ -103,12 +128,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   redis_dev:
-    image: redis:6
+    image: redis:6.2.16-alpine
     container_name: redis_dev
     volumes:
       - redis_dev_data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "1"
     networks:
       - dev-daodao-network
     healthcheck:
@@ -116,6 +151,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
 
   nginx:
     image: nginx:latest
