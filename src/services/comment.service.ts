@@ -147,8 +147,18 @@ export class CommentService implements CommentServiceInterface {
         // Fire-and-forget: mention 通知給被 @mention 的使用者
         const mentionedUserIds = params.mentionedUserIds;
         if (mentionedUserIds && mentionedUserIds.length > 0) {
+          // Security: only allow as many mentionedUserIds as @mention patterns in content
+          const mentionPatterns = content.match(/@[\w]+/g) ?? [];
+          if (mentionPatterns.length < mentionedUserIds.length) {
+            loggerService.warn('[CommentService] mentionedUserIds count exceeds @mentions in content', {
+              mentionedCount: mentionedUserIds.length,
+              contentMentions: mentionPatterns.length,
+              userId,
+            });
+          }
+          const safeUserIds = mentionedUserIds.slice(0, Math.max(mentionPatterns.length, 0));
           const ownerId = targetEntity.user_id ?? null;
-          const uniqueIds = [...new Set(mentionedUserIds)].filter(
+          const uniqueIds = [...new Set(safeUserIds)].filter(
             (id) => id !== userId && id !== ownerId
           );
 

@@ -105,7 +105,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
         OR: [
           { priority: { gt: p } },
           { priority: p, created_at: { lt: new Date(c) } },
-          { priority: p, created_at: new Date(c), id: { lt: id } },
+          { priority: p, created_at: { lte: new Date(c) }, id: { lt: id } },
         ]
       }
     ];

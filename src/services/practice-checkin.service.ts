@@ -44,6 +44,13 @@ import { setEntityTags } from './tag.service';
 import { MS_PER_DAY } from '../utils/date-utils';
 import { notificationEventService } from './notification-event.service';
 
+/** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
+let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
+function getFanoutModule() {
+  if (!_fanoutModule) _fanoutModule = import('./social-notification-fanout.service');
+  return _fanoutModule;
+}
+
 const prismaClient = prisma;
 
 /** 打卡記錄的 entity_type */
@@ -249,24 +256,14 @@ export async function createCheckIn(
       });
     }
 
-    // 通知關注此實踐的 followers（非阻塞）
-    const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
-    prismaClient.follows.findMany({
-      where:  { target_type: 'practice', target_id: practiceId },
-      select: { follower_id: true },
-    }).then((followers) => {
-      for (const { follower_id } of followers) {
-        notificationEventService.createEvent({
-          type:        'update-practice-checkin',
-          actorId:     userId,
-          recipientId: follower_id,
-          entityType:  'practice',
-          entityId:    practiceId,
-          payload:     { practice_title: practiceTitle },
-          priority:    'P2',
-        }).catch(() => {});
-
-        if (newStatus === 'completed') {
+    // 通知關注此實踐的 followers：實踐完成（非阻塞）
+    if (newStatus === 'completed') {
+      const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
+      prismaClient.follows.findMany({
+        where:  { target_type: 'practice', target_id: practiceId },
+        select: { follower_id: true },
+      }).then((followers) => {
+        for (const { follower_id } of followers) {
           notificationEventService.createEvent({
             type:        'update-practice-finish',
             actorId:     userId,
@@ -277,12 +274,12 @@ export async function createCheckIn(
             priority:    'P2',
           }).catch(() => {});
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    }
 
     // Fire-and-forget: fan-out 打卡通知給追蹤者和連結夥伴
     const checkinPayload = { practiceId, checkinId: checkIn.id };
-    import('./social-notification-fanout.service').then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
       fanoutToPracticeFollowers('follow.practice_checkin', userId, practiceId, checkinPayload).catch(() => {});
       fanoutToConnectedPartners('connect.partner_checkin', userId, checkinPayload).catch(() => {});
     }).catch(() => {});
