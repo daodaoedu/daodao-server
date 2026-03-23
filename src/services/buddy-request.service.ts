@@ -100,7 +100,7 @@ const createBuddyRequest = async (
   });
 
   // 5. 通知被請求方（P1 BuddyRequest）
-  void notificationEventService.createEvent({
+  notificationEventService.createEvent({
     type:        'BuddyRequest',
     actorId:     requesterId,
     recipientId: receiverId,
@@ -108,7 +108,7 @@ const createBuddyRequest = async (
     entityId:    newRequest.id,
     payload:     { practice_id: practiceId, practice_title: practiceTitle },
     priority:    'P1',
-  });
+  }).catch(() => {});
 
   // 6. Fan-out 給請求者的所有追蹤者（P1 BuddyRequestFollower）
   const followers = await prisma.follows.findMany({
@@ -120,7 +120,7 @@ const createBuddyRequest = async (
   });
 
   for (const { follower_id } of followers) {
-    void notificationEventService.createEvent({
+    notificationEventService.createEvent({
       type:        'BuddyRequestFollower',
       actorId:     requesterId,
       recipientId: follower_id,
@@ -128,7 +128,7 @@ const createBuddyRequest = async (
       entityId:    newRequest.id,
       payload:     { practice_id: practiceId, practice_title: practiceTitle },
       priority:    'P1',
-    });
+    }).catch(() => {});
   }
 
   return createSuccessResponse({ message: 'Buddy 請求已送出' });
@@ -161,7 +161,7 @@ const updateBuddyRequest = async (
 
   // 3. 若接受，通知請求者 P1 BuddyAccepted 事件
   if (status === 'accepted') {
-    void notificationEventService.createEvent({
+    notificationEventService.createEvent({
       type:        'BuddyAccepted',
       actorId:     receiverId,
       recipientId: request.requester_id,
@@ -169,7 +169,7 @@ const updateBuddyRequest = async (
       entityId:    requestId,
       payload:     { practice_id: request.practice_id },
       priority:    'P1',
-    });
+    }).catch(() => {});
   }
 
   const message = status === 'accepted' ? 'Buddy 請求已接受' : 'Buddy 請求已忽略';

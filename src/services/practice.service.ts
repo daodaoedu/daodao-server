@@ -44,6 +44,13 @@ import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
 
+/** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
+let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
+function getFanoutModule() {
+  if (!_fanoutModule) _fanoutModule = import('./social-notification-fanout.service');
+  return _fanoutModule;
+}
+
 const prismaClient = prisma;
 
 // 主題色循環順序
@@ -811,7 +818,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
     const updatePayload = { practiceId: id };
-    import('./social-notification-fanout.service').then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
       fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
       fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
     }).catch(() => {});
