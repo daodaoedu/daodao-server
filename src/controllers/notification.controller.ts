@@ -117,6 +117,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     orderBy: [
       { priority:   'asc' },   // P1 < P2，字母升冪即 P1 優先
       { created_at: 'desc' },
+      { id:         'desc' },  // tiebreaker，確保排序唯一性
     ],
     take: limit + 1,
     select: {
@@ -150,7 +151,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   const nextCursor = hasNext
     ? Buffer.from(JSON.stringify({
         p: lastItem.priority,
-        c: lastItem.created_at?.toISOString(),
+        c: (lastItem.created_at ?? new Date()).toISOString(),
         id: lastItem.id
       })).toString('base64')
     : null;

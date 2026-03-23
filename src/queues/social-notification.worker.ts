@@ -93,6 +93,14 @@ async function processSocialNotificationJob(job: Job<SocialNotificationJob>): Pr
 }
 
 /**
+ * 從 payload 取得指定 key 的 number 值，不存在或型別不對時回傳 undefined
+ */
+function getPayloadNumber(payload: Record<string, unknown> | undefined, key: string): number | undefined {
+  const val = payload?.[key];
+  return typeof val === 'number' ? val : undefined;
+}
+
+/**
  * 處理用戶追蹤通知 (follow.user)
  */
 async function handleFollowUser(
@@ -100,12 +108,17 @@ async function handleFollowUser(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'targetId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid targetId in follow.user payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'UserFollowActivity',
     actorId,
     recipientId,
     entityType: 'user',
-    entityId: payload?.targetId as number,
+    entityId,
     payload,
     priority: 'P2',
   });
@@ -119,12 +132,17 @@ async function handleFollowPracticeCheckin(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'practiceId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid practiceId in follow.practice_checkin payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'PracticeCheckinActivity',
     actorId,
     recipientId,
     entityType: 'practice',
-    entityId: payload?.practiceId as number,
+    entityId,
     payload,
     priority: 'P2',
   });
@@ -138,12 +156,17 @@ async function handleFollowPracticeUpdate(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'practiceId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid practiceId in follow.practice_update payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'PracticeUpdateActivity',
     actorId,
     recipientId,
     entityType: 'practice',
-    entityId: payload?.practiceId as number,
+    entityId,
     payload,
     priority: 'P2',
   });
@@ -157,12 +180,17 @@ async function handleConnectRequest(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'receiverId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid receiverId in connect.request payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'ConnectRequestActivity',
     actorId,
     recipientId,
     entityType: 'connection',
-    entityId: payload?.receiverId as number,
+    entityId,
     payload,
     priority: 'P2',
   });
@@ -188,12 +216,17 @@ async function handleConnectPartnerCheckin(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'practiceId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid practiceId in connect.partner_checkin payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'PartnerCheckinActivity',
     actorId,
     recipientId,
     entityType: 'practice',
-    entityId: payload?.practiceId as number,
+    entityId,
     payload,
     priority: 'P1',
   });
@@ -207,12 +240,17 @@ async function handleConnectPartnerUpdate(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'practiceId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid practiceId in connect.partner_update payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'PartnerUpdateActivity',
     actorId,
     recipientId,
     entityType: 'practice',
-    entityId: payload?.practiceId as number,
+    entityId,
     payload,
     priority: 'P2',
   });
@@ -228,12 +266,17 @@ async function handleMention(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
+  const entityId = getPayloadNumber(payload, 'commentId');
+  if (entityId === undefined) {
+    loggerService.warn('Missing or invalid commentId in mention payload', { actorId, recipientId, payload });
+    return;
+  }
   await notificationEventService.createEvent({
     type: 'Mention',
     actorId,
     recipientId,
     entityType: 'comment',
-    entityId: payload?.commentId as number,
+    entityId,
     payload,
     priority: 'P1',
   });

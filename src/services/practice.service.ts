@@ -809,38 +809,11 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       }).catch(() => {});
     }
 
-    // Fire-and-forget: fan-out follow.practice_update to practice followers
-    prismaClient.follows.findMany({
-      where: { target_type: 'practice', target_id: id },
-      select: { follower_id: true },
-    }).then(async (followers) => {
-      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-      for (const follower of followers) {
-        if (follower.follower_id === userId) continue;
-        await enqueueSocialNotification({
-          event: 'follow.practice_update',
-          actorId: userId,
-          recipientId: follower.follower_id,
-          payload: { practiceId: id },
-        });
-      }
-    }).catch(() => {});
-
-    // Fire-and-forget: fan-out connect.partner_update to connected partners
-    prismaClient.connections.findMany({
-      where: { OR: [{ user_a_id: userId }, { user_b_id: userId }] },
-      select: { user_a_id: true, user_b_id: true },
-    }).then(async (connections) => {
-      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-      for (const conn of connections) {
-        const partnerId = conn.user_a_id === userId ? conn.user_b_id : conn.user_a_id;
-        await enqueueSocialNotification({
-          event: 'connect.partner_update',
-          actorId: userId,
-          recipientId: partnerId,
-          payload: { practiceId: id },
-        });
-      }
+    // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
+    const updatePayload = { practiceId: id };
+    import('./social-notification-fanout.service').then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+      fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
+      fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
     }).catch(() => {});
 
     return createSuccessResponse(practiceEntity);
