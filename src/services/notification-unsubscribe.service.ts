@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
 const UNSUBSCRIBE_SECRET = process.env.JWT_SECRET || 'unsubscribe-secret';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://daodao.cc';
 
 /** Token 有效期（90 天，秒） */
@@ -68,7 +69,7 @@ export function verifyUnsubscribeToken(
 
 /**
  * 產生退訂 URL（含 JWT token）
- * 格式：${FRONTEND_URL}/api/v1/notifications/unsubscribe?token=<jwt>
+ * 格式：${BACKEND_URL}/api/v1/notifications/unsubscribe?token=<jwt>
  *
  * @param userId - 使用者 ID
  * @param notificationType - 通知類型
@@ -76,7 +77,7 @@ export function verifyUnsubscribeToken(
  */
 export function generateUnsubscribeUrl(userId: number, notificationType: string): string {
   const token = generateUnsubscribeToken(userId, notificationType);
-  return `${FRONTEND_URL}/api/v1/notifications/unsubscribe?token=${encodeURIComponent(token)}`;
+  return `${BACKEND_URL}/api/v1/notifications/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
 /**

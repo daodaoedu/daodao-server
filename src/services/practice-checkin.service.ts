@@ -280,6 +280,40 @@ export async function createCheckIn(
       }
     }).catch(() => {});
 
+    // Fire-and-forget: fan-out follow.practice_checkin to practice followers
+    prismaClient.follows.findMany({
+      where: { target_type: 'practice', target_id: practiceId },
+      select: { follower_id: true },
+    }).then(async (followers) => {
+      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
+      for (const follower of followers) {
+        if (follower.follower_id === userId) continue;
+        await enqueueSocialNotification({
+          event: 'follow.practice_checkin',
+          actorId: userId,
+          recipientId: follower.follower_id,
+          payload: { practiceId, checkinId: checkIn.id },
+        });
+      }
+    }).catch(() => {});
+
+    // Fire-and-forget: fan-out connect.partner_checkin to connected partners
+    prismaClient.connections.findMany({
+      where: { OR: [{ user_a_id: userId }, { user_b_id: userId }] },
+      select: { user_a_id: true, user_b_id: true },
+    }).then(async (connections) => {
+      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
+      for (const conn of connections) {
+        const partnerId = conn.user_a_id === userId ? conn.user_b_id : conn.user_a_id;
+        await enqueueSocialNotification({
+          event: 'connect.partner_checkin',
+          actorId: userId,
+          recipientId: partnerId,
+          payload: { practiceId, checkinId: checkIn.id },
+        });
+      }
+    }).catch(() => {});
+
     return createSuccessResponse(response);
 
   } catch (error) {
