@@ -280,6 +280,13 @@ export async function createCheckIn(
       }
     }).catch(() => {});
 
+    // Fire-and-forget: fan-out 打卡通知給追蹤者和連結夥伴
+    const checkinPayload = { practiceId, checkinId: checkIn.id };
+    import('./social-notification-fanout.service').then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+      fanoutToPracticeFollowers('follow.practice_checkin', userId, practiceId, checkinPayload).catch(() => {});
+      fanoutToConnectedPartners('connect.partner_checkin', userId, checkinPayload).catch(() => {});
+    }).catch(() => {});
+
     return createSuccessResponse(response);
 
   } catch (error) {

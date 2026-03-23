@@ -96,6 +96,11 @@ export async function enqueueReactionNotification(job: ReactionNotificationJob):
 
   const jobId = `reaction-notification-${job.practiceId}`;
 
+  const existingJob = await queue.getJob(jobId);
+  if (existingJob) {
+    try { await existingJob.remove(); } catch { /* job may have been processed */ }
+  }
+
   await queue.add('reaction.notified', job, {
     jobId,
     delay: REACTION_NOTIFICATION_DELAY_MS,

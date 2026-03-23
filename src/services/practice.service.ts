@@ -809,6 +809,13 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       }).catch(() => {});
     }
 
+    // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
+    const updatePayload = { practiceId: id };
+    import('./social-notification-fanout.service').then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+      fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
+      fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
+    }).catch(() => {});
+
     return createSuccessResponse(practiceEntity);
 
   } catch (error) {

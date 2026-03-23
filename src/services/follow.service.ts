@@ -103,6 +103,23 @@ const followUser = async (
     }))
     .catch(() => {});
 
+  // Fire-and-forget: fan-out follow.user to actor's followers
+  prisma.follows.findMany({
+    where: { target_type: 'user', target_id: followerId },
+    select: { follower_id: true },
+  }).then(async (followers) => {
+    const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
+    for (const follower of followers) {
+      if (follower.follower_id === targetId) continue;
+      await enqueueSocialNotification({
+        event: 'follow.user',
+        actorId: followerId,
+        recipientId: follower.follower_id,
+        payload: { targetId },
+      });
+    }
+  }).catch(() => {});
+
   return createSuccessResponse({ message: '關注成功' });
 };
 
@@ -234,7 +251,7 @@ const getFollowers = async (
     followedAt: (r.created_at ?? new Date()).toISOString(),
   }));
 
-  const pagination = calculatePagination(total, page, limit);
+  const pagination = calculatePagination(page, limit, total);
   return createPaginatedResponse(items, pagination);
 };
 
@@ -325,7 +342,7 @@ const getFollowing = async (
     }
   });
 
-  const pagination = calculatePagination(total, page, limit);
+  const pagination = calculatePagination(page, limit, total);
   return createPaginatedResponse(items, pagination);
 };
 
