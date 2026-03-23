@@ -503,8 +503,7 @@ export const getUserProfile = asyncHandler(async (req: Request, res: Response) =
   // 取得 connections 數
   const connectionsCount = await getUserConnectionsCount(user.id);
 
-  // 目前 users 表無 hide_connections_count 欄位，預設為 false
-  const hideConnectionsCount = false;
+  const hideConnectionsCount = user.hide_connections_count ?? false;
 
   // 若有 viewerId 且不是自己，計算共同 circle 數
   const viewerIdNum = currentUser?.id ?? null;

@@ -8,6 +8,7 @@ import { Worker, Job } from 'bullmq';
 import { getQueueConnection } from './connection';
 import { SOCIAL_NOTIFICATION_QUEUE_NAME } from './social-notification.queue';
 import { loggerService } from '../services/logging/logger.service';
+import { notificationEventService } from '../services/notification-event.service';
 import type { SocialNotificationJob } from '../types/social.types';
 import { SocialNotificationEvent } from '../types/social.types';
 
@@ -99,8 +100,15 @@ async function handleFollowUser(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app / email notification to recipientId
-  console.log('[social-notification] follow.user', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'UserFollowActivity',
+    actorId,
+    recipientId,
+    entityType: 'user',
+    entityId: payload?.targetId as number,
+    payload,
+    priority: 'P2',
+  });
 }
 
 /**
@@ -111,8 +119,15 @@ async function handleFollowPracticeCheckin(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app notification to recipientId
-  console.log('[social-notification] follow.practice_checkin', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'PracticeCheckinActivity',
+    actorId,
+    recipientId,
+    entityType: 'practice',
+    entityId: payload?.practiceId as number,
+    payload,
+    priority: 'P2',
+  });
 }
 
 /**
@@ -123,8 +138,15 @@ async function handleFollowPracticeUpdate(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app notification to recipientId
-  console.log('[social-notification] follow.practice_update', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'PracticeUpdateActivity',
+    actorId,
+    recipientId,
+    entityType: 'practice',
+    entityId: payload?.practiceId as number,
+    payload,
+    priority: 'P2',
+  });
 }
 
 /**
@@ -135,8 +157,15 @@ async function handleConnectRequest(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app / email notification to recipientId
-  console.log('[social-notification] connect.request', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'ConnectRequestActivity',
+    actorId,
+    recipientId,
+    entityType: 'connection',
+    entityId: payload?.receiverId as number,
+    payload,
+    priority: 'P2',
+  });
 }
 
 /**
@@ -147,8 +176,8 @@ async function handleConnectAccepted(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app notification to recipientId
-  console.log('[social-notification] connect.accepted', { actorId, recipientId, payload });
+  // No-op: will be removed from enqueue side. Direct P1 ConnectAccepted notification is sufficient.
+  loggerService.debug('connect.accepted handler called (no-op)', { actorId, recipientId, payload });
 }
 
 /**
@@ -159,8 +188,15 @@ async function handleConnectPartnerCheckin(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app notification to recipientId
-  console.log('[social-notification] connect.partner_checkin', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'PartnerCheckinActivity',
+    actorId,
+    recipientId,
+    entityType: 'practice',
+    entityId: payload?.practiceId as number,
+    payload,
+    priority: 'P1',
+  });
 }
 
 /**
@@ -171,20 +207,36 @@ async function handleConnectPartnerUpdate(
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app notification to recipientId
-  console.log('[social-notification] connect.partner_update', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'PartnerUpdateActivity',
+    actorId,
+    recipientId,
+    entityType: 'practice',
+    entityId: payload?.practiceId as number,
+    payload,
+    priority: 'P2',
+  });
 }
 
 /**
  * 處理 @mention 通知
+ * 注意：目前 mention 由 comment.service.ts 透過 Route A 直接通知，
+ * 不經 social-notification queue。此 handler 保留供未來切換至 queue-based 使用。
  */
 async function handleMention(
   actorId: number,
   recipientId: number,
   payload?: Record<string, unknown>
 ): Promise<void> {
-  // TODO: send in-app notification to recipientId
-  console.log('[social-notification] mention', { actorId, recipientId, payload });
+  await notificationEventService.createEvent({
+    type: 'Mention',
+    actorId,
+    recipientId,
+    entityType: 'comment',
+    entityId: payload?.commentId as number,
+    payload,
+    priority: 'P1',
+  });
 }
 
 /**

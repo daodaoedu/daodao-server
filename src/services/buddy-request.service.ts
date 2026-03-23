@@ -151,6 +151,7 @@ const updateBuddyRequest = async (
   });
   if (!request) throw new NotFoundError('找不到指定的 Buddy 請求');
   if (request.receiver_id !== receiverId) throw new ForbiddenError('無權操作此請求');
+  if (request.status !== 'pending') throw new BadRequestError('此請求已被處理');
 
   // 2. 更新 status
   await prisma.practice_buddy_requests.update({

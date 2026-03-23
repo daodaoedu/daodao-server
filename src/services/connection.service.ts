@@ -231,19 +231,6 @@ const acceptRequest = async (
     }),
   ]);
 
-  // Enqueue connect.accepted notification to the original requester
-  try {
-    const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-    await enqueueSocialNotification({
-      event: 'connect.accepted',
-      actorId: currentUserId,
-      recipientId: request.requester_id,
-      payload: { connectId: request.id }
-    });
-  } catch (e) {
-    console.warn('Failed to enqueue connect.accepted notification:', e);
-  }
-
   // Fire-and-forget: P1 ConnectAccepted event — notify the original requester
   prisma.users.findUnique({ where: { id: currentUserId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
@@ -379,7 +366,7 @@ const getConnections = async (
     };
   });
 
-  const pagination = calculatePagination(total, page, limit);
+  const pagination = calculatePagination(page, limit, total);
   return createPaginatedResponse(items, pagination);
 };
 
@@ -422,7 +409,7 @@ const getPendingIncoming = async (
     })
   );
 
-  const pagination = calculatePagination(total, page, limit);
+  const pagination = calculatePagination(page, limit, total);
   return createPaginatedResponse(items, pagination);
 };
 
@@ -460,7 +447,7 @@ const getPendingOutgoing = async (
     createdAt:           (r.created_at ?? new Date()).toISOString(),
   }));
 
-  const pagination = calculatePagination(total, page, limit);
+  const pagination = calculatePagination(page, limit, total);
   return createPaginatedResponse(items, pagination);
 };
 

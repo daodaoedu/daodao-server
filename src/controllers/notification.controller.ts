@@ -4,7 +4,8 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, UnauthorizedError, NotFoundError } from '../middleware/error.middleware';
+import type { Prisma } from '../../generated/prisma';
+import { asyncHandler, UnauthorizedError, NotFoundError, BadRequestError } from '../middleware/error.middleware';
 import { notificationPreferenceService } from '../services/notification-preference.service';
 import { verifyUnsubscribeToken } from '../services/notification-unsubscribe.service';
 import { prisma } from '../services/database/prisma.service';
@@ -85,12 +86,30 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
 
   const userId  = req.user.id;
   const limit   = Math.min(parseInt(String(req.query.limit ?? '20'), 10) || 20, 100);
-  const cursor  = req.query.cursor ? parseInt(String(req.query.cursor), 10) : undefined;
+  const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
 
-  const where = {
+  const where: Prisma.notificationsWhereInput = {
     recipient_id: userId,
-    ...(cursor ? { id: { lt: cursor } } : {}),
   };
+
+  if (cursor) {
+    let parsed: { p: string; c: string; id: number };
+    try {
+      parsed = JSON.parse(Buffer.from(cursor, 'base64').toString());
+    } catch {
+      throw new BadRequestError('Invalid cursor');
+    }
+    const { p, c, id } = parsed;
+    where.AND = [
+      {
+        OR: [
+          { priority: { gt: p } },
+          { priority: p, created_at: { lt: new Date(c) } },
+          { priority: p, created_at: new Date(c), id: { lt: id } },
+        ]
+      }
+    ];
+  }
 
   // 查詢 limit + 1 筆，用來判斷是否有下一頁
   const rows = await prisma.notifications.findMany({
@@ -127,7 +146,14 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
 
   const hasNext    = rows.length > limit;
   const items      = hasNext ? rows.slice(0, limit) : rows;
-  const nextCursor = hasNext ? String(items[items.length - 1].id) : null;
+  const lastItem = items[items.length - 1];
+  const nextCursor = hasNext
+    ? Buffer.from(JSON.stringify({
+        p: lastItem.priority,
+        c: lastItem.created_at?.toISOString(),
+        id: lastItem.id
+      })).toString('base64')
+    : null;
 
   // 查詢未讀通知數（不受 cursor 分頁影響，始終返回全量未讀數）
   const unreadCount = await prisma.notifications.count({
