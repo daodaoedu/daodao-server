@@ -249,7 +249,7 @@ export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
 // ============================================================================
 
 /** 島島阿學 Frontend URL */
-const FRONTEND_URL = process.env.FRONTEND_URL ?? '';
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
 
 /** 通知設定頁 URL */
 const SETTINGS_URL = `${FRONTEND_URL}/settings/notifications`;

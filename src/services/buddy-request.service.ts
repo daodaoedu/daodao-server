@@ -106,7 +106,7 @@ const createBuddyRequest = async (
     recipientId: receiverId,
     entityType:  'buddy_request',
     entityId:    newRequest.id,
-    payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL}/notifications` },
+    payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/notifications` },
     priority:    'P1',
   }).catch(() => {});
 
@@ -126,7 +126,7 @@ const createBuddyRequest = async (
       recipientId: follower_id,
       entityType:  'buddy_request',
       entityId:    newRequest.id,
-      payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL}/notifications` },
+      payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/notifications` },
       priority:    'P1',
     }).catch(() => {});
   }
@@ -167,7 +167,7 @@ const updateBuddyRequest = async (
       recipientId: request.requester_id,
       entityType:  'buddy_request',
       entityId:    requestId,
-      payload:     { practice_id: request.practice_id, url: `${process.env.FRONTEND_URL}/notifications` },
+      payload:     { practice_id: request.practice_id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/notifications` },
       priority:    'P1',
     }).catch(() => {});
   }

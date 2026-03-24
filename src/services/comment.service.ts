@@ -183,7 +183,7 @@ export class CommentService implements CommentServiceInterface {
                 idea:      'ideas',
                 portfolio: 'portfolios',
               };
-              const frontendUrl = process.env.FRONTEND_URL ?? '';
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
               const segment = pathSegmentMap[targetType];
               if (!segment) {
                 loggerService.warn(`[CommentService] Missing URL path segment for targetType: "${targetType}"`);
