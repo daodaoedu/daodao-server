@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken';
 
 const UNSUBSCRIBE_SECRET = process.env.JWT_SECRET || 'unsubscribe-secret';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://daodao.cc';
+const FRONTEND_URL = process.env.FRONTEND_URL ?? '';
 
 /** Token 有效期（90 天，秒） */
 const TOKEN_EXPIRY_SECONDS = 90 * 24 * 60 * 60;
