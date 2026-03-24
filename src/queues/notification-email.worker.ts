@@ -172,7 +172,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
             return {
               type:           e.type,
               actorName:      resolveActorName(payload, e.actor_id),
-              entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : undefined,
+              entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
               content:        payload?.content    ? String(payload.content)    : undefined,
               connectMessage: payload?.intent     ? String(payload.intent)     : payload?.message ? String(payload.message) : undefined,
               url:            String(payload?.url ?? process.env.FRONTEND_URL ?? ''),
@@ -184,11 +184,12 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
               type:        e.type,
               actorName:   resolveActorName(payload, e.actor_id),
               count:       typeof payload?.count === 'number' ? payload.count : 1,
-              entityTitle: payload?.entityTitle ? String(payload.entityTitle) : undefined,
+              entityTitle: payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
             };
           }),
           unsubscribeUrl: generateUnsubscribeUrl(recipientId, 'digest'),
           settingsUrl:    generateSettingsUrl(),
+          homeUrl:        process.env.FRONTEND_URL ?? 'https://daodao.cc',
         };
 
         const subject = generateNotificationDigestSubject(digestData);

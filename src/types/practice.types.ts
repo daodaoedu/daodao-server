@@ -76,6 +76,7 @@ export interface PracticeEntity {
   updatedAt?: string;
   user: UserSimpleInfo;
   tags: string[];
+  privacyStatus: string;
   stats: {
     likeCount: number;
     viewCount: number;

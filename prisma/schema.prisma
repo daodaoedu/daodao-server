@@ -422,7 +422,7 @@ model practices {
   updated_at               DateTime?                 @db.Timestamptz(6)
   deleted_at               DateTime?                 @db.Timestamptz(6)
   reflection               String?
-  privacy_status           String                    @default("private") @db.VarChar(20)
+  privacy_status           String                    @default("public") @db.VarChar(20)
   visibility               String?                   @default("public") @db.VarChar(20)
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
