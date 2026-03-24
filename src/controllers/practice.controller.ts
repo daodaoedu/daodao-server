@@ -259,8 +259,8 @@ export class PracticeController {
         continue;
       }
 
-      // 需要解析為 JSON 的欄位
-      if (key === 'tags' && typeof value === 'string') {
+      // 需要解析為 JSON 的陣列欄位
+      if ((key === 'tags' || key === 'imageUrls') && typeof value === 'string') {
         try {
           result[key] = JSON.parse(value);
         } catch {
