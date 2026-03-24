@@ -108,18 +108,25 @@ function generateP2Summary(events: NotificationDigestP2Event[]): string {
   const rows = events.map(e => {
     const safeName  = escapeHtml(e.actorName);
     const safeTitle = e.entityTitle ? escapeHtml(e.entityTitle) : '';
-    const label     = getEventLabel(e.type);
-
-    const titlePart = safeTitle ? `《${safeTitle}》` : '';
     const countPart = e.count > 1
       ? `等 <strong>${e.count}</strong> 人`
       : '';
+
+    // 共鳴事件：標題嵌入 label 中間；其他事件：標題附在末尾
+    let description: string;
+    if (e.type === 'reaction' && safeTitle) {
+      description = `對《${safeTitle}》按了共鳴`;
+    } else {
+      const label     = getEventLabel(e.type);
+      const titlePart = safeTitle ? ` 《${safeTitle}》` : '';
+      description = `${label}${titlePart}`;
+    }
 
     return `
 <tr>
   <td style="padding: 8px 0; border-bottom: 1px solid ${EMAIL_COLORS.divider};">
     <p style="margin: 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.5;">
-      <strong>${safeName}</strong>${countPart} ${label} ${titlePart}
+      <strong>${safeName}</strong>${countPart} ${description}
     </p>
   </td>
 </tr>`;
@@ -155,6 +162,7 @@ export function generateNotificationDigestSubject(data: NotificationDigestData):
 export function generateNotificationDigestHtml(data: NotificationDigestData): string {
   const safeName       = escapeHtml(data.recipientName);
   const safeSettingsUrl = sanitizeUrl(data.settingsUrl);
+  const safeHomeUrl = sanitizeUrl(data.homeUrl);
 
   const p1Section = data.p1Events.length > 0 ? `
 <!-- P1 區塊：重要連結與討論 -->
@@ -220,11 +228,11 @@ ${p1Section}
 ${divider}
 ${p2Section}
 
-<!-- 前往通知設定 -->
+<!-- 查看更多 -->
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
   <tr>
     <td style="padding-top: 24px; padding-bottom: 8px;" align="center">
-      ${generateCtaButton({ text: '前往通知設定', url: safeSettingsUrl, color: 'cyan' })}
+      ${generateCtaButton({ text: '查看更多', url: safeHomeUrl, color: 'cyan' })}
     </td>
   </tr>
 </table>
