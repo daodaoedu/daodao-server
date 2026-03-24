@@ -38,6 +38,7 @@ export interface NotificationDigestData {
   p2Events: NotificationDigestP2Event[];
   unsubscribeUrl: string;
   settingsUrl: string;
+  homeUrl: string;
 }
 
 // ─── 工具函式 ──────────────────────────────────────────────────────────────────

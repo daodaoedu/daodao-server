@@ -70,6 +70,7 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       practiceTimePeriods: practice.practiceTimePeriods,
       otherContext: practice.otherContext,
       status: practice.status,
+      privacyStatus: practice.privacyStatus,
       hasResources: practice.hasResources,
       progressPercentage: practice.progressPercentage,
       firstCheckinAt: practice.firstCheckinAt,
