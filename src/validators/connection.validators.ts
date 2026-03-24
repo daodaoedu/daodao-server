@@ -68,16 +68,21 @@ const connectionItemSchema = z.object({
   userId:        z.number(),
   externalId:    z.string(),
   nickname:      z.string().nullable(),
+  photoUrl:      z.string().nullable(),
   connectedAt:   z.string(),
 }).openapi('ConnectionItem');
 
 const connectionRequestItemSchema = z.object({
-  requestId:          z.number(),
+  requestId:           z.number(),
   requesterExternalId: z.string(),
   requesterNickname:   z.string().nullable(),
-  intent:             z.string().nullable(),
-  interactionCount:   z.number(),
-  createdAt:          z.string(),
+  requesterPhotoUrl:   z.string().nullable(),
+  receiverExternalId:  z.string(),
+  receiverNickname:    z.string().nullable(),
+  receiverPhotoUrl:    z.string().nullable(),
+  intent:              z.string().nullable(),
+  interactionCount:    z.number(),
+  createdAt:           z.string(),
 }).openapi('ConnectionRequestItem');
 
 export const connectionListApiResponseSchema = apiSuccessResponseSchema(

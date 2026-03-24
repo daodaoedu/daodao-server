@@ -34,6 +34,7 @@ export interface ConnectionItem {
   userId:       number;
   externalId:   string;
   nickname:     string | null;
+  photoUrl:     string | null;
   connectedAt:  string;
 }
 
@@ -41,8 +42,10 @@ export interface ConnectionRequestItem {
   requestId:           number;
   requesterExternalId: string;
   requesterNickname:   string | null;
+  requesterPhotoUrl:   string | null;
   receiverExternalId:  string;
   receiverNickname:    string | null;
+  receiverPhotoUrl:    string | null;
   intent:              string | null;
   interactionCount:    number;
   createdAt:           string;
@@ -341,7 +344,7 @@ const getConnections = async (
   const partnerIds = rows.map(r => (r.user_a_id === userId ? r.user_b_id : r.user_a_id));
   const partners = await prisma.users.findMany({
     where:  { id: { in: partnerIds } },
-    select: { id: true, external_id: true, nickname: true },
+    select: { id: true, external_id: true, nickname: true, contacts: { select: { photo_url: true } } },
   });
   const partnerMap = new Map(partners.map(u => [u.id, u]));
 
@@ -353,6 +356,7 @@ const getConnections = async (
       userId:       partnerId,
       externalId:   partner?.external_id ?? '',
       nickname:     partner?.nickname ?? null,
+      photoUrl:     partner?.contacts?.photo_url ?? null,
       connectedAt:  (r.connected_at ?? new Date()).toISOString(),
     };
   });
@@ -379,7 +383,7 @@ const getPendingIncoming = async (
       skip:    (page - 1) * limit,
       take:    limit,
       include: {
-        requester: { select: { id: true, external_id: true, nickname: true } },
+        requester: { select: { id: true, external_id: true, nickname: true, contacts: { select: { photo_url: true } } } },
       },
     }),
   ]);
@@ -391,8 +395,10 @@ const getPendingIncoming = async (
         requestId:           r.id,
         requesterExternalId: r.requester.external_id ?? '',
         requesterNickname:   r.requester.nickname ?? null,
+        requesterPhotoUrl:   r.requester.contacts?.photo_url ?? null,
         receiverExternalId:  '',
         receiverNickname:    null,
+        receiverPhotoUrl:    null,
         intent:              r.intent ?? null,
         interactionCount,
         createdAt:           (r.created_at ?? new Date()).toISOString(),
@@ -422,7 +428,7 @@ const getPendingOutgoing = async (
       skip:    (page - 1) * limit,
       take:    limit,
       include: {
-        receiver: { select: { id: true, external_id: true, nickname: true } },
+        receiver: { select: { id: true, external_id: true, nickname: true, contacts: { select: { photo_url: true } } } },
       },
     }),
   ]);
@@ -431,8 +437,10 @@ const getPendingOutgoing = async (
     requestId:           r.id,
     requesterExternalId: '',
     requesterNickname:   null,
+    requesterPhotoUrl:   null,
     receiverExternalId:  r.receiver.external_id ?? '',
     receiverNickname:    r.receiver.nickname ?? null,
+    receiverPhotoUrl:    r.receiver.contacts?.photo_url ?? null,
     intent:              r.intent ?? null,
     interactionCount:    0,
     createdAt:           (r.created_at ?? new Date()).toISOString(),
