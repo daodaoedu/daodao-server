@@ -259,7 +259,7 @@ export class CommentService implements CommentServiceInterface {
           }
         },
         orderBy: {
-          created_at: 'asc'
+          created_at: 'desc'
         }
       });
 
@@ -677,6 +677,15 @@ export class CommentService implements CommentServiceInterface {
         }
       } else {
         rootComments.push(comment);
+      }
+    });
+
+    // Replies keep chronological order (oldest first) for conversation context
+    rootComments.forEach(comment => {
+      if (comment.replies && comment.replies.length > 1) {
+        comment.replies.sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       }
     });
 
