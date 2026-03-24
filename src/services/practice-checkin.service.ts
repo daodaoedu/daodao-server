@@ -303,6 +303,53 @@ async function getRandomEncouragement(): Promise<string> {
 }
 
 /**
+ * 上傳簽到圖片到 R2
+ * 驗證檔案類型和大小後上傳，回傳圖片 URL 陣列
+ */
+export async function uploadCheckInImages(
+  imageFiles: Express.Multer.File[]
+): Promise<string[]> {
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_IMAGE_SIZE = 500 * 1024; // 500KB
+
+  for (const file of imageFiles) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      throw new BadRequestError(
+        `不支援的圖片格式: ${file.mimetype}。支援格式: ${ALLOWED_IMAGE_TYPES.join(', ')}`
+      );
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      throw new BadRequestError(
+        `檔案大小超過限制: ${Math.round(file.size / 1024)}KB (最大: ${MAX_IMAGE_SIZE / 1024}KB)`
+      );
+    }
+  }
+
+  const baseUrl = process.env.R2_PUBLIC_URL ||
+    `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ENDPOINT?.replace('https://', '')}`;
+  const uploadedImageUrls: string[] = [];
+  const uploadedFilenames: string[] = [];
+
+  try {
+    for (const file of imageFiles) {
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const filename = `checkins/${uuidv4()}.${fileExtension}`;
+      await uploadToR2(file, filename);
+      uploadedFilenames.push(filename);
+      uploadedImageUrls.push(`${baseUrl}/${filename}`);
+    }
+    return uploadedImageUrls;
+  } catch (error) {
+    for (const filename of uploadedFilenames) {
+      await deleteFromR2(filename).catch(err => {
+        loggerService.warn('Failed to cleanup uploaded image', { filename, err });
+      });
+    }
+    throw error;
+  }
+}
+
+/**
  * 建立簽到記錄（含圖片檔案上傳）
  * 實作 FormData 統一提交方案
  *
