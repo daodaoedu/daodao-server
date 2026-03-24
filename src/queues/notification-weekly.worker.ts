@@ -188,7 +188,7 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
           where: {
             user_id: recipientId,
             OR: [
-              { status: 'completed' },
+              { status: 'completed', updated_at: { gte: weekStart, lte: weekEnd } },
               {
                 status: 'active',
                 practice_checkins: {
