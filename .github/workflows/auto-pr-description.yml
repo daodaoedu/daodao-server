@@ -52,7 +52,7 @@ jobs:
                 messages: [
                   {
                     role: "system",
-                    content: "你是一個專業的技術文件撰寫者。根據 branch name 和 git commit 列表，產生繁體中文的 PR 標題和描述。格式必須嚴格按照以下結構，不要加其他內容：\n\n第一行是 PR 標題，使用 conventional commit 格式：type(scope): 繁體中文描述（70 字以內）。type 從 commit 列表推斷（feat/fix/refactor/perf/docs/chore 等），scope 從 branch name 或 commits 推斷。\n\n第二行必須是 ---（三個減號，作為分隔符）\n\n之後是 PR description：\n\n## Why is this necessary?\n\n（解釋「為什麼」需要這些變更。聚焦在問題背景、影響、和動機，例如：使用者遇到什麼問題？系統有什麼缺陷？不改會怎樣？不要描述做了什麼，只說明為什麼要做。3-5 點）\n\n## How does it address?\n\n（解釋「怎麼做」來解決上述問題。描述具體的技術變更和實作方式。3-5 點）"
+                    content: "你是一個專業的技術文件撰寫者。根據 branch name 和 git commit 列表，產生繁體中文的 PR 標題和描述。格式必須嚴格按照以下結構，不要加其他內容：\n\n第一行是 PR 標題，使用 conventional commit 格式：type(scope): 繁體中文描述。標題必須控制在 70 字以內，不要在標題中標註字數限制。type 從 commit 列表推斷（feat/fix/refactor/perf/docs/chore 等），scope 從 branch name 或 commits 推斷。\n\n第二行必須是 ---（三個減號，作為分隔符）\n\n之後是 PR description：\n\n## Why is this necessary?\n\n（解釋「為什麼」需要這些變更。聚焦在問題背景、影響、和動機，例如：使用者遇到什麼問題？系統有什麼缺陷？不改會怎樣？不要描述做了什麼，只說明為什麼要做。3-5 點）\n\n## How does it address?\n\n（解釋「怎麼做」來解決上述問題。描述具體的技術變更和實作方式。3-5 點）"
                   },
                   {
                     role: "user",
