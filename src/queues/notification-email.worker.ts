@@ -175,7 +175,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
               entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : undefined,
               content:        payload?.content    ? String(payload.content)    : undefined,
               connectMessage: payload?.intent     ? String(payload.intent)     : payload?.message ? String(payload.message) : undefined,
-              url:            String(payload?.url ?? `https://daodao.cc`),
+              url:            String(payload?.url ?? process.env.FRONTEND_URL ?? ''),
             };
           }),
           p2Events: p2Events.map((e) => {
