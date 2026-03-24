@@ -89,21 +89,27 @@ export function createReactionNotificationQueue(): Queue<ReactionNotificationJob
  */
 export async function enqueueReactionNotification(job: ReactionNotificationJob): Promise<void> {
   const queue = reactionNotificationQueueInstance;
-  if (!queue) {
-    // Queue not initialized (e.g., in test env), skip silently
-    return;
-  }
+  if (!queue) return;
 
   const jobId = `reaction-notification-${job.practiceId}`;
 
-  const existingJob = await queue.getJob(jobId);
-  if (existingJob) {
-    try { await existingJob.remove(); } catch { /* job may have been processed */ }
+  // Remove existing delayed job if present, then add new one.
+  // Retry once if add() fails due to race with concurrent enqueue.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const existingJob = await queue.getJob(jobId);
+    if (existingJob) {
+      try { await existingJob.remove(); } catch { /* job may have been processed or removed by another caller */ }
+    }
+    try {
+      await queue.add('reaction.notified', job, {
+        jobId,
+        delay: REACTION_NOTIFICATION_DELAY_MS,
+        removeOnComplete: true,
+      });
+      return; // success
+    } catch {
+      if (attempt === 1) throw new Error(`Failed to enqueue reaction notification after retry: ${jobId}`);
+      // First attempt failed (likely race condition), retry
+    }
   }
-
-  await queue.add('reaction.notified', job, {
-    jobId,
-    delay: REACTION_NOTIFICATION_DELAY_MS,
-    removeOnComplete: true,
-  });
 }

@@ -147,8 +147,18 @@ export class CommentService implements CommentServiceInterface {
         // Fire-and-forget: mention 通知給被 @mention 的使用者
         const mentionedUserIds = params.mentionedUserIds;
         if (mentionedUserIds && mentionedUserIds.length > 0) {
+          // Security: only allow as many mentionedUserIds as @mention patterns in content
+          const mentionPatterns = content.match(/@[\w]+/g) ?? [];
+          if (mentionPatterns.length < mentionedUserIds.length) {
+            loggerService.warn('[CommentService] mentionedUserIds count exceeds @mentions in content', {
+              mentionedCount: mentionedUserIds.length,
+              contentMentions: mentionPatterns.length,
+              userId,
+            });
+          }
+          const safeUserIds = mentionedUserIds.slice(0, Math.max(mentionPatterns.length, 0));
           const ownerId = targetEntity.user_id ?? null;
-          const uniqueIds = [...new Set(mentionedUserIds)].filter(
+          const uniqueIds = [...new Set(safeUserIds)].filter(
             (id) => id !== userId && id !== ownerId
           );
 
@@ -173,7 +183,7 @@ export class CommentService implements CommentServiceInterface {
                 idea:      'ideas',
                 portfolio: 'portfolios',
               };
-              const frontendUrl = process.env.FRONTEND_URL ?? 'https://daodao.cc';
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
               const segment = pathSegmentMap[targetType];
               if (!segment) {
                 loggerService.warn(`[CommentService] Missing URL path segment for targetType: "${targetType}"`);
@@ -249,7 +259,7 @@ export class CommentService implements CommentServiceInterface {
           }
         },
         orderBy: {
-          created_at: 'asc'
+          created_at: 'desc'
         }
       });
 
@@ -667,6 +677,15 @@ export class CommentService implements CommentServiceInterface {
         }
       } else {
         rootComments.push(comment);
+      }
+    });
+
+    // Replies keep chronological order (oldest first) for conversation context
+    rootComments.forEach(comment => {
+      if (comment.replies && comment.replies.length > 1) {
+        comment.replies.sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       }
     });
 

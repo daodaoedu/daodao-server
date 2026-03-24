@@ -359,6 +359,9 @@ export class PracticeController {
       throw new BadRequestError('無效的簽到記錄 ID');
     }
 
+    // 檢查是否有上傳檔案
+    const imageFiles = req.files as Express.Multer.File[] | undefined;
+
     // 檢查是否為 multipart/form-data
     const contentType = req.headers['content-type'] || '';
     const isFormData = contentType.includes('multipart/form-data');
@@ -378,6 +381,13 @@ export class PracticeController {
     }
 
     const updateData = validation.data;
+
+    // 如果有圖片檔案，先上傳到 R2 再更新
+    let imageUrls = updateData.imageUrls;
+    if (imageFiles && imageFiles.length > 0) {
+      imageUrls = await practiceCheckInService.uploadCheckInImages(imageFiles);
+    }
+
     const result = await practiceCheckInService.updateCheckIn(
       checkInId,
       practiceId,
@@ -385,7 +395,7 @@ export class PracticeController {
       {
         mood: updateData.mood as CheckInMood | undefined,
         note: updateData.note,
-        imageUrls: updateData.imageUrls,
+        imageUrls,
         ogImageUrl: updateData.ogImageUrl,
         tags: updateData.tags
       }

@@ -44,6 +44,13 @@ import { setEntityTags } from './tag.service';
 import { MS_PER_DAY } from '../utils/date-utils';
 import { notificationEventService } from './notification-event.service';
 
+/** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
+let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
+function getFanoutModule() {
+  if (!_fanoutModule) _fanoutModule = import('./social-notification-fanout.service');
+  return _fanoutModule;
+}
+
 const prismaClient = prisma;
 
 /** 打卡記錄的 entity_type */
@@ -249,24 +256,14 @@ export async function createCheckIn(
       });
     }
 
-    // 通知關注此實踐的 followers（非阻塞）
-    const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
-    prismaClient.follows.findMany({
-      where:  { target_type: 'practice', target_id: practiceId },
-      select: { follower_id: true },
-    }).then((followers) => {
-      for (const { follower_id } of followers) {
-        notificationEventService.createEvent({
-          type:        'update-practice-checkin',
-          actorId:     userId,
-          recipientId: follower_id,
-          entityType:  'practice',
-          entityId:    practiceId,
-          payload:     { practice_title: practiceTitle },
-          priority:    'P2',
-        }).catch(() => {});
-
-        if (newStatus === 'completed') {
+    // 通知關注此實踐的 followers：實踐完成（非阻塞）
+    if (newStatus === 'completed') {
+      const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
+      prismaClient.follows.findMany({
+        where:  { target_type: 'practice', target_id: practiceId },
+        select: { follower_id: true },
+      }).then((followers) => {
+        for (const { follower_id } of followers) {
           notificationEventService.createEvent({
             type:        'update-practice-finish',
             actorId:     userId,
@@ -277,12 +274,12 @@ export async function createCheckIn(
             priority:    'P2',
           }).catch(() => {});
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    }
 
     // Fire-and-forget: fan-out 打卡通知給追蹤者和連結夥伴
     const checkinPayload = { practiceId, checkinId: checkIn.id };
-    import('./social-notification-fanout.service').then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
       fanoutToPracticeFollowers('follow.practice_checkin', userId, practiceId, checkinPayload).catch(() => {});
       fanoutToConnectedPartners('connect.partner_checkin', userId, checkinPayload).catch(() => {});
     }).catch(() => {});
@@ -303,6 +300,53 @@ async function getRandomEncouragement(): Promise<string> {
   const { getRandomEncouragement: getEncouragement } = await import('./encouragement.service');
   const result = await getEncouragement();
   return result.data.message;
+}
+
+/**
+ * 上傳簽到圖片到 R2
+ * 驗證檔案類型和大小後上傳，回傳圖片 URL 陣列
+ */
+export async function uploadCheckInImages(
+  imageFiles: Express.Multer.File[]
+): Promise<string[]> {
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_IMAGE_SIZE = 500 * 1024; // 500KB
+
+  for (const file of imageFiles) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      throw new BadRequestError(
+        `不支援的圖片格式: ${file.mimetype}。支援格式: ${ALLOWED_IMAGE_TYPES.join(', ')}`
+      );
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      throw new BadRequestError(
+        `檔案大小超過限制: ${Math.round(file.size / 1024)}KB (最大: ${MAX_IMAGE_SIZE / 1024}KB)`
+      );
+    }
+  }
+
+  const baseUrl = process.env.R2_PUBLIC_URL ||
+    `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ENDPOINT?.replace('https://', '')}`;
+  const uploadedImageUrls: string[] = [];
+  const uploadedFilenames: string[] = [];
+
+  try {
+    for (const file of imageFiles) {
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const filename = `checkins/${uuidv4()}.${fileExtension}`;
+      await uploadToR2(file, filename);
+      uploadedFilenames.push(filename);
+      uploadedImageUrls.push(`${baseUrl}/${filename}`);
+    }
+    return uploadedImageUrls;
+  } catch (error) {
+    for (const filename of uploadedFilenames) {
+      await deleteFromR2(filename).catch(err => {
+        loggerService.warn('Failed to cleanup uploaded image', { filename, err });
+      });
+    }
+    throw error;
+  }
 }
 
 /**

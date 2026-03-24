@@ -30,7 +30,6 @@ export const SocialNotificationEvent = {
   FOLLOW_PRACTICE_CHECKIN: 'follow.practice_checkin',
   FOLLOW_PRACTICE_UPDATE: 'follow.practice_update',
   CONNECT_REQUEST: 'connect.request',
-  CONNECT_ACCEPTED: 'connect.accepted',
   CONNECT_PARTNER_CHECKIN: 'connect.partner_checkin',
   CONNECT_PARTNER_UPDATE: 'connect.partner_update',
   MENTION: 'mention',

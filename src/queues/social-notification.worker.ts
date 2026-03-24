@@ -57,10 +57,6 @@ async function processSocialNotificationJob(job: Job<SocialNotificationJob>): Pr
         await handleConnectRequest(actorId, recipientId, payload);
         break;
 
-      case SocialNotificationEvent.CONNECT_ACCEPTED:
-        await handleConnectAccepted(actorId, recipientId, payload);
-        break;
-
       case SocialNotificationEvent.CONNECT_PARTNER_CHECKIN:
         await handleConnectPartnerCheckin(actorId, recipientId, payload);
         break;
@@ -194,18 +190,6 @@ async function handleConnectRequest(
     payload,
     priority: 'P2',
   });
-}
-
-/**
- * 處理連結接受通知 (connect.accepted)
- */
-async function handleConnectAccepted(
-  actorId: number,
-  recipientId: number,
-  payload?: Record<string, unknown>
-): Promise<void> {
-  // No-op: will be removed from enqueue side. Direct P1 ConnectAccepted notification is sufficient.
-  loggerService.debug('connect.accepted handler called (no-op)', { actorId, recipientId, payload });
 }
 
 /**

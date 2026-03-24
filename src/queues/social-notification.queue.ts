@@ -64,12 +64,19 @@ export function createSocialNotificationQueue(): Queue<SocialNotificationJob> {
  */
 export async function enqueueSocialNotification(job: SocialNotificationJob): Promise<void> {
   const queue = socialNotificationQueueInstance;
-  if (!queue) {
-    // Queue not initialized (e.g., in test env), skip silently
-    return;
-  }
-  await queue.add(job.event, job, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 2000 }
-  });
+  if (!queue) return;
+  await queue.add(job.event, job);
+}
+
+/**
+ * 批次新增多個社交通知任務（使用 addBulk 減少 Redis round-trips）
+ * Queue 未初始化時（例如測試環境）靜默略過
+ */
+export async function bulkEnqueueSocialNotifications(jobs: SocialNotificationJob[]): Promise<void> {
+  const queue = socialNotificationQueueInstance;
+  if (!queue || jobs.length === 0) return;
+  await queue.addBulk(jobs.map(job => ({
+    name: job.event,
+    data: job,
+  })));
 }
