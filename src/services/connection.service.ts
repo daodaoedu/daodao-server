@@ -9,6 +9,7 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { loggerService } from './logging/logger.service';
 import { externalToInternalId } from './id-converter.service';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
@@ -163,6 +164,7 @@ const sendRequest = async (
         select: { follower_id: true }
       });
       for (const follower of followers) {
+        if (follower.follower_id === requesterId) continue;
         await enqueueSocialNotification({
           event: 'connect.request',
           actorId: requesterId,
@@ -171,33 +173,22 @@ const sendRequest = async (
         });
       }
     } catch (e) {
-      console.warn('Failed to enqueue connect.request notification:', e);
+      loggerService.warn('Failed to enqueue connect.request notification', { requesterId, receiverId, error: e });
     }
   }
 
-  // Fire-and-forget: P1 Connect event — get the request id for entityId
-  const newRequest = await prisma.connection_requests.findUnique({
-    where: {
-      requester_id_receiver_id: {
-        requester_id: requesterId,
-        receiver_id:  receiverId,
-      },
-    },
-    select: { id: true },
-  });
-  if (newRequest) {
-    prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
-      .then(actor => notificationEventService.createEvent({
-        type: 'Connect',
-        actorId: requesterId,
-        recipientId: receiverId,
-        entityType: 'connection',
-        entityId: newRequest.id,
-        payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: newRequest.id },
-        priority: 'P1',
-      }))
-      .catch(() => {});
-  }
+  // Fire-and-forget: P1 Connect event
+  prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
+    .then(actor => notificationEventService.createEvent({
+      type: 'Connect',
+      actorId: requesterId,
+      recipientId: receiverId,
+      entityType: 'connection',
+      entityId: upsertedRequest.id,
+      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      priority: 'P1',
+    }))
+    .catch(() => {});
 
   return createSuccessResponse({ message: '連結請求已送出' });
 };
@@ -239,7 +230,7 @@ const acceptRequest = async (
       recipientId: request.requester_id,
       entityType: 'connection',
       entityId: requestId,
-      payload: { actorName: actor?.nickname ?? null },
+      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
       priority: 'P1',
     }))
     .catch(() => {});

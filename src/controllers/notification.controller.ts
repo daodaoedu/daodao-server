@@ -105,7 +105,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
         OR: [
           { priority: { gt: p } },
           { priority: p, created_at: { lt: new Date(c) } },
-          { priority: p, created_at: new Date(c), id: { lt: id } },
+          { priority: p, created_at: { lte: new Date(c) }, id: { lt: id } },
         ]
       }
     ];
@@ -249,7 +249,7 @@ export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
 // ============================================================================
 
 /** 島島阿學 Frontend URL */
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://daodao.cc';
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
 
 /** 通知設定頁 URL */
 const SETTINGS_URL = `${FRONTEND_URL}/settings/notifications`;

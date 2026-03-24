@@ -25,16 +25,11 @@ export async function fanoutToPracticeFollowers(
     where: { target_type: 'practice', target_id: practiceId },
     select: { follower_id: true },
   });
-  const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-  for (const follower of followers) {
-    if (follower.follower_id === actorId) continue;
-    await enqueueSocialNotification({
-      event,
-      actorId,
-      recipientId: follower.follower_id,
-      payload,
-    });
-  }
+  const { bulkEnqueueSocialNotifications } = await import('../queues/social-notification.queue');
+  const jobs = followers
+    .filter(f => f.follower_id !== actorId)
+    .map(f => ({ event, actorId, recipientId: f.follower_id, payload }));
+  await bulkEnqueueSocialNotifications(jobs);
 }
 
 /**
@@ -52,14 +47,12 @@ export async function fanoutToConnectedPartners(
     where: { OR: [{ user_a_id: actorId }, { user_b_id: actorId }] },
     select: { user_a_id: true, user_b_id: true },
   });
-  const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-  for (const conn of connections) {
-    const partnerId = conn.user_a_id === actorId ? conn.user_b_id : conn.user_a_id;
-    await enqueueSocialNotification({
-      event,
-      actorId,
-      recipientId: partnerId,
-      payload,
-    });
-  }
+  const { bulkEnqueueSocialNotifications } = await import('../queues/social-notification.queue');
+  const jobs = connections.map(conn => ({
+    event,
+    actorId,
+    recipientId: conn.user_a_id === actorId ? conn.user_b_id : conn.user_a_id,
+    payload,
+  }));
+  await bulkEnqueueSocialNotifications(jobs);
 }
