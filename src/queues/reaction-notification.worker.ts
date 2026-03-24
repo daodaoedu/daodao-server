@@ -94,7 +94,7 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
     }
 
     const ownerName = owner?.nickname ?? `用戶 ${practiceOwnerId}`;
-    const practiceUrl = `${process.env.FRONTEND_URL ?? ''}/practices/${practice.external_id}`;
+    const practiceUrl = `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${practice.external_id}`;
     const unsubscribeUrl = generateUnsubscribeUrl(practiceOwnerId, 'reaction');
 
     // 4. 產生並發送 email

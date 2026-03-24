@@ -175,7 +175,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
               entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
               content:        payload?.content    ? String(payload.content)    : undefined,
               connectMessage: payload?.intent     ? String(payload.intent)     : payload?.message ? String(payload.message) : undefined,
-              url:            String(payload?.url ?? process.env.FRONTEND_URL ?? ''),
+              url:            String(payload?.url ?? process.env.FRONTEND_URL ?? 'https://app.daodao.so'),
             };
           }),
           p2Events: p2Events.map((e) => {
@@ -189,7 +189,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
           }),
           unsubscribeUrl: generateUnsubscribeUrl(recipientId, 'digest'),
           settingsUrl:    generateSettingsUrl(),
-          homeUrl:        process.env.FRONTEND_URL ?? 'https://daodao.cc',
+          homeUrl:        process.env.FRONTEND_URL ?? 'https://app.daodao.so',
         };
 
         const subject = generateNotificationDigestSubject(digestData);
