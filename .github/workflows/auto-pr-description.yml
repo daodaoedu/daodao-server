@@ -37,6 +37,7 @@ jobs:
           COMMITS: ${{ steps.commits.outputs.COMMITS }}
           BASE: ${{ github.event.pull_request.base.ref }}
           HEAD: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           RESPONSE=$(curl -s -X POST "https://models.inference.ai.azure.com/chat/completions" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -45,16 +46,17 @@ jobs:
               --arg commits "$COMMITS" \
               --arg base "$BASE" \
               --arg head "$HEAD" \
+              --arg title "$PR_TITLE" \
               '{
                 model: "gpt-4o-mini",
                 messages: [
                   {
                     role: "system",
-                    content: "你是一個專業的技術文件撰寫者。根據 git commit 列表，產生繁體中文的 PR description。格式必須嚴格按照以下 markdown 結構，不要加其他內容：\n\n## Why is this necessary?\n\n- （說明這批變更的目的和原因，3-5 點）\n\n## How does it address?\n\n- （說明具體做了什麼，3-5 點）"
+                    content: "你是一個專業的技術文件撰寫者。根據 PR 標題和 git commit 列表，產生繁體中文的 PR description。格式必須嚴格按照以下 markdown 結構，不要加其他內容：\n\n## Why is this necessary?\n\n（解釋「為什麼」需要這些變更。聚焦在問題背景、影響、和動機，例如：使用者遇到什麼問題？系統有什麼缺陷？不改會怎樣？不要描述做了什麼，只說明為什麼要做。3-5 點）\n\n## How does it address?\n\n（解釋「怎麼做」來解決上述問題。描述具體的技術變更和實作方式。3-5 點）"
                   },
                   {
                     role: "user",
-                    content: ("以下是這次 " + $head + " → " + $base + " 的 commit 列表：\n\n" + $commits + "\n\n請根據這些 commits 產生 PR description。")
+                    content: ("PR 標題：" + $title + "\n\n以下是這次 " + $head + " → " + $base + " 的 commit 列表：\n\n" + $commits + "\n\n請根據 PR 標題和這些 commits 產生 PR description，內容需緊扣標題主題。")
                   }
                 ],
                 temperature: 0.3
