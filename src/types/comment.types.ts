@@ -9,16 +9,17 @@ import { Request, Response } from 'express';
 import { ApiSuccessResponse } from './api-response.types';
 
 // Core comment target types based on the existing system
-export type CommentTargetType = 
-  | 'post' 
-  | 'resource' 
-  | 'note' 
-  | 'outcome' 
-  | 'review' 
-  | 'circle' 
-  | 'idea' 
+export type CommentTargetType =
+  | 'post'
+  | 'resource'
+  | 'note'
+  | 'outcome'
+  | 'review'
+  | 'circle'
+  | 'idea'
   | 'practice'
-  | 'portfolio';
+  | 'portfolio'
+  | 'checkin';
 
 // Comment visibility options
 export type CommentVisibility = 'public' | 'private';
