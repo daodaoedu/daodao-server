@@ -62,42 +62,69 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
 
     loggerService.info('Reaction upserted', { targetType, targetId, userId, reactionType });
 
-    // 若目標為 practice，且 actor 不是 practice owner，且為新增反應（非更換類型），則排入 reaction 通知 job
-    if (targetType === 'practice' && existing === null) {
+    // 新增反應（非更換類型）時發送通知
+    if (existing === null) {
       try {
-        const practice = await prisma.practices.findUnique({
-          where: { id: targetId },
-          select: { user_id: true, title: true, external_id: true },
-        });
+        if (targetType === 'practice') {
+          const practice = await prisma.practices.findUnique({
+            where: { id: targetId },
+            select: { user_id: true, title: true, external_id: true },
+          });
 
-        if (practice && practice.user_id !== userId) {
-          // In-app 通知事件（即時）
-          notificationEventService.createEvent({
-            type: 'reaction',
-            actorId: userId,
-            recipientId: practice.user_id,
-            entityType: 'practice',
-            entityId: targetId,
-            payload: {
+          if (practice && practice.user_id !== userId) {
+            notificationEventService.createEvent({
+              type: 'reaction',
+              actorId: userId,
+              recipientId: practice.user_id,
+              entityType: 'practice',
+              entityId: targetId,
+              payload: {
+                reactionType,
+                practice_title: practice.title ?? '',
+                entity_external_id: practice.external_id ?? '',
+              },
+              priority: 'P2',
+            }).catch(() => {});
+
+            const totalReactionCount = await prisma.reactions.count({
+              where: { target_type: 'practice', target_id: targetId },
+            });
+
+            await enqueueReactionNotification({
+              practiceId: targetId,
+              actorUserId: userId,
+              practiceOwnerId: practice.user_id,
+              practiceTitle: practice.title ?? '',
               reactionType,
-              practice_title: practice.title ?? '',
-              entity_external_id: practice.external_id ?? '',
-            },
-            priority: 'P2',
-          }).catch(() => {});
-
-          const totalReactionCount = await prisma.reactions.count({
-            where: { target_type: 'practice', target_id: targetId },
+              totalReactionCount,
+            });
+          }
+        } else if (targetType === 'checkin') {
+          const checkin = await prisma.practice_checkins.findUnique({
+            where: { id: targetId },
+            select: { user_id: true, practice_id: true },
           });
 
-          await enqueueReactionNotification({
-            practiceId: targetId,
-            actorUserId: userId,
-            practiceOwnerId: practice.user_id,
-            practiceTitle: practice.title ?? '',
-            reactionType,
-            totalReactionCount,
-          });
+          if (checkin && checkin.user_id !== userId) {
+            const practice = await prisma.practices.findUnique({
+              where: { id: checkin.practice_id },
+              select: { title: true, external_id: true },
+            });
+
+            notificationEventService.createEvent({
+              type: 'reaction',
+              actorId: userId,
+              recipientId: checkin.user_id,
+              entityType: 'checkin',
+              entityId: targetId,
+              payload: {
+                reactionType,
+                practice_title: practice?.title ?? '',
+                entity_external_id: practice?.external_id ?? '',
+              },
+              priority: 'P2',
+            }).catch(() => {});
+          }
         }
       } catch (enqueueError) {
         // 通知排隊失敗不影響主流程，只記錄警告

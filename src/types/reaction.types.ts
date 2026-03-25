@@ -20,6 +20,7 @@ export const REACTION_TYPE_VALUES = Object.values(ReactionType);
 export const ReactionTargetType = {
   practice: 'practice',
   comment:  'comment',
+  checkin:  'checkin',
 } as const;
 
 export type ReactionTargetTypeValue = (typeof ReactionTargetType)[keyof typeof ReactionTargetType];

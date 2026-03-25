@@ -173,6 +173,7 @@ export class CommentService implements CommentServiceInterface {
               // targetType → URL path mapping
               const pathSegmentMap: Record<string, string> = {
                 check_in: 'check-ins',
+                checkin:   'check-ins',
                 practice:  'practices',
                 post:      'posts',
                 resource:  'resources',
@@ -579,6 +580,17 @@ export class CommentService implements CommentServiceInterface {
         break;
       }
 
+      case 'checkin': {
+        const checkin = await prisma.practice_checkins.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (checkin) {
+          entity = { id: checkin.id, user_id: checkin.user_id };
+        }
+        break;
+      }
+
       default:
         throw new InternalServerError(`Unsupported target type: ${targetType}`);
     }
@@ -760,6 +772,10 @@ export class CommentService implements CommentServiceInterface {
 
         case 'portfolio':
           // Portfolio handling would go here when implemented
+          return internalId.toString();
+
+        case 'checkin':
+          // Checkin uses internal integer ID directly
           return internalId.toString();
 
         default:
