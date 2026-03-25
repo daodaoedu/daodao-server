@@ -28,6 +28,14 @@ jest.mock('@/queues/reaction-notification.queue', () => ({
   enqueueReactionNotification: jest.fn().mockResolvedValue(undefined),
 }));
 
+const mockCreateEvent = jest.fn().mockResolvedValue(undefined);
+
+jest.mock('@/services/notification-event.service', () => ({
+  notificationEventService: {
+    createEvent: (...args: unknown[]) => mockCreateEvent(...args),
+  },
+}));
+
 import {
   upsertReaction,
   removeReaction,
@@ -301,6 +309,134 @@ describe('Reaction Service', () => {
       await expect(
         getReactionsListByTarget({ targetType: 'practice', targetId: 10 }),
       ).rejects.toThrow('取得反應列表失敗');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // checkin reactions
+  // --------------------------------------------------------------------------
+
+  describe('checkin reactions', () => {
+    beforeEach(() => {
+      mockCreateEvent.mockClear();
+    });
+
+    it('should upsert reaction for checkin target and send notification', async () => {
+      const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
+
+      // No existing reaction (triggers notification path)
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      // Upsert succeeds
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      // getReactionsByTarget mocks
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+
+      // Checkin owned by user 2 (different from actor user 1)
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        user_id: 2,
+        practice_id: 100,
+      } as any);
+
+      // Practice for title lookup
+      prismaMock.practices.findUnique.mockResolvedValue({
+        id: 100,
+        title: '每日冥想',
+        external_id: 'ext-100',
+      } as any);
+
+      const result = await upsertReaction({
+        targetType: 'checkin',
+        targetId: 20,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(prismaMock.reactions.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            target_type: 'checkin',
+            target_id: 20,
+            user_id: 1,
+            reaction_type: 'fire',
+          }),
+        }),
+      );
+
+      expect(result.success).toBe(true);
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'reaction',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'checkin',
+          entityId: 20,
+          priority: 'P2',
+        }),
+      );
+    });
+
+    it('should not send notification when reacting to own checkin', async () => {
+      const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
+
+      // No existing reaction
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+
+      // Checkin owned by the same user (user 1)
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        user_id: 1,
+        practice_id: 100,
+      } as any);
+
+      await upsertReaction({
+        targetType: 'checkin',
+        targetId: 20,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+    });
+
+    it('should not call enqueueReactionNotification for checkin', async () => {
+      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue');
+
+      const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
+
+      // No existing reaction
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+
+      // Checkin owned by user 2
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        user_id: 2,
+        practice_id: 100,
+      } as any);
+
+      prismaMock.practices.findUnique.mockResolvedValue({
+        id: 100,
+        title: '每日冥想',
+        external_id: 'ext-100',
+      } as any);
+
+      await upsertReaction({
+        targetType: 'checkin',
+        targetId: 20,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      // Unlike practice, checkin reactions don't use the email queue
+      expect(enqueueReactionNotification).not.toHaveBeenCalled();
     });
   });
 });

@@ -20,9 +20,9 @@ import { externalToInternalId, EntityType } from '../services/id-converter.servi
 import { UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
 
 async function resolveTargetId(targetType: string, targetId: string): Promise<number> {
-  if (targetType === 'comment') {
+  if (targetType === 'comment' || targetType === 'checkin') {
     const id = parseInt(targetId, 10);
-    if (isNaN(id)) throw new BadRequestError('Invalid comment ID');
+    if (isNaN(id)) throw new BadRequestError(`Invalid ${targetType} ID`);
     return id;
   }
   return externalToInternalId(targetType as EntityType, targetId);
