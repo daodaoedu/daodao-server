@@ -19,14 +19,15 @@ import {
 // Comment target type enum values for validation
 const COMMENT_TARGET_TYPES = [
   'post',
-  'resource', 
+  'resource',
   'note',
   'outcome',
   'review',
   'circle',
   'idea',
   'practice',
-  'portfolio'
+  'portfolio',
+  'checkin'
 ] as const;
 
 // Comment visibility enum values for validation

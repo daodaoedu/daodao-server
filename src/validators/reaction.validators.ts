@@ -7,7 +7,7 @@ import { registry } from '../config/openapi-registry';
 import { apiSuccessResponseSchema } from './api-response.validators';
 import { REACTION_TYPE_VALUES } from '../types/reaction.types';
 
-const REACTION_TARGET_TYPES = ['practice', 'comment'] as const;
+const REACTION_TARGET_TYPES = ['practice', 'comment', 'checkin'] as const;
 
 // ============================================================================
 // Request Schemas

@@ -459,3 +459,44 @@ describe('createComment — mention notifications', () => {
     expect(mentionCalls).toHaveLength(0);
   });
 });
+
+// ============================================================================
+// checkin comments
+// ============================================================================
+
+describe('checkin comments', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupTransactionMock();
+  });
+
+  it('should create comment on checkin target', async () => {
+    // idConverter returns checkin entity
+    mockGetTargetEntity.mockResolvedValue({ id: 50, user_id: 2 });
+
+    const created = makeDbComment({
+      target_type: 'checkin',
+      target_id: 50,
+      user_id: 1,
+    });
+    prismaMock.comments.create.mockResolvedValue(created as any);
+
+    const result = await commentService.createComment({
+      targetType: 'checkin',
+      targetId: '50',
+      content: '打卡留言',
+      userId: 1,
+    });
+
+    expect(result.success).toBe(true);
+    expect(prismaMock.comments.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          target_type: 'checkin',
+          target_id: 50,
+          user_id: 1,
+        }),
+      }),
+    );
+  });
+});
