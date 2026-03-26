@@ -131,7 +131,7 @@ export async function registerNotificationScheduledJobs(
     'notification-inapp-batch',
     {},
     {
-      repeat: { pattern: '* * * * *' },
+      repeat: { pattern: '0 * * * *' },
       jobId: 'notification-inapp-scheduler'
     }
   );
