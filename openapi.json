@@ -7870,7 +7870,8 @@
               "circle",
               "idea",
               "practice",
-              "portfolio"
+              "portfolio",
+              "checkin"
             ],
             "description": "目標對象類型",
             "example": "resource"
@@ -7969,7 +7970,8 @@
               "circle",
               "idea",
               "practice",
-              "portfolio"
+              "portfolio",
+              "checkin"
             ],
             "description": "留言目標類型",
             "example": "resource",
@@ -11865,7 +11867,8 @@
             "type": "string",
             "enum": [
               "practice",
-              "comment"
+              "comment",
+              "checkin"
             ],
             "description": "反應目標類型",
             "example": "practice"
@@ -11910,7 +11913,8 @@
             "type": "string",
             "enum": [
               "practice",
-              "comment"
+              "comment",
+              "checkin"
             ],
             "description": "反應目標類型",
             "example": "practice"
@@ -13600,6 +13604,10 @@
             "type": "string",
             "nullable": true
           },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "connectedAt": {
             "type": "string"
           }
@@ -13609,6 +13617,7 @@
           "userId",
           "externalId",
           "nickname",
+          "photoUrl",
           "connectedAt"
         ]
       },
@@ -13755,6 +13764,21 @@
             "type": "string",
             "nullable": true
           },
+          "requesterPhotoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiverExternalId": {
+            "type": "string"
+          },
+          "receiverNickname": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiverPhotoUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "intent": {
             "type": "string",
             "nullable": true
@@ -13770,6 +13794,10 @@
           "requestId",
           "requesterExternalId",
           "requesterNickname",
+          "requesterPhotoUrl",
+          "receiverExternalId",
+          "receiverNickname",
+          "receiverPhotoUrl",
           "intent",
           "interactionCount",
           "createdAt"
@@ -37402,7 +37430,8 @@
                 "circle",
                 "idea",
                 "practice",
-                "portfolio"
+                "portfolio",
+                "checkin"
               ],
               "description": "查詢的目標類型",
               "example": "resource",
@@ -38502,7 +38531,8 @@
               "type": "string",
               "enum": [
                 "practice",
-                "comment"
+                "comment",
+                "checkin"
               ],
               "description": "反應目標類型",
               "example": "practice"
@@ -38688,7 +38718,8 @@
               "type": "string",
               "enum": [
                 "practice",
-                "comment"
+                "comment",
+                "checkin"
               ],
               "description": "反應目標類型",
               "example": "practice"
