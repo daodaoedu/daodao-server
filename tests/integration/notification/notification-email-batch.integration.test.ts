@@ -160,6 +160,15 @@ describe('Notification Email Batch Integration Tests', () => {
   // --------------------------------------------------------------------------
 
   describe('12.3 — 4 小時批次：不同時間點的事件在同一批次 email 同時出現', () => {
+    beforeEach(() => {
+      // 凍結時間至 2026-03-26T12:00:00Z，確保 09:15 與 11:30 的事件落在 4 小時視窗內
+      jest.useFakeTimers({ now: new Date('2026-03-26T12:00:00Z') });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('09:15 的留言事件與 11:30 的按讚事件，在同一批次中一起送出', async () => {
       const commentAt0915 = makeEvent({
         id: 1,
@@ -390,8 +399,8 @@ describe('Notification Email Batch Integration Tests', () => {
         .query({ token });
 
       expect(res.status).toBe(200);
-      // digest 退訂觸發 setGlobalEnabled → 多次 upsert（N01 × 所有類型）
-      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalled();
+      // digest 退訂觸發 setGlobalEnabled → 15 types × 2 channels (N01, N03) = 30 次 upsert
+      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalledTimes(30);
     });
 
     it('無效 token 回傳 400 HTML 頁面', async () => {
