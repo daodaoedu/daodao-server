@@ -33,7 +33,7 @@ jest.mock('@/queues/social-notification.queue', () => ({
 }));
 
 jest.mock('@/queues', () => ({
-  enqueuePracticeEmail: jest.fn().mockResolvedValue(undefined),
+  enqueuePracticeEmail: jest.fn().mockResolvedValue({ id: 'job-id' }),
 }));
 
 jest.mock('@/queues/practice-email.queue', () => ({
@@ -64,6 +64,8 @@ jest.mock('@/services/interaction-count.service', () => ({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const FIXED_DATE = new Date('2023-01-01T12:00:00.000Z');
+
 const USER_ID = 5;
 const USER_TOKEN = createAuthToken({ id: USER_ID, email: 'notify@test.com' });
 
@@ -84,7 +86,7 @@ const makeNotification = (overrides: Record<string, unknown> = {}) => ({
   aggregation_key: null,
   aggregation_count: 1,
   payload: null,
-  created_at: new Date(),
+  created_at: FIXED_DATE,
   actor: makeActor(),
   ...overrides,
 });
@@ -207,7 +209,7 @@ describe('Notification Pagination Integration Tests (12.10)', () => {
 
   describe('cursor 分頁：帶入 cursor 後回傳下一頁', () => {
     it('帶入合法 cursor 時，查詢條件包含 AND 過濾（不重複第一頁）', async () => {
-      const lastNotif = makeNotification({ id: 980, priority: 'P1', created_at: new Date() });
+      const lastNotif = makeNotification({ id: 980, priority: 'P1', created_at: FIXED_DATE });
       const cursor = encodeCursor(
         lastNotif.priority as string,
         lastNotif.created_at as Date,
@@ -231,7 +233,7 @@ describe('Notification Pagination Integration Tests (12.10)', () => {
 
     it('帶入合法 cursor 後正常回傳下一頁資料', async () => {
       const page2 = makeNotifications(10, { id: 500, priority: 'P2' });
-      const cursor = encodeCursor('P1', new Date(), 980);
+      const cursor = encodeCursor('P1', FIXED_DATE, 980);
 
       prismaMock.notifications.findMany.mockResolvedValue(page2 as any);
       prismaMock.notifications.count.mockResolvedValue(2);
