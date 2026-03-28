@@ -10,7 +10,8 @@ WORKDIR /app
 # 生產依賴層 - 只在 package.json 變動時重建
 FROM base AS deps-prod
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts && pnpm rebuild
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts && \
+    pnpm rebuild bcrypt msgpackr-extract @prisma/engines @prisma/client
 
 # 開發依賴層 - 用於構建階段
 FROM base AS deps-dev
