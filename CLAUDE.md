@@ -39,7 +39,7 @@ Node.js backend for DaoDao learning platform with **hybrid JavaScript/TypeScript
 
 ### Technology Stack
 - **Runtime**: Node.js + Express.js
-- **Databases**: PostgreSQL (Prisma ORM), MongoDB (Mongoose), Redis (ioredis)
+- **Databases**: PostgreSQL (Prisma ORM), Redis (ioredis)
 - **Authentication**: JWT, Passport.js with Google OAuth
 - **File Storage**: Cloudflare R2
 - **Validation**: Zod schemas
