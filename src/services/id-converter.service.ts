@@ -9,10 +9,10 @@ import { NotFoundError } from '@/middleware/error.middleware';
 /**
  * 支援的實體類型（對應 comment 系統的 target type）
  */
-export type EntityType = 
-  | 'resource' 
-  | 'idea' 
-  | 'resource_review' 
+export type EntityType =
+  | 'resource'
+  | 'idea'
+  | 'resource_review'
   | 'practice'
   | 'milestone'
   | 'note'
@@ -20,8 +20,9 @@ export type EntityType =
   | 'review'
   | 'group'
   | 'user'
-  | 'circle'  // groups 的別名，用於 comment 系統
-  | 'post';   // 用於 comment 系統
+  | 'circle'   // groups 的別名，用於 comment 系統
+  | 'post'     // 用於 comment 系統
+  | 'checkin'; // practice_checkins，用於 reaction/comment 系統
 
 /**
  * 實體資訊介面
@@ -47,7 +48,8 @@ const ENTITY_TABLE_MAP: Record<EntityType, string> = {
   group: 'groups',
   circle: 'groups',  // circle 對應到 groups 表
   user: 'users',
-  post: 'post'
+  post: 'post',
+  checkin: 'practice_checkins'
 };
 
 /**
@@ -187,8 +189,21 @@ export async function externalToInternalId(
         if (isNaN(numId)) {
           throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
         }
-        
+
         result = await prisma.resource_review.findUnique({
+          where: { id: numId },
+          select: { id: true }
+        });
+        break;
+      }
+
+      case 'checkin': {
+        const numId = parseInt(externalId);
+        if (isNaN(numId)) {
+          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+        }
+
+        result = await prisma.practice_checkins.findUnique({
           where: { id: numId },
           select: { id: true }
         });
@@ -276,7 +291,8 @@ export async function internalToExternalId(
       case 'outcome':
       case 'review':
       case 'milestone':
-      case 'resource_review': {
+      case 'resource_review':
+      case 'checkin': {
         return internalId.toString();
       }
 
@@ -496,6 +512,17 @@ export async function getTargetEntity(
         });
         if (practice) {
           entity = { id: practice.id, user_id: practice.user_id };
+        }
+        break;
+      }
+
+      case 'checkin': {
+        const checkin = await prisma.practice_checkins.findUnique({
+          where: { id: parseInt(targetId) },
+          select: { id: true, user_id: true }
+        });
+        if (checkin) {
+          entity = { id: checkin.id, user_id: checkin.user_id };
         }
         break;
       }

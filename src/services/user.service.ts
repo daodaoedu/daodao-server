@@ -1017,6 +1017,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
       professionalField,
       personalSlogan,
       referralSource,
+      hideConnectionsCount,
       interestList,
       customId
     } = userData;
@@ -1136,6 +1137,7 @@ const updateUser = async (externalId: string, userData: UpdateUserRequest): Prom
         // 新增欄位
         personal_slogan: personalSlogan,
         referral_source: referralSource,
+        hide_connections_count: hideConnectionsCount,
 
         // customId 更新
         ...customIdData,
@@ -2026,6 +2028,89 @@ const getUserActivityStats = async (
   });
 };
 
+/**
+ * 獲取設定頁完整度摘要
+ * 計算用戶四個設定區塊的完成狀態
+ */
+const getSettingsSummary = async (
+  userId: number
+): Promise<ApiSuccessResponse<{
+  completed: number;
+  total: number;
+  sections: {
+    onboarding: boolean;
+    preferences: boolean;
+    account: boolean;
+    publicInfo: boolean;
+  };
+}>> => {
+  // Query user with needed fields
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    select: {
+      nickname: true,
+      custom_id: true,
+      personal_slogan: true,
+      education_stage: true,
+      user_preferences: {
+        where: { is_selected: true },
+        take: 1
+      },
+      user_positions: {
+        take: 1
+      }
+    }
+  });
+
+  if (!user) {
+    throw new NotFoundError('用戶不存在');
+  }
+
+  const sections = {
+    onboarding: true,
+    preferences: user.user_preferences.length > 0,
+    account: user.user_positions.length > 0 && user.education_stage !== null,
+    publicInfo: !!(user.nickname && user.custom_id && user.personal_slogan)
+  };
+
+  const completed = Object.values(sections).filter(Boolean).length;
+
+  return createSuccessResponse({
+    completed,
+    total: 4,
+    sections
+  });
+};
+
+/**
+ * 查詢兩位使用者共同加入的 group 數量
+ */
+export async function getCommonCirclesCount(userId: number, viewerId: number): Promise<number> {
+  const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*) as count
+    FROM user_join_group u1
+    INNER JOIN user_join_group u2 ON u1.group_id = u2.group_id
+    WHERE u1.user_id = ${userId}
+      AND u2.user_id = ${viewerId}
+  `;
+
+  return Number(result[0]?.count ?? 0);
+}
+
+/**
+ * 查詢用戶的 connections 數量（雙向關係：user_a 或 user_b）
+ */
+export async function getUserConnectionsCount(userId: number): Promise<number> {
+  return prisma.connections.count({
+    where: {
+      OR: [
+        { user_a_id: userId },
+        { user_b_id: userId }
+      ]
+    }
+  });
+}
+
 // 匯出服務函數
 export const userService = {
   getAllUsers,
@@ -2048,7 +2133,8 @@ export const userService = {
   updateLastActive,
   incrementProfileViews,
   getLoginHistory,
-  getUserActivityStats
+  getUserActivityStats,
+  getSettingsSummary
 } as const;
 
 export default userService;

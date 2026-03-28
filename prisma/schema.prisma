@@ -41,7 +41,7 @@ model city {
   name_zh_tw String?    @db.VarChar(100)
   country_id Int?
   is_active  Boolean?   @default(true)
-  country    country?   @relation(fields: [country_id], references: [id])
+  country    country?   @relation(fields: [country_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   groups     groups[]
   location   location[]
 
@@ -56,7 +56,7 @@ model comments {
   target_id      Int
   user_id        Int
   content        String
-  visibility     String?    @default("public") @db.VarChar(10)
+  visibility     String?    @default("private") @db.VarChar(10)
   parent_id      Int?
   created_at     DateTime?  @default(now()) @db.Timestamp(6)
   updated_at     DateTime?  @default(now()) @db.Timestamp(6)
@@ -73,7 +73,6 @@ model comments {
 model contacts {
   id                 Int      @id @default(autoincrement())
   google_id          String?  @db.VarChar(255)
-  apple_id           String?  @unique @db.VarChar(255)
   photo_url          String?
   is_subscribe_email Boolean?
   email              String?  @db.VarChar(255)
@@ -85,13 +84,14 @@ model contacts {
   linkedin           String?  @db.VarChar(255)
   github             String?  @db.VarChar(255)
   website            String?  @db.VarChar(2048)
+  apple_id           String?  @unique @db.VarChar(255)
   users              users[]
 }
 
 model country {
   id       Int        @id @default(autoincrement())
-  alpha2   String?    @unique(map: "idx_country_alpha2") @db.Char(2)
-  alpha3   String?    @unique(map: "idx_country_alpha3") @db.Char(3)
+  alpha2   String?    @unique @db.Char(2)
+  alpha3   String?    @unique @db.Char(3)
   name     String     @db.VarChar(100)
   name_en  String?    @db.VarChar(100)
   city     city[]
@@ -226,13 +226,13 @@ model likes {
 }
 
 model reactions {
-  id            Int      @id @default(autoincrement())
-  target_type   String   @db.VarChar(20)
+  id            Int       @id @default(autoincrement())
+  target_type   String    @db.VarChar(20)
   target_id     Int
   user_id       Int
-  reaction_type String   @db.VarChar(20)
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  users         users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reaction_type String    @db.VarChar(20)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([target_type, target_id, user_id], map: "uq_reactions_target_user")
   @@index([target_type, target_id], map: "idx_reactions_target")
@@ -399,34 +399,40 @@ model practice_checkins {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model practices {
-  id                       Int                 @id @default(autoincrement())
-  external_id              String?             @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                       Int                       @id @default(autoincrement())
+  external_id              String?                   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                  Int
   template_id              Int?
-  title                    String              @db.VarChar(100)
+  title                    String                    @db.VarChar(100)
   practice_action          String?
-  start_date               DateTime?           @db.Date
+  start_date               DateTime?                 @db.Date
   duration_days            Int?
-  end_date                 DateTime?           @db.Date
+  end_date                 DateTime?                 @db.Date
   session_duration_minutes Int?
   frequency_min_days       Int?
   frequency_max_days       Int?
   practice_time_periods    String[]
   other_context            String?
-  status                   String?             @default("draft") @db.VarChar(20)
-  has_resources            Boolean?            @default(false)
-  theme_color              String?             @db.VarChar(20)
-  progress_percentage      Decimal?            @default(0) @db.Decimal(5, 2)
-  first_checkin_at         DateTime?           @db.Timestamptz(6)
-  created_at               DateTime?           @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime?           @db.Timestamptz(6)
-  deleted_at               DateTime?           @db.Timestamptz(6)
+  status                   String?                   @default("draft") @db.VarChar(20)
+  has_resources            Boolean?                  @default(false)
+  theme_color              String?                   @db.VarChar(20)
+  progress_percentage      Decimal?                  @default(0) @db.Decimal(5, 2)
+  first_checkin_at         DateTime?                 @db.Timestamptz(6)
+  created_at               DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                 @db.Timestamptz(6)
+  deleted_at               DateTime?                 @db.Timestamptz(6)
+  reflection               String?
+  privacy_status           String                    @default("public") @db.VarChar(20)
+  visibility               String?                   @default("public") @db.VarChar(20)
+  practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
-  practice_templates       practice_templates? @relation(fields: [template_id], references: [id], onUpdate: NoAction)
-  users                    users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  practice_social_proofs   practice_social_proofs[]
+  practice_templates       practice_templates?       @relation(fields: [template_id], references: [id], onUpdate: NoAction)
+  users                    users                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([start_date, end_date], map: "idx_practices_dates")
   @@index([status], map: "idx_practices_status")
+  @@index([privacy_status], map: "idx_practices_privacy_status")
   @@index([template_id], map: "idx_practices_template_id")
   @@index([user_id], map: "idx_practices_user_id")
 }
@@ -677,12 +683,12 @@ model task {
 model temp_users {
   id           Int      @id @default(autoincrement())
   google_id    String?  @unique @db.VarChar(255)
-  apple_id     String?  @unique @db.VarChar(255)
   email        String   @unique @db.VarChar(255)
   name         String   @db.VarChar(255)
   photo_url    String?  @db.VarChar(255)
   created_date DateTime @default(now()) @db.Timestamptz(6)
   updated_date DateTime @default(now()) @db.Timestamptz(6)
+  apple_id     String?  @unique @db.VarChar(255)
 }
 
 model user_join_group {
@@ -774,73 +780,89 @@ model user_subscription {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model users {
-  id                                                            Int                        @id @default(autoincrement())
-  external_id                                                   String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mongo_id                                                      String                     @unique
-  gender                                                        gender_t?
-  language                                                      String?                    @db.VarChar(255)
-  education_stage                                               education_stage_t?         @default(other)
-  tag_list                                                      String[]
-  contact_id                                                    Int?
-  is_open_location                                              Boolean?
-  location_id                                                   Int?
-  nickname                                                      String?                    @db.VarChar(255)
-  role_id                                                       Int
-  is_open_profile                                               Boolean?
-  birth_date                                                    DateTime?                  @db.Date
-  basic_info_id                                                 Int?
-  createdDate                                                   DateTime?                  @db.Timestamptz(6)
-  updatedDate                                                   DateTime?                  @db.Timestamptz(6)
-  created_by                                                    String?                    @db.VarChar(255)
-  created_at                                                    DateTime?                  @db.Timestamptz(6)
-  updated_by                                                    String?                    @db.VarChar(255)
-  updated_at                                                    DateTime?                  @db.Timestamptz(6)
-  is_active                                                     Boolean?                   @default(true)
-  verified                                                      Boolean?                   @default(false)
-  verified_at                                                   DateTime?                  @db.Timestamptz(6)
-  custom_id                                                     String?                    @db.VarChar(255)
-  custom_id_created_at                                          DateTime?                  @db.Timestamp(6)
-  personal_slogan                                               String?
-  referral_source                                               String?                    @db.VarChar(255)
-  custom_id_verified                                            Boolean?                   @default(false)
-  professional_field                                            String?                    @db.VarChar(255)
-  activity_stats_id                                             Int?
-  custom_position                                               String?                    @db.VarChar(100)
-  comments                                                      comments[]
-  email_logs                                                    email_logs[]
-  entity_resources                                              entity_resources[]
-  entity_tags                                                   entity_tags[]
-  groups                                                        groups[]
-  ideas                                                         ideas[]
-  likes                                                         likes[]
-  reactions                                                     reactions[]
-  marathon                                                      marathon[]
-  mentor_participants_mentor_participants_mentor_idTousers      mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
-  mentor_participants_mentor_participants_participant_idTousers mentor_participants[]      @relation("mentor_participants_participant_idTousers")
-  post                                                          post[]
-  practice_checkins                                             practice_checkins[]
-  practices                                                     practices[]
-  project                                                       project[]
-  quiz_results                                                  quiz_results[]
-  rating                                                        rating[]
-  resource_review                                               resource_review[]
-  resources                                                     resources[]
-  store                                                         store?
-  user_interests                                                user_interests[]
-  user_join_group                                               user_join_group[]
-  user_login_history                                            user_login_history[]
-  user_permissions                                              user_permissions[]
-  user_positions                                                user_positions[]
-  user_preferences                                              user_preferences[]
-  user_professional_fields                                      user_professional_fields[]
-  user_profiles                                                 user_profiles[]
-  user_project                                                  user_project[]
-  user_subscription                                             user_subscription[]
-  user_activity_stats                                           user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
-  basic_info                                                    basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  contacts                                                      contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  location                                                      location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  roles                                                         roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                                   Int                        @id @default(autoincrement())
+  external_id                          String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mongo_id                             String                     @unique
+  gender                               gender_t?
+  language                             String?                    @db.VarChar(255)
+  education_stage                      education_stage_t?         @default(other)
+  tag_list                             String[]
+  contact_id                           Int?
+  is_open_location                     Boolean?
+  location_id                          Int?
+  nickname                             String?                    @db.VarChar(255)
+  role_id                              Int
+  is_open_profile                      Boolean?
+  hide_connections_count               Boolean                    @default(false)
+  birth_date                           DateTime?                  @db.Date
+  basic_info_id                        Int?
+  createdDate                          DateTime?                  @db.Timestamptz(6)
+  updatedDate                          DateTime?                  @db.Timestamptz(6)
+  created_by                           String?                    @db.VarChar(255)
+  created_at                           DateTime?                  @db.Timestamptz(6)
+  updated_by                           String?                    @db.VarChar(255)
+  updated_at                           DateTime?                  @db.Timestamptz(6)
+  is_active                            Boolean?                   @default(true)
+  verified                             Boolean?                   @default(false)
+  verified_at                          DateTime?                  @db.Timestamptz(6)
+  custom_id                            String?                    @db.VarChar(255)
+  custom_id_created_at                 DateTime?                  @db.Timestamp(6)
+  personal_slogan                      String?
+  referral_source                      String?                    @db.VarChar(255)
+  custom_id_verified                   Boolean?                   @default(false)
+  professional_field                   String?                    @db.VarChar(255)
+  activity_stats_id                    Int?
+  custom_position                      String?                    @db.VarChar(100)
+  comments                             comments[]
+  received_connection_requests         connection_requests[]      @relation("connection_requests_receiver_idTousers")
+  sent_connection_requests             connection_requests[]      @relation("connection_requests_requester_idTousers")
+  connections_as_user_a                connections[]              @relation("connections_user_a_idTousers")
+  connections_as_user_b                connections[]              @relation("connections_user_b_idTousers")
+  email_logs                           email_logs[]
+  entity_resources                     entity_resources[]
+  entity_tags                          entity_tags[]
+  follows                              follows[]
+  groups                               groups[]
+  ideas                                ideas[]
+  interaction_counts_as_user_a         interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
+  interaction_counts_as_user_b         interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
+  likes                                likes[]
+  marathon                             marathon[]
+  mentor_participants_as_mentor        mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
+  mentor_participants_as_participant   mentor_participants[]      @relation("mentor_participants_participant_idTousers")
+  notification_events_as_actor         notification_events[]      @relation("notification_events_actor_idTousers")
+  notification_events_as_recipient     notification_events[]      @relation("notification_events_recipient_idTousers")
+  notification_preferences             notification_preferences[]
+  notifications_as_actor               notifications[]            @relation("notifications_actor")
+  notifications_as_recipient           notifications[]            @relation("notifications_recipient")
+  post                                 post[]
+  practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
+  practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
+  practice_checkins                    practice_checkins[]
+  practice_social_proofs               practice_social_proofs[]
+  practices                            practices[]
+  project                              project[]
+  quiz_results                         quiz_results[]
+  rating                               rating[]
+  reactions                            reactions[]
+  resource_review                      resource_review[]
+  resources                            resources[]
+  store                                store?
+  user_interests                       user_interests[]
+  user_join_group                      user_join_group[]
+  user_login_history                   user_login_history[]
+  user_permissions                     user_permissions[]
+  user_positions                       user_positions[]
+  user_preferences                     user_preferences[]
+  user_professional_fields             user_professional_fields[]
+  user_profiles                        user_profiles[]
+  user_project                         user_project[]
+  user_subscription                    user_subscription[]
+  user_activity_stats                  user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
+  basic_info                           basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts                             contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location                             location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                                roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -966,7 +988,8 @@ model practice_templates {
   frequency_max_days           Int?
   session_duration_minutes     Int?
   practice_time_periods        String[]
-  other_context                String?                        /// 其他時段（使用者自訂文字）
+  /// 其他時段（使用者自訂文字）
+  other_context                String?
   created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
   updated_at                   DateTime?                      @db.Timestamptz(6)
   practice_template_categories practice_template_categories[]
@@ -1025,11 +1048,11 @@ model email_logs {
   email_code     String?   @db.VarChar(20)
   subject        String?   @db.VarChar(255)
   status         String?   @default("sent") @db.VarChar(20)
+  sent_at        DateTime? @default(now()) @db.Timestamptz(6)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
   tracking_token String?   @unique @db.Uuid
   opened_at      DateTime? @db.Timestamptz(6)
   open_count     Int       @default(0)
-  sent_at        DateTime? @default(now()) @db.Timestamptz(6)
-  created_at     DateTime? @default(now()) @db.Timestamptz(6)
   users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id], map: "idx_email_logs_user_id")
@@ -1081,6 +1104,182 @@ model migration_history {
   executed_at       DateTime @default(now()) @db.Timestamptz(6)
   execution_time_ms Int?
   success           Boolean? @default(true)
+}
+
+model notification_events {
+  id                                            Int       @id @default(autoincrement())
+  type                                          String    @db.VarChar(50)
+  actor_id                                      Int
+  recipient_id                                  Int
+  entity_type                                   String    @db.VarChar(50)
+  entity_id                                     Int
+  payload                                       Json?
+  priority                                      String    @db.VarChar(5)
+  processed_at                                  DateTime? @db.Timestamptz(6)
+  created_at                                    DateTime? @default(now()) @db.Timestamptz(6)
+  users_notification_events_actor_idTousers     users     @relation("notification_events_actor_idTousers", fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_events_actor")
+  users_notification_events_recipient_idTousers users     @relation("notification_events_recipient_idTousers", fields: [recipient_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_events_recipient")
+
+  @@index([actor_id], map: "idx_notification_events_actor_id")
+  @@index([recipient_id], map: "idx_notification_events_recipient_id")
+  @@index([type, actor_id, entity_id], map: "idx_notification_events_type_actor_entity")
+  @@index([processed_at], map: "idx_notification_events_processed_at")
+}
+
+model notifications {
+  id                Int       @id @default(autoincrement())
+  recipient_id      Int
+  actor_id          Int
+  type              String    @db.VarChar(50)
+  entity_type       String    @db.VarChar(50)
+  entity_id         Int
+  priority          String    @db.VarChar(5)
+  is_read           Boolean?  @default(false)
+  aggregation_key   String?   @db.VarChar(200)
+  aggregation_count Int?      @default(1)
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  batch_sent_at     DateTime? @db.Timestamptz(6)
+  payload           Json?
+  actor             users     @relation("notifications_actor", fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notifications_actor")
+  recipient         users     @relation("notifications_recipient", fields: [recipient_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notifications_recipient")
+
+  @@index([recipient_id], map: "idx_notifications_recipient_id")
+  @@index([recipient_id, is_read], map: "idx_notifications_recipient_is_read")
+  @@index([recipient_id, created_at(sort: Desc)], map: "idx_notifications_recipient_created_at")
+}
+
+model notification_preferences {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  notification_type String    @db.VarChar(50)
+  channel           String    @db.VarChar(5)
+  is_enabled        Boolean?  @default(true)
+  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_preferences_user")
+
+  @@unique([user_id, notification_type, channel], map: "uq_notification_preferences_user_type_channel")
+  @@index([user_id], map: "idx_notification_preferences_user_id")
+  @@index([user_id, notification_type], map: "idx_notification_preferences_user_type")
+}
+
+model practice_buddy_requests {
+  id           Int       @id @default(autoincrement())
+  requester_id Int
+  receiver_id  Int
+  practice_id  Int
+  status       String    @default("pending") @db.VarChar(20)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  practices    practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_practice_buddy_requests_practice")
+  receiver     users     @relation("practice_buddy_requests_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_practice_buddy_requests_receiver")
+  requester    users     @relation("practice_buddy_requests_requester_idTousers", fields: [requester_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_practice_buddy_requests_requester")
+
+  @@unique([requester_id, receiver_id, practice_id], map: "uq_practice_buddy_requests_trio")
+  @@index([practice_id], map: "idx_practice_buddy_requests_practice")
+  @@index([receiver_id], map: "idx_practice_buddy_requests_receiver")
+  @@index([requester_id], map: "idx_practice_buddy_requests_requester")
+  @@index([status], map: "idx_practice_buddy_requests_status")
+}
+
+model interaction_events {
+  id          Int      @id @default(autoincrement())
+  entity_type String   @db.VarChar(50)
+  entity_id   Int
+  user_id     Int
+  event_type  String   @db.VarChar(50)
+  metadata    Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([entity_type, entity_id, event_type], map: "interaction_events_entity_event_idx")
+  @@index([user_id, created_at])
+}
+
+model entity_stats {
+  entity_type       String   @db.VarChar(50)
+  entity_id         Int
+  view_count        Int      @default(0)
+  unique_view_count Int      @default(0)
+  reaction_count    Int      @default(0)
+  comment_count     Int      @default(0)
+  share_count       Int      @default(0)
+  favorite_count    Int      @default(0)
+  practice_count    Int      @default(0)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([entity_type, entity_id])
+}
+
+model connections {
+  id                                 Int       @id @default(autoincrement())
+  user_a_id                          Int
+  user_b_id                          Int
+  connected_at                       DateTime? @default(now()) @db.Timestamptz(6)
+  users_connections_user_a_idTousers users     @relation("connections_user_a_idTousers", fields: [user_a_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_connections_user_a")
+  users_connections_user_b_idTousers users     @relation("connections_user_b_idTousers", fields: [user_b_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_connections_user_b")
+
+  @@unique([user_a_id, user_b_id], map: "uq_connections_pair")
+  @@index([user_a_id], map: "idx_connections_user_a")
+  @@index([user_b_id], map: "idx_connections_user_b")
+}
+
+model connection_requests {
+  id                  Int       @id @default(autoincrement())
+  requester_id        Int
+  receiver_id         Int
+  intent              String?
+  status              String    @default("pending") @db.VarChar(20)
+  context_practice_id Int?
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @default(now()) @db.Timestamptz(6)
+  receiver            users     @relation("connection_requests_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_connection_requests_receiver")
+  requester           users     @relation("connection_requests_requester_idTousers", fields: [requester_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_connection_requests_requester")
+
+  @@unique([requester_id, receiver_id], map: "uq_connection_requests_pair")
+  @@index([receiver_id], map: "idx_connection_requests_receiver")
+  @@index([requester_id], map: "idx_connection_requests_requester")
+  @@index([status], map: "idx_connection_requests_status")
+}
+
+model follows {
+  id          Int       @id @default(autoincrement())
+  follower_id Int
+  target_type String    @db.VarChar(20)
+  target_id   Int
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  follower    users     @relation(fields: [follower_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_follows_follower")
+
+  @@unique([follower_id, target_type, target_id], map: "uq_follows_follower_target")
+  @@index([follower_id], map: "idx_follows_follower_id")
+  @@index([target_type, target_id], map: "idx_follows_target")
+}
+
+model practice_social_proofs {
+  id          Int       @id @default(autoincrement())
+  practice_id Int
+  actor_id    Int
+  type        String    @db.VarChar(20)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users     @relation(fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_practice_social_proofs_actor")
+  practices   practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_practice_social_proofs_practice")
+
+  @@unique([practice_id, actor_id, type], map: "uq_practice_social_proofs")
+  @@index([actor_id], map: "idx_practice_social_proofs_actor_id")
+  @@index([practice_id], map: "idx_practice_social_proofs_practice_id")
+}
+
+model interaction_counts {
+  id                                        Int       @id @default(autoincrement())
+  user_a_id                                 Int
+  user_b_id                                 Int
+  count                                     Int       @default(0)
+  updated_at                                DateTime? @default(now()) @db.Timestamptz(6)
+  users_interaction_counts_user_a_idTousers users     @relation("interaction_counts_user_a_idTousers", fields: [user_a_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_interaction_counts_user_a")
+  users_interaction_counts_user_b_idTousers users     @relation("interaction_counts_user_b_idTousers", fields: [user_b_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_interaction_counts_user_b")
+
+  @@unique([user_a_id, user_b_id], map: "uq_interaction_counts_pair")
+  @@index([user_a_id], map: "idx_interaction_counts_user_a")
+  @@index([user_b_id], map: "idx_interaction_counts_user_b")
 }
 
 enum age_t {
@@ -1273,4 +1472,33 @@ enum want_to_do_list_t {
   find_student     @map("find-student")
   find_teacher     @map("find-teacher")
   find_group       @map("find-group")
+}
+
+enum entity_tag_type {
+  RESOURCE
+  IDEA
+  PROJECT
+  PRACTICE
+  CIRCLE
+  USER
+}
+
+enum marathon_registration_status {
+  Open
+  Closed
+  Pending
+  Full
+}
+
+enum project_marathon_status {
+  Pending
+  Approved
+  Rejected
+}
+
+enum project_status {
+  Ongoing
+  Completed
+  Not_Started @map("Not Started")
+  Canceled
 }

@@ -37,12 +37,14 @@ jest.mock('@/services/user.service', () => ({
 }));
 
 jest.mock('@/services/email/email.service', () => ({
-  emailService: mockEmailService
+  emailService: mockEmailService,
+  sendWelcomeEmailWithLog: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Import mocked modules
 import { jwtService } from '@/services/jwt.service';
 import { authService } from '@/services/auth/auth.service';
+import { sendWelcomeEmailWithLog } from '@/services/email/email.service';
 
 describe('Auth Service', () => {
   const mockJwtService = jwtService as jest.Mocked<typeof jwtService>;
@@ -818,7 +820,7 @@ describe('Auth Service', () => {
 
     beforeEach(() => {
       setupTransactionMock();
-      mockEmailService.sendWelcomeEmail.mockClear();
+      (sendWelcomeEmailWithLog as jest.Mock).mockClear();
     });
 
     it('should create a new user with verified=true when emailVerified is true', async () => {
@@ -888,12 +890,11 @@ describe('Auth Service', () => {
       // Wait for async email to be called
       await new Promise(resolve => setImmediate(resolve));
 
-      expect(mockEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+      expect(sendWelcomeEmailWithLog as jest.Mock).toHaveBeenCalledWith(
         mockAppleProfile.email,
-        {
+        expect.objectContaining({
           name: mockAppleProfile.name,
-          hasCompletedQuiz: false
-        }
+        }),
       );
     });
 
@@ -926,7 +927,7 @@ describe('Auth Service', () => {
 
       await new Promise(resolve => setImmediate(resolve));
 
-      expect(mockEmailService.sendWelcomeEmail).not.toHaveBeenCalled();
+      expect(sendWelcomeEmailWithLog as jest.Mock).not.toHaveBeenCalled();
     });
 
     it('should not fail if welcome email fails', async () => {
@@ -949,7 +950,7 @@ describe('Auth Service', () => {
       prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
       // Mock email failure
-      mockEmailService.sendWelcomeEmail.mockRejectedValue(new Error('SMTP connection failed'));
+      (sendWelcomeEmailWithLog as jest.Mock).mockRejectedValue(new Error('SMTP connection failed'));
 
       // Should not throw error
       const result = await authService.createUserFromAppleOAuth(mockAppleProfile);
@@ -983,12 +984,11 @@ describe('Auth Service', () => {
 
       await new Promise(resolve => setImmediate(resolve));
 
-      expect(mockEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+      expect(sendWelcomeEmailWithLog as jest.Mock).toHaveBeenCalledWith(
         profileWithEmptyName.email,
-        {
+        expect.objectContaining({
           name: 'User',
-          hasCompletedQuiz: false
-        }
+        }),
       );
     });
   });

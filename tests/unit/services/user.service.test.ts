@@ -232,7 +232,9 @@ describe('User Service', () => {
 
       expect(mockEmailService.sendVerificationEmail).toHaveBeenCalledWith(
         newUser.contacts.email,
-        expect.stringContaining('/api/v1/auth/verify-email?token=')
+        expect.stringContaining('/api/v1/auth/verify-email?token='),
+        expect.any(String),
+        expect.any(Number)
       );
     });
 

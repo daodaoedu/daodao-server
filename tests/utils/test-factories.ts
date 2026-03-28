@@ -51,6 +51,7 @@ export const createTestUser = (overrides: Partial<any> = {}) => {
     // Activity stats are in user_activity_stats table, linked via activity_stats_id
     activity_stats_id: overrides.activity_stats_id || null,
     custom_position: overrides.custom_position || null,
+    hide_connections_count: overrides.hide_connections_count ?? false,
     ...overrides
   };
 };

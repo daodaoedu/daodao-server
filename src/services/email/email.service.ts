@@ -168,7 +168,7 @@ export class EmailService {
   /**
    * 發送歡迎郵件
    * @param to 收件人 Email
-   * @param data 歡迎信資料（包含 hasCompletedQuiz 決定使用哪個版本）
+   * @param data 歡迎信資料（包含 referralGroup 決定使用哪個版本）
    */
   async sendWelcomeEmail(to: string, data: WelcomeEmailData): Promise<EmailSendResult> {
     const template = this.templateService.generateWelcomeEmail(data);
@@ -184,7 +184,7 @@ export class EmailService {
    * 發送歡迎郵件（含發送紀錄整合）
    * 會自動檢查是否已發送過，並記錄到 email_logs
    * @param to 收件人 Email
-   * @param data 歡迎信資料（包含 userId 用於記錄）
+   * @param data 歡迎信資料（包含 userId 和 referralGroup 用於記錄）
    */
   async sendWelcomeEmailWithLog(to: string, data: WelcomeEmailDataWithUser): Promise<EmailSendResult> {
     const { userId, ...templateData } = data;
@@ -193,7 +193,7 @@ export class EmailService {
     try {
       const alreadySent = await hasEmailBeenSent({
         userId,
-        emailType: EMAIL_TYPES.AUTH_REGISTER,
+        emailType: EMAIL_TYPES.WELCOME_LETTER,
       });
 
       if (alreadySent) {
@@ -215,7 +215,7 @@ export class EmailService {
     try {
       logRecord = await createEmailLog({
         userId,
-        emailType: EMAIL_TYPES.AUTH_REGISTER,
+        emailType: EMAIL_TYPES.WELCOME_LETTER,
         subject: '【島島阿學】歡迎來到島島阿學！',
         status: 'pending',
       });
@@ -253,7 +253,7 @@ export class EmailService {
   /**
    * 發送歡迎郵件 (API 版本)
    * @param to 收件人 Email
-   * @param data 歡迎信資料（包含 hasCompletedQuiz 決定使用哪個版本）
+   * @param data 歡迎信資料（包含 referralGroup 決定使用哪個版本）
    */
   async sendWelcomeEmailApi(to: string, data: WelcomeEmailData): Promise<ApiSuccessResponse<{ messageId?: string }>> {
     const result = await this.sendWelcomeEmail(to, data);
@@ -262,7 +262,7 @@ export class EmailService {
       throw new Error(result.error || '發送歡迎郵件失敗');
     }
 
-    const templateVersion = data.hasCompletedQuiz ? 'welcome-completed' : 'welcome-pending';
+    const templateVersion = `welcome-${data.referralGroup}`;
 
     return createSuccessResponse({
       messageId: result.messageId

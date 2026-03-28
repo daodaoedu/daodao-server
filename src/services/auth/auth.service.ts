@@ -273,7 +273,7 @@ export const createUserFromAppleOAuth = async (profile: {
   if (email && newUser) {
     sendWelcomeEmailWithLog(email, {
       name: name || 'User',
-      hasCompletedQuiz: false,
+      referralGroup: 'default',
       userId: newUser.id
     }).catch(error => {
       loggerService.error('Failed to send welcome email for Apple OAuth user', {

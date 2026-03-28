@@ -1,14 +1,16 @@
 /**
  * Reaction system type definitions
  *
- * 對應前端 PICKER_REACTIONS：['useful', 'fire', 'touched', 'curious']
+ * 對應前端 ReactionType enum：encourage | touched | fire | useful | sameHere | curious
  */
 
 export const ReactionType = {
-  useful:  'useful',   // 👍 加油
-  fire:    'fire',     // 🔥 啟發
-  touched: 'touched',  // 💓 共鳴
-  curious: 'curious',  // 🧐 好奇
+  encourage: 'encourage', // 🥰 一起加油
+  touched:   'touched',   // 💓 共鳴
+  fire:      'fire',      // 🔥 啟發
+  useful:    'useful',    // 👍 加油
+  sameHere:  'sameHere',  // 😳 我也是
+  curious:   'curious',   // 🧐 好奇
 } as const;
 
 export type ReactionTypeValue = (typeof ReactionType)[keyof typeof ReactionType];
@@ -18,6 +20,7 @@ export const REACTION_TYPE_VALUES = Object.values(ReactionType);
 export const ReactionTargetType = {
   practice: 'practice',
   comment:  'comment',
+  checkin:  'checkin',
 } as const;
 
 export type ReactionTargetTypeValue = (typeof ReactionTargetType)[keyof typeof ReactionTargetType];

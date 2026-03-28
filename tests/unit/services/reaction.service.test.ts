@@ -24,10 +24,23 @@ jest.mock('@/services/logging/logger.service', () => ({
   loggerService: mockLoggerService,
 }));
 
+jest.mock('@/queues/reaction-notification.queue', () => ({
+  enqueueReactionNotification: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockCreateEvent = jest.fn().mockResolvedValue(undefined);
+
+jest.mock('@/services/notification-event.service', () => ({
+  notificationEventService: {
+    createEvent: (...args: unknown[]) => mockCreateEvent(...args),
+  },
+}));
+
 import {
   upsertReaction,
   removeReaction,
   getReactionsByTarget,
+  getReactionsListByTarget,
 } from '@/services/reaction.service';
 
 // ============================================================================
@@ -67,6 +80,10 @@ describe('Reaction Service', () => {
   // --------------------------------------------------------------------------
 
   describe('upsertReaction', () => {
+    beforeEach(() => {
+      prismaMock.practices.findUnique.mockResolvedValue(null);
+    });
+
     it('新增反應並回傳更新後計數', async () => {
       const reaction = makeReaction();
 
@@ -176,7 +193,7 @@ describe('Reaction Service', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data.reactions).toHaveLength(4); // 固定 4 種類型
+      expect(result.data.reactions).toHaveLength(6); // 固定 6 種類型
 
       const fire = result.data.reactions.find((r) => r.type === 'fire');
       expect(fire?.count).toBe(2);
@@ -212,6 +229,214 @@ describe('Reaction Service', () => {
       await expect(
         getReactionsByTarget({ targetType: 'practice', targetId: 10 }),
       ).rejects.toThrow('取得反應資料失敗');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // getReactionsListByTarget
+  // --------------------------------------------------------------------------
+
+  describe('getReactionsListByTarget', () => {
+    it('回傳反應列表，含用戶資訊', async () => {
+      const reactions = [
+        {
+          id: 1,
+          target_type: 'practice',
+          target_id: 10,
+          user_id: 1,
+          reaction_type: 'fire',
+          created_at: new Date('2025-01-01T00:00:00Z'),
+          users: {
+            external_id: 'ext-001',
+            nickname: '王小明',
+            contacts: { photo_url: 'https://example.com/photo1.jpg' },
+          },
+        },
+        {
+          id: 2,
+          target_type: 'practice',
+          target_id: 10,
+          user_id: 2,
+          reaction_type: 'curious',
+          created_at: new Date('2025-01-02T00:00:00Z'),
+          users: {
+            external_id: 'ext-002',
+            nickname: '李大華',
+            contacts: null,
+          },
+        },
+      ];
+
+      prismaMock.reactions.findMany.mockResolvedValue(reactions as any);
+
+      const result = await getReactionsListByTarget({
+        targetType: 'practice',
+        targetId: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.items).toHaveLength(2);
+
+      const firstItem = result.data.items[0];
+      expect(firstItem.userId).toBe('ext-001');
+      expect(firstItem.name).toBe('王小明');
+      expect(firstItem.photoURL).toBe('https://example.com/photo1.jpg');
+      expect(firstItem.reactionType).toBe('fire');
+      expect(firstItem.reactedAt).toBe('2025-01-01T00:00:00.000Z');
+
+      const secondItem = result.data.items[1];
+      expect(secondItem.userId).toBe('ext-002');
+      expect(secondItem.name).toBe('李大華');
+      expect(secondItem.photoURL).toBeNull();
+      expect(secondItem.reactionType).toBe('curious');
+    });
+
+    it('空列表時回傳空陣列', async () => {
+      prismaMock.reactions.findMany.mockResolvedValue([]);
+
+      const result = await getReactionsListByTarget({
+        targetType: 'practice',
+        targetId: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.items).toEqual([]);
+    });
+
+    it('DB 錯誤時拋出 InternalServerError', async () => {
+      prismaMock.reactions.findMany.mockRejectedValue(new Error('DB error'));
+
+      await expect(
+        getReactionsListByTarget({ targetType: 'practice', targetId: 10 }),
+      ).rejects.toThrow('取得反應列表失敗');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // checkin reactions
+  // --------------------------------------------------------------------------
+
+  describe('checkin reactions', () => {
+    beforeEach(() => {
+      mockCreateEvent.mockClear();
+    });
+
+    it('should upsert reaction for checkin target and send notification', async () => {
+      const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
+
+      // No existing reaction (triggers notification path)
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      // Upsert succeeds
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      // getReactionsByTarget mocks
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+
+      // Checkin owned by user 2 (different from actor user 1)
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        user_id: 2,
+        practice_id: 100,
+      } as any);
+
+      // Practice for title lookup
+      prismaMock.practices.findUnique.mockResolvedValue({
+        id: 100,
+        title: '每日冥想',
+        external_id: 'ext-100',
+      } as any);
+
+      const result = await upsertReaction({
+        targetType: 'checkin',
+        targetId: 20,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(prismaMock.reactions.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            target_type: 'checkin',
+            target_id: 20,
+            user_id: 1,
+            reaction_type: 'fire',
+          }),
+        }),
+      );
+
+      expect(result.success).toBe(true);
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'reaction',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'checkin',
+          entityId: 20,
+          priority: 'P2',
+        }),
+      );
+    });
+
+    it('should not send notification when reacting to own checkin', async () => {
+      const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
+
+      // No existing reaction
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+
+      // Checkin owned by the same user (user 1)
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        user_id: 1,
+        practice_id: 100,
+      } as any);
+
+      await upsertReaction({
+        targetType: 'checkin',
+        targetId: 20,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+    });
+
+    it('should not call enqueueReactionNotification for checkin', async () => {
+      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue');
+
+      const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
+
+      // No existing reaction
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+
+      // Checkin owned by user 2
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        user_id: 2,
+        practice_id: 100,
+      } as any);
+
+      prismaMock.practices.findUnique.mockResolvedValue({
+        id: 100,
+        title: '每日冥想',
+        external_id: 'ext-100',
+      } as any);
+
+      await upsertReaction({
+        targetType: 'checkin',
+        targetId: 20,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      // Unlike practice, checkin reactions don't use the email queue
+      expect(enqueueReactionNotification).not.toHaveBeenCalled();
     });
   });
 });

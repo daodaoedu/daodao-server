@@ -19,14 +19,15 @@ import {
 // Comment target type enum values for validation
 const COMMENT_TARGET_TYPES = [
   'post',
-  'resource', 
+  'resource',
   'note',
   'outcome',
   'review',
   'circle',
   'idea',
   'practice',
-  'portfolio'
+  'portfolio',
+  'checkin'
 ] as const;
 
 // Comment visibility enum values for validation
@@ -62,6 +63,10 @@ export const createCommentSchema = z.object({
     description: "父留言ID（用於回覆）",
     example: 1,
     examples: [1, 25, 100]
+  }),
+  mentionedUserIds: z.array(z.number().int().positive()).max(10).optional().openapi({
+    description: "被 @mention 的使用者 ID 列表（最多 10 人）",
+    example: [1, 2, 3],
   })
 }).openapi('CreateCommentRequest', {
   description: "創建留言的請求資料"
@@ -285,6 +290,10 @@ export const commentUserSchema = z.object({
     description: "用戶頭像 URL",
     example: "https://example.com/avatar.jpg",
     format: 'uri'
+  }),
+  customId: z.string().nullable().openapi({
+    description: "用戶自訂 ID，用於 @mention",
+    example: "my_custom_id"
   })
 }).openapi('CommentUser', {
   description: '留言用戶資訊'

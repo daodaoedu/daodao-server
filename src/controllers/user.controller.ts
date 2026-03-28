@@ -4,7 +4,8 @@
  */
 
 import { Request, Response } from 'express';
-import { userService } from '../services/user.service';
+import { userService, getCommonCirclesCount, getUserConnectionsCount } from '../services/user.service';
+import { getRecentPracticeCount } from '../services/practice.service';
 import {
   UserQueryParams,
   CreateUserRequest,
@@ -154,7 +155,7 @@ const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => 
   const jsonFields = ['wantToDoList', 'tagList', 'positionList', 'interestList', 'preferences', 'contactList', 'professionalField'];
 
   // 需要解析為 boolean 的欄位
-  const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail'];
+  const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail', 'hideConnectionsCount'];
 
   for (const [key, value] of Object.entries(body)) {
     if (value === undefined || value === null) {
@@ -451,6 +452,94 @@ export const getActivityStats = asyncHandler(async (req: Request, res: Response)
   res.json(validatedResponse);
 });
 
+/**
+ * 獲取設定頁完整度摘要
+ * GET /api/v1/users/settings-summary
+ */
+export const getSettingsSummary = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser || !currentUser.id) {
+    throw new NotFoundError('User not found');
+  }
+
+  const result = await userService.getSettingsSummary(currentUser.id);
+  res.json(result);
+});
+
+/**
+ * 取得 Profile 聚合資料
+ * GET /api/v1/users/profile/:identifier
+ * identifier 可為 custom_id（字母數字）或 external_id（UUID）
+ * 無需強制登入，但若帶 JWT 則解析 viewerId 以計算 commonCirclesCount
+ */
+export const getUserProfile = asyncHandler(async (req: Request, res: Response) => {
+  const { identifier } = req.params;
+  const currentUser = req.user;
+
+  // 嘗試用 custom_id 或 external_id 查詢用戶
+  const { prisma } = await import('../services/database/prisma.service');
+
+  const user = await prisma.users.findFirst({
+    where: {
+      OR: [
+        { custom_id: identifier },
+        { external_id: identifier }
+      ]
+    },
+    include: {
+      contacts: true,
+      user_activity_stats: true
+    }
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  // 取得近 7 天實踐數
+  const recentPracticeCount = await getRecentPracticeCount(user.id, 7);
+
+  // 取得 connections 數
+  const connectionsCount = await getUserConnectionsCount(user.id);
+
+  const hideConnectionsCount = user.hide_connections_count ?? false;
+
+  // 若有 viewerId 且不是自己，計算共同 circle 數
+  const viewerIdNum = currentUser?.id ?? null;
+  let commonCirclesCount: number | null = null;
+  if (viewerIdNum !== null && viewerIdNum !== user.id) {
+    commonCirclesCount = await getCommonCirclesCount(user.id, viewerIdNum);
+  }
+
+  res.json({
+    success: true,
+    data: {
+      id: user.external_id ?? '',
+      name: user.nickname ?? null,
+      customId: user.custom_id ?? null,
+      photoURL: user.contacts?.photo_url ?? null,
+      headline: user.personal_slogan ?? null,
+      educationStage: user.education_stage ?? null,
+      recentPracticeCount,
+      commonCirclesCount,
+      hideConnectionsCount,
+      connectionsCount: hideConnectionsCount ? null : connectionsCount,
+      contactList: {
+        instagram: user.contacts?.ig ?? null,
+        discord: user.contacts?.discord ?? null,
+        line: user.contacts?.line ?? null,
+        facebook: user.contacts?.fb ?? null,
+        threads: user.contacts?.threads ?? null,
+        linkedin: user.contacts?.linkedin ?? null,
+        github: user.contacts?.github ?? null,
+        website: user.contacts?.website ?? null
+      }
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 export const userController = {
   getAllUsers,
   getMe,
@@ -468,7 +557,9 @@ export const userController = {
   updateUserPreferences,
   getAvailablePreferences,
   getLoginHistory,
-  getActivityStats
+  getActivityStats,
+  getSettingsSummary,
+  getUserProfile
 };
 
 export default userController;

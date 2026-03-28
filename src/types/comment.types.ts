@@ -9,16 +9,17 @@ import { Request, Response } from 'express';
 import { ApiSuccessResponse } from './api-response.types';
 
 // Core comment target types based on the existing system
-export type CommentTargetType = 
-  | 'post' 
-  | 'resource' 
-  | 'note' 
-  | 'outcome' 
-  | 'review' 
-  | 'circle' 
-  | 'idea' 
+export type CommentTargetType =
+  | 'post'
+  | 'resource'
+  | 'note'
+  | 'outcome'
+  | 'review'
+  | 'circle'
+  | 'idea'
   | 'practice'
-  | 'portfolio';
+  | 'portfolio'
+  | 'checkin';
 
 // Comment visibility options
 export type CommentVisibility = 'public' | 'private';
@@ -42,6 +43,7 @@ export interface CommentUser {
   name: string;
   roleList: string[];
   photoURL: string | null;
+  customId: string | null;
 }
 
 // Comment response interface with user information and nested replies
@@ -68,6 +70,7 @@ export interface CommentCreateRequest {
   content: string;
   visibility?: CommentVisibility;
   parentId?: number;
+  mentionedUserIds?: number[];
 }
 
 // Update comment request interface
@@ -230,6 +233,7 @@ export interface DatabaseComment {
     id: number;
     nickname: string | null;
     external_id: string | null;
+    custom_id: string | null;
     user_positions?: Array<{
       position: {
         name: string;

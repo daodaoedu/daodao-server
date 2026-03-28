@@ -37,6 +37,9 @@ import {
   ApiSuccessResponse
 } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
+import { interactionCountService } from './interaction-count.service';
+import { notificationEventService } from './notification-event.service';
+import { loggerService } from './logging/logger.service';
 
 /**
  * Comment Service Class
@@ -112,6 +115,105 @@ export class CommentService implements CommentServiceInterface {
           }
         });
 
+        // 更新互動計數（留言者與內容擁有者不同時）
+        if (userId !== targetEntity.user_id && targetEntity.user_id) {
+          interactionCountService.increment(userId, targetEntity.user_id).catch(() => undefined);
+        }
+
+        // Fire-and-forget: Comment 通知給內容擁有者
+        if (targetEntity.user_id) {
+          let practiceTitle: string | undefined;
+          if (targetType === 'practice') {
+            const practice = await tx.practices.findUnique({
+              where:  { id: targetEntity.id },
+              select: { title: true },
+            });
+            practiceTitle = practice?.title ?? undefined;
+          }
+          notificationEventService.createEvent({
+            type:        'comment',
+            actorId:     userId,
+            recipientId: targetEntity.user_id,
+            entityType:  'comment',
+            entityId:    createdComment.id,
+            payload: {
+              content,
+              ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+            },
+            priority: 'P2',
+          }).catch(() => {});
+        }
+
+        // Fire-and-forget: mention 通知給被 @mention 的使用者
+        const mentionedUserIds = params.mentionedUserIds;
+        if (mentionedUserIds && mentionedUserIds.length > 0) {
+          // Security: only allow as many mentionedUserIds as @mention patterns in content
+          const mentionPatterns = content.match(/@[\w]+/g) ?? [];
+          if (mentionPatterns.length < mentionedUserIds.length) {
+            loggerService.warn('[CommentService] mentionedUserIds count exceeds @mentions in content', {
+              mentionedCount: mentionedUserIds.length,
+              contentMentions: mentionPatterns.length,
+              userId,
+            });
+          }
+          const safeUserIds = mentionedUserIds.slice(0, Math.max(mentionPatterns.length, 0));
+          const ownerId = targetEntity.user_id ?? null;
+          const uniqueIds = [...new Set(safeUserIds)].filter(
+            (id) => id !== userId && id !== ownerId
+          );
+
+          if (uniqueIds.length > 0) {
+            try {
+              const foundUsers = await tx.users.findMany({
+                where: { id: { in: uniqueIds } },
+                select: { id: true },
+              });
+              const validIds = foundUsers.map((u) => u.id);
+
+              // targetType → URL path mapping
+              const pathSegmentMap: Record<string, string> = {
+                check_in: 'check-ins',
+                checkin:   'check-ins',
+                practice:  'practices',
+                post:      'posts',
+                resource:  'resources',
+                note:      'notes',
+                outcome:   'outcomes',
+                review:    'reviews',
+                circle:    'circles',
+                idea:      'ideas',
+                portfolio: 'portfolios',
+              };
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+              const segment = pathSegmentMap[targetType];
+              if (!segment) {
+                loggerService.warn(`[CommentService] Missing URL path segment for targetType: "${targetType}"`);
+              }
+              const url = segment
+                ? `${frontendUrl}/${segment}/${targetId}`
+                : frontendUrl;
+              const actorName = createdComment.users.nickname ?? undefined;
+
+              for (const recipientId of validIds) {
+                notificationEventService.createEvent({
+                  type:        'mention',
+                  actorId:     userId,
+                  recipientId,
+                  entityType:  'comment',
+                  entityId:    createdComment.id,
+                  priority:    'P1',
+                  payload:     { content, actorName, url },
+                });
+              }
+            } catch (error) {
+              loggerService.error('[CommentService] Failed to create mention notification events', {
+                error,
+                commentId: createdComment.id,
+              });
+            }
+          }
+        }
+
         // Format and return the response
         const formattedComment = await this.formatCommentResponse(createdComment);
         return createSuccessResponse(formattedComment);
@@ -158,7 +260,7 @@ export class CommentService implements CommentServiceInterface {
           }
         },
         orderBy: {
-          created_at: 'asc'
+          created_at: 'desc'
         }
       });
 
@@ -235,10 +337,11 @@ export class CommentService implements CommentServiceInterface {
       }
 
       // Get target entity for permission checking
-      // Note: target_id is stored as int, need to convert to string for getTargetEntity
-      const entity = await idConverter.getTargetEntity(
+      // target_id is stored as an internal integer — query the correct table directly
+      // instead of calling getTargetEntity (which expects an external UUID for most types)
+      const entity = await this.getTargetEntityByInternalId(
         comment.target_type as EntityType,
-        comment.target_id.toString()
+        comment.target_id
       );
 
       // Check if user can view this comment
@@ -376,6 +479,130 @@ export class CommentService implements CommentServiceInterface {
 
 
   /**
+   * Fetch target entity info by internal integer ID (for permission checking)
+   * @private
+   * @param targetType - The entity type
+   * @param internalId - The internal integer ID stored in comments.target_id
+   * @returns Promise<TargetEntity> - Entity with id and user_id
+   */
+  private async getTargetEntityByInternalId(
+    targetType: EntityType,
+    internalId: number
+  ): Promise<TargetEntity> {
+    let entity: TargetEntity | null = null;
+
+    switch (targetType) {
+      case 'post': {
+        const post = await prisma.post.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (post) {
+          entity = { id: post.id, user_id: post.user_id || 0 };
+        }
+        break;
+      }
+
+      case 'circle': {
+        const circle = await prisma.groups.findUnique({
+          where: { id: internalId },
+          select: { id: true, created_by: true }
+        });
+        if (circle) {
+          entity = { id: circle.id, user_id: circle.created_by || 0 };
+        }
+        break;
+      }
+
+      case 'idea': {
+        const idea = await prisma.ideas.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (idea) {
+          entity = { id: idea.id, user_id: idea.user_id || 0 };
+        }
+        break;
+      }
+
+      case 'note': {
+        const note = await prisma.note.findUnique({
+          where: { id: internalId },
+          include: { post: { select: { user_id: true } } }
+        });
+        if (note && note.post) {
+          entity = { id: note.id, user_id: note.post.user_id };
+        }
+        break;
+      }
+
+      case 'outcome': {
+        const outcome = await prisma.outcome.findUnique({
+          where: { id: internalId },
+          include: { post: { select: { user_id: true } } }
+        });
+        if (outcome && outcome.post) {
+          entity = { id: outcome.id, user_id: outcome.post.user_id };
+        }
+        break;
+      }
+
+      case 'review': {
+        const review = await prisma.review.findUnique({
+          where: { id: internalId },
+          include: { post: { select: { user_id: true } } }
+        });
+        if (review && review.post) {
+          entity = { id: review.id, user_id: review.post.user_id };
+        }
+        break;
+      }
+
+      case 'resource': {
+        const resource = await prisma.resources.findUnique({
+          where: { id: internalId },
+          select: { id: true, created_by: true }
+        });
+        if (resource) {
+          entity = { id: resource.id, user_id: resource.created_by };
+        }
+        break;
+      }
+
+      case 'practice': {
+        const practice = await prisma.practices.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (practice) {
+          entity = { id: practice.id, user_id: practice.user_id };
+        }
+        break;
+      }
+
+      case 'checkin': {
+        const checkin = await prisma.practice_checkins.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (checkin) {
+          entity = { id: checkin.id, user_id: checkin.user_id };
+        }
+        break;
+      }
+
+      default:
+        throw new InternalServerError(`Unsupported target type: ${targetType}`);
+    }
+
+    if (!entity) {
+      throw new NotFoundError(`${targetType} not found for internal id: ${internalId}`);
+    }
+
+    return entity;
+  }
+
+  /**
    * Check if a user can view a specific comment
    * @private
    * @param comment - The comment to check
@@ -465,6 +692,15 @@ export class CommentService implements CommentServiceInterface {
       }
     });
 
+    // Replies keep chronological order (oldest first) for conversation context
+    rootComments.forEach(comment => {
+      if (comment.replies && comment.replies.length > 1) {
+        comment.replies.sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      }
+    });
+
     return rootComments;
   }
 
@@ -538,6 +774,10 @@ export class CommentService implements CommentServiceInterface {
           // Portfolio handling would go here when implemented
           return internalId.toString();
 
+        case 'checkin':
+          // Checkin uses internal integer ID directly
+          return internalId.toString();
+
         default:
           return internalId.toString();
       }
@@ -559,7 +799,8 @@ export class CommentService implements CommentServiceInterface {
       id: comment.users.external_id || '',
       name: comment.users.nickname || '',
       roleList: comment.users.user_positions?.map((up) => up.position.name) || [],
-      photoURL: comment.users.contacts?.photo_url || null
+      photoURL: comment.users.contacts?.photo_url || null,
+      customId: comment.users.custom_id ?? null
     };
 
     // Convert internal target_id back to external ID for frontend

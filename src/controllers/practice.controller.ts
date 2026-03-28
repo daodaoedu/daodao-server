@@ -236,13 +236,7 @@ export class PracticeController {
    * GET /api/v1/practices/stats
    */
   getUserPracticeStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const userId = req.query.userId
-      ? parseInt(req.query.userId as string)
-      : req.user?.id;
-
-    if (!userId) {
-      throw new BadRequestError('需要指定使用者 ID');
-    }
+    const userId = req.user!.id;
 
     const result = await practiceService.getUserStats(userId);
 
@@ -265,8 +259,8 @@ export class PracticeController {
         continue;
       }
 
-      // 需要解析為 JSON 的欄位
-      if (key === 'tags' && typeof value === 'string') {
+      // 需要解析為 JSON 的陣列欄位
+      if ((key === 'tags' || key === 'imageUrls') && typeof value === 'string') {
         try {
           result[key] = JSON.parse(value);
         } catch {
@@ -365,6 +359,9 @@ export class PracticeController {
       throw new BadRequestError('無效的簽到記錄 ID');
     }
 
+    // 檢查是否有上傳檔案
+    const imageFiles = req.files as Express.Multer.File[] | undefined;
+
     // 檢查是否為 multipart/form-data
     const contentType = req.headers['content-type'] || '';
     const isFormData = contentType.includes('multipart/form-data');
@@ -384,6 +381,13 @@ export class PracticeController {
     }
 
     const updateData = validation.data;
+
+    // 如果有圖片檔案，先上傳到 R2 再更新
+    let imageUrls = updateData.imageUrls;
+    if (imageFiles && imageFiles.length > 0) {
+      imageUrls = await practiceCheckInService.uploadCheckInImages(imageFiles);
+    }
+
     const result = await practiceCheckInService.updateCheckIn(
       checkInId,
       practiceId,
@@ -391,7 +395,7 @@ export class PracticeController {
       {
         mood: updateData.mood as CheckInMood | undefined,
         note: updateData.note,
-        imageUrls: updateData.imageUrls,
+        imageUrls,
         ogImageUrl: updateData.ogImageUrl,
         tags: updateData.tags
       }
