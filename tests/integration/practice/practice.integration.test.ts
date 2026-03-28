@@ -78,6 +78,11 @@ describe('Practice API Integration Tests', () => {
 
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
     otherUserToken = createAuthToken({ id: otherUserId, email: 'other@test.com' });
+
+    // Default mock for fire-and-forget calls in create/update
+    prismaMock.follows.findMany.mockResolvedValue([] as any);
+    // Default mock for theme color assignment in create
+    prismaMock.practices.count.mockResolvedValue(0);
   });
 
   // Helper functions

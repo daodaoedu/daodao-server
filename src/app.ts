@@ -56,8 +56,19 @@ import dbInfoRoutes from './routes/db-info.routes';
 import monitorRoutes from './routes/monitor.routes';
 // 引入城市路由
 import cityRoutes from './routes/city.routes';
+// 引入通知路由
+import notificationRoutes from './routes/notification.routes';
+// 引入關注路由
+import followRoutes from './routes/follow.routes';
+// 引入連結路由
+import connectionRoutes from './routes/connection.routes';
+// 引入 Buddy 請求路由
+import { buddyRequestRouter, practiceBuddyRequestRouter } from './routes/buddy-request.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
+// 引入 Onboarding Gate 中間件
+import { requireOnboardingComplete } from './middleware/onboarding-gate.middleware';
+import { authenticate } from './middleware/auth';
 
 /**
  * 設置 TypeScript 路由和模型
@@ -107,7 +118,9 @@ export function setupTypescriptRoutes(app: express.Application) {
     resourceRoutes, resourceReviewRoutes, ideaRoutes, meRoutes,
     tagRoutes, authRoutes, projectRoutes, userRoutes, emailRoutes,
     commentRoutes, reactionRoutes, imageRoutes, mentorRoutes, practiceRoutes,
-    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes
+    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
+    notificationRoutes, followRoutes, connectionRoutes,
+    buddyRequestRouter, practiceBuddyRequestRouter
   ];
   console.log('✅ 路由模組已載入');
 
@@ -179,26 +192,26 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('🔑 v1 認證路由已註冊 - 可在 /api/v1/auth 訪問');
 
   // 註冊資源路由
-  app.use('/api/v1/resources', resourceRoutes);
+  app.use('/api/v1/resources', requireOnboardingComplete, resourceRoutes);
   console.log('💯 v1 資源路由已註冊 - 可在 /api/v1/resources 訪問');
   // 註冊資源評價路由
-  app.use('/api/v1/resources/:resourceId/reviews', resourceReviewRoutes);
+  app.use('/api/v1/resources/:resourceId/reviews', requireOnboardingComplete, resourceReviewRoutes);
   console.log('💯 v1 資源和評價路由已註冊 - 可在 /api/v1/resources 訪問');
 
   // 註冊想法路由
-  app.use('/api/v1/ideas', ideaRoutes);
+  app.use('/api/v1/ideas', requireOnboardingComplete, ideaRoutes);
   console.log('💡 v1 想法路由已註冊 - 可在 /api/v1/ideas 訪問');
 
   // 註冊我的想法路由
-  app.use('/api/v1/me', meRoutes);
+  app.use('/api/v1/me', requireOnboardingComplete, meRoutes);
   console.log('👤 v1 個人路由已註冊 - 可在 /api/v1/me 訪問');
 
   // 註冊標籤路由
-  app.use('/api/v1/tags', tagRoutes);
+  app.use('/api/v1/tags', requireOnboardingComplete, tagRoutes);
   console.log('🏷️ v1 標籤路由已註冊 - 可在 /api/v1/tags 訪問');
 
   // 註冊專案路由
-  app.use('/api/v1/projects', projectRoutes);
+  app.use('/api/v1/projects', requireOnboardingComplete, projectRoutes);
   console.log('📁 v1 專案路由已註冊 - 可在 /api/v1/projects 訪問');
 
   // 註冊用戶路由
@@ -206,7 +219,7 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('👥 v1 用戶路由已註冊 - 可在 /api/v1/users 訪問');
 
   // 註冊留言路由
-  app.use('/api/v1/comments', commentRoutes);
+  app.use('/api/v1/comments', requireOnboardingComplete, commentRoutes);
   console.log('💬 v1 留言路由已註冊 - 可在 /api/v1/comments 訪問');
 
   // 註冊反應路由
@@ -214,7 +227,7 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('👍 v1 反應路由已註冊 - 可在 /api/v1/reactions 訪問');
 
   // 註冊圖片路由
-  app.use('/api/v1/images', imageRoutes);
+  app.use('/api/v1/images', requireOnboardingComplete, imageRoutes);
   console.log('🖼️ v1 圖片路由已註冊 - 可在 /api/v1/images 訪問');
 
   // 註冊郵件路由
@@ -223,12 +236,12 @@ export function setupTypescriptRoutes(app: express.Application) {
 
 
   // 註冊導師路由
-  app.use('/api/v1/mentor', mentorRoutes);
+  app.use('/api/v1/mentor', requireOnboardingComplete, mentorRoutes);
   console.log('👨‍🏫 v1 導師路由已註冊 - 可在 /api/v1/mentor 訪問');
 
 
   // 註冊實踐路由
-  app.use('/api/v1/practices', practiceRoutes);
+  app.use('/api/v1/practices', requireOnboardingComplete, practiceRoutes);
   console.log('⚡ v1 實踐路由已註冊 - 可在 /api/v1/practices 訪問');
 
   // 註冊實踐輔助功能路由（鼓勵句、引導句）
@@ -258,6 +271,26 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊城市路由
   app.use('/api/v1/cities', cityRoutes);
   console.log('🌍 v1 城市路由已註冊 - 可在 /api/v1/cities 訪問');
+
+  // 註冊通知路由
+  app.use('/api/v1/notifications', notificationRoutes);
+  console.log('🔔 v1 通知路由已註冊 - 可在 /api/v1/notifications 訪問');
+
+  // 註冊關注路由
+  app.use('/api/v1/follows', followRoutes);
+  console.log('👥 v1 關注路由已註冊 - 可在 /api/v1/follows 訪問');
+
+  // 註冊連結路由
+  app.use('/api/v1/connections', connectionRoutes);
+  console.log('🤝 v1 連結路由已註冊 - 可在 /api/v1/connections 訪問');
+
+  // 註冊 Buddy 請求路由
+  app.use('/api/v1/buddy-requests', buddyRequestRouter);
+  console.log('🤝 v1 Buddy 請求路由已註冊 - 可在 /api/v1/buddy-requests 訪問');
+
+  // 註冊實踐巢狀 Buddy 請求路由
+  app.use('/api/v1/practices/:id/buddy-requests', practiceBuddyRequestRouter);
+  console.log('🤝 v1 實踐 Buddy 請求路由已註冊 - 可在 /api/v1/practices/:id/buddy-requests 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {

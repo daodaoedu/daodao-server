@@ -35,7 +35,21 @@ import {
   createPracticeStatusWorker,
   registerPracticeStatusScheduledJobs,
   closePracticeStatusWorker,
-  setPracticeStatusQueue
+  setPracticeStatusQueue,
+  // Notification Queues
+  createNotificationInAppQueue,
+  createNotificationEmailQueue,
+  createNotificationWeeklyQueue,
+  setNotificationInAppQueue,
+  setNotificationEmailQueue,
+  setNotificationWeeklyQueue,
+  registerNotificationScheduledJobs,
+  createNotificationInAppWorker,
+  createNotificationEmailWorker,
+  createNotificationWeeklyWorker,
+  closeNotificationInAppWorker,
+  closeNotificationEmailWorker,
+  closeNotificationWeeklyWorker,
 } from './queues';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
@@ -47,6 +61,9 @@ let practiceEmailQueue: Queue<PracticeEmailJobData> | null = null;
 let practiceEmailWorker: Worker<PracticeEmailJobData> | null = null;
 let practiceStatusQueue: Queue<PracticeStatusJobData> | null = null;
 let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
+let notificationInAppWorker: Worker | null = null;
+let notificationEmailWorker: Worker | null = null;
+let notificationWeeklyWorker: Worker | null = null;
 
 
 const app = express();
@@ -117,7 +134,7 @@ const corsOptions = {
       callback(null, false);
     }
   },
-  methods: "GET,POST,PUT,DELETE,OPTIONS",
+  methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   credentials: true,
   optionsSuccessStatus: 204
 };
@@ -245,6 +262,23 @@ async function initializeBullMQ(): Promise<void> {
     await registerPracticeStatusScheduledJobs(practiceStatusQueue);
     console.log('⏰ 實踐狀態排程任務已註冊（每小時檢查到期實踐）');
 
+    // ===== Notification Queues =====
+    const notificationInAppQueue = createNotificationInAppQueue();
+    setNotificationInAppQueue(notificationInAppQueue);
+    const notificationEmailQueue = createNotificationEmailQueue();
+    setNotificationEmailQueue(notificationEmailQueue);
+    const notificationWeeklyQueue = createNotificationWeeklyQueue();
+    setNotificationWeeklyQueue(notificationWeeklyQueue);
+    console.log('🔔 Notification Queues 已建立');
+
+    notificationInAppWorker = createNotificationInAppWorker();
+    notificationEmailWorker = createNotificationEmailWorker();
+    notificationWeeklyWorker = createNotificationWeeklyWorker();
+    console.log('🔔 Notification Workers 已啟動');
+
+    await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
+    console.log('🔔 通知排程任務已註冊');
+
     console.log('✅ BullMQ 系統初始化完成');
   } catch (error) {
     console.error('❌ BullMQ 初始化失敗:', error);
@@ -278,6 +312,20 @@ async function gracefulShutdown(signal: string) {
     if (practiceStatusQueue) {
       await practiceStatusQueue.close();
       console.log('✅ Practice Status Queue 已關閉');
+    }
+
+    // 關閉 Notification Workers
+    if (notificationInAppWorker) {
+      await closeNotificationInAppWorker(notificationInAppWorker);
+      console.log('✅ Notification In-App Worker 已關閉');
+    }
+    if (notificationEmailWorker) {
+      await closeNotificationEmailWorker(notificationEmailWorker);
+      console.log('✅ Notification Email Worker 已關閉');
+    }
+    if (notificationWeeklyWorker) {
+      await closeNotificationWeeklyWorker(notificationWeeklyWorker);
+      console.log('✅ Notification Weekly Worker 已關閉');
     }
 
     // 關閉 BullMQ Redis 連線

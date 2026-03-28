@@ -124,6 +124,7 @@ export interface UpdateUserRequest {
   professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
+  hideConnectionsCount?: boolean;
 }
 
 // 用戶更新請求介面（含頭像檔案）

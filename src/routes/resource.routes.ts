@@ -14,7 +14,8 @@ import {
   updateResourceStatus,
   deleteResource,
   getResourceStats,
-  getResourceTags
+  getResourceTags,
+  recordResourceView
 } from '../controllers/resource.controller';
 import { validate } from '../middleware/validation.middleware';
 import { authenticate, optionalAuth, requireRole } from '../middleware/auth';
@@ -28,7 +29,8 @@ import {
   updateResourceResponseSchema,
   deleteResourceResponseSchema,
   getResourceStatsResponseSchema,
-  getResourceTagsResponseSchema
+  getResourceTagsResponseSchema,
+  recordResourceViewResponseSchema
 } from '../validators/resource.validator';
 import {
   paginationSchema,
@@ -315,6 +317,38 @@ registry.registerPath({
 });
 
 /**
+ * POST /api/v1/resources/{resourceId}/view - 記錄資源瀏覽
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/resources/{resourceId}/view',
+  tags: ['Resources'],
+  summary: '記錄資源瀏覽',
+  description: '記錄使用者瀏覽資源事件（24h 去重）',
+  request: {
+    params: z.object({
+      resourceId: z.string().openapi({
+        description: '資源 ID',
+        example: '550e8400-e29b-41d4-a716-446655440000'
+      })
+    })
+  },
+  responses: {
+    200: {
+      description: '記錄成功',
+      content: {
+        'application/json': {
+          schema: recordResourceViewResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * GET /api/v1/resources/{resourceId}/tags - 獲取資源標籤
  */
 registry.registerPath({
@@ -436,5 +470,15 @@ router.delete('/:resourceId',
  * 路徑參數：resourceId - 資源 ID
  */
 router.get('/:resourceId/tags', getResourceTags as RequestHandler);
+
+/**
+ * POST /resources/:resourceId/view
+ * 記錄資源瀏覽
+ * 需要身份驗證
+ */
+router.post('/:resourceId/view',
+  authenticate,
+  recordResourceView as RequestHandler
+);
 
 export default router;

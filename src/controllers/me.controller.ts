@@ -12,14 +12,16 @@ import type {
   PracticeStatsQueryParams,
   ResourcesQueryParams,
   PreferencesQueryParams,
-  UpdatePreferencesData
+  UpdatePreferencesData,
+  MyFootprintsQueryParams
 } from '../validators/me.validators';
 import {
   myPracticesApiResponseSchema,
   myPracticeStatsApiResponseSchema,
   myResourcesApiResponseSchema,
   myPreferencesApiResponseSchema,
-  updatePreferencesApiResponseSchema
+  updatePreferencesApiResponseSchema,
+  myFootprintsApiResponseSchema
 } from '../validators/me.validators';
 
 /**
@@ -112,11 +114,32 @@ export const updateMyPreferences = asyncHandler(async (req: Request, res: Respon
   res.json(validatedResponse);
 });
 
+/**
+ * GET /api/v1/me/footprints
+ * 獲取我的學習足跡（在實踐上留下的留言）
+ */
+export const getMyLearningFootprints = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+  if (!currentUser || !currentUser.id) {
+    throw new Error('需要登入才能查看學習足跡');
+  }
+
+  const page = parseInt((req.query.page as string) || '1', 10) || 1;
+  const limit = parseInt((req.query.limit as string) || '20', 10) || 20;
+
+  const params: MyFootprintsQueryParams = { page, limit };
+  const result = await meService.getMyLearningFootprints(currentUser.id, params);
+
+  const validatedResponse = myFootprintsApiResponseSchema.parse(result);
+  res.json(validatedResponse);
+});
+
 // Export all controller functions
 export default {
   getMyPractices,
   getMyPracticeStats,
   getMyResources,
   getMyPreferences,
-  updateMyPreferences
+  updateMyPreferences,
+  getMyLearningFootprints
 };

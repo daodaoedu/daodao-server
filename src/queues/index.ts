@@ -55,3 +55,56 @@ export {
   closePracticeStatusWorker,
   type PracticeStatusWorkerOptions
 } from './practice-status.worker';
+
+// Notification Queues
+export {
+  NOTIFICATION_INAPP_QUEUE_NAME,
+  NOTIFICATION_EMAIL_QUEUE_NAME,
+  NOTIFICATION_WEEKLY_QUEUE_NAME,
+  createNotificationInAppQueue,
+  createNotificationEmailQueue,
+  createNotificationWeeklyQueue,
+  setNotificationInAppQueue,
+  setNotificationEmailQueue,
+  setNotificationWeeklyQueue,
+  getNotificationInAppQueue,
+  getNotificationEmailQueue,
+  getNotificationWeeklyQueue,
+  registerNotificationScheduledJobs,
+  type NotificationInAppJobData,
+  type NotificationEmailJobData,
+  type NotificationWeeklyJobData,
+} from './notification.queue';
+
+// Notification Workers
+export {
+  createNotificationInAppWorker,
+  closeNotificationInAppWorker,
+} from './notification-inapp.worker';
+
+export {
+  createNotificationEmailWorker,
+  closeNotificationEmailWorker,
+} from './notification-email.worker';
+
+export {
+  createNotificationWeeklyWorker,
+  closeNotificationWeeklyWorker,
+} from './notification-weekly.worker';
+
+// Reaction Notification Queue
+export {
+  REACTION_NOTIFICATION_QUEUE_NAME,
+  createReactionNotificationQueue,
+  setReactionNotificationQueue,
+  getReactionNotificationQueue,
+  enqueueReactionNotification,
+  type ReactionNotificationJob,
+} from './reaction-notification.queue';
+
+// Reaction Notification Worker
+export {
+  createReactionNotificationWorker,
+  closeReactionNotificationWorker,
+  type ReactionNotificationWorkerOptions,
+} from './reaction-notification.worker';

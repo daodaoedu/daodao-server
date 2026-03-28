@@ -34,7 +34,7 @@ export interface EmailServiceInterface {
   /**
    * 發送歡迎郵件
    * @param email 收件人 Email
-   * @param data 歡迎信資料（包含 hasCompletedQuiz 決定使用哪個版本）
+   * @param data 歡迎信資料（包含 referralGroup 決定使用哪個版本）
    */
   sendWelcomeEmail(email: string, data: WelcomeEmailData): Promise<EmailResult>;
 

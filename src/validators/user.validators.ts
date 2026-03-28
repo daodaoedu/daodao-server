@@ -50,7 +50,7 @@ const interestListSchema = z
 const personalSloganSchema = z
   .string()
   .min(1, '標語不可為空')
-  .max(200, '標語長度不可超過 200 字')
+  .max(150, '標語長度不可超過 150 字')
   .optional()
   .openapi({
     description: '個人標語 (一句話介紹自己)',
@@ -326,6 +326,7 @@ export const updateUserSchema = z.object({
       example: true
     }),
   selfIntroduction: z.string()
+    .max(350, '自我介紹長度不可超過 350 字')
     .optional()
     .openapi({
       description: '自我介紹',
@@ -373,6 +374,10 @@ export const updateUserSchema = z.object({
   professionalField: professionalFieldSchema,
   personalSlogan: personalSloganSchema,
   referralSource: referralSourceSchema,
+  hideConnectionsCount: z.boolean().optional().openapi({
+    description: '是否隱藏人脈數量',
+    example: false
+  }),
   customId: z.string()
     .min(3, 'Custom ID 至少 3 個字元')
     .max(50, 'Custom ID 不可超過 50 個字元')
