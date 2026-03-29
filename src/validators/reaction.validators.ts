@@ -108,6 +108,7 @@ export type GetReactionsListQuerySchema = z.infer<typeof getReactionsListQuerySc
 // ============================================================================
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INTEGER_REGEX = /^\d+$/;
 
 export const getReactionsBatchQuerySchema = z.object({
   targetType: z.enum(REACTION_TARGET_TYPES).openapi({
@@ -115,11 +116,25 @@ export const getReactionsBatchQuerySchema = z.object({
     example: 'practice',
   }),
   targetIds: z.string().min(1).transform((val) => val.split(',')).pipe(
-    z.array(z.string().regex(UUID_REGEX, '每個 targetId 必須是有效的 UUID')).min(1, '至少需要 1 個 targetId').max(50, '最多 50 個 targetId'),
+    z.array(z.string().min(1)).min(1, '至少需要 1 個 targetId').max(50, '最多 50 個 targetId'),
   ).openapi({
-    description: '逗號分隔的目標外部 ID（UUID），最多 50 個',
+    description: '逗號分隔的目標 ID（practice 為 UUID，comment/checkin 為整數），最多 50 個',
     example: '32859587-f159-43fd-93e7-fcc890661781,a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   }),
+}).superRefine((data, ctx) => {
+  const isIntegerType = data.targetType === 'comment' || data.targetType === 'checkin';
+  const regex = isIntegerType ? INTEGER_REGEX : UUID_REGEX;
+  const formatName = isIntegerType ? '整數' : 'UUID';
+
+  for (let i = 0; i < data.targetIds.length; i++) {
+    if (!regex.test(data.targetIds[i])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `targetIds[${i}] 必須是有效的${formatName}`,
+        path: ['targetIds', i],
+      });
+    }
+  }
 }).openapi('GetReactionsBatchQuery', { description: '批次查詢反應的參數' });
 
 export type GetReactionsBatchQuerySchema = z.infer<typeof getReactionsBatchQuerySchema>;
