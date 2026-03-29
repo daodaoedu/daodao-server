@@ -268,9 +268,90 @@ export async function getReactionsListByTarget(params: GetReactionsByTargetParam
   }
 }
 
+/**
+ * 批次取得多個目標的反應聚合 + 個別用戶反應列表
+ */
+export async function getReactionsBatchByTargets(params: {
+  targetType: string;
+  targetIds: number[];
+  externalIdMap: Map<number, string>;
+  currentUserId: number | null;
+}): Promise<ApiSuccessResponse<Record<string, { reactions: ReactionCount[]; currentUserReaction: string | null; items: ReactionListItem[] }>>> {
+  const { targetType, targetIds, externalIdMap, currentUserId } = params;
+
+  try {
+    const allReactions = await prisma.reactions.findMany({
+      where: { target_type: targetType, target_id: { in: targetIds } },
+      include: {
+        users: {
+          select: {
+            external_id: true,
+            nickname: true,
+            contacts: { select: { photo_url: true } },
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Group by target_id
+    const byTarget = new Map<number, typeof allReactions>();
+    for (const r of allReactions) {
+      const arr = byTarget.get(r.target_id) ?? [];
+      arr.push(r);
+      byTarget.set(r.target_id, arr);
+    }
+
+    // Build result for each external ID
+    const result: Record<string, { reactions: ReactionCount[]; currentUserReaction: string | null; items: ReactionListItem[] }> = {};
+
+    for (const [internalId, externalId] of externalIdMap.entries()) {
+      const reactions = byTarget.get(internalId) ?? [];
+
+      // Aggregate counts
+      const countMap = new Map<string, { count: number; latestActorName: string | null }>();
+      for (const r of reactions) {
+        const existing = countMap.get(r.reaction_type);
+        if (!existing) {
+          countMap.set(r.reaction_type, { count: 1, latestActorName: r.users.nickname ?? null });
+        } else {
+          existing.count += 1;
+        }
+      }
+
+      const reactionCounts: ReactionCount[] = REACTION_TYPE_VALUES.map((type) => {
+        const data = countMap.get(type);
+        return { type, count: data?.count ?? 0, latestActorName: data?.latestActorName ?? null };
+      });
+
+      // Current user reaction
+      const currentUserReaction = currentUserId
+        ? (reactions.find((r) => r.user_id === currentUserId)?.reaction_type ?? null)
+        : null;
+
+      // Individual reaction list items
+      const items: ReactionListItem[] = reactions.map((r) => ({
+        userId: r.users.external_id ?? String(r.user_id),
+        name: r.users.nickname ?? '未知用戶',
+        photoURL: r.users.contacts?.photo_url ?? null,
+        reactionType: r.reaction_type as ReactionListItem['reactionType'],
+        reactedAt: (r.created_at ?? new Date()).toISOString(),
+      }));
+
+      result[externalId] = { reactions: reactionCounts, currentUserReaction, items };
+    }
+
+    return createSuccessResponse(result);
+  } catch (error) {
+    loggerService.error('Failed to get batch reactions', { params: { targetType, targetIds }, error });
+    throw new InternalServerError('批次取得反應資料失敗');
+  }
+}
+
 export const reactionService = {
   upsertReaction,
   removeReaction,
   getReactionsByTarget,
   getReactionsListByTarget,
+  getReactionsBatchByTargets,
 };
