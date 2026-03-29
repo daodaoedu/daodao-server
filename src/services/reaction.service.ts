@@ -335,7 +335,7 @@ export async function getReactionsBatchByTargets(params: {
         name: r.users.nickname ?? '未知用戶',
         photoURL: r.users.contacts?.photo_url ?? null,
         reactionType: r.reaction_type as ReactionListItem['reactionType'],
-        reactedAt: (r.created_at ?? new Date()).toISOString(),
+        reactedAt: r.created_at!.toISOString(),
       }));
 
       result[externalId] = { reactions: reactionCounts, currentUserReaction, items };
