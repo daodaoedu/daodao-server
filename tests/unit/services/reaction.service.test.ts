@@ -41,6 +41,7 @@ import {
   removeReaction,
   getReactionsByTarget,
   getReactionsListByTarget,
+  getReactionsBatchByTargets,
 } from '@/services/reaction.service';
 
 // ============================================================================
@@ -309,6 +310,120 @@ describe('Reaction Service', () => {
       await expect(
         getReactionsListByTarget({ targetType: 'practice', targetId: 10 }),
       ).rejects.toThrow('取得反應列表失敗');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // getReactionsBatchByTargets
+  // --------------------------------------------------------------------------
+
+  describe('getReactionsBatchByTargets', () => {
+    it('批次取得多個目標的反應計數與用戶列表', async () => {
+      const reactions = [
+        {
+          id: 1, target_type: 'practice', target_id: 10, user_id: 1, reaction_type: 'fire',
+          created_at: new Date('2025-01-01T00:00:00Z'),
+          users: { external_id: 'ext-u1', nickname: '王小明', contacts: { photo_url: 'https://example.com/p1.jpg' } },
+        },
+        {
+          id: 2, target_type: 'practice', target_id: 10, user_id: 2, reaction_type: 'curious',
+          created_at: new Date('2025-01-02T00:00:00Z'),
+          users: { external_id: 'ext-u2', nickname: '李大華', contacts: null },
+        },
+        {
+          id: 3, target_type: 'practice', target_id: 20, user_id: 1, reaction_type: 'touched',
+          created_at: new Date('2025-01-03T00:00:00Z'),
+          users: { external_id: 'ext-u1', nickname: '王小明', contacts: { photo_url: 'https://example.com/p1.jpg' } },
+        },
+      ];
+
+      prismaMock.reactions.findMany.mockResolvedValue(reactions as any);
+
+      const externalIdMap = new Map<number, string>([
+        [10, 'ext-practice-1'],
+        [20, 'ext-practice-2'],
+      ]);
+
+      const result = await getReactionsBatchByTargets({
+        targetType: 'practice',
+        targetIds: [10, 20],
+        externalIdMap,
+        currentUserId: 1,
+      });
+
+      expect(result.success).toBe(true);
+
+      const t10 = result.data['ext-practice-1'];
+      expect(t10).toBeDefined();
+      expect(t10.reactions.find((r) => r.type === 'fire')?.count).toBe(1);
+      expect(t10.reactions.find((r) => r.type === 'curious')?.count).toBe(1);
+      expect(t10.currentUserReaction).toBe('fire');
+      expect(t10.items).toHaveLength(2);
+
+      const t20 = result.data['ext-practice-2'];
+      expect(t20).toBeDefined();
+      expect(t20.reactions.find((r) => r.type === 'touched')?.count).toBe(1);
+      expect(t20.currentUserReaction).toBe('touched');
+      expect(t20.items).toHaveLength(1);
+      expect(t20.items[0].name).toBe('王小明');
+    });
+
+    it('未登入時所有目標的 currentUserReaction 為 null', async () => {
+      const reactions = [
+        {
+          id: 1, target_type: 'practice', target_id: 10, user_id: 2, reaction_type: 'fire',
+          created_at: new Date('2025-01-01T00:00:00Z'),
+          users: { external_id: 'ext-u2', nickname: '李大華', contacts: null },
+        },
+      ];
+
+      prismaMock.reactions.findMany.mockResolvedValue(reactions as any);
+
+      const externalIdMap = new Map<number, string>([[10, 'ext-practice-1']]);
+
+      const result = await getReactionsBatchByTargets({
+        targetType: 'practice',
+        targetIds: [10],
+        externalIdMap,
+        currentUserId: null,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data['ext-practice-1'].currentUserReaction).toBeNull();
+    });
+
+    it('目標無反應時回傳空計數與空列表', async () => {
+      prismaMock.reactions.findMany.mockResolvedValue([]);
+
+      const externalIdMap = new Map<number, string>([[10, 'ext-practice-1']]);
+
+      const result = await getReactionsBatchByTargets({
+        targetType: 'practice',
+        targetIds: [10],
+        externalIdMap,
+        currentUserId: null,
+      });
+
+      expect(result.success).toBe(true);
+      const t10 = result.data['ext-practice-1'];
+      expect(t10.currentUserReaction).toBeNull();
+      expect(t10.items).toEqual([]);
+      t10.reactions.forEach((r) => expect(r.count).toBe(0));
+    });
+
+    it('DB 錯誤時拋出 InternalServerError', async () => {
+      prismaMock.reactions.findMany.mockRejectedValue(new Error('DB error'));
+
+      const externalIdMap = new Map<number, string>([[10, 'ext-practice-1']]);
+
+      await expect(
+        getReactionsBatchByTargets({
+          targetType: 'practice',
+          targetIds: [10],
+          externalIdMap,
+          currentUserId: null,
+        }),
+      ).rejects.toThrow('批次取得反應資料失敗');
     });
   });
 

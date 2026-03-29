@@ -18,6 +18,8 @@ import {
   getReactionsApiResponseSchema,
   getReactionsListQuerySchema,
   getReactionsListApiResponseSchema,
+  getReactionsBatchQuerySchema,
+  getReactionsBatchApiResponseSchema,
 } from '../validators/reaction.validators';
 
 const router = Router();
@@ -110,6 +112,25 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reactions/batch',
+  tags: ['Reactions'],
+  summary: '批次取得反應資料',
+  description: '批次取得多個目標的各類型反應計數、當前用戶狀態、以及個別用戶反應列表',
+  request: {
+    query: getReactionsBatchQuerySchema,
+  },
+  responses: {
+    200: {
+      description: '成功取得批次反應資料',
+      content: { 'application/json': { schema: getReactionsBatchApiResponseSchema } },
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' },
+  },
+});
+
 // ============================================================================
 // Express 路由定義
 // ============================================================================
@@ -133,6 +154,13 @@ router.get(
   optionalAuth,
   validate(getReactionsQuerySchema, 'query'),
   reactionController.getReactions as RequestHandler,
+);
+
+router.get(
+  '/batch',
+  optionalAuth,
+  validate(getReactionsBatchQuerySchema, 'query'),
+  reactionController.getReactionsBatch as RequestHandler,
 );
 
 router.get(
