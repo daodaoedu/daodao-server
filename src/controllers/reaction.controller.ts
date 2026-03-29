@@ -14,9 +14,11 @@ import {
   RemoveReactionSchema,
   GetReactionsQuerySchema,
   GetReactionsListQuerySchema,
+  GetReactionsBatchQuerySchema,
 } from '../validators/reaction.validators';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import { externalToInternalId, EntityType } from '../services/id-converter.service';
+import { prisma } from '../services/database/prisma.service';
 import { UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
 
 async function resolveTargetId(targetType: string, targetId: string): Promise<number> {
@@ -101,9 +103,64 @@ async function getReactionsList(req: Request, res: Response): Promise<void> {
   res.status(200).json(result);
 }
 
+/**
+ * GET /api/v1/reactions/batch?targetType=practice&targetIds=uuid1,uuid2,...
+ * 批次取得多個目標的反應計數 + 用戶反應列表（可選登入）
+ */
+/**
+ * 批次轉換 external ID → internal ID（單次 DB 查詢）
+ * 根據 targetType 查詢對應的資料表
+ */
+async function batchResolveTargetIds(
+  targetType: string,
+  targetIds: string[],
+): Promise<Map<number, string>> {
+  const externalIdMap = new Map<number, string>();
+
+  if (targetType === 'comment' || targetType === 'checkin') {
+    // comment/checkin 的 ID 是整數字串，直接轉換
+    for (const idStr of targetIds) {
+      const id = parseInt(idStr, 10);
+      if (!isNaN(id)) {
+        externalIdMap.set(id, idStr);
+      }
+    }
+  } else if (targetType === 'practice') {
+    const rows = await prisma.practices.findMany({
+      where: { external_id: { in: targetIds } },
+      select: { id: true, external_id: true },
+    });
+    for (const r of rows) {
+      if (r.external_id) externalIdMap.set(r.id, r.external_id);
+    }
+  }
+
+  return externalIdMap;
+}
+
+async function getReactionsBatch(req: Request, res: Response): Promise<void> {
+  const { targetType, targetIds } = req.query as unknown as GetReactionsBatchQuerySchema;
+
+  const externalIdMap = await batchResolveTargetIds(targetType, targetIds);
+
+  if (externalIdMap.size === 0) {
+    throw new BadRequestError('找不到任何符合的目標');
+  }
+
+  const result = await reactionService.getReactionsBatchByTargets({
+    targetType,
+    targetIds: Array.from(externalIdMap.keys()),
+    externalIdMap,
+    currentUserId: req.user?.id ?? null,
+  });
+
+  res.status(200).json(result);
+}
+
 export const reactionController = {
   upsertReaction,
   removeReaction,
   getReactions,
   getReactionsList,
+  getReactionsBatch,
 };
