@@ -41,6 +41,7 @@ import {
   removeReaction,
   getReactionsByTarget,
   getReactionsListByTarget,
+  getReactionsBatchByTargets,
 } from '@/services/reaction.service';
 
 // ============================================================================

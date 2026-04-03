@@ -104,6 +104,59 @@ export const getReactionsListApiResponseSchema = apiSuccessResponseSchema(getRea
 export type GetReactionsListQuerySchema = z.infer<typeof getReactionsListQuerySchema>;
 
 // ============================================================================
+// Batch Query Schema
+// ============================================================================
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INTEGER_REGEX = /^\d+$/;
+
+export const getReactionsBatchQuerySchema = z.object({
+  targetType: z.enum(REACTION_TARGET_TYPES).openapi({
+    description: '反應目標類型',
+    example: 'practice',
+  }),
+  targetIds: z.string().min(1).transform((val) => val.split(',')).pipe(
+    z.array(z.string().min(1)).min(1, '至少需要 1 個 targetId').max(50, '最多 50 個 targetId'),
+  ).openapi({
+    description: '逗號分隔的目標 ID（practice 為 UUID，comment/checkin 為整數），最多 50 個',
+    example: '32859587-f159-43fd-93e7-fcc890661781,a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  }),
+}).superRefine((data, ctx) => {
+  const isIntegerType = data.targetType === 'comment' || data.targetType === 'checkin';
+  const regex = isIntegerType ? INTEGER_REGEX : UUID_REGEX;
+  const formatName = isIntegerType ? '整數' : 'UUID';
+
+  for (let i = 0; i < data.targetIds.length; i++) {
+    if (!regex.test(data.targetIds[i])) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `targetIds[${i}] 必須是有效的${formatName}`,
+        path: ['targetIds', i],
+      });
+    }
+  }
+}).openapi('GetReactionsBatchQuery', { description: '批次查詢反應的參數' });
+
+export type GetReactionsBatchQuerySchema = z.infer<typeof getReactionsBatchQuerySchema>;
+
+// ============================================================================
+// Batch Response Schema
+// ============================================================================
+
+const batchReactionItemSchema = z.object({
+  reactions: z.array(reactionCountSchema).openapi({ description: '各類型反應計數' }),
+  currentUserReaction: z.string().nullable().openapi({ description: '當前用戶的反應類型（未反應為 null）' }),
+  items: z.array(reactionListItemSchema).openapi({ description: '個別用戶反應列表' }),
+}).openapi('BatchReactionItem', { description: '單一目標的反應資料' });
+
+export const getReactionsBatchResponseSchema = z.record(z.string(), batchReactionItemSchema).openapi(
+  'GetReactionsBatchResponse',
+  { description: '批次反應查詢回應，key 為 targetId' },
+);
+
+export const getReactionsBatchApiResponseSchema = apiSuccessResponseSchema(getReactionsBatchResponseSchema);
+
+// ============================================================================
 // Register with OpenAPI registry
 // ============================================================================
 
@@ -113,3 +166,5 @@ registry.register('UpsertReactionRequest', upsertReactionSchema);
 registry.register('RemoveReactionRequest', removeReactionSchema);
 registry.register('ReactionListItem', reactionListItemSchema);
 registry.register('GetReactionsListResponse', getReactionsListResponseSchema);
+registry.register('BatchReactionItem', batchReactionItemSchema);
+registry.register('GetReactionsBatchResponse', getReactionsBatchResponseSchema);
