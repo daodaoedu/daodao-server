@@ -461,6 +461,124 @@ describe('createComment — mention notifications', () => {
 });
 
 // ============================================================================
+// updateComment — mention notifications (Task 4.2 regression)
+// ============================================================================
+
+describe('updateComment — mention notifications', () => {
+  const existingComment = makeDbComment({ id: 1, user_id: 1, content: '原始留言', target_type: 'practice', target_id: 10 });
+  const updatedComment = makeDbComment({ id: 1, user_id: 1, content: '修改後 @alice 你好', target_type: 'practice', target_id: 10 });
+
+  function setupUpdate() {
+    jest.clearAllMocks();
+    setupTransactionMock();
+    prismaMock.comments.findUnique.mockResolvedValue(existingComment as any);
+    prismaMock.comments.update.mockResolvedValue(updatedComment as any);
+  }
+
+  it('提供 mentionedUserIds 且使用者未被通知過 → 建立 mention P1 事件', async () => {
+    setupUpdate();
+    // 尚未有 mention 通知記錄
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @alice 你好',
+      mentionedUserIds: [3],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(1);
+    expect(mentionCalls[0][0]).toMatchObject({
+      type: 'mention',
+      actorId: 1,
+      recipientId: 3,
+      entityType: 'comment',
+      entityId: 1,
+      priority: 'P1',
+    });
+  });
+
+  it('使用者已被通知過（diff 比對）→ 不重複發送 mention 事件', async () => {
+    setupUpdate();
+    // 使用者 3 已有通知記錄
+    prismaMock.notification_events.findMany.mockResolvedValue([
+      { recipient_id: 3 },
+    ] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @alice 你好',
+      mentionedUserIds: [3],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('commenter 自己的 mention → 不發送', async () => {
+    setupUpdate();
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 1 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @self 你好',
+      mentionedUserIds: [1],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('未提供 mentionedUserIds → 不查詢 notification_events，不發送事件', async () => {
+    setupUpdate();
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後留言',
+    });
+
+    expect(prismaMock.notification_events.findMany).not.toHaveBeenCalled();
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('mentionedUserIds 數量超過 @ 符號數 → 記 warn 且只取安全數量', async () => {
+    const { loggerService } = jest.requireMock('@/services/logging/logger.service');
+    setupUpdate();
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    // content 只有 1 個 @，但傳了 3 個 mentionedUserIds
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '只有 @one 一個',
+      mentionedUserIds: [3, 4, 5],
+    });
+
+    expect(loggerService.warn).toHaveBeenCalledWith(
+      expect.stringContaining('mentionedUserIds count exceeds @mentions in content'),
+      expect.anything()
+    );
+  });
+});
+
+// ============================================================================
 // checkin comments
 // ============================================================================
 
