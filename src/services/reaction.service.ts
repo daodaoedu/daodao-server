@@ -125,6 +125,23 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
               priority: 'P2',
             }).catch(() => {});
           }
+        } else if (targetType === 'comment') {
+          const comment = await prisma.comments.findUnique({
+            where: { id: targetId },
+            select: { user_id: true },
+          });
+
+          if (comment && comment.user_id !== userId) {
+            notificationEventService.createEvent({
+              type: 'reaction',
+              actorId: userId,
+              recipientId: comment.user_id,
+              entityType: 'comment',
+              entityId: targetId,
+              payload: { reactionType },
+              priority: 'P2',
+            }).catch(() => {});
+          }
         }
       } catch (enqueueError) {
         // 通知排隊失敗不影響主流程，只記錄警告

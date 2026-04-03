@@ -15,6 +15,7 @@ import type { ApiSuccessResponse } from '../types/api-response.types';
 const ALL_NOTIFICATION_TYPES = [
   'Reaction',
   'comment',
+  'comment_reply',
   'Mention',
   'UserFollowed',
   'PracticeFollowed',

@@ -313,6 +313,82 @@ describe('Reaction Service', () => {
   });
 
   // --------------------------------------------------------------------------
+  // comment reactions
+  // --------------------------------------------------------------------------
+
+  describe('comment reactions', () => {
+    beforeEach(() => {
+      mockCreateEvent.mockClear();
+    });
+
+    function setupCommentReaction(commentOwnerId: number, actorUserId: number, existing: object | null = null) {
+      const reaction = makeReaction({ target_type: 'comment', target_id: 30, user_id: actorUserId });
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(existing as any);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+      prismaMock.comments.findUnique.mockResolvedValue({
+        id: 30,
+        user_id: commentOwnerId,
+        target_type: 'practice',
+        target_id: 10,
+      } as any);
+      return reaction;
+    }
+
+    it('對他人留言按 reaction（首次）→ 觸發通知', async () => {
+      setupCommentReaction(/* commentOwner */ 2, /* actor */ 1, null);
+
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'reaction',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'comment',
+          entityId: 30,
+          priority: 'P2',
+          payload: expect.objectContaining({ reactionType: 'fire' }),
+        }),
+      );
+    });
+
+    it('對自己留言按 reaction → 不觸發通知', async () => {
+      // commentOwner === actor === 1
+      setupCommentReaction(/* commentOwner */ 1, /* actor */ 1, null);
+
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+    });
+
+    it('更換 reaction 類型（existing !== null）→ 不觸發通知', async () => {
+      // existing reaction present → notification block skipped
+      setupCommentReaction(/* commentOwner */ 2, /* actor */ 1, { reaction_type: 'curious' });
+
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  // --------------------------------------------------------------------------
   // checkin reactions
   // --------------------------------------------------------------------------
 
@@ -405,7 +481,7 @@ describe('Reaction Service', () => {
     });
 
     it('should not call enqueueReactionNotification for checkin', async () => {
-      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue');
+      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue') as { enqueueReactionNotification: jest.Mock };
 
       const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
 
