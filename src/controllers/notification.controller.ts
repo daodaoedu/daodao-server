@@ -180,12 +180,52 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     }
   }
 
+  // 對 payload 缺少 entity_external_id 的 comment 通知，若 comment target 為 practice，批次補查對應 practice external_id
+  const missingExternalIdCommentIds = items
+    .filter((row) => {
+      const p = (row.payload ?? {}) as Record<string, unknown>;
+      return row.entity_type === 'comment' && !p.entity_external_id;
+    })
+    .map((row) => row.entity_id);
+
+  const commentPracticeExternalIdMap = new Map<number, string>();
+  if (missingExternalIdCommentIds.length > 0) {
+    const comments = await prisma.comments.findMany({
+      where: {
+        id: { in: missingExternalIdCommentIds },
+        target_type: 'practice',
+      },
+      select: { id: true, target_id: true },
+    });
+
+    const practiceIds = [...new Set(comments.map((comment) => comment.target_id))];
+    if (practiceIds.length > 0) {
+      const practices = await prisma.practices.findMany({
+        where: { id: { in: practiceIds } },
+        select: { id: true, external_id: true },
+      });
+      const practiceIdMap = new Map(
+        practices
+          .filter((practice) => Boolean(practice.external_id))
+          .map((practice) => [practice.id, practice.external_id as string])
+      );
+
+      for (const comment of comments) {
+        const externalId = practiceIdMap.get(comment.target_id);
+        if (externalId) {
+          commentPracticeExternalIdMap.set(comment.id, externalId);
+        }
+      }
+    }
+  }
+
   /** 將 payload JSONB 展開為前端所需欄位 */
   const notifications = items.map((row) => {
     const p = (row.payload ?? {}) as Record<string, unknown>;
     // 優先使用 payload 中的 external_id，否則查 practiceExternalIdMap，最後 fallback 到 entity_id
     const entityId =
       (p.entity_external_id as string | undefined) ??
+      commentPracticeExternalIdMap.get(row.entity_id) ??
       practiceExternalIdMap.get(row.entity_id) ??
       String(row.entity_id);
     return {

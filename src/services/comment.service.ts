@@ -124,12 +124,14 @@ export class CommentService implements CommentServiceInterface {
         // Fire-and-forget: Comment 通知給內容擁有者
         if (targetEntity.user_id) {
           let practiceTitle: string | undefined;
+          let practiceExternalId: string | undefined;
           if (targetType === 'practice') {
             const practice = await tx.practices.findUnique({
               where:  { id: targetEntity.id },
-              select: { title: true },
+              select: { title: true, external_id: true },
             });
             practiceTitle = practice?.title ?? undefined;
+            practiceExternalId = practice?.external_id ?? undefined;
           }
           notificationEventService.createEvent({
             type:        'comment',
@@ -140,6 +142,7 @@ export class CommentService implements CommentServiceInterface {
             payload: {
               content,
               ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+              ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
             },
             priority: 'P2',
           }).catch(() => {});
@@ -147,6 +150,16 @@ export class CommentService implements CommentServiceInterface {
 
         // Fire-and-forget: comment_reply 通知給被回覆的留言作者
         if (parentId && parentComment) {
+          let practiceTitle: string | undefined;
+          let practiceExternalId: string | undefined;
+          if (targetType === 'practice') {
+            const practice = await tx.practices.findUnique({
+              where: { id: targetEntity.id },
+              select: { title: true, external_id: true },
+            });
+            practiceTitle = practice?.title ?? undefined;
+            practiceExternalId = practice?.external_id ?? undefined;
+          }
           notificationEventService.createEvent({
             type:        'comment_reply',
             actorId:     userId,
@@ -156,6 +169,8 @@ export class CommentService implements CommentServiceInterface {
             payload: {
               content,
               parent_comment_id: parentId,
+              ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+              ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
             },
             priority: 'P2',
           }).catch(() => {});

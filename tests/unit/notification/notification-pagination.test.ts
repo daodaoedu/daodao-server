@@ -495,4 +495,31 @@ describe('Regression: reaction 通知 API response 包含 reactionType', () => {
     const notification = resp.data.notifications[0];
     expect(notification.reactionType).toBeUndefined();
   });
+
+  it('comment 類通知應回傳對應的 practice external id，而不是 comment id', async () => {
+    prismaMock.notifications.findMany.mockResolvedValue([
+      makeNotificationRow({
+        id: 4,
+        type: 'comment_reply',
+        entity_type: 'comment',
+        entity_id: 99,
+        payload: { content: '回覆內容' },
+      }),
+    ] as any);
+    prismaMock.notifications.count.mockResolvedValue(0);
+    prismaMock.comments.findMany.mockResolvedValue([
+      { id: 99, target_id: 10 } as any,
+    ]);
+    prismaMock.practices.findMany.mockResolvedValue([
+      { id: 10, external_id: 'practice-ext-10' } as any,
+    ]);
+
+    const { req, res, jsonMock } = makeReqRes(1);
+    await callHandler(getNotifications, req, res);
+
+    const resp = jsonMock.mock.calls[0][0] as any;
+    const notification = resp.data.notifications[0];
+    expect(notification.entityType).toBe('comment');
+    expect(notification.entityId).toBe('practice-ext-10');
+  });
 });
