@@ -30,7 +30,7 @@ const defaultOptions: ReactionNotificationWorkerOptions = {
  * 處理單一 reaction 通知任務
  */
 async function processReactionNotificationJob(job: Job<ReactionNotificationJob>): Promise<void> {
-  const { practiceId, actorUserId, practiceOwnerId, practiceTitle, totalReactionCount } = job.data;
+  const { practiceId, actorUserId, practiceOwnerId, practiceTitle, totalReactionCount, reactionType } = job.data;
 
   loggerService.info('[reaction-notification-worker] Processing job', {
     jobId: job.id,
@@ -104,6 +104,7 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       reactionCount: totalReactionCount,
       practiceUrl,
       unsubscribeUrl,
+      reactionType,
     });
 
     const result = await emailService.sendEmail({ to: ownerEmail, subject, html });
