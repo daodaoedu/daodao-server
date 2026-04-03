@@ -619,7 +619,10 @@ describe('createComment — comment_reply notifications', () => {
       entityType: 'comment',
       entityId: 5,
       priority: 'P2',
-      payload: expect.objectContaining({ parent_comment_id: 2 }),
+      payload: expect.objectContaining({
+        parent_comment_id: 2,
+        entity_external_id: 'ext-10',
+      }),
     });
   });
 
