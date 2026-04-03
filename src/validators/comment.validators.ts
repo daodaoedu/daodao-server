@@ -87,6 +87,10 @@ export const updateCommentSchema = z.object({
     description: "更新後的可見性 (public: 公開, private: 私人)",
     example: "public",
     examples: ["public", "private"]
+  }),
+  mentionedUserIds: z.array(z.number().int().positive()).max(10).optional().openapi({
+    description: "編輯後留言中提及的使用者 ID 陣列（完整清單，後端進行差異比對）",
+    example: [1, 2, 3]
   })
 }).openapi('UpdateCommentRequest', {
   description: "更新留言的請求資料"

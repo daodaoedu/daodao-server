@@ -77,6 +77,7 @@ export interface CommentCreateRequest {
 export interface CommentUpdateRequest {
   content?: string;
   visibility?: CommentVisibility;
+  mentionedUserIds?: number[];
 }
 
 // Query parameters for getting comments
@@ -98,6 +99,7 @@ export interface UpdateCommentParams {
   userId: number;
   content?: string;
   visibility?: CommentVisibility;
+  mentionedUserIds?: number[];
 }
 
 // Parameters for deleting a comment

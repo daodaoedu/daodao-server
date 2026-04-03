@@ -368,7 +368,7 @@ export class CommentService implements CommentServiceInterface {
    * @returns Promise<ApiSuccessResponse<CommentResponse>> - The updated comment
    */
   async updateComment(params: UpdateCommentParams): Promise<ApiSuccessResponse<CommentResponse>> {
-    const { commentId, userId, content, visibility } = params;
+    const { commentId, userId, content, visibility, mentionedUserIds } = params;
 
     return await prisma.$transaction(async (tx) => {
       try {
@@ -426,9 +426,72 @@ export class CommentService implements CommentServiceInterface {
           }
         });
 
+        // Fire-and-forget: mention diff — only notify newly @mentioned users
+        const newContent = content ?? existingComment.content;
+        if (mentionedUserIds && mentionedUserIds.length > 0) {
+          // Security: only allow as many mentionedUserIds as @mention patterns in content
+          const mentionPatterns = newContent.match(/@[\w]+/g) ?? [];
+          if (mentionPatterns.length < mentionedUserIds.length) {
+            loggerService.warn('[CommentService] updateComment: mentionedUserIds count exceeds @mentions in content', {
+              mentionedCount: mentionedUserIds.length,
+              contentMentions: mentionPatterns.length,
+              userId,
+              commentId,
+            });
+          }
+          const safeUserIds = mentionedUserIds.slice(0, Math.max(mentionPatterns.length, 0));
+
+          // Find users already notified for this comment to avoid duplicate notifications
+          const alreadyNotified = await tx.notification_events.findMany({
+            where: {
+              type: 'mention',
+              entity_type: 'comment',
+              entity_id: commentId,
+            },
+            select: { recipient_id: true },
+          });
+          const alreadyNotifiedIds = new Set(alreadyNotified.map((e) => e.recipient_id));
+
+          // Only notify users who are newly added to the mention list
+          const newlyMentionedIds = [...new Set(safeUserIds)].filter(
+            (id) => id !== userId && !alreadyNotifiedIds.has(id)
+          );
+
+          if (newlyMentionedIds.length > 0) {
+            try {
+              const foundUsers = await tx.users.findMany({
+                where: { id: { in: newlyMentionedIds } },
+                select: { id: true },
+              });
+              const validIds = foundUsers.map((u) => u.id);
+
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+              const url = frontendUrl;
+              const actorName = updatedComment.users.nickname ?? undefined;
+
+              for (const recipientId of validIds) {
+                notificationEventService.createEvent({
+                  type:        'mention',
+                  actorId:     userId,
+                  recipientId,
+                  entityType:  'comment',
+                  entityId:    commentId,
+                  priority:    'P1',
+                  payload:     { content: newContent, actorName, url },
+                });
+              }
+            } catch (error) {
+              loggerService.error('[CommentService] updateComment: Failed to create mention notification events', {
+                error,
+                commentId,
+              });
+            }
+          }
+        }
+
         const formattedComment = await this.formatCommentResponse(updatedComment);
         return createSuccessResponse(formattedComment);
-        
+
       } catch (error) {
         if (error instanceof NotFoundError || error instanceof ForbiddenError) {
           throw error;
