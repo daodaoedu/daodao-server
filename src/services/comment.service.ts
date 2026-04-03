@@ -67,11 +67,12 @@ export class CommentService implements CommentServiceInterface {
         const internalTargetId = targetEntity.id;
         
         // Validate parent comment if provided
+        let parentComment: Awaited<ReturnType<typeof tx.comments.findUnique>> | null = null;
         if (parentId) {
-          const parentComment = await tx.comments.findUnique({
+          parentComment = await tx.comments.findUnique({
             where: { id: parentId }
           });
-          
+
           if (!parentComment) {
             throw new NotFoundError('Parent comment not found');
           }
@@ -80,7 +81,7 @@ export class CommentService implements CommentServiceInterface {
           if (parentComment.parent_id) {
             throw new BadRequestError('Replies cannot have their own replies');
           }
-          
+
           // Ensure parent comment belongs to the same target (using internal ID)
           if (parentComment.target_type !== targetType || parentComment.target_id !== internalTargetId) {
             throw new BadRequestError('Parent comment does not belong to the same target entity');
@@ -139,6 +140,22 @@ export class CommentService implements CommentServiceInterface {
             payload: {
               content,
               ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+            },
+            priority: 'P2',
+          }).catch(() => {});
+        }
+
+        // Fire-and-forget: comment_reply 通知給被回覆的留言作者
+        if (parentId && parentComment) {
+          notificationEventService.createEvent({
+            type:        'comment_reply',
+            actorId:     userId,
+            recipientId: parentComment.user_id,
+            entityType:  'comment',
+            entityId:    createdComment.id,
+            payload: {
+              content,
+              parent_comment_id: parentId,
             },
             priority: 'P2',
           }).catch(() => {});
