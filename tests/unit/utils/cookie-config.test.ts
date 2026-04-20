@@ -80,11 +80,10 @@ describe('Cookie Config', () => {
       expect(options.domain).toBeUndefined();
     });
 
-    it('should always return secure: true regardless of isProduction option', () => {
+    it('should always return secure: true', () => {
       process.env.NODE_ENV = 'development';
 
-      // isProduction 選項不再影響 secure，因為 sameSite: 'none' 要求 secure: true
-      const options = getCookieOptions({ isProduction: false });
+      const options = getCookieOptions();
 
       expect(options.secure).toBe(true);
       expect(options.sameSite).toBe('none');
