@@ -17,13 +17,10 @@ export const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
  * @returns Cookie 選項
  */
 export const getCookieOptions = (options: {
-  /** 是否為生產環境 */
-  isProduction?: boolean;
   /** Cookie 過期時間（毫秒） */
   maxAge?: number;
 } = {}): CookieOptions => {
   const {
-    isProduction = process.env.NODE_ENV === 'production',
     maxAge = COOKIE_MAX_AGE_MS
   } = options;
 
@@ -35,8 +32,8 @@ export const getCookieOptions = (options: {
     maxAge                    // 過期時間
   };
 
-  // 生產環境設定跨域 Cookie domain
-  if (isProduction && process.env.COOKIE_DOMAIN) {
+  // 設定跨域 Cookie domain（dev/prod 均適用）
+  if (process.env.COOKIE_DOMAIN) {
     cookieOptions.domain = process.env.COOKIE_DOMAIN; // e.g., '.daodao.so'
   }
 
@@ -53,8 +50,6 @@ export const setAuthCookie = (
   res: Response,
   token: string,
   options: {
-    /** 是否為生產環境 */
-    isProduction?: boolean;
     /** Cookie 過期時間（毫秒） */
     maxAge?: number;
   } = {}
