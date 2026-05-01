@@ -1541,6 +1541,96 @@ export async function completeExpiredPractices(): Promise<{
 }
 
 /**
+ * 複製實踐（複製他人或自己的實踐）
+ * - 複製他人：僅允許 public 實踐
+ * - 複製自己：不限 privacy_status
+ */
+export async function copyPractice(sourceId: number, userId: number): Promise<ApiSuccessResponse<{ id: string }>> {
+  try {
+    const [source, resourcesMap, tags] = await Promise.all([
+      prismaClient.practices.findUnique({ where: { id: sourceId } }),
+      getPracticeResources([sourceId]),
+      prismaClient.entity_tags.findMany({
+        where: { entity_type: 'practice', entity_id: sourceId },
+        include: { tags: { select: { id: true, name: true } } }
+      })
+    ]);
+
+    if (!source || source.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    const isSelf = source.user_id === userId;
+    if (!isSelf) {
+      const visibility = source.visibility ?? 'public';
+      if (visibility !== 'public') {
+        throw new ForbiddenError('此實踐不公開，無法複製');
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const endDate = source.duration_days
+      ? (() => {
+          const d = new Date(today);
+          d.setDate(d.getDate() + source.duration_days - 1);
+          return d;
+        })()
+      : null;
+
+    const sourceResources = resourcesMap[sourceId] ?? [];
+
+    const [newPractice] = await prismaClient.$transaction([
+      prismaClient.practices.create({
+        data: {
+          user_id: userId,
+          title: source.title,
+          practice_action: source.practice_action,
+          duration_days: source.duration_days,
+          session_duration_minutes: source.session_duration_minutes,
+          frequency_min_days: source.frequency_min_days,
+          frequency_max_days: source.frequency_max_days,
+          practice_time_periods: source.practice_time_periods,
+          other_context: source.other_context,
+          has_resources: sourceResources.length > 0,
+          theme_color: source.theme_color,
+          template_id: source.template_id,
+          source_practice_id: sourceId,
+          status: 'not_started',
+          progress_percentage: INITIAL_PROGRESS,
+          start_date: today,
+          end_date: endDate
+        },
+        select: { id: true, external_id: true }
+      }),
+      prismaClient.practices.update({
+        where: { id: sourceId },
+        data: { copy_count: { increment: 1 } }
+      })
+    ]);
+
+    const tagNames = tags.map(t => t.tags.name);
+    if (tagNames.length > 0) await linkTags(newPractice.id, tagNames);
+    if (sourceResources.length > 0) {
+      await linkResources(newPractice.id, sourceResources.map(r => ({ name: r.name, url: r.url })), userId);
+    }
+
+    if (!newPractice.external_id) {
+      throw new Error('新建立的實踐缺少 external_id');
+    }
+
+    loggerService.info('Practice copied', { sourceId, newId: newPractice.id, userId });
+
+    return createSuccessResponse({ id: newPractice.external_id });
+
+  } catch (error) {
+    loggerService.error('Failed to copy practice', { sourceId, userId, error });
+    throw error;
+  }
+}
+
+/**
  * 查詢特定用戶在最近 N 天內的實踐數
  */
 export async function getRecentPracticeCount(userId: number, days = 7): Promise<number> {
