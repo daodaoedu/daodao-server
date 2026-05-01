@@ -1347,6 +1347,16 @@ export const createPracticeApiResponseSchema = apiSuccessResponseSchema(practice
 export const updatePracticeApiResponseSchema = apiSuccessResponseSchema(practiceEntityResponseSchema);
 export const operationSuccessApiResponseSchema = apiSuccessResponseSchema(operationSuccessResponseSchema);
 
+// 複製實踐回應
+export const copyPracticeResponseSchema = z.object({
+  id: z.string().describe("新實踐 external ID（UUID）")
+}).describe("複製實踐回應").meta({
+  title: "複製實踐回應",
+  examples: [{ id: "550e8400-e29b-41d4-a716-446655440000" }]
+});
+export const copyPracticeApiResponseSchema = apiSuccessResponseSchema(copyPracticeResponseSchema);
+export type CopyPracticeResponse = z.infer<typeof copyPracticeResponseSchema>;
+
 // 統一導出對象，遵循專案模式
 export const practiceValidators = {
   // 主要 schemas
@@ -1435,7 +1445,9 @@ export const practiceValidators = {
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
   updatePracticeApiResponseSchema,
-  operationSuccessApiResponseSchema
+  operationSuccessApiResponseSchema,
+  copyPracticeResponseSchema,
+  copyPracticeApiResponseSchema
 };
 
 export default practiceValidators;
