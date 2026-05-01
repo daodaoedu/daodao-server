@@ -1547,17 +1547,25 @@ export async function completeExpiredPractices(): Promise<{
  */
 export async function copyPractice(sourceId: number, userId: number): Promise<ApiSuccessResponse<{ id: string }>> {
   try {
-    const source = await prismaClient.practices.findUnique({
-      where: { id: sourceId }
-    });
+    const [source, resourcesMap, tags] = await Promise.all([
+      prismaClient.practices.findUnique({ where: { id: sourceId } }),
+      getPracticeResources([sourceId]),
+      prismaClient.entity_tags.findMany({
+        where: { entity_type: 'practice', entity_id: sourceId },
+        include: { tags: { select: { id: true, name: true } } }
+      })
+    ]);
 
     if (!source || source.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 
     const isSelf = source.user_id === userId;
-    if (!isSelf && source.privacy_status !== 'public') {
-      throw new ForbiddenError('此實踐不公開，無法複製');
+    if (!isSelf) {
+      const visibility = source.visibility ?? 'public';
+      if (visibility !== 'public') {
+        throw new ForbiddenError('此實踐不公開，無法複製');
+      }
     }
 
     const today = new Date();
@@ -1571,6 +1579,8 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
         })()
       : null;
 
+    const sourceResources = resourcesMap[sourceId] ?? [];
+
     const [newPractice] = await prismaClient.$transaction([
       prismaClient.practices.create({
         data: {
@@ -1583,7 +1593,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
           frequency_max_days: source.frequency_max_days,
           practice_time_periods: source.practice_time_periods,
           other_context: source.other_context,
-          has_resources: source.has_resources,
+          has_resources: sourceResources.length > 0,
           theme_color: source.theme_color,
           template_id: source.template_id,
           source_practice_id: sourceId,
@@ -1599,6 +1609,12 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
         data: { copy_count: { increment: 1 } }
       })
     ]);
+
+    const tagNames = tags.map(t => t.tags.name);
+    if (tagNames.length > 0) await linkTags(newPractice.id, tagNames);
+    if (sourceResources.length > 0) {
+      await linkResources(newPractice.id, sourceResources.map(r => ({ name: r.name, url: r.url })), userId);
+    }
 
     if (!newPractice.external_id) {
       throw new Error('新建立的實踐缺少 external_id');
