@@ -105,6 +105,8 @@ describe('Practice CheckIn Service', () => {
     first_checkin_at: null,
     theme_color: '#FCDD84',
     reflection: null,
+    source_practice_id: null,
+    copy_count: 0,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
