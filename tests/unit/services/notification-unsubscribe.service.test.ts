@@ -12,6 +12,7 @@
 // 確保使用 test setup 中的 JWT_SECRET
 process.env.JWT_SECRET = 'test-secret-key-for-testing';
 process.env.FRONTEND_URL = 'https://daodao.cc';
+process.env.BACKEND_URL = 'https://daodao.cc';
 
 import jwt from 'jsonwebtoken';
 import {
