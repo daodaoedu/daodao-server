@@ -13,21 +13,20 @@ import type { ApiSuccessResponse } from '../types/api-response.types';
 
 /** 所有通知類型 */
 const ALL_NOTIFICATION_TYPES = [
-  'Reaction',
+  'reaction',
   'comment',
   'comment_reply',
-  'Mention',
+  'mention',
   'UserFollowed',
   'PracticeFollowed',
   'Connect',
   'ConnectAccepted',
-  'PracticeStarted',
+  'PracticeCreated',
   'update-practice-checkin',
   'update-practice-finish',
   'BuddyRequest',
   'BuddyRequestFollower',
   'BuddyAccepted',
-  'PracticeCreated',
   'WeeklyDigest',
 ] as const;
 
