@@ -176,8 +176,8 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
 
         // 將 allowedStats 映射成 WeeklyDigestStats 欄位
         const statsTyped = {
-          reactions:       allowedStats['Reaction'] ?? 0,
-          comments:        allowedStats['Comment'] ?? 0,
+          reactions:       allowedStats['reaction'] ?? 0,
+          comments:        allowedStats['comment'] ?? 0,
           newFollowers:    (allowedStats['UserFollowed'] ?? 0) + (allowedStats['PracticeFollowed'] ?? 0),
           connectRequests: allowedStats['Connect'] ?? 0,
         };
