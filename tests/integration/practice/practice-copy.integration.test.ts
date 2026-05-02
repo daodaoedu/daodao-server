@@ -108,6 +108,10 @@ describe('Practice Copy API Integration Tests', () => {
     jest.clearAllMocks();
     setupTransactionMock();
 
+    // Default mocks so copyPractice can complete its initial Promise.all
+    prismaMock.entity_tags.findMany.mockResolvedValue([] as any);
+    prismaMock.entity_resources.findMany.mockResolvedValue([] as any);
+
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
     otherUserToken = createAuthToken({ id: otherUserId, email: 'other@test.com' });
   });
@@ -127,7 +131,63 @@ describe('Practice Copy API Integration Tests', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.id).toBe(99);
+      expect(response.body.data.id).toBe(mockNewPractice.external_id);
+    });
+
+    it('應同時複製 tags 與 resources 至新實踐', async () => {
+      const sourceTags = [
+        { tags: { id: 1, name: 'English' } },
+        { tags: { id: 2, name: 'TOEIC' } },
+      ];
+      const sourceEntityResources = [
+        {
+          entity_id: mockSourcePractice.id,
+          resources: { id: 100, external_id: 'res-uuid-1', name: 'TED Talks', url: 'https://ted.com' },
+        },
+      ];
+
+      prismaMock.practices.findUnique.mockResolvedValue(mockSourcePractice as any);
+      prismaMock.entity_tags.findMany.mockResolvedValue(sourceTags as any);
+      prismaMock.entity_resources.findMany.mockResolvedValue(sourceEntityResources as any);
+      prismaMock.practices.create.mockResolvedValue(mockNewPractice as any);
+      prismaMock.practices.update.mockResolvedValue({ ...mockSourcePractice, copy_count: 1 } as any);
+      prismaMock.tags.upsert.mockImplementation((args: any) =>
+        Promise.resolve({ id: args.where.name === 'English' ? 1 : 2, name: args.where.name }) as any
+      );
+      prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
+      prismaMock.resources.create.mockImplementation((args: any) =>
+        Promise.resolve({ id: 200, external_id: 'new-res-uuid', name: args.data.name, url: args.data.url }) as any
+      );
+      prismaMock.entity_resources.create.mockResolvedValue({} as any);
+
+      const response = await request(app)
+        .post(`${API_BASE}/${SOURCE_UUID}/copy`)
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(201);
+
+      // Tags 被一併複製到新實踐
+      expect(prismaMock.tags.upsert).toHaveBeenCalledTimes(2);
+      expect(prismaMock.tags.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { name: 'English' } }));
+      expect(prismaMock.tags.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { name: 'TOEIC' } }));
+      expect(prismaMock.entity_tags.upsert).toHaveBeenCalledTimes(2);
+      expect(prismaMock.entity_tags.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ entity_type: 'practice', entity_id: mockNewPractice.id }),
+        })
+      );
+
+      // Resources 被一併複製到新實踐
+      expect(prismaMock.resources.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'TED Talks', url: 'https://ted.com' }),
+        })
+      );
+      expect(prismaMock.entity_resources.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ entity_type: 'practice', entity_id: mockNewPractice.id }),
+        })
+      );
     });
 
     it('複製自己的非 public 實踐也應成功（owner 免 403）', async () => {
@@ -150,7 +210,7 @@ describe('Practice Copy API Integration Tests', () => {
   // ==========================================================================
   describe('C-2: 複製非 public 他人實踐', () => {
     it('應回傳 403', async () => {
-      const privatePractice = { ...mockSourcePractice, privacy_status: 'private' };
+      const privatePractice = { ...mockSourcePractice, visibility: 'private' };
       prismaMock.practices.findUnique.mockResolvedValue(privatePractice as any);
 
       const response = await request(app)

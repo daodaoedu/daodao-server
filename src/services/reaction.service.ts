@@ -333,7 +333,7 @@ export async function getReactionsBatchByTargets(params: {
     });
 
     // Batch-check connections for all reaction users
-    const allReactionUserIds = allReactions.map((r) => r.user_id);
+    const allReactionUserIds = [...new Set(allReactions.map((r) => r.user_id))];
     const batchConnectedUserIds = new Set<number>();
     if (currentUserId && allReactionUserIds.length > 0) {
       const connections = await prisma.connections.findMany({
@@ -391,7 +391,7 @@ export async function getReactionsBatchByTargets(params: {
         name: r.users.nickname ?? '未知用戶',
         photoURL: r.users.contacts?.photo_url ?? null,
         reactionType: r.reaction_type as ReactionListItem['reactionType'],
-        reactedAt: r.created_at!.toISOString(),
+        reactedAt: (r.created_at ?? new Date()).toISOString(),
         isPublic: r.users.is_open_profile ?? false,
         isConnection: batchConnectedUserIds.has(r.user_id),
       }));
