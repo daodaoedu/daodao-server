@@ -125,6 +125,7 @@ export class CommentService implements CommentServiceInterface {
         if (targetEntity.user_id) {
           let practiceTitle: string | undefined;
           let practiceExternalId: string | undefined;
+          let checkinId: number | undefined;
           if (targetType === 'practice') {
             const practice = await tx.practices.findUnique({
               where:  { id: targetEntity.id },
@@ -132,6 +133,20 @@ export class CommentService implements CommentServiceInterface {
             });
             practiceTitle = practice?.title ?? undefined;
             practiceExternalId = practice?.external_id ?? undefined;
+          } else if (targetType === 'checkin') {
+            const checkin = await tx.practice_checkins.findUnique({
+              where:  { id: targetEntity.id },
+              select: { practice_id: true },
+            });
+            if (checkin?.practice_id) {
+              const practice = await tx.practices.findUnique({
+                where:  { id: checkin.practice_id },
+                select: { title: true, external_id: true },
+              });
+              practiceTitle = practice?.title ?? undefined;
+              practiceExternalId = practice?.external_id ?? undefined;
+            }
+            checkinId = targetEntity.id;
           }
           notificationEventService.createEvent({
             type:        'comment',
@@ -143,6 +158,7 @@ export class CommentService implements CommentServiceInterface {
               content,
               ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
               ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
+              ...(checkinId !== undefined && { checkinId }),
             },
             priority: 'P2',
           }).catch(() => {});
@@ -152,6 +168,7 @@ export class CommentService implements CommentServiceInterface {
         if (parentId && parentComment) {
           let practiceTitle: string | undefined;
           let practiceExternalId: string | undefined;
+          let checkinId: number | undefined;
           if (targetType === 'practice') {
             const practice = await tx.practices.findUnique({
               where: { id: targetEntity.id },
@@ -159,6 +176,20 @@ export class CommentService implements CommentServiceInterface {
             });
             practiceTitle = practice?.title ?? undefined;
             practiceExternalId = practice?.external_id ?? undefined;
+          } else if (targetType === 'checkin') {
+            const checkin = await tx.practice_checkins.findUnique({
+              where:  { id: targetEntity.id },
+              select: { practice_id: true },
+            });
+            if (checkin?.practice_id) {
+              const practice = await tx.practices.findUnique({
+                where:  { id: checkin.practice_id },
+                select: { title: true, external_id: true },
+              });
+              practiceTitle = practice?.title ?? undefined;
+              practiceExternalId = practice?.external_id ?? undefined;
+            }
+            checkinId = targetEntity.id;
           }
           notificationEventService.createEvent({
             type:        'comment_reply',
@@ -171,6 +202,7 @@ export class CommentService implements CommentServiceInterface {
               parent_comment_id: parentId,
               ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
               ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
+              ...(checkinId !== undefined && { checkinId }),
             },
             priority: 'P2',
           }).catch(() => {});
