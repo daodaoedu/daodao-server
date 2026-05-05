@@ -121,57 +121,63 @@ export class CommentService implements CommentServiceInterface {
           interactionCountService.increment(userId, targetEntity.user_id).catch(() => undefined);
         }
 
+        // 解析實踐 metadata（comment 和 comment_reply 通知共用，只查一次）
+        let practiceTitle: string | undefined;
+        let practiceExternalId: string | undefined;
+        let checkinId: number | undefined;
+
+        if (targetType === 'practice') {
+          const practice = await tx.practices.findUnique({
+            where:  { id: targetEntity.id },
+            select: { title: true, external_id: true },
+          });
+          practiceTitle = practice?.title ?? undefined;
+          practiceExternalId = practice?.external_id ?? undefined;
+        } else if (targetType === 'checkin') {
+          const checkin = await tx.practice_checkins.findUnique({
+            where:  { id: targetEntity.id },
+            select: {
+              practices: {
+                select: { title: true, external_id: true },
+              },
+            },
+          });
+          if (checkin?.practices) {
+            practiceTitle = checkin.practices.title ?? undefined;
+            practiceExternalId = checkin.practices.external_id ?? undefined;
+          }
+          checkinId = targetEntity.id;
+        }
+
+        const notificationPayload = {
+          content,
+          ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+          ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
+          ...(checkinId !== undefined && { checkinId }),
+        };
+
         // Fire-and-forget: Comment 通知給內容擁有者
         if (targetEntity.user_id) {
-          let practiceTitle: string | undefined;
-          let practiceExternalId: string | undefined;
-          if (targetType === 'practice') {
-            const practice = await tx.practices.findUnique({
-              where:  { id: targetEntity.id },
-              select: { title: true, external_id: true },
-            });
-            practiceTitle = practice?.title ?? undefined;
-            practiceExternalId = practice?.external_id ?? undefined;
-          }
           notificationEventService.createEvent({
             type:        'comment',
             actorId:     userId,
             recipientId: targetEntity.user_id,
             entityType:  'comment',
             entityId:    createdComment.id,
-            payload: {
-              content,
-              ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
-              ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
-            },
+            payload:     notificationPayload,
             priority: 'P2',
           }).catch(() => {});
         }
 
         // Fire-and-forget: comment_reply 通知給被回覆的留言作者
         if (parentId && parentComment) {
-          let practiceTitle: string | undefined;
-          let practiceExternalId: string | undefined;
-          if (targetType === 'practice') {
-            const practice = await tx.practices.findUnique({
-              where: { id: targetEntity.id },
-              select: { title: true, external_id: true },
-            });
-            practiceTitle = practice?.title ?? undefined;
-            practiceExternalId = practice?.external_id ?? undefined;
-          }
           notificationEventService.createEvent({
             type:        'comment_reply',
             actorId:     userId,
             recipientId: parentComment.user_id,
             entityType:  'comment',
             entityId:    createdComment.id,
-            payload: {
-              content,
-              parent_comment_id: parentId,
-              ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
-              ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
-            },
+            payload:     { ...notificationPayload, parent_comment_id: parentId },
             priority: 'P2',
           }).catch(() => {});
         }
