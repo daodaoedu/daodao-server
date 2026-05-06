@@ -50,6 +50,7 @@
     "apple-signin-auth": "^2.0.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.67.1",
+    "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
