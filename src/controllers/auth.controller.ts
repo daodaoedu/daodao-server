@@ -189,13 +189,14 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     loggerService.debug('OAuth callback - app redirect with auth code', { isNewUser });
   } else {
     // Web 登入：重定向到前端 callback 頁面（token 已在 cookie 中）
-    // 在 URL 參數中傳遞 isNewUser
+    // 同時傳遞 state（完整資訊）和 redirect（明確最終 URL，免除前端解碼負擔）
     redirectTarget = buildRedirectUrl(`${frontendUrl}/auth/callback`, {
       state: stateParam,
-      isNewUser: String(isNewUser)
+      isNewUser: String(isNewUser),
+      redirect: oauthState.redirectUrl
     });
 
-    loggerService.debug('OAuth callback - web redirect', { isNewUser });
+    loggerService.debug('OAuth callback - web redirect', { isNewUser, redirectUrl: oauthState.redirectUrl });
   }
 
   res.redirect(redirectTarget);
