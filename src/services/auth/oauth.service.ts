@@ -9,7 +9,9 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
-import { createOAuthState, encodeOAuthState, validateOAuthState } from '../../utils/oauth-state';
+import { createOAuthState, encodeOAuthState, validateOAuthState, decodeOAuthState, getFinalRedirectUrl } from '../../utils/oauth-state';
+import { jwtService } from '../jwt.service';
+import { AUTH_COOKIE_NAME } from '../../utils/cookie-config';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
 import { oauthNonceService } from './oauth-nonce.service';
 import { redisOAuthStateStore } from './oauth-redis-state-store.service';
@@ -322,6 +324,29 @@ export const authenticateGoogleCallback = isOAuthConfigured()
         }
 
         if (!user) {
+          // 檢查是否已登入（e.g. 瀏覽器 back-forward cache 重觸發同一個 state/nonce）
+          const authToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
+          if (authToken) {
+            const decoded = jwtService.verifyToken(authToken);
+            if (!('error' in decoded) && decoded.id) {
+              const stateParam = req.query.state as string | undefined;
+              let finalRedirectUrl = `${frontendUrl}/`;
+              if (stateParam) {
+                const oauthState = decodeOAuthState(stateParam);
+                if (oauthState && isValidRedirectUri(oauthState.redirectUrl)) {
+                  finalRedirectUrl = getFinalRedirectUrl(oauthState, frontendUrl);
+                }
+              }
+              loggerService.info('OAuth callback - user already authenticated, skipping re-auth', {
+                userId: decoded.id,
+                redirectUrl: finalRedirectUrl,
+                nonceReused: true
+              });
+              res.redirect(finalRedirectUrl);
+              return;
+            }
+          }
+
           loggerService.warn('OAuth callback - authentication failed (no user)', {
             info: JSON.stringify(info),
             userAgent: req.get('User-Agent'),
