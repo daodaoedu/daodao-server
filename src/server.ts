@@ -16,10 +16,12 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import session from 'express-session';
+import { RedisStore } from 'connect-redis';
 import passport from 'passport';
 import { setupTypescriptRoutes } from './app';
 import { prismaService } from './services/database/prisma.service';
 import { emailService } from './services/email/email.service';
+import redis from './services/database/redis.service';
 import { loggerService } from './services/logging/logger.service';
 // BullMQ
 import {
@@ -167,6 +169,7 @@ app.use(speedLimiter);
 // 與 auth_token cookie 一致：以 COOKIE_DOMAIN 是否設定判斷是否為已部署環境
 const hasDeployedDomain = !!process.env.COOKIE_DOMAIN;
 app.use(session({
+  store: new RedisStore({ client: redis, prefix: 'sess:' }),
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
   saveUninitialized: false,
@@ -174,6 +177,7 @@ app.use(session({
     secure: hasDeployedDomain,
     httpOnly: true,
     sameSite: hasDeployedDomain ? 'none' : 'lax',
+    domain: hasDeployedDomain ? process.env.COOKIE_DOMAIN : undefined,
     maxAge: 10 * 60 * 1000 // 10 分鐘，與 nonce/state 有效期一致
   }
 }));
