@@ -9,7 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
-import { createOAuthState, encodeOAuthState, validateOAuthState, decodeOAuthState } from '../../utils/oauth-state';
+import { createOAuthState, encodeOAuthState, validateOAuthState, decodeOAuthState, getFinalRedirectUrl } from '../../utils/oauth-state';
 import { jwtService } from '../jwt.service';
 import { AUTH_COOKIE_NAME } from '../../utils/cookie-config';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
@@ -330,20 +330,19 @@ export const authenticateGoogleCallback = isOAuthConfigured()
             const decoded = jwtService.verifyToken(authToken);
             if (!('error' in decoded) && decoded.id) {
               const stateParam = req.query.state as string | undefined;
-              let redirectPath = '/';
+              let finalRedirectUrl = `${frontendUrl}/`;
               if (stateParam) {
                 const oauthState = decodeOAuthState(stateParam);
-                const candidate = oauthState?.redirectUrl;
-                if (candidate && candidate.startsWith('/') && isValidRedirectUri(candidate)) {
-                  redirectPath = candidate;
+                if (oauthState && isValidRedirectUri(oauthState.redirectUrl)) {
+                  finalRedirectUrl = getFinalRedirectUrl(oauthState, frontendUrl);
                 }
               }
               loggerService.info('OAuth callback - user already authenticated, skipping re-auth', {
                 userId: decoded.id,
-                redirectPath,
+                redirectUrl: finalRedirectUrl,
                 nonceReused: true
               });
-              res.redirect(`${frontendUrl}${redirectPath}`);
+              res.redirect(finalRedirectUrl);
               return;
             }
           }
