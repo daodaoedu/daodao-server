@@ -265,7 +265,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     // 支援 redirect_uri（App 慣用）和 redirectUrl（Web 慣用）
     const redirectUri = validateRedirectParam(req.query.redirect_uri);
     const redirectUrlParam = validateRedirectParam(req.query.redirectUrl);
-    const redirectUrl = redirectUrlParam || redirectUri || '/dashboard';
+    const redirectUrl = redirectUrlParam || redirectUri || '/';
 
     const frontendUrlForError = process.env.FRONTEND_URL || 'http://localhost:3000';
 
