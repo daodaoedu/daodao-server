@@ -55,6 +55,7 @@ import {
   setReactionNotificationQueue,
   createReactionNotificationWorker,
   closeReactionNotificationWorker,
+  type ReactionNotificationJob,
 } from './queues';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
@@ -69,7 +70,8 @@ let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
 let notificationInAppWorker: Worker | null = null;
 let notificationEmailWorker: Worker | null = null;
 let notificationWeeklyWorker: Worker | null = null;
-let reactionNotificationWorker: Worker | null = null;
+let reactionNotificationQueue: Queue<ReactionNotificationJob> | null = null;
+let reactionNotificationWorker: Worker<ReactionNotificationJob> | null = null;
 
 
 const app = express();
@@ -286,7 +288,7 @@ async function initializeBullMQ(): Promise<void> {
     console.log('🔔 通知排程任務已註冊');
 
     // ===== Reaction Notification Queue（快速回應 email，1小時延遲彙整）=====
-    const reactionNotificationQueue = createReactionNotificationQueue();
+    reactionNotificationQueue = createReactionNotificationQueue();
     setReactionNotificationQueue(reactionNotificationQueue);
     console.log('💬 Reaction Notification Queue 已建立');
 
@@ -344,6 +346,10 @@ async function gracefulShutdown(signal: string) {
     if (reactionNotificationWorker) {
       await closeReactionNotificationWorker(reactionNotificationWorker);
       console.log('✅ Reaction Notification Worker 已關閉');
+    }
+    if (reactionNotificationQueue) {
+      await reactionNotificationQueue.close();
+      console.log('✅ Reaction Notification Queue 已關閉');
     }
 
     // 關閉 BullMQ Redis 連線
