@@ -11,6 +11,7 @@ import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
 import { createOAuthState, encodeOAuthState, validateOAuthState, decodeOAuthState } from '../../utils/oauth-state';
 import { jwtService } from '../jwt.service';
+import { AUTH_COOKIE_NAME } from '../../utils/cookie-config';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
 import { oauthNonceService } from './oauth-nonce.service';
 import { redisOAuthStateStore } from './oauth-redis-state-store.service';
@@ -324,16 +325,17 @@ export const authenticateGoogleCallback = isOAuthConfigured()
 
         if (!user) {
           // 檢查是否已登入（e.g. 瀏覽器 back-forward cache 重觸發同一個 state/nonce）
-          const authToken = req.cookies?.auth_token as string | undefined;
+          const authToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
           if (authToken) {
             const decoded = jwtService.verifyToken(authToken);
-            if (!decoded.error && decoded.id) {
+            if (!('error' in decoded) && decoded.id) {
               const stateParam = req.query.state as string | undefined;
               let redirectPath = '/';
               if (stateParam) {
                 const oauthState = decodeOAuthState(stateParam);
-                if (oauthState?.redirectUrl) {
-                  redirectPath = oauthState.redirectUrl;
+                const candidate = oauthState?.redirectUrl;
+                if (candidate && candidate.startsWith('/') && isValidRedirectUri(candidate)) {
+                  redirectPath = candidate;
                 }
               }
               loggerService.info('OAuth callback - user already authenticated, skipping re-auth', {
