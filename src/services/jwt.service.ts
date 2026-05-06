@@ -65,12 +65,8 @@ export const generateToken = (payload: JwtPayload): string => {
  */
 export const verifyToken = (token: string): JwtVerifyResult => {
   try {
-    console.log('verifyToken_token', token);
-    
     const secret = getJwtSecret();
     const decoded = jwt.verify(token, secret) as JwtPayload;
-    console.log('verifyToken', decoded);
-  
     return decoded;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {

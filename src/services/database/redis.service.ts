@@ -20,7 +20,6 @@ const redis = new Redis({
   password: REDIS_PASSWORD,
   db: parseInt(REDIS_DB, 10),
   maxRetriesPerRequest: 5,
-  lazyConnect: true,
   connectTimeout: 10000,
 });
 
