@@ -188,15 +188,13 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
     loggerService.debug('OAuth callback - app redirect with auth code', { isNewUser });
   } else {
-    // Web 登入：重定向到前端 callback 頁面（token 已在 cookie 中）
-    // 同時傳遞 state（完整資訊）和 redirect（明確最終 URL，免除前端解碼負擔）
-    redirectTarget = buildRedirectUrl(`${frontendUrl}/auth/callback`, {
-      state: stateParam,
-      isNewUser: String(isNewUser),
-      redirect: nonceData.redirectUrl
-    });
+    // Web 登入：直接跳轉最終目的地（cookie 已在 response 中設定）
+    // 不經過前端 /auth/callback 中間頁面，避免前端頁面邏輯問題導致使用者卡住
+    // nonceData.redirectUrl 為 server-side 驗證過的安全 URL（相對路徑）
+    const redirectPath = nonceData.redirectUrl.startsWith('/') ? nonceData.redirectUrl : '/';
+    redirectTarget = `${frontendUrl}${redirectPath}`;
 
-    loggerService.debug('OAuth callback - web redirect', { isNewUser, redirectUrl: nonceData.redirectUrl });
+    loggerService.debug('OAuth callback - web redirect direct', { isNewUser, redirectUrl: redirectTarget });
   }
 
   res.redirect(redirectTarget);
