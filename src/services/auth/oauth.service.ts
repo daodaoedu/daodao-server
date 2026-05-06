@@ -296,8 +296,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
   // 動態呼叫 passport.authenticate 並傳入 state
   passport.authenticate('google', {
     scope: ['profile', 'email'],
-    state: stateParam,
-    prompt: 'select_account'  // 強制顯示帳號選擇頁面
+    state: stateParam
   })(req, res, next);
 };
 

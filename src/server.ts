@@ -164,15 +164,16 @@ app.use(globalLimiter);
 app.use(speedLimiter);
 
 // Session 配置
-const isProduction = process.env.NODE_ENV === 'production';
+// 與 auth_token cookie 一致：以 COOKIE_DOMAIN 是否設定判斷是否為已部署環境
+const hasDeployedDomain = !!process.env.COOKIE_DOMAIN;
 app.use(session({
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: isProduction,
+    secure: hasDeployedDomain,
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: hasDeployedDomain ? 'none' : 'lax',
     maxAge: 10 * 60 * 1000 // 10 分鐘，與 nonce/state 有效期一致
   }
 }));
