@@ -193,10 +193,10 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     redirectTarget = buildRedirectUrl(`${frontendUrl}/auth/callback`, {
       state: stateParam,
       isNewUser: String(isNewUser),
-      redirect: oauthState.redirectUrl
+      redirect: nonceData.redirectUrl
     });
 
-    loggerService.debug('OAuth callback - web redirect', { isNewUser, redirectUrl: oauthState.redirectUrl });
+    loggerService.debug('OAuth callback - web redirect', { isNewUser, redirectUrl: nonceData.redirectUrl });
   }
 
   res.redirect(redirectTarget);
