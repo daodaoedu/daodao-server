@@ -569,21 +569,25 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       });
 
       // 通知關注此用戶的 followers（非阻塞）
-      prismaClient.follows.findMany({
-        where:  { target_type: 'user', target_id: userId },
-        select: { follower_id: true },
-      }).then((followers) => {
-        for (const { follower_id } of followers) {
-          notificationEventService.createEvent({
-            type:        'PracticeCreated',
-            actorId:     userId,
-            recipientId: follower_id,
-            entityType:  'practice',
-            entityId:    practice.id,
-            priority:    'P2',
-          }).catch(() => {});
-        }
-      }).catch(() => {});
+      // private practice 不通知 followers，避免標題與存在被洩漏給非授權對象
+      if (practice.privacy_status !== 'private') {
+        prismaClient.follows.findMany({
+          where:  { target_type: 'user', target_id: userId },
+          select: { follower_id: true },
+        }).then((followers) => {
+          for (const { follower_id } of followers) {
+            notificationEventService.createEvent({
+              type:        'PracticeCreated',
+              actorId:     userId,
+              recipientId: follower_id,
+              entityType:  'practice',
+              entityId:    practice.id,
+              priority:    'P2',
+              payload:     { practice_title: practice.title },
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
     }
 
     return createSuccessResponse(practiceEntity);
@@ -804,21 +808,25 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       });
 
       // 通知關注此用戶的 followers（非阻塞）
-      prismaClient.follows.findMany({
-        where:  { target_type: 'user', target_id: userId },
-        select: { follower_id: true },
-      }).then((followers) => {
-        for (const { follower_id } of followers) {
-          notificationEventService.createEvent({
-            type:        'PracticeCreated',
-            actorId:     userId,
-            recipientId: follower_id,
-            entityType:  'practice',
-            entityId:    id,
-            priority:    'P2',
-          }).catch(() => {});
-        }
-      }).catch(() => {});
+      // private practice 不通知 followers，避免標題與存在被洩漏給非授權對象
+      if (practice.privacy_status !== 'private') {
+        prismaClient.follows.findMany({
+          where:  { target_type: 'user', target_id: userId },
+          select: { follower_id: true },
+        }).then((followers) => {
+          for (const { follower_id } of followers) {
+            notificationEventService.createEvent({
+              type:        'PracticeCreated',
+              actorId:     userId,
+              recipientId: follower_id,
+              entityType:  'practice',
+              entityId:    id,
+              priority:    'P2',
+              payload:     { practice_title: practice.title },
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
     }
 
     // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
