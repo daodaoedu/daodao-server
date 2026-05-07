@@ -581,6 +581,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
             entityType:  'practice',
             entityId:    practice.id,
             priority:    'P2',
+            payload:     { practice_title: practice.title },
           }).catch(() => {});
         }
       }).catch(() => {});
@@ -816,6 +817,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
             entityType:  'practice',
             entityId:    id,
             priority:    'P2',
+            payload:     { practice_title: practice.title },
           }).catch(() => {});
         }
       }).catch(() => {});
