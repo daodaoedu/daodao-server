@@ -52,6 +52,12 @@ import {
   closeNotificationInAppWorker,
   closeNotificationEmailWorker,
   closeNotificationWeeklyWorker,
+  // Reaction Notification Queue
+  createReactionNotificationQueue,
+  setReactionNotificationQueue,
+  createReactionNotificationWorker,
+  closeReactionNotificationWorker,
+  type ReactionNotificationJob,
 } from './queues';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
@@ -66,6 +72,8 @@ let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
 let notificationInAppWorker: Worker | null = null;
 let notificationEmailWorker: Worker | null = null;
 let notificationWeeklyWorker: Worker | null = null;
+let reactionNotificationQueue: Queue<ReactionNotificationJob> | null = null;
+let reactionNotificationWorker: Worker<ReactionNotificationJob> | null = null;
 
 
 const app = express();
@@ -284,6 +292,14 @@ async function initializeBullMQ(): Promise<void> {
     await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
     console.log('🔔 通知排程任務已註冊');
 
+    // ===== Reaction Notification Queue（快速回應 email，1小時延遲彙整）=====
+    reactionNotificationQueue = createReactionNotificationQueue();
+    setReactionNotificationQueue(reactionNotificationQueue);
+    console.log('💬 Reaction Notification Queue 已建立');
+
+    reactionNotificationWorker = createReactionNotificationWorker({ concurrency: 5 });
+    console.log('💬 Reaction Notification Worker 已啟動');
+
     console.log('✅ BullMQ 系統初始化完成');
   } catch (error) {
     console.error('❌ BullMQ 初始化失敗:', error);
@@ -331,6 +347,14 @@ async function gracefulShutdown(signal: string) {
     if (notificationWeeklyWorker) {
       await closeNotificationWeeklyWorker(notificationWeeklyWorker);
       console.log('✅ Notification Weekly Worker 已關閉');
+    }
+    if (reactionNotificationWorker) {
+      await closeReactionNotificationWorker(reactionNotificationWorker);
+      console.log('✅ Reaction Notification Worker 已關閉');
+    }
+    if (reactionNotificationQueue) {
+      await reactionNotificationQueue.close();
+      console.log('✅ Reaction Notification Queue 已關閉');
     }
 
     // 關閉 BullMQ Redis 連線

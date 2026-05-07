@@ -30,6 +30,13 @@ import { emailService } from '../services/email/email.service';
 /** 每批次涵蓋的時間範圍（4小時，以毫秒計） */
 const BATCH_WINDOW_MS = 4 * 60 * 60 * 1000;
 
+/**
+ * 早班 (UTC+8 08:00 = UTC 00:00) 涵蓋的時間範圍：12 小時，
+ * 用以補抓前一晚 20:00 (UTC+8) 到早上 08:00 (UTC+8) 之間的事件，
+ * 否則 cron 班次間隔（20:00 → 隔天 08:00）超過 window 4 小時，會漏掉夜間事件。
+ */
+const MORNING_BATCH_WINDOW_MS = 12 * 60 * 60 * 1000;
+
 /** notification_preferences 中代表 email 的 channel 值 */
 const EMAIL_CHANNEL = 'N01';
 
@@ -39,15 +46,21 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
   loggerService.info('[email-worker] Batch started', { jobId: job.id });
 
   try {
-    // 1. 計算本次批次的時間範圍（上一個4小時週期）
+    // 1. 計算本次批次的時間範圍
+    //    - UTC 00:00（UTC+8 08:00）為早班，回看 12 小時補抓夜間 8 小時 gap
+    //    - 其他班次維持 4 小時 window
     const now = new Date();
+    const isMorningBatch = now.getUTCHours() === 0;
+    const windowMs = isMorningBatch ? MORNING_BATCH_WINDOW_MS : BATCH_WINDOW_MS;
     const batchEnd = now;
-    const batchStart = new Date(now.getTime() - BATCH_WINDOW_MS);
+    const batchStart = new Date(now.getTime() - windowMs);
 
     loggerService.info('[email-worker] Time window', {
       jobId: job.id,
       batchStart: batchStart.toISOString(),
-      batchEnd: batchEnd.toISOString()
+      batchEnd: batchEnd.toISOString(),
+      windowHours: windowMs / 3600000,
+      isMorningBatch,
     });
 
     // 2. 查詢該時間範圍內的 P1+P2 事件
