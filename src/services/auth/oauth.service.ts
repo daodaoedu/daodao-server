@@ -185,6 +185,9 @@ export const initializePassportSession = () => {
   return passport.session();
 };
 
+// Google OAuth `prompt` 透傳白名單。限制可被 query 帶入的值以避免不預期的 prompt 行為（例如 `prompt=none` 會改變 OAuth 流程）被注入。
+const ALLOWED_PROMPTS = ['select_account', 'consent', 'select_account consent'] as const;
+
 /**
  * Google 認證中間件
  * 開始 Google OAuth 流程
@@ -295,10 +298,15 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     stateParam = encodeOAuthState(state);
   }
 
-  // 動態呼叫 passport.authenticate 並傳入 state
+  // 動態 prompt：使用者主動 logout 後前端會帶 ?prompt=select_account，觸發 Google
+  // 顯示帳號選擇頁；其他情況（silent re-auth、token expired、初次登入）不帶 prompt，
+  // 維持 9aa59c1 拿掉硬編碼後的「無縫重登入」UX。
+  const prompt = (ALLOWED_PROMPTS as readonly string[]).find(p => p === req.query.prompt);
+
   passport.authenticate('google', {
     scope: ['profile', 'email'],
-    state: stateParam
+    state: stateParam,
+    ...(prompt ? { prompt } : {})
   })(req, res, next);
 };
 
