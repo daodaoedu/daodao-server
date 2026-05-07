@@ -295,10 +295,21 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     stateParam = encodeOAuthState(state);
   }
 
-  // 動態呼叫 passport.authenticate 並傳入 state
+  // 動態 prompt：使用者主動 logout 後前端會帶 ?prompt=select_account，觸發 Google
+  // 顯示帳號選擇頁；其他情況（silent re-auth、token expired、初次登入）不帶 prompt，
+  // 維持 9aa59c1 拿掉硬編碼後的「無縫重登入」UX。
+  // 值用白名單限制以避免不預期的 prompt 行為被注入。
+  const ALLOWED_PROMPTS = ['select_account', 'consent', 'select_account consent'] as const;
+  const promptParam = typeof req.query.prompt === 'string' ? req.query.prompt : undefined;
+  const prompt =
+    promptParam && (ALLOWED_PROMPTS as readonly string[]).includes(promptParam)
+      ? promptParam
+      : undefined;
+
   passport.authenticate('google', {
     scope: ['profile', 'email'],
-    state: stateParam
+    state: stateParam,
+    ...(prompt ? { prompt } : {})
   })(req, res, next);
 };
 
