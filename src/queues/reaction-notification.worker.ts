@@ -137,25 +137,16 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
 
     const ownerName = owner?.nickname ?? `用戶 ${practiceOwnerId}`;
 
-    // 3a. 防重複：BullMQ retry 保護（only check since this job was created）
-    const alreadySent = await hasEmailBeenSent({
-      userId: practiceOwnerId,
-      emailType: EMAIL_TYPES.REACTION_NOTIFICATION,
-      entityType,
-      entityId: actualEntityId,
-      since: new Date(job.timestamp),
-    });
-    if (alreadySent) {
-      loggerService.info('[reaction-notification-worker] Already sent, skipping', {
+    const baseUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+
+    if (entityType === 'checkin' && !practiceExternalId) {
+      loggerService.warn('[reaction-notification-worker] Parent practice external_id missing for checkin, URL will fallback to internal id', {
         jobId: job.id,
-        practiceOwnerId,
-        entityType,
-        entityId: actualEntityId,
+        practiceId,
+        checkinId: actualEntityId,
       });
-      return;
     }
 
-    const baseUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
     const practiceUrl = entityType === 'checkin'
       ? `${baseUrl}/practices/${practiceExternalId ?? practiceId}/check-ins/${actualEntityId}`
       : `${baseUrl}/practices/${practiceExternalId ?? practiceId}`;
@@ -170,7 +161,7 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       unsubscribeUrl,
     });
 
-    // 建立 pending log
+    // 先建立 pending log 再做防重複檢查，縮小 BullMQ stall race window
     let logRecord: { id: number; tracking_token: string | null } | null = null;
     try {
       logRecord = await createEmailLog({
@@ -186,6 +177,27 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
         jobId: job.id,
         error: logErr instanceof Error ? logErr.message : String(logErr),
       });
+    }
+
+    // 3a. 防重複：BullMQ retry / stall 保護（only check since this job was created）
+    const alreadySent = await hasEmailBeenSent({
+      userId: practiceOwnerId,
+      emailType: EMAIL_TYPES.REACTION_NOTIFICATION,
+      entityType,
+      entityId: actualEntityId,
+      since: new Date(job.timestamp),
+    });
+    if (alreadySent) {
+      loggerService.info('[reaction-notification-worker] Already sent, skipping', {
+        jobId: job.id,
+        practiceOwnerId,
+        entityType,
+        entityId: actualEntityId,
+      });
+      try {
+        if (logRecord) await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.FAILED);
+      } catch { /* best-effort cleanup */ }
+      return;
     }
 
     const result = await emailService.sendEmail({

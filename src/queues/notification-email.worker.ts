@@ -73,7 +73,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
-        type: { not: 'reaction' },
+        type: { not: 'reaction' }, // reaction 事件由 reaction-notification.worker 專責處理，此處排除以避免重複寄信
         created_at: {
           gte: batchStart,
           lt: batchEnd
@@ -215,11 +215,12 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
         const subject = generateNotificationDigestSubject(digestData);
         const html = generateNotificationDigestHtml(digestData);
 
-        // 防重複：BullMQ retry 保護
+        // 防重複：BullMQ retry 保護，使用 job.timestamp 而非 batchStart，
+        // 避免跨批次抑制（下一個 batch job 有不同的 timestamp，不受前一批影響）
         const alreadySent = await hasEmailBeenSent({
           userId: recipientId,
           emailType: EMAIL_TYPES.NOTIFICATION_DIGEST,
-          since: batchStart,
+          since: new Date(job.timestamp),
         });
         if (alreadySent) {
           loggerService.info('[email-worker] Digest already sent this batch, skipping', { recipientId });
