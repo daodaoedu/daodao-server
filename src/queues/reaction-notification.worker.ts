@@ -57,7 +57,9 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       return;
     }
 
-    // 2. 確認目標實體仍存在
+    // 2. 確認目標實體仍存在，同時取得 practiceExternalId 供後續 URL 使用
+    let practiceExternalId: string | null = null;
+
     if (entityType === 'checkin') {
       const checkin = await prisma.practice_checkins.findUnique({
         where: { id: actualEntityId },
@@ -81,6 +83,12 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
         });
         return;
       }
+
+      const parentPractice = await prisma.practices.findUnique({
+        where: { id: practiceId },
+        select: { external_id: true },
+      });
+      practiceExternalId = parentPractice?.external_id ?? null;
     } else {
       const practice = await prisma.practices.findUnique({
         where: { id: practiceId },
@@ -104,6 +112,8 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
         });
         return;
       }
+
+      practiceExternalId = practice.external_id;
     }
 
     // 3. 取得 owner 的 email 與暱稱
@@ -127,12 +137,13 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
 
     const ownerName = owner?.nickname ?? `用戶 ${practiceOwnerId}`;
 
-    // 3a. 防重複：BullMQ retry 保護
+    // 3a. 防重複：BullMQ retry 保護（only check since this job was created）
     const alreadySent = await hasEmailBeenSent({
       userId: practiceOwnerId,
       emailType: EMAIL_TYPES.REACTION_NOTIFICATION,
       entityType,
       entityId: actualEntityId,
+      since: new Date(job.timestamp),
     });
     if (alreadySent) {
       loggerService.info('[reaction-notification-worker] Already sent, skipping', {
@@ -144,11 +155,10 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       return;
     }
 
-    const parentPractice = await prisma.practices.findUnique({
-      where: { id: practiceId },
-      select: { external_id: true },
-    });
-    const practiceUrl = `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${parentPractice?.external_id ?? practiceId}`;
+    const baseUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+    const practiceUrl = entityType === 'checkin'
+      ? `${baseUrl}/practices/${practiceExternalId ?? practiceId}/check-ins/${actualEntityId}`
+      : `${baseUrl}/practices/${practiceExternalId ?? practiceId}`;
     const unsubscribeUrl = generateUnsubscribeUrl(practiceOwnerId, 'reaction');
 
     // 4. 產生並發送 email
