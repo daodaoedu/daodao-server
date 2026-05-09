@@ -124,6 +124,21 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
               },
               priority: 'P2',
             }).catch(() => {});
+
+            const totalCheckinReactionCount = await prisma.reactions.count({
+              where: { target_type: 'checkin', target_id: targetId },
+            });
+
+            await enqueueReactionNotification({
+              practiceId: checkin.practice_id,
+              actorUserId: userId,
+              practiceOwnerId: checkin.user_id,
+              practiceTitle: practice?.title ?? '',
+              reactionType,
+              totalReactionCount: totalCheckinReactionCount,
+              entityType: 'checkin',
+              entityId: targetId,
+            });
           }
         }
       } catch (enqueueError) {

@@ -24,6 +24,12 @@ import {
   generateSettingsUrl,
 } from '../services/notification-unsubscribe.service';
 import { emailService } from '../services/email/email.service';
+import {
+  createEmailLog,
+  updateEmailLogStatus,
+  hasEmailBeenSent,
+} from '../services/email/email-log.service';
+import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -67,6 +73,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
+        type: { not: 'reaction' },
         created_at: {
           gte: batchStart,
           lt: batchEnd
@@ -208,7 +215,50 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
         const subject = generateNotificationDigestSubject(digestData);
         const html = generateNotificationDigestHtml(digestData);
 
-        const result = await emailService.sendEmail({ to: recipientEmail, subject, html });
+        // 防重複：BullMQ retry 保護
+        const alreadySent = await hasEmailBeenSent({
+          userId: recipientId,
+          emailType: EMAIL_TYPES.NOTIFICATION_DIGEST,
+          since: batchStart,
+        });
+        if (alreadySent) {
+          loggerService.info('[email-worker] Digest already sent this batch, skipping', { recipientId });
+          continue;
+        }
+
+        // 建立 pending log
+        let logRecord: { id: number; tracking_token: string | null } | null = null;
+        try {
+          logRecord = await createEmailLog({
+            userId: recipientId,
+            emailType: EMAIL_TYPES.NOTIFICATION_DIGEST,
+            subject,
+            status: EMAIL_STATUS.PENDING,
+          });
+        } catch (logErr) {
+          loggerService.error('[email-worker] Failed to create email log', {
+            recipientId,
+            error: logErr instanceof Error ? logErr.message : String(logErr),
+          });
+        }
+
+        const result = await emailService.sendEmail({
+          to: recipientEmail,
+          subject,
+          html,
+          trackingToken: logRecord?.tracking_token ?? undefined,
+        });
+
+        try {
+          if (logRecord) {
+            await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+          }
+        } catch (logErr) {
+          loggerService.error('[email-worker] Failed to update email log status', {
+            recipientId,
+            error: logErr instanceof Error ? logErr.message : String(logErr),
+          });
+        }
 
         if (result.success) {
           loggerService.info('[email-worker] Digest email sent', {

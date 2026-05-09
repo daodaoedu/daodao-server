@@ -13,6 +13,12 @@ import { prisma } from '../services/database/prisma.service';
 import { emailService } from '../services/email/email.service';
 import { generateReactionNotificationEmail } from '../services/email/reaction-notification-template';
 import { generateUnsubscribeUrl } from '../services/notification-unsubscribe.service';
+import {
+  createEmailLog,
+  updateEmailLogStatus,
+  hasEmailBeenSent,
+} from '../services/email/email-log.service';
+import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
 
 // ─── Worker 選項 ───────────────────────────────────────────────────────────────
 
@@ -30,7 +36,8 @@ const defaultOptions: ReactionNotificationWorkerOptions = {
  * 處理單一 reaction 通知任務
  */
 async function processReactionNotificationJob(job: Job<ReactionNotificationJob>): Promise<void> {
-  const { practiceId, actorUserId, practiceOwnerId, practiceTitle, totalReactionCount } = job.data;
+  const { practiceId, actorUserId, practiceOwnerId, practiceTitle, totalReactionCount, entityType = 'practice', entityId } = job.data;
+  const actualEntityId = entityId ?? practiceId;
 
   loggerService.info('[reaction-notification-worker] Processing job', {
     jobId: job.id,
@@ -50,31 +57,56 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       return;
     }
 
-    // 2. 確認 practice 仍存在且 owner 未異動
-    const practice = await prisma.practices.findUnique({
-      where: { id: practiceId },
-      select: { id: true, user_id: true, external_id: true },
-    });
-
-    if (!practice) {
-      loggerService.warn('[reaction-notification-worker] Practice not found, skipping', {
-        jobId: job.id,
-        practiceId,
+    // 2. 確認目標實體仍存在
+    if (entityType === 'checkin') {
+      const checkin = await prisma.practice_checkins.findUnique({
+        where: { id: actualEntityId },
+        select: { id: true, user_id: true },
       });
-      return;
+
+      if (!checkin) {
+        loggerService.warn('[reaction-notification-worker] Checkin not found, skipping', {
+          jobId: job.id,
+          checkinId: actualEntityId,
+        });
+        return;
+      }
+
+      if (checkin.user_id !== practiceOwnerId) {
+        loggerService.warn('[reaction-notification-worker] Checkin owner mismatch, skipping', {
+          jobId: job.id,
+          checkinId: actualEntityId,
+          expectedOwnerId: practiceOwnerId,
+          actualOwnerId: checkin.user_id,
+        });
+        return;
+      }
+    } else {
+      const practice = await prisma.practices.findUnique({
+        where: { id: practiceId },
+        select: { id: true, user_id: true, external_id: true },
+      });
+
+      if (!practice) {
+        loggerService.warn('[reaction-notification-worker] Practice not found, skipping', {
+          jobId: job.id,
+          practiceId,
+        });
+        return;
+      }
+
+      if (practice.user_id !== practiceOwnerId) {
+        loggerService.warn('[reaction-notification-worker] Practice owner mismatch, skipping', {
+          jobId: job.id,
+          practiceId,
+          expectedOwnerId: practiceOwnerId,
+          actualOwnerId: practice.user_id,
+        });
+        return;
+      }
     }
 
-    if (practice.user_id !== practiceOwnerId) {
-      loggerService.warn('[reaction-notification-worker] Practice owner mismatch, skipping', {
-        jobId: job.id,
-        practiceId,
-        expectedOwnerId: practiceOwnerId,
-        actualOwnerId: practice.user_id,
-      });
-      return;
-    }
-
-    // 3. 取得 practice owner 的 email 與暱稱
+    // 3. 取得 owner 的 email 與暱稱
     const owner = await prisma.users.findUnique({
       where: { id: practiceOwnerId },
       select: {
@@ -94,7 +126,29 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
     }
 
     const ownerName = owner?.nickname ?? `用戶 ${practiceOwnerId}`;
-    const practiceUrl = `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${practice.external_id}`;
+
+    // 3a. 防重複：BullMQ retry 保護
+    const alreadySent = await hasEmailBeenSent({
+      userId: practiceOwnerId,
+      emailType: EMAIL_TYPES.REACTION_NOTIFICATION,
+      entityType,
+      entityId: actualEntityId,
+    });
+    if (alreadySent) {
+      loggerService.info('[reaction-notification-worker] Already sent, skipping', {
+        jobId: job.id,
+        practiceOwnerId,
+        entityType,
+        entityId: actualEntityId,
+      });
+      return;
+    }
+
+    const parentPractice = await prisma.practices.findUnique({
+      where: { id: practiceId },
+      select: { external_id: true },
+    });
+    const practiceUrl = `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${parentPractice?.external_id ?? practiceId}`;
     const unsubscribeUrl = generateUnsubscribeUrl(practiceOwnerId, 'reaction');
 
     // 4. 產生並發送 email
@@ -106,7 +160,41 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       unsubscribeUrl,
     });
 
-    const result = await emailService.sendEmail({ to: ownerEmail, subject, html });
+    // 建立 pending log
+    let logRecord: { id: number; tracking_token: string | null } | null = null;
+    try {
+      logRecord = await createEmailLog({
+        userId: practiceOwnerId,
+        emailType: EMAIL_TYPES.REACTION_NOTIFICATION,
+        entityType,
+        entityId: actualEntityId,
+        subject,
+        status: EMAIL_STATUS.PENDING,
+      });
+    } catch (logErr) {
+      loggerService.error('[reaction-notification-worker] Failed to create email log', {
+        jobId: job.id,
+        error: logErr instanceof Error ? logErr.message : String(logErr),
+      });
+    }
+
+    const result = await emailService.sendEmail({
+      to: ownerEmail,
+      subject,
+      html,
+      trackingToken: logRecord?.tracking_token ?? undefined,
+    });
+
+    try {
+      if (logRecord) {
+        await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+      }
+    } catch (logErr) {
+      loggerService.error('[reaction-notification-worker] Failed to update email log status', {
+        jobId: job.id,
+        error: logErr instanceof Error ? logErr.message : String(logErr),
+      });
+    }
 
     if (result.success) {
       loggerService.info('[reaction-notification-worker] Email sent successfully', {
