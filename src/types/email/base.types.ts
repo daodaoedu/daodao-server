@@ -31,6 +31,9 @@ export const EMAIL_TYPES = {
   // 其他
   NOTIFICATION: 'notification',
   WELCOME_LETTER: 'welcome_letter',
+  NOTIFICATION_DIGEST: 'notification_digest',
+  NOTIFICATION_WEEKLY: 'notification_weekly',
+  REACTION_NOTIFICATION: 'reaction_notification',
 } as const;
 
 export type EmailTypeValue = (typeof EMAIL_TYPES)[keyof typeof EMAIL_TYPES];
