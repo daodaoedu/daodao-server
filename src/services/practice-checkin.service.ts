@@ -278,7 +278,12 @@ export async function createCheckIn(
     }
 
     // Fire-and-forget: fan-out 打卡通知給追蹤者和連結夥伴
-    const checkinPayload = { practiceId, checkinId: checkIn.id };
+    const checkinPayload = {
+      practiceId,
+      checkinId: checkIn.id,
+      practice_title: practice.title ?? '',
+      entity_external_id: practice.external_id ?? '',
+    };
     getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
       fanoutToPracticeFollowers('follow.practice_checkin', userId, practiceId, checkinPayload).catch(() => {});
       fanoutToConnectedPartners('connect.partner_checkin', userId, checkinPayload).catch(() => {});

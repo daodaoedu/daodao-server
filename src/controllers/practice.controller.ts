@@ -46,6 +46,7 @@ import {
   updateCheckInApiResponseSchema,
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
+  copyPracticeApiResponseSchema,
   // Request validation schemas
   checkInSchema,
   updateCheckInSchema
@@ -732,6 +733,23 @@ export class PracticeController {
 
     const result = await tagPromptService.getTagPrompts(usageType, locale);
     res.json(result);
+  });
+
+  /**
+   * 複製實踐
+   * POST /api/v1/practices/:id/copy
+   */
+  copyPractice = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const result = await practiceService.copyPractice(practiceId, req.user.id);
+
+    const validatedResponse = copyPracticeApiResponseSchema.parse(result);
+
+    res.status(201).json(validatedResponse);
   });
 
   /**

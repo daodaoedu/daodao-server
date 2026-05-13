@@ -67,11 +67,12 @@ export class CommentService implements CommentServiceInterface {
         const internalTargetId = targetEntity.id;
         
         // Validate parent comment if provided
+        let parentComment: Awaited<ReturnType<typeof tx.comments.findUnique>> | null = null;
         if (parentId) {
-          const parentComment = await tx.comments.findUnique({
+          parentComment = await tx.comments.findUnique({
             where: { id: parentId }
           });
-          
+
           if (!parentComment) {
             throw new NotFoundError('Parent comment not found');
           }
@@ -80,7 +81,7 @@ export class CommentService implements CommentServiceInterface {
           if (parentComment.parent_id) {
             throw new BadRequestError('Replies cannot have their own replies');
           }
-          
+
           // Ensure parent comment belongs to the same target (using internal ID)
           if (parentComment.target_type !== targetType || parentComment.target_id !== internalTargetId) {
             throw new BadRequestError('Parent comment does not belong to the same target entity');
@@ -120,26 +121,63 @@ export class CommentService implements CommentServiceInterface {
           interactionCountService.increment(userId, targetEntity.user_id).catch(() => undefined);
         }
 
+        // 解析實踐 metadata（comment 和 comment_reply 通知共用，只查一次）
+        let practiceTitle: string | undefined;
+        let practiceExternalId: string | undefined;
+        let checkinId: number | undefined;
+
+        if (targetType === 'practice') {
+          const practice = await tx.practices.findUnique({
+            where:  { id: targetEntity.id },
+            select: { title: true, external_id: true },
+          });
+          practiceTitle = practice?.title ?? undefined;
+          practiceExternalId = practice?.external_id ?? undefined;
+        } else if (targetType === 'checkin') {
+          const checkin = await tx.practice_checkins.findUnique({
+            where:  { id: targetEntity.id },
+            select: {
+              practices: {
+                select: { title: true, external_id: true },
+              },
+            },
+          });
+          if (checkin?.practices) {
+            practiceTitle = checkin.practices.title ?? undefined;
+            practiceExternalId = checkin.practices.external_id ?? undefined;
+          }
+          checkinId = targetEntity.id;
+        }
+
+        const notificationPayload = {
+          content,
+          ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+          ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
+          ...(checkinId !== undefined && { checkinId }),
+        };
+
         // Fire-and-forget: Comment 通知給內容擁有者
         if (targetEntity.user_id) {
-          let practiceTitle: string | undefined;
-          if (targetType === 'practice') {
-            const practice = await tx.practices.findUnique({
-              where:  { id: targetEntity.id },
-              select: { title: true },
-            });
-            practiceTitle = practice?.title ?? undefined;
-          }
           notificationEventService.createEvent({
             type:        'comment',
             actorId:     userId,
             recipientId: targetEntity.user_id,
             entityType:  'comment',
             entityId:    createdComment.id,
-            payload: {
-              content,
-              ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
-            },
+            payload:     notificationPayload,
+            priority: 'P2',
+          }).catch(() => {});
+        }
+
+        // Fire-and-forget: comment_reply 通知給被回覆的留言作者
+        if (parentId && parentComment) {
+          notificationEventService.createEvent({
+            type:        'comment_reply',
+            actorId:     userId,
+            recipientId: parentComment.user_id,
+            entityType:  'comment',
+            entityId:    createdComment.id,
+            payload:     { ...notificationPayload, parent_comment_id: parentId },
             priority: 'P2',
           }).catch(() => {});
         }
@@ -368,7 +406,7 @@ export class CommentService implements CommentServiceInterface {
    * @returns Promise<ApiSuccessResponse<CommentResponse>> - The updated comment
    */
   async updateComment(params: UpdateCommentParams): Promise<ApiSuccessResponse<CommentResponse>> {
-    const { commentId, userId, content, visibility } = params;
+    const { commentId, userId, content, visibility, mentionedUserIds } = params;
 
     return await prisma.$transaction(async (tx) => {
       try {
@@ -426,9 +464,72 @@ export class CommentService implements CommentServiceInterface {
           }
         });
 
+        // Fire-and-forget: mention diff — only notify newly @mentioned users
+        const newContent = content ?? existingComment.content;
+        if (mentionedUserIds && mentionedUserIds.length > 0) {
+          // Security: only allow as many mentionedUserIds as @mention patterns in content
+          const mentionPatterns = newContent.match(/@[\w]+/g) ?? [];
+          if (mentionPatterns.length < mentionedUserIds.length) {
+            loggerService.warn('[CommentService] updateComment: mentionedUserIds count exceeds @mentions in content', {
+              mentionedCount: mentionedUserIds.length,
+              contentMentions: mentionPatterns.length,
+              userId,
+              commentId,
+            });
+          }
+          const safeUserIds = mentionedUserIds.slice(0, Math.max(mentionPatterns.length, 0));
+
+          // Find users already notified for this comment to avoid duplicate notifications
+          const alreadyNotified = await tx.notification_events.findMany({
+            where: {
+              type: 'mention',
+              entity_type: 'comment',
+              entity_id: commentId,
+            },
+            select: { recipient_id: true },
+          });
+          const alreadyNotifiedIds = new Set(alreadyNotified.map((e) => e.recipient_id));
+
+          // Only notify users who are newly added to the mention list
+          const newlyMentionedIds = [...new Set(safeUserIds)].filter(
+            (id) => id !== userId && !alreadyNotifiedIds.has(id)
+          );
+
+          if (newlyMentionedIds.length > 0) {
+            try {
+              const foundUsers = await tx.users.findMany({
+                where: { id: { in: newlyMentionedIds } },
+                select: { id: true },
+              });
+              const validIds = foundUsers.map((u) => u.id);
+
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+              const url = frontendUrl;
+              const actorName = updatedComment.users.nickname ?? undefined;
+
+              for (const recipientId of validIds) {
+                notificationEventService.createEvent({
+                  type:        'mention',
+                  actorId:     userId,
+                  recipientId,
+                  entityType:  'comment',
+                  entityId:    commentId,
+                  priority:    'P1',
+                  payload:     { content: newContent, actorName, url },
+                });
+              }
+            } catch (error) {
+              loggerService.error('[CommentService] updateComment: Failed to create mention notification events', {
+                error,
+                commentId,
+              });
+            }
+          }
+        }
+
         const formattedComment = await this.formatCommentResponse(updatedComment);
         return createSuccessResponse(formattedComment);
-        
+
       } catch (error) {
         if (error instanceof NotFoundError || error instanceof ForbiddenError) {
           throw error;

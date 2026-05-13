@@ -9,7 +9,9 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
-import { createOAuthState, encodeOAuthState, validateOAuthState } from '../../utils/oauth-state';
+import { createOAuthState, encodeOAuthState, validateOAuthState, decodeOAuthState, getFinalRedirectUrl } from '../../utils/oauth-state';
+import { jwtService } from '../jwt.service';
+import { AUTH_COOKIE_NAME } from '../../utils/cookie-config';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
 import { oauthNonceService } from './oauth-nonce.service';
 import { redisOAuthStateStore } from './oauth-redis-state-store.service';
@@ -183,6 +185,9 @@ export const initializePassportSession = () => {
   return passport.session();
 };
 
+// Google OAuth `prompt` 透傳白名單。限制可被 query 帶入的值以避免不預期的 prompt 行為（例如 `prompt=none` 會改變 OAuth 流程）被注入。
+const ALLOWED_PROMPTS = ['select_account', 'consent', 'select_account consent'] as const;
+
 /**
  * Google 認證中間件
  * 開始 Google OAuth 流程
@@ -265,7 +270,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     // 支援 redirect_uri（App 慣用）和 redirectUrl（Web 慣用）
     const redirectUri = validateRedirectParam(req.query.redirect_uri);
     const redirectUrlParam = validateRedirectParam(req.query.redirectUrl);
-    const redirectUrl = redirectUrlParam || redirectUri || '/dashboard';
+    const redirectUrl = redirectUrlParam || redirectUri || '/';
 
     const frontendUrlForError = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -293,11 +298,15 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
     stateParam = encodeOAuthState(state);
   }
 
-  // 動態呼叫 passport.authenticate 並傳入 state
+  // 動態 prompt：使用者主動 logout 後前端會帶 ?prompt=select_account，觸發 Google
+  // 顯示帳號選擇頁；其他情況（silent re-auth、token expired、初次登入）不帶 prompt，
+  // 維持 9aa59c1 拿掉硬編碼後的「無縫重登入」UX。
+  const prompt = (ALLOWED_PROMPTS as readonly string[]).find(p => p === req.query.prompt);
+
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     state: stateParam,
-    prompt: 'select_account'  // 強制顯示帳號選擇頁面
+    ...(prompt ? { prompt } : {})
   })(req, res, next);
 };
 
@@ -323,6 +332,29 @@ export const authenticateGoogleCallback = isOAuthConfigured()
         }
 
         if (!user) {
+          // 檢查是否已登入（e.g. 瀏覽器 back-forward cache 重觸發同一個 state/nonce）
+          const authToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
+          if (authToken) {
+            const decoded = jwtService.verifyToken(authToken);
+            if (!('error' in decoded) && decoded.id) {
+              const stateParam = req.query.state as string | undefined;
+              let finalRedirectUrl = `${frontendUrl}/`;
+              if (stateParam) {
+                const oauthState = decodeOAuthState(stateParam);
+                if (oauthState && isValidRedirectUri(oauthState.redirectUrl)) {
+                  finalRedirectUrl = getFinalRedirectUrl(oauthState, frontendUrl);
+                }
+              }
+              loggerService.info('OAuth callback - user already authenticated, skipping re-auth', {
+                userId: decoded.id,
+                redirectUrl: finalRedirectUrl,
+                nonceReused: true
+              });
+              res.redirect(finalRedirectUrl);
+              return;
+            }
+          }
+
           loggerService.warn('OAuth callback - authentication failed (no user)', {
             info: JSON.stringify(info),
             userAgent: req.get('User-Agent'),

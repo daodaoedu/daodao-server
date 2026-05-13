@@ -21,6 +21,20 @@ export interface ReactionNotificationData {
   reactionCount: number;
   practiceUrl: string;
   unsubscribeUrl: string;
+  reactionType?: string;
+}
+
+const REACTION_EMOJI_MAP: Record<string, string> = {
+  encourage: '🥰',
+  touched: '💓',
+  fire: '🔥',
+  useful: '👍🏻',
+  sameHere: '😳',
+  curious: '🧐',
+};
+
+function getReactionEmoji(reactionType: string | undefined): string {
+  return (reactionType && REACTION_EMOJI_MAP[reactionType]) ?? '🎉';
 }
 
 // ─── 主要輸出函式 ───────────────────────────────────────────────────────────────
@@ -32,6 +46,7 @@ export function generateReactionNotificationEmail(data: ReactionNotificationData
   const safeName         = escapeHtml(data.recipientName);
   const safeTitle        = escapeHtml(data.practiceTitle);
   const safePracticeUrl  = sanitizeUrl(data.practiceUrl);
+  const reactionEmoji    = getReactionEmoji(data.reactionType);
 
   const subject = `「${data.practiceTitle}」獲得了 ${data.reactionCount} 個鼓勵！`;
 
@@ -52,7 +67,7 @@ export function generateReactionNotificationEmail(data: ReactionNotificationData
   <tr>
     <td style="padding-bottom: 24px;">
       <p style="margin: 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary}; line-height: 170%;">
-        你的實踐「<strong>${safeTitle}</strong>」獲得了 <strong style="color: ${EMAIL_COLORS.brandCyan};">${data.reactionCount}</strong> 人的鼓勵 🎉
+        你的實踐「<strong>${safeTitle}</strong>」獲得了 <strong style="color: ${EMAIL_COLORS.brandCyan};">${data.reactionCount}</strong> 人的鼓勵 ${reactionEmoji}
       </p>
       <p style="margin: 8px 0 0 0; font-size: 15px; color: ${EMAIL_COLORS.textPrimary}; line-height: 170%;">
         繼續加油，你的每一步都在感染著更多人！

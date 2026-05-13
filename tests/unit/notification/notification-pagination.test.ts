@@ -1,5 +1,5 @@
 /**
- * 通知系統：API 分頁測試（12.10）
+ * 通知系統：API 分頁測試（12.10）與 Reaction emoji 修正迴歸測試
  *
  * 涵蓋範圍：
  * - 12.10 驗證通知中心分頁：
@@ -425,5 +425,101 @@ describe('12.10 通知中心分頁：GET /api/v1/notifications', () => {
       const findManyCall = prismaMock.notifications.findMany.mock.calls[0][0] as any;
       expect(findManyCall.where.recipient_id).toBe(99);
     });
+  });
+});
+
+// ============================================================================
+// Regression: reaction notification API response 包含正確的 reactionType
+// ============================================================================
+
+describe('Regression: reaction 通知 API response 包含 reactionType', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('payload 中的 reactionType（encourage）應出現在 API response', async () => {
+    prismaMock.notifications.findMany.mockResolvedValue([
+      makeNotificationRow({
+        id: 1,
+        type: 'PracticeReaction',
+        entity_type: 'practice',
+        payload: { reactionType: 'encourage', practice_title: '書摘記錄', entity_external_id: 'ext-1' },
+      }),
+    ] as any);
+    prismaMock.notifications.count.mockResolvedValue(0);
+    prismaMock.practices.findMany.mockResolvedValue([]);
+
+    const { req, res, jsonMock } = makeReqRes(1);
+    await callHandler(getNotifications, req, res);
+
+    const resp = jsonMock.mock.calls[0][0] as any;
+    const notification = resp.data.notifications[0];
+    expect(notification.reactionType).toBe('encourage');
+  });
+
+  it('payload 中的 reactionType（fire）應出現在 API response', async () => {
+    prismaMock.notifications.findMany.mockResolvedValue([
+      makeNotificationRow({
+        id: 2,
+        type: 'PracticeReaction',
+        entity_type: 'practice',
+        payload: { reactionType: 'fire', practice_title: '書摘記錄', entity_external_id: 'ext-2' },
+      }),
+    ] as any);
+    prismaMock.notifications.count.mockResolvedValue(0);
+    prismaMock.practices.findMany.mockResolvedValue([]);
+
+    const { req, res, jsonMock } = makeReqRes(1);
+    await callHandler(getNotifications, req, res);
+
+    const resp = jsonMock.mock.calls[0][0] as any;
+    const notification = resp.data.notifications[0];
+    expect(notification.reactionType).toBe('fire');
+  });
+
+  it('非 reaction 通知（留言）不應包含 reactionType', async () => {
+    prismaMock.notifications.findMany.mockResolvedValue([
+      makeNotificationRow({
+        id: 3,
+        type: 'comment',
+        payload: { content: '很棒的實踐！', practice_title: '書摘記錄' },
+      }),
+    ] as any);
+    prismaMock.notifications.count.mockResolvedValue(0);
+    prismaMock.practices.findMany.mockResolvedValue([]);
+
+    const { req, res, jsonMock } = makeReqRes(1);
+    await callHandler(getNotifications, req, res);
+
+    const resp = jsonMock.mock.calls[0][0] as any;
+    const notification = resp.data.notifications[0];
+    expect(notification.reactionType).toBeUndefined();
+  });
+
+  it('comment 類通知應回傳對應的 practice external id，而不是 comment id', async () => {
+    prismaMock.notifications.findMany.mockResolvedValue([
+      makeNotificationRow({
+        id: 4,
+        type: 'comment_reply',
+        entity_type: 'comment',
+        entity_id: 99,
+        payload: { content: '回覆內容' },
+      }),
+    ] as any);
+    prismaMock.notifications.count.mockResolvedValue(0);
+    prismaMock.comments.findMany.mockResolvedValue([
+      { id: 99, target_id: 10 } as any,
+    ]);
+    prismaMock.practices.findMany.mockResolvedValue([
+      { id: 10, external_id: 'practice-ext-10' } as any,
+    ]);
+
+    const { req, res, jsonMock } = makeReqRes(1);
+    await callHandler(getNotifications, req, res);
+
+    const resp = jsonMock.mock.calls[0][0] as any;
+    const notification = resp.data.notifications[0];
+    expect(notification.entityType).toBe('comment');
+    expect(notification.entityId).toBe('practice-ext-10');
   });
 });
