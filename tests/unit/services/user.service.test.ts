@@ -153,7 +153,8 @@ describe('User Service', () => {
       birthYear: 1990,
       phone: '+886987654321',
       wantToDoList: ['coding', 'reading'],
-      tags: ['developer', 'student']
+      tags: ['developer', 'student'],
+      customId: 'test_user'
     };
 
     it('should create user successfully with complete data', async () => {
@@ -182,6 +183,14 @@ describe('User Service', () => {
       expect(prismaMock.basic_info.create).toHaveBeenCalled();
       expect(prismaMock.contacts.create).toHaveBeenCalled();
       expect(prismaMock.users.create).toHaveBeenCalled();
+      expect(prismaMock.users.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            custom_id: validUserData.customId,
+            custom_id_verified: true
+          })
+        })
+      );
 
       // Verify response format
       expect(result.success).toBe(true);
@@ -201,6 +210,18 @@ describe('User Service', () => {
 
       await expect(userService.createUser(validUserData, '999'))
         .rejects.toThrow('Temporary user not found');
+    });
+
+    it('should reject user creation without customId', async () => {
+      const tempUser = createTestTempUser();
+      const userDataWithoutCustomId = { ...validUserData };
+      delete (userDataWithoutCustomId as Partial<typeof validUserData>).customId;
+
+      prismaMock.temp_users.findUnique.mockResolvedValue(tempUser);
+      prismaMock.users.findFirst.mockResolvedValue(null);
+
+      await expect(userService.createUser(userDataWithoutCustomId, '1'))
+        .rejects.toThrow('Custom ID 為必填欄位');
     });
 
     it('should throw ConflictError when username already exists', async () => {
