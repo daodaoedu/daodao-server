@@ -11113,7 +11113,7 @@ export interface paths {
             parameters: {
                 query: {
                     /** @description 查詢的目標類型 */
-                    targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio";
+                    targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio" | "checkin";
                     /** @description 目標對象ID */
                     targetId: string;
                 };
@@ -11283,10 +11283,119 @@ export interface paths {
                     };
                 };
                 400: components["responses"]["BadRequestError"];
+                403: components["responses"]["ForbiddenError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comments/mention-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 獲取 @mention 候選人
+         * @description 獲取指定目標可供 @mention 的使用者候選清單
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 查詢的目標類型 */
+                    targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio" | "checkin";
+                    /** @description 目標對象ID */
+                    targetId: string;
+                    /** @description 候選人數量上限 */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功獲取 @mention 候選人 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: components["schemas"]["MentionCandidate"][];
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
                 500: components["responses"]["InternalServerError"];
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11594,7 +11703,7 @@ export interface paths {
             parameters: {
                 query: {
                     /** @description 反應目標類型 */
-                    targetType: "practice" | "comment";
+                    targetType: "practice" | "comment" | "checkin";
                     /** @description 目標外部 ID（UUID） */
                     targetId: string;
                 };
@@ -11877,7 +11986,7 @@ export interface paths {
             parameters: {
                 query: {
                     /** @description 反應目標類型 */
-                    targetType: "practice" | "comment";
+                    targetType: "practice" | "comment" | "checkin";
                     /** @description 目標外部 ID（UUID） */
                     targetId: string;
                 };
@@ -11900,6 +12009,111 @@ export interface paths {
                              */
                             success: true;
                             data: components["schemas"]["GetReactionsListResponse"] & unknown;
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reactions/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 批次取得反應資料
+         * @description 批次取得多個目標的各類型反應計數、當前用戶狀態、以及個別用戶反應列表
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 反應目標類型 */
+                    targetType: "practice" | "comment" | "checkin";
+                    /** @description 逗號分隔的目標 ID（practice 為 UUID，comment/checkin 為整數），最多 50 個 */
+                    targetIds: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功取得批次反應資料 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            data: components["schemas"]["GetReactionsBatchResponse"] & unknown;
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -15738,6 +15952,119 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/practices/{id}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 複製實踐
+         * @description 將指定的實踐複製到自己的清單。複製他人的實踐時，來源實踐必須為公開狀態。複製自己的實踐不受此限。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 複製成功，回傳新實踐 ID */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /**
+                             * @description The main response data
+                             * @example {
+                             *       "id": "550e8400-e29b-41d4-a716-446655440000"
+                             *     }
+                             */
+                            data: {
+                                /** @description 新實踐 external ID（UUID） */
+                                id: string;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -24031,13 +24358,13 @@ export interface components {
              */
             referralSource?: ("instagram" | "facebook" | "discord" | "linkedin" | "friend_referral" | "others") | string;
             /**
-             * @description 自訂 ID (可選)
+             * @description 自訂 ID (必填)
              * @example my_custom_id
              * @example my_custom_id
              * @example user123
              * @example john_doe
              */
-            customId?: string;
+            customId: string;
         };
         /** @description 更新用戶請求 */
         UpdateUserRequest: {
@@ -25854,7 +26181,7 @@ export interface components {
              * @example resource
              * @enum {string}
              */
-            targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio";
+            targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio" | "checkin";
             /**
              * @description 留言內容
              * @example 這個資源非常有用，謝謝分享！
@@ -25901,7 +26228,7 @@ export interface components {
              * @example outcome
              * @enum {string}
              */
-            targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio";
+            targetType: "post" | "resource" | "note" | "outcome" | "review" | "circle" | "idea" | "practice" | "portfolio" | "checkin";
             /**
              * @description 目標對象的唯一識別碼
              * @example 123e4567-e89b-12d3-a456-426614174000
@@ -25962,6 +26289,15 @@ export interface components {
              * @enum {string}
              */
             visibility?: "public" | "private";
+            /**
+             * @description 編輯後留言中提及的使用者 ID 陣列（完整清單，後端進行差異比對）
+             * @example [
+             *       1,
+             *       2,
+             *       3
+             *     ]
+             */
+            mentionedUserIds?: number[];
         };
         /** @description 刪除留言回應 */
         DeleteCommentResponse: {
@@ -28572,7 +28908,7 @@ export interface components {
              * @example practice
              * @enum {string}
              */
-            targetType: "practice" | "comment";
+            targetType: "practice" | "comment" | "checkin";
             /**
              * @description 目標外部 ID（UUID）
              * @example 32859587-f159-43fd-93e7-fcc890661781
@@ -28596,7 +28932,7 @@ export interface components {
              * @example practice
              * @enum {string}
              */
-            targetType: "practice" | "comment";
+            targetType: "practice" | "comment" | "checkin";
             /**
              * @description 目標外部 ID（UUID）
              * @example 32859587-f159-43fd-93e7-fcc890661781
@@ -28623,6 +28959,19 @@ export interface components {
         GetReactionsListResponse: {
             /** @description 反應列表 */
             items: components["schemas"]["ReactionListItem"][];
+        };
+        /** @description 單一目標的反應資料 */
+        BatchReactionItem: {
+            /** @description 各類型反應計數 */
+            reactions: components["schemas"]["ReactionCount"][];
+            /** @description 當前用戶的反應類型（未反應為 null） */
+            currentUserReaction: string | null;
+            /** @description 個別用戶反應列表 */
+            items: components["schemas"]["ReactionListItem"][];
+        };
+        /** @description 批次反應查詢回應，key 為 targetId */
+        GetReactionsBatchResponse: {
+            [key: string]: components["schemas"]["BatchReactionItem"];
         };
         AdminUserListQuery: {
             /**
@@ -29672,6 +30021,7 @@ export interface components {
             userId: number;
             externalId: string;
             nickname: string | null;
+            photoUrl: string | null;
             connectedAt: string;
         };
         /**
@@ -29767,6 +30117,10 @@ export interface components {
             requestId: number;
             requesterExternalId: string;
             requesterNickname: string | null;
+            requesterPhotoUrl: string | null;
+            receiverExternalId: string;
+            receiverNickname: string | null;
+            receiverPhotoUrl: string | null;
             intent: string | null;
             interactionCount: number;
             createdAt: string;
@@ -30671,6 +31025,35 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+        };
+        /** @description @mention 候選人 */
+        MentionCandidate: {
+            /**
+             * @description 用戶外部 ID
+             * @example user_123e4567
+             */
+            userId: string;
+            /**
+             * @description 用戶內部 ID，用於 mentionedUserIds
+             * @example 1
+             */
+            numericUserId: number;
+            /**
+             * @description 顯示名稱
+             * @example 王小明
+             */
+            name: string;
+            /**
+             * Format: uri
+             * @description 用戶頭像 URL
+             * @example https://example.com/avatar.jpg
+             */
+            photoURL: string | null;
+            /**
+             * @description 用戶自訂 ID
+             * @example my_custom_id
+             */
+            customId: string | null;
         };
         /** @description The main response data */
         DeleteTemplateResponse: {

@@ -87,7 +87,7 @@ export interface CreateUserRequest {
   professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
-  customId?: string; // 自訂 ID (可在創建時設置)
+  customId: string; // 自訂 ID
 }
 
 // 用戶更新請求介面

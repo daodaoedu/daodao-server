@@ -23,6 +23,8 @@ export interface ReactionNotificationJob {
   practiceTitle: string;
   reactionType: string;
   totalReactionCount: number;
+  entityType?: string;   // 'practice' (default) | 'checkin'
+  entityId?: number;     // actual entity ID (checkin ID for checkin reactions)
 }
 
 // ─── Singleton Queue 實例 ──────────────────────────────────────────────────────
@@ -91,7 +93,9 @@ export async function enqueueReactionNotification(job: ReactionNotificationJob):
   const queue = reactionNotificationQueueInstance;
   if (!queue) return;
 
-  const jobId = `reaction-notification-${job.practiceId}`;
+  const entityType = job.entityType ?? 'practice';
+  const entityId = job.entityId ?? job.practiceId;
+  const jobId = `reaction-notification-${entityType}-${entityId}`;
 
   // Remove existing delayed job if present, then add new one.
   // Retry once if add() fails due to race with concurrent enqueue.

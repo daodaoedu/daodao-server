@@ -27,6 +27,12 @@ import {
   generateSettingsUrl,
 } from '../services/notification-unsubscribe.service';
 import { emailService } from '../services/email/email.service';
+import {
+  createEmailLog,
+  updateEmailLogStatus,
+  hasEmailBeenSent,
+} from '../services/email/email-log.service';
+import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -232,7 +238,50 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
         const subject = generateWeeklyDigestSubject(weeklyData);
         const html = generateWeeklyDigestHtml(weeklyData);
 
-        const result = await emailService.sendEmail({ to: recipientEmail, subject, html });
+        // 防重複：BullMQ retry 保護
+        const alreadySent = await hasEmailBeenSent({
+          userId: recipientId,
+          emailType: EMAIL_TYPES.NOTIFICATION_WEEKLY,
+          since: weekStart,
+        });
+        if (alreadySent) {
+          loggerService.info('[weekly-worker] Weekly already sent this week, skipping', { recipientId });
+          continue;
+        }
+
+        // 建立 pending log
+        let logRecord: { id: number; tracking_token: string | null } | null = null;
+        try {
+          logRecord = await createEmailLog({
+            userId: recipientId,
+            emailType: EMAIL_TYPES.NOTIFICATION_WEEKLY,
+            subject,
+            status: EMAIL_STATUS.PENDING,
+          });
+        } catch (logErr) {
+          loggerService.error('[weekly-worker] Failed to create email log', {
+            recipientId,
+            error: logErr instanceof Error ? logErr.message : String(logErr),
+          });
+        }
+
+        const result = await emailService.sendEmail({
+          to: recipientEmail,
+          subject,
+          html,
+          trackingToken: logRecord?.tracking_token ?? undefined,
+        });
+
+        try {
+          if (logRecord) {
+            await updateEmailLogStatus(logRecord.id, result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED);
+          }
+        } catch (logErr) {
+          loggerService.error('[weekly-worker] Failed to update email log status', {
+            recipientId,
+            error: logErr instanceof Error ? logErr.message : String(logErr),
+          });
+        }
 
         if (result.success) {
           loggerService.info('[weekly-worker] Weekly digest email sent', {

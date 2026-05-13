@@ -46,6 +46,14 @@ export interface CommentUser {
   customId: string | null;
 }
 
+export interface MentionCandidate {
+  userId: string;
+  numericUserId: number;
+  name: string;
+  photoURL: string | null;
+  customId: string | null;
+}
+
 // Comment response interface with user information and nested replies
 export interface CommentResponse {
   id: number;
@@ -113,6 +121,13 @@ export interface GetCommentsParams {
   targetType: CommentTargetType;
   targetId: string;
   currentUser?: AuthUser | null;
+}
+
+export interface GetMentionCandidatesParams {
+  targetType: CommentTargetType;
+  targetId: string;
+  currentUser?: AuthUser | null;
+  limit?: number;
 }
 
 // Parameters for getting comment detail
@@ -215,6 +230,7 @@ export interface CommentParamsSchema {
 export interface CommentServiceInterface {
   createComment(params: CreateCommentParams): Promise<ApiSuccessResponse<CommentResponse>>;
   getComments(params: GetCommentsParams): Promise<ApiSuccessResponse<CommentResponse[]>>;
+  getMentionCandidates(params: GetMentionCandidatesParams): Promise<ApiSuccessResponse<MentionCandidate[]>>;
   getCommentDetail(commentId: number, currentUser?: AuthUser | null): Promise<ApiSuccessResponse<CommentResponse>>;
   updateComment(params: UpdateCommentParams): Promise<ApiSuccessResponse<CommentResponse>>;
   deleteComment(params: DeleteCommentParams): Promise<ApiSuccessResponse<{ message: string }>>;
@@ -253,6 +269,7 @@ export interface DatabaseComment {
 export interface CommentControllerInterface {
   createComment(req: Request, res: Response): Promise<void>;
   getComments(req: Request, res: Response): Promise<void>;
+  getMentionCandidates(req: Request, res: Response): Promise<void>;
   getCommentDetail(req: Request, res: Response): Promise<void>;
   updateComment(req: Request, res: Response): Promise<void>;
   deleteComment(req: Request, res: Response): Promise<void>;

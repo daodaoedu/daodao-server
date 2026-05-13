@@ -35,6 +35,20 @@ jest.mock('@/queues', () => ({
   enqueuePracticeEmail: jest.fn().mockResolvedValue(undefined)
 }));
 
+const mockCreateEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/services/notification-event.service', () => ({
+  notificationEventService: {
+    createEvent: (...args: unknown[]) => mockCreateEvent(...args),
+  },
+}));
+
+const mockFanoutToPracticeFollowers = jest.fn().mockResolvedValue(undefined);
+const mockFanoutToConnectedPartners = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/services/social-notification-fanout.service', () => ({
+  fanoutToPracticeFollowers: (...args: unknown[]) => mockFanoutToPracticeFollowers(...args),
+  fanoutToConnectedPartners: (...args: unknown[]) => mockFanoutToConnectedPartners(...args),
+}));
+
 // Mock R2 service for image upload tests
 const mockUploadToR2 = jest.fn().mockResolvedValue(undefined);
 const mockDeleteFromR2 = jest.fn().mockResolvedValue(undefined);
@@ -64,6 +78,9 @@ describe('Practice CheckIn Service', () => {
     // Setup common mock returns
     mockLoggerService.info.mockReturnValue(undefined);
     mockLoggerService.error.mockReturnValue(undefined);
+    mockCreateEvent.mockResolvedValue(undefined);
+    mockFanoutToPracticeFollowers.mockResolvedValue(undefined);
+    mockFanoutToConnectedPartners.mockResolvedValue(undefined);
   });
 
   // Helper to create Decimal mock that behaves like a number
@@ -244,6 +261,130 @@ describe('Practice CheckIn Service', () => {
 
       expect(prismaMock.$transaction).toHaveBeenCalled();
     });
+
+    it('should fan out check-in notifications to practice followers and connected partners', async () => {
+      const testPractice = createTestPractice({ status: 'not_started', privacy_status: 'public' });
+      const testCheckIn = createTestCheckIn({ id: 88 });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+
+      await createCheckIn(1, createCheckInRequest(), 1);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockFanoutToPracticeFollowers).toHaveBeenCalledWith(
+        'follow.practice_checkin',
+        1,
+        1,
+        expect.objectContaining({
+          practiceId: 1,
+          checkinId: 88,
+          practice_title: 'TypeScript 學習',
+          entity_external_id: 'practice-uuid',
+        })
+      );
+      expect(mockFanoutToConnectedPartners).toHaveBeenCalledWith(
+        'connect.partner_checkin',
+        1,
+        expect.objectContaining({
+          practiceId: 1,
+          checkinId: 88,
+        })
+      );
+    });
+
+    it.each(['private', 'delayed'])(
+      'should not fan out check-in notifications for %s practice',
+      async (privacyStatus) => {
+        const testPractice = createTestPractice({
+          status: 'not_started',
+          privacy_status: privacyStatus,
+        });
+        const testCheckIn = createTestCheckIn({ id: 88 });
+
+        prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+        prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+        prismaMock.practice_checkins.count.mockResolvedValue(0);
+        prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+        prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+        prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+
+        await createCheckIn(1, createCheckInRequest(), 1);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(mockFanoutToPracticeFollowers).not.toHaveBeenCalled();
+        expect(mockFanoutToConnectedPartners).not.toHaveBeenCalled();
+      }
+    );
+
+    it('should notify practice followers when public practice becomes completed', async () => {
+      const yesterday = new Date();
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const testPractice = createTestPractice({
+        status: 'active',
+        privacy_status: 'public',
+        end_date: yesterday,
+      });
+      const testCheckIn = createTestCheckIn({ id: 88 });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(1);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'completed' });
+      prismaMock.follows.findMany.mockResolvedValue([{ follower_id: 2 }] as any);
+
+      await createCheckIn(1, createCheckInRequest(), 1);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'update-practice-finish',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'practice',
+          entityId: 1,
+          priority: 'P2',
+        })
+      );
+    });
+
+    it.each(['private', 'delayed'])(
+      'should not notify practice followers when %s practice becomes completed',
+      async (privacyStatus) => {
+        const yesterday = new Date();
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        const testPractice = createTestPractice({
+          status: 'active',
+          privacy_status: privacyStatus,
+          end_date: yesterday,
+        });
+        const testCheckIn = createTestCheckIn({ id: 88 });
+
+        prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+        prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+        prismaMock.practice_checkins.count.mockResolvedValue(1);
+        prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+        prismaMock.practice_checkins.create.mockResolvedValue(testCheckIn);
+        prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'completed' });
+
+        await createCheckIn(1, createCheckInRequest(), 1);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(mockCreateEvent).not.toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'update-practice-finish' })
+        );
+      }
+    );
   });
 
   describe('getCheckIns', () => {

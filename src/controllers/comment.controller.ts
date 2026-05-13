@@ -25,9 +25,11 @@ import {
   validateCreateComment,
   validateUpdateComment,
   validateGetCommentsQuery,
+  validateGetMentionCandidatesQuery,
   validateCommentParams,
   createCommentApiResponseSchema,
   getCommentsApiResponseSchema,
+  getMentionCandidatesApiResponseSchema,
   getCommentDetailApiResponseSchema,
   updateCommentApiResponseSchema,
   deleteCommentApiResponseSchema
@@ -61,6 +63,7 @@ export class CommentController implements CommentControllerInterface {
       content: validatedData.content,
       visibility: validatedData.visibility,
       parentId: validatedData.parentId,
+      mentionedUserIds: validatedData.mentionedUserIds,
       userId: req.user.id
     };
 
@@ -100,6 +103,25 @@ export class CommentController implements CommentControllerInterface {
 
     // Validate and send success response
     const validatedResponse = getCommentsApiResponseSchema.parse(result);
+    res.json(validatedResponse);
+  }
+
+  async getMentionCandidates(req: Request, res: Response): Promise<void> {
+    const validatedQuery = validateGetMentionCandidatesQuery(req.query);
+
+    const currentUser = req.user ? {
+      id: req.user.id || 0,
+      role: req.user.roles?.[0] || ''
+    } : null;
+
+    const result = await commentService.getMentionCandidates({
+      targetType: validatedQuery.targetType,
+      targetId: validatedQuery.targetId,
+      currentUser,
+      limit: validatedQuery.limit,
+    });
+
+    const validatedResponse = getMentionCandidatesApiResponseSchema.parse(result);
     res.json(validatedResponse);
   }
 
@@ -206,6 +228,10 @@ export const getComments = asyncHandler(
   commentControllerInstance.getComments.bind(commentControllerInstance)
 );
 
+export const getMentionCandidates = asyncHandler(
+  commentControllerInstance.getMentionCandidates.bind(commentControllerInstance)
+);
+
 export const getCommentDetail = asyncHandler(
   commentControllerInstance.getCommentDetail.bind(commentControllerInstance)
 );
@@ -222,6 +248,7 @@ export const deleteComment = asyncHandler(
 export const commentController = {
   createComment,
   getComments,
+  getMentionCandidates,
   getCommentDetail,
   updateComment,
   deleteComment
