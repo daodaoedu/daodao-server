@@ -780,20 +780,21 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       throw new ConflictError(`使用者名稱 ${tempUser.name} 已存在`);
     }
 
-    // 檢查 customId 是否已被使用(如果有提供)
-    if (customId) {
-      // 使用共享的驗證函數
-      if (!validateCustomIdFormat(customId)) {
-        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
-      }
+    if (!customId) {
+      throw new BadRequestError('Custom ID 為必填欄位');
+    }
 
-      const existingCustomId = await tx.users.findFirst({
-        where: { custom_id: customId }
-      });
+    // 使用共享的驗證函數
+    if (!validateCustomIdFormat(customId)) {
+      throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.FORMAT);
+    }
 
-      if (existingCustomId) {
-        throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.ALREADY_EXISTS);
-      }
+    const existingCustomId = await tx.users.findFirst({
+      where: { custom_id: customId }
+    });
+
+    if (existingCustomId) {
+      throw new ConflictError(CUSTOM_ID_ERROR_MESSAGES.ALREADY_EXISTS);
     }
 
     // 處理地區 - 使用 cityService 查找或建立 location
