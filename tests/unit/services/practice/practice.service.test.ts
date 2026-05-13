@@ -36,6 +36,13 @@ jest.mock('@/queues', () => ({
   enqueuePracticeEmail: mockEnqueuePracticeEmail
 }));
 
+const mockFanoutToPracticeFollowers = jest.fn().mockResolvedValue(undefined);
+const mockFanoutToConnectedPartners = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/services/social-notification-fanout.service', () => ({
+  fanoutToPracticeFollowers: (...args: unknown[]) => mockFanoutToPracticeFollowers(...args),
+  fanoutToConnectedPartners: (...args: unknown[]) => mockFanoutToConnectedPartners(...args),
+}));
+
 import {
   findAll,
   findById,
@@ -57,6 +64,8 @@ describe('Practice Service', () => {
     mockLoggerService.warn.mockReturnValue(undefined);
     mockEnqueuePracticeEmail.mockResolvedValue('job-id');
     mockCreateEvent.mockResolvedValue(undefined);
+    mockFanoutToPracticeFollowers.mockResolvedValue(undefined);
+    mockFanoutToConnectedPartners.mockResolvedValue(undefined);
     prismaMock.follows.findMany.mockResolvedValue([] as any);
     prismaMock.connections.findMany.mockResolvedValue([] as any);
   });
@@ -518,6 +527,94 @@ describe('Practice Service', () => {
       expect(result.data.themeColor).toBe('#FCDD84');
     });
 
+    it('should fan out regular updates only for public practice', async () => {
+      const mockExistingPractice = {
+        id: 1,
+        user_id: 1,
+        status: 'not_started',
+        practice_time_periods: [],
+        created_at: new Date(),
+        deleted_at: null
+      };
+      const mockUpdatedPractice = {
+        id: 1,
+        external_id: 'practice-uuid',
+        title: 'Updated Practice',
+        status: 'not_started',
+        privacy_status: 'public',
+        progress_percentage: 20,
+        practice_time_periods: [],
+        theme_color: '#FCDD84',
+        created_at: new Date(),
+        deleted_at: null,
+        users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
+      } as any;
+
+      prismaMock.practices.findUnique.mockResolvedValue(mockExistingPractice as any);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice);
+      prismaMock.comments.groupBy.mockResolvedValue([]);
+      prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+
+      await update(1, mockUpdateRequest, 1);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockFanoutToPracticeFollowers).toHaveBeenCalledWith(
+        'follow.practice_update',
+        1,
+        1,
+        { practiceId: 1 }
+      );
+      expect(mockFanoutToConnectedPartners).toHaveBeenCalledWith(
+        'connect.partner_update',
+        1,
+        { practiceId: 1 }
+      );
+    });
+
+    it.each(['private', 'delayed'])(
+      'should not fan out regular updates for %s practice',
+      async (privacyStatus) => {
+        const mockExistingPractice = {
+          id: 1,
+          user_id: 1,
+          status: 'not_started',
+          practice_time_periods: [],
+          created_at: new Date(),
+          deleted_at: null
+        };
+        const mockUpdatedPractice = {
+          id: 1,
+          external_id: 'practice-uuid',
+          title: 'Updated Practice',
+          status: 'not_started',
+          privacy_status: privacyStatus,
+          progress_percentage: 20,
+          practice_time_periods: [],
+          theme_color: '#FCDD84',
+          created_at: new Date(),
+          deleted_at: null,
+          users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
+        } as any;
+
+        prismaMock.practices.findUnique.mockResolvedValue(mockExistingPractice as any);
+        prismaMock.practice_checkins.count.mockResolvedValue(0);
+        prismaMock.practices.update.mockResolvedValue(mockUpdatedPractice);
+        prismaMock.comments.groupBy.mockResolvedValue([]);
+        prismaMock.entity_tags.findMany.mockResolvedValue([]);
+        prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+
+        await update(1, mockUpdateRequest, 1);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(mockFanoutToPracticeFollowers).not.toHaveBeenCalled();
+        expect(mockFanoutToConnectedPartners).not.toHaveBeenCalled();
+      }
+    );
+
     it('should throw error when practice not found', async () => {
       prismaMock.practices.findUnique.mockResolvedValue(null);
 
@@ -673,6 +770,8 @@ describe('Practice Service', () => {
       expect(practiceCreatedCalls.map((call: any[]) => call[0].recipientId)).toEqual(
         expect.arrayContaining([2, 3])
       );
+      expect(mockFanoutToPracticeFollowers).not.toHaveBeenCalled();
+      expect(mockFanoutToConnectedPartners).not.toHaveBeenCalled();
     });
 
     it('should NOT send PE01 email for regular updates (not publishing draft)', async () => {
