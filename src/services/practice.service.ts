@@ -858,11 +858,14 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     }
 
     // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
-    const updatePayload = { practiceId: id };
-    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
-      fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
-      fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
-    }).catch(() => {});
+    // 草稿發布已送 PracticeCreated；private / delayed 不通知以避免曝光非公開內容
+    if (!isPublishingDraft && practice.privacy_status === 'public') {
+      const updatePayload = { practiceId: id };
+      getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+        fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
+        fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
+      }).catch(() => {});
+    }
 
     return createSuccessResponse(practiceEntity);
 

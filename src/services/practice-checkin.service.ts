@@ -256,8 +256,8 @@ export async function createCheckIn(
       });
     }
 
-    // 通知關注此實踐的 followers：實踐完成（非阻塞）
-    if (newStatus === 'completed') {
+    // 通知關注此實踐的 followers：實踐完成（非阻塞）；只有 public practice 才通知
+    if (newStatus === 'completed' && practice.privacy_status === 'public') {
       const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
       prismaClient.follows.findMany({
         where:  { target_type: 'practice', target_id: practiceId },
