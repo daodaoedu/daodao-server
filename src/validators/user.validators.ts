@@ -243,12 +243,12 @@ export const createUserSchema = z.object({
   personalSlogan: personalSloganSchema,
   referralSource: referralSourceSchema,
   customId: z.string()
+    .trim()
     .min(3, 'Custom ID 至少 3 個字元')
     .max(50, 'Custom ID 不可超過 50 個字元')
     .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$/, 'Custom ID 只能包含英數字、底線和連字符,且不能以底線或連字符開頭/結尾')
-    .optional()
     .openapi({
-      description: '自訂 ID (可選)',
+      description: '自訂 ID (必填)',
       example: 'my_custom_id',
       examples: ['my_custom_id', 'user123', 'john_doe']
     })

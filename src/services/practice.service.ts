@@ -56,6 +56,56 @@ const prismaClient = prisma;
 // 主題色循環順序
 const THEME_COLORS = ['#FCDD84', '#C3EEFF', '#FFC0C8', '#A0E8D0'] as const;
 
+async function notifyPracticeCreatedAudience(params: {
+  actorId: number;
+  practiceId: number;
+  practiceTitle: string;
+  privacyStatus?: string | null;
+}): Promise<void> {
+  const { actorId, practiceId, practiceTitle, privacyStatus } = params;
+
+  // 只有 public practice 通知 followers / connected partners，避免 private / delayed 內容提早曝光
+  if (privacyStatus !== 'public') {
+    return;
+  }
+
+  const [followers, connections] = await Promise.all([
+    prismaClient.follows.findMany({
+      where: { target_type: 'user', target_id: actorId },
+      select: { follower_id: true },
+    }),
+    prismaClient.connections.findMany({
+      where: { OR: [{ user_a_id: actorId }, { user_b_id: actorId }] },
+      select: { user_a_id: true, user_b_id: true },
+    }),
+  ]);
+
+  const recipientIds = new Set<number>();
+  for (const follower of followers) {
+    if (follower.follower_id !== actorId) {
+      recipientIds.add(follower.follower_id);
+    }
+  }
+  for (const connection of connections) {
+    const partnerId = connection.user_a_id === actorId ? connection.user_b_id : connection.user_a_id;
+    if (partnerId !== actorId) {
+      recipientIds.add(partnerId);
+    }
+  }
+
+  await Promise.all([...recipientIds].map(recipientId =>
+    notificationEventService.createEvent({
+      type: 'PracticeCreated',
+      actorId,
+      recipientId,
+      entityType: 'practice',
+      entityId: practiceId,
+      priority: 'P2',
+      payload: { practice_title: practiceTitle },
+    })
+  ));
+}
+
 /**
  * 取得實踐列表（支援篩選、分頁、搜尋）
  */
@@ -568,26 +618,15 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
       });
 
-      // 通知關注此用戶的 followers（非阻塞）
-      // private practice 不通知 followers，避免標題與存在被洩漏給非授權對象
-      if (practice.privacy_status !== 'private') {
-        prismaClient.follows.findMany({
-          where:  { target_type: 'user', target_id: userId },
-          select: { follower_id: true },
-        }).then((followers) => {
-          for (const { follower_id } of followers) {
-            notificationEventService.createEvent({
-              type:        'PracticeCreated',
-              actorId:     userId,
-              recipientId: follower_id,
-              entityType:  'practice',
-              entityId:    practice.id,
-              priority:    'P2',
-              payload:     { practice_title: practice.title },
-            }).catch(() => {});
-          }
-        }).catch(() => {});
-      }
+      // 通知關注此用戶的 followers 與 connected partners（非阻塞）
+      notifyPracticeCreatedAudience({
+        actorId: userId,
+        practiceId: practice.id,
+        practiceTitle: practice.title,
+        privacyStatus: practice.privacy_status,
+      }).catch(err => {
+        loggerService.error('Failed to notify practice created audience', { practiceId: practice.id, error: err });
+      });
     }
 
     return createSuccessResponse(practiceEntity);
@@ -807,34 +846,26 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         loggerService.error('Failed to enqueue PE01 email for published draft', { practiceId: id, error: err });
       });
 
-      // 通知關注此用戶的 followers（非阻塞）
-      // private practice 不通知 followers，避免標題與存在被洩漏給非授權對象
-      if (practice.privacy_status !== 'private') {
-        prismaClient.follows.findMany({
-          where:  { target_type: 'user', target_id: userId },
-          select: { follower_id: true },
-        }).then((followers) => {
-          for (const { follower_id } of followers) {
-            notificationEventService.createEvent({
-              type:        'PracticeCreated',
-              actorId:     userId,
-              recipientId: follower_id,
-              entityType:  'practice',
-              entityId:    id,
-              priority:    'P2',
-              payload:     { practice_title: practice.title },
-            }).catch(() => {});
-          }
-        }).catch(() => {});
-      }
+      // 通知關注此用戶的 followers 與 connected partners（非阻塞）
+      notifyPracticeCreatedAudience({
+        actorId: userId,
+        practiceId: id,
+        practiceTitle: practice.title,
+        privacyStatus: practice.privacy_status,
+      }).catch(err => {
+        loggerService.error('Failed to notify published practice audience', { practiceId: id, error: err });
+      });
     }
 
     // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
-    const updatePayload = { practiceId: id };
-    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
-      fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
-      fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
-    }).catch(() => {});
+    // 草稿發布已送 PracticeCreated；private / delayed 不通知以避免曝光非公開內容
+    if (!isPublishingDraft && practice.privacy_status === 'public') {
+      const updatePayload = { practiceId: id };
+      getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+        fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
+        fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
+      }).catch(() => {});
+    }
 
     return createSuccessResponse(practiceEntity);
 

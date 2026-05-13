@@ -360,6 +360,50 @@ describe('Reaction Service', () => {
       );
     });
 
+    it('對 checkin 底下的留言按 reaction → 通知帶 practice 與 checkin metadata', async () => {
+      const reaction = makeReaction({ target_type: 'comment', target_id: 30, user_id: 1 });
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(null);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+      prismaMock.comments.findUnique.mockResolvedValue({
+        id: 30,
+        user_id: 2,
+        target_type: 'checkin',
+        target_id: 20,
+      } as any);
+      prismaMock.practice_checkins.findUnique.mockResolvedValue({
+        id: 20,
+        practices: {
+          title: '每日冥想',
+          external_id: 'ext-100',
+        },
+      } as any);
+
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'reaction',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'comment',
+          entityId: 30,
+          payload: expect.objectContaining({
+            reactionType: 'fire',
+            practice_title: '每日冥想',
+            entity_external_id: 'ext-100',
+            checkinId: 20,
+          }),
+        }),
+      );
+    });
+
     it('對自己留言按 reaction → 不觸發通知', async () => {
       // commentOwner === actor === 1
       setupCommentReaction(/* commentOwner */ 1, /* actor */ 1, null);
@@ -481,7 +525,7 @@ describe('Reaction Service', () => {
       expect(mockCreateEvent).not.toHaveBeenCalled();
     });
 
-    it('should not call enqueueReactionNotification for checkin', async () => {
+    it('should enqueue reaction notification for checkin', async () => {
       const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue') as { enqueueReactionNotification: jest.Mock };
 
       const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
@@ -512,8 +556,17 @@ describe('Reaction Service', () => {
         reactionType: 'fire',
       });
 
-      // Unlike practice, checkin reactions don't use the email queue
-      expect(enqueueReactionNotification).not.toHaveBeenCalled();
+      expect(enqueueReactionNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          practiceId: 100,
+          actorUserId: 1,
+          practiceOwnerId: 2,
+          practiceTitle: '每日冥想',
+          reactionType: 'fire',
+          entityType: 'checkin',
+          entityId: 20,
+        }),
+      );
     });
   });
 });

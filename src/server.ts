@@ -52,6 +52,11 @@ import {
   closeNotificationInAppWorker,
   closeNotificationEmailWorker,
   closeNotificationWeeklyWorker,
+  // Social Notification Queue
+  createSocialNotificationQueue,
+  setSocialNotificationQueue,
+  createSocialNotificationWorker,
+  closeSocialNotificationWorker,
   // Reaction Notification Queue
   createReactionNotificationQueue,
   setReactionNotificationQueue,
@@ -63,6 +68,7 @@ import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
 import type { PracticeEmailJobData } from './types/email/practice.types';
 import type { PracticeStatusJobData } from './queues';
+import type { SocialNotificationJob } from './types/social.types';
 
 // BullMQ 全域實例
 let practiceEmailQueue: Queue<PracticeEmailJobData> | null = null;
@@ -72,6 +78,8 @@ let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
 let notificationInAppWorker: Worker | null = null;
 let notificationEmailWorker: Worker | null = null;
 let notificationWeeklyWorker: Worker | null = null;
+let socialNotificationQueue: Queue<SocialNotificationJob> | null = null;
+let socialNotificationWorker: Worker<SocialNotificationJob> | null = null;
 let reactionNotificationQueue: Queue<ReactionNotificationJob> | null = null;
 let reactionNotificationWorker: Worker<ReactionNotificationJob> | null = null;
 
@@ -292,6 +300,14 @@ async function initializeBullMQ(): Promise<void> {
     await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
     console.log('🔔 通知排程任務已註冊');
 
+    // ===== Social Notification Queue（關注/連結 fan-out）=====
+    socialNotificationQueue = createSocialNotificationQueue();
+    setSocialNotificationQueue(socialNotificationQueue);
+    console.log('👥 Social Notification Queue 已建立');
+
+    socialNotificationWorker = createSocialNotificationWorker({ concurrency: 5 });
+    console.log('👥 Social Notification Worker 已啟動');
+
     // ===== Reaction Notification Queue（快速回應 email，1小時延遲彙整）=====
     reactionNotificationQueue = createReactionNotificationQueue();
     setReactionNotificationQueue(reactionNotificationQueue);
@@ -347,6 +363,14 @@ async function gracefulShutdown(signal: string) {
     if (notificationWeeklyWorker) {
       await closeNotificationWeeklyWorker(notificationWeeklyWorker);
       console.log('✅ Notification Weekly Worker 已關閉');
+    }
+    if (socialNotificationWorker) {
+      await closeSocialNotificationWorker(socialNotificationWorker);
+      console.log('✅ Social Notification Worker 已關閉');
+    }
+    if (socialNotificationQueue) {
+      await socialNotificationQueue.close();
+      console.log('✅ Social Notification Queue 已關閉');
     }
     if (reactionNotificationWorker) {
       await closeReactionNotificationWorker(reactionNotificationWorker);
