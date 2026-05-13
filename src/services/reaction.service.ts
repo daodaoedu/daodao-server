@@ -140,6 +140,23 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
               entityId: targetId,
             });
           }
+        } else if (targetType === 'comment') {
+          const comment = await prisma.comments.findUnique({
+            where: { id: targetId },
+            select: { user_id: true },
+          });
+
+          if (comment && comment.user_id !== userId) {
+            notificationEventService.createEvent({
+              type: 'reaction',
+              actorId: userId,
+              recipientId: comment.user_id,
+              entityType: 'comment',
+              entityId: targetId,
+              payload: { reactionType },
+              priority: 'P2',
+            }).catch(() => {});
+          }
         }
       } catch (enqueueError) {
         // 通知排隊失敗不影響主流程，只記錄警告
@@ -251,7 +268,7 @@ export async function getReactionsByTarget(params: GetReactionsByTargetParams): 
  * 取得目標的個別用戶反應列表
  */
 export async function getReactionsListByTarget(params: GetReactionsByTargetParams): Promise<ApiSuccessResponse<GetReactionsListResponse>> {
-  const { targetType, targetId } = params;
+  const { targetType, targetId, currentUserId } = params;
 
   try {
     const allReactions = await prisma.reactions.findMany({
@@ -261,6 +278,7 @@ export async function getReactionsListByTarget(params: GetReactionsByTargetParam
           select: {
             external_id: true,
             nickname: true,
+            is_open_profile: true,
             contacts: { select: { photo_url: true } },
           },
         },
@@ -268,12 +286,31 @@ export async function getReactionsListByTarget(params: GetReactionsByTargetParam
       orderBy: { created_at: 'desc' },
     });
 
+    const reactionUserIds = allReactions.map((r) => r.user_id);
+    const connectedUserIds = new Set<number>();
+    if (currentUserId && reactionUserIds.length > 0) {
+      const connections = await prisma.connections.findMany({
+        where: {
+          OR: [
+            { user_a_id: currentUserId, user_b_id: { in: reactionUserIds } },
+            { user_b_id: currentUserId, user_a_id: { in: reactionUserIds } },
+          ],
+        },
+        select: { user_a_id: true, user_b_id: true },
+      });
+      for (const c of connections) {
+        connectedUserIds.add(c.user_a_id === currentUserId ? c.user_b_id : c.user_a_id);
+      }
+    }
+
     const items: ReactionListItem[] = allReactions.map((r) => ({
       userId: r.users.external_id ?? String(r.user_id),
       name: r.users.nickname ?? '未知用戶',
       photoURL: r.users.contacts?.photo_url ?? null,
       reactionType: r.reaction_type as ReactionListItem['reactionType'],
       reactedAt: (r.created_at ?? new Date()).toISOString(),
+      isPublic: r.users.is_open_profile ?? false,
+      isConnection: connectedUserIds.has(r.user_id),
     }));
 
     return createSuccessResponse({ items });
@@ -302,12 +339,31 @@ export async function getReactionsBatchByTargets(params: {
           select: {
             external_id: true,
             nickname: true,
+            is_open_profile: true,
             contacts: { select: { photo_url: true } },
           },
         },
       },
       orderBy: { created_at: 'desc' },
     });
+
+    // Batch-check connections for all reaction users
+    const allReactionUserIds = [...new Set(allReactions.map((r) => r.user_id))];
+    const batchConnectedUserIds = new Set<number>();
+    if (currentUserId && allReactionUserIds.length > 0) {
+      const connections = await prisma.connections.findMany({
+        where: {
+          OR: [
+            { user_a_id: currentUserId, user_b_id: { in: allReactionUserIds } },
+            { user_b_id: currentUserId, user_a_id: { in: allReactionUserIds } },
+          ],
+        },
+        select: { user_a_id: true, user_b_id: true },
+      });
+      for (const c of connections) {
+        batchConnectedUserIds.add(c.user_a_id === currentUserId ? c.user_b_id : c.user_a_id);
+      }
+    }
 
     // Group by target_id
     const byTarget = new Map<number, typeof allReactions>();
@@ -350,7 +406,9 @@ export async function getReactionsBatchByTargets(params: {
         name: r.users.nickname ?? '未知用戶',
         photoURL: r.users.contacts?.photo_url ?? null,
         reactionType: r.reaction_type as ReactionListItem['reactionType'],
-        reactedAt: r.created_at!.toISOString(),
+        reactedAt: (r.created_at ?? new Date()).toISOString(),
+        isPublic: r.users.is_open_profile ?? false,
+        isConnection: batchConnectedUserIds.has(r.user_id),
       }));
 
       result[externalId] = { reactions: reactionCounts, currentUserReaction, items };

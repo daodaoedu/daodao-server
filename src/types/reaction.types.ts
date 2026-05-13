@@ -45,6 +45,8 @@ export interface ReactionListItem {
   photoURL: string | null;
   reactionType: ReactionTypeValue;
   reactedAt: string;
+  isPublic: boolean;
+  isConnection: boolean;
 }
 
 // API 回應：GET /api/v1/reactions/list

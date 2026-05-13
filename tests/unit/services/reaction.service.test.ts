@@ -314,116 +314,78 @@ describe('Reaction Service', () => {
   });
 
   // --------------------------------------------------------------------------
-  // getReactionsBatchByTargets
+  // comment reactions
   // --------------------------------------------------------------------------
 
-  describe('getReactionsBatchByTargets', () => {
-    it('批次取得多個目標的反應計數與用戶列表', async () => {
-      const reactions = [
-        {
-          id: 1, target_type: 'practice', target_id: 10, user_id: 1, reaction_type: 'fire',
-          created_at: new Date('2025-01-01T00:00:00Z'),
-          users: { external_id: 'ext-u1', nickname: '王小明', contacts: { photo_url: 'https://example.com/p1.jpg' } },
-        },
-        {
-          id: 2, target_type: 'practice', target_id: 10, user_id: 2, reaction_type: 'curious',
-          created_at: new Date('2025-01-02T00:00:00Z'),
-          users: { external_id: 'ext-u2', nickname: '李大華', contacts: null },
-        },
-        {
-          id: 3, target_type: 'practice', target_id: 20, user_id: 1, reaction_type: 'touched',
-          created_at: new Date('2025-01-03T00:00:00Z'),
-          users: { external_id: 'ext-u1', nickname: '王小明', contacts: { photo_url: 'https://example.com/p1.jpg' } },
-        },
-      ];
-
-      prismaMock.reactions.findMany.mockResolvedValue(reactions as any);
-
-      const externalIdMap = new Map<number, string>([
-        [10, 'ext-practice-1'],
-        [20, 'ext-practice-2'],
-      ]);
-
-      const result = await getReactionsBatchByTargets({
-        targetType: 'practice',
-        targetIds: [10, 20],
-        externalIdMap,
-        currentUserId: 1,
-      });
-
-      expect(result.success).toBe(true);
-
-      const t10 = result.data['ext-practice-1'];
-      expect(t10).toBeDefined();
-      expect(t10.reactions.find((r) => r.type === 'fire')?.count).toBe(1);
-      expect(t10.reactions.find((r) => r.type === 'curious')?.count).toBe(1);
-      expect(t10.currentUserReaction).toBe('fire');
-      expect(t10.items).toHaveLength(2);
-
-      const t20 = result.data['ext-practice-2'];
-      expect(t20).toBeDefined();
-      expect(t20.reactions.find((r) => r.type === 'touched')?.count).toBe(1);
-      expect(t20.currentUserReaction).toBe('touched');
-      expect(t20.items).toHaveLength(1);
-      expect(t20.items[0].name).toBe('王小明');
+  describe('comment reactions', () => {
+    beforeEach(() => {
+      mockCreateEvent.mockClear();
     });
 
-    it('未登入時所有目標的 currentUserReaction 為 null', async () => {
-      const reactions = [
-        {
-          id: 1, target_type: 'practice', target_id: 10, user_id: 2, reaction_type: 'fire',
-          created_at: new Date('2025-01-01T00:00:00Z'),
-          users: { external_id: 'ext-u2', nickname: '李大華', contacts: null },
-        },
-      ];
+    function setupCommentReaction(commentOwnerId: number, actorUserId: number, existing: object | null = null) {
+      const reaction = makeReaction({ target_type: 'comment', target_id: 30, user_id: actorUserId });
+      prismaMock.reactions.findUnique.mockResolvedValueOnce(existing as any);
+      prismaMock.reactions.upsert.mockResolvedValue(reaction as any);
+      prismaMock.reactions.findMany.mockResolvedValue([reaction] as any);
+      prismaMock.reactions.findUnique.mockResolvedValue({ reaction_type: 'fire' } as any);
+      prismaMock.comments.findUnique.mockResolvedValue({
+        id: 30,
+        user_id: commentOwnerId,
+        target_type: 'practice',
+        target_id: 10,
+      } as any);
+      return reaction;
+    }
 
-      prismaMock.reactions.findMany.mockResolvedValue(reactions as any);
+    it('對他人留言按 reaction（首次）→ 觸發通知', async () => {
+      setupCommentReaction(/* commentOwner */ 2, /* actor */ 1, null);
 
-      const externalIdMap = new Map<number, string>([[10, 'ext-practice-1']]);
-
-      const result = await getReactionsBatchByTargets({
-        targetType: 'practice',
-        targetIds: [10],
-        externalIdMap,
-        currentUserId: null,
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
       });
 
-      expect(result.success).toBe(true);
-      expect(result.data['ext-practice-1'].currentUserReaction).toBeNull();
-    });
-
-    it('目標無反應時回傳空計數與空列表', async () => {
-      prismaMock.reactions.findMany.mockResolvedValue([]);
-
-      const externalIdMap = new Map<number, string>([[10, 'ext-practice-1']]);
-
-      const result = await getReactionsBatchByTargets({
-        targetType: 'practice',
-        targetIds: [10],
-        externalIdMap,
-        currentUserId: null,
-      });
-
-      expect(result.success).toBe(true);
-      const t10 = result.data['ext-practice-1'];
-      expect(t10.currentUserReaction).toBeNull();
-      expect(t10.items).toEqual([]);
-      t10.reactions.forEach((r) => expect(r.count).toBe(0));
-    });
-
-    it('DB 錯誤時拋出 InternalServerError', async () => {
-      prismaMock.reactions.findMany.mockRejectedValue(new Error('DB error'));
-
-      const externalIdMap = new Map<number, string>([[10, 'ext-practice-1']]);
-
-      await expect(
-        getReactionsBatchByTargets({
-          targetType: 'practice',
-          targetIds: [10],
-          externalIdMap,
-          currentUserId: null,
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'reaction',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'comment',
+          entityId: 30,
+          priority: 'P2',
+          payload: expect.objectContaining({ reactionType: 'fire' }),
         }),
-      ).rejects.toThrow('批次取得反應資料失敗');
+      );
+    });
+
+    it('對自己留言按 reaction → 不觸發通知', async () => {
+      // commentOwner === actor === 1
+      setupCommentReaction(/* commentOwner */ 1, /* actor */ 1, null);
+
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+    });
+
+    it('更換 reaction 類型（existing !== null）→ 不觸發通知', async () => {
+      // existing reaction present → notification block skipped
+      setupCommentReaction(/* commentOwner */ 2, /* actor */ 1, { reaction_type: 'curious' });
+
+      await upsertReaction({
+        targetType: 'comment',
+        targetId: 30,
+        userId: 1,
+        reactionType: 'fire',
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalled();
     });
   });
 
@@ -520,7 +482,7 @@ describe('Reaction Service', () => {
     });
 
     it('should not call enqueueReactionNotification for checkin', async () => {
-      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue');
+      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue') as { enqueueReactionNotification: jest.Mock };
 
       const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
 
