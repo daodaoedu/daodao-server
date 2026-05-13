@@ -116,6 +116,15 @@ export const getCommentsQuerySchema = z.object({
   description: "查詢留言的參數"
 });
 
+export const getMentionCandidatesQuerySchema = getCommentsQuerySchema.extend({
+  limit: z.coerce.number().int().min(1).max(50).optional().openapi({
+    description: "候選人數量上限",
+    example: 20
+  })
+}).openapi('GetMentionCandidatesQuery', {
+  description: "查詢 @mention 候選人的參數"
+});
+
 /**
  * Schema for comment URL parameters (comment ID)
  */
@@ -246,6 +255,7 @@ export const commentPaginationSchema = z.object({
 export type CreateCommentSchema = z.infer<typeof createCommentSchema>;
 export type UpdateCommentSchema = z.infer<typeof updateCommentSchema>;
 export type GetCommentsQuerySchema = z.infer<typeof getCommentsQuerySchema>;
+export type GetMentionCandidatesQuerySchema = z.infer<typeof getMentionCandidatesQuerySchema>;
 export type CommentParamsSchema = z.infer<typeof commentParamsSchema>;
 export type BulkCommentOperationSchema = z.infer<typeof bulkCommentOperationSchema>;
 export type CommentFilterSchema = z.infer<typeof commentFilterSchema>;
@@ -255,6 +265,7 @@ export type CommentPaginationSchema = z.infer<typeof commentPaginationSchema>;
 export const validateCreateComment = (data: unknown): CreateCommentSchema => createCommentSchema.parse(data);
 export const validateUpdateComment = (data: unknown): UpdateCommentSchema => updateCommentSchema.parse(data);
 export const validateGetCommentsQuery = (data: unknown): GetCommentsQuerySchema => getCommentsQuerySchema.parse(data);
+export const validateGetMentionCandidatesQuery = (data: unknown): GetMentionCandidatesQuerySchema => getMentionCandidatesQuerySchema.parse(data);
 export const validateCommentParams = (data: unknown): CommentParamsSchema => commentParamsSchema.parse(data);
 export const validateBulkCommentOperation = (data: unknown): BulkCommentOperationSchema => bulkCommentOperationSchema.parse(data);
 export const validateCommentFilter = (data: unknown): CommentFilterSchema => commentFilterSchema.parse(data);
@@ -265,6 +276,7 @@ export const commentValidators = {
   createCommentSchema,
   updateCommentSchema,
   getCommentsQuerySchema,
+  getMentionCandidatesQuerySchema,
   commentParamsSchema,
   bulkCommentOperationSchema,
   commentFilterSchema,
@@ -301,6 +313,32 @@ export const commentUserSchema = z.object({
   })
 }).openapi('CommentUser', {
   description: '留言用戶資訊'
+});
+
+export const mentionCandidateSchema = z.object({
+  userId: z.string().openapi({
+    description: "用戶外部 ID",
+    example: "user_123e4567"
+  }),
+  numericUserId: z.number().int().positive().openapi({
+    description: "用戶內部 ID，用於 mentionedUserIds",
+    example: 1
+  }),
+  name: z.string().openapi({
+    description: "顯示名稱",
+    example: "王小明"
+  }),
+  photoURL: z.string().url().nullable().openapi({
+    description: "用戶頭像 URL",
+    example: "https://example.com/avatar.jpg",
+    format: 'uri'
+  }),
+  customId: z.string().nullable().openapi({
+    description: "用戶自訂 ID",
+    example: "my_custom_id"
+  })
+}).openapi('MentionCandidate', {
+  description: '@mention 候選人'
 });
 
 // Base comment schema (without recursive replies - used for OpenAPI)
@@ -384,12 +422,14 @@ export const deleteCommentResponseSchema = z.object({
 // Use non-recursive schema for OpenAPI documentation to avoid stack overflow
 export const createCommentApiResponseSchema = apiSuccessResponseSchema(commentResponseSchemaForOpenAPI);
 export const getCommentsApiResponseSchema = apiSuccessResponseSchema(z.array(commentResponseSchemaForOpenAPI));
+export const getMentionCandidatesApiResponseSchema = apiSuccessResponseSchema(z.array(mentionCandidateSchema));
 export const getCommentDetailApiResponseSchema = apiSuccessResponseSchema(commentResponseSchemaForOpenAPI);
 export const updateCommentApiResponseSchema = apiSuccessResponseSchema(commentResponseSchemaForOpenAPI);
 export const deleteCommentApiResponseSchema = apiSuccessResponseSchema(deleteCommentResponseSchema);
 
 // Response type exports
 export type CommentUser = z.infer<typeof commentUserSchema>;
+export type MentionCandidateResponse = z.infer<typeof mentionCandidateSchema>;
 export type CommentResponseType = z.infer<typeof commentResponseSchema>;
 export type DeleteCommentResponse = z.infer<typeof deleteCommentResponseSchema>;
 

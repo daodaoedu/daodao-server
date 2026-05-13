@@ -25,6 +25,43 @@ import {
 import { enqueueReactionNotification } from '../queues/reaction-notification.queue';
 import { notificationEventService } from './notification-event.service';
 
+async function getCommentReactionPayload(
+  comment: { target_type: string; target_id: number },
+  reactionType: string
+): Promise<Record<string, unknown>> {
+  const payload: Record<string, unknown> = { reactionType };
+
+  if (comment.target_type === 'practice') {
+    const practice = await prisma.practices.findUnique({
+      where: { id: comment.target_id },
+      select: { title: true, external_id: true },
+    });
+
+    if (practice) {
+      payload.practice_title = practice.title ?? '';
+      payload.entity_external_id = practice.external_id ?? '';
+    }
+  } else if (comment.target_type === 'checkin') {
+    const checkin = await prisma.practice_checkins.findUnique({
+      where: { id: comment.target_id },
+      select: {
+        id: true,
+        practices: {
+          select: { title: true, external_id: true },
+        },
+      },
+    });
+
+    if (checkin) {
+      payload.checkinId = checkin.id;
+      payload.practice_title = checkin.practices?.title ?? '';
+      payload.entity_external_id = checkin.practices?.external_id ?? '';
+    }
+  }
+
+  return payload;
+}
+
 /**
  * 新增或更換反應（UPSERT）
  * DB unique constraint 保證每人每目標只有一筆，重複送出即更新
@@ -143,17 +180,18 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
         } else if (targetType === 'comment') {
           const comment = await prisma.comments.findUnique({
             where: { id: targetId },
-            select: { user_id: true },
+            select: { user_id: true, target_type: true, target_id: true },
           });
 
           if (comment && comment.user_id !== userId) {
+            const payload = await getCommentReactionPayload(comment, reactionType);
             notificationEventService.createEvent({
               type: 'reaction',
               actorId: userId,
               recipientId: comment.user_id,
               entityType: 'comment',
               entityId: targetId,
-              payload: { reactionType },
+              payload,
               priority: 'P2',
             }).catch(() => {});
           }

@@ -92,6 +92,23 @@ export {
   closeNotificationWeeklyWorker,
 } from './notification-weekly.worker';
 
+// Social Notification Queue
+export {
+  SOCIAL_NOTIFICATION_QUEUE_NAME,
+  createSocialNotificationQueue,
+  setSocialNotificationQueue,
+  getSocialNotificationQueue,
+  enqueueSocialNotification,
+  bulkEnqueueSocialNotifications,
+} from './social-notification.queue';
+
+// Social Notification Worker
+export {
+  createSocialNotificationWorker,
+  closeSocialNotificationWorker,
+  type SocialNotificationWorkerOptions,
+} from './social-notification.worker';
+
 // Reaction Notification Queue
 export {
   REACTION_NOTIFICATION_QUEUE_NAME,

@@ -180,7 +180,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     }
   }
 
-  // 對 payload 缺少 entity_external_id 的 comment 通知，若 comment target 為 practice，批次補查對應 practice external_id
+  // 對 payload 缺少 entity_external_id 的 comment 通知，補查對應 practice/checkin metadata
   const missingExternalIdCommentIds = items
     .filter((row) => {
       const p = (row.payload ?? {}) as Record<string, unknown>;
@@ -188,17 +188,23 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     })
     .map((row) => row.entity_id);
 
-  const commentPracticeExternalIdMap = new Map<number, string>();
+  const commentMetadataMap = new Map<number, { entityExternalId?: string; checkinId?: number }>();
   if (missingExternalIdCommentIds.length > 0) {
     const comments = await prisma.comments.findMany({
       where: {
         id: { in: missingExternalIdCommentIds },
-        target_type: 'practice',
+        target_type: { in: ['practice', 'checkin'] },
       },
-      select: { id: true, target_id: true },
+      select: { id: true, target_type: true, target_id: true },
     });
 
-    const practiceIds = [...new Set(comments.map((comment) => comment.target_id))];
+    const practiceCommentIds = comments
+      .filter((comment) => comment.target_type === 'practice')
+      .map((comment) => comment.target_id);
+    const checkinIds = comments
+      .filter((comment) => comment.target_type === 'checkin')
+      .map((comment) => comment.target_id);
+    const practiceIds = [...new Set(practiceCommentIds)];
     if (practiceIds.length > 0) {
       const practices = await prisma.practices.findMany({
         where: { id: { in: practiceIds } },
@@ -210,10 +216,37 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
           .map((practice) => [practice.id, practice.external_id as string])
       );
 
-      for (const comment of comments) {
+      for (const comment of comments.filter((item) => item.target_type === 'practice')) {
         const externalId = practiceIdMap.get(comment.target_id);
         if (externalId) {
-          commentPracticeExternalIdMap.set(comment.id, externalId);
+          commentMetadataMap.set(comment.id, { entityExternalId: externalId });
+        }
+      }
+    }
+
+    if (checkinIds.length > 0) {
+      const checkins = await prisma.practice_checkins.findMany({
+        where: { id: { in: [...new Set(checkinIds)] } },
+        select: {
+          id: true,
+          practices: {
+            select: { external_id: true },
+          },
+        },
+      });
+      const checkinMap = new Map(
+        checkins.map((checkin) => [
+          checkin.id,
+          checkin.practices?.external_id
+            ? { entityExternalId: checkin.practices.external_id, checkinId: checkin.id }
+            : { checkinId: checkin.id },
+        ])
+      );
+
+      for (const comment of comments.filter((item) => item.target_type === 'checkin')) {
+        const metadata = checkinMap.get(comment.target_id);
+        if (metadata) {
+          commentMetadataMap.set(comment.id, metadata);
         }
       }
     }
@@ -222,10 +255,11 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   /** 將 payload JSONB 展開為前端所需欄位 */
   const notifications = items.map((row) => {
     const p = (row.payload ?? {}) as Record<string, unknown>;
+    const commentMetadata = commentMetadataMap.get(row.entity_id);
     // 優先使用 payload 中的 external_id，否則查 practiceExternalIdMap，最後 fallback 到 entity_id
     const entityId =
       (p.entity_external_id as string | undefined) ??
-      commentPracticeExternalIdMap.get(row.entity_id) ??
+      commentMetadata?.entityExternalId ??
       practiceExternalIdMap.get(row.entity_id) ??
       String(row.entity_id);
     return {
@@ -248,7 +282,9 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       ...(p.connection_request_id !== undefined && { connectionRequestId:   p.connection_request_id as number }),
       ...(p.reactionType !== undefined          && { reactionType:          p.reactionType as string }),
       ...(row.entity_type === 'buddy_request'   && { buddyRequestId:        row.entity_id }),
-      ...(p.checkinId !== undefined             && { checkinId:             p.checkinId as number }),
+      ...((p.checkinId !== undefined || commentMetadata?.checkinId !== undefined) && {
+        checkinId: (p.checkinId as number | undefined) ?? commentMetadata?.checkinId,
+      }),
       ...(row.entity_type === 'checkin'         && { checkinId:             row.entity_id }),
     };
   });
