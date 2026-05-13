@@ -508,7 +508,7 @@ describe('Regression: reaction 通知 API response 包含 reactionType', () => {
     ] as any);
     prismaMock.notifications.count.mockResolvedValue(0);
     prismaMock.comments.findMany.mockResolvedValue([
-      { id: 99, target_id: 10 } as any,
+      { id: 99, target_type: 'practice', target_id: 10 } as any,
     ]);
     prismaMock.practices.findMany.mockResolvedValue([
       { id: 10, external_id: 'practice-ext-10' } as any,
@@ -521,5 +521,38 @@ describe('Regression: reaction 通知 API response 包含 reactionType', () => {
     const notification = resp.data.notifications[0];
     expect(notification.entityType).toBe('comment');
     expect(notification.entityId).toBe('practice-ext-10');
+  });
+
+  it('checkin 底下的 comment 類通知應回傳 practice external id 與 checkinId', async () => {
+    prismaMock.notifications.findMany.mockResolvedValue([
+      makeNotificationRow({
+        id: 5,
+        type: 'reaction',
+        entity_type: 'comment',
+        entity_id: 99,
+        payload: { reactionType: 'fire' },
+      }),
+    ] as any);
+    prismaMock.notifications.count.mockResolvedValue(0);
+    prismaMock.comments.findMany.mockResolvedValue([
+      { id: 99, target_type: 'checkin', target_id: 20 } as any,
+    ]);
+    prismaMock.practices.findMany.mockResolvedValue([]);
+    prismaMock.practice_checkins.findMany.mockResolvedValue([
+      {
+        id: 20,
+        practices: { external_id: 'practice-ext-20' },
+      } as any,
+    ]);
+
+    const { req, res, jsonMock } = makeReqRes(1);
+    await callHandler(getNotifications, req, res);
+
+    const resp = jsonMock.mock.calls[0][0] as any;
+    const notification = resp.data.notifications[0];
+    expect(notification.entityType).toBe('comment');
+    expect(notification.entityId).toBe('practice-ext-20');
+    expect(notification.checkinId).toBe(20);
+    expect(notification.reactionType).toBe('fire');
   });
 });
