@@ -180,12 +180,86 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     }
   }
 
+  // 對 payload 缺少 entity_external_id 的 comment 通知，補查對應 practice/checkin metadata
+  const missingExternalIdCommentIds = items
+    .filter((row) => {
+      const p = (row.payload ?? {}) as Record<string, unknown>;
+      return row.entity_type === 'comment' && !p.entity_external_id;
+    })
+    .map((row) => row.entity_id);
+
+  const commentMetadataMap = new Map<number, { entityExternalId?: string; checkinId?: number }>();
+  if (missingExternalIdCommentIds.length > 0) {
+    const comments = await prisma.comments.findMany({
+      where: {
+        id: { in: missingExternalIdCommentIds },
+        target_type: { in: ['practice', 'checkin'] },
+      },
+      select: { id: true, target_type: true, target_id: true },
+    });
+
+    const practiceCommentIds = comments
+      .filter((comment) => comment.target_type === 'practice')
+      .map((comment) => comment.target_id);
+    const checkinIds = comments
+      .filter((comment) => comment.target_type === 'checkin')
+      .map((comment) => comment.target_id);
+    const practiceIds = [...new Set(practiceCommentIds)];
+    if (practiceIds.length > 0) {
+      const practices = await prisma.practices.findMany({
+        where: { id: { in: practiceIds } },
+        select: { id: true, external_id: true },
+      });
+      const practiceIdMap = new Map(
+        practices
+          .filter((practice) => Boolean(practice.external_id))
+          .map((practice) => [practice.id, practice.external_id as string])
+      );
+
+      for (const comment of comments.filter((item) => item.target_type === 'practice')) {
+        const externalId = practiceIdMap.get(comment.target_id);
+        if (externalId) {
+          commentMetadataMap.set(comment.id, { entityExternalId: externalId });
+        }
+      }
+    }
+
+    if (checkinIds.length > 0) {
+      const checkins = await prisma.practice_checkins.findMany({
+        where: { id: { in: [...new Set(checkinIds)] } },
+        select: {
+          id: true,
+          practices: {
+            select: { external_id: true },
+          },
+        },
+      });
+      const checkinMap = new Map(
+        checkins.map((checkin) => [
+          checkin.id,
+          checkin.practices?.external_id
+            ? { entityExternalId: checkin.practices.external_id, checkinId: checkin.id }
+            : { checkinId: checkin.id },
+        ])
+      );
+
+      for (const comment of comments.filter((item) => item.target_type === 'checkin')) {
+        const metadata = checkinMap.get(comment.target_id);
+        if (metadata) {
+          commentMetadataMap.set(comment.id, metadata);
+        }
+      }
+    }
+  }
+
   /** 將 payload JSONB 展開為前端所需欄位 */
   const notifications = items.map((row) => {
     const p = (row.payload ?? {}) as Record<string, unknown>;
+    const commentMetadata = commentMetadataMap.get(row.entity_id);
     // 優先使用 payload 中的 external_id，否則查 practiceExternalIdMap，最後 fallback 到 entity_id
     const entityId =
       (p.entity_external_id as string | undefined) ??
+      commentMetadata?.entityExternalId ??
       practiceExternalIdMap.get(row.entity_id) ??
       String(row.entity_id);
     return {
@@ -206,7 +280,12 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       ...(p.intent !== undefined                && { connectMessage:        p.intent as string }),
       ...(p.content !== undefined               && { content:               p.content as string }),
       ...(p.connection_request_id !== undefined && { connectionRequestId:   p.connection_request_id as number }),
+      ...(p.reactionType !== undefined          && { reactionType:          p.reactionType as string }),
       ...(row.entity_type === 'buddy_request'   && { buddyRequestId:        row.entity_id }),
+      ...((p.checkinId !== undefined || commentMetadata?.checkinId !== undefined) && {
+        checkinId: (p.checkinId as number | undefined) ?? commentMetadata?.checkinId,
+      }),
+      ...(row.entity_type === 'checkin'         && { checkinId:             row.entity_id }),
     };
   });
 

@@ -15,9 +15,11 @@ import {
   createCommentSchema,
   updateCommentSchema,
   getCommentsQuerySchema,
+  getMentionCandidatesQuerySchema,
   commentParamsSchema,
   createCommentApiResponseSchema,
   getCommentsApiResponseSchema,
+  getMentionCandidatesApiResponseSchema,
   getCommentDetailApiResponseSchema,
   updateCommentApiResponseSchema,
   deleteCommentApiResponseSchema
@@ -53,6 +55,33 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: createCommentApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /api/v1/comments/mention-candidates - 獲取 @mention 候選人
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/comments/mention-candidates',
+  tags: ['Comments'],
+  summary: '獲取 @mention 候選人',
+  description: '獲取指定目標可供 @mention 的使用者候選清單',
+  request: {
+    query: getMentionCandidatesQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功獲取 @mention 候選人',
+      content: {
+        'application/json': {
+          schema: getMentionCandidatesApiResponseSchema
         }
       }
     },
@@ -195,6 +224,12 @@ router.get('/',
   optionalAuth,
   validate(getCommentsQuerySchema, 'query'),
   commentController.getComments as RequestHandler
+);
+
+router.get('/mention-candidates',
+  optionalAuth,
+  validate(getMentionCandidatesQuerySchema, 'query'),
+  commentController.getMentionCandidates as RequestHandler
 );
 
 router.get('/:commentId',

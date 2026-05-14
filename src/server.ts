@@ -16,10 +16,12 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import session from 'express-session';
+import { RedisStore } from 'connect-redis';
 import passport from 'passport';
 import { setupTypescriptRoutes } from './app';
 import { prismaService } from './services/database/prisma.service';
 import { emailService } from './services/email/email.service';
+import redis from './services/database/redis.service';
 import { loggerService } from './services/logging/logger.service';
 // BullMQ
 import {
@@ -50,6 +52,11 @@ import {
   closeNotificationInAppWorker,
   closeNotificationEmailWorker,
   closeNotificationWeeklyWorker,
+  // Social Notification Queue
+  createSocialNotificationQueue,
+  setSocialNotificationQueue,
+  createSocialNotificationWorker,
+  closeSocialNotificationWorker,
   // Reaction Notification Queue
   createReactionNotificationQueue,
   setReactionNotificationQueue,
@@ -61,6 +68,7 @@ import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
 import type { PracticeEmailJobData } from './types/email/practice.types';
 import type { PracticeStatusJobData } from './queues';
+import type { SocialNotificationJob } from './types/social.types';
 
 // BullMQ 全域實例
 let practiceEmailQueue: Queue<PracticeEmailJobData> | null = null;
@@ -70,6 +78,8 @@ let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
 let notificationInAppWorker: Worker | null = null;
 let notificationEmailWorker: Worker | null = null;
 let notificationWeeklyWorker: Worker | null = null;
+let socialNotificationQueue: Queue<SocialNotificationJob> | null = null;
+let socialNotificationWorker: Worker<SocialNotificationJob> | null = null;
 let reactionNotificationQueue: Queue<ReactionNotificationJob> | null = null;
 let reactionNotificationWorker: Worker<ReactionNotificationJob> | null = null;
 
@@ -172,15 +182,18 @@ app.use(globalLimiter);
 app.use(speedLimiter);
 
 // Session 配置
-const isProduction = process.env.NODE_ENV === 'production';
+// 與 auth_token cookie 一致：以 COOKIE_DOMAIN 是否設定判斷是否為已部署環境
+const hasDeployedDomain = !!process.env.COOKIE_DOMAIN;
 app.use(session({
+  store: new RedisStore({ client: redis, prefix: 'sess:' }),
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: isProduction,
+    secure: hasDeployedDomain,
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: hasDeployedDomain ? 'none' : 'lax',
+    domain: hasDeployedDomain ? process.env.COOKIE_DOMAIN : undefined,
     maxAge: 10 * 60 * 1000 // 10 分鐘，與 nonce/state 有效期一致
   }
 }));
@@ -287,6 +300,14 @@ async function initializeBullMQ(): Promise<void> {
     await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
     console.log('🔔 通知排程任務已註冊');
 
+    // ===== Social Notification Queue（關注/連結 fan-out）=====
+    socialNotificationQueue = createSocialNotificationQueue();
+    setSocialNotificationQueue(socialNotificationQueue);
+    console.log('👥 Social Notification Queue 已建立');
+
+    socialNotificationWorker = createSocialNotificationWorker({ concurrency: 5 });
+    console.log('👥 Social Notification Worker 已啟動');
+
     // ===== Reaction Notification Queue（快速回應 email，1小時延遲彙整）=====
     reactionNotificationQueue = createReactionNotificationQueue();
     setReactionNotificationQueue(reactionNotificationQueue);
@@ -342,6 +363,14 @@ async function gracefulShutdown(signal: string) {
     if (notificationWeeklyWorker) {
       await closeNotificationWeeklyWorker(notificationWeeklyWorker);
       console.log('✅ Notification Weekly Worker 已關閉');
+    }
+    if (socialNotificationWorker) {
+      await closeSocialNotificationWorker(socialNotificationWorker);
+      console.log('✅ Social Notification Worker 已關閉');
+    }
+    if (socialNotificationQueue) {
+      await socialNotificationQueue.close();
+      console.log('✅ Social Notification Queue 已關閉');
     }
     if (reactionNotificationWorker) {
       await closeReactionNotificationWorker(reactionNotificationWorker);

@@ -399,8 +399,8 @@ describe('Notification Email Batch Integration Tests', () => {
         .query({ token });
 
       expect(res.status).toBe(200);
-      // digest 退訂觸發 setGlobalEnabled → 15 types × 2 channels (N01, N03) = 30 次 upsert
-      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalledTimes(30);
+      // digest 退訂觸發 setGlobalEnabled → 16 types × 2 channels (N01, N03) = 32 次 upsert
+      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalledTimes(32);
     });
 
     it('無效 token 回傳 400 HTML 頁面', async () => {
