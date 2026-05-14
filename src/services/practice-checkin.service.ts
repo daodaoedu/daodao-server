@@ -256,8 +256,8 @@ export async function createCheckIn(
       });
     }
 
-    // 通知關注此實踐的 followers：實踐完成（非阻塞）
-    if (newStatus === 'completed') {
+    // 通知關注此實踐的 followers：實踐完成（非阻塞）；只有 public practice 才通知
+    if (newStatus === 'completed' && practice.privacy_status === 'public') {
       const practiceTitle = (checkIn as { practices?: { title?: string | null } }).practices?.title ?? '';
       prismaClient.follows.findMany({
         where:  { target_type: 'practice', target_id: practiceId },
@@ -277,12 +277,19 @@ export async function createCheckIn(
       }).catch(() => {});
     }
 
-    // Fire-and-forget: fan-out 打卡通知給追蹤者和連結夥伴
-    const checkinPayload = { practiceId, checkinId: checkIn.id };
-    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
-      fanoutToPracticeFollowers('follow.practice_checkin', userId, practiceId, checkinPayload).catch(() => {});
-      fanoutToConnectedPartners('connect.partner_checkin', userId, checkinPayload).catch(() => {});
-    }).catch(() => {});
+    // Fire-and-forget: 只有 public practice 才 fan-out 打卡通知，避免 private / delayed 內容曝光
+    if (practice.privacy_status === 'public') {
+      const checkinPayload = {
+        practiceId,
+        checkinId: checkIn.id,
+        practice_title: practice.title ?? '',
+        entity_external_id: practice.external_id ?? '',
+      };
+      getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+        fanoutToPracticeFollowers('follow.practice_checkin', userId, practiceId, checkinPayload).catch(() => {});
+        fanoutToConnectedPartners('connect.partner_checkin', userId, checkinPayload).catch(() => {});
+      }).catch(() => {});
+    }
 
     return createSuccessResponse(response);
 

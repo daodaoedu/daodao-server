@@ -25,7 +25,9 @@ import {
   TargetEntity,
   MentorParticipantRelation,
   CommentServiceInterface,
-  DatabaseComment
+  DatabaseComment,
+  GetMentionCandidatesParams,
+  MentionCandidate
 } from '../types/comment.types';
 import {
   NotFoundError,
@@ -40,12 +42,14 @@ import { createSuccessResponse } from '../utils/response-helper';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
 import { loggerService } from './logging/logger.service';
+import { privacyService } from './privacy.service';
 
 /**
  * Comment Service Class
  * Implements comprehensive comment management with Prisma integration
  */
 export class CommentService implements CommentServiceInterface {
+  private readonly mentionCandidateLimit = 50;
   
   /**
    * Create a new comment
@@ -67,11 +71,12 @@ export class CommentService implements CommentServiceInterface {
         const internalTargetId = targetEntity.id;
         
         // Validate parent comment if provided
+        let parentComment: Awaited<ReturnType<typeof tx.comments.findUnique>> | null = null;
         if (parentId) {
-          const parentComment = await tx.comments.findUnique({
+          parentComment = await tx.comments.findUnique({
             where: { id: parentId }
           });
-          
+
           if (!parentComment) {
             throw new NotFoundError('Parent comment not found');
           }
@@ -80,7 +85,7 @@ export class CommentService implements CommentServiceInterface {
           if (parentComment.parent_id) {
             throw new BadRequestError('Replies cannot have their own replies');
           }
-          
+
           // Ensure parent comment belongs to the same target (using internal ID)
           if (parentComment.target_type !== targetType || parentComment.target_id !== internalTargetId) {
             throw new BadRequestError('Parent comment does not belong to the same target entity');
@@ -120,26 +125,63 @@ export class CommentService implements CommentServiceInterface {
           interactionCountService.increment(userId, targetEntity.user_id).catch(() => undefined);
         }
 
+        // 解析實踐 metadata（comment 和 comment_reply 通知共用，只查一次）
+        let practiceTitle: string | undefined;
+        let practiceExternalId: string | undefined;
+        let checkinId: number | undefined;
+
+        if (targetType === 'practice') {
+          const practice = await tx.practices.findUnique({
+            where:  { id: targetEntity.id },
+            select: { title: true, external_id: true },
+          });
+          practiceTitle = practice?.title ?? undefined;
+          practiceExternalId = practice?.external_id ?? undefined;
+        } else if (targetType === 'checkin') {
+          const checkin = await tx.practice_checkins.findUnique({
+            where:  { id: targetEntity.id },
+            select: {
+              practices: {
+                select: { title: true, external_id: true },
+              },
+            },
+          });
+          if (checkin?.practices) {
+            practiceTitle = checkin.practices.title ?? undefined;
+            practiceExternalId = checkin.practices.external_id ?? undefined;
+          }
+          checkinId = targetEntity.id;
+        }
+
+        const notificationPayload = {
+          content,
+          ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
+          ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
+          ...(checkinId !== undefined && { checkinId }),
+        };
+
         // Fire-and-forget: Comment 通知給內容擁有者
         if (targetEntity.user_id) {
-          let practiceTitle: string | undefined;
-          if (targetType === 'practice') {
-            const practice = await tx.practices.findUnique({
-              where:  { id: targetEntity.id },
-              select: { title: true },
-            });
-            practiceTitle = practice?.title ?? undefined;
-          }
           notificationEventService.createEvent({
             type:        'comment',
             actorId:     userId,
             recipientId: targetEntity.user_id,
             entityType:  'comment',
             entityId:    createdComment.id,
-            payload: {
-              content,
-              ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
-            },
+            payload:     notificationPayload,
+            priority: 'P2',
+          }).catch(() => {});
+        }
+
+        // Fire-and-forget: comment_reply 通知給被回覆的留言作者
+        if (parentId && parentComment) {
+          notificationEventService.createEvent({
+            type:        'comment_reply',
+            actorId:     userId,
+            recipientId: parentComment.user_id,
+            entityType:  'comment',
+            entityId:    createdComment.id,
+            payload:     { ...notificationPayload, parent_comment_id: parentId },
             priority: 'P2',
           }).catch(() => {});
         }
@@ -147,16 +189,15 @@ export class CommentService implements CommentServiceInterface {
         // Fire-and-forget: mention 通知給被 @mention 的使用者
         const mentionedUserIds = params.mentionedUserIds;
         if (mentionedUserIds && mentionedUserIds.length > 0) {
-          // Security: only allow as many mentionedUserIds as @mention patterns in content
-          const mentionPatterns = content.match(/@[\w]+/g) ?? [];
-          if (mentionPatterns.length < mentionedUserIds.length) {
-            loggerService.warn('[CommentService] mentionedUserIds count exceeds @mentions in content', {
-              mentionedCount: mentionedUserIds.length,
-              contentMentions: mentionPatterns.length,
-              userId,
-            });
-          }
-          const safeUserIds = mentionedUserIds.slice(0, Math.max(mentionPatterns.length, 0));
+          const safeUserIds = await this.filterMentionableUserIds(
+            tx,
+            targetType,
+            internalTargetId,
+            targetEntity.user_id ?? null,
+            mentionedUserIds,
+            userId,
+            content
+          );
           const ownerId = targetEntity.user_id ?? null;
           const uniqueIds = [...new Set(safeUserIds)].filter(
             (id) => id !== userId && id !== ownerId
@@ -307,6 +348,45 @@ export class CommentService implements CommentServiceInterface {
     }
   }
 
+  async getMentionCandidates(
+    params: GetMentionCandidatesParams
+  ): Promise<ApiSuccessResponse<MentionCandidate[]>> {
+    const { targetType, targetId, currentUser, limit = this.mentionCandidateLimit } = params;
+
+    try {
+      const entity = await idConverter.getTargetEntity(targetType as EntityType, targetId);
+      if (!currentUser?.id) {
+        return createSuccessResponse([]);
+      }
+
+      const canAccessTarget = await this.canAccessMentionTarget(targetType, entity.id, currentUser.id);
+      if (!canAccessTarget) {
+        throw new ForbiddenError('You do not have permission to get mention candidates for this target');
+      }
+
+      const max = Math.min(Math.max(limit, 1), this.mentionCandidateLimit);
+      const candidates = await this.getMentionCandidatesForTarget(
+        prisma,
+        targetType,
+        entity.id,
+        entity.user_id ?? null,
+        max,
+        currentUser
+      );
+
+      const filtered = currentUser
+        ? candidates.filter((candidate) => candidate.numericUserId !== currentUser.id)
+        : candidates;
+
+      return createSuccessResponse(filtered);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {
+        throw error;
+      }
+      throw new InternalServerError(`Failed to get mention candidates: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   /**
    * Get a specific comment by ID
    * @param commentId - The comment ID
@@ -368,7 +448,7 @@ export class CommentService implements CommentServiceInterface {
    * @returns Promise<ApiSuccessResponse<CommentResponse>> - The updated comment
    */
   async updateComment(params: UpdateCommentParams): Promise<ApiSuccessResponse<CommentResponse>> {
-    const { commentId, userId, content, visibility } = params;
+    const { commentId, userId, content, visibility, mentionedUserIds } = params;
 
     return await prisma.$transaction(async (tx) => {
       try {
@@ -426,9 +506,75 @@ export class CommentService implements CommentServiceInterface {
           }
         });
 
+        // Fire-and-forget: mention diff — only notify newly @mentioned users
+        const newContent = content ?? existingComment.content;
+        if (mentionedUserIds && mentionedUserIds.length > 0) {
+          const ownerId = await this.findTargetOwnerId(
+            tx,
+            existingComment.target_type,
+            existingComment.target_id
+          );
+          const safeUserIds = await this.filterMentionableUserIds(
+            tx,
+            existingComment.target_type,
+            existingComment.target_id,
+            ownerId,
+            mentionedUserIds,
+            userId,
+            newContent
+          );
+
+          // Find users already notified for this comment to avoid duplicate notifications
+          const alreadyNotified = await tx.notification_events.findMany({
+            where: {
+              type: 'mention',
+              entity_type: 'comment',
+              entity_id: commentId,
+            },
+            select: { recipient_id: true },
+          });
+          const alreadyNotifiedIds = new Set(alreadyNotified.map((e) => e.recipient_id));
+
+          // Only notify users who are newly added to the mention list
+          const newlyMentionedIds = [...new Set(safeUserIds)].filter(
+            (id) => id !== userId && !alreadyNotifiedIds.has(id)
+          );
+
+          if (newlyMentionedIds.length > 0) {
+            try {
+              const foundUsers = await tx.users.findMany({
+                where: { id: { in: newlyMentionedIds } },
+                select: { id: true },
+              });
+              const validIds = foundUsers.map((u) => u.id);
+
+              const frontendUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+              const url = frontendUrl;
+              const actorName = updatedComment.users.nickname ?? undefined;
+
+              for (const recipientId of validIds) {
+                notificationEventService.createEvent({
+                  type:        'mention',
+                  actorId:     userId,
+                  recipientId,
+                  entityType:  'comment',
+                  entityId:    commentId,
+                  priority:    'P1',
+                  payload:     { content: newContent, actorName, url },
+                });
+              }
+            } catch (error) {
+              loggerService.error('[CommentService] updateComment: Failed to create mention notification events', {
+                error,
+                commentId,
+              });
+            }
+          }
+        }
+
         const formattedComment = await this.formatCommentResponse(updatedComment);
         return createSuccessResponse(formattedComment);
-        
+
       } catch (error) {
         if (error instanceof NotFoundError || error instanceof ForbiddenError) {
           throw error;
@@ -786,6 +932,221 @@ export class CommentService implements CommentServiceInterface {
       console.warn(`Failed to convert internal ID ${internalId} for ${targetType}:`, error);
       return internalId.toString();
     }
+  }
+
+  private async filterMentionableUserIds(
+    client: Prisma.TransactionClient,
+    targetType: string,
+    internalTargetId: number,
+    ownerId: number | null,
+    mentionedUserIds: number[],
+    actorId: number,
+    content: string
+  ): Promise<number[]> {
+    const mentionTokenCount = this.countMentionTokens(content);
+    if (mentionTokenCount < mentionedUserIds.length) {
+      loggerService.warn('[CommentService] mentionedUserIds count exceeds @mentions in content', {
+        targetType,
+        internalTargetId,
+        mentionedCount: mentionedUserIds.length,
+        contentMentions: mentionTokenCount,
+        actorId,
+      });
+    }
+
+    const requestedIds = [...new Set(mentionedUserIds.slice(0, mentionTokenCount))].filter((id) => id !== actorId);
+    if (requestedIds.length === 0) {
+      return [];
+    }
+
+    const candidates = await this.getMentionCandidatesForTarget(
+      client,
+      targetType,
+      internalTargetId,
+      ownerId,
+      this.mentionCandidateLimit + requestedIds.length,
+      { id: actorId, role: '' }
+    );
+    const mentionableIds = new Set(candidates.map((candidate) => candidate.numericUserId));
+    const safeIds = requestedIds.filter((id) => mentionableIds.has(id));
+
+    if (safeIds.length < requestedIds.length) {
+      loggerService.warn('[CommentService] Dropped non-mentionable mentionedUserIds', {
+        targetType,
+        internalTargetId,
+        requestedCount: requestedIds.length,
+        acceptedCount: safeIds.length,
+        actorId,
+      });
+    }
+
+    return safeIds;
+  }
+
+  private countMentionTokens(content: string): number {
+    const mentionTokens = content.match(/@[^\s@,，.。!！?？:：;；()（）[\]{}「」『』]+/g) ?? [];
+    return mentionTokens.length;
+  }
+
+  private async canAccessMentionTarget(
+    targetType: CommentTargetType,
+    internalTargetId: number,
+    currentUserId: number
+  ): Promise<boolean> {
+    if (targetType === 'practice') {
+      const practice = await prisma.practices.findUnique({
+        where: { id: internalTargetId },
+        select: { user_id: true, visibility: true, privacy_status: true },
+      });
+      if (!practice) {
+        throw new NotFoundError('practice not found');
+      }
+      return privacyService.canAccessContent(
+        currentUserId,
+        practice.user_id,
+        practice.visibility ?? practice.privacy_status ?? 'public'
+      );
+    }
+
+    if (targetType === 'checkin') {
+      const checkin = await prisma.practice_checkins.findUnique({
+        where: { id: internalTargetId },
+        select: {
+          practices: {
+            select: { user_id: true, visibility: true, privacy_status: true },
+          },
+        },
+      });
+      if (!checkin?.practices) {
+        throw new NotFoundError('checkin not found');
+      }
+      return privacyService.canAccessContent(
+        currentUserId,
+        checkin.practices.user_id,
+        checkin.practices.visibility ?? checkin.practices.privacy_status ?? 'public'
+      );
+    }
+
+    if (targetType === 'portfolio') {
+      return false;
+    }
+
+    const entity = await this.getTargetEntityByInternalId(targetType as EntityType, internalTargetId);
+    return Number(entity.user_id) === Number(currentUserId);
+  }
+
+  private async getMentionCandidatesForTarget(
+    client: Prisma.TransactionClient | typeof prisma,
+    targetType: string,
+    internalTargetId: number,
+    ownerId: number | null,
+    limit: number,
+    currentUser?: AuthUser | null
+  ): Promise<MentionCandidate[]> {
+    const candidateMap = new Map<number, MentionCandidate>();
+    const addUser = (user: {
+      id: number;
+      external_id?: string | null;
+      nickname?: string | null;
+      custom_id?: string | null;
+      contacts?: { photo_url?: string | null } | null;
+    } | null | undefined): void => {
+      if (!user?.id || candidateMap.has(user.id)) {
+        return;
+      }
+      candidateMap.set(user.id, {
+        userId: user.external_id ?? '',
+        numericUserId: user.id,
+        name: user.nickname || user.custom_id || `使用者 ${user.id}`,
+        photoURL: user.contacts?.photo_url ?? null,
+        customId: user.custom_id ?? null,
+      });
+    };
+
+    const resolvedOwnerId = ownerId ?? await this.findTargetOwnerId(
+      client,
+      targetType,
+      internalTargetId
+    );
+
+    if (resolvedOwnerId) {
+      const owner = await client.users.findUnique({
+        where: { id: resolvedOwnerId },
+        include: { contacts: true },
+      });
+      addUser(owner);
+    }
+
+    const comments = await client.comments.findMany({
+      where: {
+        target_type: targetType,
+        target_id: internalTargetId,
+      },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      include: {
+        users: {
+          include: { contacts: true },
+        },
+      },
+    });
+    const targetEntityForVisibility: TargetEntity = {
+      id: internalTargetId,
+      user_id: resolvedOwnerId ?? 0,
+    };
+    for (const comment of comments) {
+      if (!currentUser) {
+        continue;
+      }
+      if (await this.canViewComment(comment as DatabaseComment, currentUser, targetEntityForVisibility)) {
+        addUser(comment.users);
+      }
+    }
+
+    const reactions = await client.reactions.findMany({
+      where: {
+        target_type: targetType,
+        target_id: internalTargetId,
+      },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      include: {
+        users: {
+          include: { contacts: true },
+        },
+      },
+    });
+    reactions.forEach((reaction) => addUser(reaction.users));
+
+    return [...candidateMap.values()].slice(0, limit);
+  }
+
+  private async findTargetOwnerId(
+    client: Prisma.TransactionClient | typeof prisma,
+    targetType: string,
+    internalTargetId: number
+  ): Promise<number | null> {
+    if (targetType === 'practice') {
+      const practice = await client.practices.findUnique({
+        where: { id: internalTargetId },
+        select: { user_id: true },
+      });
+      return practice?.user_id ?? null;
+    }
+
+    if (targetType === 'checkin') {
+      const checkin = await client.practice_checkins.findUnique({
+        where: { id: internalTargetId },
+        select: {
+          practices: {
+            select: { user_id: true },
+          },
+        },
+      });
+      return checkin?.practices?.user_id ?? null;
+    }
+
+    return null;
   }
 
   /**

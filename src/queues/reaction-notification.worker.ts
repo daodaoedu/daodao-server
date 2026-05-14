@@ -36,7 +36,16 @@ const defaultOptions: ReactionNotificationWorkerOptions = {
  * 處理單一 reaction 通知任務
  */
 async function processReactionNotificationJob(job: Job<ReactionNotificationJob>): Promise<void> {
-  const { practiceId, actorUserId, practiceOwnerId, practiceTitle, totalReactionCount, entityType = 'practice', entityId } = job.data;
+  const {
+    practiceId,
+    actorUserId,
+    practiceOwnerId,
+    practiceTitle,
+    totalReactionCount,
+    reactionType,
+    entityType = 'practice',
+    entityId,
+  } = job.data;
   const actualEntityId = entityId ?? practiceId;
 
   loggerService.info('[reaction-notification-worker] Processing job', {
@@ -159,6 +168,7 @@ async function processReactionNotificationJob(job: Job<ReactionNotificationJob>)
       reactionCount: totalReactionCount,
       practiceUrl,
       unsubscribeUrl,
+      reactionType,
     });
 
     // 先建立 pending log 再做防重複檢查，縮小 BullMQ stall race window

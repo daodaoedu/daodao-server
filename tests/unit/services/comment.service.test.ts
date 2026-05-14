@@ -164,6 +164,67 @@ describe('Comment Service', () => {
         }),
       );
     });
+
+    it('建立留言時會通知可 mention 的使用者，中文 @ 不會被過濾', async () => {
+      const created = makeDbComment({ content: '@王小明 請看這個' });
+      prismaMock.comments.create.mockResolvedValue(created as any);
+      prismaMock.users.findUnique.mockResolvedValue(null);
+      prismaMock.comments.findMany.mockResolvedValue([
+        makeDbComment({
+          id: 2,
+          user_id: 3,
+          users: {
+            id: 3,
+            nickname: '王小明',
+            external_id: 'ext-3',
+            custom_id: 'wang',
+            user_positions: [],
+            contacts: null,
+          },
+        }),
+      ] as any);
+      prismaMock.reactions.findMany.mockResolvedValue([]);
+      prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+      await commentService.createComment({
+        targetType: 'practice',
+        targetId: 'ext-10',
+        content: '@王小明 請看這個',
+        userId: 1,
+        mentionedUserIds: [3],
+      });
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'mention',
+          recipientId: 3,
+          entityType: 'comment',
+        }),
+      );
+    });
+
+    it('建立留言時會忽略不在候選名單內的 mentionedUserIds', async () => {
+      const created = makeDbComment({ content: '@陌生人' });
+      prismaMock.comments.create.mockResolvedValue(created as any);
+      prismaMock.users.findUnique.mockResolvedValue(null);
+      prismaMock.comments.findMany.mockResolvedValue([]);
+      prismaMock.reactions.findMany.mockResolvedValue([]);
+
+      await commentService.createComment({
+        targetType: 'practice',
+        targetId: 'ext-10',
+        content: '@陌生人',
+        userId: 1,
+        mentionedUserIds: [999],
+      });
+
+      expect(mockCreateEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'mention',
+          recipientId: 999,
+        }),
+      );
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -298,6 +359,136 @@ describe('Comment Service', () => {
     });
   });
 
+  describe('getMentionCandidates', () => {
+    it('回傳 owner、留言者、reaction 使用者並排除目前使用者', async () => {
+      prismaMock.practices.findUnique.mockResolvedValue({
+        user_id: 2,
+        visibility: 'public',
+        privacy_status: 'public',
+      } as any);
+      prismaMock.users.findUnique.mockResolvedValue({
+        id: 2,
+        nickname: '實踐作者',
+        external_id: 'ext-2',
+        custom_id: 'owner',
+        contacts: null,
+      } as any);
+      prismaMock.comments.findMany.mockResolvedValue([
+        makeDbComment({
+          id: 2,
+          user_id: 3,
+          users: {
+            id: 3,
+            nickname: '留言者',
+            external_id: 'ext-3',
+            custom_id: 'commenter',
+            user_positions: [],
+            contacts: null,
+          },
+        }),
+      ] as any);
+      prismaMock.reactions.findMany.mockResolvedValue([
+        {
+          id: 1,
+          users: {
+            id: 4,
+            nickname: '按讚者',
+            external_id: 'ext-4',
+            custom_id: 'reactor',
+            contacts: null,
+          },
+        },
+      ] as any);
+
+      const result = await commentService.getMentionCandidates({
+        targetType: 'practice',
+        targetId: 'ext-10',
+        currentUser: { id: 3, role: 'USER' },
+      });
+
+      expect(result.data?.map((candidate) => candidate.numericUserId)).toEqual([2, 4]);
+    });
+
+    it('不回傳目前使用者看不到的 private comment 作者', async () => {
+      prismaMock.practices.findUnique.mockResolvedValue({
+        user_id: 2,
+        visibility: 'public',
+        privacy_status: 'public',
+      } as any);
+      prismaMock.users.findUnique.mockResolvedValue({
+        id: 2,
+        nickname: '實踐作者',
+        external_id: 'ext-2',
+        custom_id: 'owner',
+        contacts: null,
+      } as any);
+      prismaMock.comments.findMany.mockResolvedValue([
+        makeDbComment({
+          id: 2,
+          user_id: 3,
+          visibility: 'private',
+          users: {
+            id: 3,
+            nickname: '私人留言者',
+            external_id: 'ext-3',
+            custom_id: 'private-commenter',
+            user_positions: [],
+            contacts: null,
+          },
+        }),
+        makeDbComment({
+          id: 3,
+          user_id: 4,
+          visibility: 'public',
+          users: {
+            id: 4,
+            nickname: '公開留言者',
+            external_id: 'ext-4',
+            custom_id: 'public-commenter',
+            user_positions: [],
+            contacts: null,
+          },
+        }),
+      ] as any);
+      prismaMock.reactions.findMany.mockResolvedValue([]);
+
+      const result = await commentService.getMentionCandidates({
+        targetType: 'practice',
+        targetId: 'ext-10',
+        currentUser: { id: 99, role: 'USER' },
+      });
+
+      expect(result.data?.map((candidate) => candidate.numericUserId)).toEqual([2, 4]);
+    });
+
+    it('未登入查詢 mention candidates 時回傳空清單', async () => {
+      const result = await commentService.getMentionCandidates({
+        targetType: 'practice',
+        targetId: 'ext-10',
+        currentUser: null,
+      });
+
+      expect(result.data).toEqual([]);
+      expect(prismaMock.comments.findMany).not.toHaveBeenCalled();
+    });
+
+    it('無權限存取 private practice 時拒絕回傳 mention candidates', async () => {
+      prismaMock.practices.findUnique.mockResolvedValue({
+        user_id: 2,
+        visibility: 'private',
+        privacy_status: 'private',
+      } as any);
+
+      await expect(
+        commentService.getMentionCandidates({
+          targetType: 'practice',
+          targetId: 'ext-10',
+          currentUser: { id: 3, role: 'USER' },
+        })
+      ).rejects.toThrow('You do not have permission to get mention candidates for this target');
+    });
+  });
+
   // --------------------------------------------------------------------------
   // getCommentDetail — 修復後行為
   // --------------------------------------------------------------------------
@@ -377,6 +568,9 @@ describe('createComment — mention notifications', () => {
     setupTransactionMock(); // uses the existing project helper
     prismaMock.comments.create.mockResolvedValue(makeDbComment({ id: commentId, user_id: 1 }));
     prismaMock.comments.findUnique.mockResolvedValue(null); // no parent
+    prismaMock.users.findUnique.mockResolvedValue(null);
+    prismaMock.comments.findMany.mockResolvedValue([]);
+    prismaMock.reactions.findMany.mockResolvedValue([]);
   }
 
   beforeEach(() => {
@@ -385,12 +579,20 @@ describe('createComment — mention notifications', () => {
 
   it('對 mentionedUserIds 裡的每個有效 userId 建立 mention 事件', async () => {
     setupCommentCreate();
+    prismaMock.comments.findMany.mockResolvedValue([
+      makeDbComment({ user_id: 3, users: { id: 3, nickname: 'charlie', external_id: 'ext-3', custom_id: null, user_positions: [], contacts: null } }),
+      makeDbComment({ user_id: 4, users: { id: 4, nickname: 'diana', external_id: 'ext-4', custom_id: null, user_positions: [], contacts: null } }),
+    ] as any);
     prismaMock.users.findMany.mockResolvedValue([
       { id: 3, nickname: 'charlie' },
       { id: 4, nickname: 'diana' },
     ] as Awaited<ReturnType<typeof prismaMock.users.findMany>>);
 
-    await commentService.createComment({ ...baseParams, mentionedUserIds: [3, 4] });
+    await commentService.createComment({
+      ...baseParams,
+      content: '嗨 @alice @diana 你好',
+      mentionedUserIds: [3, 4],
+    });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
       (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
@@ -448,6 +650,25 @@ describe('createComment — mention notifications', () => {
     expect(mentionCalls).toHaveLength(0);
   });
 
+  it('內容沒有 @ 時不會依 mentionedUserIds 發送隱形 mention 通知', async () => {
+    setupCommentCreate();
+    prismaMock.comments.findMany.mockResolvedValue([
+      makeDbComment({ user_id: 3, users: { id: 3, nickname: 'alice', external_id: 'ext-3', custom_id: null, user_positions: [], contacts: null } }),
+    ] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.createComment({
+      ...baseParams,
+      content: '嗨 alice 你好',
+      mentionedUserIds: [3],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
   it('未提供 mentionedUserIds 時不發送 mention 通知', async () => {
     setupCommentCreate();
 
@@ -457,6 +678,284 @@ describe('createComment — mention notifications', () => {
       (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
     );
     expect(mentionCalls).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// updateComment — mention notifications (Task 4.2 regression)
+// ============================================================================
+
+describe('updateComment — mention notifications', () => {
+  const existingComment = makeDbComment({ id: 1, user_id: 1, content: '原始留言', target_type: 'practice', target_id: 10 });
+  const updatedComment = makeDbComment({ id: 1, user_id: 1, content: '修改後 @alice 你好', target_type: 'practice', target_id: 10 });
+
+  function setupUpdate() {
+    jest.clearAllMocks();
+    setupTransactionMock();
+    prismaMock.comments.findUnique.mockResolvedValue(existingComment as any);
+    prismaMock.comments.update.mockResolvedValue(updatedComment as any);
+    prismaMock.users.findUnique.mockResolvedValue(null);
+    prismaMock.comments.findMany.mockResolvedValue([
+      makeDbComment({ user_id: 3, users: { id: 3, nickname: 'alice', external_id: 'ext-3', custom_id: null, user_positions: [], contacts: null } }),
+    ] as any);
+    prismaMock.reactions.findMany.mockResolvedValue([]);
+  }
+
+  it('提供 mentionedUserIds 且使用者未被通知過 → 建立 mention P1 事件', async () => {
+    setupUpdate();
+    // 尚未有 mention 通知記錄
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @alice 你好',
+      mentionedUserIds: [3],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(1);
+    expect(mentionCalls[0][0]).toMatchObject({
+      type: 'mention',
+      actorId: 1,
+      recipientId: 3,
+      entityType: 'comment',
+      entityId: 1,
+      priority: 'P1',
+    });
+  });
+
+  it('更新留言時可新增 mention target owner', async () => {
+    setupUpdate();
+    prismaMock.practices.findUnique.mockResolvedValue({ user_id: 2 } as any);
+    prismaMock.users.findUnique.mockResolvedValue({
+      id: 2,
+      nickname: 'owner',
+      external_id: 'ext-2',
+      custom_id: null,
+      contacts: null,
+    } as any);
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 2 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @owner 你好',
+      mentionedUserIds: [2],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(1);
+    expect(mentionCalls[0][0]).toMatchObject({
+      type: 'mention',
+      recipientId: 2,
+      entityType: 'comment',
+    });
+  });
+
+  it('更新內容沒有 @ 時不會依 mentionedUserIds 發送隱形 mention 通知', async () => {
+    setupUpdate();
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 alice 你好',
+      mentionedUserIds: [3],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('使用者已被通知過（diff 比對）→ 不重複發送 mention 事件', async () => {
+    setupUpdate();
+    // 使用者 3 已有通知記錄
+    prismaMock.notification_events.findMany.mockResolvedValue([
+      { recipient_id: 3 },
+    ] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @alice 你好',
+      mentionedUserIds: [3],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('commenter 自己的 mention → 不發送', async () => {
+    setupUpdate();
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 1 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @self 你好',
+      mentionedUserIds: [1],
+    });
+
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('未提供 mentionedUserIds → 不查詢 notification_events，不發送事件', async () => {
+    setupUpdate();
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後留言',
+    });
+
+    expect(prismaMock.notification_events.findMany).not.toHaveBeenCalled();
+    const mentionCalls = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+    );
+    expect(mentionCalls).toHaveLength(0);
+  });
+
+  it('mentionedUserIds 數量超過內容 @ 數量 → 記 warn 且只取內容內數量', async () => {
+    const { loggerService } = jest.requireMock('@/services/logging/logger.service');
+    setupUpdate();
+    prismaMock.notification_events.findMany.mockResolvedValue([] as any);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 3 }] as any);
+
+    await commentService.updateComment({
+      commentId: 1,
+      userId: 1,
+      content: '修改後 @alice 你好',
+      mentionedUserIds: [3, 4, 5],
+    });
+
+    expect(loggerService.warn).toHaveBeenCalledWith(
+      expect.stringContaining('mentionedUserIds count exceeds @mentions in content'),
+      expect.anything()
+    );
+  });
+});
+
+// ============================================================================
+// createComment — comment_reply notifications
+// ============================================================================
+
+describe('createComment — comment_reply notifications', () => {
+  function setupReplyCreate(parentUserId: number, actorUserId: number) {
+    jest.clearAllMocks();
+    setupTransactionMock();
+    mockGetTargetEntity.mockResolvedValue({ id: 10, user_id: 99 }); // entity owner is user 99
+    prismaMock.practices.findUnique.mockResolvedValue({ external_id: 'ext-10' } as any);
+    prismaMock.comments.create.mockResolvedValue(
+      makeDbComment({ id: 5, user_id: actorUserId }) as any
+    );
+    // parentComment is owned by parentUserId
+    prismaMock.comments.findUnique.mockResolvedValue(
+      makeDbComment({ id: 2, parent_id: null, target_id: 10, user_id: parentUserId }) as any
+    );
+  }
+
+  it('回覆他人留言 → 觸發 comment_reply 通知', async () => {
+    setupReplyCreate(/* parentUserId */ 3, /* actorUserId */ 1);
+
+    await commentService.createComment({
+      targetType: 'practice',
+      targetId: 'ext-10',
+      content: '回覆測試',
+      userId: 1,
+      parentId: 2,
+    });
+
+    const replyNotifications = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'comment_reply'
+    );
+    expect(replyNotifications).toHaveLength(1);
+    expect(replyNotifications[0][0]).toMatchObject({
+      type: 'comment_reply',
+      actorId: 1,
+      recipientId: 3,
+      entityType: 'comment',
+      entityId: 5,
+      priority: 'P2',
+      payload: expect.objectContaining({
+        parent_comment_id: 2,
+        entity_external_id: 'ext-10',
+      }),
+    });
+  });
+
+  it('回覆自己留言 → createEvent 以 actorId===recipientId 呼叫（由 notificationEventService 內部過濾）', async () => {
+    // actorUserId === parentUserId === 1
+    setupReplyCreate(/* parentUserId */ 1, /* actorUserId */ 1);
+
+    await commentService.createComment({
+      targetType: 'practice',
+      targetId: 'ext-10',
+      content: '自己回覆自己',
+      userId: 1,
+      parentId: 2,
+    });
+
+    // 呼叫端不做 self-filter，由 notificationEventService 內部處理
+    // 所以 createEvent 會被呼叫，且 actorId === recipientId === 1
+    const replyNotifications = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'comment_reply'
+    );
+    expect(replyNotifications).toHaveLength(1);
+    expect(replyNotifications[0][0]).toMatchObject({
+      actorId: 1,
+      recipientId: 1,
+    });
+  });
+
+  it('被回覆者同時是內容擁有者 → 收到兩筆通知（comment + comment_reply）', async () => {
+    // entity owner = user 2, parentComment owner = user 2
+    jest.clearAllMocks();
+    setupTransactionMock();
+    mockGetTargetEntity.mockResolvedValue({ id: 10, user_id: 2 }); // entity owner is user 2
+    prismaMock.practices.findUnique.mockResolvedValue({ title: '我的練習', external_id: 'ext-10' } as any);
+    prismaMock.comments.create.mockResolvedValue(
+      makeDbComment({ id: 5, user_id: 1 }) as any
+    );
+    // parentComment is owned by user 2 (same as entity owner)
+    prismaMock.comments.findUnique.mockResolvedValue(
+      makeDbComment({ id: 2, parent_id: null, target_id: 10, user_id: 2 }) as any
+    );
+
+    await commentService.createComment({
+      targetType: 'practice',
+      targetId: 'ext-10',
+      content: '回覆同時也是內容擁有者',
+      userId: 1,
+      parentId: 2,
+    });
+
+    const commentNotifications = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'comment'
+    );
+    const replyNotifications = mockCreateEvent.mock.calls.filter(
+      (args: unknown[]) => (args[0] as { type: string }).type === 'comment_reply'
+    );
+    expect(commentNotifications).toHaveLength(1);
+    expect(commentNotifications[0][0]).toMatchObject({ recipientId: 2 });
+    expect(replyNotifications).toHaveLength(1);
+    expect(replyNotifications[0][0]).toMatchObject({ recipientId: 2 });
   });
 });
 

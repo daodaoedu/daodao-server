@@ -41,6 +41,7 @@ import {
   createPracticeApiResponseSchema,
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
+  copyPracticeApiResponseSchema,
   // Practice Template
   practiceTemplateQuerySchema,
   practiceTemplateParamsSchema,
@@ -722,6 +723,38 @@ registry.registerPath({
 });
 
 // ============================================================================
+// Copy OpenAPI 路由定義
+// ============================================================================
+
+/**
+ * POST /api/v1/practices/{id}/copy - 複製實踐
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/copy',
+  tags: ['Practice'],
+  summary: '複製實踐',
+  description: '將指定的實踐複製到自己的清單。複製他人的實踐時，來源實踐必須為公開狀態。複製自己的實踐不受此限。',
+  request: {
+    params: practiceParamsSchema
+  },
+  responses: {
+    201: {
+      description: '複製成功，回傳新實踐 ID',
+      content: {
+        'application/json': {
+          schema: copyPracticeApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
 // Archive OpenAPI 路由定義
 // ============================================================================
 
@@ -1303,6 +1336,16 @@ router.get('/:id/user-status',
 // ============================================================================
 // 封存功能
 // ============================================================================
+
+/**
+ * POST /practices/:id/copy
+ * 複製實踐
+ * 需要身份驗證
+ */
+router.post('/:id/copy',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  practiceController.copyPractice as RequestHandler);
 
 /**
  * POST /practices/:id/archive

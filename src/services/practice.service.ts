@@ -56,6 +56,56 @@ const prismaClient = prisma;
 // 主題色循環順序
 const THEME_COLORS = ['#FCDD84', '#C3EEFF', '#FFC0C8', '#A0E8D0'] as const;
 
+async function notifyPracticeCreatedAudience(params: {
+  actorId: number;
+  practiceId: number;
+  practiceTitle: string;
+  privacyStatus?: string | null;
+}): Promise<void> {
+  const { actorId, practiceId, practiceTitle, privacyStatus } = params;
+
+  // 只有 public practice 通知 followers / connected partners，避免 private / delayed 內容提早曝光
+  if (privacyStatus !== 'public') {
+    return;
+  }
+
+  const [followers, connections] = await Promise.all([
+    prismaClient.follows.findMany({
+      where: { target_type: 'user', target_id: actorId },
+      select: { follower_id: true },
+    }),
+    prismaClient.connections.findMany({
+      where: { OR: [{ user_a_id: actorId }, { user_b_id: actorId }] },
+      select: { user_a_id: true, user_b_id: true },
+    }),
+  ]);
+
+  const recipientIds = new Set<number>();
+  for (const follower of followers) {
+    if (follower.follower_id !== actorId) {
+      recipientIds.add(follower.follower_id);
+    }
+  }
+  for (const connection of connections) {
+    const partnerId = connection.user_a_id === actorId ? connection.user_b_id : connection.user_a_id;
+    if (partnerId !== actorId) {
+      recipientIds.add(partnerId);
+    }
+  }
+
+  await Promise.all([...recipientIds].map(recipientId =>
+    notificationEventService.createEvent({
+      type: 'PracticeCreated',
+      actorId,
+      recipientId,
+      entityType: 'practice',
+      entityId: practiceId,
+      priority: 'P2',
+      payload: { practice_title: practiceTitle },
+    })
+  ));
+}
+
 /**
  * 取得實踐列表（支援篩選、分頁、搜尋）
  */
@@ -568,22 +618,15 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
       });
 
-      // 通知關注此用戶的 followers（非阻塞）
-      prismaClient.follows.findMany({
-        where:  { target_type: 'user', target_id: userId },
-        select: { follower_id: true },
-      }).then((followers) => {
-        for (const { follower_id } of followers) {
-          notificationEventService.createEvent({
-            type:        'PracticeCreated',
-            actorId:     userId,
-            recipientId: follower_id,
-            entityType:  'practice',
-            entityId:    practice.id,
-            priority:    'P2',
-          }).catch(() => {});
-        }
-      }).catch(() => {});
+      // 通知關注此用戶的 followers 與 connected partners（非阻塞）
+      notifyPracticeCreatedAudience({
+        actorId: userId,
+        practiceId: practice.id,
+        practiceTitle: practice.title,
+        privacyStatus: practice.privacy_status,
+      }).catch(err => {
+        loggerService.error('Failed to notify practice created audience', { practiceId: practice.id, error: err });
+      });
     }
 
     return createSuccessResponse(practiceEntity);
@@ -803,30 +846,26 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         loggerService.error('Failed to enqueue PE01 email for published draft', { practiceId: id, error: err });
       });
 
-      // 通知關注此用戶的 followers（非阻塞）
-      prismaClient.follows.findMany({
-        where:  { target_type: 'user', target_id: userId },
-        select: { follower_id: true },
-      }).then((followers) => {
-        for (const { follower_id } of followers) {
-          notificationEventService.createEvent({
-            type:        'PracticeCreated',
-            actorId:     userId,
-            recipientId: follower_id,
-            entityType:  'practice',
-            entityId:    id,
-            priority:    'P2',
-          }).catch(() => {});
-        }
-      }).catch(() => {});
+      // 通知關注此用戶的 followers 與 connected partners（非阻塞）
+      notifyPracticeCreatedAudience({
+        actorId: userId,
+        practiceId: id,
+        practiceTitle: practice.title,
+        privacyStatus: practice.privacy_status,
+      }).catch(err => {
+        loggerService.error('Failed to notify published practice audience', { practiceId: id, error: err });
+      });
     }
 
     // Fire-and-forget: fan-out 更新通知給追蹤者和連結夥伴
-    const updatePayload = { practiceId: id };
-    getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
-      fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
-      fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
-    }).catch(() => {});
+    // 草稿發布已送 PracticeCreated；private / delayed 不通知以避免曝光非公開內容
+    if (!isPublishingDraft && practice.privacy_status === 'public') {
+      const updatePayload = { practiceId: id };
+      getFanoutModule().then(({ fanoutToPracticeFollowers, fanoutToConnectedPartners }) => {
+        fanoutToPracticeFollowers('follow.practice_update', userId, id, updatePayload).catch(() => {});
+        fanoutToConnectedPartners('connect.partner_update', userId, updatePayload).catch(() => {});
+      }).catch(() => {});
+    }
 
     return createSuccessResponse(practiceEntity);
 
@@ -1536,6 +1575,96 @@ export async function completeExpiredPractices(): Promise<{
     return { completedCount: result.updatedCount, practiceIds };
   } catch (error) {
     loggerService.error('Failed to complete expired practices', { error });
+    throw error;
+  }
+}
+
+/**
+ * 複製實踐（複製他人或自己的實踐）
+ * - 複製他人：僅允許 public 實踐
+ * - 複製自己：不限 privacy_status
+ */
+export async function copyPractice(sourceId: number, userId: number): Promise<ApiSuccessResponse<{ id: string }>> {
+  try {
+    const [source, resourcesMap, tags] = await Promise.all([
+      prismaClient.practices.findUnique({ where: { id: sourceId } }),
+      getPracticeResources([sourceId]),
+      prismaClient.entity_tags.findMany({
+        where: { entity_type: 'practice', entity_id: sourceId },
+        include: { tags: { select: { id: true, name: true } } }
+      })
+    ]);
+
+    if (!source || source.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    const isSelf = source.user_id === userId;
+    if (!isSelf) {
+      const visibility = source.visibility ?? 'public';
+      if (visibility !== 'public') {
+        throw new ForbiddenError('此實踐不公開，無法複製');
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const endDate = source.duration_days
+      ? (() => {
+          const d = new Date(today);
+          d.setDate(d.getDate() + source.duration_days - 1);
+          return d;
+        })()
+      : null;
+
+    const sourceResources = resourcesMap[sourceId] ?? [];
+
+    const [newPractice] = await prismaClient.$transaction([
+      prismaClient.practices.create({
+        data: {
+          user_id: userId,
+          title: source.title,
+          practice_action: source.practice_action,
+          duration_days: source.duration_days,
+          session_duration_minutes: source.session_duration_minutes,
+          frequency_min_days: source.frequency_min_days,
+          frequency_max_days: source.frequency_max_days,
+          practice_time_periods: source.practice_time_periods,
+          other_context: source.other_context,
+          has_resources: sourceResources.length > 0,
+          theme_color: source.theme_color,
+          template_id: source.template_id,
+          source_practice_id: sourceId,
+          status: 'not_started',
+          progress_percentage: INITIAL_PROGRESS,
+          start_date: today,
+          end_date: endDate
+        },
+        select: { id: true, external_id: true }
+      }),
+      prismaClient.practices.update({
+        where: { id: sourceId },
+        data: { copy_count: { increment: 1 } }
+      })
+    ]);
+
+    const tagNames = tags.map(t => t.tags.name);
+    if (tagNames.length > 0) await linkTags(newPractice.id, tagNames);
+    if (sourceResources.length > 0) {
+      await linkResources(newPractice.id, sourceResources.map(r => ({ name: r.name, url: r.url })), userId);
+    }
+
+    if (!newPractice.external_id) {
+      throw new Error('新建立的實踐缺少 external_id');
+    }
+
+    loggerService.info('Practice copied', { sourceId, newId: newPractice.id, userId });
+
+    return createSuccessResponse({ id: newPractice.external_id });
+
+  } catch (error) {
+    loggerService.error('Failed to copy practice', { sourceId, userId, error });
     throw error;
   }
 }

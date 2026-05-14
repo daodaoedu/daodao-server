@@ -68,6 +68,8 @@ describe('Follow Service', () => {
       } as any);
       // Fire-and-forget: followUser calls prisma.users.findUnique().then(...)
       prismaMock.users.findUnique.mockResolvedValue(null as any);
+      // Fire-and-forget: fan-out follows.findMany().then(...)
+      prismaMock.follows.findMany.mockResolvedValue([]);
 
       const result = await followService.followUser(1, 'ext-2');
 
