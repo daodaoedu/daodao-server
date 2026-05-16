@@ -22,9 +22,9 @@ Date: 2026-05-16
    - `GET /api/v1/practices` 及 `GET /api/v1/practices/:id` 回傳的 `user` 子物件只有 `{ id, name, photoUrl }`，沒有 `customId`
    - 前端無法靠這份資料決定用 customId 還是 UUID 建立連結
 
-2. **Profile endpoint 不回傳 `customId` 在 SEO canonical URL 情境下**  
+2. **Profile endpoint 不回傳 canonical URL 供 SEO 重導**  
    - `GET /api/v1/users/profile/:identifier` 已回傳 `customId` ✅  
-   - 但當以 UUID 訪問時沒有 server-side redirect → 瀏覽器 URL 停留在 UUID
+   - 但當以 UUID 訪問時沒有 redirect 機制 → 瀏覽器 URL 停留在 UUID，影響 SEO
 
 ---
 
@@ -38,10 +38,10 @@ Date: 2026-05-16
 |------|---------------|----------|
 | `GET /api/v1/practices` | `id, name, photoUrl` | `customId` |
 | `GET /api/v1/practices/:id` | `id, name, photoUrl` | `customId` |
-| `GET /api/v1/practices/:id/check-ins` | `id, name, photo_url` | `custom_id` |
-| `GET /api/v1/check-ins` | `id, name, photo_url` | `custom_id` |
+| `GET /api/v1/practices/:id/check-ins` | `id, name, photoUrl` | `customId` |
+| `GET /api/v1/check-ins` | `id, name, photoUrl` | `customId` |
 
-> Note: 打卡 API 回傳 snake_case（`custom_id`），實踐 API 回傳 camelCase（`customId`），維持現有風格一致性。
+> Note: 統一使用 camelCase `customId`（而非 snake_case `custom_id`），降低前端類型定義複雜度，確保同一功能的命名一致性。
 
 **Schema 變更（Zod / OpenAPI）：**
 
@@ -54,22 +54,24 @@ const practiceUserSchema = z.object({
   customId: z.string().nullable(),  // 新增
 });
 
-// check-ins response - 嵌入 user 物件
+// check-ins response - 嵌入 user 物件（統一 camelCase）
 const checkInUserSchema = z.object({
   id: z.string(),
   name: z.string(),
-  photo_url: z.string().nullable(),
-  custom_id: z.string().nullable(),  // 新增
+  photoUrl: z.string().nullable(),
+  customId: z.string().nullable(),  // 新增，統一使用 camelCase
 });
 ```
 
 **Service 層 query 變更：**
 
+> Note: 目前 practice/check-in 邏輯位於 legacy JavaScript 層；若已遷移至 TypeScript，對應路徑為 `src/services/practice.service.ts` / `src/services/check-in.service.ts`。
+
 ```typescript
-// practice.service.ts - 查詢 include 中加入 custom_id
+// practice service - 查詢 include（關聯名稱使用單數 user，反映一對一關係）
 const practiceWithUser = await prisma.practices.findMany({
   include: {
-    users: {
+    user: {
       select: {
         external_id: true,
         nickname: true,
@@ -89,12 +91,14 @@ const practiceWithUser = await prisma.practices.findMany({
 }
 ```
 
-### 2.2 新增 Profile Canonical Redirect
+### 2.2 Profile Endpoint 加入 `canonical` 並啟用 SEO 永久重導
 
-當以 UUID 存取 `GET /api/v1/users/profile/:identifier` 且該使用者有 `customId` 時，回傳 `canonical` 欄位讓前端自行重導：
+為正確支援 SEO（link equity 合併、搜尋引擎索引標準 URL），採**前端 Next.js SSR 永久重導**策略：
+
+**Step 1 — Server API** 在 `getUserProfile` response 加入 `canonical` 欄位：
 
 ```typescript
-// 在 getUserProfile response 加入 canonical
+// controllers/user.js（或 src/controllers/user.controller.ts）
 res.json({
   success: true,
   data: {
@@ -105,7 +109,22 @@ res.json({
 });
 ```
 
-> Server 不做 HTTP redirect（302/301），由前端在 page load 時根據 `canonical !== identifier` 決定是否 `router.replace`。
+**Step 2 — 前端 Next.js page**（`daodao-f2e`）讀取 `canonical`，若 `canonical !== identifier`，呼叫 `permanentRedirect()` 發出 **308 Permanent Redirect**（與 SEO 301 等效）：
+
+```typescript
+// apps/product/src/app/[locale]/(with-layout)/users/[identifier]/page.tsx
+import { permanentRedirect } from 'next/navigation';
+
+export default async function UserIslandPage({ params: { identifier } }) {
+  const profile = await fetchUserProfile(identifier);
+  if (profile?.data?.canonical && profile.data.canonical !== identifier) {
+    permanentRedirect(`/users/${profile.data.canonical}`);
+  }
+  // ... render page
+}
+```
+
+> **設計理由**：`/api/v1/users/profile/:identifier` 是 JSON API 端點，非 HTML 頁面；搜尋引擎索引的目標是前端頁面 URL（`/users/<identifier>`），而非 API URL。`permanentRedirect()` 在 Next.js Server Component 中回傳 HTTP 308 Permanent，搜尋引擎與瀏覽器均完整支援，SEO 效果等同 301。此設計避免在 JSON API 層引入 HTTP 重導的不必要複雜度。
 
 ---
 
@@ -115,11 +134,12 @@ res.json({
 
 | 檔案 | 變更說明 |
 |------|----------|
-| `src/services/practice.service.ts` | Prisma query 加入 `custom_id`，formatter 加入 `customId` |
-| `src/services/check-in.service.ts` | Prisma query 加入 `custom_id`，formatter 加入 `custom_id` |
+| `src/services/practice.service.ts`（或 legacy `controllers/project.js`） | query 加入 `custom_id`，formatter 加入 `customId` |
+| `src/services/check-in.service.ts`（或 legacy check-in controller） | query 加入 `custom_id`，formatter 加入 `customId` |
 | `src/validators/practice.validators.ts` | Zod schema 加入 `customId: z.string().nullable()` |
-| `src/validators/check-in.validators.ts` | Zod schema 加入 `custom_id: z.string().nullable()` |
-| `src/controllers/user.controller.ts` | `getUserProfile` response 加入 `canonical` 欄位 |
+| `src/validators/check-in.validators.ts` | Zod schema 加入 `customId: z.string().nullable()` |
+| `src/controllers/user.controller.ts`（或 legacy `controllers/user.js`） | `getUserProfile` response 加入 `canonical` 欄位 |
+| `src/validators/user.validators.ts` | getUserProfile response Zod schema 加入 `canonical: z.string()` |
 | `openspec/specs/users.md` | 更新 profile endpoint response schema |
 
 ### 3.2 不變動的部分
@@ -134,16 +154,16 @@ res.json({
 
 ### 4.1 Unit Tests
 
-- [ ] `practice.service.ts`：回傳 practice 時，user 物件包含 `customId`（有設定時非 null）
-- [ ] `practice.service.ts`：user 未設定 customId 時，`customId` 為 null
-- [ ] `check-in.service.ts`：回傳 check-in 時，user 物件包含 `custom_id`
-- [ ] `user.controller.ts`：`getUserProfile` 回傳 `canonical` 等於 customId（有設定時）
-- [ ] `user.controller.ts`：`getUserProfile` 無 customId 時，`canonical` 等於 external_id
+- [ ] practice service：回傳 practice 時，user 物件包含 `customId`（有設定時非 null）
+- [ ] practice service：user 未設定 customId 時，`customId` 為 null
+- [ ] check-in service：回傳 check-in 時，user 物件包含 `customId`
+- [ ] user controller：`getUserProfile` 回傳 `canonical` 等於 customId（有設定時）
+- [ ] user controller：`getUserProfile` 無 customId 時，`canonical` 等於 external_id
 
 ### 4.2 Integration Tests
 
 - [ ] `GET /api/v1/practices` → 每個 practice 的 `user.customId` 符合該使用者的設定
-- [ ] `GET /api/v1/practices/:id/check-ins` → 每個 check-in 的 `user.custom_id` 正確
+- [ ] `GET /api/v1/practices/:id/check-ins` → 每個 check-in 的 `user.customId` 正確
 - [ ] `GET /api/v1/users/profile/<uuid>` → response 包含 `canonical: "<customId>"`
 - [ ] `GET /api/v1/users/profile/<customId>` → response 包含 `canonical: "<customId>"`
 
@@ -151,7 +171,8 @@ res.json({
 
 ## 5. Acceptance Criteria
 
-- [ ] 所有回傳 embedded user 的 API 皆包含 `customId`/`custom_id`
+- [ ] 所有回傳 embedded user 的 API 皆包含 `customId`（camelCase，統一命名）
 - [ ] `getUserProfile` response 包含 `canonical` 欄位
+- [ ] `src/validators/user.validators.ts` 更新以包含 `canonical: z.string()` 欄位
 - [ ] 現有 E2E 測試不受影響
 - [ ] OpenAPI schema 文件同步更新
