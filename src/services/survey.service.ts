@@ -1,6 +1,7 @@
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
 import { emailService } from '@/services/email/email.service';
+import { loggerService } from '@/services/logging/logger.service';
 import type { CreateSurveyBody, UpdateSurveyStatusBody, SubmitResponseBody, UpdateSurveyBody, ConditionBody, TrackPartialBody } from '@/validators/survey.validators';
 
 const questionWithOptions = {
@@ -117,11 +118,19 @@ export const surveyService = {
   },
 
   async getPublic(externalId: string) {
+    const now = new Date();
     const survey = await prisma.surveys.findFirst({
-      where: { external_id: externalId, status: 'active', is_public: true },
+      where: {
+        external_id: externalId,
+        status: 'active',
+        is_public: true,
+        OR: [{ start_time: null }, { start_time: { lte: now } }],
+      },
       include: { questions: questionWithOptions },
     });
-    return survey ? createSuccessResponse(formatSurvey(survey)) : null;
+    if (!survey) return null;
+    if (survey.end_time && survey.end_time < now) return null;
+    return createSuccessResponse(formatSurvey(survey));
   },
 
   async updateStatus(id: number, userId: number, body: UpdateSurveyStatusBody) {
@@ -136,11 +145,17 @@ export const surveyService = {
   },
 
   async submitResponse(externalId: string, userId: number | null, body: SubmitResponseBody) {
+    const now = new Date();
     const survey = await prisma.surveys.findFirst({
-      where: { external_id: externalId, status: 'active' },
+      where: {
+        external_id: externalId,
+        status: 'active',
+        OR: [{ start_time: null }, { start_time: { lte: now } }],
+      },
       include: { questions: { select: { id: true, question_type: true, is_required: true, position: true, conditions: true } } },
     });
     if (!survey) return null;
+    if (survey.end_time && survey.end_time < now) return null;
 
     const questionTypeMap = new Map(survey.questions.map((q) => [q.id, q.question_type]));
 
@@ -172,12 +187,15 @@ export const surveyService = {
       if (conditions.length === 0) return true;
       return conditions.every((c) => {
         const targetId = positionToId.get(c.depends_on_position);
-        if (targetId == null) return true;
+        if (targetId == null) return false;
         const answer = answerMap.get(targetId);
         const answerValue =
           answer?.answer_text ??
           (answer?.boolean_value != null ? String(answer.boolean_value) : null) ??
           (answer?.rating_value != null ? String(answer.rating_value) : null) ??
+          (Array.isArray(answer?.selected_option_ids) && answer.selected_option_ids.length > 0
+            ? (answer.selected_option_ids as number[]).join(',')
+            : null) ??
           '';
         switch (c.operator) {
           case 'equals': return answerValue === c.value;
@@ -232,11 +250,13 @@ export const surveyService = {
     if (body.session_key) {
       prisma.survey_partial_submissions.deleteMany({
         where: { survey_id: survey.id, session_key: body.session_key },
-      }).catch(() => {});
+      }).catch((err) => loggerService.error('partial cleanup failed', { surveyId: survey.id, err }));
     }
 
     // Fire-and-forget: notify survey creator
-    notifySurveyCreator(survey.id, survey.title, survey.created_by).catch(() => {});
+    notifySurveyCreator(survey.id, survey.title, survey.created_by).catch((err) =>
+      loggerService.error('survey notification failed', { surveyId: survey.id, err }),
+    );
 
     return createSuccessResponse({ response_id: (response as { id: number }).id });
   },
