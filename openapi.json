@@ -18136,6 +18136,511 @@
           "dismissed"
         ],
         "description": "The main response data"
+      },
+      "TrackPartialRequest": {
+        "type": "object",
+        "properties": {
+          "session_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "last_position": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "session_key",
+          "last_position"
+        ]
+      },
+      "Condition": {
+        "type": "object",
+        "properties": {
+          "depends_on_position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "equals",
+              "not_equals",
+              "contains"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "depends_on_position",
+          "operator",
+          "value"
+        ]
+      },
+      "CreateSurveyRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "is_anonymous": {
+            "type": "boolean",
+            "default": false
+          },
+          "max_responses": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "cover_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateQuestion"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "title",
+          "questions"
+        ]
+      },
+      "CreateQuestion": {
+        "type": "object",
+        "properties": {
+          "question_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "multiple_choice",
+              "single_choice",
+              "rating",
+              "text",
+              "yesno",
+              "scale",
+              "ranking"
+            ],
+            "description": "題型"
+          },
+          "is_required": {
+            "type": "boolean",
+            "default": false
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionOption"
+            }
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "question_text",
+          "question_type"
+        ]
+      },
+      "QuestionOption": {
+        "type": "object",
+        "properties": {
+          "option_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        },
+        "required": [
+          "option_text"
+        ]
+      },
+      "UpdateSurveyStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "closed",
+              "archived"
+            ],
+            "description": "問卷狀態"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "SubmitSurveyResponseRequest": {
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmitAnswer"
+            },
+            "minItems": 1
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "session_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "answers"
+        ]
+      },
+      "SubmitAnswer": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "answer_text": {
+            "type": "string"
+          },
+          "selected_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            }
+          },
+          "rating_value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "boolean_value": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "question_id"
+        ]
+      },
+      "SurveyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "closed",
+              "archived"
+            ],
+            "description": "問卷狀態"
+          },
+          "is_anonymous": {
+            "type": "boolean"
+          },
+          "max_responses": {
+            "type": "number",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cover_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "title",
+          "description",
+          "status",
+          "is_anonymous",
+          "max_responses",
+          "tags",
+          "cover_url",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "questions"
+        ]
+      },
+      "QuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "multiple_choice",
+              "single_choice",
+              "rating",
+              "text",
+              "yesno",
+              "scale",
+              "ranking"
+            ],
+            "description": "題型"
+          },
+          "is_required": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "number"
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            }
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "option_text": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "option_text",
+                "position"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "question_text",
+          "question_type",
+          "is_required",
+          "position",
+          "conditions",
+          "options"
+        ]
+      },
+      "SurveyListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "closed",
+              "archived"
+            ],
+            "description": "問卷狀態"
+          },
+          "is_anonymous": {
+            "type": "boolean"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "response_count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "title",
+          "status",
+          "is_anonymous",
+          "tags",
+          "created_at",
+          "response_count"
+        ]
+      },
+      "SurveyAnalytics": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "number"
+          },
+          "response_count": {
+            "type": "number"
+          },
+          "per_question": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question_id": {
+                  "type": "number"
+                },
+                "question_text": {
+                  "type": "string"
+                },
+                "question_type": {
+                  "type": "string",
+                  "enum": [
+                    "multiple_choice",
+                    "single_choice",
+                    "rating",
+                    "text",
+                    "yesno",
+                    "scale",
+                    "ranking"
+                  ],
+                  "description": "題型"
+                },
+                "answer_count": {
+                  "type": "number"
+                },
+                "stats": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "nullable": true
+                  }
+                }
+              },
+              "required": [
+                "question_id",
+                "question_text",
+                "question_type",
+                "answer_count",
+                "stats"
+              ]
+            }
+          }
+        },
+        "required": [
+          "survey_id",
+          "response_count",
+          "per_question"
+        ]
+      },
+      "UpdateSurveyRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cover_url": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          }
+        }
       }
     },
     "parameters": {}
@@ -56710,6 +57215,181 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/surveys": {
+      "post": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "建立問卷",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSurveyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "建立成功"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "取得我的問卷列表",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "問卷列表"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}": {
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "取得問卷詳情",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "問卷詳情"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}/status": {
+      "patch": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "更新問卷狀態",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSurveyStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/surveys/public/{externalId}": {
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "取得公開問卷（填寫用）",
+        "responses": {
+          "200": {
+            "description": "問卷資料"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/surveys/public/{externalId}/responses": {
+      "post": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "提交問卷回應",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSurveyResponseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "提交成功"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/surveys/{id}/analytics": {
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "summary": "取得問卷分析",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "分析資料"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
           }
         }
       }
