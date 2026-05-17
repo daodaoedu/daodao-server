@@ -22,7 +22,7 @@ Date: 2026-05-17
 ### 1.2 根本原因（server 端）
 
 1. **實踐/打卡 API 回傳的嵌入 user 物件缺少 `customId`**
-   - `GET /api/v1/practices` 及相關端點回傳的 `user` 子物件只有 `{ id, name, photoUrl }`
+   - `GET /api/v1/practices` 及相關端點回傳的 `user` 子物件只有 `{ id, name, photoURL, roleList }`
    - 前端無 `customId` 可用來決定連結要用 customId 還是 UUID
 
 2. **Profile endpoint 不回傳 `canonical` 欄位**
@@ -39,10 +39,10 @@ Date: 2026-05-17
 
 | 端點 | 目前 user 欄位 | 新增欄位 |
 |------|---------------|----------|
-| `GET /api/v1/practices` | `id, name, photoUrl` | `customId` |
-| `GET /api/v1/practices/:id` | `id, name, photoUrl` | `customId` |
-| `GET /api/v1/practices/:id/check-ins` | `id, name, photoUrl` | `customId` |
-| `GET /api/v1/check-ins` | `id, name, photoUrl` | `customId` |
+| `GET /api/v1/practices` | `id, name, photoURL, roleList` | `customId` |
+| `GET /api/v1/practices/:id` | `id, name, photoURL, roleList` | `customId` |
+| `GET /api/v1/practices/:id/check-ins` | `id, name, photoURL, roleList` | `customId` |
+| `GET /api/v1/check-ins` | `id, name, photoURL, roleList` | `customId` |
 
 **Schema 變更（Zod）：**
 
@@ -50,7 +50,8 @@ Date: 2026-05-17
 const practiceUserSchema = z.object({
   id: z.string(),
   name: z.string(),
-  photoUrl: z.string().nullable(),
+  photoURL: z.string().nullable(),  // 保持與現有 camelCase 命名一致（URL 全大寫）
+  roleList: z.array(z.string()),
   customId: z.string().nullable(),  // 新增
 });
 ```
@@ -58,15 +59,18 @@ const practiceUserSchema = z.object({
 **Service 層 query 變更：**
 
 ```typescript
-// practice service - Prisma include
+// practice service - Prisma include（relation 名稱為 users，複數）
 const practiceWithUser = await prisma.practices.findMany({
   include: {
-    user: {
+    users: {  // 注意：Prisma schema 中為 users（複數）
       select: {
         external_id: true,
         nickname: true,
         contacts: { select: { photo_url: true } },
         custom_id: true,  // 新增
+        user_positions: {
+          select: { position: { select: { name: true } } },
+        },
       },
     },
   },
@@ -74,10 +78,11 @@ const practiceWithUser = await prisma.practices.findMany({
 
 // formatter 輸出
 {
-  id: user.external_id,
-  name: user.nickname,
-  photoUrl: user.contacts?.photo_url ?? null,
-  customId: user.custom_id ?? null,  // 新增
+  id: practice.users.external_id || '',
+  name: practice.users.nickname || 'Unknown User',
+  photoURL: practice.users.contacts?.photo_url ?? null,  // 保持 photoURL 命名
+  roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+  customId: practice.users.custom_id ?? null,  // 新增
 }
 ```
 
