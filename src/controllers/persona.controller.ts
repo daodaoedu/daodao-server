@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware';
+import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
+import { prisma } from '../services/database/prisma.service';
 import { personaService } from '../services/persona.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { SubmitAnswerBody, SubmitSkipBody, AddResonanceBody, CarouselStateQuery, ProfileUserQuery } from '../validators/persona.validators';
@@ -58,9 +59,11 @@ export const getProfileMe = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const getProfileUser = asyncHandler(async (req: Request, res: Response) => {
-  const targetUserId = Number(req.params.userId);
+  const externalId = req.params.userId;
   const { exclude } = req.query as ProfileUserQuery;
   const requesterId = req.user?.id;
-  const result = await personaService.getProfileUser(targetUserId, requesterId, exclude);
+  const user = await prisma.users.findFirst({ where: { external_id: externalId }, select: { id: true } });
+  if (!user) throw new NotFoundError('找不到使用者');
+  const result = await personaService.getProfileUser(user.id, requesterId, exclude);
   res.json(result);
 });

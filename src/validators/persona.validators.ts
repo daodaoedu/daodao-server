@@ -68,7 +68,7 @@ export const personaResonanceApiResponseSchema = apiSuccessResponseSchema(
 ).openapi('PersonaResonanceApiResponse');
 
 export const profileUserParamSchema = z.object({
-  userId: z.coerce.number().int().positive().openapi({ description: '目標使用者 ID', example: 42 }),
+  userId: z.string().uuid().openapi({ description: '目標使用者 UUID', example: '123e4567-e89b-12d3-a456-426614174000' }),
 }).openapi('PersonaProfileUserParam');
 
 export const profileUserQuerySchema = z.object({
