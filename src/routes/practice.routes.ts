@@ -10,6 +10,8 @@ import { practiceController } from '../controllers/practice.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
 import upload from '../middleware/multer.middleware';
+import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
+import { OnboardingTask } from '../types/onboarding.types';
 import {
   practiceQuerySchema,
   myPracticesQuerySchema,
@@ -1160,7 +1162,9 @@ router.get('/:id',
 router.post('/',
   authenticate,
   validate(createPracticeSchema, 'body'),
-  practiceController.createPractice as RequestHandler);
+  withOnboardingHook(OnboardingTask.C, practiceController.createPractice as RequestHandler, {
+    resolveCreationMethod: (req) => req.body.creationMethod,
+  }) as RequestHandler);
 
 /**
  * PUT /practices/:id
@@ -1200,7 +1204,7 @@ router.post('/:id/checkins',
   upload.array('images', 3),
   validate(practiceParamsSchema, 'params'),
   // TODO: requirePracticeOwnership middleware
-  practiceController.createCheckIn as RequestHandler);
+  withOnboardingHook(OnboardingTask.D, practiceController.createCheckIn as RequestHandler) as RequestHandler);
 
 /**
  * PUT /practices/:id/checkins/:checkInId

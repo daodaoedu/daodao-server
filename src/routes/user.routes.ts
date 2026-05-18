@@ -44,6 +44,8 @@ import {
   updatePreferencesSchema
 } from '../validators/me.validators';
 import { userFollowRouter } from './follow.routes';
+import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
+import { OnboardingTask } from '../types/onboarding.types';
 
 const router = Router();
 
@@ -246,7 +248,7 @@ registry.registerPath({
 router.put('/me',
   authenticate,
   upload.single('avatar'),
-  userController.updateMe as RequestHandler
+  withOnboardingHook(OnboardingTask.B, userController.updateMe as RequestHandler) as RequestHandler
 );
 
 /**

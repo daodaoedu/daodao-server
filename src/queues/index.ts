@@ -125,3 +125,19 @@ export {
   closeReactionNotificationWorker,
   type ReactionNotificationWorkerOptions,
 } from './reaction-notification.worker';
+
+// Onboarding Email Queue
+export {
+  ONBOARDING_EMAIL_QUEUE_NAME,
+  createOnboardingEmailQueue,
+  setOnboardingEmailQueue,
+  getOnboardingEmailQueue,
+  enqueueOnboardingEmail,
+  enqueueOnboardingL0Email,
+} from './onboarding-email.queue';
+
+// Onboarding Email Worker
+export {
+  createOnboardingEmailWorker,
+  closeOnboardingEmailWorker,
+} from './onboarding-email.worker';

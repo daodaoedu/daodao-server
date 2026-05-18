@@ -209,6 +209,12 @@ export const createPracticeSchema = z.object({
     .openapi({
       description: '是否存為草稿',
       example: false
+    }),
+  creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
+    .optional()
+    .openapi({
+      description: '實踐建立方式（用於 Onboarding 任務 C 記錄）',
+      example: 'self_created'
     })
 }).openapi('CreatePracticeRequest', {
   description: '創建實踐活動的請求資料',

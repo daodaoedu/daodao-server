@@ -6,6 +6,8 @@
 import { prisma } from './database/prisma.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
+import { onboardingService } from './onboarding.service';
+import { deriveUserSource } from '../utils/onboarding-source';
 import { cityService } from './city.service';
 import {
   UserQueryParams,
@@ -952,7 +954,11 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       token: newToken
     };
 
-    return { response: createSuccessResponse(result), emailData: pendingEmail };
+    return {
+      response: createSuccessResponse(result),
+      emailData: pendingEmail,
+      onboardingData: { userId: newUser.id, referralSource: referralSource ?? null },
+    };
   });
 
   // Transaction 已 commit，現在發送驗證郵件（含 email_logs 記錄）
@@ -964,6 +970,16 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       emailData.userId
     );
   }
+
+  // 建立 Onboarding 記錄（非阻塞，失敗不影響用戶建立流程）
+  onboardingService
+    .createOnboarding(onboardingData.userId, deriveUserSource(onboardingData.referralSource, false))
+    .catch((err: unknown) =>
+      loggerService.warn('Failed to create onboarding record', {
+        userId: onboardingData.userId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    );
 
   return response;
 };
