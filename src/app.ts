@@ -64,6 +64,8 @@ import followRoutes from './routes/follow.routes';
 import connectionRoutes from './routes/connection.routes';
 // 引入 Buddy 請求路由
 import { buddyRequestRouter, practiceBuddyRequestRouter } from './routes/buddy-request.routes';
+// 引入人物誌路由
+import personaRoutes from './routes/persona.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
@@ -283,6 +285,9 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊連結路由
   app.use('/api/v1/connections', connectionRoutes);
   console.log('🤝 v1 連結路由已註冊 - 可在 /api/v1/connections 訪問');
+
+  app.use('/api/v1/persona', personaRoutes);
+  console.log('🎭 v1 人物誌路由已註冊 - 可在 /api/v1/persona 訪問');
 
   // 註冊 Buddy 請求路由
   app.use('/api/v1/buddy-requests', buddyRequestRouter);
