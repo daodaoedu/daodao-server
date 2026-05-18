@@ -423,16 +423,17 @@ model practices {
   deleted_at               DateTime?                 @db.Timestamptz(6)
   reflection               String?
   privacy_status           String                    @default("public") @db.VarChar(20)
-  visibility               String?                   @default("public") @db.VarChar(20)
+  visibility               String                    @default("public") @db.VarChar(20)
+  insight                  String?
   source_practice_id       Int?
   copy_count               Int                       @default(0)
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
+  source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onUpdate: NoAction)
+  copied_practices         practices[]               @relation("PracticeCopies")
   practice_templates       practice_templates?       @relation(fields: [template_id], references: [id], onUpdate: NoAction)
   users                    users                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  copied_practices         practices[]               @relation("PracticeCopies")
 
   @@index([start_date, end_date], map: "idx_practices_dates")
   @@index([status], map: "idx_practices_status")
@@ -784,89 +785,90 @@ model user_subscription {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model users {
-  id                                   Int                        @id @default(autoincrement())
-  external_id                          String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mongo_id                             String                     @unique
-  gender                               gender_t?
-  language                             String?                    @db.VarChar(255)
-  education_stage                      education_stage_t?         @default(other)
-  tag_list                             String[]
-  contact_id                           Int?
-  is_open_location                     Boolean?
-  location_id                          Int?
-  nickname                             String?                    @db.VarChar(255)
-  role_id                              Int
-  is_open_profile                      Boolean?
-  hide_connections_count               Boolean                    @default(false)
-  birth_date                           DateTime?                  @db.Date
-  basic_info_id                        Int?
-  createdDate                          DateTime?                  @db.Timestamptz(6)
-  updatedDate                          DateTime?                  @db.Timestamptz(6)
-  created_by                           String?                    @db.VarChar(255)
-  created_at                           DateTime?                  @db.Timestamptz(6)
-  updated_by                           String?                    @db.VarChar(255)
-  updated_at                           DateTime?                  @db.Timestamptz(6)
-  is_active                            Boolean?                   @default(true)
-  verified                             Boolean?                   @default(false)
-  verified_at                          DateTime?                  @db.Timestamptz(6)
-  custom_id                            String?                    @db.VarChar(255)
-  custom_id_created_at                 DateTime?                  @db.Timestamp(6)
-  personal_slogan                      String?
-  referral_source                      String?                    @db.VarChar(255)
-  custom_id_verified                   Boolean?                   @default(false)
-  professional_field                   String?                    @db.VarChar(255)
-  activity_stats_id                    Int?
-  custom_position                      String?                    @db.VarChar(100)
-  comments                             comments[]
-  received_connection_requests         connection_requests[]      @relation("connection_requests_receiver_idTousers")
-  sent_connection_requests             connection_requests[]      @relation("connection_requests_requester_idTousers")
-  connections_as_user_a                connections[]              @relation("connections_user_a_idTousers")
-  connections_as_user_b                connections[]              @relation("connections_user_b_idTousers")
-  email_logs                           email_logs[]
-  entity_resources                     entity_resources[]
-  entity_tags                          entity_tags[]
-  follows                              follows[]
-  groups                               groups[]
-  ideas                                ideas[]
-  interaction_counts_as_user_a         interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
-  interaction_counts_as_user_b         interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
-  likes                                likes[]
-  marathon                             marathon[]
-  mentor_participants_as_mentor        mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
-  mentor_participants_as_participant   mentor_participants[]      @relation("mentor_participants_participant_idTousers")
-  notification_events_as_actor         notification_events[]      @relation("notification_events_actor_idTousers")
-  notification_events_as_recipient     notification_events[]      @relation("notification_events_recipient_idTousers")
-  notification_preferences             notification_preferences[]
-  notifications_as_actor               notifications[]            @relation("notifications_actor")
-  notifications_as_recipient           notifications[]            @relation("notifications_recipient")
-  post                                 post[]
-  practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
-  practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
-  practice_checkins                    practice_checkins[]
-  practice_social_proofs               practice_social_proofs[]
-  practices                            practices[]
-  project                              project[]
-  quiz_results                         quiz_results[]
-  rating                               rating[]
-  reactions                            reactions[]
-  resource_review                      resource_review[]
-  resources                            resources[]
-  store                                store?
-  user_interests                       user_interests[]
-  user_join_group                      user_join_group[]
-  user_login_history                   user_login_history[]
-  user_permissions                     user_permissions[]
-  user_positions                       user_positions[]
-  user_preferences                     user_preferences[]
-  user_professional_fields             user_professional_fields[]
-  user_profiles                        user_profiles[]
-  user_project                         user_project[]
-  user_subscription                    user_subscription[]
-  user_activity_stats                  user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
-  basic_info                           basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  contacts                             contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  location                             location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  roles                                roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                                              Int                        @id @default(autoincrement())
+  external_id                                     String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mongo_id                                        String                     @unique
+  gender                                          gender_t?
+  language                                        String?                    @db.VarChar(255)
+  education_stage                                 education_stage_t?         @default(other)
+  tag_list                                        String[]
+  contact_id                                      Int?
+  is_open_location                                Boolean?
+  location_id                                     Int?
+  nickname                                        String?                    @db.VarChar(255)
+  role_id                                         Int
+  is_open_profile                                 Boolean?
+  birth_date                                      DateTime?                  @db.Date
+  basic_info_id                                   Int?
+  createdDate                                     DateTime?                  @db.Timestamptz(6)
+  updatedDate                                     DateTime?                  @db.Timestamptz(6)
+  created_by                                      String?                    @db.VarChar(255)
+  created_at                                      DateTime?                  @db.Timestamptz(6)
+  updated_by                                      String?                    @db.VarChar(255)
+  updated_at                                      DateTime?                  @db.Timestamptz(6)
+  is_active                                       Boolean?                   @default(true)
+  verified                                        Boolean?                   @default(false)
+  verified_at                                     DateTime?                  @db.Timestamptz(6)
+  custom_id                                       String?                    @db.VarChar(255)
+  custom_id_created_at                            DateTime?                  @db.Timestamp(6)
+  personal_slogan                                 String?
+  referral_source                                 String?                    @db.VarChar(255)
+  custom_id_verified                              Boolean?                   @default(false)
+  professional_field                              String?                    @db.VarChar(255)
+  activity_stats_id                               Int?
+  custom_position                                 String?                    @db.VarChar(100)
+  hide_connections_count                          Boolean                    @default(false)
+  comments                                        comments[]
+  received_connection_requests                    connection_requests[]      @relation("connection_requests_receiver_idTousers")
+  sent_connection_requests                        connection_requests[]      @relation("connection_requests_requester_idTousers")
+  connections_as_user_a                           connections[]              @relation("connections_user_a_idTousers")
+  connections_as_user_b                           connections[]              @relation("connections_user_b_idTousers")
+  email_logs                                      email_logs[]
+  entity_resources                                entity_resources[]
+  entity_tags                                     entity_tags[]
+  follows                                         follows[]
+  groups                                          groups[]
+  ideas                                           ideas[]
+  interaction_counts_as_user_a                    interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
+  interaction_counts_as_user_b                    interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
+  likes                                           likes[]
+  marathon                                        marathon[]
+  mentor_participants_as_mentor                   mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
+  mentor_participants_as_participant              mentor_participants[]      @relation("mentor_participants_participant_idTousers")
+  notification_events_as_actor                    notification_events[]      @relation("notification_events_actor_idTousers")
+  notification_events_as_recipient                notification_events[]      @relation("notification_events_recipient_idTousers")
+  notification_preferences                        notification_preferences[]
+  notifications_as_actor                          notifications[]            @relation("notifications_actor")
+  notifications_as_recipient                      notifications[]            @relation("notifications_recipient")
+  post                                            post[]
+  practice_buddy_requests_as_receiver             practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
+  practice_buddy_requests_as_requester            practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
+  practice_checkins                               practice_checkins[]
+  practice_social_proofs                          practice_social_proofs[]
+  practices                                       practices[]
+  project                                         project[]
+  quiz_results                                    quiz_results[]
+  rating                                          rating[]
+  reactions                                       reactions[]
+  resource_review                                 resource_review[]
+  resources                                       resources[]
+  store                                           store?
+  user_interests                                  user_interests[]
+  user_join_group                                 user_join_group[]
+  user_login_history                              user_login_history[]
+  user_onboarding                                 user_onboarding?
+  user_permissions                                user_permissions[]
+  user_positions                                  user_positions[]
+  user_preferences                                user_preferences[]
+  user_professional_fields                        user_professional_fields[]
+  user_profiles                                   user_profiles[]
+  user_project                                    user_project[]
+  user_subscription                               user_subscription[]
+  user_activity_stats                             user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
+  basic_info                                      basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts                                        contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location                                        location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                                           roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -1286,6 +1288,51 @@ model interaction_counts {
   @@index([user_b_id], map: "idx_interaction_counts_user_b")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_onboarding {
+  id               Int       @id @default(autoincrement())
+  user_id          Int       @unique(map: "idx_user_onboarding_user_id")
+  user_source      String    @db.VarChar(10)
+  task_states      Json      @default("{}")
+  email_states     Json      @default("{}")
+  creation_method  String?   @db.VarChar(20)
+  badge_granted    Boolean   @default(false)
+  badge_granted_at DateTime? @db.Timestamptz(6)
+  completed_at     DateTime? @db.Timestamptz(6)
+  days_to_complete Int?
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([badge_granted], map: "idx_user_onboarding_badge_granted")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
 enum age_t {
   preschool
   elementary
@@ -1476,33 +1523,4 @@ enum want_to_do_list_t {
   find_student     @map("find-student")
   find_teacher     @map("find-teacher")
   find_group       @map("find-group")
-}
-
-enum entity_tag_type {
-  RESOURCE
-  IDEA
-  PROJECT
-  PRACTICE
-  CIRCLE
-  USER
-}
-
-enum marathon_registration_status {
-  Open
-  Closed
-  Pending
-  Full
-}
-
-enum project_marathon_status {
-  Pending
-  Approved
-  Rejected
-}
-
-enum project_status {
-  Ongoing
-  Completed
-  Not_Started @map("Not Started")
-  Canceled
 }
