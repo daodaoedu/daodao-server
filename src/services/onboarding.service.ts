@@ -118,32 +118,37 @@ async function checkAndAdvance(
     return { taskKey, allCompleted: row.badge_granted };
   }
 
-  const newStates: TaskStates = { ...states, [taskKey]: 'done' };
-
   // 任務 C 記錄 creation_method
   const creationMethodClause =
     taskKey === OnboardingTask.C && extra?.creationMethod
       ? extra.creationMethod
       : row.creation_method;
 
-  await prisma.$executeRaw`
+  // 原子更新：JSONB || 合併避免讀取-寫回競態條件，RETURNING 取最新快照
+  const taskPatch = JSON.stringify({ [taskKey]: 'done' });
+  const updated = await prisma.$queryRaw<UserOnboardingRow[]>`
     UPDATE user_onboarding
     SET
-      task_states      = ${JSON.stringify(newStates)}::jsonb,
-      creation_method  = ${creationMethodClause},
-      updated_at       = NOW()
+      task_states     = task_states || ${taskPatch}::jsonb,
+      creation_method = ${creationMethodClause},
+      updated_at      = NOW()
     WHERE user_id = ${userId}
+    RETURNING task_states, badge_granted, user_source, created_at
   `;
+
+  const updatedRow = updated[0];
+  if (!updatedRow) return null;
 
   loggerService.info('Onboarding task advanced', { userId, taskKey });
 
-  // 檢查是否全部完成
-  const source = row.user_source as UserSource;
+  // 基於更新後的資料判斷是否全部完成，避免並發下快照過時
+  const source = updatedRow.user_source as UserSource;
   const order = TASK_ORDER_BY_SOURCE[source] ?? TASK_ORDER_BY_SOURCE[UserSource.S1];
-  const allCompleted = order.every((k) => newStates[k] === 'done');
+  const updatedStates = updatedRow.task_states ?? {};
+  const allCompleted = order.every((k) => updatedStates[k] === 'done');
 
-  if (allCompleted && !row.badge_granted) {
-    await grantBadge(userId, row.created_at);
+  if (allCompleted && !updatedRow.badge_granted) {
+    await grantBadge(userId, updatedRow.created_at);
   }
 
   // 觸發 email（lazy import 避免循環依賴）
@@ -166,9 +171,9 @@ async function checkAndAdvance(
  */
 async function grantBadge(userId: number, createdAt: Date): Promise<void> {
   const now = new Date();
-  const daysToComplete = Math.floor(
+  const daysToComplete = Math.max(0, Math.floor(
     (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  ));
 
   await prisma.$executeRaw`
     UPDATE user_onboarding

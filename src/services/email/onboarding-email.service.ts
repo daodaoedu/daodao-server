@@ -48,11 +48,12 @@ export async function sendOnboardingL0Email(userId: number, userSource: UserSour
     practiceUrl: cta.url,
   });
 
-  await emailService.sendEmail({
+  const result = await emailService.sendEmail({
     to: user.contacts.email,
     subject: template.subject,
     html: template.html,
   });
+  if (!result.success) throw new Error(`Failed to send onboarding L0 email: ${result.error}`);
 
   loggerService.info('Onboarding L0 email sent', { userId, userSource });
 }
@@ -78,11 +79,12 @@ async function sendPlaceholderOnboardingEmail(
   const config = getEmailConfig();
   const html = `<p>Hi ${user.nickname ?? 'User'},</p><p>${body}</p><p><a href="${config.urls.frontend}">前往島島阿學</a></p>`;
 
-  await emailService.sendEmail({
+  const result = await emailService.sendEmail({
     to: user.contacts.email,
     subject,
     html,
   });
+  if (!result.success) throw new Error(`Failed to send onboarding ${emailType} email: ${result.error}`);
 
   loggerService.info(`Onboarding ${emailType} email sent`, { userId });
 }

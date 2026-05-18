@@ -1293,320 +1293,29 @@ model interaction_counts {
   @@index([user_b_id], map: "idx_interaction_counts_user_b")
 }
 
-model ai_generations {
-  id               Int       @id @default(autoincrement())
-  external_id      String?   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  feature          String    @db.VarChar(50)
-  action_type      String    @db.VarChar(20)
-  session_id       String?   @db.VarChar(64)
-  ip_hash          String?   @db.VarChar(16)
-  user_id          Int?
-  status           String?   @default("success") @db.VarChar(20)
-  input            Json
-  output           Json?
-  model            String?   @db.VarChar(100)
-  latency_ms       Int?
-  user_interaction Json?
-  created_at       DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
-  users            users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 
-  @@index([created_at], map: "idx_ai_generations_created_at")
-  @@index([feature], map: "idx_ai_generations_feature")
-  @@index([session_id], map: "idx_ai_generations_session_id")
-  @@index([user_id], map: "idx_ai_generations_user_id")
-}
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model ai_query_logs {
-  id                 Int                 @id @default(autoincrement())
-  request_id         String              @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  backend            String              @db.VarChar(50)
-  model_name         String?             @db.VarChar(200)
-  context            String?             @db.VarChar(100)
-  user_id            Int?
-  input_tokens       Int?
-  output_tokens      Int?
-  total_tokens       Int?
-  cost_usd           Decimal?            @db.Decimal(12, 6)
-  latency_ms         Int?
-  status             String              @default("success") @db.VarChar(20)
-  error_message      String?
-  usage_detail       Json?
-  prompt_chars       Int?
-  created_at         DateTime            @default(now()) @db.Timestamptz(6)
-  output_chars       Int?
-  finish_reason      String?             @db.VarChar(50)
-  http_status_code   Int?
-  retry_count        Int?
-  is_stream          Boolean?
-  service_config_id  Int?
-  ai_service_configs ai_service_configs? @relation(fields: [service_config_id], references: [id], onUpdate: NoAction, map: "fk_aql_service_config_id")
-
-  @@index([backend, created_at, total_tokens, cost_usd], map: "idx_aql_backend_created_at")
-  @@index([context, created_at], map: "idx_aql_context_created_at")
-  @@index([created_at], map: "idx_aql_created_at_brin", type: Brin)
-  @@index([request_id], map: "idx_aql_request_id")
-  @@index([status], map: "idx_aql_status")
-  @@index([user_id, created_at], map: "idx_aql_user_created_at")
-}
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model ai_service_configs {
-  id               Int             @id @default(autoincrement())
-  service          String          @db.VarChar(100)
-  name             String          @db.VarChar(200)
-  model_id         Int
-  system_prompt_id Int?
-  max_tokens       Int?
-  temperature      Decimal?        @db.Decimal(4, 2)
-  top_p            Decimal?        @db.Decimal(4, 2)
-  top_k            Int?
-  is_active        Boolean         @default(false)
-  notes            String?
-  created_at       DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime?       @db.Timestamptz(6)
-  ai_query_logs    ai_query_logs[]
-  llm_models       llm_models      @relation(fields: [model_id], references: [id], onUpdate: NoAction, map: "fk_ai_service_configs_model")
-  system_prompts   system_prompts? @relation(fields: [system_prompt_id], references: [id], onUpdate: NoAction, map: "fk_ai_service_configs_system_prompt")
-
-  @@index([is_active], map: "idx_ai_service_configs_is_active")
-  @@index([service], map: "idx_ai_service_configs_service")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model llm_models {
-  id                       Int                  @id @default(autoincrement())
-  provider                 String               @db.VarChar(50)
-  model_name               String               @db.VarChar(200)
-  display_name             String?              @db.VarChar(200)
-  is_active                Boolean              @default(true)
-  input_cost_per_1m        Decimal              @default(0) @db.Decimal(12, 6)
-  output_cost_per_1m       Decimal              @default(0) @db.Decimal(12, 6)
-  cached_input_cost_per_1m Decimal              @default(0) @db.Decimal(12, 6)
-  notes                    String?
-  created_at               DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime?            @db.Timestamptz(6)
-  ai_service_configs       ai_service_configs[]
-
-  @@unique([provider, model_name], map: "uq_llm_models_provider_model")
-  @@index([is_active], map: "idx_llm_models_is_active")
-  @@index([provider], map: "idx_llm_models_provider")
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model old_activities {
-  mongo_id             String?
-  userId               String?
-  title                String?
-  photoURL             String?
-  photoAlt             String?
-  category             String?
-  area                 String?
-  time                 String?
-  partnerStyle         String?
-  partnerEducationStep String?
-  description          String?
-  tagList              String?
-  isGrouping           Boolean?
-  createdDate          String?
-  updatedDate          String?
-  v                    BigInt?   @map("__v")
-  activityCategory     String?
-  content              String?
-  deadline             String?
-  isNeedDeadline       Boolean?
-  motivation           String?
-  notice               String?
-  outcome              String?
-  participator         String?
-  views                Float?
-  created_at           DateTime? @db.Timestamp(6)
-  created_by           String?
-  updated_at           DateTime? @db.Timestamp(6)
-  updated_by           String?
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model old_marathons_v1 {
-  mongo_id           String?
-  title              String?
-  eventId            String?
-  userId             String?
-  description        String?
-  motivation         String?
-  content            String?
-  goals              String?
-  strategies         String?
-  milestones         String?
-  outcomes           String?
-  status             String?
-  registrationStatus String?
-  registrationDate   String?
-  pricing            String?
-  isPublic           Boolean?
-  isSendEmail        Boolean?
-  createdDate        String?
-  updatedDate        String?
-  v                  BigInt?   @map("__v")
-  resources          String?
-  created_at         DateTime? @db.Timestamp(6)
-  created_by         String?
-  updated_at         DateTime? @db.Timestamp(6)
-  updated_by         String?
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model old_marathons_v2 {
-  mongo_id           String?
-  title              String?
-  eventId            String?
-  userId             String?
-  description        String?
-  motivation         String?
-  content            String?
-  goals              String?
-  strategies         String?
-  milestones         String?
-  outcomes           String?
-  status             String?
-  registrationStatus String?
-  registrationDate   String?
-  pricing            String?
-  isPublic           Boolean?
-  isSendEmail        Boolean?
-  createdDate        String?
-  updatedDate        String?
-  v                  BigInt?   @map("__v")
-  resources          String?
-  created_at         DateTime? @db.Timestamp(6)
-  created_by         String?
-  updated_at         DateTime? @db.Timestamp(6)
-  updated_by         String?
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model old_resource {
-
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 資源類型 String? @map("資源類型")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 創建者 String? @map("創建者")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 縮圖 String? @map("縮圖")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 領域名稱 String? @map("領域名稱")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 補充資源 String? @map("補充資源")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 連結 String? @map("連結")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 費用 String? @map("費用")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 影片 String? @map("影片")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 介紹 String? @map("介紹")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 標籤 String? @map("標籤")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 地區 String? @map("地區")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 年齡層 String? @map("年齡層")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 資源名稱 String? @map("資源名稱")
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model old_store {
-  AI___        String? @map("AI 摘要")
-  Description  String?
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  // 作者 String? @map("作者")
-  /// This field was commented out because of an invalid name. Please provide a valid one that matches [a-zA-Z][a-zA-Z0-9_]*
-  Social_Image String? @map("Social Image")
-  Tags         String?
-  Created      String?
-  Name         String?
-
-  @@ignore
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model old_user {
-  mongo_id         String?
-  birthDay         String?
-  educationStage   String?
-  email            String?
-  gender           String?
-  googleID         String?
-  name             String?
-  photoURL         String?
-  interestList     String?
-  isOpenLocation   Boolean?
-  isOpenProfile    Boolean?
-  location         String?
-  roleList         String?
-  selfIntroduction String?
-  share            String?
-  tagList          String?
-  wantToDoList     String?
-  createdDate      String?
-  updatedDate      String?
-  v                BigInt?   @map("__v")
-  contactList      String?
-  isSubscribeEmail Boolean?
-  created_at       DateTime? @db.Timestamp(6)
-  created_by       String?
-  updated_at       DateTime? @db.Timestamp(6)
-  updated_by       String?
-
-  @@ignore
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model recommendation_feedback {
-  id            Int       @id @default(autoincrement())
-  user_id       Int
-  target_type   String    @db.VarChar(50)
-  target_id     Int
-  feedback_type String    @db.VarChar(20)
-  is_hidden     Boolean   @default(false)
-  source        String    @db.VarChar(100)
-  created_at    DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime? @db.Timestamptz(6)
-  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_recommendation_feedback_user")
-
-  @@unique([user_id, target_type, target_id, source], map: "uq_recommendation_feedback_user_target_source")
-  @@index([user_id, source, is_hidden], map: "idx_rf_user_source_hidden")
-  @@index([user_id, target_type, target_id], map: "idx_rf_user_target")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model system_prompts {
-  id                                     Int                  @id @default(autoincrement())
-  name                                   String               @unique(map: "uq_system_prompts_name") @db.VarChar(200)
-  content                                String
-  is_active                              Boolean              @default(false)
-  version                                Int                  @default(1)
-  created_by                             Int?
-  updated_by                             Int?
-  created_at                             DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at                             DateTime?            @db.Timestamptz(6)
-  ai_service_configs                     ai_service_configs[]
-  users_system_prompts_created_byTousers users?               @relation("system_prompts_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_system_prompts_created_by")
-  users_system_prompts_updated_byTousers users?               @relation("system_prompts_updated_byTousers", fields: [updated_by], references: [id], onUpdate: NoAction, map: "fk_system_prompts_updated_by")
-
-  @@index([is_active], map: "idx_system_prompts_is_active")
-}
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model user_onboarding {
@@ -1628,21 +1337,6 @@ model user_onboarding {
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model user_token_quotas {
-  id                     Int       @id @default(autoincrement())
-  user_id                Int
-  monthly_token_limit    Int       @default(3000000)
-  daily_token_limit      Int       @default(100000)
-  quota_month            Int?
-  created_at             DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime? @db.Timestamptz(6)
-  daily_ai_request_limit Int       @default(3)
-  users                  users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_token_quotas_user")
-
-  @@unique([user_id, quota_month], map: "uq_user_token_quotas_user_month")
-  @@index([quota_month], map: "idx_user_token_quotas_quota_month")
-  @@index([user_id], map: "idx_user_token_quotas_user_id")
-}
 
 enum age_t {
   preschool

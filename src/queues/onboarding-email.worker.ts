@@ -19,30 +19,26 @@ async function processJob(job: Job<OnboardingEmailJobData>): Promise<void> {
 
   loggerService.info('Processing onboarding email job', { jobId: job.id, emailType, userId });
 
-  // 二次防護：讀取 email_states，已發送則跳過
-  const rows = await prisma.$queryRaw<Array<{ email_states: Record<string, string> }>>`
-    SELECT email_states FROM user_onboarding WHERE user_id = ${userId} LIMIT 1
+  // 原子「佔位」：透過 WHERE 條件確保只有一個 job 能標記為 sent，防止並發重複發送
+  const emailPatch = JSON.stringify({ [emailType]: 'sent' });
+  const claimed = await prisma.$executeRaw`
+    UPDATE user_onboarding
+    SET email_states = email_states || ${emailPatch}::jsonb,
+        updated_at   = NOW()
+    WHERE user_id = ${userId}
+      AND (email_states->>${emailType}) IS DISTINCT FROM 'sent'
   `;
 
-  const emailStates = rows[0]?.email_states ?? {};
-  if (emailStates[emailType] === 'sent') {
+  if (claimed === 0) {
     loggerService.info('Onboarding email already sent, skipping', { userId, emailType });
     return;
   }
 
-  // 發送 email
+  // 發送 email（state 已標記，即使發送失敗 BullMQ retry 也不會重複送出）
   const { sendOnboardingTaskEmail } = await import('../services/email/onboarding-email.service');
   await sendOnboardingTaskEmail(userId, emailType, userSource);
 
-  // 更新 email_states
-  const updatedStates = { ...emailStates, [emailType]: 'sent' };
-  await prisma.$executeRaw`
-    UPDATE user_onboarding
-    SET email_states = ${JSON.stringify(updatedStates)}::jsonb, updated_at = NOW()
-    WHERE user_id = ${userId}
-  `;
-
-  loggerService.info('Onboarding email sent and state updated', { userId, emailType });
+  loggerService.info('Onboarding email sent', { userId, emailType });
 }
 
 export function createOnboardingEmailWorker(): Worker<OnboardingEmailJobData> {

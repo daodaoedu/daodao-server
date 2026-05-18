@@ -1349,7 +1349,9 @@ router.get('/:id/user-status',
 router.post('/:id/copy',
   authenticate,
   validate(practiceParamsSchema, 'params'),
-  practiceController.copyPractice as RequestHandler);
+  withOnboardingHook(OnboardingTask.C, practiceController.copyPractice as RequestHandler, {
+    resolveCreationMethod: () => 'copied' as CreationMethod,
+  }) as RequestHandler);
 
 /**
  * POST /practices/:id/archive
