@@ -369,4 +369,76 @@ describe('Connection Service', () => {
       );
     });
   });
+
+  // --------------------------------------------------------------------------
+  // getConnectionStatus
+  // --------------------------------------------------------------------------
+
+  describe('getConnectionStatus', () => {
+    beforeEach(() => {
+      (interactionCountService.getCount as jest.Mock).mockResolvedValue(2);
+      (interactionCountService.hasFamiliarityBypass as jest.Mock).mockResolvedValue(false);
+    });
+
+    it('已建立連結時回傳 connected', async () => {
+      prismaMock.connections.findUnique.mockResolvedValue({
+        id: 5, user_a_id: 1, user_b_id: 2, connected_at: new Date(),
+      } as any);
+      prismaMock.connection_requests.findUnique.mockResolvedValue(null);
+
+      const result = await connectionService.getConnectionStatus(1, 'ext-2');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        status: 'connected',
+        isConnected: true,
+        requestId: null,
+        interactionCount: 2,
+        hasBypass: false,
+      });
+    });
+
+    it('目標用戶已送出 pending 請求時回傳 incoming 與 requestId', async () => {
+      prismaMock.connections.findUnique.mockResolvedValue(null);
+      prismaMock.connection_requests.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(makePendingRequest({ id: 88, requester_id: 2, receiver_id: 1 }) as any);
+
+      const result = await connectionService.getConnectionStatus(1, 'ext-2');
+
+      expect(result.data).toMatchObject({
+        status: 'incoming',
+        isConnected: false,
+        requestId: 88,
+      });
+    });
+
+    it('目前使用者已送出 pending 請求時回傳 outgoing 與 requestId', async () => {
+      prismaMock.connections.findUnique.mockResolvedValue(null);
+      prismaMock.connection_requests.findUnique
+        .mockResolvedValueOnce(makePendingRequest({ id: 77, requester_id: 1, receiver_id: 2 }) as any)
+        .mockResolvedValueOnce(null);
+
+      const result = await connectionService.getConnectionStatus(1, 'ext-2');
+
+      expect(result.data).toMatchObject({
+        status: 'outgoing',
+        isConnected: false,
+        requestId: 77,
+      });
+    });
+
+    it('沒有連結或 pending 請求時回傳 none', async () => {
+      prismaMock.connections.findUnique.mockResolvedValue(null);
+      prismaMock.connection_requests.findUnique.mockResolvedValue(null);
+
+      const result = await connectionService.getConnectionStatus(1, 'ext-2');
+
+      expect(result.data).toMatchObject({
+        status: 'none',
+        isConnected: false,
+        requestId: null,
+      });
+    });
+  });
 });

@@ -105,3 +105,14 @@ export const getOutgoingRequests = asyncHandler(async (req: Request, res: Respon
   const result = await connectionService.getPendingOutgoing(req.user.id, page, limit);
   res.json(result);
 });
+
+/**
+ * GET /api/v1/connections/status/:userId
+ * 取得與單一用戶的連結狀態
+ */
+export const getConnectionStatus = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user?.id) throw new UnauthorizedError('需要登入');
+
+  const result = await connectionService.getConnectionStatus(req.user.id, req.params.userId);
+  res.json(result);
+});
