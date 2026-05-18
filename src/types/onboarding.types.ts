@@ -36,9 +36,9 @@ export type CreationMethod = 'self_created' | 'copied' | 'action_generator';
 
 /** 各 user_source 的任務顯示順序 */
 export const TASK_ORDER_BY_SOURCE: Record<UserSource, OnboardingTask[]> = {
-  S1: [OnboardingTask.A, OnboardingTask.B, OnboardingTask.C, OnboardingTask.D, OnboardingTask.E],
-  S2: [OnboardingTask.B, OnboardingTask.C, OnboardingTask.D, OnboardingTask.E],
-  S3: [OnboardingTask.C, OnboardingTask.B, OnboardingTask.A, OnboardingTask.D, OnboardingTask.E],
+  S1: [OnboardingTask.B, OnboardingTask.A, OnboardingTask.C, OnboardingTask.E, OnboardingTask.D],
+  S2: [OnboardingTask.B, OnboardingTask.C, OnboardingTask.E, OnboardingTask.D],
+  S3: [OnboardingTask.C, OnboardingTask.B, OnboardingTask.D, OnboardingTask.A, OnboardingTask.E],
 };
 
 /** 任務完成後觸發的 email（依 user_source 決定是否適用） */
@@ -54,6 +54,7 @@ export interface OnboardingStatusResponse {
   taskList: Array<{
     taskKey: OnboardingTask;
     done: boolean;
+    ctaHref?: string;
   }>;
   completedTasks: number;
   badgeGranted: boolean;

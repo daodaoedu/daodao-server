@@ -7,6 +7,7 @@
 
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
+import { onboardingCompletionCache } from './onboarding-completion-cache.service';
 import {
   OnboardingTask,
   UserSource,
@@ -38,6 +39,61 @@ async function findByUserId(userId: number): Promise<UserOnboardingRow | null> {
     SELECT * FROM user_onboarding WHERE user_id = ${userId} LIMIT 1
   `;
   return rows[0] ?? null;
+}
+
+async function findCheckInPracticeHref(userId: number): Promise<string> {
+  const practice = await prisma.practices.findFirst({
+    where: {
+      user_id: userId,
+      deleted_at: null,
+      status: { in: ['active', 'not_started'] },
+    },
+    orderBy: [{ first_checkin_at: 'asc' }, { created_at: 'asc' }],
+    select: { external_id: true },
+  });
+
+  return practice?.external_id ? `/practices/${practice.external_id}` : '/practices/create/manual';
+}
+
+async function isProfileTaskComplete(userId: number): Promise<boolean> {
+  const user = await prisma.users.findUnique({
+    where: { id: userId },
+    select: {
+      nickname: true,
+      custom_id: true,
+      personal_slogan: true,
+      education_stage: true,
+      user_preferences: {
+        where: { is_selected: true },
+        take: 1,
+      },
+      user_positions: {
+        take: 1,
+      },
+    },
+  });
+
+  if (!user) return false;
+
+  return (
+    user.user_preferences.length > 0 &&
+    user.user_positions.length > 0 &&
+    user.education_stage !== null &&
+    !!(user.nickname && user.custom_id && user.personal_slogan)
+  );
+}
+
+async function getEffectiveTaskStates(
+  userId: number,
+  states: TaskStates
+): Promise<TaskStates> {
+  if (states[OnboardingTask.B] !== 'done') return states;
+
+  const profileComplete = await isProfileTaskComplete(userId);
+  if (profileComplete) return states;
+
+  const { [OnboardingTask.B]: _staleProfileTask, ...effectiveStates } = states;
+  return effectiveStates;
 }
 
 /**
@@ -82,14 +138,22 @@ async function getStatus(userId: number): Promise<OnboardingStatusResponse | nul
   const row = await findByUserId(userId);
   if (!row) return null;
 
+  if (row.badge_granted) {
+    onboardingCompletionCache.markCompleted(userId);
+  }
+
   const source = row.user_source as UserSource;
   const order = TASK_ORDER_BY_SOURCE[source] ?? TASK_ORDER_BY_SOURCE[UserSource.S1];
-  const states = row.task_states ?? {};
+  const states = await getEffectiveTaskStates(userId, row.task_states ?? {});
+  const checkInHref = order.includes(OnboardingTask.D)
+    ? await findCheckInPracticeHref(userId)
+    : undefined;
 
   return {
     taskList: order.map((taskKey) => ({
       taskKey,
       done: states[taskKey] === 'done',
+      ...(taskKey === OnboardingTask.D && checkInHref ? { ctaHref: checkInHref } : {}),
     })),
     completedTasks: order.filter((k) => states[k] === 'done').length,
     badgeGranted: row.badge_granted,
@@ -110,6 +174,11 @@ async function checkAndAdvance(
 ): Promise<OnboardingUpdate | null> {
   const row = await findByUserId(userId);
   if (!row) return null;
+
+  if (row.badge_granted) {
+    onboardingCompletionCache.markCompleted(userId);
+    return { taskKey, allCompleted: true };
+  }
 
   const states: TaskStates = row.task_states ?? {};
 
@@ -144,11 +213,12 @@ async function checkAndAdvance(
   // 基於更新後的資料判斷是否全部完成，避免並發下快照過時
   const source = updatedRow.user_source as UserSource;
   const order = TASK_ORDER_BY_SOURCE[source] ?? TASK_ORDER_BY_SOURCE[UserSource.S1];
-  const updatedStates = updatedRow.task_states ?? {};
+  const updatedStates = await getEffectiveTaskStates(userId, updatedRow.task_states ?? {});
   const allCompleted = order.every((k) => updatedStates[k] === 'done');
 
   if (allCompleted && !updatedRow.badge_granted) {
     await grantBadge(userId, updatedRow.created_at);
+    onboardingCompletionCache.markCompleted(userId);
   }
 
   // 觸發 email（lazy import 避免循環依賴）
@@ -185,6 +255,8 @@ async function grantBadge(userId: number, createdAt: Date): Promise<void> {
       updated_at       = NOW()
     WHERE user_id = ${userId}
   `;
+
+  onboardingCompletionCache.markCompleted(userId);
 
   loggerService.info('Onboarding badge granted', { userId, daysToComplete });
 }

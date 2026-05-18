@@ -84,6 +84,7 @@ export interface CreateUserRequest {
   isSendEmail?: boolean;
 
   // 新增欄位
+  name?: string; // nickname（表單提交的用戶名稱）
   professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入

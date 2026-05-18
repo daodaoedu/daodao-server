@@ -12,6 +12,11 @@ import { validate } from '../middleware/validation.middleware';
 import upload from '../middleware/multer.middleware';
 import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
 import { OnboardingTask } from '../types/onboarding.types';
+import type { CreationMethod } from '../types/onboarding.types';
+import {
+  isCreatedPracticeResponse,
+  isFirstCheckInResponse,
+} from '../utils/onboarding-task-completion';
 import {
   practiceQuerySchema,
   myPracticesQuerySchema,
@@ -1164,6 +1169,7 @@ router.post('/',
   validate(createPracticeSchema, 'body'),
   withOnboardingHook(OnboardingTask.C, practiceController.createPractice as RequestHandler, {
     resolveCreationMethod: (req) => req.body.creationMethod,
+    shouldAdvance: (_req, body) => isCreatedPracticeResponse(body),
   }) as RequestHandler);
 
 /**
@@ -1204,7 +1210,9 @@ router.post('/:id/checkins',
   upload.array('images', 3),
   validate(practiceParamsSchema, 'params'),
   // TODO: requirePracticeOwnership middleware
-  withOnboardingHook(OnboardingTask.D, practiceController.createCheckIn as RequestHandler) as RequestHandler);
+  withOnboardingHook(OnboardingTask.D, practiceController.createCheckIn as RequestHandler, {
+    shouldAdvance: (_req, body) => isFirstCheckInResponse(body),
+  }) as RequestHandler);
 
 /**
  * PUT /practices/:id/checkins/:checkInId
@@ -1351,6 +1359,8 @@ router.post('/:id/copy',
   validate(practiceParamsSchema, 'params'),
   withOnboardingHook(OnboardingTask.C, practiceController.copyPractice as RequestHandler, {
     resolveCreationMethod: () => 'copied' as CreationMethod,
+    // copyPractice always creates a new not_started practice.
+    shouldAdvance: () => true,
   }) as RequestHandler);
 
 /**

@@ -16,6 +16,7 @@ router.use(authenticate);
 const onboardingTaskItemSchema = z.object({
   taskKey: z.enum(['A', 'B', 'C', 'D', 'E']).openapi({ example: 'A' }),
   done: z.boolean().openapi({ example: false }),
+  ctaHref: z.string().optional().openapi({ example: '/practices/123e4567-e89b-12d3-a456-426614174000' }),
 });
 
 const onboardingStatusResponseSchema = z.object({

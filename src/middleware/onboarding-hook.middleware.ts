@@ -15,10 +15,13 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { onboardingService } from '@/services/onboarding.service';
 import { OnboardingTask, CreationMethod } from '@/types/onboarding.types';
 import { loggerService } from '@/services/logging/logger.service';
+import { onboardingCompletionCache } from '@/services/onboarding-completion-cache.service';
 
 export type OnboardingHookOptions = {
   /** 任務 C 時從 req.body 讀取 creationMethod */
   resolveCreationMethod?: (req: Request) => CreationMethod | undefined;
+  /** 成功回應後仍需滿足條件才推進任務 */
+  shouldAdvance?: (req: Request, body: unknown) => boolean | Promise<boolean>;
 };
 
 /**
@@ -37,6 +40,11 @@ export function withOnboardingHook(
       return;
     }
 
+    if (onboardingCompletionCache.isCompleted(userId)) {
+      await Promise.resolve(handler(req, res, next));
+      return;
+    }
+
     const originalJson = res.json.bind(res);
 
     // 覆寫 res.json：緩衝 body → await checkAndAdvance → 注入 meta → 送出
@@ -46,15 +54,28 @@ export function withOnboardingHook(
         typeof body === 'object' &&
         (body as Record<string, unknown>).success === true
       ) {
-        const extra = options?.resolveCreationMethod
-          ? { creationMethod: options.resolveCreationMethod(req) }
-          : undefined;
+        Promise.resolve(options?.shouldAdvance ? options.shouldAdvance(req, body) : true)
+          .then((shouldAdvance) => {
+            if (!shouldAdvance) {
+              originalJson(body);
+              return undefined;
+            }
 
-        onboardingService
-          .checkAndAdvance(userId, taskKey, extra)
+            const extra = options?.resolveCreationMethod
+              ? { creationMethod: options.resolveCreationMethod(req) }
+              : undefined;
+
+            return onboardingService.checkAndAdvance(userId, taskKey, extra);
+          })
           .then((update) => {
+            if (update === undefined) return;
+
             const mutableBody = body as Record<string, unknown>;
             if (update) {
+              if (update.allCompleted) {
+                onboardingCompletionCache.markCompleted(userId);
+              }
+
               mutableBody.meta = {
                 ...(mutableBody.meta as Record<string, unknown> | undefined),
                 onboardingUpdate: update,

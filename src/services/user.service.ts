@@ -58,6 +58,13 @@ type PendingEmailData = {
   userId: number;
 };
 
+type SettingsSections = {
+  onboarding: boolean;
+  preferences: boolean;
+  account: boolean;
+  publicInfo: boolean;
+};
+
 /**
  * 將空字串轉換為 null，用於清空欄位
  * undefined 表示不更新，空字串表示清空
@@ -739,7 +746,7 @@ const getOneUser = async (
 const createUser = async (userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>> => {
   // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
   // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
-  const { response, emailData } = await prisma.$transaction(async (tx) => {
+  const { response, emailData, onboardingData } = await prisma.$transaction(async (tx) => {
     const {
       gender,
       birthDay,
@@ -761,7 +768,8 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       personalSlogan,
       referralSource,
       interestList,
-      customId
+      customId,
+      name: nickname
     } = userData;
 
     // 查找臨時用戶
@@ -773,13 +781,16 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       throw new NotFoundError('Temporary user not found');
     }
 
+    // 使用表單提交的 nickname（userData.name），fallback 到 Google 顯示名稱
+    const resolvedNickname = nickname || tempUser.name;
+
     // 檢查用戶名稱是否已存在
     const existingUser = await tx.users.findFirst({
-      where: { nickname: tempUser.name }
+      where: { nickname: resolvedNickname }
     });
 
     if (existingUser) {
-      throw new ConflictError(`使用者名稱 ${tempUser.name} 已存在`);
+      throw new ConflictError(`使用者名稱 ${resolvedNickname} 已存在`);
     }
 
     if (!customId) {
@@ -840,7 +851,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     const newUser = await tx.users.create({
       data: {
         mongo_id: crypto.randomUUID(),
-        nickname: tempUser.name,
+        nickname: resolvedNickname,
         gender: gender as 'male' | 'female' | 'other' | undefined,
         education_stage: (educationStage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other') || 'other',
         tag_list: [],  // Tags will be handled separately via entity_tags
@@ -2045,23 +2056,7 @@ const getUserActivityStats = async (
   });
 };
 
-/**
- * 獲取設定頁完整度摘要
- * 計算用戶四個設定區塊的完成狀態
- */
-const getSettingsSummary = async (
-  userId: number
-): Promise<ApiSuccessResponse<{
-  completed: number;
-  total: number;
-  sections: {
-    onboarding: boolean;
-    preferences: boolean;
-    account: boolean;
-    publicInfo: boolean;
-  };
-}>> => {
-  // Query user with needed fields
+const getSettingsSections = async (userId: number): Promise<SettingsSections> => {
   const user = await prisma.users.findUnique({
     where: { id: userId },
     select: {
@@ -2083,12 +2078,31 @@ const getSettingsSummary = async (
     throw new NotFoundError('用戶不存在');
   }
 
-  const sections = {
+  return {
     onboarding: true,
     preferences: user.user_preferences.length > 0,
     account: user.user_positions.length > 0 && user.education_stage !== null,
     publicInfo: !!(user.nickname && user.custom_id && user.personal_slogan)
   };
+};
+
+const isOnboardingProfileComplete = async (userId: number): Promise<boolean> => {
+  const sections = await getSettingsSections(userId);
+  return sections.preferences && sections.account && sections.publicInfo;
+};
+
+/**
+ * 獲取設定頁完整度摘要
+ * 計算用戶四個設定區塊的完成狀態
+ */
+const getSettingsSummary = async (
+  userId: number
+): Promise<ApiSuccessResponse<{
+  completed: number;
+  total: number;
+  sections: SettingsSections;
+}>> => {
+  const sections = await getSettingsSections(userId);
 
   const completed = Object.values(sections).filter(Boolean).length;
 
@@ -2151,6 +2165,7 @@ export const userService = {
   incrementProfileViews,
   getLoginHistory,
   getUserActivityStats,
+  isOnboardingProfileComplete,
   getSettingsSummary
 } as const;
 
