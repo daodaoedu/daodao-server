@@ -17,6 +17,8 @@ import { ApiResponse } from '../../types/api-response.types';
 import { userService } from '../user.service';
 import { emailService, sendWelcomeEmailWithLog } from '../email/email.service';
 import { loggerService } from '../logging/logger.service';
+import { onboardingService } from '../onboarding.service';
+import { deriveUserSource } from '../../utils/onboarding-source';
 
 /**
  * 根據 email 查找用戶及其聯絡資訊
@@ -281,6 +283,18 @@ export const createUserFromAppleOAuth = async (profile: {
         email
       });
     });
+  }
+
+  // 建立 Onboarding 記錄（非阻塞）
+  if (newUser) {
+    onboardingService
+      .createOnboarding(newUser.id, deriveUserSource(null, false))
+      .catch((err: unknown) =>
+        loggerService.warn('Failed to create onboarding record for Apple OAuth user', {
+          userId: newUser.id,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
   }
 
   return createSuccessResponse(newUser);

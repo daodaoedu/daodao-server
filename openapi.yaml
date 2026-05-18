@@ -3673,6 +3673,12 @@ components:
           type: boolean
           description: 是否接收電子郵件
           example: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 用戶暱稱
+          example: daodao_user
         professionalField:
           type: array
           items:
@@ -6075,6 +6081,22 @@ components:
           default: false
           description: 是否存為草稿
           example: false
+        privacyStatus:
+          type: string
+          enum:
+            - private
+            - public
+            - delayed
+          description: '隱私狀態（private: 私人, public: 即時公開, delayed: 完成後分享）'
+          example: public
+        creationMethod:
+          type: string
+          enum:
+            - self_created
+            - copied
+            - action_generator
+          description: 實踐建立方式（用於 Onboarding 任務 C 記錄）
+          example: self_created
       required:
         - title
     CheckInRequest:
@@ -27699,6 +27721,22 @@ paths:
                   default: false
                   description: 是否存為草稿
                   example: false
+                privacyStatus:
+                  type: string
+                  enum:
+                    - private
+                    - public
+                    - delayed
+                  description: '隱私狀態（private: 私人, public: 即時公開, delayed: 完成後分享）'
+                  example: public
+                creationMethod:
+                  type: string
+                  enum:
+                    - self_created
+                    - copied
+                    - action_generator
+                  description: 實踐建立方式（用於 Onboarding 任務 C 記錄）
+                  example: self_created
               required:
                 - title
       responses:
@@ -31771,6 +31809,72 @@ paths:
                       processingTime: 23.1
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/onboarding/status:
+    get:
+      tags:
+        - Onboarding
+      summary: 取得 Onboarding 進度
+      description: 回傳當前用戶的 Onboarding 任務清單、完成數量與 Badge 狀態。任務順序依 user_source（S1/S2/S3）排列。
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Onboarding 狀態
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                  data:
+                    type: object
+                    properties:
+                      taskList:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            taskKey:
+                              type: string
+                              enum:
+                                - A
+                                - B
+                                - C
+                                - D
+                                - E
+                              example: A
+                            done:
+                              type: boolean
+                              example: false
+                            ctaHref:
+                              type: string
+                              example: /practices/123e4567-e89b-12d3-a456-426614174000
+                          required:
+                            - taskKey
+                            - done
+                      completedTasks:
+                        type: integer
+                        example: 2
+                      badgeGranted:
+                        type: boolean
+                        example: false
+                    required:
+                      - taskList
+                      - completedTasks
+                      - badgeGranted
+                  timestamp:
+                    type: string
+                required:
+                  - success
+                  - data
+                  - timestamp
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/quiz:
     post:
       tags:

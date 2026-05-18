@@ -63,7 +63,13 @@ import {
   createReactionNotificationWorker,
   closeReactionNotificationWorker,
   type ReactionNotificationJob,
+  // Onboarding Email Queue
+  createOnboardingEmailQueue,
+  setOnboardingEmailQueue,
+  createOnboardingEmailWorker,
+  closeOnboardingEmailWorker,
 } from './queues';
+import type { OnboardingEmailJobData } from './types/email/onboarding.types';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
 import type { PracticeEmailJobData } from './types/email/practice.types';
@@ -82,6 +88,8 @@ let socialNotificationQueue: Queue<SocialNotificationJob> | null = null;
 let socialNotificationWorker: Worker<SocialNotificationJob> | null = null;
 let reactionNotificationQueue: Queue<ReactionNotificationJob> | null = null;
 let reactionNotificationWorker: Worker<ReactionNotificationJob> | null = null;
+let onboardingEmailQueue: Queue<OnboardingEmailJobData> | null = null;
+let onboardingEmailWorker: Worker<OnboardingEmailJobData> | null = null;
 
 
 const app = express();
@@ -316,6 +324,14 @@ async function initializeBullMQ(): Promise<void> {
     reactionNotificationWorker = createReactionNotificationWorker({ concurrency: 5 });
     console.log('💬 Reaction Notification Worker 已啟動');
 
+    // ===== Onboarding Email Queue =====
+    onboardingEmailQueue = createOnboardingEmailQueue();
+    setOnboardingEmailQueue(onboardingEmailQueue);
+    console.log('🎯 Onboarding Email Queue 已建立');
+
+    onboardingEmailWorker = createOnboardingEmailWorker();
+    console.log('🎯 Onboarding Email Worker 已啟動');
+
     console.log('✅ BullMQ 系統初始化完成');
   } catch (error) {
     console.error('❌ BullMQ 初始化失敗:', error);
@@ -379,6 +395,14 @@ async function gracefulShutdown(signal: string) {
     if (reactionNotificationQueue) {
       await reactionNotificationQueue.close();
       console.log('✅ Reaction Notification Queue 已關閉');
+    }
+    if (onboardingEmailWorker) {
+      await closeOnboardingEmailWorker(onboardingEmailWorker);
+      console.log('✅ Onboarding Email Worker 已關閉');
+    }
+    if (onboardingEmailQueue) {
+      await onboardingEmailQueue.close();
+      console.log('✅ Onboarding Email Queue 已關閉');
     }
 
     // 關閉 BullMQ Redis 連線

@@ -31,7 +31,8 @@ import {
   availablePreferencesResponseSchema,
   loginHistoryResponseSchema,
   userActivityStatsResponseSchema,
-  updateUserSchema
+  updateUserSchema,
+  createUserSchema
 } from '../validators/user.validators';
 import {
   NotFoundError,
@@ -117,7 +118,6 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
  * 此端點用於將臨時用戶轉換為正式用戶
  */
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
-  const requestData = req.body as CreateUserRequest;
   const currentUser = req.user;
 
   // 檢查用戶是否為臨時用戶
@@ -129,6 +129,23 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
   if (!currentUser.isTemp) {
     throw new NotFoundError('此端點僅供臨時用戶完成註冊使用');
   }
+
+  // FormData 需要先解析 JSON 欄位再驗證（與 updateMe 相同處理方式）
+  const contentType = req.headers['content-type'] || '';
+  const isFormData = contentType.includes('multipart/form-data');
+  const parsedBody = isFormData
+    ? parseFormDataBody(req.body)
+    : req.body as CreateUserRequest;
+
+  const validation = createUserSchema.safeParse(parsedBody);
+  if (!validation.success) {
+    const errorMessage = validation.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new BadRequestError(`驗證失敗: ${errorMessage}`);
+  }
+
+  const requestData = validation.data as CreateUserRequest;
 
   // 將數字 id 轉換為字串傳遞給 service
   const result = await userService.createUser(requestData, currentUser.id.toString());
