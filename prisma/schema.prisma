@@ -818,7 +818,6 @@ model users {
   activity_stats_id                               Int?
   custom_position                                 String?                    @db.VarChar(100)
   hide_connections_count                          Boolean                    @default(false)
-  ai_generations                                  ai_generations[]
   comments                                        comments[]
   received_connection_requests                    connection_requests[]      @relation("connection_requests_receiver_idTousers")
   sent_connection_requests                        connection_requests[]      @relation("connection_requests_requester_idTousers")
@@ -851,12 +850,9 @@ model users {
   quiz_results                                    quiz_results[]
   rating                                          rating[]
   reactions                                       reactions[]
-  recommendation_feedback                         recommendation_feedback[]
   resource_review                                 resource_review[]
   resources                                       resources[]
   store                                           store?
-  system_prompts_system_prompts_created_byTousers system_prompts[]           @relation("system_prompts_created_byTousers")
-  system_prompts_system_prompts_updated_byTousers system_prompts[]           @relation("system_prompts_updated_byTousers")
   user_interests                                  user_interests[]
   user_join_group                                 user_join_group[]
   user_login_history                              user_login_history[]
@@ -868,7 +864,6 @@ model users {
   user_profiles                                   user_profiles[]
   user_project                                    user_project[]
   user_subscription                               user_subscription[]
-  user_token_quotas                               user_token_quotas[]
   user_activity_stats                             user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
   basic_info                                      basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contacts                                        contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
