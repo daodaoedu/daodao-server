@@ -210,6 +210,12 @@ export const createPracticeSchema = z.object({
       description: '是否存為草稿',
       example: false
     }),
+  privacyStatus: z.enum(['private', 'public', 'delayed'])
+    .optional()
+    .openapi({
+      description: '隱私狀態（private: 私人, public: 即時公開, delayed: 完成後分享）',
+      example: 'public'
+    }),
   creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
     .optional()
     .openapi({

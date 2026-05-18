@@ -513,6 +513,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         status: initialStatus,
         has_resources: Boolean(data.resources && data.resources.length > 0),
         progress_percentage: INITIAL_PROGRESS,
+        privacy_status: data.privacyStatus ?? 'public',
         theme_color: themeColor
       },
       select: {

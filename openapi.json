@@ -8397,6 +8397,16 @@
             "description": "是否存為草稿",
             "example": false
           },
+          "privacyStatus": {
+            "type": "string",
+            "enum": [
+              "private",
+              "public",
+              "delayed"
+            ],
+            "description": "隱私狀態（private: 私人, public: 即時公開, delayed: 完成後分享）",
+            "example": "public"
+          },
           "creationMethod": {
             "type": "string",
             "enum": [
@@ -42152,6 +42162,16 @@
                     "default": false,
                     "description": "是否存為草稿",
                     "example": false
+                  },
+                  "privacyStatus": {
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "public",
+                      "delayed"
+                    ],
+                    "description": "隱私狀態（private: 私人, public: 即時公開, delayed: 完成後分享）",
+                    "example": "public"
                   },
                   "creationMethod": {
                     "type": "string",
