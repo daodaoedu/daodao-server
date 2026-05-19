@@ -42,7 +42,7 @@ export const removeResonance = asyncHandler(async (req: Request, res: Response) 
 
 export const getCarouselState = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
-  const { replace } = req.query as CarouselStateQuery;
+  const { replace } = req.query as unknown as CarouselStateQuery;
   const locale = (req.query.locale as string) || 'zh-TW';
   const result = await personaService.getCarouselState(req.user.id, replace, locale);
   res.json(result);
@@ -63,7 +63,7 @@ export const getProfileMe = asyncHandler(async (req: Request, res: Response) => 
 
 export const getProfileUser = asyncHandler(async (req: Request, res: Response) => {
   const externalId = req.params.userId;
-  const { exclude } = req.query as ProfileUserQuery;
+  const { exclude } = req.query as unknown as ProfileUserQuery;
   const locale = (req.query.locale as string) || 'zh-TW';
   const requesterId = req.user?.id;
   const user = await prisma.users.findFirst({ where: { external_id: externalId }, select: { id: true } });

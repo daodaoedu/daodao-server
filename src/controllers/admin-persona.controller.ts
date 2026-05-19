@@ -1,7 +1,30 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
 import personaQuestionService from '../services/admin/persona-question.service';
+
+const translationSchema = z.object({
+  locale: z.enum(['zh-TW', 'en']),
+  prompt: z.string().min(1),
+  options: z.array(z.string()).nullable().optional(),
+});
+
+const createQuestionBodySchema = z.object({
+  questionType: z.enum(['choice', 'sentence_completion', 'scenario']),
+  isNewUserPriority: z.boolean().optional().default(false),
+  translations: z.array(translationSchema).min(1),
+});
+
+const updateQuestionBodySchema = z.object({
+  questionType: z.enum(['choice', 'sentence_completion', 'scenario']).optional(),
+  isNewUserPriority: z.boolean().optional(),
+});
+
+const upsertTranslationBodySchema = z.object({
+  prompt: z.string().min(1),
+  options: z.array(z.string()).nullable().optional(),
+});
 
 /**
  * GET /admin/persona/questions
@@ -25,8 +48,9 @@ export const getQuestion = asyncHandler(async (req: Request, res: Response) => {
  * POST /admin/persona/questions
  */
 export const createQuestion = asyncHandler(async (req: Request, res: Response) => {
-  const { questionType, isNewUserPriority, translations } = req.body;
-  const question = await personaQuestionService.createQuestion({ questionType, isNewUserPriority, translations });
+  const parsed = createQuestionBodySchema.safeParse(req.body);
+  if (!parsed.success) throw new BadRequestError(parsed.error.issues[0]?.message ?? '無效的請求內容');
+  const question = await personaQuestionService.createQuestion(parsed.data);
   res.status(201).json(createSuccessResponse(question));
 });
 
@@ -36,8 +60,9 @@ export const createQuestion = asyncHandler(async (req: Request, res: Response) =
 export const updateQuestion = asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) throw new BadRequestError('無效的問題 ID');
-  const { questionType, isNewUserPriority } = req.body;
-  const question = await personaQuestionService.updateQuestion(id, { questionType, isNewUserPriority });
+  const parsed = updateQuestionBodySchema.safeParse(req.body);
+  if (!parsed.success) throw new BadRequestError(parsed.error.issues[0]?.message ?? '無效的請求內容');
+  const question = await personaQuestionService.updateQuestion(id, parsed.data);
   res.json(createSuccessResponse(question));
 });
 
@@ -58,8 +83,9 @@ export const upsertTranslation = asyncHandler(async (req: Request, res: Response
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) throw new BadRequestError('無效的問題 ID');
   const { locale } = req.params;
-  const { prompt, options } = req.body;
-  const question = await personaQuestionService.upsertTranslation(id, locale, { prompt, options });
+  const parsed = upsertTranslationBodySchema.safeParse(req.body);
+  if (!parsed.success) throw new BadRequestError(parsed.error.issues[0]?.message ?? '無效的請求內容');
+  const question = await personaQuestionService.upsertTranslation(id, locale, parsed.data);
   res.json(createSuccessResponse(question));
 });
 
