@@ -41,6 +41,8 @@ import mentorRoutes from './routes/mentor.routes';
 import practiceRoutes from './routes/practice.routes';
 // 引入實踐輔助功能路由（鼓勵句、引導句）
 import practiceHelpersRoutes from './routes/practice-helpers.routes';
+// 引入 Onboarding 路由
+import onboardingRoutes from './routes/onboarding.routes';
 // 引入測驗結果路由
 import quizRoutes from './routes/quiz.routes';
 // 引入使用者統計路由
@@ -120,7 +122,7 @@ export function setupTypescriptRoutes(app: express.Application) {
     resourceRoutes, resourceReviewRoutes, ideaRoutes, meRoutes,
     tagRoutes, authRoutes, projectRoutes, userRoutes, emailRoutes,
     commentRoutes, reactionRoutes, imageRoutes, mentorRoutes, practiceRoutes,
-    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
+    onboardingRoutes, quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
     notificationRoutes, followRoutes, connectionRoutes,
     buddyRequestRouter, practiceBuddyRequestRouter
   ];
@@ -249,6 +251,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊實踐輔助功能路由（鼓勵句、引導句）
   app.use('/api/v1', practiceHelpersRoutes);
   console.log('⚡ v1 實踐輔助功能路由已註冊 - /api/v1/checkin-encouragements, /api/v1/tag-prompts');
+
+  // 註冊 Onboarding 路由
+  app.use('/api/v1/onboarding', onboardingRoutes);
+  console.log('🧭 v1 Onboarding 路由已註冊 - 可在 /api/v1/onboarding 訪問');
 
   // 註冊測驗結果路由
   app.use('/api/v1/quiz', quizRoutes);

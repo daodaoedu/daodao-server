@@ -239,6 +239,14 @@ export const createUserSchema = z.object({
     }),
 
   // 新增欄位
+  name: z.string()
+    .min(1, '名稱不可為空')
+    .max(100, '名稱長度不可超過 100 字')
+    .optional()
+    .openapi({
+      description: '用戶暱稱',
+      example: 'daodao_user'
+    }),
   professionalField: professionalFieldSchema,
   personalSlogan: personalSloganSchema,
   referralSource: referralSourceSchema,

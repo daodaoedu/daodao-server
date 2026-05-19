@@ -19,6 +19,7 @@ import practiceRoutes from './practice.routes';
 import adminRoutes from './admin.routes';
 import cityRoutes from './city.routes';
 import personaRoutes from './persona.routes';
+import onboardingRoutes from './onboarding.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -192,6 +193,7 @@ router.use('/persona', personaRoutes);
 // GET    /api/v1/cities/countries
 // GET    /api/v1/cities/validate/:code
 router.use('/cities', cityRoutes);
+router.use('/onboarding', onboardingRoutes);
 
 /**
  * API 健康檢查端點

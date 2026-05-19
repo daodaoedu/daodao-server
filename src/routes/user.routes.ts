@@ -43,7 +43,10 @@ import {
   preferencesQuerySchema,
   updatePreferencesSchema
 } from '../validators/me.validators';
+import { userService } from '../services/user.service';
 import { userFollowRouter } from './follow.routes';
+import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
+import { OnboardingTask } from '../types/onboarding.types';
 
 const router = Router();
 
@@ -166,7 +169,6 @@ registry.registerPath({
 router.post('/me',
   authenticate,
   upload.single('avatar'),
-  validate(createUserSchema, 'body'),
   userController.createUser as RequestHandler
 );
 
@@ -246,7 +248,12 @@ registry.registerPath({
 router.put('/me',
   authenticate,
   upload.single('avatar'),
-  userController.updateMe as RequestHandler
+  withOnboardingHook(OnboardingTask.B, userController.updateMe as RequestHandler, {
+    shouldAdvance: (req) => {
+      const userId = req.user?.id;
+      return typeof userId === 'number' && userService.isOnboardingProfileComplete(userId);
+    },
+  }) as RequestHandler
 );
 
 /**
@@ -514,7 +521,12 @@ registry.registerPath({
 router.put('/me/preferences',
   authenticate,
   validate(updatePreferencesSchema, 'body'),
-  userController.updateUserPreferences as RequestHandler
+  withOnboardingHook(OnboardingTask.B, userController.updateUserPreferences as RequestHandler, {
+    shouldAdvance: (req) => {
+      const userId = req.user?.id;
+      return typeof userId === 'number' && userService.isOnboardingProfileComplete(userId);
+    },
+  }) as RequestHandler
 );
 
 /**

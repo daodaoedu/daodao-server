@@ -11,6 +11,9 @@ import { registry } from '../config/openapi-registry';
 import { commentController } from '../controllers/comment.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
+import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
+import { OnboardingTask } from '../types/onboarding.types';
+import { isInspirationCommentTarget } from '../utils/onboarding-task-completion';
 import {
   createCommentSchema,
   updateCommentSchema,
@@ -217,7 +220,9 @@ registry.registerPath({
 router.post('/',
   authenticate,
   validate(createCommentSchema, 'body'),
-  commentController.createComment as RequestHandler
+  withOnboardingHook(OnboardingTask.E, commentController.createComment as RequestHandler, {
+    shouldAdvance: (req) => isInspirationCommentTarget(req.body.targetType),
+  }) as RequestHandler
 );
 
 router.get('/',
