@@ -64,18 +64,20 @@ function formatPersonaAnswer(row: AnswerRow): PersonaAnswerItem {
 
 // ─── Service Functions ────────────────────────────────────────────────────────
 
-async function getQuestions(userId: number): Promise<ApiSuccessResponse<{ questions: PersonaQuestionItem[] }>> {
+async function getQuestions(userId: number, locale = 'zh-TW'): Promise<ApiSuccessResponse<{ questions: PersonaQuestionItem[] }>> {
   const rows = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
     SELECT
       q.id,
-      q.prompt,
       q.question_type,
-      q.options,
       q.is_new_user_priority,
+      t.prompt,
+      t.options,
       CASE WHEN a.id IS NOT NULL THEN TRUE ELSE FALSE END AS answered,
       COALESCE(s.skip_count, 0)                           AS skip_count,
       COALESCE(s.suppressed, FALSE)                       AS suppressed
     FROM persona_questions q
+    JOIN persona_question_translations t
+      ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN persona_answers a
       ON a.question_id = q.id AND a.user_id = ${userId}
     LEFT JOIN persona_skips s
@@ -218,7 +220,7 @@ interface CarouselInitRow {
   unanswered: number;
 }
 
-async function getCarouselState(userId: number, replace?: number): Promise<ApiSuccessResponse<{
+async function getCarouselState(userId: number, replace?: number, locale = 'zh-TW'): Promise<ApiSuccessResponse<{
   shouldShow: boolean;
   allAnswered: boolean;
   questions: PersonaQuestionItem[];
@@ -266,11 +268,14 @@ async function getCarouselState(userId: number, replace?: number): Promise<ApiSu
     : Prisma.sql`a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE`;
 
   const questions = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
-    SELECT q.id, q.prompt, q.question_type, q.options, q.is_new_user_priority,
+    SELECT q.id, q.question_type, q.is_new_user_priority,
+           t.prompt, t.options,
            FALSE AS answered,
            COALESCE(s.skip_count, 0) AS skip_count,
            FALSE AS suppressed
     FROM persona_questions q
+    JOIN persona_question_translations t
+      ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
     LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
     WHERE ${baseCondition}
@@ -364,13 +369,13 @@ function formatProfileQuestion(row: ProfileQuestionRow): ProfileQuestionItem {
   };
 }
 
-async function getProfileMe(userId: number): Promise<ApiSuccessResponse<{ questions: ProfileQuestionItem[] }>> {
+async function getProfileMe(userId: number, locale = 'zh-TW'): Promise<ApiSuccessResponse<{ questions: ProfileQuestionItem[] }>> {
   const rows = await prisma.$queryRaw<ProfileQuestionRow[]>(Prisma.sql`
     SELECT
       q.id,
-      q.prompt,
+      t.prompt,
       q.question_type,
-      q.options,
+      t.options,
       q.is_new_user_priority,
       a.id               AS answer_id,
       a.selected_value,
@@ -379,6 +384,8 @@ async function getProfileMe(userId: number): Promise<ApiSuccessResponse<{ questi
       a.created_at       AS answer_created_at,
       a.updated_at       AS answer_updated_at
     FROM persona_questions q
+    JOIN persona_question_translations t
+      ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN persona_answers a
       ON a.question_id = q.id AND a.user_id = ${userId}
     LEFT JOIN (
@@ -395,7 +402,8 @@ async function getProfileMe(userId: number): Promise<ApiSuccessResponse<{ questi
 async function getProfileUser(
   targetUserId: number,
   requesterId?: number,
-  exclude?: number
+  exclude?: number,
+  locale = 'zh-TW'
 ): Promise<ApiSuccessResponse<{
   questions: ProfileQuestionItem[];
   viewerIsLocked?: boolean;
@@ -408,9 +416,9 @@ async function getProfileUser(
   const rows = await prisma.$queryRaw<ProfileQuestionRow[]>(Prisma.sql`
     SELECT
       q.id,
-      q.prompt,
+      t.prompt,
       q.question_type,
-      q.options,
+      t.options,
       q.is_new_user_priority,
       a.id               AS answer_id,
       a.selected_value,
@@ -420,6 +428,8 @@ async function getProfileUser(
       a.updated_at       AS answer_updated_at
     FROM persona_answers a
     INNER JOIN persona_questions q ON q.id = a.question_id
+    JOIN persona_question_translations t
+      ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN (
       SELECT answer_id, COUNT(*) AS resonance_count
       FROM persona_resonances

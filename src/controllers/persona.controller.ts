@@ -7,7 +7,8 @@ import type { SubmitAnswerBody, SubmitSkipBody, AddResonanceBody, CarouselStateQ
 
 export const getQuestions = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
-  const result = await personaService.getQuestions(req.user.id);
+  const locale = (req.query.locale as string) || 'zh-TW';
+  const result = await personaService.getQuestions(req.user.id, locale);
   res.json(result);
 });
 
@@ -42,7 +43,8 @@ export const removeResonance = asyncHandler(async (req: Request, res: Response) 
 export const getCarouselState = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
   const { replace } = req.query as CarouselStateQuery;
-  const result = await personaService.getCarouselState(req.user.id, replace);
+  const locale = (req.query.locale as string) || 'zh-TW';
+  const result = await personaService.getCarouselState(req.user.id, replace, locale);
   res.json(result);
 });
 
@@ -54,16 +56,18 @@ export const dismissCarousel = asyncHandler(async (req: Request, res: Response) 
 
 export const getProfileMe = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
-  const result = await personaService.getProfileMe(req.user.id);
+  const locale = (req.query.locale as string) || 'zh-TW';
+  const result = await personaService.getProfileMe(req.user.id, locale);
   res.json(result);
 });
 
 export const getProfileUser = asyncHandler(async (req: Request, res: Response) => {
   const externalId = req.params.userId;
   const { exclude } = req.query as ProfileUserQuery;
+  const locale = (req.query.locale as string) || 'zh-TW';
   const requesterId = req.user?.id;
   const user = await prisma.users.findFirst({ where: { external_id: externalId }, select: { id: true } });
   if (!user) throw new NotFoundError('找不到使用者');
-  const result = await personaService.getProfileUser(user.id, requesterId, exclude);
+  const result = await personaService.getProfileUser(user.id, requesterId, exclude, locale);
   res.json(result);
 });

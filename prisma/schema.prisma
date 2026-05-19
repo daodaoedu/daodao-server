@@ -1521,14 +1521,26 @@ enum persona_question_type_t {
 
 model persona_questions {
   id                   Int                      @id @default(autoincrement())
-  prompt               String
   question_type        persona_question_type_t
-  options              Json?
   is_new_user_priority Boolean                  @default(false)
   created_at           DateTime                 @default(now()) @db.Timestamptz(6)
 
-  persona_answers persona_answers[]
-  persona_skips   persona_skips[]
+  persona_answers                  persona_answers[]
+  persona_skips                    persona_skips[]
+  persona_question_translations    persona_question_translations[]
+}
+
+model persona_question_translations {
+  id          Int     @id @default(autoincrement())
+  question_id Int
+  locale      String  @db.VarChar(10)
+  prompt      String
+  options     Json?
+
+  persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([question_id, locale], map: "uq_persona_question_translations_question_locale")
+  @@index([locale], map: "idx_persona_question_translations_locale")
 }
 
 model persona_answers {

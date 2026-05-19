@@ -73,6 +73,7 @@ export const profileUserParamSchema = z.object({
 
 export const profileUserQuerySchema = z.object({
   exclude: z.coerce.number().int().positive().optional().openapi({ description: '要排除的問題 ID', example: 3 }),
+  locale: z.string().optional().openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
 }).openapi('PersonaProfileUserQuery');
 
 const profileAnswerSchema = z.object({
@@ -107,8 +108,13 @@ export const profileUserDataSchema = z.object({
 export const profileMeApiResponseSchema = apiSuccessResponseSchema(profileMeDataSchema).openapi('PersonaProfileMeApiResponse');
 export const profileUserApiResponseSchema = apiSuccessResponseSchema(profileUserDataSchema).openapi('PersonaProfileUserApiResponse');
 
+export const localeQuerySchema = z.object({
+  locale: z.string().optional().openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
+}).openapi('LocaleQuery');
+
 export const carouselStateQuerySchema = z.object({
   replace: z.coerce.number().int().positive().optional().openapi({ description: '要替換的問題 ID', example: 3 }),
+  locale: z.string().optional().openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
 }).openapi('CarouselStateQuery');
 
 export const carouselStateDataSchema = z.object({
@@ -142,3 +148,4 @@ export type PersonaResonanceData = z.infer<typeof personaResonanceDataSchema>;
 export type CarouselStateQuery = z.infer<typeof carouselStateQuerySchema>;
 export type PersonaCarouselState = z.infer<typeof carouselStateDataSchema>;
 export type ProfileUserQuery = z.infer<typeof profileUserQuerySchema>;
+export type LocaleQuery = z.infer<typeof localeQuerySchema>;

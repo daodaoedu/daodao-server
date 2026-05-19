@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Router } from 'express';
 import { registry } from '../config/openapi-registry';
 import { authenticate } from '../middleware/auth';
@@ -41,6 +42,9 @@ registry.registerPath({
   tags: ['Persona'],
   summary: '取得人物誌問題列表（含當前使用者答題狀態）',
   description: '回傳所有學習人物誌問題，每題附帶當前登入使用者的答題狀態（已作答、跳過次數、是否已壓制）。需要登入。',
+  request: {
+    query: z.object({ locale: z.string().optional().openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }) }),
+  },
   responses: {
     200: {
       description: '成功',
@@ -122,6 +126,9 @@ registry.registerPath({
   tags: ['Persona'],
   summary: '取得自己的學習人物誌（含未答虛線格）',
   description: '回傳當前使用者的完整人物誌，包含已作答題目（有答案內容）與尚未作答題目（isPlaceholder: true，作為虛線卡片顯示）。',
+  request: {
+    query: z.object({ locale: z.string().optional().openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }) }),
+  },
   responses: {
     200: {
       description: '成功',

@@ -8139,7 +8139,10 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description 語系代碼（預設 zh-TW） */
+                    locale?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -8363,7 +8366,10 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description 語系代碼（預設 zh-TW） */
+                    locale?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -8405,6 +8411,8 @@ export interface paths {
                 query?: {
                     /** @description 要排除的問題 ID */
                     exclude?: number;
+                    /** @description 語系代碼（預設 zh-TW） */
+                    locale?: string;
                 };
                 header?: never;
                 path: {
@@ -8450,6 +8458,8 @@ export interface paths {
                 query?: {
                     /** @description 要替換的問題 ID */
                     replace?: number;
+                    /** @description 語系代碼（預設 zh-TW） */
+                    locale?: string;
                 };
                 header?: never;
                 path?: never;
