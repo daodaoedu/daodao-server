@@ -216,6 +216,7 @@ async function getPassportState(userId: number): Promise<{ isLocked: boolean; an
 interface CarouselInitRow {
   is_new_user: boolean;
   session_count: number;
+  prompted_today: boolean;
   dismissed_today: boolean;
   unanswered: number;
 }
@@ -234,6 +235,7 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
     state_data AS (
       SELECT
         session_count_since_last_prompt,
+        (last_prompt_timestamp IS NOT NULL AND last_prompt_timestamp::date = CURRENT_DATE) AS prompted_today,
         (last_dismissed_at IS NOT NULL AND last_dismissed_at::date = CURRENT_DATE) AS dismissed_today
       FROM persona_user_state WHERE user_id = ${userId} LIMIT 1
     ),
@@ -247,6 +249,7 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
     SELECT
       COALESCE((SELECT is_new_user FROM user_data), FALSE)                          AS is_new_user,
       COALESCE((SELECT session_count_since_last_prompt FROM state_data), 0)         AS session_count,
+      COALESCE((SELECT prompted_today FROM state_data), FALSE)                      AS prompted_today,
       COALESCE((SELECT dismissed_today FROM state_data), FALSE)                     AS dismissed_today,
       (SELECT unanswered FROM unanswered_data)                                      AS unanswered
   `);
@@ -257,7 +260,9 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
     return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
   }
 
-  const shouldShow = init.dismissed_today ? false : init.is_new_user || Number(init.session_count) >= 2;
+  const shouldShow = init.dismissed_today
+    ? false
+    : init.prompted_today || init.is_new_user || Number(init.session_count) >= 2;
 
   if (!shouldShow) {
     return createSuccessResponse({ shouldShow: false, allAnswered: false, questions: [] });
