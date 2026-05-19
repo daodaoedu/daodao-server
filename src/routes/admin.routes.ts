@@ -9,6 +9,7 @@ import adminController from '@/controllers/admin.controller';
 import adminUserController from '@/controllers/admin-user.controller';
 import adminStatisticsController from '@/controllers/admin-statistics.controller';
 import emailHistoryController from '@/controllers/email-history.controller';
+import adminPersonaController from '@/controllers/admin-persona.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '@/middleware/permission.middleware';
@@ -1035,6 +1036,78 @@ router.get('/email/history',
   authenticateAny,
   requireAdmin,
   emailHistoryController.getEmailHistory as RequestHandler
+);
+
+// ===== Persona 題目管理路由 =====
+
+/**
+ * GET /admin/persona/questions
+ * 列出所有 persona 題目（含各語系翻譯）
+ */
+router.get('/persona/questions',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.listQuestions as RequestHandler
+);
+
+/**
+ * GET /admin/persona/questions/:id
+ * 取得單一題目（含各語系翻譯）
+ */
+router.get('/persona/questions/:id',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.getQuestion as RequestHandler
+);
+
+/**
+ * POST /admin/persona/questions
+ * 新增題目（可同時帶入 translations 陣列）
+ */
+router.post('/persona/questions',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.createQuestion as RequestHandler
+);
+
+/**
+ * PUT /admin/persona/questions/:id
+ * 更新題目 metadata（questionType / isNewUserPriority）
+ */
+router.put('/persona/questions/:id',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.updateQuestion as RequestHandler
+);
+
+/**
+ * DELETE /admin/persona/questions/:id
+ * 刪除題目（cascade 刪除翻譯與答案）
+ */
+router.delete('/persona/questions/:id',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.deleteQuestion as RequestHandler
+);
+
+/**
+ * PUT /admin/persona/questions/:id/translations/:locale
+ * 新增或更新指定語系翻譯
+ */
+router.put('/persona/questions/:id/translations/:locale',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.upsertTranslation as RequestHandler
+);
+
+/**
+ * DELETE /admin/persona/questions/:id/translations/:locale
+ * 刪除指定語系翻譯
+ */
+router.delete('/persona/questions/:id/translations/:locale',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.deleteTranslation as RequestHandler
 );
 
 export default router;
