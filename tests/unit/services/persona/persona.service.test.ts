@@ -109,7 +109,7 @@ describe('personaService.getCarouselState', () => {
       },
     ]);
     // questions (only called when shouldShow = true)
-    if (unanswered > 0 && (promptedToday || isNewUser || sessionCount >= 2) && !dismissedToday) {
+    if (unanswered > 0 && !dismissedToday) {
       prismaMock.$queryRaw.mockResolvedValueOnce(questions);
     }
     // upsert persona_user_state (only called when shouldShow = true)
@@ -139,10 +139,11 @@ describe('personaService.getCarouselState', () => {
   });
 
   describe('一般用戶', () => {
-    it('sessionCount < 2 → shouldShow = false', async () => {
+    it('sessionCount < 2 但有未答題 → shouldShow = true', async () => {
       setupCarousel({ isNewUser: false, sessionCount: 1, dismissedToday: false, unanswered: 3 });
       const result = await personaService.getCarouselState(1);
-      expect(result.data.shouldShow).toBe(false);
+      expect(result.data.shouldShow).toBe(true);
+      expect(result.data.questions.length).toBeGreaterThan(0);
     });
 
     it('sessionCount >= 2 → shouldShow = true', async () => {
