@@ -8,6 +8,7 @@ import { jwtService } from '../services/jwt.service';
 import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
 import { getReferralGroup } from '../services/email/welcome-template';
 import { authService } from '../services/auth/auth.service';
+import { personaService } from '../services/persona.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import {
@@ -170,6 +171,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
         error: error instanceof Error ? error.message : String(error)
       });
     }
+    personaService.incrementSession(id).catch(() => undefined);
   }
 
   // 根據來源決定重定向目標
@@ -617,6 +619,10 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     name: decoded.username || '',
     avatar: ''
   };
+
+  if (!decoded.isTemp && decoded.id) {
+    personaService.incrementSession(decoded.id).catch(() => undefined);
+  }
 
   // 如果不是臨時用戶，獲取完整資訊
   if (!decoded.isTemp && decoded._id) {
