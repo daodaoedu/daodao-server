@@ -260,9 +260,7 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
     return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
   }
 
-  const shouldShow = init.dismissed_today
-    ? false
-    : init.prompted_today || init.is_new_user || Number(init.session_count) >= 2;
+  const shouldShow = !init.dismissed_today;
 
   if (!shouldShow) {
     return createSuccessResponse({ shouldShow: false, allAnswered: false, questions: [] });
