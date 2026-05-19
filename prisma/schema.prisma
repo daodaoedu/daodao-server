@@ -867,6 +867,10 @@ model users {
   contacts                             contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   location                             location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   roles                                roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  persona_answers                      persona_answers[]
+  persona_skips                        persona_skips[]
+  persona_resonances                   persona_resonances[]
+  persona_user_state                   persona_user_state?
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -1505,4 +1509,80 @@ enum project_status {
   Completed
   Not_Started @map("Not Started")
   Canceled
+}
+
+// ─── Learner Persona ──────────────────────────────────────────────────────────
+
+enum persona_question_type_t {
+  choice
+  sentence_completion
+  scenario
+}
+
+model persona_questions {
+  id                   Int                      @id @default(autoincrement())
+  prompt               String
+  question_type        persona_question_type_t
+  options              Json?
+  is_new_user_priority Boolean                  @default(false)
+  created_at           DateTime                 @default(now()) @db.Timestamptz(6)
+
+  persona_answers persona_answers[]
+  persona_skips   persona_skips[]
+}
+
+model persona_answers {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  question_id    Int
+  selected_value String?   @db.VarChar(500)
+  text_answer    String?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+
+  users             users             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+  persona_resonances persona_resonances[]
+
+  @@unique([user_id, question_id], map: "uq_persona_answers_user_question")
+  @@index([user_id], map: "idx_persona_answers_user_id")
+  @@index([question_id], map: "idx_persona_answers_question_id")
+}
+
+model persona_skips {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  question_id Int
+  skip_count  Int       @default(0)
+  suppressed  Boolean   @default(false)
+  updated_at  DateTime? @db.Timestamptz(6)
+
+  users             users             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, question_id], map: "uq_persona_skips_user_question")
+  @@index([user_id], map: "idx_persona_skips_user_id")
+}
+
+model persona_resonances {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  answer_id  Int
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  persona_answers persona_answers @relation(fields: [answer_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, answer_id], map: "uq_persona_resonances_user_answer")
+  @@index([answer_id], map: "idx_persona_resonances_answer_id")
+}
+
+model persona_user_state {
+  user_id                          Int       @id
+  session_count_since_last_prompt  Int       @default(0)
+  last_prompt_timestamp            DateTime? @db.Timestamptz(6)
+  last_dismissed_at                DateTime? @db.Timestamptz(6)
+  created_at                       DateTime  @default(now()) @db.Timestamptz(6)
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

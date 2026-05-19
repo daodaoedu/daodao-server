@@ -163,14 +163,14 @@ async function addResonance(
   );
   if (answerExists.length === 0) throw new NotFoundError('答案不存在');
 
-  const duplicate = await prisma.$queryRaw<{ id: number }[]>(
-    Prisma.sql`SELECT id FROM persona_resonances WHERE user_id = ${userId} AND answer_id = ${answerId} LIMIT 1`
-  );
-  if (duplicate.length > 0) throw new ConflictError('已對此答案表達過共鳴');
-
-  await prisma.$executeRaw(
-    Prisma.sql`INSERT INTO persona_resonances (user_id, answer_id, created_at) VALUES (${userId}, ${answerId}, NOW())`
-  );
+  // Single INSERT with ON CONFLICT DO NOTHING eliminates check-then-insert race condition
+  const inserted = await prisma.$queryRaw<{ id: number }[]>(Prisma.sql`
+    INSERT INTO persona_resonances (user_id, answer_id, created_at)
+    VALUES (${userId}, ${answerId}, NOW())
+    ON CONFLICT (user_id, answer_id) DO NOTHING
+    RETURNING id
+  `);
+  if (inserted.length === 0) throw new ConflictError('已對此答案表達過共鳴');
 
   const [countRow] = await prisma.$queryRaw<{ count: number }[]>(
     Prisma.sql`SELECT COUNT(*) AS count FROM persona_resonances WHERE answer_id = ${answerId}`
@@ -211,9 +211,11 @@ async function getPassportState(userId: number): Promise<{ isLocked: boolean; an
   };
 }
 
-interface CarouselStateRow {
-  session_count_since_last_prompt: number;
-  last_dismissed_at: Date | null;
+interface CarouselInitRow {
+  is_new_user: boolean;
+  session_count: number;
+  dismissed_today: boolean;
+  unanswered: number;
 }
 
 async function getCarouselState(userId: number, replace?: number): Promise<ApiSuccessResponse<{
@@ -221,37 +223,39 @@ async function getCarouselState(userId: number, replace?: number): Promise<ApiSu
   allAnswered: boolean;
   questions: PersonaQuestionItem[];
 }>> {
-  const [userRow] = await prisma.$queryRaw<{ is_new_user: boolean }[]>(Prisma.sql`
-    SELECT (created_at + interval '5 days' > NOW()) AS is_new_user
-    FROM users WHERE id = ${userId} LIMIT 1
+  // Combine user check, state, dismissed-today flag, and unanswered count into one round-trip
+  const [init] = await prisma.$queryRaw<CarouselInitRow[]>(Prisma.sql`
+    WITH user_data AS (
+      SELECT (created_at + interval '5 days' > NOW()) AS is_new_user
+      FROM users WHERE id = ${userId} LIMIT 1
+    ),
+    state_data AS (
+      SELECT
+        session_count_since_last_prompt,
+        (last_dismissed_at IS NOT NULL AND last_dismissed_at::date = CURRENT_DATE) AS dismissed_today
+      FROM persona_user_state WHERE user_id = ${userId} LIMIT 1
+    ),
+    unanswered_data AS (
+      SELECT COUNT(*) AS unanswered
+      FROM persona_questions q
+      LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
+      LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
+      WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
+    )
+    SELECT
+      COALESCE((SELECT is_new_user FROM user_data), FALSE)                          AS is_new_user,
+      COALESCE((SELECT session_count_since_last_prompt FROM state_data), 0)         AS session_count,
+      COALESCE((SELECT dismissed_today FROM state_data), FALSE)                     AS dismissed_today,
+      (SELECT unanswered FROM unanswered_data)                                      AS unanswered
   `);
-  const isNewUser = userRow?.is_new_user ?? false;
 
-  const [state] = await prisma.$queryRaw<CarouselStateRow[]>(Prisma.sql`
-    SELECT session_count_since_last_prompt, last_dismissed_at
-    FROM persona_user_state WHERE user_id = ${userId} LIMIT 1
-  `);
-
-  const todayUtc = new Date().toISOString().split('T')[0];
-  const dismissedToday = state?.last_dismissed_at
-    ? new Date(state.last_dismissed_at).toISOString().split('T')[0] === todayUtc
-    : false;
-
-  const [unansweredRow] = await prisma.$queryRaw<{ unanswered: number }[]>(Prisma.sql`
-    SELECT COUNT(*) AS unanswered
-    FROM persona_questions q
-    LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
-    LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
-    WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
-  `);
-  const allAnswered = Number(unansweredRow.unanswered) === 0;
+  const allAnswered = Number(init.unanswered) === 0;
 
   if (allAnswered) {
     return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
   }
 
-  const sessionCount = Number(state?.session_count_since_last_prompt ?? 0);
-  const shouldShow = dismissedToday ? false : isNewUser || sessionCount >= 2;
+  const shouldShow = init.dismissed_today ? false : init.is_new_user || Number(init.session_count) >= 2;
 
   if (!shouldShow) {
     return createSuccessResponse({ shouldShow: false, allAnswered: false, questions: [] });
