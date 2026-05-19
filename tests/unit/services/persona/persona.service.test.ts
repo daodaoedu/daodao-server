@@ -17,16 +17,6 @@ import { personaService } from '@/services/persona.service';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const NOW = new Date('2025-06-01T10:00:00Z');
-
-beforeAll(() => {
-  jest.useFakeTimers({ now: NOW });
-});
-
-afterAll(() => {
-  jest.useRealTimers();
-});
-
 // ─── getPassportState ─────────────────────────────────────────────────────────
 
 describe('personaService.getPassportState', () => {
@@ -96,29 +86,30 @@ describe('personaService.getCarouselState', () => {
   function setupCarousel({
     isNewUser,
     sessionCount,
+    promptedToday = false,
     dismissedToday,
     unanswered,
     questions = [makeQuestionRow(1), makeQuestionRow(2)],
   }: {
     isNewUser: boolean;
     sessionCount: number;
+    promptedToday?: boolean;
     dismissedToday: boolean;
     unanswered: number;
     questions?: object[];
   }) {
-    // users query (is_new_user)
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ is_new_user: isNewUser }]);
-    // persona_user_state
-    const lastDismissed = dismissedToday
-      ? new Date(NOW.toISOString().split('T')[0] + 'T00:00:00Z')
-      : new Date('2020-01-01T00:00:00Z');
+    // carousel init query
     prismaMock.$queryRaw.mockResolvedValueOnce([
-      { session_count_since_last_prompt: sessionCount, last_dismissed_at: lastDismissed },
+      {
+        is_new_user: isNewUser,
+        session_count: sessionCount,
+        prompted_today: promptedToday,
+        dismissed_today: dismissedToday,
+        unanswered,
+      },
     ]);
-    // unanswered count
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ unanswered }]);
     // questions (only called when shouldShow = true)
-    if (unanswered > 0) {
+    if (unanswered > 0 && (promptedToday || isNewUser || sessionCount >= 2) && !dismissedToday) {
       prismaMock.$queryRaw.mockResolvedValueOnce(questions);
     }
     // upsert persona_user_state (only called when shouldShow = true)
@@ -158,6 +149,19 @@ describe('personaService.getCarouselState', () => {
       setupCarousel({ isNewUser: false, sessionCount: 2, dismissedToday: false, unanswered: 3 });
       const result = await personaService.getCarouselState(1);
       expect(result.data.shouldShow).toBe(true);
+    });
+
+    it('今天已 prompt 但尚未 dismiss → shouldShow = true', async () => {
+      setupCarousel({
+        isNewUser: false,
+        sessionCount: 0,
+        promptedToday: true,
+        dismissedToday: false,
+        unanswered: 3,
+      });
+      const result = await personaService.getCarouselState(1);
+      expect(result.data.shouldShow).toBe(true);
+      expect(result.data.questions.length).toBeGreaterThan(0);
     });
 
     it('sessionCount >= 2 但今天已 dismiss → shouldShow = false', async () => {
