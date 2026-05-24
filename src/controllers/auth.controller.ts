@@ -201,6 +201,24 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     loggerService.debug('OAuth callback - web redirect', { isNewUser, redirectUrl: nonceData.redirectUrl });
   }
 
+  const setCookieHeader = res.getHeader('Set-Cookie');
+  loggerService.info('OAuth callback set auth cookie', {
+    userAgent: req.get('User-Agent'),
+    secChUa: req.get('Sec-CH-UA'),
+    secChUaMobile: req.get('Sec-CH-UA-Mobile'),
+    secChUaPlatform: req.get('Sec-CH-UA-Platform'),
+    origin: req.get('Origin'),
+    referer: req.get('Referer'),
+    host: req.get('Host'),
+    forwardedHost: req.get('X-Forwarded-Host'),
+    forwardedProto: req.get('X-Forwarded-Proto'),
+    ip: req.ip,
+    frontendUrl,
+    cookieDomain: process.env.COOKIE_DOMAIN,
+    redirectTarget,
+    setCookieHeaderCount: Array.isArray(setCookieHeader) ? setCookieHeader.length : setCookieHeader ? 1 : 0
+  });
+
   res.redirect(redirectTarget);
 });
 
@@ -263,6 +281,26 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
   const token = getAuthToken(req);
 
   if (!token) {
+    loggerService.warn('Auth me missing token', {
+      userAgent: req.get('User-Agent'),
+      secChUa: req.get('Sec-CH-UA'),
+      secChUaMobile: req.get('Sec-CH-UA-Mobile'),
+      secChUaPlatform: req.get('Sec-CH-UA-Platform'),
+      origin: req.get('Origin'),
+      referer: req.get('Referer'),
+      host: req.get('Host'),
+      forwardedHost: req.get('X-Forwarded-Host'),
+      forwardedProto: req.get('X-Forwarded-Proto'),
+      ip: req.ip,
+      cookieDomain: process.env.COOKIE_DOMAIN,
+      cookieNames: Object.keys(req.cookies ?? {}),
+      hasAuthTokenCookie: Boolean(req.cookies?.auth_token),
+      hasAuthorizationHeader: Boolean(req.get('Authorization')),
+      secFetchSite: req.get('Sec-Fetch-Site'),
+      secFetchMode: req.get('Sec-Fetch-Mode'),
+      secFetchDest: req.get('Sec-Fetch-Dest')
+    });
+
     throw new UnauthorizedError('缺少認證令牌');
   }
   
