@@ -7,7 +7,13 @@ import jwt from 'jsonwebtoken';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
-const UNSUBSCRIBE_SECRET = process.env.JWT_SECRET || 'unsubscribe-secret';
+const UNSUBSCRIBE_SECRET = (() => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is required for notification unsubscribe tokens');
+  }
+  return secret;
+})();
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
 
