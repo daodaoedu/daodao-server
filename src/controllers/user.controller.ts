@@ -48,10 +48,26 @@ import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
 export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   const params = req.query as UserQueryParams;
   const result = await userService.getAllUsers(params);
-  
+
+  // 未認證請求不得取得 PII 欄位（email、birthDay、loginCount 等）
+  if (!req.user) {
+    result.data = result.data.map(user => ({
+      ...user,
+      email: null,
+      birthDay: null,
+      isSubscribeEmail: false,
+      loginCount: 0,
+      lastLoginAt: null,
+      lastActiveAt: null,
+      profileViews: 0,
+      referralSource: null,
+      contactList: user.contactList ? { ...user.contactList, email: null } : null,
+    }));
+  }
+
   // 驗證響應格式
   const validatedResponse = usersListResponseSchema.parse(result);
-  
+
   res.json(validatedResponse);
 });
 
