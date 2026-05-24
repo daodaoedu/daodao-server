@@ -122,7 +122,7 @@ export const generateEmailHead = (title: string): string => `
       .main-content { width: 100% !important; padding: 28px 24px !important; }
       .text-block { padding: 0 !important; }
       .quote-block { margin-left: 0 !important; margin-right: 0 !important; }
-      .cta-button-wrapper { padding: 0 !important; }
+      .cta-button-wrapper { padding-left: 0 !important; padding-right: 0 !important; }
       .cta-button {
         display: block !important;
         width: 100% !important;
