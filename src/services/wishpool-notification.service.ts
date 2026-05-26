@@ -1,15 +1,23 @@
 /**
  * Wishpool 通知
  *
- * 沿用既有 notification_events 管線（in-app worker + 4h digest email worker）：
- * - wish.linked：許願被歸入／促成項目 → 通知許願者（P1）
- * - roadmap.shipped：項目 status→done → 通知所有支持者（P2，digest 內依 entity 聚合防轟炸）
- *
- * Email 由 digest worker 取帳號 email 發送；wish 的 contact_email 一併帶入 payload 備用。
+ * - wish.linked：許願被歸入／促成項目 → 通知許願者
+ *   - 站內：寫 notification_events（P1，由 in-app worker 消費）
+ *   - Email：即時寄到 wish.contact_email（無則帳號 email）；為避免重複，digest worker 已排除此 type
+ * - roadmap.shipped：項目 status→done → 通知所有支持者（P2，digest 內依 entity 聚合防轟炸，寄帳號 email）
  */
 
 import { prisma } from './database/prisma.service';
 import { notificationEventService } from './notification-event.service';
+import { loggerService } from './logging/logger.service';
+import { emailService } from './email/email.service';
+import { generateWishLinkedEmail } from './email/wish-linked-template';
+import { generateUnsubscribeUrl } from './notification-unsubscribe.service';
+import { createEmailLog, updateEmailLogStatus } from './email/email-log.service';
+import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
+
+/** notification_preferences 中代表 email 的 channel 值（與 digest worker 一致） */
+const EMAIL_CHANNEL = 'N01';
 
 function roadmapUrl(): string {
   const base = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
@@ -24,16 +32,90 @@ export interface NotifyWishLinkedParams {
   contactEmail?: string | null;
 }
 
+/**
+ * 即時寄送「許願被採納」email 至 contact_email（無則帳號 email）。
+ * best-effort：錯誤只 log、不影響主流程；不通知自己；尊重 email 偏好。
+ */
+async function sendWishLinkedEmail(params: NotifyWishLinkedParams): Promise<void> {
+  const { wisherUserId, actorUserId, itemTitle, contactEmail } = params;
+
+  if (wisherUserId === actorUserId) return; // 不通知自己
+
+  try {
+    const user = await prisma.users.findUnique({
+      where: { id: wisherUserId },
+      select: { nickname: true, contacts: { select: { email: true } } },
+    });
+
+    const to = contactEmail ?? user?.contacts?.email ?? null;
+    if (!to) return;
+
+    // 尊重 email 偏好（未設定預設開啟，與 digest worker 一致）
+    const pref = await prisma.notification_preferences.findFirst({
+      where: { user_id: wisherUserId, channel: EMAIL_CHANNEL, notification_type: 'wish.linked' },
+      select: { is_enabled: true },
+    });
+    if (pref?.is_enabled === false) return;
+
+    const { subject, html } = generateWishLinkedEmail({
+      recipientName: user?.nickname ?? '島島夥伴',
+      itemTitle,
+      url: roadmapUrl(),
+      unsubscribeUrl: generateUnsubscribeUrl(wisherUserId, 'wish.linked'),
+    });
+
+    let log: { id: number; tracking_token: string | null } | null = null;
+    try {
+      log = await createEmailLog({
+        userId: wisherUserId,
+        emailType: EMAIL_TYPES.NOTIFICATION,
+        subject,
+        status: EMAIL_STATUS.PENDING,
+      });
+    } catch {
+      log = null;
+    }
+
+    const result = await emailService.sendEmail({
+      to,
+      subject,
+      html,
+      trackingToken: log?.tracking_token ?? undefined,
+    });
+
+    if (log) {
+      await updateEmailLogStatus(
+        log.id,
+        result.success ? EMAIL_STATUS.SENT : EMAIL_STATUS.FAILED,
+      ).catch(() => {});
+    }
+  } catch (error) {
+    loggerService.error('wishpool: sendWishLinkedEmail failed', {
+      wisherUserId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export async function notifyWishLinked(params: NotifyWishLinkedParams): Promise<void> {
-  const { wisherUserId, actorUserId, itemId, itemTitle, contactEmail } = params;
+  const { wisherUserId, actorUserId, itemId, itemTitle } = params;
+
+  // 站內通知（沿用 notification_events → in-app worker）
   await notificationEventService.createEvent({
     type: 'wish.linked',
     actorId: actorUserId,
     recipientId: wisherUserId,
     entityType: 'roadmap_item',
     entityId: itemId,
-    payload: { entityTitle: itemTitle, url: roadmapUrl(), contactEmail: contactEmail ?? undefined },
+    payload: { entityTitle: itemTitle, url: roadmapUrl() },
     priority: 'P1',
+  });
+
+  // Email：即時寄到 contact_email；best-effort、不阻塞主流程
+  void sendWishLinkedEmail(params).catch((error) => {
+    loggerService.error('wishpool: sendWishLinkedEmail unhandled', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   });
 }
 
