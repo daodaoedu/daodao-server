@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
-import { apiSuccessResponseSchema } from './api-response.validators';
+import { apiSuccessResponseSchema, cursorPaginatedApiResponseSchema } from './api-response.validators';
 import {
   WISH_CATEGORY_VALUES,
   ROADMAP_STATUS_VALUES,
@@ -68,7 +68,7 @@ const toggleSupportResultSchema = z
   })
   .openapi('ToggleSupportResult', { description: '投票／取消投票結果' });
 
-export const listRoadmapItemsApiResponseSchema = apiSuccessResponseSchema(z.array(roadmapItemPublicSchema));
+export const listRoadmapItemsApiResponseSchema = cursorPaginatedApiResponseSchema(roadmapItemPublicSchema);
 export const roadmapStatsApiResponseSchema = apiSuccessResponseSchema(roadmapStatsSchema);
 export const toggleSupportApiResponseSchema = apiSuccessResponseSchema(toggleSupportResultSchema);
 
@@ -105,6 +105,15 @@ export const updateRoadmapItemSchema = z
   .refine((data) => Object.keys(data).length > 0, { message: '至少需提供一個欲更新的欄位' })
   .openapi('UpdateRoadmapItem', { description: '更新路線圖項目' });
 
+export const adminRoadmapItemListQuerySchema = z
+  .object({
+    status: roadmapStatusEnum.optional().openapi({ description: '狀態過濾' }),
+    category: categoryEnum.optional().openapi({ description: '分類過濾' }),
+    cursor: z.string().optional().openapi({ description: '分頁游標（不透明）' }),
+    limit: z.coerce.number().int().min(1).max(100).default(50).openapi({ description: '每頁筆數' }),
+  })
+  .openapi('AdminRoadmapItemListQuery', { description: '後台路線圖項目列表查詢參數' });
+
 export const roadmapReportQuerySchema = z
   .object({
     range: z.enum(['week', 'month', 'quarter', 'year']).default('month').openapi({ description: '時間範圍（預設本月）' }),
@@ -119,6 +128,7 @@ export const roadmapReportQuerySchema = z
 export type ListRoadmapItemsQuery = z.infer<typeof listRoadmapItemsQuerySchema>;
 export type SupportItemParam = z.infer<typeof supportItemParamSchema>;
 export type AdminItemIdParam = z.infer<typeof adminItemIdParamSchema>;
+export type AdminRoadmapItemListQuery = z.infer<typeof adminRoadmapItemListQuerySchema>;
 export type CreateRoadmapItemInput = z.infer<typeof createRoadmapItemSchema>;
 export type UpdateRoadmapItemInput = z.infer<typeof updateRoadmapItemSchema>;
 export type RoadmapReportQuery = z.infer<typeof roadmapReportQuerySchema>;

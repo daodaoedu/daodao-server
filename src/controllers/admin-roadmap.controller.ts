@@ -12,6 +12,7 @@ import { roadmapAdminService } from '../services/roadmap-admin.service';
 import { roadmapReportService } from '../services/roadmap-report.service';
 import {
   AdminItemIdParam,
+  AdminRoadmapItemListQuery,
   CreateRoadmapItemInput,
   UpdateRoadmapItemInput,
   RoadmapReportQuery,
@@ -60,6 +61,12 @@ const archiveWish = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── 路線圖項目管理 ──────────────────────────────────────────────────────────────
 
+const listItems = asyncHandler(async (req: Request, res: Response) => {
+  const query = req.query as unknown as AdminRoadmapItemListQuery;
+  const result = await roadmapAdminService.listItems(query);
+  res.status(200).json(result);
+});
+
 const createItem = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as CreateRoadmapItemInput;
   const result = await roadmapAdminService.createItem(body);
@@ -87,6 +94,7 @@ export const adminRoadmapController = {
   linkWish,
   promoteWish,
   archiveWish,
+  listItems,
   createItem,
   updateItem,
   getReport,

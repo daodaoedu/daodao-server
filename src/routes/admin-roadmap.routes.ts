@@ -24,6 +24,7 @@ import {
 } from '../validators/wish.validators';
 import {
   adminItemIdParamSchema,
+  adminRoadmapItemListQuerySchema,
   createRoadmapItemSchema,
   updateRoadmapItemSchema,
   roadmapReportQuerySchema,
@@ -98,6 +99,20 @@ registry.registerPath({
     401: { $ref: '#/components/responses/UnauthorizedError' },
     403: { $ref: '#/components/responses/ForbiddenError' },
     404: { $ref: '#/components/responses/NotFoundError' },
+  },
+  security: [{ bearerAuth: [] }],
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/roadmap/items',
+  tags: ['Admin Roadmap'],
+  summary: '路線圖項目列表（含非公開）',
+  request: { query: adminRoadmapItemListQuerySchema },
+  responses: {
+    200: { description: '項目列表' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
   },
   security: [{ bearerAuth: [] }],
 });
@@ -183,6 +198,12 @@ router.post(
   '/wishes/:id/archive',
   validate(adminWishIdParamSchema, 'params'),
   adminRoadmapController.archiveWish as RequestHandler,
+);
+
+router.get(
+  '/roadmap/items',
+  validate(adminRoadmapItemListQuerySchema, 'query'),
+  adminRoadmapController.listItems as RequestHandler,
 );
 
 router.post(

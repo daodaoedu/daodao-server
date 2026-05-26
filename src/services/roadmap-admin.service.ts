@@ -7,15 +7,20 @@
 
 import { prisma } from './database/prisma.service';
 import { NotFoundError } from '../middleware/error.middleware';
-import { createSuccessResponse } from '../utils/response-helper';
-import { ApiSuccessResponse } from '../types/api-response.types';
+import { createSuccessResponse, createCursorPaginatedResponse } from '../utils/response-helper';
+import { encodeOffsetCursor, decodeOffsetCursor } from '../utils/cursor';
+import { ApiSuccessResponse, CursorPaginatedApiResponse } from '../types/api-response.types';
 import { notifyRoadmapShipped } from './wishpool-notification.service';
 import {
   AdminRoadmapItem,
   WishCategory,
   RoadmapStatus,
 } from '../types/wishpool.types';
-import { CreateRoadmapItemInput, UpdateRoadmapItemInput } from '../validators/roadmap.validators';
+import {
+  CreateRoadmapItemInput,
+  UpdateRoadmapItemInput,
+  AdminRoadmapItemListQuery,
+} from '../validators/roadmap.validators';
 
 type RoadmapItemRow = {
   id: number;
@@ -49,6 +54,43 @@ function toAdminItem(row: RoadmapItemRow): AdminRoadmapItem {
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
   };
+}
+
+export async function listItems(
+  query: AdminRoadmapItemListQuery,
+): Promise<CursorPaginatedApiResponse<AdminRoadmapItem>> {
+  const offset = decodeOffsetCursor(query.cursor);
+  const limit = query.limit;
+
+  const where = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.category ? { category: query.category } : {}),
+  };
+
+  const rows = await prisma.roadmap_items.findMany({
+    where,
+    orderBy: [{ pinned: 'desc' }, { sort_order: 'asc' }, { updated_at: 'desc' }],
+    skip: offset,
+    take: limit + 1,
+  });
+
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const items = pageRows.map(toAdminItem);
+  const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
+
+  return createCursorPaginatedResponse(items, {
+    cursors: { start: query.cursor ?? null, end: nextCursor },
+    hasMore,
+    count: items.length,
+    limit,
+    hasNext: hasMore,
+    hasPrev: offset > 0,
+    nextCursor,
+    prevCursor: null,
+    totalEstimate: null,
+    parentTotalEstimate: null,
+  });
 }
 
 export async function createItem(
@@ -113,6 +155,7 @@ export async function updateItem(
 }
 
 export const roadmapAdminService = {
+  listItems,
   createItem,
   updateItem,
 };
