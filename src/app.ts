@@ -68,6 +68,8 @@ import connectionRoutes from './routes/connection.routes';
 import { buddyRequestRouter, practiceBuddyRequestRouter } from './routes/buddy-request.routes';
 // 引入人物誌路由
 import personaRoutes from './routes/persona.routes';
+// 引入問卷路由
+import surveyRoutes from './routes/survey.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
@@ -302,6 +304,9 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊實踐巢狀 Buddy 請求路由
   app.use('/api/v1/practices/:id/buddy-requests', practiceBuddyRequestRouter);
   console.log('🤝 v1 實踐 Buddy 請求路由已註冊 - 可在 /api/v1/practices/:id/buddy-requests 訪問');
+
+  app.use('/api/v1/surveys', surveyRoutes);
+  console.log('📋 v1 問卷路由已註冊 - 可在 /api/v1/surveys 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
