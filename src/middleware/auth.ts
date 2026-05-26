@@ -7,6 +7,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { UnauthorizedError, ForbiddenError } from '../middleware/error.middleware';
+import { prisma } from '../services/database/prisma.service';
 import {
   UserJwtPayload,
   AuthMiddlewareOptions,
@@ -309,13 +310,27 @@ export const requireEmailVerified = (req: Request, res: Response, next: NextFunc
  * 需要活躍用戶中間件
  * 檢查用戶是否處於活躍狀態
  */
-export const requireActiveUser = (req: Request, res: Response, next: NextFunction): void => {
+export const requireActiveUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   if (!req.user) {
     return next(new UnauthorizedError('未經授權的訪問'));
   }
 
   if (req.user.is_active === false) {
     next(new ForbiddenError('帳戶已被停用'));
+    return;
+  }
+
+  try {
+    const dbUser = await prisma.users.findUnique({
+      where: { id: req.user.id },
+      select: { is_active: true }
+    });
+    if (!dbUser || dbUser.is_active === false) {
+      next(new ForbiddenError('帳戶已被停用'));
+      return;
+    }
+  } catch (error) {
+    next(new UnauthorizedError('認證驗證失敗'));
     return;
   }
 
