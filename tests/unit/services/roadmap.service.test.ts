@@ -28,65 +28,67 @@ describe('Roadmap Service', () => {
   });
 
   describe('addSupport', () => {
-    it('首次投票：建立 support、support_count +1、voted=true', async () => {
+    it('首次投票：upsert support、以實際筆數寫回 support_count、voted=true', async () => {
       prismaMock.roadmap_items.findUnique.mockResolvedValue({ id: 5 } as never);
-      prismaMock.roadmap_item_supports.findUnique.mockResolvedValue(null as never);
-      prismaMock.roadmap_item_supports.create.mockResolvedValue({ id: 1 } as never);
+      prismaMock.roadmap_item_supports.upsert.mockResolvedValue({ id: 1 } as never);
+      prismaMock.roadmap_item_supports.count.mockResolvedValue(1 as never);
       prismaMock.roadmap_items.update.mockResolvedValue({ support_count: 1 } as never);
 
       const res = await addSupport('ext-uuid', 42);
 
-      expect(prismaMock.roadmap_item_supports.create).toHaveBeenCalledWith({
-        data: { roadmap_item_id: 5, user_id: 42, origin: 'vote' },
+      expect(prismaMock.roadmap_item_supports.upsert).toHaveBeenCalledWith({
+        where: { roadmap_item_id_user_id: { roadmap_item_id: 5, user_id: 42 } },
+        create: { roadmap_item_id: 5, user_id: 42, origin: 'vote' },
+        update: {},
       });
       expect(prismaMock.roadmap_items.update).toHaveBeenCalledWith({
         where: { id: 5 },
-        data: { support_count: { increment: 1 } },
-        select: { support_count: true },
+        data: { support_count: 1 },
       });
       expect(res.success).toBe(true);
       expect(res.data).toEqual({ support_count: 1, voted: true });
     });
 
-    it('重複投票冪等：不重複建立、回傳當前票數', async () => {
+    it('重複投票冪等：upsert 無動作、回傳權威票數', async () => {
       prismaMock.roadmap_items.findUnique.mockResolvedValue({ id: 5 } as never);
-      prismaMock.roadmap_item_supports.findUnique.mockResolvedValue({ id: 9 } as never);
-      prismaMock.roadmap_items.findUniqueOrThrow.mockResolvedValue({ support_count: 3 } as never);
+      prismaMock.roadmap_item_supports.upsert.mockResolvedValue({ id: 9 } as never);
+      prismaMock.roadmap_item_supports.count.mockResolvedValue(3 as never);
+      prismaMock.roadmap_items.update.mockResolvedValue({ support_count: 3 } as never);
 
       const res = await addSupport('ext-uuid', 42);
 
-      expect(prismaMock.roadmap_item_supports.create).not.toHaveBeenCalled();
-      expect(prismaMock.roadmap_items.update).not.toHaveBeenCalled();
+      expect(prismaMock.roadmap_item_supports.upsert).toHaveBeenCalled();
       expect(res.data).toEqual({ support_count: 3, voted: true });
     });
   });
 
   describe('removeSupport', () => {
-    it('已投票取消：刪除 support、support_count -1、voted=false', async () => {
+    it('取消投票：刪除 support、以實際筆數寫回、voted=false', async () => {
       prismaMock.roadmap_items.findUnique.mockResolvedValue({ id: 5 } as never);
-      prismaMock.roadmap_item_supports.findUnique.mockResolvedValue({ id: 9 } as never);
-      prismaMock.roadmap_item_supports.delete.mockResolvedValue({ id: 9 } as never);
+      prismaMock.roadmap_item_supports.deleteMany.mockResolvedValue({ count: 1 } as never);
+      prismaMock.roadmap_item_supports.count.mockResolvedValue(2 as never);
       prismaMock.roadmap_items.update.mockResolvedValue({ support_count: 2 } as never);
 
       const res = await removeSupport('ext-uuid', 42);
 
-      expect(prismaMock.roadmap_item_supports.delete).toHaveBeenCalledWith({ where: { id: 9 } });
+      expect(prismaMock.roadmap_item_supports.deleteMany).toHaveBeenCalledWith({
+        where: { roadmap_item_id: 5, user_id: 42 },
+      });
       expect(prismaMock.roadmap_items.update).toHaveBeenCalledWith({
         where: { id: 5 },
-        data: { support_count: { decrement: 1 } },
-        select: { support_count: true },
+        data: { support_count: 2 },
       });
       expect(res.data).toEqual({ support_count: 2, voted: false });
     });
 
-    it('未投票取消冪等：不刪除、回傳當前票數', async () => {
+    it('未投票取消冪等：deleteMany 刪 0 筆、回傳權威票數', async () => {
       prismaMock.roadmap_items.findUnique.mockResolvedValue({ id: 5 } as never);
-      prismaMock.roadmap_item_supports.findUnique.mockResolvedValue(null as never);
-      prismaMock.roadmap_items.findUniqueOrThrow.mockResolvedValue({ support_count: 7 } as never);
+      prismaMock.roadmap_item_supports.deleteMany.mockResolvedValue({ count: 0 } as never);
+      prismaMock.roadmap_item_supports.count.mockResolvedValue(7 as never);
+      prismaMock.roadmap_items.update.mockResolvedValue({ support_count: 7 } as never);
 
       const res = await removeSupport('ext-uuid', 42);
 
-      expect(prismaMock.roadmap_item_supports.delete).not.toHaveBeenCalled();
       expect(res.data).toEqual({ support_count: 7, voted: false });
     });
   });

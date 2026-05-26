@@ -172,29 +172,18 @@ export async function addSupport(
   const itemId = await resolveItemId(externalId);
 
   const result = await prisma.$transaction(async (tx) => {
-    const existing = await tx.roadmap_item_supports.findUnique({
+    // 冪等 upsert：已投票則無動作，避免 UNIQUE 衝突（P2002）變成 500
+    await tx.roadmap_item_supports.upsert({
       where: { roadmap_item_id_user_id: { roadmap_item_id: itemId, user_id: userId } },
-      select: { id: true },
+      create: { roadmap_item_id: itemId, user_id: userId, origin: 'vote' },
+      update: {},
     });
-
-    // 冪等：已投票直接回傳當前票數
-    if (existing) {
-      const current = await tx.roadmap_items.findUniqueOrThrow({
-        where: { id: itemId },
-        select: { support_count: true },
-      });
-      return { support_count: current.support_count, voted: true };
-    }
-
-    await tx.roadmap_item_supports.create({
-      data: { roadmap_item_id: itemId, user_id: userId, origin: 'vote' },
+    // 以實際筆數為權威值寫回，避免 ±1 漂移／負數
+    const support_count = await tx.roadmap_item_supports.count({
+      where: { roadmap_item_id: itemId },
     });
-    const updated = await tx.roadmap_items.update({
-      where: { id: itemId },
-      data: { support_count: { increment: 1 } },
-      select: { support_count: true },
-    });
-    return { support_count: updated.support_count, voted: true };
+    await tx.roadmap_items.update({ where: { id: itemId }, data: { support_count } });
+    return { support_count, voted: true };
   });
 
   return createSuccessResponse(result);
@@ -207,27 +196,15 @@ export async function removeSupport(
   const itemId = await resolveItemId(externalId);
 
   const result = await prisma.$transaction(async (tx) => {
-    const existing = await tx.roadmap_item_supports.findUnique({
-      where: { roadmap_item_id_user_id: { roadmap_item_id: itemId, user_id: userId } },
-      select: { id: true },
+    // 冪等刪除（未投票則刪 0 筆）
+    await tx.roadmap_item_supports.deleteMany({
+      where: { roadmap_item_id: itemId, user_id: userId },
     });
-
-    // 冪等：未投票直接回傳當前票數
-    if (!existing) {
-      const current = await tx.roadmap_items.findUniqueOrThrow({
-        where: { id: itemId },
-        select: { support_count: true },
-      });
-      return { support_count: current.support_count, voted: false };
-    }
-
-    await tx.roadmap_item_supports.delete({ where: { id: existing.id } });
-    const updated = await tx.roadmap_items.update({
-      where: { id: itemId },
-      data: { support_count: { decrement: 1 } },
-      select: { support_count: true },
+    const support_count = await tx.roadmap_item_supports.count({
+      where: { roadmap_item_id: itemId },
     });
-    return { support_count: updated.support_count, voted: false };
+    await tx.roadmap_items.update({ where: { id: itemId }, data: { support_count } });
+    return { support_count, voted: false };
   });
 
   return createSuccessResponse(result);

@@ -152,21 +152,17 @@ async function linkWishWithinTx(
 ): Promise<void> {
   const { wishId, itemId, wisherUserId, internalModuleTag } = args;
 
-  const existingSupport = await tx.roadmap_item_supports.findUnique({
+  // 冪等 upsert：已投票者保留原 origin（不覆寫為 wish_link）、不重複計數
+  await tx.roadmap_item_supports.upsert({
     where: { roadmap_item_id_user_id: { roadmap_item_id: itemId, user_id: wisherUserId } },
-    select: { id: true },
+    create: { roadmap_item_id: itemId, user_id: wisherUserId, origin: 'wish_link' },
+    update: {},
   });
-
-  // 許願者尚未支持該項目才建立 wish_link，並 +1（已投票者 UNIQUE 略過、不重複計數）
-  if (!existingSupport) {
-    await tx.roadmap_item_supports.create({
-      data: { roadmap_item_id: itemId, user_id: wisherUserId, origin: 'wish_link' },
-    });
-    await tx.roadmap_items.update({
-      where: { id: itemId },
-      data: { support_count: { increment: 1 } },
-    });
-  }
+  // 以實際筆數為權威值寫回，避免漂移
+  const support_count = await tx.roadmap_item_supports.count({
+    where: { roadmap_item_id: itemId },
+  });
+  await tx.roadmap_items.update({ where: { id: itemId }, data: { support_count } });
 
   await tx.wishes.update({
     where: { id: wishId },

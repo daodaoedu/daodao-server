@@ -57,7 +57,7 @@ describe('Wish Service', () => {
       await expect(linkToItem(1, { roadmap_item_id: 5 }, 99)).rejects.toBeInstanceOf(BadRequestError);
     });
 
-    it('許願者未投票：建立 wish_link、support_count +1、wish→linked、發通知', async () => {
+    it('歸併：upsert wish_link support、以實際筆數寫回、wish→linked、發通知', async () => {
       prismaMock.wishes.findUnique.mockResolvedValue({
         id: 1,
         category: 'practice',
@@ -65,19 +65,21 @@ describe('Wish Service', () => {
         contact_email: 'w@daodao.so',
       } as never);
       prismaMock.roadmap_items.findUnique.mockResolvedValue({ id: 5, title: '深色模式' } as never);
-      prismaMock.roadmap_item_supports.findUnique.mockResolvedValue(null as never);
-      prismaMock.roadmap_item_supports.create.mockResolvedValue({ id: 1 } as never);
+      prismaMock.roadmap_item_supports.upsert.mockResolvedValue({ id: 1 } as never);
+      prismaMock.roadmap_item_supports.count.mockResolvedValue(1 as never);
       prismaMock.roadmap_items.update.mockResolvedValue({ id: 5 } as never);
       prismaMock.wishes.update.mockResolvedValue({ id: 1 } as never);
 
       const res = await linkToItem(1, { roadmap_item_id: 5 }, 99);
 
-      expect(prismaMock.roadmap_item_supports.create).toHaveBeenCalledWith({
-        data: { roadmap_item_id: 5, user_id: 42, origin: 'wish_link' },
+      expect(prismaMock.roadmap_item_supports.upsert).toHaveBeenCalledWith({
+        where: { roadmap_item_id_user_id: { roadmap_item_id: 5, user_id: 42 } },
+        create: { roadmap_item_id: 5, user_id: 42, origin: 'wish_link' },
+        update: {},
       });
       expect(prismaMock.roadmap_items.update).toHaveBeenCalledWith({
         where: { id: 5 },
-        data: { support_count: { increment: 1 } },
+        data: { support_count: 1 },
       });
       expect(prismaMock.wishes.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -89,7 +91,7 @@ describe('Wish Service', () => {
       expect(res.data).toEqual({ id: 1, linked_roadmap_item_id: 5 });
     });
 
-    it('許願者已投票：UNIQUE 略過，不重複計數', async () => {
+    it('許願者已投票：upsert 無動作、票數以實際筆數為準（不重複計數）', async () => {
       prismaMock.wishes.findUnique.mockResolvedValue({
         id: 1,
         category: 'practice',
@@ -97,13 +99,18 @@ describe('Wish Service', () => {
         contact_email: null,
       } as never);
       prismaMock.roadmap_items.findUnique.mockResolvedValue({ id: 5, title: '深色模式' } as never);
-      prismaMock.roadmap_item_supports.findUnique.mockResolvedValue({ id: 7 } as never);
+      prismaMock.roadmap_item_supports.upsert.mockResolvedValue({ id: 7 } as never);
+      prismaMock.roadmap_item_supports.count.mockResolvedValue(1 as never);
+      prismaMock.roadmap_items.update.mockResolvedValue({ id: 5 } as never);
       prismaMock.wishes.update.mockResolvedValue({ id: 1 } as never);
 
       await linkToItem(1, { roadmap_item_id: 5 }, 99);
 
-      expect(prismaMock.roadmap_item_supports.create).not.toHaveBeenCalled();
-      expect(prismaMock.roadmap_items.update).not.toHaveBeenCalled();
+      expect(prismaMock.roadmap_item_supports.upsert).toHaveBeenCalled();
+      expect(prismaMock.roadmap_items.update).toHaveBeenCalledWith({
+        where: { id: 5 },
+        data: { support_count: 1 },
+      });
       expect(prismaMock.wishes.update).toHaveBeenCalled();
     });
   });
