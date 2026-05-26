@@ -68,6 +68,10 @@ import connectionRoutes from './routes/connection.routes';
 import { buddyRequestRouter, practiceBuddyRequestRouter } from './routes/buddy-request.routes';
 // 引入人物誌路由
 import personaRoutes from './routes/persona.routes';
+// 引入許願池 / Roadmap 路由
+import roadmapRoutes from './routes/roadmap.routes';
+import wishRoutes from './routes/wish.routes';
+import adminRoadmapRoutes from './routes/admin-roadmap.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
@@ -124,7 +128,8 @@ export function setupTypescriptRoutes(app: express.Application) {
     commentRoutes, reactionRoutes, imageRoutes, mentorRoutes, practiceRoutes,
     onboardingRoutes, quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
     notificationRoutes, followRoutes, connectionRoutes,
-    buddyRequestRouter, practiceBuddyRequestRouter
+    buddyRequestRouter, practiceBuddyRequestRouter,
+    roadmapRoutes, wishRoutes, adminRoadmapRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -294,6 +299,12 @@ export function setupTypescriptRoutes(app: express.Application) {
 
   app.use('/api/v1/persona', personaRoutes);
   console.log('🎭 v1 人物誌路由已註冊 - 可在 /api/v1/persona 訪問');
+
+  // 註冊許願池 / Roadmap 路由（公開看板 optionalAuth、互動 authenticate）
+  app.use('/api/v1/roadmap', roadmapRoutes);
+  app.use('/api/v1/wishes', wishRoutes);
+  app.use('/api/v1/admin', adminRoadmapRoutes);
+  console.log('💡 v1 許願池路由已註冊 - /api/v1/roadmap、/api/v1/wishes、/api/v1/admin');
 
   // 註冊 Buddy 請求路由
   app.use('/api/v1/buddy-requests', buddyRequestRouter);

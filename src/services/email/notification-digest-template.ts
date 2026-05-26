@@ -66,6 +66,8 @@ function getEventLabel(type: string): string {
     BuddyAccepted:                '接受了你的夥伴邀請',
     'update-practice-checkin':    '更新了實踐打卡',
     'update-practice-finish':     '完成了主題實踐',
+    'wish.linked':                '採納了你的許願，已納入路線圖',
+    'roadmap.shipped':            '完成了你支持的項目',
   };
   return labels[type] ?? type;
 }
