@@ -125,7 +125,9 @@ export async function updateItem(
   });
   if (!existing) throw new NotFoundError('找不到指定的路線圖項目');
 
-  const becomingDone = input.status === 'done' && existing.status !== 'done';
+  // shipped_at 只在「首次」進入 done 時寫入、且永不清除；通知亦只發一次
+  // （允許 done→其他→done 回退，但不重複設 shipped_at / 不重複通知）
+  const firstTimeDone = input.status === 'done' && !existing.shipped_at;
   // parked 預設不公開（未明確指定 is_public 時）
   const parkedDefaultPrivate =
     input.status === 'parked' && input.is_public === undefined ? { is_public: false } : {};
@@ -141,13 +143,13 @@ export async function updateItem(
       ...(input.pinned !== undefined ? { pinned: input.pinned } : {}),
       ...(input.sort_order !== undefined ? { sort_order: input.sort_order } : {}),
       ...parkedDefaultPrivate,
-      ...(becomingDone ? { shipped_at: new Date() } : {}),
+      ...(firstTimeDone ? { shipped_at: new Date() } : {}),
       updated_at: new Date(),
     },
   });
 
-  // status→done 唯一觸發 roadmap.shipped（聚合於 digest 內，避免轟炸）
-  if (becomingDone) {
+  // status→done 首次觸發 roadmap.shipped（聚合於 digest 內，避免轟炸）
+  if (firstTimeDone) {
     await notifyRoadmapShipped({ itemId: id, itemTitle: updated.title, actorUserId });
   }
 
