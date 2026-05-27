@@ -1,45 +1,245 @@
+/**
+ * Admin 回饋與 FAQ 服務
+ * 提供用戶回饋管理、FAQ 分類與項目 CRUD 功能
+ */
+
+import { prisma } from './database/prisma.service'
 import type { FeedbackItem, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput } from '../types/admin-feedback.types'
 
-const listFeedback = async (_filters: { status?: string; category?: string; limit: number; offset: number }): Promise<{ items: FeedbackItem[]; total: number }> => {
-  return { items: [], total: 0 }
+/**
+ * 列出回饋（含篩選與分頁）
+ * @param filters - 狀態、分類篩選及分頁參數
+ */
+const listFeedback = async (filters: { status?: string; category?: string; limit: number; offset: number }): Promise<{ items: FeedbackItem[]; total: number }> => {
+  const conditions: string[] = []
+  if (filters.status) conditions.push(`f.status = '${filters.status}'`)
+  if (filters.category) conditions.push(`f.category = '${filters.category}'`)
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+  const [countResult] = await prisma.$queryRawUnsafe<Array<{ total: bigint }>>(
+    `SELECT COUNT(*)::bigint as total FROM feedback f ${whereClause}`
+  )
+  const total = Number(countResult?.total ?? 0)
+
+  const rows = await prisma.$queryRawUnsafe<Array<{
+    id: number; user_id: number; user_name: string | null;
+    content: string; category: string; status: string;
+    created_at: Date; replied_at: Date | null;
+  }>>(
+    `SELECT f.id, f.user_id, u.name as user_name, f.content, f.category, f.status, f.created_at, f.replied_at
+     FROM feedback f
+     LEFT JOIN users u ON f.user_id = u.id
+     ${whereClause}
+     ORDER BY f.created_at DESC
+     LIMIT ${filters.limit} OFFSET ${filters.offset}`
+  )
+
+  return {
+    items: rows.map(r => ({
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name,
+      content: r.content,
+      category: r.category as FeedbackItem['category'],
+      status: r.status as FeedbackItem['status'],
+      createdAt: r.created_at.toISOString(),
+      repliedAt: r.replied_at?.toISOString() ?? null,
+    })),
+    total,
+  }
 }
 
+/**
+ * 更新回饋狀態與分類
+ * @param id - 回饋 ID
+ * @param status - 新狀態
+ * @param category - 新分類（選填）
+ */
 const updateFeedbackStatus = async (id: number, status: string, category?: string): Promise<{ updated: boolean }> => {
+  if (category) {
+    await prisma.$executeRaw`UPDATE feedback SET status = ${status}, category = ${category} WHERE id = ${id}`
+  } else {
+    await prisma.$executeRaw`UPDATE feedback SET status = ${status} WHERE id = ${id}`
+  }
   return { updated: true }
 }
 
+/**
+ * 回覆回饋
+ * @param id - 回饋 ID
+ * @param content - 回覆內容
+ */
 const replyToFeedback = async (id: number, content: string): Promise<{ sent: boolean }> => {
+  await prisma.$executeRaw`
+    INSERT INTO feedback_replies (feedback_id, content, created_at)
+    VALUES (${id}, ${content}, NOW())
+  `
+  await prisma.$executeRaw`UPDATE feedback SET status = 'replied', replied_at = NOW() WHERE id = ${id}`
   return { sent: true }
 }
 
+/**
+ * 列出所有 FAQ 分類
+ */
 const listFaqCategories = async (): Promise<FaqCategory[]> => {
-  return []
+  const rows = await prisma.$queryRaw<Array<{
+    id: number; name: string; sort_order: number;
+  }>>`SELECT * FROM faq_categories ORDER BY sort_order ASC`
+
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    sortOrder: r.sort_order,
+  }))
 }
 
+/**
+ * 建立 FAQ 分類
+ * @param name - 分類名稱
+ */
 const createFaqCategory = async (name: string): Promise<FaqCategory> => {
-  return { id: 1, name, sortOrder: 0 }
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number; name: string; sort_order: number;
+  }>>`
+    INSERT INTO faq_categories (name, sort_order)
+    VALUES (${name}, COALESCE((SELECT MAX(sort_order) + 1 FROM faq_categories), 0))
+    RETURNING *
+  `
+
+  return {
+    id: row.id,
+    name: row.name,
+    sortOrder: row.sort_order,
+  }
 }
 
+/**
+ * 列出 FAQ 項目（可選分類篩選）
+ * @param categoryId - 分類 ID（選填）
+ */
 const listFaqItems = async (categoryId?: number): Promise<FaqItem[]> => {
-  return []
+  let rows: Array<{
+    id: number; category_id: number; question: string; answer: string;
+    is_published: boolean; sort_order: number; created_at: Date;
+  }>
+
+  if (categoryId !== undefined) {
+    rows = await prisma.$queryRaw`
+      SELECT * FROM faq_items WHERE category_id = ${categoryId} ORDER BY sort_order ASC
+    `
+  } else {
+    rows = await prisma.$queryRaw`
+      SELECT * FROM faq_items ORDER BY sort_order ASC
+    `
+  }
+
+  return rows.map(r => ({
+    id: r.id,
+    categoryId: r.category_id,
+    question: r.question,
+    answer: r.answer,
+    isPublished: r.is_published,
+    sortOrder: r.sort_order,
+    createdAt: r.created_at.toISOString(),
+  }))
 }
 
+/**
+ * 建立 FAQ 項目
+ * @param input - 建立 FAQ 項目輸入
+ */
 const createFaqItem = async (input: CreateFaqInput): Promise<FaqItem> => {
-  return { id: 1, categoryId: input.categoryId, question: input.question, answer: input.answer, isPublished: input.isPublished ?? false, sortOrder: 0, createdAt: new Date().toISOString() }
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number; category_id: number; question: string; answer: string;
+    is_published: boolean; sort_order: number; created_at: Date;
+  }>>`
+    INSERT INTO faq_items (category_id, question, answer, is_published, sort_order)
+    VALUES (${input.categoryId}, ${input.question}, ${input.answer}, ${input.isPublished ?? false}, COALESCE((SELECT MAX(sort_order) + 1 FROM faq_items WHERE category_id = ${input.categoryId}), 0))
+    RETURNING *
+  `
+
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    question: row.question,
+    answer: row.answer,
+    isPublished: row.is_published,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at.toISOString(),
+  }
 }
 
+/**
+ * 更新 FAQ 項目
+ * @param id - FAQ 項目 ID
+ * @param input - 更新 FAQ 項目輸入
+ */
 const updateFaqItem = async (id: number, input: UpdateFaqInput): Promise<FaqItem> => {
-  return { id, categoryId: 1, question: input.question ?? '', answer: input.answer ?? '', isPublished: input.isPublished ?? false, sortOrder: 0, createdAt: new Date().toISOString() }
+  const setClauses: string[] = []
+  if (input.question !== undefined) setClauses.push(`question = '${input.question}'`)
+  if (input.answer !== undefined) setClauses.push(`answer = '${input.answer}'`)
+  if (input.isPublished !== undefined) setClauses.push(`is_published = ${input.isPublished}`)
+
+  if (setClauses.length === 0) {
+    const [existing] = await prisma.$queryRaw<Array<{
+      id: number; category_id: number; question: string; answer: string;
+      is_published: boolean; sort_order: number; created_at: Date;
+    }>>`SELECT * FROM faq_items WHERE id = ${id}`
+    if (!existing) throw new Error('FAQ item not found')
+    return {
+      id: existing.id, categoryId: existing.category_id, question: existing.question,
+      answer: existing.answer, isPublished: existing.is_published,
+      sortOrder: existing.sort_order, createdAt: existing.created_at.toISOString(),
+    }
+  }
+
+  const [row] = await prisma.$queryRawUnsafe<Array<{
+    id: number; category_id: number; question: string; answer: string;
+    is_published: boolean; sort_order: number; created_at: Date;
+  }>>(
+    `UPDATE faq_items SET ${setClauses.join(', ')} WHERE id = ${id} RETURNING *`
+  )
+
+  if (!row) throw new Error('FAQ item not found')
+
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    question: row.question,
+    answer: row.answer,
+    isPublished: row.is_published,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at.toISOString(),
+  }
 }
 
-const deleteFaqItem = async (id: number): Promise<void> => {}
+/**
+ * 刪除 FAQ 項目
+ * @param id - FAQ 項目 ID
+ */
+const deleteFaqItem = async (id: number): Promise<void> => {
+  await prisma.$executeRaw`DELETE FROM faq_items WHERE id = ${id}`
+}
 
+/**
+ * 重新排序 FAQ 項目
+ * @param items - 項目 ID 與排序值的陣列
+ */
 const reorderFaqItems = async (items: Array<{ id: number; sortOrder: number }>): Promise<{ updated: boolean }> => {
+  for (const item of items) {
+    await prisma.$executeRaw`UPDATE faq_items SET sort_order = ${item.sortOrder} WHERE id = ${item.id}`
+  }
   return { updated: true }
 }
 
+/**
+ * 批量發佈/取消發佈 FAQ 項目
+ * @param ids - FAQ 項目 ID 陣列
+ * @param isPublished - 是否發佈
+ */
 const bulkPublishFaqItems = async (ids: number[], isPublished: boolean): Promise<{ updated: number }> => {
-  return { updated: ids.length }
+  const result = await prisma.$executeRaw`UPDATE faq_items SET is_published = ${isPublished} WHERE id = ANY(${ids}::int[])`
+  return { updated: result }
 }
 
 export default {

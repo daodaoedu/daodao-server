@@ -76,34 +76,34 @@ const createTag = async (input: CreateTagInput): Promise<UserTag> => {
  * @param input - 更新標籤輸入
  */
 const updateTag = async (id: number, input: UpdateTagInput): Promise<UserTag> => {
-  const setClauses: string[] = ['updated_at = NOW()'];
-  if (input.name !== undefined) setClauses.push(`name = '${input.name}'`);
-  if (input.color !== undefined) setClauses.push(`color = '${input.color}'`);
-  if (input.description !== undefined) setClauses.push(`description = '${input.description}'`);
+  // Build update dynamically but safely
+  if (input.name !== undefined) {
+    await prisma.$executeRaw`UPDATE user_tags SET name = ${input.name}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.color !== undefined) {
+    await prisma.$executeRaw`UPDATE user_tags SET color = ${input.color}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.description !== undefined) {
+    await prisma.$executeRaw`UPDATE user_tags SET description = ${input.description}, updated_at = NOW() WHERE id = ${id}`;
+  }
 
-  const [tag] = await prisma.$queryRawUnsafe<Array<{
-    id: number;
-    name: string;
-    color: string;
-    description: string | null;
-    type: string;
-    created_at: Date;
-    updated_at: Date | null;
-  }>>(
-    `UPDATE user_tags SET ${setClauses.join(', ')} WHERE id = ${id} RETURNING *`
-  );
+  const [tag] = await prisma.$queryRaw<Array<{
+    id: number; name: string; color: string; description: string | null;
+    type: string; created_at: Date; updated_at: Date | null; user_count: bigint;
+  }>>`
+    SELECT t.*, COUNT(uta.user_id)::bigint as user_count
+    FROM user_tags t
+    LEFT JOIN user_tag_assignments uta ON t.id = uta.tag_id
+    WHERE t.id = ${id}
+    GROUP BY t.id
+  `;
 
   if (!tag) throw new Error('Tag not found');
 
   return {
-    id: tag.id,
-    name: tag.name,
-    color: tag.color,
-    description: tag.description,
-    type: tag.type as 'manual' | 'auto',
-    userCount: 0,
-    createdAt: tag.created_at.toISOString(),
-    updatedAt: tag.updated_at?.toISOString() ?? null,
+    id: tag.id, name: tag.name, color: tag.color, description: tag.description,
+    type: tag.type as 'manual' | 'auto', userCount: Number(tag.user_count),
+    createdAt: tag.created_at.toISOString(), updatedAt: tag.updated_at?.toISOString() ?? null,
   };
 };
 

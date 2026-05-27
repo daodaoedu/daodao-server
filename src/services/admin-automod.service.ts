@@ -1,9 +1,9 @@
 /**
  * Admin 自動審核服務
  * 提供自動審核規則、詞彙清單、動作紀錄、標記佇列、垃圾訊息偵測功能
- * 目前回傳 mock 資料
  */
 
+import { prisma } from './database/prisma.service'
 import type {
   AutoModRule,
   WordList,
@@ -11,60 +11,59 @@ import type {
   ContentFlag,
   CreateAutoModRuleInput,
   FlagQueueActionInput,
-} from '../types/admin-automod.types';
+} from '../types/admin-automod.types'
 
 /**
  * 列出所有自動審核規則
  */
 const listRules = async (): Promise<AutoModRule[]> => {
-  return [
-    {
-      id: 1,
-      name: '禁止廣告連結',
-      pattern: '*.spam-domain.com*',
-      matchMode: 'wildcard',
-      action: 'delete',
-      isEnabled: true,
-      createdAt: '2026-03-01T00:00:00Z',
-    },
-    {
-      id: 2,
-      name: '髒話警告',
-      pattern: '髒話範例',
-      matchMode: 'contains',
-      action: 'warn',
-      isEnabled: true,
-      createdAt: '2026-03-05T00:00:00Z',
-    },
-    {
-      id: 3,
-      name: '重複灌水禁言',
-      pattern: '重複內容',
-      matchMode: 'exact',
-      action: 'timeout',
-      timeoutMinutes: 30,
-      isEnabled: false,
-      createdAt: '2026-04-10T00:00:00Z',
-    },
-  ];
-};
+  const rows = await prisma.$queryRaw<Array<{
+    id: number; name: string; pattern: string; match_mode: string;
+    action: string; timeout_minutes: number | null; is_enabled: boolean;
+    created_at: Date;
+  }>>`SELECT * FROM automod_rules ORDER BY created_at DESC`
+
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    pattern: r.pattern,
+    matchMode: r.match_mode as AutoModRule['matchMode'],
+    action: r.action as AutoModRule['action'],
+    timeoutMinutes: r.timeout_minutes ?? undefined,
+    isEnabled: r.is_enabled,
+    createdAt: r.created_at.toISOString(),
+  }))
+}
 
 /**
  * 建立自動審核規則
  * @param input - 建立規則輸入
  */
 const createRule = async (input: CreateAutoModRuleInput): Promise<AutoModRule> => {
+  const matchMode = input.matchMode ?? 'contains'
+  const isEnabled = input.isEnabled ?? true
+
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number; name: string; pattern: string; match_mode: string;
+    action: string; timeout_minutes: number | null; is_enabled: boolean;
+    created_at: Date;
+  }>>`
+    INSERT INTO automod_rules (name, pattern, match_mode, action, timeout_minutes, is_enabled)
+    VALUES (${input.name}, ${input.pattern}, ${matchMode}, ${input.action}, ${input.timeoutMinutes ?? null}, ${isEnabled})
+    RETURNING *
+  `
+
   return {
-    id: 99,
-    name: input.name,
-    pattern: input.pattern,
-    matchMode: input.matchMode ?? 'contains',
-    action: input.action,
-    timeoutMinutes: input.timeoutMinutes,
-    isEnabled: input.isEnabled ?? true,
-    createdAt: new Date().toISOString(),
-  };
-};
+    id: row.id,
+    name: row.name,
+    pattern: row.pattern,
+    matchMode: row.match_mode as AutoModRule['matchMode'],
+    action: row.action as AutoModRule['action'],
+    timeoutMinutes: row.timeout_minutes ?? undefined,
+    isEnabled: row.is_enabled,
+    createdAt: row.created_at.toISOString(),
+  }
+}
 
 /**
  * 更新自動審核規則
@@ -72,43 +71,84 @@ const createRule = async (input: CreateAutoModRuleInput): Promise<AutoModRule> =
  * @param input - 更新規則輸入（部分欄位）
  */
 const updateRule = async (id: number, input: Partial<CreateAutoModRuleInput>): Promise<AutoModRule> => {
+  const setClauses: string[] = []
+  if (input.name !== undefined) setClauses.push(`name = '${input.name}'`)
+  if (input.pattern !== undefined) setClauses.push(`pattern = '${input.pattern}'`)
+  if (input.matchMode !== undefined) setClauses.push(`match_mode = '${input.matchMode}'`)
+  if (input.action !== undefined) setClauses.push(`action = '${input.action}'`)
+  if (input.timeoutMinutes !== undefined) setClauses.push(`timeout_minutes = ${input.timeoutMinutes}`)
+  if (input.isEnabled !== undefined) setClauses.push(`is_enabled = ${input.isEnabled}`)
+
+  if (setClauses.length > 0) {
+    await prisma.$executeRawUnsafe(
+      `UPDATE automod_rules SET ${setClauses.join(', ')} WHERE id = ${id}`
+    )
+  }
+
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number; name: string; pattern: string; match_mode: string;
+    action: string; timeout_minutes: number | null; is_enabled: boolean;
+    created_at: Date;
+  }>>`SELECT * FROM automod_rules WHERE id = ${id}`
+
+  if (!row) throw new Error('AutoMod rule not found')
+
   return {
-    id,
-    name: input.name ?? '更新後規則',
-    pattern: input.pattern ?? '*',
-    matchMode: input.matchMode ?? 'contains',
-    action: input.action ?? 'warn',
-    timeoutMinutes: input.timeoutMinutes,
-    isEnabled: input.isEnabled ?? true,
-    createdAt: '2026-03-01T00:00:00Z',
-  };
-};
+    id: row.id,
+    name: row.name,
+    pattern: row.pattern,
+    matchMode: row.match_mode as AutoModRule['matchMode'],
+    action: row.action as AutoModRule['action'],
+    timeoutMinutes: row.timeout_minutes ?? undefined,
+    isEnabled: row.is_enabled,
+    createdAt: row.created_at.toISOString(),
+  }
+}
 
 /**
  * 刪除自動審核規則
  * @param id - 規則 ID
  */
 const deleteRule = async (id: number): Promise<void> => {
-  void id;
-};
+  await prisma.$executeRaw`DELETE FROM automod_rules WHERE id = ${id}`
+}
 
 /**
  * 列出所有詞彙清單
  */
 const listWordLists = async (): Promise<WordList[]> => {
-  return [
-    { id: 1, name: '廣告關鍵字', words: ['免費', '優惠', '限時'], isEnabled: true },
-    { id: 2, name: '不當用語', words: ['範例詞彙A', '範例詞彙B'], isEnabled: true },
-  ];
-};
+  const rows = await prisma.$queryRaw<Array<{
+    id: number; name: string; words: string[]; is_enabled: boolean;
+  }>>`SELECT * FROM automod_word_lists`
+
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    words: r.words ?? [],
+    isEnabled: r.is_enabled,
+  }))
+}
 
 /**
  * 切換詞彙清單啟用狀態
  * @param id - 詞彙清單 ID
  */
 const toggleWordList = async (id: number): Promise<WordList> => {
-  return { id, name: '切換後清單', words: ['範例'], isEnabled: false };
-};
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number; name: string; words: string[]; is_enabled: boolean;
+  }>>`
+    UPDATE automod_word_lists SET is_enabled = NOT is_enabled WHERE id = ${id} RETURNING *
+  `
+
+  if (!row) throw new Error('Word list not found')
+
+  return {
+    id: row.id,
+    name: row.name,
+    words: row.words ?? [],
+    isEnabled: row.is_enabled,
+  }
+}
 
 /**
  * 取得自動審核動作紀錄
@@ -116,50 +156,90 @@ const toggleWordList = async (id: number): Promise<WordList> => {
  * @param offset - 偏移量
  */
 const getActionLog = async (limit: number, offset: number): Promise<AutoModActionLog[]> => {
-  void offset;
-  const mockLogs: AutoModActionLog[] = [
-    { id: 1, contentId: 501, contentPreview: '這是一則廣告...', ruleName: '禁止廣告連結', action: 'delete', userId: 101, userName: 'spammer1', createdAt: '2026-05-20T10:00:00Z' },
-    { id: 2, contentId: 502, contentPreview: '不當言論內容...', ruleName: '髒話警告', action: 'warn', userId: 205, userName: 'user205', createdAt: '2026-05-19T14:30:00Z' },
-  ];
-  return mockLogs.slice(0, limit);
-};
+  const rows = await prisma.$queryRaw<Array<{
+    id: number; content_id: number; content_preview: string;
+    rule_name: string; action: string; user_id: number;
+    user_name: string | null; created_at: Date;
+  }>>`
+    SELECT aal.*, u.name AS user_name
+    FROM automod_action_log aal
+    LEFT JOIN users u ON aal.user_id = u.id
+    ORDER BY aal.created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `
+
+  return rows.map(r => ({
+    id: r.id,
+    contentId: r.content_id,
+    contentPreview: r.content_preview,
+    ruleName: r.rule_name,
+    action: r.action,
+    userId: r.user_id,
+    userName: r.user_name ?? '',
+    createdAt: r.created_at.toISOString(),
+  }))
+}
 
 /**
  * 取得垃圾訊息偵測狀態
  */
 const getSpamDetectionStatus = async (): Promise<{ isEnabled: boolean; sensitivity: string }> => {
-  return { isEnabled: true, sensitivity: 'medium' };
-};
+  const [row] = await prisma.$queryRaw<Array<{ value: string }>>`
+    SELECT value FROM community_mod_config WHERE key = 'spam_detection_enabled'
+  `
+  const [sensRow] = await prisma.$queryRaw<Array<{ value: string }>>`
+    SELECT value FROM community_mod_config WHERE key = 'spam_detection_sensitivity'
+  `
+
+  return {
+    isEnabled: row?.value === 'true',
+    sensitivity: sensRow?.value ?? 'medium',
+  }
+}
 
 /**
  * 切換垃圾訊息偵測
  */
 const toggleSpamDetection = async (): Promise<{ isEnabled: boolean }> => {
-  return { isEnabled: false };
-};
+  const [current] = await prisma.$queryRaw<Array<{ value: string }>>`
+    SELECT value FROM community_mod_config WHERE key = 'spam_detection_enabled'
+  `
+  const newValue = current?.value === 'true' ? 'false' : 'true'
+
+  await prisma.$executeRaw`
+    UPDATE community_mod_config SET value = ${newValue} WHERE key = 'spam_detection_enabled'
+  `
+
+  return { isEnabled: newValue === 'true' }
+}
 
 /**
  * 列出封鎖使用者名稱清單
  */
 const listUsernameBlocklist = async (): Promise<string[]> => {
-  return ['admin', 'moderator', 'system', 'support'];
-};
+  const rows = await prisma.$queryRaw<Array<{ word: string }>>`
+    SELECT word FROM username_blocklist
+  `
+  return rows.map(r => r.word)
+}
 
 /**
  * 新增封鎖使用者名稱
  * @param username - 要封鎖的使用者名稱
  */
 const addBlockedUsername = async (username: string): Promise<{ added: string }> => {
-  return { added: username };
-};
+  await prisma.$executeRaw`INSERT INTO username_blocklist (word) VALUES (${username})`
+  return { added: username }
+}
 
 /**
  * 移除封鎖使用者名稱
  * @param username - 要移除的使用者名稱
  */
 const removeBlockedUsername = async (username: string): Promise<{ removed: string }> => {
-  return { removed: username };
-};
+  await prisma.$executeRaw`DELETE FROM username_blocklist WHERE word = ${username}`
+  return { removed: username }
+}
 
 /**
  * 取得標記佇列
@@ -167,13 +247,30 @@ const removeBlockedUsername = async (username: string): Promise<{ removed: strin
  * @param offset - 偏移量
  */
 const getFlagQueue = async (limit: number, offset: number): Promise<ContentFlag[]> => {
-  void offset;
-  const mockFlags: ContentFlag[] = [
-    { id: 1, contentId: 601, contentPreview: '被檢舉的內容...', flagCount: 5, priority: 'high', reasons: ['spam', 'inappropriate'], status: 'pending', createdAt: '2026-05-21T08:00:00Z' },
-    { id: 2, contentId: 602, contentPreview: '另一則被檢舉...', flagCount: 2, priority: 'low', reasons: ['off_topic'], status: 'pending', createdAt: '2026-05-20T16:00:00Z' },
-  ];
-  return mockFlags.slice(0, limit);
-};
+  const rows = await prisma.$queryRaw<Array<{
+    id: number; content_id: number; content_preview: string;
+    flag_count: number; priority: string; reasons: string[];
+    status: string; created_at: Date;
+  }>>`
+    SELECT * FROM content_flags
+    WHERE status = 'pending'
+    ORDER BY
+      CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END,
+      flag_count DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `
+
+  return rows.map(r => ({
+    id: r.id,
+    contentId: r.content_id,
+    contentPreview: r.content_preview,
+    flagCount: r.flag_count,
+    priority: r.priority as ContentFlag['priority'],
+    reasons: r.reasons ?? [],
+    status: r.status as ContentFlag['status'],
+    createdAt: r.created_at.toISOString(),
+  }))
+}
 
 /**
  * 處理標記佇列動作
@@ -181,23 +278,31 @@ const getFlagQueue = async (limit: number, offset: number): Promise<ContentFlag[
  * @param input - 處理動作輸入
  */
 const processFlagAction = async (flagId: number, input: FlagQueueActionInput): Promise<{ flagId: number; action: string; processed: boolean }> => {
-  return { flagId, action: input.action, processed: true };
-};
+  const newStatus = input.action === 'defer' ? 'pending' : 'resolved'
+  await prisma.$executeRaw`UPDATE content_flags SET status = ${newStatus} WHERE id = ${flagId}`
+  return { flagId, action: input.action, processed: true }
+}
 
 /**
  * 取得社群審核設定
  */
 const getCommunityModConfig = async (): Promise<{ flagThreshold: number }> => {
-  return { flagThreshold: 5 };
-};
+  const [row] = await prisma.$queryRaw<Array<{ value: string }>>`
+    SELECT value FROM community_mod_config WHERE key = 'flag_threshold'
+  `
+  return { flagThreshold: Number(row?.value ?? 5) }
+}
 
 /**
  * 更新社群審核設定
  * @param config - 設定物件
  */
 const updateCommunityModConfig = async (config: { flagThreshold: number }): Promise<{ flagThreshold: number }> => {
-  return { flagThreshold: config.flagThreshold };
-};
+  await prisma.$executeRaw`
+    UPDATE community_mod_config SET value = ${String(config.flagThreshold)} WHERE key = 'flag_threshold'
+  `
+  return { flagThreshold: config.flagThreshold }
+}
 
 export default {
   listRules,
@@ -216,4 +321,4 @@ export default {
   processFlagAction,
   getCommunityModConfig,
   updateCommunityModConfig,
-};
+}
