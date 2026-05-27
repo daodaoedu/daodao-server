@@ -11,6 +11,10 @@ import adminStatisticsController from '@/controllers/admin-statistics.controller
 import emailHistoryController from '@/controllers/email-history.controller';
 import adminPersonaController from '@/controllers/admin-persona.controller';
 import adminTagsController from '@/controllers/admin-tags.controller';
+import adminSystemController from '@/controllers/admin-system.controller';
+import adminNotificationController from '@/controllers/admin-notification.controller';
+import adminFeedbackController from '@/controllers/admin-feedback.controller';
+import adminAuditController from '@/controllers/admin-audit.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '@/middleware/permission.middleware';
@@ -1200,5 +1204,48 @@ router.post('/users/bulk-tag',
   requireAdmin,
   adminTagsController.bulkAssignTag as RequestHandler
 );
+
+// ===== 系統監控與 Dashboard 路由 =====
+
+router.get('/system/monitor', authenticateAny, requireAdmin, adminSystemController.getSystemMonitor as RequestHandler);
+router.get('/system/db-info', authenticateAny, requireAdmin, adminSystemController.getDbInfo as RequestHandler);
+router.get('/system/redis-info', authenticateAny, requireAdmin, adminSystemController.getRedisInfo as RequestHandler);
+router.get('/dashboard/overview', authenticateAny, requireAdmin, adminSystemController.getDashboardOverview as RequestHandler);
+router.get('/dashboard/active-users', authenticateAny, requireAdmin, adminSystemController.getDashboardActiveUsers as RequestHandler);
+router.get('/email/stats', authenticateAny, requireAdmin, adminSystemController.getEmailStats as RequestHandler);
+router.get('/email/health', authenticateAny, requireAdmin, adminSystemController.getEmailHealth as RequestHandler);
+router.post('/email/send', authenticateAny, requireAdmin, adminSystemController.sendEmail as RequestHandler);
+router.post('/email/send-bulk', authenticateAny, requireAdmin, adminSystemController.sendBulkEmail as RequestHandler);
+
+// ===== 站內通知路由 =====
+
+router.get('/notifications', authenticateAny, requireAdmin, adminNotificationController.list as RequestHandler);
+router.post('/notifications', authenticateAny, requireAdmin, adminNotificationController.create as RequestHandler);
+router.post('/notifications/:id/send', authenticateAny, requireAdmin, adminNotificationController.send as RequestHandler);
+router.get('/notifications/:id/stats', authenticateAny, requireAdmin, adminNotificationController.stats as RequestHandler);
+
+// ===== 意見回饋路由 =====
+
+router.get('/feedback', authenticateAny, requireAdmin, adminFeedbackController.listFeedback as RequestHandler);
+router.patch('/feedback/:id', authenticateAny, requireAdmin, adminFeedbackController.updateFeedbackStatus as RequestHandler);
+router.post('/feedback/:id/reply', authenticateAny, requireAdmin, adminFeedbackController.replyToFeedback as RequestHandler);
+
+// ===== FAQ 路由 =====
+
+router.get('/faq/categories', authenticateAny, requireAdmin, adminFeedbackController.listFaqCategories as RequestHandler);
+router.post('/faq/categories', authenticateAny, requireAdmin, adminFeedbackController.createFaqCategory as RequestHandler);
+router.get('/faq/items', authenticateAny, requireAdmin, adminFeedbackController.listFaqItems as RequestHandler);
+router.post('/faq/items', authenticateAny, requireAdmin, adminFeedbackController.createFaqItem as RequestHandler);
+router.put('/faq/items/:id', authenticateAny, requireAdmin, adminFeedbackController.updateFaqItem as RequestHandler);
+router.delete('/faq/items/:id', authenticateAny, requireAdmin, adminFeedbackController.deleteFaqItem as RequestHandler);
+router.patch('/faq/items/reorder', authenticateAny, requireAdmin, adminFeedbackController.reorderFaqItems as RequestHandler);
+router.patch('/faq/items/bulk-publish', authenticateAny, requireAdmin, adminFeedbackController.bulkPublishFaqItems as RequestHandler);
+
+// ===== 審計日誌路由 =====
+
+router.get('/audit-logs', authenticateAny, requireAdmin, adminAuditController.listAuditLogs as RequestHandler);
+router.post('/audit-logs/compliance-hold', authenticateAny, requireSuperAdmin, adminAuditController.setComplianceHold as RequestHandler);
+router.get('/data-retention-policy', authenticateAny, requireAdmin, adminAuditController.getDataRetentionPolicy as RequestHandler);
+router.put('/data-retention-policy', authenticateAny, requireSuperAdmin, adminAuditController.updateDataRetentionPolicy as RequestHandler);
 
 export default router;
