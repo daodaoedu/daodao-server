@@ -10,6 +10,7 @@ import adminUserController from '@/controllers/admin-user.controller';
 import adminStatisticsController from '@/controllers/admin-statistics.controller';
 import emailHistoryController from '@/controllers/email-history.controller';
 import adminPersonaController from '@/controllers/admin-persona.controller';
+import adminTagsController from '@/controllers/admin-tags.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '@/middleware/permission.middleware';
@@ -1108,6 +1109,96 @@ router.delete('/persona/questions/:id/translations/:locale',
   authenticateAny,
   requireAdmin,
   adminPersonaController.deleteTranslation as RequestHandler
+);
+
+// ===== 用戶標籤路由 =====
+
+/**
+ * GET /admin/tags
+ * 列出所有標籤
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/tags',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.listTags as RequestHandler
+);
+
+/**
+ * POST /admin/tags
+ * 建立標籤
+ * 需要：Admin 或 SuperAdmin
+ */
+router.post('/tags',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.createTag as RequestHandler
+);
+
+/**
+ * PUT /admin/tags/:id
+ * 更新標籤
+ * 需要：Admin 或 SuperAdmin
+ */
+router.put('/tags/:id',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.updateTag as RequestHandler
+);
+
+/**
+ * DELETE /admin/tags/:id
+ * 刪除標籤
+ * 需要：Admin 或 SuperAdmin
+ */
+router.delete('/tags/:id',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.deleteTag as RequestHandler
+);
+
+/**
+ * GET /admin/tag-rules
+ * 列出所有標籤規則
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/tag-rules',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.listTagRules as RequestHandler
+);
+
+/**
+ * POST /admin/tag-rules
+ * 建立標籤規則
+ * 需要：Admin 或 SuperAdmin
+ */
+router.post('/tag-rules',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.createTagRule as RequestHandler
+);
+
+/**
+ * DELETE /admin/tag-rules/:id
+ * 刪除標籤規則
+ * 需要：Admin 或 SuperAdmin
+ */
+router.delete('/tag-rules/:id',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.deleteTagRule as RequestHandler
+);
+
+/**
+ * POST /admin/users/bulk-tag
+ * 批量指派或移除用戶標籤
+ * 需要：Admin 或 SuperAdmin
+ */
+router.post('/users/bulk-tag',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.bulkAssignTag as RequestHandler
 );
 
 export default router;
