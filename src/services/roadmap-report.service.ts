@@ -14,23 +14,23 @@ function rangeStart(range: RoadmapReportQuery['range']): Date {
   const now = new Date();
   switch (range) {
     case 'week':
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 7 * 24 * 60 * 60 * 1000);
     case 'quarter':
-      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 90 * 24 * 60 * 60 * 1000);
     case 'year':
-      return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 365 * 24 * 60 * 60 * 1000);
     case 'month':
     default:
       return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   }
 }
 
-/** 趨勢分桶粒度：week/month 以日為桶，quarter/year 以月為桶（與 rangeStart 同採本地時區） */
+/** 趨勢分桶粒度：week/month 以日為桶，quarter/year 以月為桶（與 rangeStart 同採 UTC） */
 function bucketKey(date: Date, range: RoadmapReportQuery['range']): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
   if (range === 'quarter' || range === 'year') return `${y}-${m}`;
-  const d = String(date.getDate()).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 

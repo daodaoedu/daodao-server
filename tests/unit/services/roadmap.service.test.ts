@@ -96,19 +96,11 @@ describe('Roadmap Service', () => {
   describe('getStats', () => {
     it('partners 跨許願/投票去重，feedback = 許願總數', async () => {
       mockRedis.get.mockResolvedValue(null);
-      prismaMock.wishes.findMany.mockResolvedValue([
-        { submitter_user_id: 1 },
-        { submitter_user_id: 2 },
-      ] as never);
-      prismaMock.roadmap_item_supports.findMany.mockResolvedValue([
-        { user_id: 2 },
-        { user_id: 3 },
-      ] as never);
+      prismaMock.$queryRaw.mockResolvedValue([{ count: 3 }] as never);
       prismaMock.wishes.count.mockResolvedValue(5 as never);
 
       const res = await getStats();
 
-      // 去重 {1,2,3} = 3
       expect(res.data).toEqual({ partners: 3, feedback: 5 });
       expect(mockRedis.set).toHaveBeenCalledWith('roadmap:stats', JSON.stringify({ partners: 3, feedback: 5 }), 'EX', 3600);
     });
