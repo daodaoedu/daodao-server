@@ -131,17 +131,15 @@ export async function getStats(): Promise<ApiSuccessResponse<RoadmapStats>> {
     });
   }
 
-  const [wishers, voters, feedback] = await Promise.all([
-    prisma.wishes.findMany({ distinct: ['submitter_user_id'], select: { submitter_user_id: true } }),
-    prisma.roadmap_item_supports.findMany({ distinct: ['user_id'], select: { user_id: true } }),
+  const [partnersResult, feedback] = await Promise.all([
+    prisma.$queryRawUnsafe<Array<{ count: number }>>(
+      "SELECT COUNT(DISTINCT user_id)::int as count FROM (SELECT submitter_user_id AS user_id FROM wishes UNION SELECT user_id FROM roadmap_item_supports) as temp"
+    ),
     prisma.wishes.count(),
   ]);
 
-  const partnerSet = new Set<number>();
-  for (const w of wishers) partnerSet.add(w.submitter_user_id);
-  for (const v of voters) partnerSet.add(v.user_id);
-
-  const stats: RoadmapStats = { partners: partnerSet.size, feedback };
+  const partners = partnersResult[0]?.count ?? 0;
+  const stats: RoadmapStats = { partners, feedback };
 
   try {
     await redis.set(STATS_CACHE_KEY, JSON.stringify(stats), 'EX', STATS_CACHE_TTL_SECONDS);

@@ -21,8 +21,7 @@ function rangeStart(range: RoadmapReportQuery['range']): Date {
       return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     case 'month':
     default:
-      // 本月第一天
-      return new Date(now.getFullYear(), now.getMonth(), 1);
+      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   }
 }
 

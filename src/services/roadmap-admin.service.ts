@@ -125,9 +125,10 @@ export async function updateItem(
   });
   if (!existing) throw new NotFoundError('找不到指定的路線圖項目');
 
-  // shipped_at 只在「首次」進入 done 時寫入、且永不清除；通知亦只發一次
+  // shipped_at 只在「首次」進入 done 時寫入；通知亦只發一次
   // （允許 done→其他→done 回退，但不重複設 shipped_at / 不重複通知）
   const firstTimeDone = input.status === 'done' && !existing.shipped_at;
+  const leavingDone = input.status !== undefined && input.status !== 'done' && existing.status === 'done';
   // parked 預設不公開（未明確指定 is_public 時）
   const parkedDefaultPrivate =
     input.status === 'parked' && input.is_public === undefined ? { is_public: false } : {};
@@ -144,6 +145,7 @@ export async function updateItem(
       ...(input.sort_order !== undefined ? { sort_order: input.sort_order } : {}),
       ...parkedDefaultPrivate,
       ...(firstTimeDone ? { shipped_at: new Date() } : {}),
+      ...(leavingDone ? { shipped_at: null } : {}),
       updated_at: new Date(),
     },
   });

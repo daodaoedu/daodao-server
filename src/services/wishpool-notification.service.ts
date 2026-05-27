@@ -134,19 +134,23 @@ export async function notifyRoadmapShipped(params: NotifyRoadmapShippedParams): 
   });
 
   const url = roadmapUrl();
-  await Promise.all(
-    supporters.map((s) =>
-      notificationEventService.createEvent({
-        type: 'roadmap.shipped',
-        actorId: actorUserId,
-        recipientId: s.user_id,
-        entityType: 'roadmap_item',
-        entityId: itemId,
-        payload: { entityTitle: itemTitle, url },
-        priority: 'P2',
-      }),
-    ),
-  );
+  const batchSize = 100;
+  for (let i = 0; i < supporters.length; i += batchSize) {
+    const batch = supporters.slice(i, i + batchSize);
+    await Promise.all(
+      batch.map((s) =>
+        notificationEventService.createEvent({
+          type: 'roadmap.shipped',
+          actorId: actorUserId,
+          recipientId: s.user_id,
+          entityType: 'roadmap_item',
+          entityId: itemId,
+          payload: { entityTitle: itemTitle, url },
+          priority: 'P2',
+        }),
+      ),
+    );
+  }
 }
 
 export const wishpoolNotificationService = {
