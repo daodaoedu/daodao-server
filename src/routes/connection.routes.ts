@@ -13,6 +13,7 @@ import {
   withdrawRequest,
   disconnect,
   getConnections,
+  getConnectionStatus,
   getIncomingRequests,
   getOutgoingRequests,
 } from '../controllers/connection.controller';
@@ -25,6 +26,7 @@ import {
   connectionListApiResponseSchema,
   connectionRequestListApiResponseSchema,
   connectionActionApiResponseSchema,
+  connectionStatusApiResponseSchema,
 } from '../validators/connection.validators';
 
 const router = Router();
@@ -144,6 +146,21 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
 });
 
+registry.registerPath({
+  method:  'get',
+  path:    '/api/v1/connections/status/{userId}',
+  tags:    ['Connection'],
+  summary: '取得與單一用戶的連結狀態',
+  request: { params: userExternalIdParamSchema },
+  responses: {
+    200: { description: '成功', content: { 'application/json': { schema: connectionStatusApiResponseSchema } } },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' },
+  },
+  security: [{ bearerAuth: [] }],
+});
+
 // ============================================================================
 // Express 路由
 // ============================================================================
@@ -159,6 +176,12 @@ router.get('/requests/outgoing',
   authenticate,
   validate(connectionQuerySchema, 'query'),
   getOutgoingRequests
+);
+
+router.get('/status/:userId',
+  authenticate,
+  validate(userExternalIdParamSchema, 'params'),
+  getConnectionStatus
 );
 
 router.post('/request',
