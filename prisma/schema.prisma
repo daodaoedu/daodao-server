@@ -873,6 +873,8 @@ model users {
   persona_skips                                   persona_skips[]
   persona_resonances                              persona_resonances[]
   persona_user_state                              persona_user_state?
+  wishes                                          wishes[]
+  roadmap_item_supports                           roadmap_item_supports[]
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -1644,6 +1646,64 @@ model persona_user_state {
   created_at                       DateTime  @default(now()) @db.Timestamptz(6)
 
   users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model roadmap_items {
+  id            Int                     @id @default(autoincrement())
+  external_id   String                  @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String                  @db.VarChar(255)
+  description   String
+  category      String                  @db.VarChar(20)
+  status        String                  @default("collected") @db.VarChar(20)
+  support_count Int                     @default(0)
+  is_public     Boolean                 @default(true)
+  pinned        Boolean                 @default(false)
+  sort_order    Int                     @default(0)
+  shipped_at    DateTime?               @db.Timestamptz(6)
+  created_at    DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime                @default(now()) @db.Timestamptz(6)
+  wishes        wishes[]
+  supports      roadmap_item_supports[]
+
+  @@index([status], map: "idx_roadmap_items_status")
+  @@index([is_public, status], map: "idx_roadmap_items_public_status")
+  @@index([category], map: "idx_roadmap_items_category")
+}
+
+model wishes {
+  id                     Int            @id @default(autoincrement())
+  category               String         @db.VarChar(20)
+  situation              String
+  desire                 String
+  submitter_user_id      Int
+  contact_email          String?        @db.VarChar(255)
+  status                 String         @default("pending") @db.VarChar(20)
+  linked_roadmap_item_id Int?
+  internal_module_tag    String?        @db.VarChar(50)
+  source                 String         @default("web") @db.VarChar(10)
+  created_at             DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime       @default(now()) @db.Timestamptz(6)
+  submitter              users          @relation(fields: [submitter_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_wishes_submitter")
+  linked_item            roadmap_items? @relation(fields: [linked_roadmap_item_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_wishes_linked_item")
+
+  @@index([status], map: "idx_wishes_status")
+  @@index([category], map: "idx_wishes_category")
+  @@index([submitter_user_id], map: "idx_wishes_submitter")
+  @@index([linked_roadmap_item_id], map: "idx_wishes_linked_item")
+}
+
+model roadmap_item_supports {
+  id              Int           @id @default(autoincrement())
+  roadmap_item_id Int
+  user_id         Int
+  origin          String        @default("vote") @db.VarChar(20)
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  roadmap_item    roadmap_items @relation(fields: [roadmap_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ris_item")
+  user            users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ris_user")
+
+  @@unique([roadmap_item_id, user_id], map: "uq_roadmap_item_supports")
+  @@index([roadmap_item_id], map: "idx_ris_item")
+  @@index([user_id], map: "idx_ris_user")
 }
 
 // ─── Survey ───────────────────────────────────────────────────────────────────

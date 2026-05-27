@@ -73,7 +73,8 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
-        type: { not: 'reaction' }, // reaction 事件由 reaction-notification.worker 專責處理，此處排除以避免重複寄信
+        // reaction 由 reaction-notification.worker 專責；wish.linked 由 wishpool 即時寄至 contact_email
+        type: { notIn: ['reaction', 'wish.linked'] },
         created_at: {
           gte: batchStart,
           lt: batchEnd
