@@ -141,3 +141,83 @@ export {
   createOnboardingEmailWorker,
   closeOnboardingEmailWorker,
 } from './onboarding-email.worker';
+
+// Email Trigger Queue（觸發式信件掃描）
+export {
+  EMAIL_TRIGGER_QUEUE_NAME,
+  createEmailTriggerQueue,
+  setEmailTriggerQueue,
+  getEmailTriggerQueue,
+  registerEmailTriggerScheduledJobs,
+  type EmailTriggerJobData,
+} from './email-trigger.queue';
+
+// Email Trigger Worker
+export {
+  createEmailTriggerWorker,
+  closeEmailTriggerWorker,
+} from './email-trigger.worker';
+
+// Scheduled Report Queue（排程報表產生器）
+export {
+  SCHEDULED_REPORT_QUEUE_NAME,
+  createScheduledReportQueue,
+  setScheduledReportQueue,
+  getScheduledReportQueue,
+  registerScheduledReportScheduledJobs,
+  type ScheduledReportJobData,
+} from './scheduled-report.queue';
+
+// Scheduled Report Worker
+export {
+  createScheduledReportWorker,
+  closeScheduledReportWorker,
+} from './scheduled-report.worker';
+
+// Anomaly Alert Queue（告警檢查器）
+export {
+  ANOMALY_ALERT_QUEUE_NAME,
+  createAnomalyAlertQueue,
+  setAnomalyAlertQueue,
+  getAnomalyAlertQueue,
+  registerAnomalyAlertScheduledJobs,
+  type AnomalyAlertJobData,
+} from './anomaly-alert.queue';
+
+// Anomaly Alert Worker
+export {
+  createAnomalyAlertWorker,
+  closeAnomalyAlertWorker,
+} from './anomaly-alert.worker';
+
+// Trust Level Queue（信任等級評估器）
+export {
+  TRUST_LEVEL_QUEUE_NAME,
+  createTrustLevelQueue,
+  setTrustLevelQueue,
+  getTrustLevelQueue,
+  registerTrustLevelScheduledJobs,
+  type TrustLevelJobData,
+} from './trust-level.queue';
+
+// Trust Level Worker
+export {
+  createTrustLevelWorker,
+  closeTrustLevelWorker,
+} from './trust-level.worker';
+
+// Badge Award Queue（徽章自動頒發器）
+export {
+  BADGE_AWARD_QUEUE_NAME,
+  createBadgeAwardQueue,
+  setBadgeAwardQueue,
+  getBadgeAwardQueue,
+  registerBadgeAwardScheduledJobs,
+  type BadgeAwardJobData,
+} from './badge-award.queue';
+
+// Badge Award Worker
+export {
+  createBadgeAwardWorker,
+  closeBadgeAwardWorker,
+} from './badge-award.worker';
