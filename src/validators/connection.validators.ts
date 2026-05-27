@@ -99,7 +99,9 @@ export const connectionActionApiResponseSchema = apiSuccessResponseSchema(
 
 export const connectionStatusApiResponseSchema = apiSuccessResponseSchema(
   z.object({
+    status:            z.enum(['none', 'incoming', 'outgoing', 'connected']),
     isConnected:       z.boolean(),
+    requestId:         z.number().nullable(),
     interactionCount:  z.number(),
     hasBypass:         z.boolean(),
   })
@@ -113,6 +115,7 @@ registry.register('SendConnectionRequestBody',      sendRequestBodySchema);
 registry.register('ConnectionListApiResponse',       connectionListApiResponseSchema);
 registry.register('ConnectionRequestListApiResponse', connectionRequestListApiResponseSchema);
 registry.register('ConnectionActionApiResponse',     connectionActionApiResponseSchema);
+registry.register('ConnectionStatusApiResponse',     connectionStatusApiResponseSchema);
 
 // ============================================================================
 // Type Exports

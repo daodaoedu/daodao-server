@@ -51,11 +51,19 @@ export interface ConnectionRequestItem {
   createdAt:           string;
 }
 
+export interface ConnectionStatusItem {
+  status:           'none' | 'incoming' | 'outgoing' | 'connected';
+  isConnected:      boolean;
+  requestId:        number | null;
+  interactionCount: number;
+  hasBypass:        boolean;
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================
 
-const normalizePair = (x: number, y: number) => ({
+const normalizePair = (x: number, y: number): { a: number; b: number } => ({
   a: Math.min(x, y),
   b: Math.max(x, y),
 });
@@ -451,6 +459,89 @@ const getPendingOutgoing = async (
 };
 
 /**
+ * 檢查目前使用者與單一目標用戶的連結狀態
+ */
+const getConnectionStatus = async (
+  currentUserId:    number,
+  targetExternalId: string
+): Promise<ApiSuccessResponse<ConnectionStatusItem>> => {
+  const targetUserId = await externalToInternalId('user', targetExternalId);
+
+  if (currentUserId === targetUserId) {
+    return createSuccessResponse({
+      status:           'connected',
+      isConnected:      true,
+      requestId:        null,
+      interactionCount: 0,
+      hasBypass:        true,
+    });
+  }
+
+  const { a, b } = normalizePair(currentUserId, targetUserId);
+  const [connection, outgoingRequest, incomingRequest, interactionCount, hasBypass] = await Promise.all([
+    prisma.connections.findUnique({
+      where: { user_a_id_user_b_id: { user_a_id: a, user_b_id: b } },
+    }),
+    prisma.connection_requests.findUnique({
+      where: {
+        requester_id_receiver_id: {
+          requester_id: currentUserId,
+          receiver_id:  targetUserId,
+        },
+      },
+    }),
+    prisma.connection_requests.findUnique({
+      where: {
+        requester_id_receiver_id: {
+          requester_id: targetUserId,
+          receiver_id:  currentUserId,
+        },
+      },
+    }),
+    interactionCountService.getCount(currentUserId, targetUserId),
+    interactionCountService.hasFamiliarityBypass(currentUserId, targetUserId),
+  ]);
+
+  if (connection) {
+    return createSuccessResponse({
+      status:           'connected',
+      isConnected:      true,
+      requestId:        null,
+      interactionCount,
+      hasBypass,
+    });
+  }
+
+  if (incomingRequest?.status === 'pending') {
+    return createSuccessResponse({
+      status:           'incoming',
+      isConnected:      false,
+      requestId:        incomingRequest.id,
+      interactionCount,
+      hasBypass,
+    });
+  }
+
+  if (outgoingRequest?.status === 'pending') {
+    return createSuccessResponse({
+      status:           'outgoing',
+      isConnected:      false,
+      requestId:        outgoingRequest.id,
+      interactionCount,
+      hasBypass,
+    });
+  }
+
+  return createSuccessResponse({
+    status:           'none',
+    isConnected:      false,
+    requestId:        null,
+    interactionCount,
+    hasBypass,
+  });
+};
+
+/**
  * 檢查兩個用戶是否已連結
  */
 const isConnected = async (userX: number, userY: number): Promise<boolean> => {
@@ -474,5 +565,6 @@ export const connectionService = {
   getConnections,
   getPendingIncoming,
   getPendingOutgoing,
+  getConnectionStatus,
   isConnected,
 };
