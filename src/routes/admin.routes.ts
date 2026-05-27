@@ -15,6 +15,14 @@ import adminSystemController from '@/controllers/admin-system.controller';
 import adminNotificationController from '@/controllers/admin-notification.controller';
 import adminFeedbackController from '@/controllers/admin-feedback.controller';
 import adminAuditController from '@/controllers/admin-audit.controller';
+import adminEmailTriggerController from '@/controllers/admin-email-trigger.controller';
+import adminReportsController from '@/controllers/admin-reports.controller';
+import adminTrustController from '@/controllers/admin-trust.controller';
+import adminAutomodController from '@/controllers/admin-automod.controller';
+import adminLearningController from '@/controllers/admin-learning.controller';
+import adminGamificationController from '@/controllers/admin-gamification.controller';
+import adminCommunityController from '@/controllers/admin-community.controller';
+import adminEventsController from '@/controllers/admin-events.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '@/middleware/permission.middleware';
@@ -1247,5 +1255,154 @@ router.get('/audit-logs', authenticateAny, requireAdmin, adminAuditController.li
 router.post('/audit-logs/compliance-hold', authenticateAny, requireSuperAdmin, adminAuditController.setComplianceHold as RequestHandler);
 router.get('/data-retention-policy', authenticateAny, requireAdmin, adminAuditController.getDataRetentionPolicy as RequestHandler);
 router.put('/data-retention-policy', authenticateAny, requireSuperAdmin, adminAuditController.updateDataRetentionPolicy as RequestHandler);
+
+// ===== 觸發式郵件路由 =====
+
+router.get('/email-triggers', authenticateAny, requireAdmin, adminEmailTriggerController.listRules as RequestHandler);
+router.post('/email-triggers', authenticateAny, requireAdmin, adminEmailTriggerController.createRule as RequestHandler);
+router.put('/email-triggers/:id', authenticateAny, requireAdmin, adminEmailTriggerController.updateRule as RequestHandler);
+router.delete('/email-triggers/:id', authenticateAny, requireAdmin, adminEmailTriggerController.deleteRule as RequestHandler);
+router.get('/email-triggers/:id/log', authenticateAny, requireAdmin, adminEmailTriggerController.getExecutionLog as RequestHandler);
+router.get('/email-triggers/:id/stats', authenticateAny, requireAdmin, adminEmailTriggerController.getRuleStats as RequestHandler);
+router.get('/email-templates', authenticateAny, requireAdmin, adminEmailTriggerController.listTemplates as RequestHandler);
+router.post('/email-templates', authenticateAny, requireAdmin, adminEmailTriggerController.createTemplate as RequestHandler);
+router.put('/email-templates/:id', authenticateAny, requireAdmin, adminEmailTriggerController.updateTemplate as RequestHandler);
+router.delete('/email-templates/:id', authenticateAny, requireAdmin, adminEmailTriggerController.deleteTemplate as RequestHandler);
+
+// ===== 報表路由 =====
+
+router.get('/reports/scheduled', authenticateAny, requireAdmin, adminReportsController.listScheduledReports as RequestHandler);
+router.post('/reports/scheduled', authenticateAny, requireAdmin, adminReportsController.createScheduledReport as RequestHandler);
+router.put('/reports/scheduled/:id', authenticateAny, requireAdmin, adminReportsController.updateScheduledReport as RequestHandler);
+router.delete('/reports/scheduled/:id', authenticateAny, requireAdmin, adminReportsController.deleteScheduledReport as RequestHandler);
+router.get('/reports/scheduled/:id/history', authenticateAny, requireAdmin, adminReportsController.getReportHistory as RequestHandler);
+router.get('/reports/custom/fields', authenticateAny, requireAdmin, adminReportsController.getAvailableFields as RequestHandler);
+router.post('/reports/custom/query', authenticateAny, requireAdmin, adminReportsController.queryCustomReport as RequestHandler);
+router.get('/reports/custom/saved', authenticateAny, requireAdmin, adminReportsController.listSavedReports as RequestHandler);
+router.post('/reports/custom/saved', authenticateAny, requireAdmin, adminReportsController.saveReport as RequestHandler);
+router.delete('/reports/custom/saved/:id', authenticateAny, requireAdmin, adminReportsController.deleteSavedReport as RequestHandler);
+router.get('/alerts/rules', authenticateAny, requireAdmin, adminReportsController.listAlertRules as RequestHandler);
+router.post('/alerts/rules', authenticateAny, requireAdmin, adminReportsController.createAlertRule as RequestHandler);
+router.put('/alerts/rules/:id', authenticateAny, requireAdmin, adminReportsController.updateAlertRule as RequestHandler);
+router.delete('/alerts/rules/:id', authenticateAny, requireAdmin, adminReportsController.deleteAlertRule as RequestHandler);
+router.get('/alerts/history', authenticateAny, requireAdmin, adminReportsController.getAlertHistory as RequestHandler);
+
+// ===== 信任等級路由 =====
+
+router.get('/trust-levels/config', authenticateAny, requireAdmin, adminTrustController.getTrustConfig as RequestHandler);
+router.put('/trust-levels/config', authenticateAny, requireSuperAdmin, adminTrustController.updateTrustConfig as RequestHandler);
+router.get('/trust-levels/distribution', authenticateAny, requireAdmin, adminTrustController.getTrustDistribution as RequestHandler);
+router.get('/trust-levels/history', authenticateAny, requireAdmin, adminTrustController.getTrustHistory as RequestHandler);
+router.patch('/users/:userId/trust-level', authenticateAny, requireSuperAdmin, adminTrustController.overrideUserTrustLevel as RequestHandler);
+router.get('/user-groups', authenticateAny, requireAdmin, adminTrustController.listUserGroups as RequestHandler);
+router.post('/user-groups', authenticateAny, requireAdmin, adminTrustController.createUserGroup as RequestHandler);
+router.put('/user-groups/:id', authenticateAny, requireAdmin, adminTrustController.updateUserGroup as RequestHandler);
+router.delete('/user-groups/:id', authenticateAny, requireAdmin, adminTrustController.deleteUserGroup as RequestHandler);
+router.get('/user-groups/:id/permissions', authenticateAny, requireAdmin, adminTrustController.getGroupPermissions as RequestHandler);
+
+// ===== AutoMod 路由 =====
+
+router.get('/automod/rules', authenticateAny, requireAdmin, adminAutomodController.listRules as RequestHandler);
+router.post('/automod/rules', authenticateAny, requireAdmin, adminAutomodController.createRule as RequestHandler);
+router.put('/automod/rules/:id', authenticateAny, requireAdmin, adminAutomodController.updateRule as RequestHandler);
+router.delete('/automod/rules/:id', authenticateAny, requireAdmin, adminAutomodController.deleteRule as RequestHandler);
+router.get('/automod/word-lists', authenticateAny, requireAdmin, adminAutomodController.listWordLists as RequestHandler);
+router.put('/automod/word-lists/:id/toggle', authenticateAny, requireAdmin, adminAutomodController.toggleWordList as RequestHandler);
+router.get('/automod/log', authenticateAny, requireAdmin, adminAutomodController.getActionLog as RequestHandler);
+router.get('/automod/spam-detection', authenticateAny, requireAdmin, adminAutomodController.getSpamDetectionStatus as RequestHandler);
+router.put('/automod/spam-detection', authenticateAny, requireAdmin, adminAutomodController.toggleSpamDetection as RequestHandler);
+router.get('/automod/username-blocklist', authenticateAny, requireAdmin, adminAutomodController.listUsernameBlocklist as RequestHandler);
+router.post('/automod/username-blocklist', authenticateAny, requireAdmin, adminAutomodController.addBlockedUsername as RequestHandler);
+router.delete('/automod/username-blocklist/:username', authenticateAny, requireAdmin, adminAutomodController.removeBlockedUsername as RequestHandler);
+router.get('/automod/flag-queue', authenticateAny, requireAdmin, adminAutomodController.getFlagQueue as RequestHandler);
+router.post('/automod/flag-queue/:id/action', authenticateAny, requireAdmin, adminAutomodController.processFlagAction as RequestHandler);
+router.get('/automod/community-mod-config', authenticateAny, requireAdmin, adminAutomodController.getCommunityModConfig as RequestHandler);
+router.put('/automod/community-mod-config', authenticateAny, requireAdmin, adminAutomodController.updateCommunityModConfig as RequestHandler);
+
+// ===== 學習管理路由 =====
+
+router.get('/learning/courses', authenticateAny, requireAdmin, adminLearningController.listCourses as RequestHandler);
+router.get('/learning/courses/:id/drop-off', authenticateAny, requireAdmin, adminLearningController.getCourseDropOff as RequestHandler);
+router.get('/learning/courses/:id/stalled-users', authenticateAny, requireAdmin, adminLearningController.getStalledUsers as RequestHandler);
+router.get('/learning/courses/cohort-comparison', authenticateAny, requireAdmin, adminLearningController.getCohortComparison as RequestHandler);
+router.get('/learning/drip-schedules', authenticateAny, requireAdmin, adminLearningController.listDripSchedules as RequestHandler);
+router.post('/learning/drip-schedules', authenticateAny, requireAdmin, adminLearningController.createDripSchedule as RequestHandler);
+router.delete('/learning/drip-schedules/:id', authenticateAny, requireAdmin, adminLearningController.deleteDripSchedule as RequestHandler);
+router.post('/learning/drip-schedules/:id/manual-unlock', authenticateAny, requireAdmin, adminLearningController.manualUnlock as RequestHandler);
+router.get('/learning/quizzes', authenticateAny, requireAdmin, adminLearningController.listQuizzes as RequestHandler);
+router.post('/learning/quizzes', authenticateAny, requireAdmin, adminLearningController.createQuiz as RequestHandler);
+router.delete('/learning/quizzes/:id', authenticateAny, requireAdmin, adminLearningController.deleteQuiz as RequestHandler);
+router.get('/learning/quizzes/:id/questions', authenticateAny, requireAdmin, adminLearningController.listQuestions as RequestHandler);
+router.post('/learning/quizzes/:id/questions', authenticateAny, requireAdmin, adminLearningController.createQuestion as RequestHandler);
+router.delete('/learning/quizzes/questions/:id', authenticateAny, requireAdmin, adminLearningController.deleteQuestion as RequestHandler);
+router.get('/learning/quizzes/:id/stats', authenticateAny, requireAdmin, adminLearningController.getQuizStats as RequestHandler);
+router.get('/learning/certificates/templates', authenticateAny, requireAdmin, adminLearningController.listTemplates as RequestHandler);
+router.post('/learning/certificates/templates', authenticateAny, requireAdmin, adminLearningController.createTemplate as RequestHandler);
+router.delete('/learning/certificates/templates/:id', authenticateAny, requireAdmin, adminLearningController.deleteTemplate as RequestHandler);
+router.post('/learning/certificates/issue', authenticateAny, requireAdmin, adminLearningController.issueCertificate as RequestHandler);
+router.post('/learning/certificates/bulk-issue', authenticateAny, requireAdmin, adminLearningController.bulkIssueCertificate as RequestHandler);
+router.get('/learning/certificates', authenticateAny, requireAdmin, adminLearningController.listIssuedCertificates as RequestHandler);
+router.get('/learning/certificates/:id/verify', adminLearningController.verifyCertificate as RequestHandler);
+router.get('/learning/paths', authenticateAny, requireAdmin, adminLearningController.listPaths as RequestHandler);
+router.post('/learning/paths', authenticateAny, requireAdmin, adminLearningController.createPath as RequestHandler);
+router.put('/learning/paths/:id', authenticateAny, requireAdmin, adminLearningController.updatePath as RequestHandler);
+router.delete('/learning/paths/:id', authenticateAny, requireAdmin, adminLearningController.deletePath as RequestHandler);
+router.get('/learning/paths/:id/analytics', authenticateAny, requireAdmin, adminLearningController.getPathAnalytics as RequestHandler);
+
+// ===== 遊戲化路由 =====
+
+router.get('/gamification/badges', authenticateAny, requireAdmin, adminGamificationController.listBadges as RequestHandler);
+router.post('/gamification/badges', authenticateAny, requireAdmin, adminGamificationController.createBadge as RequestHandler);
+router.post('/gamification/badges/:id/award', authenticateAny, requireAdmin, adminGamificationController.awardBadge as RequestHandler);
+router.delete('/gamification/badges/:id/revoke/:userId', authenticateAny, requireAdmin, adminGamificationController.revokeBadge as RequestHandler);
+router.get('/gamification/challenges', authenticateAny, requireAdmin, adminGamificationController.listChallenges as RequestHandler);
+router.post('/gamification/challenges', authenticateAny, requireAdmin, adminGamificationController.createChallenge as RequestHandler);
+router.get('/gamification/challenges/:id/participants', authenticateAny, requireAdmin, adminGamificationController.getParticipants as RequestHandler);
+router.get('/gamification/streaks/distribution', authenticateAny, requireAdmin, adminGamificationController.getStreakDistribution as RequestHandler);
+router.get('/gamification/leaderboard/config', authenticateAny, requireAdmin, adminGamificationController.getLeaderboardConfig as RequestHandler);
+router.put('/gamification/leaderboard/config', authenticateAny, requireAdmin, adminGamificationController.updateLeaderboardConfig as RequestHandler);
+router.get('/gamification/leaderboard', authenticateAny, requireAdmin, adminGamificationController.getLeaderboard as RequestHandler);
+router.post('/gamification/leaderboard/reset', authenticateAny, requireSuperAdmin, adminGamificationController.resetLeaderboard as RequestHandler);
+
+// ===== 社群路由（Onboarding + 會員名錄 + AI 助手）=====
+
+router.get('/onboarding/flows', authenticateAny, requireAdmin, adminCommunityController.listFlows as RequestHandler);
+router.post('/onboarding/flows', authenticateAny, requireAdmin, adminCommunityController.createFlow as RequestHandler);
+router.put('/onboarding/flows/:id', authenticateAny, requireAdmin, adminCommunityController.updateFlow as RequestHandler);
+router.delete('/onboarding/flows/:id', authenticateAny, requireAdmin, adminCommunityController.deleteFlow as RequestHandler);
+router.get('/onboarding/flows/:id/analytics', authenticateAny, requireAdmin, adminCommunityController.getFlowAnalytics as RequestHandler);
+router.get('/member-directory/fields', authenticateAny, requireAdmin, adminCommunityController.listProfileFields as RequestHandler);
+router.post('/member-directory/fields', authenticateAny, requireAdmin, adminCommunityController.createField as RequestHandler);
+router.put('/member-directory/fields/:id', authenticateAny, requireAdmin, adminCommunityController.updateField as RequestHandler);
+router.delete('/member-directory/fields/:id', authenticateAny, requireAdmin, adminCommunityController.deleteField as RequestHandler);
+router.patch('/member-directory/fields/reorder', authenticateAny, requireAdmin, adminCommunityController.reorderFields as RequestHandler);
+router.get('/member-directory/stats', authenticateAny, requireAdmin, adminCommunityController.getDirectoryStats as RequestHandler);
+router.get('/member-directory/analytics', authenticateAny, requireAdmin, adminCommunityController.getDirectoryAnalytics as RequestHandler);
+router.get('/ai-assistant/knowledge', authenticateAny, requireAdmin, adminCommunityController.listKnowledge as RequestHandler);
+router.post('/ai-assistant/knowledge', authenticateAny, requireAdmin, adminCommunityController.uploadKnowledge as RequestHandler);
+router.delete('/ai-assistant/knowledge/:id', authenticateAny, requireAdmin, adminCommunityController.deleteKnowledge as RequestHandler);
+router.get('/ai-assistant/conversations', authenticateAny, requireAdmin, adminCommunityController.getConversations as RequestHandler);
+router.get('/ai-assistant/conversations/:id', authenticateAny, requireAdmin, adminCommunityController.getConversation as RequestHandler);
+router.post('/ai-assistant/conversations/:id/takeover', authenticateAny, requireAdmin, adminCommunityController.takeoverConversation as RequestHandler);
+router.get('/ai-assistant/stats', authenticateAny, requireAdmin, adminCommunityController.getAssistantStats as RequestHandler);
+router.get('/ai-assistant/config', authenticateAny, requireAdmin, adminCommunityController.getAssistantConfig as RequestHandler);
+router.put('/ai-assistant/config', authenticateAny, requireAdmin, adminCommunityController.updateAssistantConfig as RequestHandler);
+
+// ===== 活動管理路由 =====
+
+router.get('/events', authenticateAny, requireAdmin, adminEventsController.listEvents as RequestHandler);
+router.post('/events', authenticateAny, requireAdmin, adminEventsController.createEvent as RequestHandler);
+router.put('/events/:id', authenticateAny, requireAdmin, adminEventsController.updateEvent as RequestHandler);
+router.delete('/events/:id', authenticateAny, requireAdmin, adminEventsController.deleteEvent as RequestHandler);
+router.get('/events/:id/rsvps', authenticateAny, requireAdmin, adminEventsController.getRsvps as RequestHandler);
+router.post('/events/:id/checkin', authenticateAny, requireAdmin, adminEventsController.checkinUser as RequestHandler);
+router.get('/events/:id/analytics', authenticateAny, requireAdmin, adminEventsController.getEventAnalytics as RequestHandler);
+router.get('/events/templates', authenticateAny, requireAdmin, adminEventsController.listTemplates as RequestHandler);
+router.post('/events/templates', authenticateAny, requireAdmin, adminEventsController.createTemplate as RequestHandler);
+router.post('/events/templates/:id/generate', authenticateAny, requireAdmin, adminEventsController.generateFromTemplate as RequestHandler);
+router.get('/events/:id/recordings', authenticateAny, requireAdmin, adminEventsController.listRecordings as RequestHandler);
+router.post('/events/:id/recordings', authenticateAny, requireAdmin, adminEventsController.uploadRecording as RequestHandler);
+router.delete('/events/recordings/:id', authenticateAny, requireAdmin, adminEventsController.deleteRecording as RequestHandler);
+router.post('/events/:id/remind', authenticateAny, requireAdmin, adminEventsController.sendReminder as RequestHandler);
 
 export default router;
