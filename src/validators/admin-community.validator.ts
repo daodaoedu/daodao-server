@@ -72,6 +72,15 @@ export const reorderFieldsSchema = z.object({
 // ============================================================================
 
 /**
+ * 上傳 AI 知識庫條目 schema
+ */
+export const uploadKnowledgeSchema = z.object({
+  fileName: z.string().min(1).max(500),
+  fileType: z.string().min(1).max(100),
+  fileSize: z.number().int().positive(),
+});
+
+/**
  * 更新 AI 助手設定 schema
  */
 export const updateAssistantConfigSchema = z.object({

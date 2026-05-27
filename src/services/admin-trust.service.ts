@@ -3,6 +3,7 @@
  * 提供信任等級設定、分布統計、歷史紀錄、用戶群組管理功能
  */
 
+import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
 import type {
   TrustLevelConfig,
@@ -44,19 +45,20 @@ const getTrustConfig = async (): Promise<TrustLevelConfig[]> => {
  * @param input - 更新輸入
  */
 const updateTrustConfig = async (level: number, input: UpdateTrustConfigInput): Promise<TrustLevelConfig> => {
-  const setClauses: string[] = []
-  if (input.name !== undefined) setClauses.push(`name = '${input.name}'`)
+  const setClauses: Prisma.Sql[] = []
+  if (input.name !== undefined) setClauses.push(Prisma.sql`name = ${input.name}`)
   if (input.promotionCriteria !== undefined) {
     // Merge with existing criteria via jsonb concatenation
-    setClauses.push(`promotion_criteria = promotion_criteria || '${JSON.stringify(input.promotionCriteria)}'::jsonb`)
+    const criteriaJson = JSON.stringify(input.promotionCriteria)
+    setClauses.push(Prisma.sql`promotion_criteria = promotion_criteria || ${criteriaJson}::jsonb`)
   }
   if (input.unlockedAbilities !== undefined) {
-    setClauses.push(`unlocked_abilities = ARRAY[${input.unlockedAbilities.map(a => `'${a}'`).join(',')}]::text[]`)
+    setClauses.push(Prisma.sql`unlocked_abilities = ${input.unlockedAbilities}::text[]`)
   }
 
   if (setClauses.length > 0) {
-    await prisma.$executeRawUnsafe(
-      `UPDATE trust_level_configs SET ${setClauses.join(', ')} WHERE level = ${level}`
+    await prisma.$executeRaw(
+      Prisma.sql`UPDATE trust_level_configs SET ${Prisma.join(setClauses)} WHERE level = ${level}`
     )
   }
 

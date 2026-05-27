@@ -1,28 +1,32 @@
+import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
 import type { AuditLogEntry, AuditLogFilters, ComplianceHoldInput, DataRetentionPolicy } from '../types/admin-audit.types'
 
 const listAuditLogs = async (filters: AuditLogFilters): Promise<{ items: AuditLogEntry[]; total: number }> => {
-  const conditions: string[] = ['1=1']
-  if (filters.adminId) conditions.push(`al.admin_id = ${filters.adminId}`)
-  if (filters.actionType) conditions.push(`al.action_type = '${filters.actionType}'`)
-  if (filters.targetResource) conditions.push(`al.target_resource = '${filters.targetResource}'`)
-  if (filters.dateFrom) conditions.push(`al.created_at >= '${filters.dateFrom}'`)
-  if (filters.dateTo) conditions.push(`al.created_at <= '${filters.dateTo}'`)
-  if (filters.search) conditions.push(`(al.action_type ILIKE '%${filters.search}%' OR al.target_resource ILIKE '%${filters.search}%' OR al.target_id ILIKE '%${filters.search}%')`)
+  const conditions: Prisma.Sql[] = [Prisma.sql`1=1`]
+  if (filters.adminId) conditions.push(Prisma.sql`al.admin_id = ${filters.adminId}`)
+  if (filters.actionType) conditions.push(Prisma.sql`al.action_type = ${filters.actionType}`)
+  if (filters.targetResource) conditions.push(Prisma.sql`al.target_resource = ${filters.targetResource}`)
+  if (filters.dateFrom) conditions.push(Prisma.sql`al.created_at >= ${filters.dateFrom}`)
+  if (filters.dateTo) conditions.push(Prisma.sql`al.created_at <= ${filters.dateTo}`)
+  if (filters.search) {
+    const searchPattern = `%${filters.search}%`
+    conditions.push(Prisma.sql`(al.action_type ILIKE ${searchPattern} OR al.target_resource ILIKE ${searchPattern} OR al.target_id ILIKE ${searchPattern})`)
+  }
 
-  const where = conditions.join(' AND ')
+  const where = Prisma.join(conditions, ' AND ')
 
-  const [countResult] = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-    `SELECT COUNT(*)::bigint as count FROM audit_logs al WHERE ${where}`
+  const [countResult] = await prisma.$queryRaw<Array<{ count: bigint }>>(
+    Prisma.sql`SELECT COUNT(*)::bigint as count FROM audit_logs al WHERE ${where}`
   )
 
-  const rows = await prisma.$queryRawUnsafe<Array<{
+  const rows = await prisma.$queryRaw<Array<{
     id: number; admin_id: number; admin_name: string | null;
     action_type: string; target_resource: string; target_id: string | null;
-    old_value: any; new_value: any; ip_address: string | null;
+    old_value: Record<string, unknown> | null; new_value: Record<string, unknown> | null; ip_address: string | null;
     user_agent: string | null; created_at: Date;
   }>>(
-    `SELECT al.*, u.name as admin_name
+    Prisma.sql`SELECT al.*, u.name as admin_name
      FROM audit_logs al
      LEFT JOIN users u ON al.admin_id = u.id
      WHERE ${where}

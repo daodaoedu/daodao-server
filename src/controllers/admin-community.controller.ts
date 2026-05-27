@@ -15,6 +15,7 @@ import {
   updateFieldSchema,
   fieldIdParamSchema,
   reorderFieldsSchema,
+  uploadKnowledgeSchema,
   knowledgeIdParamSchema,
   conversationIdParamSchema,
   conversationStatusQuerySchema,
@@ -165,8 +166,8 @@ const listKnowledge = asyncHandler(async (_req: Request, res: Response) => {
  * POST /admin/community/ai/knowledge
  */
 const uploadKnowledge = asyncHandler(async (req: Request, res: Response) => {
-  // TODO: 處理檔案上傳，目前接受 JSON body
-  const entry = await adminCommunityService.uploadKnowledge(req.body);
+  const input = uploadKnowledgeSchema.parse(req.body);
+  const entry = await adminCommunityService.uploadKnowledge(input);
   res.status(201).json(createSuccessResponse(entry));
 });
 

@@ -3,6 +3,7 @@
  * 提供徽章、挑戰、排行榜、連續學習天數管理功能
  */
 
+import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
 import type {
   Badge,
@@ -95,23 +96,23 @@ const revokeBadge = async (badgeId: number, userId: number): Promise<{ badgeId: 
  * @param status - 篩選狀態（可選）
  */
 const listChallenges = async (status?: 'active' | 'upcoming' | 'completed'): Promise<Challenge[]> => {
-  let statusFilter = ''
-  if (status === 'active') statusFilter = `WHERE c.start_date <= NOW() AND c.end_date >= NOW()`
-  else if (status === 'upcoming') statusFilter = `WHERE c.start_date > NOW()`
-  else if (status === 'completed') statusFilter = `WHERE c.end_date < NOW()`
+  let statusFilter: Prisma.Sql = Prisma.sql`1=1`
+  if (status === 'active') statusFilter = Prisma.sql`c.start_date <= NOW() AND c.end_date >= NOW()`
+  else if (status === 'upcoming') statusFilter = Prisma.sql`c.start_date > NOW()`
+  else if (status === 'completed') statusFilter = Prisma.sql`c.end_date < NOW()`
 
-  const rows = await prisma.$queryRawUnsafe<Array<{
+  const rows = await prisma.$queryRaw<Array<{
     id: number; name: string; description: string;
     start_date: Date; end_date: Date;
     required_action: string; reward: string;
     participant_count: bigint; completion_rate: number;
   }>>(
-    `SELECT c.*,
+    Prisma.sql`SELECT c.*,
        COUNT(cp.user_id)::bigint AS participant_count,
        AVG(CASE WHEN cp.completed THEN 1.0 ELSE 0.0 END)::float AS completion_rate
      FROM challenges c
      LEFT JOIN challenge_progress cp ON c.id = cp.challenge_id
-     ${statusFilter}
+     WHERE ${statusFilter}
      GROUP BY c.id
      ORDER BY c.start_date DESC`
   )
@@ -261,8 +262,8 @@ const getLeaderboardConfig = async (): Promise<LeaderboardConfig> => {
 const updateLeaderboardConfig = async (config: LeaderboardConfig): Promise<LeaderboardConfig> => {
   const weightsJson = JSON.stringify(config.activityWeights)
 
-  await prisma.$executeRawUnsafe(
-    `UPDATE leaderboard_configs SET activity_weights = '${weightsJson}'::jsonb, period = '${config.period}'`
+  await prisma.$executeRaw(
+    Prisma.sql`UPDATE leaderboard_configs SET activity_weights = ${weightsJson}::jsonb, period = ${config.period}`
   )
 
   return config
@@ -273,19 +274,20 @@ const updateLeaderboardConfig = async (config: LeaderboardConfig): Promise<Leade
  * @param period - 計算週期
  */
 const getLeaderboard = async (period: 'weekly' | 'monthly' | 'alltime'): Promise<LeaderboardEntry[]> => {
+  // orderCol is derived from a validated enum, safe to use Prisma.raw for identifier
   const orderCol = period === 'weekly' ? 'weekly_points'
     : period === 'monthly' ? 'monthly_points'
     : 'total_points'
 
-  const rows = await prisma.$queryRawUnsafe<Array<{
+  const rows = await prisma.$queryRaw<Array<{
     user_id: number; user_name: string | null; photo_url: string | null;
     total_points: number; weekly_points: number; monthly_points: number;
     breakdown: Record<string, number> | null;
   }>>(
-    `SELECT up.*, u.name AS user_name, u.photo_url
+    Prisma.sql`SELECT up.*, u.name AS user_name, u.photo_url
      FROM user_points up
      JOIN users u ON up.user_id = u.id
-     ORDER BY up.${orderCol} DESC
+     ORDER BY ${Prisma.raw(`up.${orderCol}`)} DESC
      LIMIT 20`
   )
 

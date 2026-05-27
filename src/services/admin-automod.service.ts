@@ -3,6 +3,7 @@
  * 提供自動審核規則、詞彙清單、動作紀錄、標記佇列、垃圾訊息偵測功能
  */
 
+import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
 import type {
   AutoModRule,
@@ -71,17 +72,17 @@ const createRule = async (input: CreateAutoModRuleInput): Promise<AutoModRule> =
  * @param input - 更新規則輸入（部分欄位）
  */
 const updateRule = async (id: number, input: Partial<CreateAutoModRuleInput>): Promise<AutoModRule> => {
-  const setClauses: string[] = []
-  if (input.name !== undefined) setClauses.push(`name = '${input.name}'`)
-  if (input.pattern !== undefined) setClauses.push(`pattern = '${input.pattern}'`)
-  if (input.matchMode !== undefined) setClauses.push(`match_mode = '${input.matchMode}'`)
-  if (input.action !== undefined) setClauses.push(`action = '${input.action}'`)
-  if (input.timeoutMinutes !== undefined) setClauses.push(`timeout_minutes = ${input.timeoutMinutes}`)
-  if (input.isEnabled !== undefined) setClauses.push(`is_enabled = ${input.isEnabled}`)
+  const setClauses: Prisma.Sql[] = []
+  if (input.name !== undefined) setClauses.push(Prisma.sql`name = ${input.name}`)
+  if (input.pattern !== undefined) setClauses.push(Prisma.sql`pattern = ${input.pattern}`)
+  if (input.matchMode !== undefined) setClauses.push(Prisma.sql`match_mode = ${input.matchMode}`)
+  if (input.action !== undefined) setClauses.push(Prisma.sql`action = ${input.action}`)
+  if (input.timeoutMinutes !== undefined) setClauses.push(Prisma.sql`timeout_minutes = ${input.timeoutMinutes}`)
+  if (input.isEnabled !== undefined) setClauses.push(Prisma.sql`is_enabled = ${input.isEnabled}`)
 
   if (setClauses.length > 0) {
-    await prisma.$executeRawUnsafe(
-      `UPDATE automod_rules SET ${setClauses.join(', ')} WHERE id = ${id}`
+    await prisma.$executeRaw(
+      Prisma.sql`UPDATE automod_rules SET ${Prisma.join(setClauses)} WHERE id = ${id}`
     )
   }
 

@@ -3,6 +3,7 @@
  * 提供用戶回饋管理、FAQ 分類與項目 CRUD 功能
  */
 
+import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
 import type { FeedbackItem, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput } from '../types/admin-feedback.types'
 
@@ -11,25 +12,25 @@ import type { FeedbackItem, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput
  * @param filters - 狀態、分類篩選及分頁參數
  */
 const listFeedback = async (filters: { status?: string; category?: string; limit: number; offset: number }): Promise<{ items: FeedbackItem[]; total: number }> => {
-  const conditions: string[] = []
-  if (filters.status) conditions.push(`f.status = '${filters.status}'`)
-  if (filters.category) conditions.push(`f.category = '${filters.category}'`)
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const conditions: Prisma.Sql[] = [Prisma.sql`1=1`]
+  if (filters.status) conditions.push(Prisma.sql`f.status = ${filters.status}`)
+  if (filters.category) conditions.push(Prisma.sql`f.category = ${filters.category}`)
+  const where = Prisma.join(conditions, ' AND ')
 
-  const [countResult] = await prisma.$queryRawUnsafe<Array<{ total: bigint }>>(
-    `SELECT COUNT(*)::bigint as total FROM feedback f ${whereClause}`
+  const [countResult] = await prisma.$queryRaw<Array<{ total: bigint }>>(
+    Prisma.sql`SELECT COUNT(*)::bigint as total FROM feedback f WHERE ${where}`
   )
   const total = Number(countResult?.total ?? 0)
 
-  const rows = await prisma.$queryRawUnsafe<Array<{
+  const rows = await prisma.$queryRaw<Array<{
     id: number; user_id: number; user_name: string | null;
     content: string; category: string; status: string;
     created_at: Date; replied_at: Date | null;
   }>>(
-    `SELECT f.id, f.user_id, u.name as user_name, f.content, f.category, f.status, f.created_at, f.replied_at
+    Prisma.sql`SELECT f.id, f.user_id, u.name as user_name, f.content, f.category, f.status, f.created_at, f.replied_at
      FROM feedback f
      LEFT JOIN users u ON f.user_id = u.id
-     ${whereClause}
+     WHERE ${where}
      ORDER BY f.created_at DESC
      LIMIT ${filters.limit} OFFSET ${filters.offset}`
   )
@@ -175,10 +176,10 @@ const createFaqItem = async (input: CreateFaqInput): Promise<FaqItem> => {
  * @param input - 更新 FAQ 項目輸入
  */
 const updateFaqItem = async (id: number, input: UpdateFaqInput): Promise<FaqItem> => {
-  const setClauses: string[] = []
-  if (input.question !== undefined) setClauses.push(`question = '${input.question}'`)
-  if (input.answer !== undefined) setClauses.push(`answer = '${input.answer}'`)
-  if (input.isPublished !== undefined) setClauses.push(`is_published = ${input.isPublished}`)
+  const setClauses: Prisma.Sql[] = []
+  if (input.question !== undefined) setClauses.push(Prisma.sql`question = ${input.question}`)
+  if (input.answer !== undefined) setClauses.push(Prisma.sql`answer = ${input.answer}`)
+  if (input.isPublished !== undefined) setClauses.push(Prisma.sql`is_published = ${input.isPublished}`)
 
   if (setClauses.length === 0) {
     const [existing] = await prisma.$queryRaw<Array<{
@@ -193,11 +194,11 @@ const updateFaqItem = async (id: number, input: UpdateFaqInput): Promise<FaqItem
     }
   }
 
-  const [row] = await prisma.$queryRawUnsafe<Array<{
+  const [row] = await prisma.$queryRaw<Array<{
     id: number; category_id: number; question: string; answer: string;
     is_published: boolean; sort_order: number; created_at: Date;
   }>>(
-    `UPDATE faq_items SET ${setClauses.join(', ')} WHERE id = ${id} RETURNING *`
+    Prisma.sql`UPDATE faq_items SET ${Prisma.join(setClauses)} WHERE id = ${id} RETURNING *`
   )
 
   if (!row) throw new Error('FAQ item not found')
