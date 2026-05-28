@@ -28,10 +28,10 @@ const listScheduledReports = async (): Promise<ScheduledReport[]> => {
     recipients: string[];
     sections: string[];
     last_sent_at: Date | null;
-    status: string;
+    is_active: boolean;
     created_at: Date;
   }>>`
-    SELECT id, name, frequency, recipients, sections, last_sent_at, status, created_at
+    SELECT id, name, frequency, recipients, sections, last_sent_at, is_active, created_at
     FROM scheduled_reports
     ORDER BY created_at DESC
   `;
@@ -43,7 +43,7 @@ const listScheduledReports = async (): Promise<ScheduledReport[]> => {
     recipients: r.recipients,
     sections: r.sections,
     lastSentAt: r.last_sent_at?.toISOString() ?? null,
-    status: r.status as ScheduledReport['status'],
+    status: r.is_active ? 'active' : 'inactive' as ScheduledReport['status'],
     createdAt: r.created_at.toISOString(),
   }));
 };
@@ -60,7 +60,7 @@ const createScheduledReport = async (input: CreateScheduledReportInput): Promise
     recipients: string[];
     sections: string[];
     last_sent_at: Date | null;
-    status: string;
+    is_active: boolean;
     created_at: Date;
   }>>`
     INSERT INTO scheduled_reports (name, frequency, recipients, sections)
@@ -75,7 +75,7 @@ const createScheduledReport = async (input: CreateScheduledReportInput): Promise
     recipients: row.recipients,
     sections: row.sections,
     lastSentAt: row.last_sent_at?.toISOString() ?? null,
-    status: row.status as ScheduledReport['status'],
+    status: row.is_active ? 'active' : 'inactive' as ScheduledReport['status'],
     createdAt: row.created_at.toISOString(),
   };
 };
@@ -89,6 +89,7 @@ const updateScheduledReport = async (
   id: number,
   input: Partial<CreateScheduledReportInput & { status: 'active' | 'inactive' }>,
 ): Promise<ScheduledReport> => {
+  const isActive = input.status === undefined ? null : input.status === 'active';
   await prisma.$executeRaw`
     UPDATE scheduled_reports
     SET
@@ -96,7 +97,7 @@ const updateScheduledReport = async (
       frequency  = COALESCE(${input.frequency ?? null}, frequency),
       recipients = COALESCE(${input.recipients ? input.recipients : null}::text[], recipients),
       sections   = COALESCE(${input.sections ? input.sections : null}::text[], sections),
-      status     = COALESCE(${input.status ?? null}, status),
+      is_active  = COALESCE(${isActive}, is_active),
       updated_at = NOW()
     WHERE id = ${id}
   `;
@@ -108,10 +109,10 @@ const updateScheduledReport = async (
     recipients: string[];
     sections: string[];
     last_sent_at: Date | null;
-    status: string;
+    is_active: boolean;
     created_at: Date;
   }>>`
-    SELECT id, name, frequency, recipients, sections, last_sent_at, status, created_at
+    SELECT id, name, frequency, recipients, sections, last_sent_at, is_active, created_at
     FROM scheduled_reports WHERE id = ${id}
   `;
 
@@ -122,7 +123,7 @@ const updateScheduledReport = async (
     recipients: row.recipients,
     sections: row.sections,
     lastSentAt: row.last_sent_at?.toISOString() ?? null,
-    status: row.status as ScheduledReport['status'],
+    status: row.is_active ? 'active' : 'inactive' as ScheduledReport['status'],
     createdAt: row.created_at.toISOString(),
   };
 };
@@ -132,7 +133,7 @@ const updateScheduledReport = async (
  * @param id - 報表 ID
  */
 const deleteScheduledReport = async (id: number): Promise<void> => {
-  await prisma.$executeRaw`DELETE FROM report_history WHERE report_id = ${id}`;
+  await prisma.$executeRaw`DELETE FROM report_executions WHERE report_id = ${id}`;
   await prisma.$executeRaw`DELETE FROM scheduled_reports WHERE id = ${id}`;
 };
 
@@ -150,7 +151,7 @@ const getReportHistory = async (
     status: string;
   }>>`
     SELECT id, report_id, sent_at, status
-    FROM report_history
+    FROM report_executions
     WHERE report_id = ${reportId}
     ORDER BY sent_at DESC
     LIMIT 50

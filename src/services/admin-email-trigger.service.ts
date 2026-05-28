@@ -25,31 +25,40 @@ const listRules = async (): Promise<EmailTriggerRule[]> => {
     name: string;
     condition_type: string;
     condition_value: string;
-    template_id: number;
+    template_id: number | null;
     is_enabled: boolean;
-    total_sent: number;
-    open_rate: number;
-    click_rate: number;
     created_at: Date;
+    total_sent: bigint;
+    open_count: bigint;
+    click_count: bigint;
   }>>`
-    SELECT id, name, condition_type, condition_value, template_id, is_enabled,
-           total_sent, open_rate, click_rate, created_at
-    FROM email_trigger_rules
-    ORDER BY created_at DESC
+    SELECT r.id, r.name, r.condition_type, r.condition_value, r.template_id, r.is_enabled, r.created_at,
+           COUNT(l.id)::bigint AS total_sent,
+           COUNT(l.opened_at)::bigint AS open_count,
+           COUNT(l.clicked_at)::bigint AS click_count
+    FROM email_trigger_rules r
+    LEFT JOIN email_execution_log l ON l.rule_id = r.id AND l.status = 'sent'
+    GROUP BY r.id
+    ORDER BY r.created_at DESC
   `;
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    conditionType: r.condition_type as EmailTriggerRule['conditionType'],
-    conditionValue: r.condition_value,
-    templateId: r.template_id,
-    isEnabled: r.is_enabled,
-    totalSent: r.total_sent,
-    openRate: r.open_rate,
-    clickRate: r.click_rate,
-    createdAt: r.created_at.toISOString(),
-  }));
+  return rows.map((r) => {
+    const totalSent = Number(r.total_sent);
+    const openCount = Number(r.open_count);
+    const clickCount = Number(r.click_count);
+    return {
+      id: r.id,
+      name: r.name,
+      conditionType: r.condition_type as EmailTriggerRule['conditionType'],
+      conditionValue: r.condition_value,
+      templateId: r.template_id ?? 0,
+      isEnabled: r.is_enabled,
+      totalSent,
+      openRate: totalSent > 0 ? Math.round((openCount / totalSent) * 1000) / 10 : 0,
+      clickRate: totalSent > 0 ? Math.round((clickCount / totalSent) * 1000) / 10 : 0,
+      createdAt: r.created_at.toISOString(),
+    };
+  });
 };
 
 /**
@@ -62,11 +71,8 @@ const createRule = async (input: CreateTriggerRuleInput): Promise<EmailTriggerRu
     name: string;
     condition_type: string;
     condition_value: string;
-    template_id: number;
+    template_id: number | null;
     is_enabled: boolean;
-    total_sent: number;
-    open_rate: number;
-    click_rate: number;
     created_at: Date;
   }>>`
     INSERT INTO email_trigger_rules (name, condition_type, condition_value, template_id, is_enabled)
@@ -79,11 +85,11 @@ const createRule = async (input: CreateTriggerRuleInput): Promise<EmailTriggerRu
     name: row.name,
     conditionType: row.condition_type as EmailTriggerRule['conditionType'],
     conditionValue: row.condition_value,
-    templateId: row.template_id,
+    templateId: row.template_id ?? 0,
     isEnabled: row.is_enabled,
-    totalSent: row.total_sent,
-    openRate: row.open_rate,
-    clickRate: row.click_rate,
+    totalSent: 0,
+    openRate: 0,
+    clickRate: 0,
     createdAt: row.created_at.toISOString(),
   };
 };
@@ -114,15 +120,11 @@ const updateRule = async (
     name: string;
     condition_type: string;
     condition_value: string;
-    template_id: number;
+    template_id: number | null;
     is_enabled: boolean;
-    total_sent: number;
-    open_rate: number;
-    click_rate: number;
     created_at: Date;
   }>>`
-    SELECT id, name, condition_type, condition_value, template_id, is_enabled,
-           total_sent, open_rate, click_rate, created_at
+    SELECT id, name, condition_type, condition_value, template_id, is_enabled, created_at
     FROM email_trigger_rules WHERE id = ${id}
   `;
 
@@ -131,11 +133,11 @@ const updateRule = async (
     name: row.name,
     conditionType: row.condition_type as EmailTriggerRule['conditionType'],
     conditionValue: row.condition_value,
-    templateId: row.template_id,
+    templateId: row.template_id ?? 0,
     isEnabled: row.is_enabled,
-    totalSent: row.total_sent,
-    openRate: row.open_rate,
-    clickRate: row.click_rate,
+    totalSent: 0,
+    openRate: 0,
+    clickRate: 0,
     createdAt: row.created_at.toISOString(),
   };
 };
@@ -145,7 +147,7 @@ const updateRule = async (
  * @param id - 規則 ID
  */
 const deleteRule = async (id: number): Promise<void> => {
-  await prisma.$executeRaw`DELETE FROM email_execution_logs WHERE rule_id = ${id}`;
+  await prisma.$executeRaw`UPDATE email_execution_log SET rule_id = NULL WHERE rule_id = ${id}`;
   await prisma.$executeRaw`DELETE FROM email_trigger_rules WHERE id = ${id}`;
 };
 
@@ -269,7 +271,7 @@ const deleteTemplate = async (id: number): Promise<void> => {
 const getExecutionLog = async (ruleId: number): Promise<EmailExecutionLog[]> => {
   const rows = await prisma.$queryRaw<Array<{
     id: number;
-    rule_id: number;
+    rule_id: number | null;
     rule_name: string;
     recipient_email: string;
     status: string;
@@ -279,8 +281,8 @@ const getExecutionLog = async (ruleId: number): Promise<EmailExecutionLog[]> => 
   }>>`
     SELECT l.id, l.rule_id, r.name AS rule_name, l.recipient_email,
            l.status, l.sent_at, l.opened_at, l.clicked_at
-    FROM email_execution_logs l
-    JOIN email_trigger_rules r ON r.id = l.rule_id
+    FROM email_execution_log l
+    LEFT JOIN email_trigger_rules r ON r.id = l.rule_id
     WHERE l.rule_id = ${ruleId}
     ORDER BY l.sent_at DESC
     LIMIT 100
@@ -288,7 +290,7 @@ const getExecutionLog = async (ruleId: number): Promise<EmailExecutionLog[]> => 
 
   return rows.map((r) => ({
     id: r.id,
-    ruleId: r.rule_id,
+    ruleId: r.rule_id ?? ruleId,
     ruleName: r.rule_name,
     recipientEmail: r.recipient_email,
     sentAt: r.sent_at.toISOString(),
@@ -314,7 +316,7 @@ const getRuleStats = async (
       COUNT(*)::bigint AS total_sent,
       COUNT(opened_at)::bigint AS opened,
       COUNT(clicked_at)::bigint AS clicked
-    FROM email_execution_logs
+    FROM email_execution_log
     WHERE rule_id = ${ruleId} AND status = 'sent'
   `;
 
