@@ -35,6 +35,28 @@ const createWishResultSchema = z
 export const createWishApiResponseSchema = apiSuccessResponseSchema(createWishResultSchema);
 
 // ============================================================================
+// 前台許願池：Request Schema
+// ============================================================================
+
+export const publicWishListQuerySchema = z
+  .object({
+    status: z
+      .enum(WISH_STATUS_VALUES)
+      .default('pending')
+      .openapi({ description: '狀態過濾（預設 pending）', example: 'pending' }),
+    category: categoryEnum.optional().openapi({ description: '分類過濾' }),
+    cursor: z.string().optional().openapi({ description: '分頁游標（不透明）' }),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(20)
+      .openapi({ description: '每頁筆數', example: 20 }),
+  })
+  .openapi('PublicWishListQuery', { description: '前台許願池列表查詢參數' });
+
+// ============================================================================
 // 後台收件匣：Request Schemas
 // ============================================================================
 
@@ -74,6 +96,17 @@ export const promoteWishSchema = z
 // ============================================================================
 
 export type CreateWishInput = z.infer<typeof createWishSchema>;
+export type PublicWishListQuery = z.infer<typeof publicWishListQuerySchema>;
+export const wishSupportParamSchema = z
+  .object({
+    externalId: z
+      .string()
+      .regex(/^wish-\d+$/u, 'externalId 應為 wish-<id> 格式')
+      .openapi({ description: '許願 external_id（格式：wish-<id>）', example: 'wish-12' }),
+  })
+  .openapi('WishSupportParam');
+
+export type WishSupportParam = z.infer<typeof wishSupportParamSchema>;
 export type AdminWishListQuery = z.infer<typeof adminWishListQuerySchema>;
 export type AdminWishIdParam = z.infer<typeof adminWishIdParamSchema>;
 export type LinkWishInput = z.infer<typeof linkWishSchema>;
@@ -86,3 +119,4 @@ export type PromoteWishInput = z.infer<typeof promoteWishSchema>;
 registry.register('CreateWish', createWishSchema);
 registry.register('LinkWish', linkWishSchema);
 registry.register('PromoteWish', promoteWishSchema);
+registry.register('PublicWishListQuery', publicWishListQuerySchema);
