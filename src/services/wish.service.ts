@@ -11,22 +11,85 @@ import { NotFoundError, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse, createCursorPaginatedResponse } from '../utils/response-helper';
 import { encodeOffsetCursor, decodeOffsetCursor } from '../utils/cursor';
 import { notifyWishLinked } from './wishpool-notification.service';
+import { roadmapService } from './roadmap.service';
 import {
   ApiSuccessResponse,
   CursorPaginatedApiResponse,
 } from '../types/api-response.types';
 import {
   AdminWishItem,
+  RoadmapItemPublic,
+  ToggleSupportResult,
   WishCategory,
   WishStatus,
   WishSource,
 } from '../types/wishpool.types';
 import {
   CreateWishInput,
+  PublicWishListQuery,
   AdminWishListQuery,
   LinkWishInput,
   PromoteWishInput,
 } from '../validators/wish.validators';
+
+const WISH_EXTERNAL_ID_PATTERN = /^wish-(\d+)$/u;
+
+const parseWishExternalId = (externalId: string): number => {
+  const match = externalId.match(WISH_EXTERNAL_ID_PATTERN);
+  if (!match) {
+    throw new BadRequestError('externalId 格式錯誤，預期 wish-<id>');
+  }
+  const wishId = Number.parseInt(match[1], 10);
+  if (!Number.isInteger(wishId) || wishId <= 0) {
+    throw new BadRequestError('externalId 解析失敗');
+  }
+  return wishId;
+};
+
+const ensureWishSupportItem = async (wishId: number): Promise<number> => {
+  const result = await prisma.$transaction(async (tx) => {
+    const wish = await tx.wishes.findUnique({
+      where: { id: wishId },
+      select: {
+        id: true,
+        category: true,
+        situation: true,
+        desire: true,
+        linked_roadmap_item_id: true,
+      },
+    });
+    if (!wish) {
+      throw new NotFoundError('找不到指定的許願');
+    }
+
+    if (wish.linked_roadmap_item_id) {
+      return wish.linked_roadmap_item_id;
+    }
+
+    const item = await tx.roadmap_items.create({
+      data: {
+        title: wish.desire,
+        description: `情境：${wish.situation}\n期待：${wish.desire}`,
+        category: wish.category,
+        status: 'discussing',
+        is_public: false,
+        support_count: 0,
+      },
+      select: { id: true },
+    });
+
+    await tx.wishes.update({
+      where: { id: wishId },
+      data: {
+        linked_roadmap_item_id: item.id,
+        updated_at: new Date(),
+      },
+    });
+
+    return item.id;
+  });
+  return result;
+};
 
 // ─── 使用者許願提交 ──────────────────────────────────────────────────────────────
 
@@ -142,6 +205,121 @@ export async function listWishes(
     totalEstimate: null,
     parentTotalEstimate: null,
   });
+}
+
+// ─── 前台許願池查詢 ──────────────────────────────────────────────────────────────
+
+export async function listPublicWishes(
+  query: PublicWishListQuery,
+  currentUserId: number | null = null,
+): Promise<CursorPaginatedApiResponse<RoadmapItemPublic>> {
+  const offset = decodeOffsetCursor(query.cursor);
+  const limit = query.limit;
+
+  const where: Prisma.wishesWhereInput = {
+    status: query.status,
+    ...(query.category ? { category: query.category } : {}),
+  };
+
+  const rows = await prisma.wishes.findMany({
+    where,
+    orderBy: { created_at: 'desc' },
+    skip: offset,
+    take: limit + 1,
+    select: {
+      id: true,
+      situation: true,
+      desire: true,
+      category: true,
+      linked_roadmap_item_id: true,
+    },
+  });
+
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const linkedItemIds = pageRows
+    .map((row) => row.linked_roadmap_item_id)
+    .filter((id): id is number => typeof id === 'number' && id > 0);
+
+  const linkedItemSupportCounts =
+    linkedItemIds.length > 0
+      ? Object.fromEntries(
+          (
+            await prisma.roadmap_item_supports.groupBy({
+              by: ['roadmap_item_id'],
+              where: { roadmap_item_id: { in: linkedItemIds } },
+              _count: { _all: true },
+            })
+          ).map((item) => [item.roadmap_item_id, item._count._all]),
+        )
+      : {};
+  const votedSet = new Set<number>();
+  if (currentUserId && linkedItemIds.length > 0) {
+    const supports = await prisma.roadmap_item_supports.findMany({
+      where: { user_id: currentUserId, roadmap_item_id: { in: linkedItemIds } },
+      select: { roadmap_item_id: true },
+    });
+    supports.forEach((support) => votedSet.add(support.roadmap_item_id));
+  }
+
+  const items: RoadmapItemPublic[] = pageRows.map((row) => ({
+    external_id: `wish-${row.id}`,
+    title: row.desire,
+    description: `情境：${row.situation}\n期待：${row.desire}`,
+    category: row.category as WishCategory,
+    status: 'discussing',
+    support_count: row.linked_roadmap_item_id
+      ? linkedItemSupportCounts[row.linked_roadmap_item_id] ?? 0
+      : 0,
+    voted: row.linked_roadmap_item_id ? votedSet.has(row.linked_roadmap_item_id) : false,
+  }));
+
+  const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
+
+  return createCursorPaginatedResponse(items, {
+    cursors: { start: query.cursor ?? null, end: nextCursor },
+    hasMore,
+    count: items.length,
+    limit,
+    hasNext: hasMore,
+    hasPrev: offset > 0,
+    nextCursor,
+    prevCursor: null,
+    totalEstimate: null,
+    parentTotalEstimate: null,
+  });
+}
+
+export async function addSupport(
+  externalId: string,
+  userId: number,
+): Promise<ApiSuccessResponse<ToggleSupportResult>> {
+  const wishId = parseWishExternalId(externalId);
+  const roadmapItemId = await ensureWishSupportItem(wishId);
+  const supportItem = await prisma.roadmap_items.findUnique({
+    where: { id: roadmapItemId },
+    select: { external_id: true },
+  });
+  if (!supportItem?.external_id) throw new NotFoundError('找不到可支援的支援項目');
+
+  return roadmapService.addSupport(supportItem.external_id, userId);
+}
+
+export async function removeSupport(
+  externalId: string,
+  userId: number,
+): Promise<ApiSuccessResponse<ToggleSupportResult>> {
+  const wishId = parseWishExternalId(externalId);
+  const roadmapItemId = await ensureWishSupportItem(wishId);
+  const supportItem = await prisma.roadmap_items.findUnique({
+    where: { id: roadmapItemId },
+    select: { external_id: true },
+  });
+  if (!supportItem?.external_id) {
+    return createSuccessResponse({ support_count: 0, voted: false });
+  }
+
+  return roadmapService.removeSupport(supportItem.external_id, userId);
 }
 
 // ─── 歸併共用：建立 wish_link support（去重）+ 更新 wish ──────────────────────────
@@ -280,6 +458,9 @@ export async function archiveWish(wishId: number): Promise<ApiSuccessResponse<{ 
 export const wishService = {
   createWish,
   listWishes,
+  listPublicWishes,
+  addSupport,
+  removeSupport,
   linkToItem,
   promoteToItem,
   archiveWish,
