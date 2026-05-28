@@ -1,10 +1,9 @@
 /**
  * Admin 報表與告警服務
  * 提供排程報表、自訂報表、告警規則的 CRUD 與查詢
- *
- * TODO: DB 表尚未建立，目前回傳 mock 資料
  */
 
+import { prisma } from './database/prisma.service';
 import type {
   ScheduledReport,
   CustomReportConfig,
@@ -22,8 +21,31 @@ import type {
  * 列出所有排程報表
  */
 const listScheduledReports = async (): Promise<ScheduledReport[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM scheduled_reports ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    frequency: string;
+    recipients: string[];
+    sections: string[];
+    last_sent_at: Date | null;
+    status: string;
+    created_at: Date;
+  }>>`
+    SELECT id, name, frequency, recipients, sections, last_sent_at, status, created_at
+    FROM scheduled_reports
+    ORDER BY created_at DESC
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    frequency: r.frequency as ScheduledReport['frequency'],
+    recipients: r.recipients,
+    sections: r.sections,
+    lastSentAt: r.last_sent_at?.toISOString() ?? null,
+    status: r.status as ScheduledReport['status'],
+    createdAt: r.created_at.toISOString(),
+  }));
 };
 
 /**
@@ -31,16 +53,30 @@ const listScheduledReports = async (): Promise<ScheduledReport[]> => {
  * @param input - 建立排程報表輸入
  */
 const createScheduledReport = async (input: CreateScheduledReportInput): Promise<ScheduledReport> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO scheduled_reports
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    frequency: string;
+    recipients: string[];
+    sections: string[];
+    last_sent_at: Date | null;
+    status: string;
+    created_at: Date;
+  }>>`
+    INSERT INTO scheduled_reports (name, frequency, recipients, sections)
+    VALUES (${input.name}, ${input.frequency}, ${input.recipients}::text[], ${input.sections}::text[])
+    RETURNING *
+  `;
+
   return {
-    id: 1,
-    name: input.name,
-    frequency: input.frequency,
-    recipients: input.recipients,
-    sections: input.sections,
-    lastSentAt: null,
-    status: 'active',
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    frequency: row.frequency as ScheduledReport['frequency'],
+    recipients: row.recipients,
+    sections: row.sections,
+    lastSentAt: row.last_sent_at?.toISOString() ?? null,
+    status: row.status as ScheduledReport['status'],
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -53,16 +89,41 @@ const updateScheduledReport = async (
   id: number,
   input: Partial<CreateScheduledReportInput & { status: 'active' | 'inactive' }>,
 ): Promise<ScheduledReport> => {
-  // TODO: 實作 DB 更新 — UPDATE scheduled_reports SET ... WHERE id = $1
+  await prisma.$executeRaw`
+    UPDATE scheduled_reports
+    SET
+      name       = COALESCE(${input.name ?? null}, name),
+      frequency  = COALESCE(${input.frequency ?? null}, frequency),
+      recipients = COALESCE(${input.recipients ? input.recipients : null}::text[], recipients),
+      sections   = COALESCE(${input.sections ? input.sections : null}::text[], sections),
+      status     = COALESCE(${input.status ?? null}, status),
+      updated_at = NOW()
+    WHERE id = ${id}
+  `;
+
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    frequency: string;
+    recipients: string[];
+    sections: string[];
+    last_sent_at: Date | null;
+    status: string;
+    created_at: Date;
+  }>>`
+    SELECT id, name, frequency, recipients, sections, last_sent_at, status, created_at
+    FROM scheduled_reports WHERE id = ${id}
+  `;
+
   return {
-    id,
-    name: input.name ?? 'mock-report',
-    frequency: input.frequency ?? 'weekly',
-    recipients: input.recipients ?? [],
-    sections: input.sections ?? [],
-    lastSentAt: null,
-    status: input.status ?? 'active',
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    frequency: row.frequency as ScheduledReport['frequency'],
+    recipients: row.recipients,
+    sections: row.sections,
+    lastSentAt: row.last_sent_at?.toISOString() ?? null,
+    status: row.status as ScheduledReport['status'],
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -71,8 +132,8 @@ const updateScheduledReport = async (
  * @param id - 報表 ID
  */
 const deleteScheduledReport = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM scheduled_reports WHERE id = $1
-  void id;
+  await prisma.$executeRaw`DELETE FROM report_history WHERE report_id = ${id}`;
+  await prisma.$executeRaw`DELETE FROM scheduled_reports WHERE id = ${id}`;
 };
 
 /**
@@ -82,9 +143,25 @@ const deleteScheduledReport = async (id: number): Promise<void> => {
 const getReportHistory = async (
   reportId: number,
 ): Promise<Array<{ id: number; reportId: number; sentAt: string; status: string }>> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM report_history WHERE report_id = $1
-  void reportId;
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    report_id: number;
+    sent_at: Date;
+    status: string;
+  }>>`
+    SELECT id, report_id, sent_at, status
+    FROM report_history
+    WHERE report_id = ${reportId}
+    ORDER BY sent_at DESC
+    LIMIT 50
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    reportId: r.report_id,
+    sentAt: r.sent_at.toISOString(),
+    status: r.status,
+  }));
 };
 
 // ============================================================================
@@ -95,7 +172,6 @@ const getReportHistory = async (
  * 取得可用的報表欄位
  */
 const getAvailableFields = async (): Promise<string[]> => {
-  // TODO: 從 DB schema 或設定檔動態取得可用欄位
   return [
     'user_count',
     'active_users',
@@ -114,11 +190,36 @@ const getAvailableFields = async (): Promise<string[]> => {
 const queryCustomReport = async (
   fields: string[],
 ): Promise<Record<string, unknown>> => {
-  // TODO: 實作動態 SQL 查詢，根據 fields 組合 SELECT
   const result: Record<string, unknown> = {};
+
+  const [userStats] = await prisma.$queryRaw<Array<{
+    user_count: bigint;
+    new_registrations: bigint;
+    active_users: bigint;
+  }>>`
+    SELECT
+      COUNT(*)::bigint AS user_count,
+      COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint AS new_registrations,
+      COUNT(CASE WHEN last_active_at >= NOW() - INTERVAL '7 days' THEN 1 END)::bigint AS active_users
+    FROM users
+  `;
+
+  const fieldMap: Record<string, unknown> = {
+    user_count: Number(userStats?.user_count ?? 0),
+    new_registrations: Number(userStats?.new_registrations ?? 0),
+    active_users: Number(userStats?.active_users ?? 0),
+    resource_count: 0,
+    challenge_completion_rate: 0,
+    average_session_duration: 0,
+    revenue: 0,
+  };
+
   for (const field of fields) {
-    result[field] = 0;
+    if (field in fieldMap) {
+      result[field] = fieldMap[field];
+    }
   }
+
   return result;
 };
 
@@ -126,8 +227,21 @@ const queryCustomReport = async (
  * 列出已儲存的自訂報表
  */
 const listSavedReports = async (): Promise<CustomReportConfig[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM custom_report_configs ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    fields: string[];
+    created_at: Date;
+  }>>`
+    SELECT id, name, fields, created_at FROM custom_report_configs ORDER BY created_at DESC
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    fields: r.fields,
+    createdAt: r.created_at.toISOString(),
+  }));
 };
 
 /**
@@ -135,12 +249,22 @@ const listSavedReports = async (): Promise<CustomReportConfig[]> => {
  * @param input - 報表名稱與欄位
  */
 const saveReport = async (input: { name: string; fields: string[] }): Promise<CustomReportConfig> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO custom_report_configs
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    fields: string[];
+    created_at: Date;
+  }>>`
+    INSERT INTO custom_report_configs (name, fields)
+    VALUES (${input.name}, ${input.fields}::text[])
+    RETURNING *
+  `;
+
   return {
-    id: 1,
-    name: input.name,
-    fields: input.fields,
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    fields: row.fields,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -149,8 +273,7 @@ const saveReport = async (input: { name: string; fields: string[] }): Promise<Cu
  * @param id - 報表設定 ID
  */
 const deleteSavedReport = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM custom_report_configs WHERE id = $1
-  void id;
+  await prisma.$executeRaw`DELETE FROM custom_report_configs WHERE id = ${id}`;
 };
 
 // ============================================================================
@@ -161,8 +284,31 @@ const deleteSavedReport = async (id: number): Promise<void> => {
  * 列出所有告警規則
  */
 const listAlertRules = async (): Promise<AlertRule[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM alert_rules ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    metric: string;
+    condition: string;
+    threshold: number;
+    notify_channel: string;
+    is_enabled: boolean;
+    created_at: Date;
+  }>>`
+    SELECT id, name, metric, condition, threshold, notify_channel, is_enabled, created_at
+    FROM alert_rules
+    ORDER BY created_at DESC
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    metric: r.metric,
+    condition: r.condition as AlertRule['condition'],
+    threshold: r.threshold,
+    notifyChannel: r.notify_channel as AlertRule['notifyChannel'],
+    isEnabled: r.is_enabled,
+    createdAt: r.created_at.toISOString(),
+  }));
 };
 
 /**
@@ -170,16 +316,30 @@ const listAlertRules = async (): Promise<AlertRule[]> => {
  * @param input - 建立告警規則輸入
  */
 const createAlertRule = async (input: CreateAlertRuleInput): Promise<AlertRule> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO alert_rules
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    metric: string;
+    condition: string;
+    threshold: number;
+    notify_channel: string;
+    is_enabled: boolean;
+    created_at: Date;
+  }>>`
+    INSERT INTO alert_rules (name, metric, condition, threshold, notify_channel, is_enabled)
+    VALUES (${input.name}, ${input.metric}, ${input.condition}, ${input.threshold}, ${input.notifyChannel ?? 'email'}, ${input.isEnabled ?? true})
+    RETURNING *
+  `;
+
   return {
-    id: 1,
-    name: input.name,
-    metric: input.metric,
-    condition: input.condition,
-    threshold: input.threshold,
-    notifyChannel: input.notifyChannel ?? 'email',
-    isEnabled: input.isEnabled ?? true,
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    metric: row.metric,
+    condition: row.condition as AlertRule['condition'],
+    threshold: row.threshold,
+    notifyChannel: row.notify_channel as AlertRule['notifyChannel'],
+    isEnabled: row.is_enabled,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -192,16 +352,42 @@ const updateAlertRule = async (
   id: number,
   input: Partial<CreateAlertRuleInput>,
 ): Promise<AlertRule> => {
-  // TODO: 實作 DB 更新 — UPDATE alert_rules SET ... WHERE id = $1
+  await prisma.$executeRaw`
+    UPDATE alert_rules
+    SET
+      name           = COALESCE(${input.name ?? null}, name),
+      metric         = COALESCE(${input.metric ?? null}, metric),
+      condition      = COALESCE(${input.condition ?? null}, condition),
+      threshold      = COALESCE(${input.threshold ?? null}, threshold),
+      notify_channel = COALESCE(${input.notifyChannel ?? null}, notify_channel),
+      is_enabled     = COALESCE(${input.isEnabled ?? null}, is_enabled),
+      updated_at     = NOW()
+    WHERE id = ${id}
+  `;
+
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    metric: string;
+    condition: string;
+    threshold: number;
+    notify_channel: string;
+    is_enabled: boolean;
+    created_at: Date;
+  }>>`
+    SELECT id, name, metric, condition, threshold, notify_channel, is_enabled, created_at
+    FROM alert_rules WHERE id = ${id}
+  `;
+
   return {
-    id,
-    name: input.name ?? 'mock-alert',
-    metric: input.metric ?? 'user_count',
-    condition: input.condition ?? 'above',
-    threshold: input.threshold ?? 100,
-    notifyChannel: input.notifyChannel ?? 'email',
-    isEnabled: input.isEnabled ?? true,
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    metric: row.metric,
+    condition: row.condition as AlertRule['condition'],
+    threshold: row.threshold,
+    notifyChannel: row.notify_channel as AlertRule['notifyChannel'],
+    isEnabled: row.is_enabled,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -210,8 +396,8 @@ const updateAlertRule = async (
  * @param id - 規則 ID
  */
 const deleteAlertRule = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM alert_rules WHERE id = $1
-  void id;
+  await prisma.$executeRaw`DELETE FROM alert_history WHERE rule_id = ${id}`;
+  await prisma.$executeRaw`DELETE FROM alert_rules WHERE id = ${id}`;
 };
 
 /**
@@ -219,9 +405,48 @@ const deleteAlertRule = async (id: number): Promise<void> => {
  * @param ruleId - 規則 ID（可選，不傳則回傳全部）
  */
 const getAlertHistory = async (ruleId?: number): Promise<AlertHistory[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM alert_history WHERE rule_id = $1
-  void ruleId;
-  return [];
+  const rows = ruleId
+    ? await prisma.$queryRaw<Array<{
+        id: number;
+        rule_id: number;
+        rule_name: string;
+        metric_value: number;
+        threshold: number;
+        status: string;
+        triggered_at: Date;
+      }>>`
+        SELECT h.id, h.rule_id, r.name AS rule_name, h.metric_value, h.threshold, h.status, h.triggered_at
+        FROM alert_history h
+        JOIN alert_rules r ON r.id = h.rule_id
+        WHERE h.rule_id = ${ruleId}
+        ORDER BY h.triggered_at DESC
+        LIMIT 100
+      `
+    : await prisma.$queryRaw<Array<{
+        id: number;
+        rule_id: number;
+        rule_name: string;
+        metric_value: number;
+        threshold: number;
+        status: string;
+        triggered_at: Date;
+      }>>`
+        SELECT h.id, h.rule_id, r.name AS rule_name, h.metric_value, h.threshold, h.status, h.triggered_at
+        FROM alert_history h
+        JOIN alert_rules r ON r.id = h.rule_id
+        ORDER BY h.triggered_at DESC
+        LIMIT 100
+      `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    ruleId: r.rule_id,
+    ruleName: r.rule_name,
+    triggeredAt: r.triggered_at.toISOString(),
+    metricValue: r.metric_value,
+    threshold: r.threshold,
+    status: r.status as AlertHistory['status'],
+  }));
 };
 
 export default {

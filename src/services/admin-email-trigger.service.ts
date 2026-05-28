@@ -1,10 +1,9 @@
 /**
  * Admin 觸發式信件服務
  * 提供觸發規則與信件模板的 CRUD、執行紀錄查詢
- *
- * TODO: DB 表尚未建立，目前回傳 mock 資料
  */
 
+import { prisma } from './database/prisma.service';
 import type {
   EmailTriggerRule,
   EmailTemplate,
@@ -21,8 +20,36 @@ import type {
  * 列出所有觸發規則
  */
 const listRules = async (): Promise<EmailTriggerRule[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM email_trigger_rules ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    condition_type: string;
+    condition_value: string;
+    template_id: number;
+    is_enabled: boolean;
+    total_sent: number;
+    open_rate: number;
+    click_rate: number;
+    created_at: Date;
+  }>>`
+    SELECT id, name, condition_type, condition_value, template_id, is_enabled,
+           total_sent, open_rate, click_rate, created_at
+    FROM email_trigger_rules
+    ORDER BY created_at DESC
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    conditionType: r.condition_type as EmailTriggerRule['conditionType'],
+    conditionValue: r.condition_value,
+    templateId: r.template_id,
+    isEnabled: r.is_enabled,
+    totalSent: r.total_sent,
+    openRate: r.open_rate,
+    clickRate: r.click_rate,
+    createdAt: r.created_at.toISOString(),
+  }));
 };
 
 /**
@@ -30,18 +57,34 @@ const listRules = async (): Promise<EmailTriggerRule[]> => {
  * @param input - 建立觸發規則輸入
  */
 const createRule = async (input: CreateTriggerRuleInput): Promise<EmailTriggerRule> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO email_trigger_rules
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    condition_type: string;
+    condition_value: string;
+    template_id: number;
+    is_enabled: boolean;
+    total_sent: number;
+    open_rate: number;
+    click_rate: number;
+    created_at: Date;
+  }>>`
+    INSERT INTO email_trigger_rules (name, condition_type, condition_value, template_id, is_enabled)
+    VALUES (${input.name}, ${input.conditionType}, ${input.conditionValue}, ${input.templateId}, ${input.isEnabled ?? true})
+    RETURNING *
+  `;
+
   return {
-    id: 1,
-    name: input.name,
-    conditionType: input.conditionType,
-    conditionValue: input.conditionValue,
-    templateId: input.templateId,
-    isEnabled: input.isEnabled ?? true,
-    totalSent: 0,
-    openRate: 0,
-    clickRate: 0,
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    conditionType: row.condition_type as EmailTriggerRule['conditionType'],
+    conditionValue: row.condition_value,
+    templateId: row.template_id,
+    isEnabled: row.is_enabled,
+    totalSent: row.total_sent,
+    openRate: row.open_rate,
+    clickRate: row.click_rate,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -54,18 +97,46 @@ const updateRule = async (
   id: number,
   input: Partial<CreateTriggerRuleInput>,
 ): Promise<EmailTriggerRule> => {
-  // TODO: 實作 DB 更新 — UPDATE email_trigger_rules SET ... WHERE id = $1
+  await prisma.$executeRaw`
+    UPDATE email_trigger_rules
+    SET
+      name           = COALESCE(${input.name ?? null}, name),
+      condition_type = COALESCE(${input.conditionType ?? null}, condition_type),
+      condition_value= COALESCE(${input.conditionValue ?? null}, condition_value),
+      template_id    = COALESCE(${input.templateId ?? null}, template_id),
+      is_enabled     = COALESCE(${input.isEnabled ?? null}, is_enabled),
+      updated_at     = NOW()
+    WHERE id = ${id}
+  `;
+
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    condition_type: string;
+    condition_value: string;
+    template_id: number;
+    is_enabled: boolean;
+    total_sent: number;
+    open_rate: number;
+    click_rate: number;
+    created_at: Date;
+  }>>`
+    SELECT id, name, condition_type, condition_value, template_id, is_enabled,
+           total_sent, open_rate, click_rate, created_at
+    FROM email_trigger_rules WHERE id = ${id}
+  `;
+
   return {
-    id,
-    name: input.name ?? 'mock-rule',
-    conditionType: input.conditionType ?? 'dormant_days',
-    conditionValue: input.conditionValue ?? '7',
-    templateId: input.templateId ?? 1,
-    isEnabled: input.isEnabled ?? true,
-    totalSent: 0,
-    openRate: 0,
-    clickRate: 0,
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    conditionType: row.condition_type as EmailTriggerRule['conditionType'],
+    conditionValue: row.condition_value,
+    templateId: row.template_id,
+    isEnabled: row.is_enabled,
+    totalSent: row.total_sent,
+    openRate: row.open_rate,
+    clickRate: row.click_rate,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -74,8 +145,8 @@ const updateRule = async (
  * @param id - 規則 ID
  */
 const deleteRule = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM email_trigger_rules WHERE id = $1
-  void id;
+  await prisma.$executeRaw`DELETE FROM email_execution_logs WHERE rule_id = ${id}`;
+  await prisma.$executeRaw`DELETE FROM email_trigger_rules WHERE id = ${id}`;
 };
 
 // ============================================================================
@@ -86,8 +157,27 @@ const deleteRule = async (id: number): Promise<void> => {
  * 列出所有信件模板
  */
 const listTemplates = async (): Promise<EmailTemplate[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM email_templates ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    subject: string;
+    body: string;
+    variables: string[];
+    created_at: Date;
+  }>>`
+    SELECT id, name, subject, body, variables, created_at
+    FROM email_templates
+    ORDER BY created_at DESC
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    subject: r.subject,
+    body: r.body,
+    variables: r.variables,
+    createdAt: r.created_at.toISOString(),
+  }));
 };
 
 /**
@@ -95,14 +185,27 @@ const listTemplates = async (): Promise<EmailTemplate[]> => {
  * @param input - 建立模板輸入
  */
 const createTemplate = async (input: CreateTemplateInput): Promise<EmailTemplate> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO email_templates
+  const variables = input.variables ?? [];
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    subject: string;
+    body: string;
+    variables: string[];
+    created_at: Date;
+  }>>`
+    INSERT INTO email_templates (name, subject, body, variables)
+    VALUES (${input.name}, ${input.subject}, ${input.body}, ${variables}::text[])
+    RETURNING *
+  `;
+
   return {
-    id: 1,
-    name: input.name,
-    subject: input.subject,
-    body: input.body,
-    variables: input.variables ?? [],
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    subject: row.subject,
+    body: row.body,
+    variables: row.variables,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -115,14 +218,35 @@ const updateTemplate = async (
   id: number,
   input: Partial<CreateTemplateInput>,
 ): Promise<EmailTemplate> => {
-  // TODO: 實作 DB 更新 — UPDATE email_templates SET ... WHERE id = $1
+  await prisma.$executeRaw`
+    UPDATE email_templates
+    SET
+      name       = COALESCE(${input.name ?? null}, name),
+      subject    = COALESCE(${input.subject ?? null}, subject),
+      body       = COALESCE(${input.body ?? null}, body),
+      variables  = COALESCE(${input.variables ? input.variables : null}::text[], variables),
+      updated_at = NOW()
+    WHERE id = ${id}
+  `;
+
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    name: string;
+    subject: string;
+    body: string;
+    variables: string[];
+    created_at: Date;
+  }>>`
+    SELECT id, name, subject, body, variables, created_at FROM email_templates WHERE id = ${id}
+  `;
+
   return {
-    id,
-    name: input.name ?? 'mock-template',
-    subject: input.subject ?? 'Mock Subject',
-    body: input.body ?? '<p>Mock body</p>',
-    variables: input.variables ?? [],
-    createdAt: new Date().toISOString(),
+    id: row.id,
+    name: row.name,
+    subject: row.subject,
+    body: row.body,
+    variables: row.variables,
+    createdAt: row.created_at.toISOString(),
   };
 };
 
@@ -131,8 +255,7 @@ const updateTemplate = async (
  * @param id - 模板 ID
  */
 const deleteTemplate = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM email_templates WHERE id = $1
-  void id;
+  await prisma.$executeRaw`DELETE FROM email_templates WHERE id = ${id}`;
 };
 
 // ============================================================================
@@ -144,9 +267,35 @@ const deleteTemplate = async (id: number): Promise<void> => {
  * @param ruleId - 規則 ID
  */
 const getExecutionLog = async (ruleId: number): Promise<EmailExecutionLog[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM email_execution_logs WHERE rule_id = $1
-  void ruleId;
-  return [];
+  const rows = await prisma.$queryRaw<Array<{
+    id: number;
+    rule_id: number;
+    rule_name: string;
+    recipient_email: string;
+    status: string;
+    sent_at: Date;
+    opened_at: Date | null;
+    clicked_at: Date | null;
+  }>>`
+    SELECT l.id, l.rule_id, r.name AS rule_name, l.recipient_email,
+           l.status, l.sent_at, l.opened_at, l.clicked_at
+    FROM email_execution_logs l
+    JOIN email_trigger_rules r ON r.id = l.rule_id
+    WHERE l.rule_id = ${ruleId}
+    ORDER BY l.sent_at DESC
+    LIMIT 100
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    ruleId: r.rule_id,
+    ruleName: r.rule_name,
+    recipientEmail: r.recipient_email,
+    sentAt: r.sent_at.toISOString(),
+    status: r.status as EmailExecutionLog['status'],
+    openedAt: r.opened_at?.toISOString() ?? null,
+    clickedAt: r.clicked_at?.toISOString() ?? null,
+  }));
 };
 
 /**
@@ -156,9 +305,28 @@ const getExecutionLog = async (ruleId: number): Promise<EmailExecutionLog[]> => 
 const getRuleStats = async (
   ruleId: number,
 ): Promise<{ totalSent: number; openRate: number; clickRate: number }> => {
-  // TODO: 實作 DB 聚合查詢
-  void ruleId;
-  return { totalSent: 0, openRate: 0, clickRate: 0 };
+  const [stats] = await prisma.$queryRaw<Array<{
+    total_sent: bigint;
+    opened: bigint;
+    clicked: bigint;
+  }>>`
+    SELECT
+      COUNT(*)::bigint AS total_sent,
+      COUNT(opened_at)::bigint AS opened,
+      COUNT(clicked_at)::bigint AS clicked
+    FROM email_execution_logs
+    WHERE rule_id = ${ruleId} AND status = 'sent'
+  `;
+
+  const totalSent = Number(stats?.total_sent ?? 0);
+  const opened = Number(stats?.opened ?? 0);
+  const clicked = Number(stats?.clicked ?? 0);
+
+  return {
+    totalSent,
+    openRate: totalSent > 0 ? Math.round((opened / totalSent) * 1000) / 10 : 0,
+    clickRate: totalSent > 0 ? Math.round((clicked / totalSent) * 1000) / 10 : 0,
+  };
 };
 
 export default {
