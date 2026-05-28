@@ -1826,3 +1826,216 @@ model survey_answers {
   @@index([survey_response_id], map: "idx_survey_answers_response_id")
   @@index([survey_id, question_id], map: "idx_survey_answers_survey_question")
 }
+
+// ============================================================================
+// Admin Communication Models
+// ============================================================================
+
+model admin_notifications {
+  id           Int       @id @default(autoincrement())
+  title        String
+  content      String
+  type         String    @default("announcement")
+  target_type  String    @default("all")
+  target_value String?
+  scheduled_at DateTime? @db.Timestamptz(6)
+  sent_at      DateTime? @db.Timestamptz(6)
+  status       String    @default("draft")
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+
+  reads notification_reads[]
+
+  @@index([status], map: "idx_admin_notifications_status")
+  @@index([created_at], map: "idx_admin_notifications_created_at")
+}
+
+model notification_reads {
+  id              Int      @id @default(autoincrement())
+  notification_id Int
+  user_id         Int
+  read_at         DateTime @default(now()) @db.Timestamptz(6)
+
+  notification admin_notifications @relation(fields: [notification_id], references: [id], onDelete: Cascade)
+
+  @@unique([notification_id, user_id])
+  @@index([notification_id], map: "idx_notification_reads_notification_id")
+  @@index([user_id], map: "idx_notification_reads_user_id")
+}
+
+model admin_events {
+  id           Int       @id @default(autoincrement())
+  title        String
+  description  String    @default("")
+  start_at     DateTime  @db.Timestamptz(6)
+  end_at       DateTime  @db.Timestamptz(6)
+  location     String    @default("")
+  max_capacity Int       @default(0)
+  is_recurring Boolean   @default(false)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+
+  rsvps      event_rsvps[]
+  recordings event_recordings[]
+
+  @@index([start_at], map: "idx_admin_events_start_at")
+}
+
+model event_rsvps {
+  id         Int      @id @default(autoincrement())
+  event_id   Int
+  user_id    Int
+  status     String   @default("registered")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  event admin_events @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@unique([event_id, user_id])
+  @@index([event_id], map: "idx_event_rsvps_event_id")
+  @@index([user_id], map: "idx_event_rsvps_user_id")
+}
+
+model event_templates {
+  id               Int       @id @default(autoincrement())
+  name             String
+  frequency        String    @default("weekly")
+  next_occurrence  DateTime? @db.Timestamptz(6)
+  generated_count  Int       @default(0)
+  template_data    Json?
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([frequency], map: "idx_event_templates_frequency")
+}
+
+model event_recordings {
+  id           Int      @id @default(autoincrement())
+  event_id     Int
+  file_name    String
+  file_size    Int      @default(0)
+  access_level String   @default("members")
+  uploaded_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  event admin_events @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@index([event_id], map: "idx_event_recordings_event_id")
+}
+
+model email_templates {
+  id         Int      @id @default(autoincrement())
+  name       String
+  subject    String
+  body       String   @db.Text
+  variables  String[] @default([])
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  trigger_rules   email_trigger_rules[]
+  execution_logs  email_execution_logs[]
+
+  @@index([name], map: "idx_email_templates_name")
+}
+
+model email_trigger_rules {
+  id               Int      @id @default(autoincrement())
+  name             String
+  condition_type   String
+  condition_value  String
+  template_id      Int
+  is_enabled       Boolean  @default(true)
+  total_sent       Int      @default(0)
+  open_rate        Float    @default(0)
+  click_rate       Float    @default(0)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @updatedAt @db.Timestamptz(6)
+
+  template        email_templates        @relation(fields: [template_id], references: [id])
+  execution_logs  email_execution_logs[]
+
+  @@index([is_enabled], map: "idx_email_trigger_rules_enabled")
+}
+
+model email_execution_logs {
+  id               Int       @id @default(autoincrement())
+  rule_id          Int
+  template_id      Int?
+  recipient_email  String
+  status           String    @default("sent")
+  sent_at          DateTime  @default(now()) @db.Timestamptz(6)
+  opened_at        DateTime? @db.Timestamptz(6)
+  clicked_at       DateTime? @db.Timestamptz(6)
+
+  rule     email_trigger_rules @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+  template email_templates?    @relation(fields: [template_id], references: [id])
+
+  @@index([rule_id], map: "idx_email_execution_logs_rule_id")
+  @@index([recipient_email], map: "idx_email_execution_logs_recipient")
+}
+
+model scheduled_reports {
+  id           Int       @id @default(autoincrement())
+  name         String
+  frequency    String
+  recipients   String[]  @default([])
+  sections     String[]  @default([])
+  last_sent_at DateTime? @db.Timestamptz(6)
+  status       String    @default("active")
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+
+  history report_history[]
+
+  @@index([status], map: "idx_scheduled_reports_status")
+}
+
+model report_history {
+  id        Int      @id @default(autoincrement())
+  report_id Int
+  sent_at   DateTime @default(now()) @db.Timestamptz(6)
+  status    String   @default("success")
+  error_msg String?
+
+  report scheduled_reports @relation(fields: [report_id], references: [id], onDelete: Cascade)
+
+  @@index([report_id], map: "idx_report_history_report_id")
+}
+
+model custom_report_configs {
+  id         Int      @id @default(autoincrement())
+  name       String
+  fields     String[] @default([])
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model alert_rules {
+  id             Int      @id @default(autoincrement())
+  name           String
+  metric         String
+  condition      String
+  threshold      Float
+  notify_channel String   @default("email")
+  is_enabled     Boolean  @default(true)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @updatedAt @db.Timestamptz(6)
+
+  history alert_history[]
+
+  @@index([is_enabled], map: "idx_alert_rules_enabled")
+}
+
+model alert_history {
+  id           Int      @id @default(autoincrement())
+  rule_id      Int
+  metric_value Float
+  threshold    Float
+  status       String   @default("pending")
+  triggered_at DateTime @default(now()) @db.Timestamptz(6)
+  resolved_at  DateTime? @db.Timestamptz(6)
+
+  rule alert_rules @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  @@index([rule_id], map: "idx_alert_history_rule_id")
+  @@index([triggered_at], map: "idx_alert_history_triggered_at")
+}
