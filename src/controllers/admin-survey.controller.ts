@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { asyncHandler, NotFoundError, BadRequestError } from '@/middleware/error.middleware';
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
-import { survey_status_t } from '../../generated/prisma';
+import { survey_status_t, question_type_t } from '../../generated/prisma';
 
 function parseId(param: string): number {
   const id = parseInt(param, 10);
@@ -191,5 +191,178 @@ export const adminSurveyController = {
 
     await prisma.survey_responses.delete({ where: { id: responseId } });
     res.status(204).send();
+  }),
+
+  getResponseDetail: asyncHandler(async (req: Request, res: Response) => {
+    const surveyId = parseId(req.params.id);
+    const responseId = parseId(req.params.responseId);
+
+    const survey = await prisma.surveys.findFirst({ where: { id: surveyId }, select: { id: true } });
+    if (!survey) throw new NotFoundError('問卷不存在');
+
+    const response = await prisma.survey_responses.findFirst({
+      where: { id: responseId, survey_id: surveyId },
+      include: {
+        answers: {
+          include: {
+            question: { include: { options: { orderBy: { position: 'asc' } } } },
+          },
+        },
+      },
+    });
+    if (!response) throw new NotFoundError('回應不存在');
+
+    res.json(
+      createSuccessResponse({
+        id: response.id,
+        user_id: response.user_id,
+        completed_at: response.completed_at.toISOString(),
+        answers: response.answers.map((a) => ({
+          question_id: a.question_id,
+          question_text: a.question.question_text,
+          question_type: a.question_type,
+          answer_text: a.answer_text,
+          selected_option_ids: a.selected_option_ids,
+          selected_options: a.question.options
+            .filter((o) => a.selected_option_ids.includes(o.id))
+            .map((o) => o.option_text),
+          rating_value: a.rating_value,
+          boolean_value: a.boolean_value,
+        })),
+      }),
+    );
+  }),
+
+  createSurvey: asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user?.id;
+    if (!adminId) throw new BadRequestError('未驗證');
+
+    const { title, description, is_anonymous, tags, max_responses, start_time, end_time, questions } =
+      req.body as {
+        title: string;
+        description?: string;
+        is_anonymous?: boolean;
+        tags?: string[];
+        max_responses?: number;
+        start_time?: string;
+        end_time?: string;
+        questions?: Array<{
+          question_text: string;
+          question_type: string;
+          is_required?: boolean;
+          position?: number;
+          options?: Array<{ option_text: string; position?: number }>;
+        }>;
+      };
+
+    if (!title?.trim()) throw new BadRequestError('標題為必填');
+
+    const survey = await prisma.$transaction(async (tx) => {
+      const created = await tx.surveys.create({
+        data: {
+          title: title.trim(),
+          description: description ?? null,
+          is_anonymous: is_anonymous ?? false,
+          tags: tags ?? [],
+          max_responses: max_responses ?? null,
+          start_time: start_time ? new Date(start_time) : null,
+          end_time: end_time ? new Date(end_time) : null,
+          created_by: adminId,
+          status: survey_status_t.draft,
+        },
+      });
+
+      if (questions && questions.length > 0) {
+        for (const q of questions) {
+          const question = await tx.questions.create({
+            data: {
+              survey_id: created.id,
+              question_type: q.question_type as question_type_t,
+              question_text: q.question_text,
+              is_required: q.is_required ?? false,
+              position: q.position ?? 0,
+            },
+          });
+          if (q.options && q.options.length > 0) {
+            await tx.question_options.createMany({
+              data: q.options.map((o, i) => ({
+                question_id: question.id,
+                option_text: o.option_text,
+                position: o.position ?? i,
+              })),
+            });
+          }
+        }
+      }
+
+      return created;
+    });
+
+    res.status(201).json(createSuccessResponse({ id: survey.id, external_id: survey.external_id }));
+  }),
+
+  updateSurvey: asyncHandler(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    const { title, description, is_anonymous, tags, max_responses, start_time, end_time, questions } =
+      req.body as {
+        title?: string;
+        description?: string;
+        is_anonymous?: boolean;
+        tags?: string[];
+        max_responses?: number | null;
+        start_time?: string | null;
+        end_time?: string | null;
+        questions?: Array<{
+          question_text: string;
+          question_type: string;
+          is_required?: boolean;
+          position?: number;
+          options?: Array<{ option_text: string; position?: number }>;
+        }>;
+      };
+
+    const existing = await prisma.surveys.findFirst({ where: { id } });
+    if (!existing) throw new NotFoundError('問卷不存在');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.surveys.update({
+        where: { id },
+        data: {
+          ...(title !== undefined && { title: title.trim() }),
+          ...(description !== undefined && { description }),
+          ...(is_anonymous !== undefined && { is_anonymous }),
+          ...(tags !== undefined && { tags }),
+          ...(max_responses !== undefined && { max_responses }),
+          ...(start_time !== undefined && { start_time: start_time ? new Date(start_time) : null }),
+          ...(end_time !== undefined && { end_time: end_time ? new Date(end_time) : null }),
+        },
+      });
+
+      if (questions !== undefined) {
+        await tx.questions.deleteMany({ where: { survey_id: id } });
+        for (const q of questions) {
+          const question = await tx.questions.create({
+            data: {
+              survey_id: id,
+              question_type: q.question_type as question_type_t,
+              question_text: q.question_text,
+              is_required: q.is_required ?? false,
+              position: q.position ?? 0,
+            },
+          });
+          if (q.options && q.options.length > 0) {
+            await tx.question_options.createMany({
+              data: q.options.map((o, i) => ({
+                question_id: question.id,
+                option_text: o.option_text,
+                position: o.position ?? i,
+              })),
+            });
+          }
+        }
+      }
+    });
+
+    res.json(createSuccessResponse({ id, updated: true }));
   }),
 };
