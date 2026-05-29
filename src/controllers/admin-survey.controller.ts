@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { asyncHandler, NotFoundError, BadRequestError } from '@/middleware/error.middleware';
+import { asyncWrapper, NotFoundError, BadRequestError } from '@/utils/error-handler';
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
-import { survey_status_t, question_type_t } from '../../generated/prisma';
+import { survey_status_t, question_type_t, Prisma } from '../../generated/prisma';
 
 function parseId(param: string): number {
   const id = parseInt(param, 10);
@@ -20,11 +20,11 @@ async function getUserInfoMap(userIds: number[]): Promise<Map<number, { id: numb
       contacts: { select: { email: true } },
     },
   });
-  return new Map(users.map((u) => [u.id, { id: u.id, email: u.contacts?.email ?? null, nickname: u.nickname ?? null }]));
+  return new Map(users.map((u: { id: number; nickname: string | null; contacts: { email: string | null } | null }) => [u.id, { id: u.id, email: u.contacts?.email ?? null, nickname: u.nickname ?? null }]));
 }
 
 export const adminSurveyController = {
-  listAll: asyncHandler(async (req: Request, res: Response) => {
+  listAll: asyncWrapper(async (req: Request, res: Response) => {
     const status = req.query.status as string | undefined;
     const q = req.query.q as string | undefined;
     const limit = Math.min(Number(req.query.limit) || 50, 100);
@@ -76,7 +76,7 @@ export const adminSurveyController = {
     });
   }),
 
-  getById: asyncHandler(async (req: Request, res: Response) => {
+  getById: asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     const survey = await prisma.surveys.findFirst({
       where: { id },
@@ -121,7 +121,7 @@ export const adminSurveyController = {
     );
   }),
 
-  updateStatus: asyncHandler(async (req: Request, res: Response) => {
+  updateStatus: asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     const { status } = req.body as { status: string };
     const validStatuses: string[] = Object.values(survey_status_t);
@@ -138,7 +138,7 @@ export const adminSurveyController = {
     res.json(createSuccessResponse(updated));
   }),
 
-  deleteSurvey: asyncHandler(async (req: Request, res: Response) => {
+  deleteSurvey: asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     const survey = await prisma.surveys.findFirst({ where: { id } });
     if (!survey) throw new NotFoundError('問卷不存在');
@@ -146,7 +146,7 @@ export const adminSurveyController = {
     res.status(204).send();
   }),
 
-  listResponses: asyncHandler(async (req: Request, res: Response) => {
+  listResponses: asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     const limit = Math.min(Number(req.query.limit) || 50, 100);
     const offset = Number(req.query.offset) || 0;
@@ -177,7 +177,7 @@ export const adminSurveyController = {
     });
   }),
 
-  deleteResponse: asyncHandler(async (req: Request, res: Response) => {
+  deleteResponse: asyncWrapper(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id);
     const responseId = parseId(req.params.responseId);
 
@@ -193,7 +193,7 @@ export const adminSurveyController = {
     res.status(204).send();
   }),
 
-  getResponseDetail: asyncHandler(async (req: Request, res: Response) => {
+  getResponseDetail: asyncWrapper(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id);
     const responseId = parseId(req.params.responseId);
 
@@ -233,7 +233,7 @@ export const adminSurveyController = {
     );
   }),
 
-  createSurvey: asyncHandler(async (req: Request, res: Response) => {
+  createSurvey: asyncWrapper(async (req: Request, res: Response) => {
     const adminId = req.user?.id;
     if (!adminId) throw new BadRequestError('未驗證');
 
@@ -301,7 +301,7 @@ export const adminSurveyController = {
     res.status(201).json(createSuccessResponse({ id: survey.id, external_id: survey.external_id }));
   }),
 
-  updateSurvey: asyncHandler(async (req: Request, res: Response) => {
+  updateSurvey: asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     const { title, description, is_anonymous, tags, max_responses, start_time, end_time, questions } =
       req.body as {

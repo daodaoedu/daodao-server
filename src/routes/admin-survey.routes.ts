@@ -1,11 +1,11 @@
 import { Router, RequestHandler } from 'express';
 import { adminSurveyController } from '../controllers/admin-survey.controller';
-import { authenticateAny } from '../middleware/auth';
-import { requireAdmin } from '../middleware/permission.middleware';
+import { authenticate } from '../middleware/auth';
+import { authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-router.use(authenticateAny as RequestHandler, requireAdmin as RequestHandler);
+router.use(authenticate as RequestHandler, authorizeRoles(['admin']) as unknown as RequestHandler);
 
 router.get('/surveys', adminSurveyController.listAll as RequestHandler);
 router.get('/surveys/:id', adminSurveyController.getById as RequestHandler);
