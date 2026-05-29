@@ -97,6 +97,7 @@ jest.mock('../../src/middleware/auth', () => ({
     next();
   },
   requireRole: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  authorizeRoles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   AuthRequest: {}
 }));
 
