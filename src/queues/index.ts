@@ -221,3 +221,24 @@ export {
   createBadgeAwardWorker,
   closeBadgeAwardWorker,
 } from './badge-award.worker';
+
+// Email Queue（通用郵件發送佇列）
+export {
+  EMAIL_QUEUE_NAME,
+  createEmailQueue,
+  setEmailQueue,
+  getEmailQueue,
+  enqueueEmail,
+  bulkEnqueueEmails,
+  registerEmailRetryScheduledJob,
+  retryFailedEmails,
+  retrySingleFailedEmail,
+  type EmailJobData,
+} from './email.queue';
+
+// Email Worker
+export {
+  createEmailWorker,
+  closeEmailWorker,
+  type EmailWorkerOptions,
+} from './email.worker';

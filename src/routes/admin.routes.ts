@@ -1405,4 +1405,5 @@ router.post('/events/:id/recordings', authenticateAny, requireAdmin, adminEvents
 router.delete('/events/recordings/:id', authenticateAny, requireAdmin, adminEventsController.deleteRecording as RequestHandler);
 router.post('/events/:id/remind', authenticateAny, requireAdmin, adminEventsController.sendReminder as RequestHandler);
 
+
 export default router;
