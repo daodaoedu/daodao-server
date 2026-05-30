@@ -195,6 +195,9 @@ const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
   throw new Error('SESSION_SECRET environment variable is required');
 }
+if (process.env.NODE_ENV === 'prod' && sessionSecret.length < 32) {
+  throw new Error('SESSION_SECRET must be at least 32 characters in production');
+}
 const hasDeployedDomain = !!process.env.COOKIE_DOMAIN;
 app.use(session({
   store: new RedisStore({ client: redis, prefix: 'sess:' }),
