@@ -40,6 +40,7 @@ import {
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
 import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
+import { permissionService } from '../services/auth/permission.service';
 
 /**
  * 取得所有用戶
@@ -49,8 +50,9 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   const params = req.query as UserQueryParams;
   const result = await userService.getAllUsers(params);
 
-  // 未認證請求不得取得 PII 欄位（email、birthDay、loginCount 等）
-  if (!req.user) {
+  // 非管理員不得取得 PII 欄位（email、birthDay、loginCount 等）
+  const isAdmin = req.user ? await permissionService.isAdmin(req.user.id) : false;
+  if (!isAdmin) {
     result.data = result.data.map(user => ({
       ...user,
       email: null,
@@ -61,7 +63,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
       lastActiveAt: null,
       profileViews: 0,
       referralSource: null,
-      contactList: user.contactList ? { ...user.contactList, email: null } : null,
+      contactList: user.contactList ? { ...user.contactList, email: null, isSubscribeEmail: null } : null,
     }));
   }
 
