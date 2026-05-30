@@ -27,8 +27,11 @@ describe('EMAIL_TYPES vs DB constraint sync', () => {
 
     const def = rows[0].constraint_def;
 
-    // 從 constraint 定義中解析出所有允許的值
-    const matches = def.match(/'([^']+)'/g) || [];
+    // 從 CHECK constraint 的 ANY(ARRAY[...]) 或 IN (...) 語法中精確解析值
+    // 只匹配 ::character varying 或逗號/括號分隔的單引號字串
+    const arrayMatch = def.match(/ARRAY\[([^\]]+)\]/);
+    const valuesPart = arrayMatch ? arrayMatch[1] : def;
+    const matches = valuesPart.match(/'([a-z_]+)'/g) || [];
     const dbValues = new Set(matches.map((m: string) => m.replace(/'/g, '')));
 
     const codeValues = Object.values(EMAIL_TYPES);
@@ -36,14 +39,18 @@ describe('EMAIL_TYPES vs DB constraint sync', () => {
     // 程式碼有但 DB 沒有 → INSERT 會失敗
     const missingInDb = codeValues.filter((v) => !dbValues.has(v));
 
-    // DB 有但程式碼沒有 → 可能是殘留，警告即可
+    // DB 有但程式碼沒有 → 可能是殘留
     const missingInCode = Array.from(dbValues).filter(
       (v) => !codeValues.includes(v as typeof codeValues[number])
     );
 
     if (missingInCode.length > 0) {
+      expect(missingInCode).toEqual(
+        expect.arrayContaining([])
+      );
+      // eslint-disable-next-line no-console
       console.warn(
-        `DB constraint 有但 EMAIL_TYPES 沒有（可能是殘留）: ${missingInCode.join(', ')}`
+        `[email-type-sync] DB constraint 有但 EMAIL_TYPES 沒有（可能是殘留）: ${missingInCode.join(', ')}`
       );
     }
 
