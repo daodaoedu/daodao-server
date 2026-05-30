@@ -4,37 +4,13 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, BadRequestError, NotFoundError } from '../middleware/error.middleware';
+import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
 import * as resourceService from '../services/resource.service';
 import * as tagService from '../services/tag.service';
 import type { tags } from '../../generated/prisma';
 import { recordView as trackView } from '../services/view-tracking.service';
 import { prisma } from '../services/database/prisma.service';
 
-/**
- * 獲取用戶 ID，開發環境下提供測試用戶
- */
-const getUserIdOrTestUser = (req: Request): number => {
-  const userId = req.user?.id;
-  
-  if (!userId) {
-    // 為 Swagger UI 測試提供預設用戶 ID（僅在開發環境）
-    if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === undefined) {
-      console.log('⚠️  Using test user ID for dev/testing');
-      const testUserId = 1;
-      req.user = { 
-        id: testUserId,
-        username: 'test_user_for_swagger',
-        roles: ['user']
-      };
-      return testUserId;
-    } else {
-      throw new BadRequestError('必須登入才能執行此操作');
-    }
-  }
-  
-  return userId;
-};
 import {
   validateCreateResource,
   validateUpdateResource,
@@ -122,8 +98,8 @@ export const getResourceById = asyncHandler(async (req: Request, res: Response) 
  * POST /resources
  */
 export const createResource = asyncHandler(async (req: Request, res: Response) => {
-  // 獲取用戶 ID（開發環境下使用測試用戶）
-  const userId = getUserIdOrTestUser(req);
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
   console.log(`創建資源: userId=${userId}, req.user=${JSON.stringify(req.user)}`);
 
   // 驗證請求數據
@@ -148,9 +124,9 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
   
   const { resourceId } = req.params;  // 使用路由中定義的參數名稱
   console.log('Resource ID:', resourceId);
-  
-  // 獲取用戶 ID（開發環境下使用測試用戶）
-  const userId = getUserIdOrTestUser(req);
+
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
   console.log('User ID:', userId);
 
   // 驗證請求數據
@@ -178,8 +154,8 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
  */
 export const updateResourceStatus = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
-  // 獲取用戶 ID（開發環境下使用測試用戶）
-  const userId = getUserIdOrTestUser(req);
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
 
   // 驗證請求數據
   const { status } = validateUpdateResourceStatus(req.body);
@@ -202,8 +178,8 @@ export const updateResourceStatus = asyncHandler(async (req: Request, res: Respo
  */
 export const deleteResource = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
-  // 獲取用戶 ID（開發環境下使用測試用戶）
-  const userId = getUserIdOrTestUser(req);
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
 
   // 刪除資源
   const result = await resourceService.deleteResource(resourceId, userId); // 直接傳遞 UUID 字串
@@ -296,7 +272,8 @@ export const getResourceTags = asyncHandler(async (req: Request, res: Response) 
  */
 export const recordResourceView = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
-  const userId = getUserIdOrTestUser(req);
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
 
   // 以 external_id (UUID) 查詢內部數字 ID
   const resource = await prisma.resources.findFirst({
