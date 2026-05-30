@@ -4,7 +4,7 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, BadRequestError, NotFoundError } from '../middleware/error.middleware';
+import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
 import * as resourceService from '../services/resource.service';
 import * as tagService from '../services/tag.service';
 import type { tags } from '../../generated/prisma';
@@ -99,7 +99,7 @@ export const getResourceById = asyncHandler(async (req: Request, res: Response) 
  */
 export const createResource = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id;
-  if (!userId) throw new BadRequestError('必須登入才能執行此操作');
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
   console.log(`創建資源: userId=${userId}, req.user=${JSON.stringify(req.user)}`);
 
   // 驗證請求數據
@@ -126,7 +126,7 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
   console.log('Resource ID:', resourceId);
 
   const userId = req.user?.id;
-  if (!userId) throw new BadRequestError('必須登入才能執行此操作');
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
   console.log('User ID:', userId);
 
   // 驗證請求數據
@@ -155,7 +155,7 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
 export const updateResourceStatus = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   const userId = req.user?.id;
-  if (!userId) throw new BadRequestError('必須登入才能執行此操作');
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
 
   // 驗證請求數據
   const { status } = validateUpdateResourceStatus(req.body);
@@ -179,7 +179,7 @@ export const updateResourceStatus = asyncHandler(async (req: Request, res: Respo
 export const deleteResource = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   const userId = req.user?.id;
-  if (!userId) throw new BadRequestError('必須登入才能執行此操作');
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
 
   // 刪除資源
   const result = await resourceService.deleteResource(resourceId, userId); // 直接傳遞 UUID 字串
@@ -273,7 +273,7 @@ export const getResourceTags = asyncHandler(async (req: Request, res: Response) 
 export const recordResourceView = asyncHandler(async (req: Request, res: Response) => {
   const { resourceId } = req.params;
   const userId = req.user?.id;
-  if (!userId) throw new BadRequestError('必須登入才能執行此操作');
+  if (!userId) throw new UnauthorizedError('必須登入才能執行此操作');
 
   // 以 external_id (UUID) 查詢內部數字 ID
   const resource = await prisma.resources.findFirst({
