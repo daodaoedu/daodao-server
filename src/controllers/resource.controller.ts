@@ -4,7 +4,7 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, BadRequestError, NotFoundError } from '../middleware/error.middleware';
+import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
 import * as resourceService from '../services/resource.service';
 import * as tagService from '../services/tag.service';
 import type { tags } from '../../generated/prisma';
@@ -29,7 +29,7 @@ const getUserIdOrTestUser = (req: Request): number => {
       };
       return testUserId;
     } else {
-      throw new BadRequestError('必須登入才能執行此操作');
+      throw new UnauthorizedError('必須登入才能執行此操作');
     }
   }
   
