@@ -19,7 +19,8 @@ export type CommentTargetType =
   | 'idea'
   | 'practice'
   | 'portfolio'
-  | 'checkin';
+  | 'checkin'
+  | 'persona_answer';
 
 // Comment visibility options
 export type CommentVisibility = 'public' | 'private';

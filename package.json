@@ -29,6 +29,7 @@
     "prisma:introspect": "prisma db pull",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "email-templates:generate-sql": "ts-node --transpile-only -r tsconfig-paths/register src/scripts/generate-email-template-sql.ts > ../daodao-storage/migrate/sql/052_update_email_templates_real_html.sql",
     "types:generate": "pnpm run prisma:generate",
     "db:introspect": "prisma db pull",
     "db:seed": "prisma db seed",

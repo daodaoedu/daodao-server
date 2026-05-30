@@ -72,6 +72,25 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '排序方向',
       example: 'desc'
+    }),
+  personaType: z.enum(['L', 'C', 'A', 'D', 'O'])
+    .optional()
+    .openapi({
+      description: '篩選學習風格人物誌（最新一次測驗結果）',
+      example: 'D'
+    }),
+  badgeGranted: z.enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .optional()
+    .openapi({
+      description: '篩選 Onboarding Badge 完成狀態',
+      example: 'true'
+    }),
+  userSource: z.enum(['S1', 'S2', 'S3'])
+    .optional()
+    .openapi({
+      description: '篩選用戶來源',
+      example: 'S1'
     })
 }).openapi('AdminUserListQuery');
 
@@ -217,6 +236,18 @@ const adminUserListItemSchema = z.object({
   lastLoginAt: z.string().nullable().openapi({
     description: '最後登入時間',
     example: '2024-01-20T08:30:00.000Z'
+  }),
+  personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
+    description: '最新一次學習風格測驗結果',
+    example: 'D'
+  }),
+  badgeGranted: z.boolean().nullable().openapi({
+    description: '是否完成 Onboarding Badge',
+    example: true
+  }),
+  userSource: z.string().nullable().openapi({
+    description: '用戶來源（S1/S2/S3）',
+    example: 'S1'
   })
 }).openapi('AdminUserListItem');
 

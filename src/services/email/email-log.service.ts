@@ -244,7 +244,7 @@ export const findFailedEmailsForRetry = async (params: {
   maxRetries?: number;
   sinceHours?: number;
   limit?: number;
-}) => {
+} = {}) => {
   const { maxRetries = 3, sinceHours = 24, limit = 50 } = params;
   const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000);
 

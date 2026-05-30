@@ -192,7 +192,7 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
   } else if (oauthState.source === 'admin') {
     // Admin UI 登入：檢查是否有 admin 角色
     const adminFrontendUrl = process.env.ADMIN_FRONTEND_URL || 'http://localhost:3002';
-    const hasAdminRole = payload.roles.some(
+    const hasAdminRole = Array.isArray(payload.roles) && payload.roles.some(
       (role: string) => role === 'super_admin' || role === 'admin'
     );
 

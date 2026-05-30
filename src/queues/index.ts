@@ -109,23 +109,6 @@ export {
   type SocialNotificationWorkerOptions,
 } from './social-notification.worker';
 
-// Reaction Notification Queue
-export {
-  REACTION_NOTIFICATION_QUEUE_NAME,
-  createReactionNotificationQueue,
-  setReactionNotificationQueue,
-  getReactionNotificationQueue,
-  enqueueReactionNotification,
-  type ReactionNotificationJob,
-} from './reaction-notification.queue';
-
-// Reaction Notification Worker
-export {
-  createReactionNotificationWorker,
-  closeReactionNotificationWorker,
-  type ReactionNotificationWorkerOptions,
-} from './reaction-notification.worker';
-
 // Onboarding Email Queue
 export {
   ONBOARDING_EMAIL_QUEUE_NAME,

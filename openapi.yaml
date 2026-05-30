@@ -8753,6 +8753,7 @@ components:
             - practice
             - comment
             - checkin
+            - persona_answer
           description: 反應目標類型
           example: practice
         targetId:
@@ -8790,6 +8791,7 @@ components:
             - practice
             - comment
             - checkin
+            - persona_answer
           description: 反應目標類型
           example: practice
         targetId:
@@ -8920,6 +8922,31 @@ components:
           default: desc
           description: 排序方向
           example: desc
+        personaType:
+          type: string
+          enum:
+            - L
+            - C
+            - A
+            - D
+            - O
+          description: 篩選學習風格人物誌（最新一次測驗結果）
+          example: D
+        badgeGranted:
+          type: string
+          enum:
+            - 'true'
+            - 'false'
+          description: 篩選 Onboarding Badge 完成狀態
+          example: 'true'
+        userSource:
+          type: string
+          enum:
+            - S1
+            - S2
+            - S3
+          description: 篩選用戶來源
+          example: S1
     AdminUserIdParam:
       type: object
       properties:
@@ -9043,6 +9070,28 @@ components:
           nullable: true
           description: 最後登入時間
           example: '2024-01-20T08:30:00.000Z'
+        personaType:
+          type: string
+          nullable: true
+          enum:
+            - L
+            - C
+            - A
+            - D
+            - O
+            - null
+          description: 最新一次學習風格測驗結果
+          example: D
+        badgeGranted:
+          type: boolean
+          nullable: true
+          description: 是否完成 Onboarding Badge
+          example: true
+        userSource:
+          type: string
+          nullable: true
+          description: 用戶來源（S1/S2/S3）
+          example: S1
       required:
         - id
         - internalId
@@ -9056,6 +9105,9 @@ components:
         - permissions
         - createdAt
         - lastLoginAt
+        - personaType
+        - badgeGranted
+        - userSource
     AdminUserDetailData:
       type: object
       properties:
@@ -10675,20 +10727,6 @@ components:
         - resonanceCount
         - createdAt
         - updatedAt
-    PersonaResonanceData:
-      type: object
-      properties:
-        answerId:
-          type: number
-          description: 答案 ID
-          example: 1
-        resonanceCount:
-          type: number
-          description: 最新共鳴總數
-          example: 5
-      required:
-        - answerId
-        - resonanceCount
     PersonaCarouselState:
       type: object
       properties:
@@ -13199,97 +13237,6 @@ components:
           example: 1
       required:
         - questionId
-    PersonaResonanceApiResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          enum:
-            - true
-          description: Indicates successful API response
-        data:
-          allOf:
-            - $ref: '#/components/schemas/PersonaResonanceData'
-            - description: The main response data
-        timestamp:
-          type: string
-          format: date-time
-          description: ISO 8601 timestamp of the response
-        meta:
-          type: object
-          properties:
-            searchQuery:
-              type: string
-              description: Search query used for filtering results
-            searchTime:
-              type: number
-              minimum: 0
-              description: Time taken to execute the search query in milliseconds
-            filters:
-              type: object
-              additionalProperties:
-                nullable: true
-              description: Applied filters for the request
-            categoryCounts:
-              type: object
-              additionalProperties:
-                type: integer
-                minimum: 0
-              description: Count of items per category
-            aggregateData:
-              type: object
-              additionalProperties:
-                nullable: true
-              description: Aggregated statistical data
-            requestId:
-              type: string
-              description: Unique identifier for request tracking
-            cacheHit:
-              type: boolean
-              description: Whether the response was served from cache
-            processingTime:
-              type: number
-              minimum: 0
-              description: Total processing time in milliseconds
-          additionalProperties:
-            nullable: true
-          description: Optional metadata about the response
-          examples: *ref_0
-      required:
-        - success
-        - data
-        - timestamp
-      description: Standard success response format
-      examples:
-        - success: true
-          data:
-            id: 123
-            _id: 550e8400-e29b-41d4-a716-446655440000
-            name: JavaScript 基礎教程
-            description: 從零開始學習 JavaScript 程式設計
-            status: published
-          timestamp: '2024-01-15T10:30:00.000Z'
-        - success: true
-          data:
-            userId: 456
-            username: john_doe
-            email: john@example.com
-            role: student
-          timestamp: '2024-01-15T10:30:00.000Z'
-          meta:
-            cacheHit: true
-            processingTime: 23.1
-    AddPersonaResonanceBody:
-      type: object
-      properties:
-        answerId:
-          type: integer
-          minimum: 0
-          exclusiveMinimum: true
-          description: 答案 ID
-          example: 1
-      required:
-        - answerId
     PersonaProfileMeApiResponse:
       type: object
       properties:
@@ -13528,6 +13475,202 @@ components:
       required:
         - questions
       description: The main response data
+    QuestionAnswersApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          $ref: '#/components/schemas/QuestionAnswersData'
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    QuestionAnswersData:
+      type: object
+      properties:
+        question:
+          $ref: '#/components/schemas/QuestionAnswersSummary'
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnswerItem'
+        hasMore:
+          type: boolean
+          description: 是否還有更多資料
+        nextCursor:
+          type: number
+          nullable: true
+          description: 下一頁游標（最後一筆答案 ID），無更多資料時為 null
+        viewerIsLocked:
+          type: boolean
+          description: 登入者是否因答題數不足而被鎖定
+        answersNeeded:
+          type: number
+          description: 解鎖所需的額外答題數
+      required:
+        - question
+        - answers
+        - hasMore
+        - nextCursor
+      description: The main response data
+    QuestionAnswersSummary:
+      type: object
+      properties:
+        id:
+          type: number
+        prompt:
+          type: string
+        questionType:
+          type: string
+          enum:
+            - choice
+            - sentence_completion
+            - scenario
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+        totalAnswerCount:
+          type: number
+          description: 此題目的總回應數
+      required:
+        - id
+        - prompt
+        - questionType
+        - options
+        - totalAnswerCount
+    QuestionAnswerItem:
+      type: object
+      properties:
+        answerId:
+          type: number
+          description: 答案 ID
+          example: 123
+        userId:
+          type: string
+          nullable: true
+          description: 使用者 external_id（UUID），不公開時為 null
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          nullable: true
+          description: 使用者暱稱，不公開時為 null
+          example: 小明
+        photoURL:
+          type: string
+          nullable: true
+          description: 頭像 URL，不公開時為 null
+        selectedValue:
+          type: string
+          nullable: true
+          description: 選擇題答案
+        textAnswer:
+          type: string
+          nullable: true
+          description: 文字題答案
+        resonanceCount:
+          type: number
+          description: 獲得的共鳴數
+          example: 3
+        currentUserReaction:
+          type: string
+          nullable: true
+          description: 目前登入者對此答案的反應類型
+          example: encourage
+        isPublic:
+          type: boolean
+          description: 作答者是否公開個人資料
+        isConnection:
+          type: boolean
+          description: 作答者是否為目前登入者的連結好友
+        answeredAt:
+          type: string
+          description: 作答時間（ISO 8601）
+        isSelf:
+          type: boolean
+          description: 是否為目前登入者自己的答案
+      required:
+        - answerId
+        - userId
+        - name
+        - photoURL
+        - selectedValue
+        - textAnswer
+        - resonanceCount
+        - currentUserReaction
+        - isPublic
+        - isConnection
+        - answeredAt
+        - isSelf
     PersonaCarouselStateApiResponse:
       type: object
       properties:
@@ -27319,6 +27462,7 @@ paths:
               - practice
               - comment
               - checkin
+              - persona_answer
             description: 反應目標類型
             example: practice
           required: true
@@ -27418,6 +27562,7 @@ paths:
               - practice
               - comment
               - checkin
+              - persona_answer
             description: 反應目標類型
             example: practice
           required: true
@@ -27535,6 +27680,7 @@ paths:
               - practice
               - comment
               - checkin
+              - persona_answer
             description: 反應目標類型
             example: practice
           required: true
@@ -36130,6 +36276,43 @@ paths:
           description: 排序方向
           name: sortOrder
           in: query
+        - schema:
+            type: string
+            enum:
+              - L
+              - C
+              - A
+              - D
+              - O
+            description: 篩選學習風格人物誌（最新一次測驗結果）
+            example: D
+          required: false
+          description: 篩選學習風格人物誌（最新一次測驗結果）
+          name: personaType
+          in: query
+        - schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+            description: 篩選 Onboarding Badge 完成狀態
+            example: 'true'
+          required: false
+          description: 篩選 Onboarding Badge 完成狀態
+          name: badgeGranted
+          in: query
+        - schema:
+            type: string
+            enum:
+              - S1
+              - S2
+              - S3
+            description: 篩選用戶來源
+            example: S1
+          required: false
+          description: 篩選用戶來源
+          name: userSource
+          in: query
       responses:
         '200':
           description: 成功取得使用者列表
@@ -37370,10 +37553,8 @@ paths:
     get:
       tags:
         - Persona
-      summary: 取得人物誌問題列表（含當前使用者答題狀態）
-      description: 回傳所有學習人物誌問題，每題附帶當前登入使用者的答題狀態（已作答、跳過次數、是否已壓制）。需要登入。
-      security:
-        - bearerAuth: []
+      summary: 取得人物誌問題列表（可選登入）
+      description: 回傳所有學習人物誌問題。已登入時，每題附帶當前使用者的答題狀態（已作答、跳過次數、是否已壓制）；未登入時一律回傳未作答狀態。
       parameters:
         - schema:
             type: string
@@ -37432,54 +37613,6 @@ paths:
       responses:
         '200':
           description: 成功，回傳最新 skipCount 與 suppressed 狀態
-  /api/v1/persona/resonances:
-    post:
-      tags:
-        - Persona
-      summary: 對人物誌答案表達共鳴
-      description: 對他人的答案表達共鳴（類似按讚）。每位使用者對同一答案只能共鳴一次，重複操作回傳 409。
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddPersonaResonanceBody'
-      responses:
-        '201':
-          description: 共鳴成功，回傳最新共鳴總數
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PersonaResonanceApiResponse'
-        '409':
-          description: 已對此答案表達過共鳴
-  /api/v1/persona/resonances/{answerId}:
-    delete:
-      tags:
-        - Persona
-      summary: 取消對人物誌答案的共鳴
-      description: 移除當前使用者對指定答案的共鳴記錄，並回傳更新後的共鳴總數。
-      security:
-        - bearerAuth: []
-      parameters:
-        - schema:
-            type: integer
-            minimum: 0
-            exclusiveMinimum: true
-            description: 答案 ID
-            example: 1
-          required: true
-          description: 答案 ID
-          name: answerId
-          in: path
-      responses:
-        '200':
-          description: 取消成功，回傳最新共鳴總數
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PersonaResonanceApiResponse'
   /api/v1/persona/profile/me:
     get:
       tags:
@@ -37549,6 +37682,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonaProfileUserApiResponse'
+  /api/v1/persona/questions/{questionId}/answers:
+    get:
+      tags:
+        - Persona
+      summary: 取得單一題目的所有用戶回應
+      description: 回傳指定題目的所有用戶答案，支援 cursor 分頁。可選登入：登入者會附帶自己對各答案的反應、連結狀態、護照鎖定判斷；不公開個人資料的用戶，userId / name / photoURL 將遮罩為 null。
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 問題 ID
+            example: 1
+          required: true
+          description: 問題 ID
+          name: questionId
+          in: path
+        - schema:
+            type: string
+            enum:
+              - zh-TW
+              - en
+            default: zh-TW
+            description: 語系代碼（預設 zh-TW）
+            example: zh-TW
+          required: false
+          description: 語系代碼（預設 zh-TW）
+          name: locale
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+            description: 每頁項目數（1–50，預設 20）
+            example: 20
+          required: false
+          description: 每頁項目數（1–50，預設 20）
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 游標（上一頁最後一筆答案的 ID）
+            example: 100
+          required: false
+          description: 游標（上一頁最後一筆答案的 ID）
+          name: cursor
+          in: query
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionAnswersApiResponse'
   /api/v1/persona/carousel-state:
     get:
       tags:

@@ -14,6 +14,7 @@ import {
   updateTemplateSchema,
   ruleIdParamSchema,
   templateIdParamSchema,
+  getTemplateSchema,
 } from '../validators/admin-email-trigger.validator';
 
 // ============================================================================
@@ -63,6 +64,20 @@ const deleteRule = asyncHandler(async (req: Request, res: Response) => {
 // ============================================================================
 // Email Templates
 // ============================================================================
+
+/**
+ * 取得單一信件模板
+ * GET /admin/email-templates/:id
+ */
+const getTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = getTemplateSchema.parse(req.params);
+  const template = await adminEmailTriggerService.getTemplate(id);
+  if (!template) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Template not found' } });
+    return;
+  }
+  res.json(createSuccessResponse(template));
+});
 
 /**
  * 列出所有信件模板
@@ -134,6 +149,7 @@ export default {
   updateRule,
   deleteRule,
   listTemplates,
+  getTemplate,
   createTemplate,
   updateTemplate,
   deleteTemplate,

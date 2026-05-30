@@ -584,7 +584,7 @@ export const retryFailedEmailsHandler = asyncHandler(async (req: Request, res: R
  */
 export const retrySingleEmailHandler = asyncHandler(async (req: Request, res: Response) => {
   const logId = parseInt(req.params.logId, 10);
-  if (isNaN(logId)) {
+  if (isNaN(logId) || logId <= 0) {
     throw new BadRequestError('logId 必須為正整數');
   }
 

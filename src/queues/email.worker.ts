@@ -57,14 +57,8 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   });
 
   if (!result.success) {
-    // 更新 log 狀態為 failed（最終失敗由 worker failed event 處理）
-    if (emailLogId) {
-      try {
-        await updateEmailLogStatus(emailLogId, 'failed');
-      } catch {
-        // log 更新失敗不影響重試
-      }
-    }
+    // 不在此更新 DB 為 failed — BullMQ 會自動重試，
+    // 最終失敗由 worker.on('failed') 在 isLastAttempt 時處理
     throw new Error(result.error || '郵件發送失敗');
   }
 
@@ -120,6 +114,9 @@ export function createEmailWorker(
         attempts: job?.attemptsMade,
         error: error.message,
       });
+      if (job?.data.emailLogId) {
+        updateEmailLogStatus(job.data.emailLogId, 'failed').catch(() => {});
+      }
     } else {
       loggerService.warn('Email worker job failed, will retry', {
         jobId: job?.id,

@@ -12,6 +12,8 @@ export interface EmailHistoryRecord {
   userId: number;
   /** 收件人 email（從用戶資料取得） */
   recipientEmail: string | null;
+  /** 收件人名稱（用戶暱稱） */
+  recipientName: string | null;
   /** 郵件類型 */
   emailType: string;
   /** 郵件主題 */

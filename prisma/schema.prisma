@@ -427,6 +427,7 @@ model practices {
   insight                  String?
   source_practice_id       Int?
   copy_count               Int                       @default(0)
+  creation_source          String?                   @db.VarChar(20)
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
@@ -871,7 +872,6 @@ model users {
   roles                                           roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   persona_answers                                 persona_answers[]
   persona_skips                                   persona_skips[]
-  persona_resonances                              persona_resonances[]
   persona_user_state                              persona_user_state?
   wishes                                          wishes[]
   roadmap_item_supports                           roadmap_item_supports[]
@@ -1074,6 +1074,24 @@ model email_logs {
   @@index([entity_type, entity_id], map: "idx_email_logs_entity")
   @@index([sent_at], map: "idx_email_logs_sent_at")
   @@index([status, retry_count], map: "idx_email_logs_retry")
+}
+
+/// 信件模板：可在後台編輯的 HTML 郵件模板
+model email_templates {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(200)
+  slug        String?   @unique @db.VarChar(100)
+  subject     String    @db.VarChar(500)
+  preheader   String?   @db.VarChar(300)
+  body        String
+  variables   String[]  @default([])
+  data_source String    @default("none") @db.VarChar(20)
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @updatedAt @db.Timestamptz(6)
+
+  @@index([slug], map: "idx_email_templates_slug")
+  @@index([is_active], map: "idx_email_templates_active")
 }
 
 /// 觸發式郵件規則：定義自動發信的條件、模板與排程
@@ -1378,19 +1396,22 @@ model interaction_counts {
 model user_onboarding {
   id               Int       @id @default(autoincrement())
   user_id          Int       @unique(map: "idx_user_onboarding_user_id")
-  user_source      String    @db.VarChar(10)
-  task_states      Json      @default("{}")
-  email_states     Json      @default("{}")
-  creation_method  String?   @db.VarChar(20)
-  badge_granted    Boolean   @default(false)
-  badge_granted_at DateTime? @db.Timestamptz(6)
-  completed_at     DateTime? @db.Timestamptz(6)
-  days_to_complete Int?
-  created_at       DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
-  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_source       String    @db.VarChar(10)
+  task_states       Json      @default("{}")
+  task_completed_at Json      @default("{}")
+  email_states      Json      @default("{}")
+  creation_method   String?   @db.VarChar(20)
+  registration_flow String?   @db.VarChar(30)
+  badge_granted     Boolean   @default(false)
+  badge_granted_at  DateTime? @db.Timestamptz(6)
+  completed_at      DateTime? @db.Timestamptz(6)
+  days_to_complete  Int?
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([badge_granted], map: "idx_user_onboarding_badge_granted")
+  @@index([registration_flow], map: "idx_user_onboarding_registration_flow")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -1659,7 +1680,6 @@ model persona_answers {
 
   users             users             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
-  persona_resonances persona_resonances[]
 
   @@unique([user_id, question_id], map: "uq_persona_answers_user_question")
   @@index([user_id], map: "idx_persona_answers_user_id")
@@ -1679,19 +1699,6 @@ model persona_skips {
 
   @@unique([user_id, question_id], map: "uq_persona_skips_user_question")
   @@index([user_id], map: "idx_persona_skips_user_id")
-}
-
-model persona_resonances {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  answer_id  Int
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  persona_answers persona_answers @relation(fields: [answer_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, answer_id], map: "uq_persona_resonances_user_answer")
-  @@index([answer_id], map: "idx_persona_resonances_answer_id")
 }
 
 model persona_user_state {

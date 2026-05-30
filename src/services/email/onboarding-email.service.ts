@@ -3,11 +3,18 @@
  *
  * 實作 L0 歡迎信與 A–E 任務觸發信。
  * L0 重用 generateWelcomeEmail 結構，依 userSource 切換 CTA。
- * A–E 使用 placeholder copy，待文案確認後替換。
+ * A–E 使用 onboarding-template.ts 的正式文案。
  */
 
 import { getEmailConfig } from '../../config/email.config';
 import { generateWelcomeEmail } from './welcome-template';
+import {
+  generateOnboardingAEmail,
+  generateOnboardingBEmail,
+  generateOnboardingCEmail,
+  generateOnboardingDEmail,
+  generateOnboardingEEmail,
+} from './onboarding-template';
 import { emailService } from './email.service';
 import { loggerService } from '../logging/logger.service';
 import { prisma } from '../database/prisma.service';
@@ -58,13 +65,12 @@ export async function sendOnboardingL0Email(userId: number, userSource: UserSour
   loggerService.info('Onboarding L0 email sent', { userId, userSource });
 }
 
-// ── A–E 任務觸發信（placeholder）────────────────────────────────────────────
+// ── A–E 任務觸發信 ───────────────────────────────────────────────────────────
 
-async function sendPlaceholderOnboardingEmail(
+async function sendOnboardingEmail(
   userId: number,
   emailType: Exclude<OnboardingEmailType, 'L0'>,
-  subject: string,
-  body: string
+  generator: (data: { name: string }) => { subject: string; html: string }
 ): Promise<void> {
   const user = await prisma.users.findUnique({
     where: { id: userId },
@@ -76,13 +82,13 @@ async function sendPlaceholderOnboardingEmail(
     return;
   }
 
-  const config = getEmailConfig();
-  const html = `<p>Hi ${user.nickname ?? 'User'},</p><p>${body}</p><p><a href="${config.urls.frontend}">前往島島阿學</a></p>`;
+  const name = user.nickname ?? 'User';
+  const template = generator({ name });
 
   const result = await emailService.sendEmail({
     to: user.contacts.email,
-    subject,
-    html,
+    subject: template.subject,
+    html: template.html,
   });
   if (!result.success) throw new Error(`Failed to send onboarding ${emailType} email: ${result.error}`);
 
@@ -98,15 +104,15 @@ export async function sendOnboardingTaskEmail(
     case 'L0':
       return sendOnboardingL0Email(userId, userSource);
     case 'A':
-      return sendPlaceholderOnboardingEmail(userId, 'A', '【島島阿學】你的測驗結果來了！', '感謝你完成了學習風格測驗，快來看看你的結果吧！');
+      return sendOnboardingEmail(userId, 'A', generateOnboardingAEmail);
     case 'B':
-      return sendPlaceholderOnboardingEmail(userId, 'B', '【島島阿學】帳號設定完成，下一步？', '你的帳號設定已完成，接下來試試建立第一個實踐吧！');
+      return sendOnboardingEmail(userId, 'B', generateOnboardingBEmail);
     case 'C':
-      return sendPlaceholderOnboardingEmail(userId, 'C', '【島島阿學】你的實踐已建立！', '太棒了！你已建立第一個實踐，記得每天打卡讓自己更進步！');
+      return sendOnboardingEmail(userId, 'C', generateOnboardingCEmail);
     case 'D':
-      return sendPlaceholderOnboardingEmail(userId, 'D', '【島島阿學】第一次打卡成功！', '恭喜你完成第一次打卡！繼續保持，習慣就是這樣養成的！');
+      return sendOnboardingEmail(userId, 'D', generateOnboardingDEmail);
     case 'E':
-      return sendPlaceholderOnboardingEmail(userId, 'E', '【島島阿學】你留下了第一則留言！', '謝謝你在島島阿學留下你的想法，社群因你而更豐富！');
+      return sendOnboardingEmail(userId, 'E', generateOnboardingEEmail);
     default:
       loggerService.warn('Unknown onboarding email type', { emailType });
   }

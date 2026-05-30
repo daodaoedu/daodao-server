@@ -22,7 +22,7 @@ import { prisma } from '../services/database/prisma.service';
 import { UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
 
 async function resolveTargetId(targetType: string, targetId: string): Promise<number> {
-  if (targetType === 'comment' || targetType === 'checkin') {
+  if (targetType === 'comment' || targetType === 'checkin' || targetType === 'persona_answer') {
     const id = parseInt(targetId, 10);
     if (isNaN(id)) throw new BadRequestError(`Invalid ${targetType} ID`);
     return id;
@@ -117,8 +117,8 @@ async function batchResolveTargetIds(
 ): Promise<Map<number, string>> {
   const externalIdMap = new Map<number, string>();
 
-  if (targetType === 'comment' || targetType === 'checkin') {
-    // comment/checkin 的 ID 是整數字串，直接轉換
+  if (targetType === 'comment' || targetType === 'checkin' || targetType === 'persona_answer') {
+    // comment/checkin/persona_answer 的 ID 是整數字串，直接轉換
     for (const idStr of targetIds) {
       const id = parseInt(idStr, 10);
       if (!isNaN(id)) {

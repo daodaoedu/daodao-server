@@ -365,7 +365,7 @@ export const generateCtaButton = (options: CtaButtonOptions): string => {
 export const generateDivider = (): string => `
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
   <tr>
-    <td style="padding-bottom: 24px;">
+    <td style="padding: 24px 0;">
       <hr style="border: none; border-top: 1px solid ${EMAIL_COLORS.divider}; margin: 0;">
     </td>
   </tr>
@@ -409,5 +409,5 @@ ${generateEmailWrapper({
   `,
   })}`;
 
-  return { subject, html };
+  return { subject, html, content: options.content, preheader: options.preheader };
 };

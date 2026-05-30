@@ -210,3 +210,63 @@ export interface UserActivitySegmentation {
   totalUsers: number;
   lastUpdated: string;
 }
+
+/**
+ * DAU/WAU/MAU 每日趨勢資料點
+ */
+export interface ActiveUsersTrendPoint {
+  date: string;
+  dau: number;
+  wau: number;
+  mau: number;
+}
+
+/**
+ * DAU/WAU/MAU 趨勢（含摘要）
+ */
+export interface ActiveUsersTrend {
+  data: ActiveUsersTrendPoint[];
+  summary: {
+    currentDau: number;
+    currentWau: number;
+    currentMau: number;
+    dauChangePercent: number;
+    wauChangePercent: number;
+    mauChangePercent: number;
+  };
+}
+
+/**
+ * 轉換漏斗步驟
+ */
+export interface FunnelStep {
+  label: string;
+  value: number;
+}
+
+/**
+ * 轉換漏斗
+ */
+export interface ActiveUsersFunnel {
+  steps: FunnelStep[];
+}
+
+/**
+ * Cohort 留存率單列（以月份為單位）
+ */
+export interface CohortRetentionRow {
+  label: string;
+  day1: number;
+  day7: number;
+  day14: number;
+  day30: number;
+  day60: number;
+  day90: number;
+}
+
+/**
+ * Cohort 留存率
+ */
+export interface CohortRetention {
+  rows: CohortRetentionRow[];
+}

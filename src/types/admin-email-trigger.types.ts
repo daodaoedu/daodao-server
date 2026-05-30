@@ -8,22 +8,26 @@ export interface EmailTriggerRule {
   id: number;
   /** 規則名稱 */
   name: string;
-  /** 條件類型 */
-  conditionType: 'dormant_days' | 'no_action_days' | 'tag_change';
-  /** 條件值 */
-  conditionValue: string;
-  /** 關聯信件模板 ID */
-  templateId: number;
+  /** 規則描述 */
+  description: string | null;
+  /** 觸發類型 */
+  triggerType: string;
+  /** 觸發條件設定（JSON） */
+  triggerConfig: Record<string, unknown>;
+  /** 對應信件模板（slug） */
+  template: string;
+  /** 信件主旨 */
+  subject: string;
   /** 是否啟用 */
-  isEnabled: boolean;
+  enabled: boolean;
   /** 已寄送總數 */
-  totalSent: number;
+  sentCount: number;
   /** 開信率 */
   openRate: number;
-  /** 點擊率 */
-  clickRate: number;
   /** 建立時間 */
   createdAt: string;
+  /** 更新時間 */
+  updatedAt: string;
 }
 
 /** 信件模板 */
@@ -32,14 +36,24 @@ export interface EmailTemplate {
   id: number;
   /** 模板名稱 */
   name: string;
+  /** 模板 slug（唯一識別碼） */
+  slug: string | null;
   /** 信件主旨 */
   subject: string;
+  /** 預覽文字 */
+  preheader: string | null;
   /** 信件內容 */
   body: string;
   /** 可用變數 */
   variables: string[];
+  /** 資料來源 */
+  dataSource: 'user' | 'practice' | 'event' | 'none';
+  /** 是否啟用 */
+  isActive: boolean;
   /** 建立時間 */
   createdAt: string;
+  /** 更新時間 */
+  updatedAt: string;
 }
 
 /** 信件執行紀錄 */
@@ -50,31 +64,33 @@ export interface EmailExecutionLog {
   ruleId: number;
   /** 規則名稱 */
   ruleName: string;
-  /** 收件人 Email */
-  recipientEmail: string;
+  /** 收件人 */
+  recipient: string;
   /** 寄送時間 */
   sentAt: string;
   /** 寄送狀態 */
-  status: 'sent' | 'failed';
-  /** 開信時間 */
-  openedAt: string | null;
-  /** 點擊時間 */
-  clickedAt: string | null;
+  status: 'success' | 'failed';
 }
 
 /** 建立觸發規則輸入 */
 export interface CreateTriggerRuleInput {
   name: string;
-  conditionType: 'dormant_days' | 'no_action_days' | 'tag_change';
-  conditionValue: string;
-  templateId: number;
-  isEnabled?: boolean;
+  description?: string;
+  triggerType: string;
+  triggerConfig?: Record<string, unknown>;
+  template: string;
+  subject?: string;
+  enabled?: boolean;
 }
 
 /** 建立信件模板輸入 */
 export interface CreateTemplateInput {
   name: string;
   subject: string;
+  preheader?: string;
   body: string;
   variables?: string[];
+  dataSource?: 'user' | 'practice' | 'event' | 'none';
+  isActive?: boolean;
+  slug?: string;
 }

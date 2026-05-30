@@ -269,6 +269,17 @@ export interface UserActivityStats {
   loginCount: number;
   profileViews: number;
   recentLoginCount: number;
+  totalPractices: number;
+  totalCheckins: number;
+  totalPosts: number;
+  totalReactions: number;
+}
+
+export interface ActivityTimelineEvent {
+  id: string;
+  type: 'login' | 'checkin' | 'post';
+  description: string;
+  timestamp: string;
 }
 
 // 裝置資訊介面
