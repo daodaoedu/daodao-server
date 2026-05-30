@@ -38,7 +38,7 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
 
   try {
     // 驗證 token
-    const secret = process.env.JWT_SECRET || process.env.JWT_SECURITY;
+    const secret = process.env.JWT_SECRET;
     if (!secret) {
       throw new Error('JWT secret not configured');
     }
@@ -94,7 +94,7 @@ export const optionalAuth: RequestHandler = (req: Request, res: Response, next: 
 
   try {
     // 有 token 則驗證
-    const secret = process.env.JWT_SECRET || process.env.JWT_SECURITY;
+    const secret = process.env.JWT_SECRET;
     if (!secret) {
       next();
       return;
@@ -173,7 +173,7 @@ export const authenticateWithOptions = (options: AuthMiddlewareOptions = {}): Re
     }
 
     try {
-      const secret = process.env.JWT_SECRET || process.env.JWT_SECURITY;
+      const secret = process.env.JWT_SECRET;
       if (!secret) {
         throw new Error('JWT secret not configured');
       }
