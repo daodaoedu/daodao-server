@@ -103,6 +103,7 @@ export function createEmailWorker(
 
   worker.on('failed', (job, error) => {
     const isLastAttempt = job && job.attemptsMade >= (job.opts.attempts ?? 5);
+    const errorMessage = error?.message ?? String(error);
 
     if (isLastAttempt) {
       loggerService.error('[DEAD LETTER] 郵件在所有重試後仍然失敗', {
@@ -112,7 +113,7 @@ export function createEmailWorker(
         emailType: job?.data.emailType,
         userId: job?.data.userId,
         attempts: job?.attemptsMade,
-        error: error.message,
+        error: errorMessage,
       });
       if (job?.data.emailLogId) {
         updateEmailLogStatus(job.data.emailLogId, 'failed').catch(() => {});
@@ -121,7 +122,7 @@ export function createEmailWorker(
       loggerService.warn('Email worker job failed, will retry', {
         jobId: job?.id,
         attempt: job?.attemptsMade,
-        error: error.message,
+        error: errorMessage,
       });
     }
   });

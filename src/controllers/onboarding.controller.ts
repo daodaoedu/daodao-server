@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { asyncHandler, NotFoundError } from '@/middleware/error.middleware';
+import { asyncHandler, BadRequestError, NotFoundError } from '@/middleware/error.middleware';
 import { onboardingService } from '@/services/onboarding.service';
 import * as onboardingFlowService from '@/services/onboarding-flow.service';
 import { createSuccessResponse } from '@/utils/response-helper';
@@ -36,6 +36,10 @@ export const submitFlowResponse = asyncHandler(async (req: Request, res: Respons
   if (!userId) throw new Error('User ID not found in request');
 
   const flowId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(flowId) || flowId <= 0) {
+    throw new BadRequestError('Invalid flow ID');
+  }
+
   const { stepId, answer } = req.body as { stepId: number; answer: string[] };
 
   if (!stepId || !Array.isArray(answer)) {
