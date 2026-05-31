@@ -23,6 +23,8 @@ import adminLearningController from '@/controllers/admin-learning.controller';
 import adminGamificationController from '@/controllers/admin-gamification.controller';
 import adminCommunityController from '@/controllers/admin-community.controller';
 import adminEventsController from '@/controllers/admin-events.controller';
+import adminTrackingController from '@/controllers/admin-tracking.controller';
+import { adminSurveyController } from '@/controllers/admin-survey.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '@/middleware/permission.middleware';
@@ -1004,6 +1006,28 @@ router.get('/users/:userId/activity-stats',
 );
 
 /**
+ * GET /admin/users/:userId/practices
+ * 取得使用者實踐列表
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/users/:userId/practices',
+  authenticateAny,
+  requireAdmin,
+  adminUserController.getUserPracticesList as RequestHandler
+);
+
+/**
+ * GET /admin/users/:userId/activity-timeline
+ * 取得使用者活動時間軸
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/users/:userId/activity-timeline',
+  authenticateAny,
+  requireAdmin,
+  adminUserController.getActivityTimeline as RequestHandler
+);
+
+/**
  * PUT /admin/users/:userId/status
  * 更新使用者狀態（啟用/停用）
  * 需要：SuperAdmin
@@ -1265,6 +1289,7 @@ router.delete('/email-triggers/:id', authenticateAny, requireAdmin, adminEmailTr
 router.get('/email-triggers/:id/log', authenticateAny, requireAdmin, adminEmailTriggerController.getExecutionLog as RequestHandler);
 router.get('/email-triggers/:id/stats', authenticateAny, requireAdmin, adminEmailTriggerController.getRuleStats as RequestHandler);
 router.get('/email-templates', authenticateAny, requireAdmin, adminEmailTriggerController.listTemplates as RequestHandler);
+router.get('/email-templates/:id', authenticateAny, requireAdmin, adminEmailTriggerController.getTemplate as RequestHandler);
 router.post('/email-templates', authenticateAny, requireAdmin, adminEmailTriggerController.createTemplate as RequestHandler);
 router.put('/email-templates/:id', authenticateAny, requireAdmin, adminEmailTriggerController.updateTemplate as RequestHandler);
 router.delete('/email-templates/:id', authenticateAny, requireAdmin, adminEmailTriggerController.deleteTemplate as RequestHandler);
@@ -1404,5 +1429,27 @@ router.get('/events/:id/recordings', authenticateAny, requireAdmin, adminEventsC
 router.post('/events/:id/recordings', authenticateAny, requireAdmin, adminEventsController.uploadRecording as RequestHandler);
 router.delete('/events/recordings/:id', authenticateAny, requireAdmin, adminEventsController.deleteRecording as RequestHandler);
 router.post('/events/:id/remind', authenticateAny, requireAdmin, adminEventsController.sendReminder as RequestHandler);
+
+
+// ===== 問卷管理路由 =====
+
+router.get('/surveys', authenticateAny, requireAdmin, adminSurveyController.listSurveys as RequestHandler);
+router.post('/surveys', authenticateAny, requireAdmin, adminSurveyController.createSurvey as RequestHandler);
+router.get('/surveys/:id', authenticateAny, requireAdmin, adminSurveyController.getSurvey as RequestHandler);
+router.patch('/surveys/:id/status', authenticateAny, requireAdmin, adminSurveyController.updateStatus as RequestHandler);
+router.put('/surveys/:id', authenticateAny, requireAdmin, adminSurveyController.updateSurvey as RequestHandler);
+router.delete('/surveys/:id', authenticateAny, requireAdmin, adminSurveyController.deleteSurvey as RequestHandler);
+router.get('/surveys/:id/responses', authenticateAny, requireAdmin, adminSurveyController.listResponses as RequestHandler);
+router.get('/surveys/:id/responses/:responseId', authenticateAny, requireAdmin, adminSurveyController.getResponse as RequestHandler);
+router.delete('/surveys/:id/responses/:responseId', authenticateAny, requireAdmin, adminSurveyController.deleteResponse as RequestHandler);
+router.get('/surveys/:id/analytics', authenticateAny, requireAdmin, adminSurveyController.getAnalytics as RequestHandler);
+
+// ─── Tracking & Analytics ─────────────────────────────────────────────────────
+router.get('/onboarding/stats', authenticateAny, requireAdmin, adminTrackingController.getOnboardingStats as RequestHandler);
+router.get('/users/:userId/onboarding', authenticateAny, requireAdmin, adminTrackingController.getUserOnboardingDetail as RequestHandler);
+router.get('/quiz/stats', authenticateAny, requireAdmin, adminTrackingController.getQuizStats as RequestHandler);
+router.get('/persona/stats', authenticateAny, requireAdmin, adminTrackingController.getPersonaStats as RequestHandler);
+router.get('/email/onboarding-stats', authenticateAny, requireAdmin, adminTrackingController.getEmailOnboardingStats as RequestHandler);
+router.get('/engagement/stats', authenticateAny, requireAdmin, adminTrackingController.getEngagementStats as RequestHandler);
 
 export default router;

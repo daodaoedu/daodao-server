@@ -14,10 +14,12 @@ import { z } from 'zod';
  */
 export const createTriggerRuleSchema = z.object({
   name: z.string().min(1).max(200),
-  conditionType: z.enum(['dormant_days', 'no_action_days', 'tag_change']),
-  conditionValue: z.string().min(1),
-  templateId: z.coerce.number().int().positive(),
-  isEnabled: z.boolean().optional().default(true),
+  description: z.string().max(500).optional(),
+  triggerType: z.string().min(1),
+  triggerConfig: z.record(z.string(), z.unknown()).optional().default({}),
+  template: z.string().min(1),
+  subject: z.string().min(1).max(500).optional().default(''),
+  enabled: z.boolean().optional().default(true),
 });
 
 /**
@@ -25,10 +27,12 @@ export const createTriggerRuleSchema = z.object({
  */
 export const updateTriggerRuleSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  conditionType: z.enum(['dormant_days', 'no_action_days', 'tag_change']).optional(),
-  conditionValue: z.string().min(1).optional(),
-  templateId: z.coerce.number().int().positive().optional(),
-  isEnabled: z.boolean().optional(),
+  description: z.string().max(500).optional(),
+  triggerType: z.string().min(1).optional(),
+  triggerConfig: z.record(z.string(), z.unknown()).optional(),
+  template: z.string().min(1).optional(),
+  subject: z.string().min(1).max(500).optional(),
+  enabled: z.boolean().optional(),
 });
 
 /**
@@ -37,8 +41,12 @@ export const updateTriggerRuleSchema = z.object({
 export const createTemplateSchema = z.object({
   name: z.string().min(1).max(200),
   subject: z.string().min(1).max(500),
+  preheader: z.string().max(300).optional(),
   body: z.string().min(1),
   variables: z.array(z.string()).optional().default([]),
+  dataSource: z.enum(['user', 'practice', 'event', 'none']).optional().default('none'),
+  isActive: z.boolean().optional().default(true),
+  slug: z.string().max(100).optional(),
 });
 
 /**
@@ -47,8 +55,19 @@ export const createTemplateSchema = z.object({
 export const updateTemplateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   subject: z.string().min(1).max(500).optional(),
+  preheader: z.string().max(300).optional(),
   body: z.string().min(1).optional(),
   variables: z.array(z.string()).optional(),
+  dataSource: z.enum(['user', 'practice', 'event', 'none']).optional(),
+  isActive: z.boolean().optional(),
+  slug: z.string().max(100).optional(),
+});
+
+/**
+ * 取得信件模板 schema（ID 參數）
+ */
+export const getTemplateSchema = z.object({
+  id: z.coerce.number().int().positive(),
 });
 
 // ============================================================================

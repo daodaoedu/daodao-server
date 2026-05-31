@@ -561,6 +561,51 @@ export const checkEmailHealth = asyncHandler(async (req: Request, res: Response)
   res.status(healthStatus.status === 'healthy' ? 200 : 503).json(response);
 });
 
+/**
+ * 手動重試失敗的郵件（批次）
+ * POST /api/v1/email/retry-failed
+ */
+export const retryFailedEmailsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const limit = req.body?.limit ?? 50;
+
+  const { retryFailedEmails } = await import('../queues/email.queue');
+  const result = await retryFailedEmails({ limit });
+
+  const response = createSuccessResponse(result, {
+    message: `重試完成：${result.retried} 封重新排入佇列，${result.failed} 封失敗`,
+  });
+
+  res.json(response);
+});
+
+/**
+ * 重試單封失敗的郵件
+ * POST /api/v1/email/retry/:logId
+ */
+export const retrySingleEmailHandler = asyncHandler(async (req: Request, res: Response) => {
+  const logId = parseInt(req.params.logId, 10);
+  if (isNaN(logId) || logId <= 0) {
+    throw new BadRequestError('logId 必須為正整數');
+  }
+
+  const { retrySingleFailedEmail } = await import('../queues/email.queue');
+  const success = await retrySingleFailedEmail(logId);
+
+  if (!success) {
+    const response = createSuccessResponse({ retried: false }, {
+      message: '找不到對應的失敗郵件，可能已過期或不在失敗佇列中',
+    });
+    res.status(404).json(response);
+    return;
+  }
+
+  const response = createSuccessResponse({ retried: true }, {
+    message: '郵件已重新排入發送佇列',
+  });
+
+  res.json(response);
+});
+
 // 導出所有控制器方法
 export const emailController = {
   sendContactEmail,
@@ -573,7 +618,9 @@ export const emailController = {
   validateEmail,
   previewEmailTemplate,
   getEmailStats,
-  checkEmailHealth
+  checkEmailHealth,
+  retryFailedEmailsHandler,
+  retrySingleEmailHandler,
 };
 
 export default emailController;

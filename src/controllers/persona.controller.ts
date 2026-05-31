@@ -3,12 +3,11 @@ import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/er
 import { prisma } from '../services/database/prisma.service';
 import { personaService } from '../services/persona.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import type { SubmitAnswerBody, SubmitSkipBody, AddResonanceBody, CarouselStateQuery, ProfileUserQuery } from '../validators/persona.validators';
+import type { SubmitAnswerBody, SubmitSkipBody, CarouselStateQuery, ProfileUserQuery, QuestionAnswersParam, QuestionAnswersQuery } from '../validators/persona.validators';
 
 export const getQuestions = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user?.id) throw new UnauthorizedError('需要登入');
   const locale = (req.query.locale as string) || 'zh-TW';
-  const result = await personaService.getQuestions(req.user.id, locale);
+  const result = await personaService.getQuestions(req.user?.id ?? null, locale);
   res.json(result);
 });
 
@@ -23,20 +22,6 @@ export const submitSkip = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
   const { questionId } = req.body as SubmitSkipBody;
   const result = await personaService.submitSkip(req.user.id, questionId);
-  res.json(result);
-});
-
-export const addResonance = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user?.id) throw new UnauthorizedError('需要登入');
-  const { answerId } = req.body as AddResonanceBody;
-  const result = await personaService.addResonance(req.user.id, answerId);
-  res.status(201).json(result);
-});
-
-export const removeResonance = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user?.id) throw new UnauthorizedError('需要登入');
-  const answerId = Number(req.params.answerId);
-  const result = await personaService.removeResonance(req.user.id, answerId);
   res.json(result);
 });
 
@@ -58,6 +43,13 @@ export const getProfileMe = asyncHandler(async (req: Request, res: Response) => 
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
   const locale = (req.query.locale as string) || 'zh-TW';
   const result = await personaService.getProfileMe(req.user.id, locale);
+  res.json(result);
+});
+
+export const getQuestionAnswers = asyncHandler(async (req: Request, res: Response) => {
+  const { questionId } = req.params as unknown as QuestionAnswersParam;
+  const { locale, limit, cursor } = req.query as unknown as QuestionAnswersQuery;
+  const result = await personaService.getQuestionAnswers(questionId, req.user?.id, { locale, limit, cursor });
   res.json(result);
 });
 

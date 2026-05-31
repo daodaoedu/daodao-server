@@ -98,6 +98,7 @@ const getEmailHistory = async (filters: EmailHistoryFilters): Promise<EmailHisto
     include: {
       users: {
         select: {
+          nickname: true,
           contacts: {
             select: {
               email: true
@@ -113,6 +114,7 @@ const getEmailHistory = async (filters: EmailHistoryFilters): Promise<EmailHisto
     id: log.id,
     userId: log.user_id,
     recipientEmail: log.users?.contacts?.email ?? null,
+    recipientName: log.users?.nickname ?? null,
     emailType: log.email_type,
     subject: log.subject,
     status: (log.status as 'sent' | 'failed' | 'pending') ?? 'sent',

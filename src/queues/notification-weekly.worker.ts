@@ -222,7 +222,11 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
         const practiceProgress = practices.map((p) => ({
           title: p.title,
           checkInCount: p.practice_checkins.length,
-          isCompleted: p.status === 'completed',
+          status: p.status === 'completed'
+            ? 'completed' as const
+            : p.practice_checkins.length > 0
+            ? 'in_progress' as const
+            : 'not_started' as const,
         }));
 
         const weeklyData: WeeklyDigestData = {

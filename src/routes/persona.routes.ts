@@ -7,29 +7,28 @@ import {
   getQuestions,
   submitAnswer,
   submitSkip,
-  addResonance,
-  removeResonance,
   getCarouselState,
   dismissCarousel,
   getProfileMe,
   getProfileUser,
+  getQuestionAnswers,
 } from '../controllers/persona.controller';
 import { optionalAuth } from '../middleware/auth';
 import {
   submitAnswerBodySchema,
   submitSkipBodySchema,
-  addResonanceBodySchema,
-  resonanceAnswerIdParamSchema,
   carouselStateQuerySchema,
   profileUserParamSchema,
   profileUserQuerySchema,
   personaQuestionsApiResponseSchema,
   personaAnswerApiResponseSchema,
-  personaResonanceApiResponseSchema,
   carouselStateApiResponseSchema,
   carouselDismissApiResponseSchema,
   profileMeApiResponseSchema,
   profileUserApiResponseSchema,
+  questionAnswersParamSchema,
+  questionAnswersQuerySchema,
+  questionAnswersApiResponseSchema,
 } from '../validators/persona.validators';
 
 // ============================================================================
@@ -40,8 +39,8 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/persona/questions',
   tags: ['Persona'],
-  summary: '取得人物誌問題列表（含當前使用者答題狀態）',
-  description: '回傳所有學習人物誌問題，每題附帶當前登入使用者的答題狀態（已作答、跳過次數、是否已壓制）。需要登入。',
+  summary: '取得人物誌問題列表（可選登入）',
+  description: '回傳所有學習人物誌問題。已登入時，每題附帶當前使用者的答題狀態（已作答、跳過次數、是否已壓制）；未登入時一律回傳未作答狀態。',
   request: {
     query: z.object({ locale: z.string().optional().openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }) }),
   },
@@ -51,7 +50,6 @@ registry.registerPath({
       content: { 'application/json': { schema: personaQuestionsApiResponseSchema } },
     },
   },
-  security: [{ bearerAuth: [] }],
 });
 
 registry.registerPath({
@@ -83,39 +81,6 @@ registry.registerPath({
   request: { body: { content: { 'application/json': { schema: submitSkipBodySchema } } } },
   responses: {
     200: { description: '成功，回傳最新 skipCount 與 suppressed 狀態' },
-  },
-  security: [{ bearerAuth: [] }],
-});
-
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/persona/resonances',
-  tags: ['Persona'],
-  summary: '對人物誌答案表達共鳴',
-  description: '對他人的答案表達共鳴（類似按讚）。每位使用者對同一答案只能共鳴一次，重複操作回傳 409。',
-  request: { body: { content: { 'application/json': { schema: addResonanceBodySchema } } } },
-  responses: {
-    201: {
-      description: '共鳴成功，回傳最新共鳴總數',
-      content: { 'application/json': { schema: personaResonanceApiResponseSchema } },
-    },
-    409: { description: '已對此答案表達過共鳴' },
-  },
-  security: [{ bearerAuth: [] }],
-});
-
-registry.registerPath({
-  method: 'delete',
-  path: '/api/v1/persona/resonances/{answerId}',
-  tags: ['Persona'],
-  summary: '取消對人物誌答案的共鳴',
-  description: '移除當前使用者對指定答案的共鳴記錄，並回傳更新後的共鳴總數。',
-  request: { params: resonanceAnswerIdParamSchema },
-  responses: {
-    200: {
-      description: '取消成功，回傳最新共鳴總數',
-      content: { 'application/json': { schema: personaResonanceApiResponseSchema } },
-    },
   },
   security: [{ bearerAuth: [] }],
 });
@@ -158,6 +123,24 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/api/v1/persona/questions/{questionId}/answers',
+  tags: ['Persona'],
+  summary: '取得單一題目的所有用戶回應',
+  description: '回傳指定題目的所有用戶答案，支援 cursor 分頁。可選登入：登入者會附帶自己對各答案的反應、連結狀態、護照鎖定判斷；不公開個人資料的用戶，userId / name / photoURL 將遮罩為 null。',
+  request: {
+    params: questionAnswersParamSchema,
+    query: questionAnswersQuerySchema,
+  },
+  responses: {
+    200: {
+      description: '成功',
+      content: { 'application/json': { schema: questionAnswersApiResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: 'get',
   path: '/api/v1/persona/carousel-state',
   tags: ['Persona'],
   summary: '取得輪播狀態（是否應顯示 + 本次問題清單）',
@@ -194,7 +177,7 @@ registry.registerPath({
 const router = Router();
 
 router.get('/questions',
-  authenticate,
+  optionalAuth,
   getQuestions
 );
 
@@ -208,18 +191,6 @@ router.post('/skips',
   authenticate,
   validate(submitSkipBodySchema, 'body'),
   submitSkip
-);
-
-router.post('/resonances',
-  authenticate,
-  validate(addResonanceBodySchema, 'body'),
-  addResonance
-);
-
-router.delete('/resonances/:answerId',
-  authenticate,
-  validate(resonanceAnswerIdParamSchema, 'params'),
-  removeResonance
 );
 
 router.get('/carousel-state',
@@ -236,6 +207,13 @@ router.post('/carousel-dismiss',
 router.get('/profile/me',
   authenticate,
   getProfileMe
+);
+
+router.get('/questions/:questionId/answers',
+  optionalAuth,
+  validate(questionAnswersParamSchema, 'params'),
+  validate(questionAnswersQuerySchema, 'query'),
+  getQuestionAnswers
 );
 
 router.get('/profile/:userId',

@@ -146,6 +146,8 @@ export interface CreatePracticeRequest {
   privacyStatus?: 'private' | 'public' | 'delayed';
   /** 模版 ID（external_id），用於追蹤模版使用情況 */
   templateId?: string;
+  /** 建立來源 */
+  creationMethod?: 'self_created' | 'copied' | 'action_generator';
 }
 
 export interface UpdatePracticeRequest {

@@ -319,6 +319,62 @@ export const getUserActivitySegmentation = asyncWrapper(
   }
 );
 
+/**
+ * 獲取 DAU/WAU/MAU 每日趨勢
+ * GET /api/v1/admin/user-stats/active-users/trend
+ */
+export const getActiveUsersTrend = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const { days, startDate, endDate } = req.query as {
+      days?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+
+    const stats = await userStatsService.getActiveUsersTrend({
+      days: days ? Number(days) : undefined,
+      startDate,
+      endDate,
+    });
+
+    res.json({ success: true, data: stats, metadata: { generated_at: new Date().toISOString() } });
+  }
+);
+
+/**
+ * 獲取用戶參與漏斗
+ * GET /api/v1/admin/user-stats/funnel
+ */
+export const getActiveUsersFunnel = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const { startDate, endDate } = req.query as {
+      startDate?: string;
+      endDate?: string;
+    };
+
+    const stats = await userStatsService.getActiveUsersFunnel({ startDate, endDate });
+
+    res.json({ success: true, data: stats, metadata: { generated_at: new Date().toISOString() } });
+  }
+);
+
+/**
+ * 獲取 Cohort 留存率
+ * GET /api/v1/admin/user-stats/cohort-retention
+ */
+export const getUserCohortRetention = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const { startDate, endDate } = req.query as {
+      startDate?: string;
+      endDate?: string;
+    };
+
+    const stats = await userStatsService.getUserCohortRetention({ startDate, endDate });
+
+    res.json({ success: true, data: stats, metadata: { generated_at: new Date().toISOString() } });
+  }
+);
+
 export default {
   getOverview,
   getRegistrationStats,
@@ -328,5 +384,8 @@ export default {
   getDeviceAnalytics,
   getRetentionStats,
   getPopularProfiles,
-  getUserActivitySegmentation
+  getUserActivitySegmentation,
+  getActiveUsersTrend,
+  getActiveUsersFunnel,
+  getUserCohortRetention,
 };

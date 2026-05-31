@@ -1,10 +1,10 @@
 /**
  * Admin 觸發式信件服務
  * 提供觸發規則與信件模板的 CRUD、執行紀錄查詢
- *
- * TODO: DB 表尚未建立，目前回傳 mock 資料
  */
 
+import { prisma } from './database/prisma.service';
+import type { JsonValue } from '../../generated/prisma/runtime/library';
 import type {
   EmailTriggerRule,
   EmailTemplate,
@@ -14,151 +14,202 @@ import type {
 } from '../types/admin-email-trigger.types';
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+function mapTriggerRule(row: {
+  id: number;
+  name: string;
+  description: string | null;
+  trigger_type: string;
+  trigger_config: JsonValue;
+  template: string;
+  subject: string;
+  enabled: boolean;
+  sent_count: number;
+  open_rate: number;
+  created_at: Date;
+  updated_at: Date;
+}): EmailTriggerRule {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    triggerType: row.trigger_type,
+    triggerConfig: (row.trigger_config ?? {}) as Record<string, unknown>,
+    template: row.template,
+    subject: row.subject,
+    enabled: row.enabled,
+    sentCount: row.sent_count,
+    openRate: row.open_rate,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
+}
+
+function mapTemplate(row: {
+  id: number;
+  name: string;
+  slug: string | null;
+  subject: string;
+  preheader: string | null;
+  body: string;
+  variables: string[];
+  data_source: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date | null;
+}): EmailTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    subject: row.subject,
+    preheader: row.preheader,
+    body: row.body,
+    variables: row.variables ?? [],
+    dataSource: row.data_source as EmailTemplate['dataSource'],
+    isActive: row.is_active,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: (row.updated_at ?? row.created_at).toISOString(),
+  };
+}
+
+// ============================================================================
 // Trigger Rules
 // ============================================================================
 
-/**
- * 列出所有觸發規則
- */
 const listRules = async (): Promise<EmailTriggerRule[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM email_trigger_rules ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.email_trigger_rules.findMany({
+    orderBy: { created_at: 'desc' },
+  });
+  return rows.map(mapTriggerRule);
 };
 
-/**
- * 建立觸發規則
- * @param input - 建立觸發規則輸入
- */
 const createRule = async (input: CreateTriggerRuleInput): Promise<EmailTriggerRule> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO email_trigger_rules
-  return {
-    id: 1,
-    name: input.name,
-    conditionType: input.conditionType,
-    conditionValue: input.conditionValue,
-    templateId: input.templateId,
-    isEnabled: input.isEnabled ?? true,
-    totalSent: 0,
-    openRate: 0,
-    clickRate: 0,
-    createdAt: new Date().toISOString(),
-  };
+  const row = await prisma.email_trigger_rules.create({
+    data: {
+      name: input.name,
+      description: input.description ?? null,
+      trigger_type: input.triggerType,
+      trigger_config: (input.triggerConfig ?? {}) as object,
+      template: input.template,
+      subject: input.subject ?? '',
+      enabled: input.enabled ?? true,
+    },
+  });
+  return mapTriggerRule(row);
 };
 
-/**
- * 更新觸發規則
- * @param id - 規則 ID
- * @param input - 更新欄位（含 isEnabled 開關）
- */
 const updateRule = async (
   id: number,
   input: Partial<CreateTriggerRuleInput>,
 ): Promise<EmailTriggerRule> => {
-  // TODO: 實作 DB 更新 — UPDATE email_trigger_rules SET ... WHERE id = $1
-  return {
-    id,
-    name: input.name ?? 'mock-rule',
-    conditionType: input.conditionType ?? 'dormant_days',
-    conditionValue: input.conditionValue ?? '7',
-    templateId: input.templateId ?? 1,
-    isEnabled: input.isEnabled ?? true,
-    totalSent: 0,
-    openRate: 0,
-    clickRate: 0,
-    createdAt: new Date().toISOString(),
-  };
+  const row = await prisma.email_trigger_rules.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.description !== undefined && { description: input.description }),
+      ...(input.triggerType !== undefined && { trigger_type: input.triggerType }),
+      ...(input.triggerConfig !== undefined && { trigger_config: input.triggerConfig as object }),
+      ...(input.template !== undefined && { template: input.template }),
+      ...(input.subject !== undefined && { subject: input.subject }),
+      ...(input.enabled !== undefined && { enabled: input.enabled }),
+    },
+  });
+  return mapTriggerRule(row);
 };
 
-/**
- * 刪除觸發規則
- * @param id - 規則 ID
- */
 const deleteRule = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM email_trigger_rules WHERE id = $1
-  void id;
+  await prisma.email_trigger_rules.delete({ where: { id } });
 };
 
 // ============================================================================
 // Email Templates
 // ============================================================================
 
-/**
- * 列出所有信件模板
- */
 const listTemplates = async (): Promise<EmailTemplate[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM email_templates ORDER BY created_at DESC
-  return [];
+  const rows = await prisma.email_templates.findMany({
+    orderBy: { created_at: 'asc' },
+  });
+  return rows.map(mapTemplate);
 };
 
-/**
- * 建立信件模板
- * @param input - 建立模板輸入
- */
+const getTemplate = async (id: number): Promise<EmailTemplate | null> => {
+  const row = await prisma.email_templates.findUnique({ where: { id } });
+  if (!row) return null;
+  return mapTemplate(row);
+};
+
 const createTemplate = async (input: CreateTemplateInput): Promise<EmailTemplate> => {
-  // TODO: 實作 DB 寫入 — INSERT INTO email_templates
-  return {
-    id: 1,
-    name: input.name,
-    subject: input.subject,
-    body: input.body,
-    variables: input.variables ?? [],
-    createdAt: new Date().toISOString(),
-  };
+  const row = await prisma.email_templates.create({
+    data: {
+      name: input.name,
+      subject: input.subject,
+      preheader: input.preheader ?? null,
+      body: input.body,
+      variables: input.variables ?? [],
+      data_source: input.dataSource ?? 'none',
+      is_active: input.isActive ?? true,
+      slug: input.slug ?? null,
+    },
+  });
+  return mapTemplate(row);
 };
 
-/**
- * 更新信件模板
- * @param id - 模板 ID
- * @param input - 更新欄位
- */
 const updateTemplate = async (
   id: number,
   input: Partial<CreateTemplateInput>,
 ): Promise<EmailTemplate> => {
-  // TODO: 實作 DB 更新 — UPDATE email_templates SET ... WHERE id = $1
-  return {
-    id,
-    name: input.name ?? 'mock-template',
-    subject: input.subject ?? 'Mock Subject',
-    body: input.body ?? '<p>Mock body</p>',
-    variables: input.variables ?? [],
-    createdAt: new Date().toISOString(),
-  };
+  const row = await prisma.email_templates.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.subject !== undefined && { subject: input.subject }),
+      ...(input.preheader !== undefined && { preheader: input.preheader }),
+      ...(input.body !== undefined && { body: input.body }),
+      ...(input.variables !== undefined && { variables: input.variables }),
+      ...(input.dataSource !== undefined && { data_source: input.dataSource }),
+      ...(input.isActive !== undefined && { is_active: input.isActive }),
+      ...(input.slug !== undefined && { slug: input.slug }),
+    },
+  });
+  return mapTemplate(row);
 };
 
-/**
- * 刪除信件模板
- * @param id - 模板 ID
- */
 const deleteTemplate = async (id: number): Promise<void> => {
-  // TODO: 實作 DB 刪除 — DELETE FROM email_templates WHERE id = $1
-  void id;
+  await prisma.email_templates.delete({ where: { id } });
 };
 
 // ============================================================================
 // Execution Logs & Stats
 // ============================================================================
 
-/**
- * 取得觸發規則的執行紀錄
- * @param ruleId - 規則 ID
- */
 const getExecutionLog = async (ruleId: number): Promise<EmailExecutionLog[]> => {
-  // TODO: 實作 DB 查詢 — SELECT * FROM email_execution_logs WHERE rule_id = $1
-  void ruleId;
-  return [];
+  const rows = await prisma.email_trigger_logs.findMany({
+    where: { rule_id: ruleId },
+    orderBy: { sent_at: 'desc' },
+    take: 100,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    ruleId: r.rule_id,
+    ruleName: r.rule_name,
+    recipient: r.recipient,
+    sentAt: r.sent_at.toISOString(),
+    status: r.status as 'success' | 'failed',
+  }));
 };
 
-/**
- * 取得觸發規則的統計資料
- * @param ruleId - 規則 ID
- */
 const getRuleStats = async (
   ruleId: number,
 ): Promise<{ totalSent: number; openRate: number; clickRate: number }> => {
-  // TODO: 實作 DB 聚合查詢
-  void ruleId;
-  return { totalSent: 0, openRate: 0, clickRate: 0 };
+  const rule = await prisma.email_trigger_rules.findUnique({ where: { id: ruleId } });
+  return {
+    totalSent: rule?.sent_count ?? 0,
+    openRate: rule?.open_rate ?? 0,
+    clickRate: 0,
+  };
 };
 
 export default {
@@ -167,6 +218,7 @@ export default {
   updateRule,
   deleteRule,
   listTemplates,
+  getTemplate,
   createTemplate,
   updateTemplate,
   deleteTemplate,

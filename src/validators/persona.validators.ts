@@ -14,14 +14,6 @@ export const submitSkipBodySchema = z.object({
   questionId: z.number().int().positive().openapi({ description: '問題 ID', example: 1 }),
 }).openapi('SubmitPersonaSkipBody');
 
-export const addResonanceBodySchema = z.object({
-  answerId: z.number().int().positive().openapi({ description: '答案 ID', example: 1 }),
-}).openapi('AddPersonaResonanceBody');
-
-export const resonanceAnswerIdParamSchema = z.object({
-  answerId: z.coerce.number().int().positive().openapi({ description: '答案 ID', example: 1 }),
-}).openapi('PersonaResonanceAnswerIdParam');
-
 // ─── Response Schemas ─────────────────────────────────────────────────────────
 
 export const personaQuestionItemSchema = z.object({
@@ -46,11 +38,6 @@ export const personaAnswerItemSchema = z.object({
   updatedAt: z.string().nullable().openapi({ description: '更新時間（ISO 8601）' }),
 }).openapi('PersonaAnswerItem');
 
-export const personaResonanceDataSchema = z.object({
-  answerId: z.number().openapi({ description: '答案 ID', example: 1 }),
-  resonanceCount: z.number().openapi({ description: '最新共鳴總數', example: 5 }),
-}).openapi('PersonaResonanceData');
-
 export const personaQuestionsDataSchema = z.object({
   questions: z.array(personaQuestionItemSchema),
 }).openapi('PersonaQuestionsData');
@@ -62,10 +49,6 @@ export const personaQuestionsApiResponseSchema = apiSuccessResponseSchema(
 export const personaAnswerApiResponseSchema = apiSuccessResponseSchema(
   personaAnswerItemSchema
 ).openapi('PersonaAnswerApiResponse');
-
-export const personaResonanceApiResponseSchema = apiSuccessResponseSchema(
-  personaResonanceDataSchema
-).openapi('PersonaResonanceApiResponse');
 
 export const profileUserParamSchema = z.object({
   userId: z.string().uuid().openapi({ description: '目標使用者 UUID', example: '123e4567-e89b-12d3-a456-426614174000' }),
@@ -112,6 +95,48 @@ export const localeQuerySchema = z.object({
   locale: z.enum(['zh-TW', 'en']).optional().default('zh-TW').openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
 }).openapi('LocaleQuery');
 
+export const questionAnswersParamSchema = z.object({
+  questionId: z.coerce.number().int().positive().openapi({ description: '問題 ID', example: 1 }),
+}).openapi('QuestionAnswersParam');
+
+export const questionAnswersQuerySchema = z.object({
+  locale: z.enum(['zh-TW', 'en']).optional().default('zh-TW').openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20).openapi({ description: '每頁項目數（1–50，預設 20）', example: 20 }),
+  cursor: z.coerce.number().int().positive().optional().openapi({ description: '游標（上一頁最後一筆答案的 ID）', example: 100 }),
+}).openapi('QuestionAnswersQuery');
+
+export const questionAnswerItemSchema = z.object({
+  answerId: z.number().openapi({ description: '答案 ID', example: 123 }),
+  userId: z.string().nullable().openapi({ description: '使用者 external_id（UUID），不公開時為 null', example: '123e4567-e89b-12d3-a456-426614174000' }),
+  name: z.string().nullable().openapi({ description: '使用者暱稱，不公開時為 null', example: '小明' }),
+  photoURL: z.string().nullable().openapi({ description: '頭像 URL，不公開時為 null' }),
+  selectedValue: z.string().nullable().openapi({ description: '選擇題答案' }),
+  textAnswer: z.string().nullable().openapi({ description: '文字題答案' }),
+  resonanceCount: z.number().openapi({ description: '獲得的共鳴數', example: 3 }),
+  currentUserReaction: z.string().nullable().openapi({ description: '目前登入者對此答案的反應類型', example: 'encourage' }),
+  isPublic: z.boolean().openapi({ description: '作答者是否公開個人資料' }),
+  isConnection: z.boolean().openapi({ description: '作答者是否為目前登入者的連結好友' }),
+  answeredAt: z.string().openapi({ description: '作答時間（ISO 8601）' }),
+  isSelf: z.boolean().openapi({ description: '是否為目前登入者自己的答案' }),
+}).openapi('QuestionAnswerItem');
+
+export const questionAnswersDataSchema = z.object({
+  question: z.object({
+    id: z.number(),
+    prompt: z.string(),
+    questionType: z.enum(['choice', 'sentence_completion', 'scenario']),
+    options: z.array(z.string()).nullable(),
+    totalAnswerCount: z.number().openapi({ description: '此題目的總回應數' }),
+  }).openapi('QuestionAnswersSummary'),
+  answers: z.array(questionAnswerItemSchema),
+  hasMore: z.boolean().openapi({ description: '是否還有更多資料' }),
+  nextCursor: z.number().nullable().openapi({ description: '下一頁游標（最後一筆答案 ID），無更多資料時為 null' }),
+  viewerIsLocked: z.boolean().optional().openapi({ description: '登入者是否因答題數不足而被鎖定' }),
+  answersNeeded: z.number().optional().openapi({ description: '解鎖所需的額外答題數' }),
+}).openapi('QuestionAnswersData');
+
+export const questionAnswersApiResponseSchema = apiSuccessResponseSchema(questionAnswersDataSchema).openapi('QuestionAnswersApiResponse');
+
 export const carouselStateQuerySchema = z.object({
   replace: z.coerce.number().int().positive().optional().openapi({ description: '要替換的問題 ID', example: 3 }),
   locale: z.enum(['zh-TW', 'en']).optional().default('zh-TW').openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
@@ -134,18 +159,18 @@ export const carouselDismissApiResponseSchema = apiSuccessResponseSchema(carouse
 
 registry.register('PersonaQuestionItem', personaQuestionItemSchema);
 registry.register('PersonaAnswerItem', personaAnswerItemSchema);
-registry.register('PersonaResonanceData', personaResonanceDataSchema);
 registry.register('PersonaCarouselState', carouselStateDataSchema);
 
 // ─── TypeScript Types ─────────────────────────────────────────────────────────
 
 export type SubmitAnswerBody = z.infer<typeof submitAnswerBodySchema>;
 export type SubmitSkipBody = z.infer<typeof submitSkipBodySchema>;
-export type AddResonanceBody = z.infer<typeof addResonanceBodySchema>;
 export type PersonaQuestionItem = z.infer<typeof personaQuestionItemSchema>;
 export type PersonaAnswerItem = z.infer<typeof personaAnswerItemSchema>;
-export type PersonaResonanceData = z.infer<typeof personaResonanceDataSchema>;
 export type CarouselStateQuery = z.infer<typeof carouselStateQuerySchema>;
 export type PersonaCarouselState = z.infer<typeof carouselStateDataSchema>;
 export type ProfileUserQuery = z.infer<typeof profileUserQuerySchema>;
 export type LocaleQuery = z.infer<typeof localeQuerySchema>;
+export type QuestionAnswersParam = z.infer<typeof questionAnswersParamSchema>;
+export type QuestionAnswersQuery = z.infer<typeof questionAnswersQuerySchema>;
+export type QuestionAnswerItem = z.infer<typeof questionAnswerItemSchema>;

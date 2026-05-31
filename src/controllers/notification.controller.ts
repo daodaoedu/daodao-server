@@ -281,6 +281,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       ...(p.content !== undefined               && { content:               p.content as string }),
       ...(p.connection_request_id !== undefined && { connectionRequestId:   p.connection_request_id as number }),
       ...(p.reactionType !== undefined          && { reactionType:          p.reactionType as string }),
+      ...(p.url !== undefined                   && { url:                   p.url as string }),
       ...(row.entity_type === 'buddy_request'   && { buddyRequestId:        row.entity_id }),
       ...((p.checkinId !== undefined || commentMetadata?.checkinId !== undefined) && {
         checkinId: (p.checkinId as number | undefined) ?? commentMetadata?.checkinId,

@@ -189,6 +189,23 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     });
 
     loggerService.debug('OAuth callback - app redirect with auth code', { isNewUser });
+  } else if (oauthState.source === 'admin') {
+    // Admin UI 登入：檢查是否有 admin 角色
+    const adminFrontendUrl = process.env.ADMIN_FRONTEND_URL || 'http://localhost:3002';
+    const hasAdminRole = Array.isArray(payload.roles) && payload.roles.some(
+      (role: string) => role === 'super_admin' || role === 'admin'
+    );
+
+    if (!hasAdminRole) {
+      loggerService.warn('OAuth callback - non-admin user attempted admin login', { userId: id });
+      redirectTarget = `${adminFrontendUrl}/admin/auth/error?reason=not_admin`;
+    } else {
+      redirectTarget = buildRedirectUrl(`${adminFrontendUrl}/admin/auth/callback`, {
+        state: stateParam,
+        redirect: nonceData.redirectUrl
+      });
+      loggerService.debug('OAuth callback - admin redirect', { userId: id });
+    }
   } else {
     // Web 登入：重定向到前端 callback 頁面（token 已在 cookie 中）
     // 同時傳遞 state（完整資訊）和 redirect（明確最終 URL，免除前端解碼負擔）

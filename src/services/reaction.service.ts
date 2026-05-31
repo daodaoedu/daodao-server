@@ -22,7 +22,6 @@ import {
   ReactionListItem,
   GetReactionsListResponse,
 } from '../types/reaction.types';
-import { enqueueReactionNotification } from '../queues/reaction-notification.queue';
 import { notificationEventService } from './notification-event.service';
 
 async function getCommentReactionPayload(
@@ -123,18 +122,6 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
               priority: 'P2',
             }).catch(() => {});
 
-            const totalReactionCount = await prisma.reactions.count({
-              where: { target_type: 'practice', target_id: targetId },
-            });
-
-            await enqueueReactionNotification({
-              practiceId: targetId,
-              actorUserId: userId,
-              practiceOwnerId: practice.user_id,
-              practiceTitle: practice.title ?? '',
-              reactionType,
-              totalReactionCount,
-            });
           }
         } else if (targetType === 'checkin') {
           const checkin = await prisma.practice_checkins.findUnique({
@@ -162,20 +149,6 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
               priority: 'P2',
             }).catch(() => {});
 
-            const totalCheckinReactionCount = await prisma.reactions.count({
-              where: { target_type: 'checkin', target_id: targetId },
-            });
-
-            await enqueueReactionNotification({
-              practiceId: checkin.practice_id,
-              actorUserId: userId,
-              practiceOwnerId: checkin.user_id,
-              practiceTitle: practice?.title ?? '',
-              reactionType,
-              totalReactionCount: totalCheckinReactionCount,
-              entityType: 'checkin',
-              entityId: targetId,
-            });
           }
         } else if (targetType === 'comment') {
           const comment = await prisma.comments.findUnique({
@@ -192,6 +165,26 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
               entityType: 'comment',
               entityId: targetId,
               payload,
+              priority: 'P2',
+            }).catch(() => {});
+          }
+        } else if (targetType === 'persona_answer') {
+          const answer = await prisma.persona_answers.findUnique({
+            where: { id: targetId },
+            select: { user_id: true, question_id: true },
+          });
+
+          if (answer && answer.user_id !== userId) {
+            const baseUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+            const personaUrl = `${baseUrl}/persona/${answer.question_id}`;
+
+            notificationEventService.createEvent({
+              type: 'reaction',
+              actorId: userId,
+              recipientId: answer.user_id,
+              entityType: 'persona_answer',
+              entityId: targetId,
+              payload: { reactionType, url: personaUrl },
               priority: 'P2',
             }).catch(() => {});
           }

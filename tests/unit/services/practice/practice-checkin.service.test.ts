@@ -125,6 +125,7 @@ describe('Practice CheckIn Service', () => {
     insight: null,
     source_practice_id: null,
     copy_count: 0,
+    creation_source: null,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
