@@ -62,7 +62,7 @@ export interface RoadmapItemPublic {
 
 /** Hero 統計 */
 export interface RoadmapStats {
-  /** 曾許願或投票的去重 user 數 */
+  /** 平台註冊使用者總數 */
   partners: number;
   /** 許願總則數 */
   feedback: number;
