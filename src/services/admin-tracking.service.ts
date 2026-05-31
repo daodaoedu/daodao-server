@@ -103,11 +103,15 @@ export async function getUserOnboardingDetail(externalUserId: string) {
       ORDER BY sent_at DESC
     `,
     prisma.$queryRaw<[{ max_streak: number | null; last_active_at: Date | null }]>`
-      WITH ranked AS (
-        SELECT checkin_date,
-               ROW_NUMBER() OVER (ORDER BY checkin_date) AS rn
+      WITH deduped AS (
+        SELECT DISTINCT checkin_date::date AS checkin_date
         FROM practice_checkins
         WHERE user_id = ${user.id}
+      ),
+      ranked AS (
+        SELECT checkin_date,
+               ROW_NUMBER() OVER (ORDER BY checkin_date) AS rn
+        FROM deduped
       ),
       island_groups AS (
         SELECT (checkin_date - (rn * INTERVAL '1 day'))::date AS grp
@@ -399,11 +403,15 @@ export async function getEngagementStats() {
       ) t
     `,
     prisma.$queryRaw<[{ avg_max_streak: number; streak7: bigint; streak30: bigint }]>`
-      WITH ranked AS (
+      WITH deduped AS (
+        SELECT DISTINCT user_id, checkin_date::date AS checkin_date
+        FROM practice_checkins
+      ),
+      ranked AS (
         SELECT user_id,
                checkin_date,
                ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY checkin_date) AS rn
-        FROM practice_checkins
+        FROM deduped
       ),
       island_groups AS (
         SELECT user_id,

@@ -428,6 +428,7 @@ model practices {
   source_practice_id       Int?
   copy_count               Int                       @default(0)
   creation_source          String?                   @db.VarChar(20)
+  is_featured              Boolean                   @default(false)
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]

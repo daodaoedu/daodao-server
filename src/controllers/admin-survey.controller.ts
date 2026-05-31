@@ -40,7 +40,7 @@ const createSurveySchema = z.object({
   })).default([]),
 })
 
-const updateSurveySchema = createSurveySchema.partial()
+const updateSurveySchema = createSurveySchema.omit({ questions: true }).partial()
 
 const questionWithOptions = {
   include: { options: { orderBy: { position: 'asc' as const } } },
@@ -72,7 +72,7 @@ export const adminSurveyController = {
       prisma.surveys.count({ where }),
     ])
 
-    const creatorIds = [...new Set(surveys.map((s) => s.created_by))]
+    const creatorIds = [...new Set(surveys.map((s) => s.created_by).filter((id): id is number => id != null))]
     const creators = creatorIds.length
       ? await prisma.users.findMany({
           where: { id: { in: creatorIds } },
@@ -181,8 +181,7 @@ export const adminSurveyController = {
 
   listResponses: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
-    const limit = parseInt(req.query.limit as string) || 20
-    const offset = parseInt(req.query.offset as string) || 0
+    const { limit, offset } = listQuerySchema.pick({ limit: true, offset: true }).parse(req.query)
 
     const existing = await prisma.surveys.findUnique({ where: { id }, select: { id: true } })
     if (!existing) throw new NotFoundError('問卷不存在')

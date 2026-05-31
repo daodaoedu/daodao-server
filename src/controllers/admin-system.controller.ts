@@ -7,6 +7,8 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
 import adminSystemService from '../services/admin-system.service';
+import { emailService } from '../services/email/email.service';
+import { generateStandardEmail } from '../services/email/base-template';
 import { emailSendSchema, emailBulkSendSchema } from '../validators/admin-system.validator';
 
 /**
@@ -78,6 +80,19 @@ const getEmailHealth = asyncHandler(async (_req: Request, res: Response) => {
  */
 const sendEmail = asyncHandler(async (req: Request, res: Response) => {
   const input = emailSendSchema.parse(req.body);
+  const isFullHtml = input.body.trimStart().startsWith('<!DOCTYPE') || input.body.trimStart().startsWith('<html');
+  const html = isFullHtml
+    ? input.body
+    : generateStandardEmail({ title: input.subject, subject: input.subject, preheader: '', content: input.body }).html;
+  const result = await emailService.sendEmail({
+    to: input.to,
+    subject: input.subject,
+    html,
+  });
+  if (!result.success) {
+    res.status(500).json({ success: false, error: { code: 'EMAIL_SEND_FAILED', message: result.error ?? '發送失敗' } });
+    return;
+  }
   res.json(createSuccessResponse({ sent: true, to: input.to }));
 });
 

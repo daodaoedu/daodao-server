@@ -770,6 +770,419 @@ const updateAssistantConfig = async (config: AIAssistantConfig): Promise<AIAssis
   return config;
 };
 
+// ============================================================================
+// Social Stats
+// ============================================================================
+
+export interface SocialStats {
+  reactions: { total: number; last7Days: number };
+  comments: { total: number; last7Days: number };
+  follows: { total: number; last7Days: number };
+  connections: { total: number; last7Days: number };
+}
+
+const getSocialStats = async (): Promise<SocialStats> => {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [
+    totalReactions, reactionsLast7Days,
+    totalComments, commentsLast7Days,
+    totalFollows, followsLast7Days,
+    totalConnections, connectionsLast7Days,
+  ] = await Promise.all([
+    prisma.reactions.count(),
+    prisma.reactions.count({ where: { created_at: { gte: sevenDaysAgo } } }),
+    prisma.comments.count(),
+    prisma.comments.count({ where: { created_at: { gte: sevenDaysAgo } } }),
+    prisma.follows.count(),
+    prisma.follows.count({ where: { created_at: { gte: sevenDaysAgo } } }),
+    prisma.connections.count(),
+    prisma.connections.count({ where: { connected_at: { gte: sevenDaysAgo } } }),
+  ]);
+
+  return {
+    reactions: { total: totalReactions, last7Days: reactionsLast7Days },
+    comments: { total: totalComments, last7Days: commentsLast7Days },
+    follows: { total: totalFollows, last7Days: followsLast7Days },
+    connections: { total: totalConnections, last7Days: connectionsLast7Days },
+  };
+};
+
+export interface InteractionStats {
+  current: { reactions: number; comments: number; follows: number; connects: number };
+  changes: { reactions: number; comments: number; follows: number; connects: number };
+  trend: Array<{ date: string; reactions: number; comments: number; follows: number; connects: number }>;
+}
+
+const getInteractionStats = async (period: '7d' | '30d' | '90d'): Promise<InteractionStats> => {
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+  const now = new Date();
+  const currentStart = new Date(now);
+  currentStart.setDate(currentStart.getDate() - days);
+  const previousStart = new Date(currentStart);
+  previousStart.setDate(previousStart.getDate() - days);
+
+  const [
+    curReactions, prevReactions,
+    curComments, prevComments,
+    curFollows, prevFollows,
+    curConnects, prevConnects,
+  ] = await Promise.all([
+    prisma.reactions.count({ where: { created_at: { gte: currentStart } } }),
+    prisma.reactions.count({ where: { created_at: { gte: previousStart, lt: currentStart } } }),
+    prisma.comments.count({ where: { created_at: { gte: currentStart } } }),
+    prisma.comments.count({ where: { created_at: { gte: previousStart, lt: currentStart } } }),
+    prisma.follows.count({ where: { created_at: { gte: currentStart } } }),
+    prisma.follows.count({ where: { created_at: { gte: previousStart, lt: currentStart } } }),
+    prisma.connections.count({ where: { connected_at: { gte: currentStart } } }),
+    prisma.connections.count({ where: { connected_at: { gte: previousStart, lt: currentStart } } }),
+  ]);
+
+  const pctChange = (cur: number, prev: number): number => {
+    if (prev === 0) return cur > 0 ? 100 : 0;
+    return Math.round(((cur - prev) / prev) * 1000) / 10;
+  };
+
+  const trendRows = await prisma.$queryRaw<Array<{
+    date: Date;
+    reactions: bigint;
+    comments: bigint;
+    follows: bigint;
+    connects: bigint;
+  }>>`
+    WITH dates AS (
+      SELECT generate_series(
+        DATE_TRUNC('day', ${currentStart}::timestamptz),
+        DATE_TRUNC('day', NOW()),
+        '1 day'::interval
+      )::date AS date
+    )
+    SELECT
+      d.date,
+      COUNT(DISTINCT r.id)::bigint  AS reactions,
+      COUNT(DISTINCT c.id)::bigint  AS comments,
+      COUNT(DISTINCT f.id)::bigint  AS follows,
+      COUNT(DISTINCT cn.id)::bigint AS connects
+    FROM dates d
+    LEFT JOIN reactions r    ON DATE_TRUNC('day', r.created_at)   = d.date
+    LEFT JOIN comments c     ON DATE_TRUNC('day', c.created_at)   = d.date
+    LEFT JOIN follows f      ON DATE_TRUNC('day', f.created_at)   = d.date
+    LEFT JOIN connections cn ON DATE_TRUNC('day', cn.connected_at) = d.date
+    GROUP BY d.date
+    ORDER BY d.date
+  `;
+
+  return {
+    current: { reactions: curReactions, comments: curComments, follows: curFollows, connects: curConnects },
+    changes: {
+      reactions: pctChange(curReactions, prevReactions),
+      comments:  pctChange(curComments,  prevComments),
+      follows:   pctChange(curFollows,   prevFollows),
+      connects:  pctChange(curConnects,  prevConnects),
+    },
+    trend: trendRows.map((r) => ({
+      date:      r.date.toISOString().split('T')[0],
+      reactions: Number(r.reactions),
+      comments:  Number(r.comments),
+      follows:   Number(r.follows),
+      connects:  Number(r.connects),
+    })),
+  };
+};
+
+// ============================================================================
+// Interaction Details
+// ============================================================================
+
+export interface InteractionDetails {
+  reactionTypes: Array<{ type: string; count: number }>;
+  commentReplyRate: number;
+  connectionFunnel: {
+    requests: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+    acceptRate: number;
+  };
+  topContent: Array<{
+    targetType: string;
+    targetId: number;
+    targetName: string;
+    reactions: number;
+    comments: number;
+    total: number;
+  }>;
+  topActiveUsers: Array<{
+    userId: number;
+    name: string;
+    avatarUrl: string | null;
+    interactions: number;
+  }>;
+  topFollowedUsers: Array<{
+    userId: number;
+    name: string;
+    avatarUrl: string | null;
+    followers: number;
+  }>;
+  heatmap: Array<{
+    dow: number;
+    hour: number;
+    count: number;
+  }>;
+  engagementFunnel: {
+    reactors: number;
+    commenters: number;
+    followers: number;
+    connectors: number;
+  };
+}
+
+const getInteractionDetails = async (
+  period: '7d' | '30d' | '90d',
+): Promise<InteractionDetails> => {
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+
+  // --- 1. Reaction types breakdown ---
+  const reactionTypeRows = await prisma.$queryRaw<
+    Array<{ reaction_type: string; count: bigint }>
+  >`
+    SELECT reaction_type, COUNT(*)::bigint AS count
+    FROM reactions
+    WHERE created_at >= NOW() - (${days} || ' days')::interval
+    GROUP BY reaction_type
+    ORDER BY count DESC
+  `;
+
+  const reactionTypes = reactionTypeRows.map((r) => ({
+    type: r.reaction_type,
+    count: Number(r.count),
+  }));
+
+  // --- 2. Comment reply rate ---
+  const [commentStats] = await prisma.$queryRaw<
+    Array<{ total: bigint; replies: bigint }>
+  >`
+    SELECT
+      COUNT(*)::bigint AS total,
+      COUNT(CASE WHEN parent_id IS NOT NULL THEN 1 END)::bigint AS replies
+    FROM comments
+    WHERE created_at >= NOW() - (${days} || ' days')::interval
+  `;
+  const totalComments = Number(commentStats?.total ?? 0);
+  const commentReplyRate =
+    totalComments > 0
+      ? Math.round((Number(commentStats?.replies ?? 0) / totalComments) * 1000) / 10
+      : 0;
+
+  // --- 3. Connection funnel ---
+  const [connFunnel] = await prisma.$queryRaw<
+    Array<{
+      requests: bigint;
+      accepted: bigint;
+      rejected: bigint;
+      pending: bigint;
+    }>
+  >`
+    SELECT
+      COUNT(*)::bigint AS requests,
+      COUNT(CASE WHEN status = 'accepted' THEN 1 END)::bigint AS accepted,
+      COUNT(CASE WHEN status = 'rejected' THEN 1 END)::bigint AS rejected,
+      COUNT(CASE WHEN status = 'pending'  THEN 1 END)::bigint AS pending
+    FROM connection_requests
+    WHERE created_at >= NOW() - (${days} || ' days')::interval
+  `;
+  const accepted = Number(connFunnel?.accepted ?? 0);
+  const rejected = Number(connFunnel?.rejected ?? 0);
+  const acceptRate =
+    accepted + rejected > 0
+      ? Math.round((accepted / (accepted + rejected)) * 1000) / 10
+      : 0;
+
+  const connectionFunnel = {
+    requests: Number(connFunnel?.requests ?? 0),
+    accepted,
+    rejected,
+    pending: Number(connFunnel?.pending ?? 0),
+    acceptRate,
+  };
+
+  // --- 4. Top content (reactions + comments grouped by target) ---
+  const topContentRows = await prisma.$queryRaw<
+    Array<{
+      target_type: string;
+      target_id: bigint;
+      reactions: bigint;
+      comments: bigint;
+      total: bigint;
+      practice_title: string | null;
+    }>
+  >`
+    SELECT
+      agg.target_type,
+      agg.target_id,
+      agg.reactions,
+      agg.comments,
+      agg.reactions + agg.comments AS total,
+      p.title AS practice_title
+    FROM (
+      SELECT target_type, target_id,
+        COUNT(CASE WHEN src = 'reaction' THEN 1 END)::bigint AS reactions,
+        COUNT(CASE WHEN src = 'comment'  THEN 1 END)::bigint AS comments
+      FROM (
+        SELECT target_type, target_id, 'reaction' AS src
+        FROM reactions
+        WHERE created_at >= NOW() - (${days} || ' days')::interval
+        UNION ALL
+        SELECT target_type, target_id, 'comment' AS src
+        FROM comments
+        WHERE created_at >= NOW() - (${days} || ' days')::interval
+      ) combined
+      GROUP BY target_type, target_id
+    ) agg
+    LEFT JOIN practices p ON agg.target_type = 'practice' AND p.id = agg.target_id
+    ORDER BY total DESC
+    LIMIT 10
+  `;
+
+  const topContent = topContentRows.map((r) => ({
+    targetType: r.target_type,
+    targetId: Number(r.target_id),
+    targetName: r.practice_title ?? `#${Number(r.target_id)}`,
+    reactions: Number(r.reactions),
+    comments: Number(r.comments),
+    total: Number(r.total),
+  }));
+
+  // --- 5. Top active users (reactions + comments sent) ---
+  const topActiveUserRows = await prisma.$queryRaw<
+    Array<{
+      user_id: bigint;
+      nickname: string | null;
+      interactions: bigint;
+    }>
+  >`
+    SELECT
+      u.id AS user_id,
+      u.nickname,
+      COUNT(*)::bigint AS interactions
+    FROM (
+      SELECT user_id FROM reactions
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+      UNION ALL
+      SELECT user_id FROM comments
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+    ) acts
+    JOIN users u ON u.id = acts.user_id
+    GROUP BY u.id, u.nickname
+    ORDER BY interactions DESC
+    LIMIT 10
+  `;
+
+  const topActiveUsers = topActiveUserRows.map((r) => ({
+    userId: Number(r.user_id),
+    name: r.nickname ?? `#${Number(r.user_id)}`,
+    avatarUrl: null,
+    interactions: Number(r.interactions),
+  }));
+
+  // --- 6. Top followed users ---
+  const topFollowedRows = await prisma.$queryRaw<
+    Array<{
+      user_id: bigint;
+      nickname: string | null;
+      followers: bigint;
+    }>
+  >`
+    SELECT
+      u.id AS user_id,
+      u.nickname,
+      COUNT(f.id)::bigint AS followers
+    FROM follows f
+    JOIN users u ON u.id = f.target_id
+    WHERE f.target_type = 'user'
+      AND f.created_at >= NOW() - (${days} || ' days')::interval
+    GROUP BY u.id, u.nickname
+    ORDER BY followers DESC
+    LIMIT 10
+  `;
+
+  const topFollowedUsers = topFollowedRows.map((r) => ({
+    userId: Number(r.user_id),
+    name: r.nickname ?? `#${Number(r.user_id)}`,
+    avatarUrl: null,
+    followers: Number(r.followers),
+  }));
+
+  // --- 7. Heatmap (dow × hour) ---
+  const heatmapRows = await prisma.$queryRaw<
+    Array<{ dow: number; hour: number; count: bigint }>
+  >`
+    SELECT
+      EXTRACT(DOW  FROM created_at)::int AS dow,
+      EXTRACT(HOUR FROM created_at)::int AS hour,
+      COUNT(*)::bigint AS count
+    FROM (
+      SELECT created_at FROM reactions
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+      UNION ALL
+      SELECT created_at FROM comments
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+    ) events
+    GROUP BY dow, hour
+  `;
+
+  // Build a lookup map and fill all 168 cells
+  const heatmapMap = new Map<string, number>();
+  for (const row of heatmapRows) {
+    heatmapMap.set(`${row.dow}-${row.hour}`, Number(row.count));
+  }
+  const heatmap: InteractionDetails['heatmap'] = [];
+  for (let dow = 0; dow <= 6; dow++) {
+    for (let hour = 0; hour <= 23; hour++) {
+      heatmap.push({ dow, hour, count: heatmapMap.get(`${dow}-${hour}`) ?? 0 });
+    }
+  }
+
+  // --- 8. Engagement funnel ---
+  const [engagementStats] = await prisma.$queryRaw<
+    Array<{
+      reactors: bigint;
+      commenters: bigint;
+      followers: bigint;
+      connectors: bigint;
+    }>
+  >`
+    SELECT
+      (SELECT COUNT(DISTINCT user_id) FROM reactions
+        WHERE created_at >= NOW() - (${days} || ' days')::interval)::bigint AS reactors,
+      (SELECT COUNT(DISTINCT user_id) FROM comments
+        WHERE created_at >= NOW() - (${days} || ' days')::interval)::bigint AS commenters,
+      (SELECT COUNT(DISTINCT follower_id) FROM follows
+        WHERE created_at >= NOW() - (${days} || ' days')::interval)::bigint AS followers,
+      (SELECT COUNT(DISTINCT user_a_id) + COUNT(DISTINCT user_b_id) FROM connections
+        WHERE connected_at >= NOW() - (${days} || ' days')::interval)::bigint AS connectors
+  `;
+
+  const engagementFunnel = {
+    reactors: Number(engagementStats?.reactors ?? 0),
+    commenters: Number(engagementStats?.commenters ?? 0),
+    followers: Number(engagementStats?.followers ?? 0),
+    connectors: Number(engagementStats?.connectors ?? 0),
+  };
+
+  return {
+    reactionTypes,
+    commentReplyRate,
+    connectionFunnel,
+    topContent,
+    topActiveUsers,
+    topFollowedUsers,
+    heatmap,
+    engagementFunnel,
+  };
+};
+
 export default {
   listFlows,
   createFlow,
@@ -792,4 +1205,7 @@ export default {
   getAssistantStats,
   getAssistantConfig,
   updateAssistantConfig,
+  getSocialStats,
+  getInteractionStats,
+  getInteractionDetails,
 };
