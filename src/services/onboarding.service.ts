@@ -8,6 +8,7 @@
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
 import { onboardingCompletionCache } from './onboarding-completion-cache.service';
+import { deriveUserSource } from '../utils/onboarding-source';
 import {
   OnboardingTask,
   UserSource,
@@ -137,8 +138,19 @@ async function createOnboarding(userId: number, userSource: UserSource, registra
  * 查詢 onboarding 狀態，供 GET /api/v1/onboarding/status 使用。
  */
 async function getStatus(userId: number): Promise<OnboardingStatusResponse | null> {
-  const row = await findByUserId(userId);
-  if (!row) return null;
+  let row = await findByUserId(userId);
+
+  if (!row) {
+    // Lazy-create for users who registered before the onboarding system
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { referral_source: true },
+    });
+    const userSource = deriveUserSource(user?.referral_source ?? null, false);
+    await createOnboarding(userId, userSource);
+    row = await findByUserId(userId);
+    if (!row) return null;
+  }
 
   if (row.badge_granted) {
     onboardingCompletionCache.markCompleted(userId);
