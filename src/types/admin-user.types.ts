@@ -152,6 +152,12 @@ export interface AdminUserDetailResponse {
   recentLoginHistory: LoginHistoryRecord[];
   /** 活躍統計 */
   activityStats: UserActivityStats;
+  /** 人物誌類型 */
+  personaType: 'L' | 'C' | 'A' | 'D' | 'O' | null;
+  /** 是否完成 Onboarding Badge */
+  badgeGranted: boolean | null;
+  /** 用戶來源 */
+  userSource: string | null;
 }
 
 /**

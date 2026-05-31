@@ -24,7 +24,7 @@ function sqlArray(arr: string[]): string {
 }
 
 const sampleData: NotificationDigestData = {
-  recipientName: '王小明',
+  recipientName: '{{recipientName}}',
   partnerEvents: [
     {
       type: 'PartnerCheckinActivity',

@@ -224,6 +224,11 @@ const getAdminUserDetail = async (userId: number): Promise<AdminUserDetailRespon
       user_login_history: {
         orderBy: { login_at: 'desc' },
         take: 10
+      },
+      quiz_results: {
+        orderBy: { completed_at: 'desc' },
+        take: 1,
+        select: { result_type: true }
       }
     }
   });
@@ -231,6 +236,11 @@ const getAdminUserDetail = async (userId: number): Promise<AdminUserDetailRespon
   if (!user) {
     throw new NotFoundError('User not found');
   }
+
+  const onboarding = await prisma.user_onboarding.findUnique({
+    where: { user_id: userId },
+    select: { badge_granted: true, user_source: true },
+  });
 
   const roles: RoleInfo[] = [];
   const permissions: string[] = [];
@@ -324,7 +334,10 @@ const getAdminUserDetail = async (userId: number): Promise<AdminUserDetailRespon
     roles,
     permissions,
     recentLoginHistory,
-    activityStats
+    activityStats,
+    personaType: (user.quiz_results[0]?.result_type ?? null) as 'L' | 'C' | 'A' | 'D' | 'O' | null,
+    badgeGranted: onboarding?.badge_granted ?? null,
+    userSource: onboarding?.user_source ?? null,
   };
 };
 

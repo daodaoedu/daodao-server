@@ -29,7 +29,7 @@ function sqlArray(arr: string[]): string {
   return `ARRAY[${arr.map((v) => `'${v}'`).join(', ')}]`;
 }
 
-const SAMPLE = '小明';
+const SAMPLE = '{{name}}';
 const PRACTICE_URL = 'https://daodao.so/practices';
 const UNSUBSCRIBE_URL = 'https://daodao.so/unsubscribe';
 

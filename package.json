@@ -18,6 +18,7 @@
     "test:ci": "jest --runInBand --coverage --forceExit --detectOpenHandles",
     "test:debug": "DEBUG_TESTS=true jest --runInBand --detectOpenHandles",
     "test:clean": "jest --clearCache",
+    "schema:drift": "ts-node --transpile-only -r tsconfig-paths/register src/scripts/check-schema-drift.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",

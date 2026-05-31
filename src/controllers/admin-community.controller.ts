@@ -20,6 +20,8 @@ import {
   conversationIdParamSchema,
   conversationStatusQuerySchema,
   updateAssistantConfigSchema,
+  interactionStatsQuerySchema,
+  interactionDetailsQuerySchema,
 } from '../validators/admin-community.validator';
 
 // ============================================================================
@@ -239,6 +241,35 @@ const updateAssistantConfig = asyncHandler(async (req: Request, res: Response) =
   res.json(createSuccessResponse(config));
 });
 
+/**
+ * 取得社群互動統計
+ * GET /admin/community/social-stats
+ */
+const getSocialStats = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await adminCommunityService.getSocialStats();
+  res.json(createSuccessResponse(data));
+});
+
+/**
+ * 取得社群互動分析（含期間趨勢）
+ * GET /admin/community/interaction-stats
+ */
+const getInteractionStats = asyncHandler(async (req: Request, res: Response) => {
+  const { period } = interactionStatsQuerySchema.parse(req.query);
+  const data = await adminCommunityService.getInteractionStats(period);
+  res.json(createSuccessResponse(data));
+});
+
+/**
+ * 取得社群互動詳情
+ * GET /admin/community/interaction-details
+ */
+const getInteractionDetails = asyncHandler(async (req: Request, res: Response) => {
+  const { period } = interactionDetailsQuerySchema.parse(req.query);
+  const data = await adminCommunityService.getInteractionDetails(period);
+  res.json(createSuccessResponse(data));
+});
+
 export default {
   listFlows,
   createFlow,
@@ -261,4 +292,7 @@ export default {
   getAssistantStats,
   getAssistantConfig,
   updateAssistantConfig,
+  getSocialStats,
+  getInteractionStats,
+  getInteractionDetails,
 };

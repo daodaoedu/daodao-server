@@ -131,3 +131,17 @@ export const conversationIdParamSchema = z.object({
 export const conversationStatusQuerySchema = z.object({
   status: z.enum(['resolved', 'escalated', 'needs_human']).optional(),
 });
+
+/**
+ * 互動統計期間 schema
+ */
+export const interactionStatsQuerySchema = z.object({
+  period: z.enum(['7d', '30d', '90d']).optional().default('30d'),
+});
+
+/**
+ * 互動詳情期間 schema
+ */
+export const interactionDetailsQuerySchema = z.object({
+  period: z.enum(['7d', '30d', '90d']).optional().default('30d'),
+});

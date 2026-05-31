@@ -1323,6 +1323,16 @@ router.post('/:id/view',
   validate(practiceEventViewSchema, 'body'),
   practiceController.recordView as RequestHandler);
 
+router.post('/:id/progress',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  practiceController.recordReadProgress as RequestHandler);
+
+router.post('/:id/time-spent',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  practiceController.recordTimeSpent as RequestHandler);
+
 /**
  * GET /practices/:id/stats
  * 取得實踐互動統計
