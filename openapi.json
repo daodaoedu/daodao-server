@@ -12439,6 +12439,29 @@
           "updatedAt": {
             "type": "string",
             "description": "更新時間"
+          },
+          "personaType": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "L",
+              "C",
+              "A",
+              "D",
+              "O",
+              null
+            ],
+            "description": "人物誌類型"
+          },
+          "badgeGranted": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "是否完成 Onboarding Badge"
+          },
+          "userSource": {
+            "type": "string",
+            "nullable": true,
+            "description": "用戶來源"
           }
         },
         "required": [
@@ -12455,7 +12478,10 @@
           "recentLoginHistory",
           "activityStats",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "personaType",
+          "badgeGranted",
+          "userSource"
         ]
       },
       "LoginHistoryRecord": {

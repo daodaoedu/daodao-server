@@ -361,6 +361,15 @@ const adminUserDetailDataSchema = z.object({
   }),
   updatedAt: z.string().openapi({
     description: '更新時間'
+  }),
+  personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
+    description: '人物誌類型'
+  }),
+  badgeGranted: z.boolean().nullable().openapi({
+    description: '是否完成 Onboarding Badge'
+  }),
+  userSource: z.string().nullable().openapi({
+    description: '用戶來源'
   })
 }).openapi('AdminUserDetailData');
 

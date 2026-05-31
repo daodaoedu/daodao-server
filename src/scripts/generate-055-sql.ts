@@ -13,7 +13,7 @@ process.env.FRONTEND_URL = 'https://daodao.so';
 process.env.EMAIL_ADDRESS = 'seed@daodao.so';
 process.env.EMAIL_PASSWORD = 'seed-dummy';
 
-import { generateWeeklyDigestHtml } from '../services/email/notification-weekly-template';
+import { generateWeeklyDigestHtml, generateWeeklyDigestSubject } from '../services/email/notification-weekly-template';
 import type { WeeklyDigestData } from '../services/email/notification-weekly-template';
 
 function esc(s: string): string {
@@ -25,9 +25,9 @@ function sqlArray(arr: string[]): string {
 }
 
 const sampleData: WeeklyDigestData = {
-  recipientName: '王小明',
-  weekStart: '5/26',
-  weekEnd: '6/1',
+  recipientName: '{{recipientName}}',
+  weekStart: '{{weekStart}}',
+  weekEnd: '{{weekEnd}}',
   stats: { reactions: 5, comments: 3, newFollowers: 2, connectRequests: 1 },
   practiceProgress: [
     { title: '設計個人化的追蹤頁面', checkInCount: 3, status: 'in_progress' },
@@ -47,6 +47,7 @@ const sampleData: WeeklyDigestData = {
 };
 
 const html = generateWeeklyDigestHtml(sampleData);
+const subject = generateWeeklyDigestSubject(sampleData);
 const variables = ['recipientName', 'weekStart', 'weekEnd', 'stats', 'practiceProgress', 'partnerActivities', 'popularPractices', 'unsubscribeUrl', 'settingsUrl'];
 
 console.log(`-- =====================================================`);
@@ -57,7 +58,7 @@ console.log(`-- =====================================================`);
 console.log('');
 console.log(`-- 每週通知摘要`);
 console.log(`UPDATE "email_templates" SET`);
-console.log(`  "subject"     = '${esc('【島島阿學】{{recipientName}} 的本週學習週報（{{weekStart}}～{{weekEnd}}）')}',`);
+console.log(`  "subject"     = '${esc(subject)}',`);
 console.log(`  "preheader"   = '',`);
 console.log(`  "body"        = '${esc(html)}',`);
 console.log(`  "variables"   = ${sqlArray(variables)},`);

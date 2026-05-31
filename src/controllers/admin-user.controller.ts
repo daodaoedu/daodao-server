@@ -114,10 +114,12 @@ export const getActivityStats = asyncHandler(async (req: Request, res: Response)
  */
 export const getUserPracticesList = asyncHandler(async (req: Request, res: Response) => {
   const params = adminUserIdParamSchema.parse(req.params);
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
 
   const result = await findUserPractices(params.userId, {
-    page: req.query.page ? Number(req.query.page) : 1,
-    limit: Math.min(Number(req.query.limit) || 20, 100),
+    page,
+    limit,
     sortBy: (req.query.sort ?? req.query.sortBy) as SortField | undefined,
     sortOrder: (req.query.order ?? req.query.sortOrder) as SortOrder | undefined,
     status: req.query.status as string | undefined,

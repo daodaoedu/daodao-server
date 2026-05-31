@@ -24,6 +24,7 @@ import adminGamificationController from '@/controllers/admin-gamification.contro
 import adminCommunityController from '@/controllers/admin-community.controller';
 import adminEventsController from '@/controllers/admin-events.controller';
 import adminTrackingController from '@/controllers/admin-tracking.controller';
+import adminContentController from '@/controllers/admin-content.controller';
 import { adminSurveyController } from '@/controllers/admin-survey.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
@@ -1402,6 +1403,9 @@ router.put('/member-directory/fields/:id', authenticateAny, requireAdmin, adminC
 router.delete('/member-directory/fields/:id', authenticateAny, requireAdmin, adminCommunityController.deleteField as RequestHandler);
 router.patch('/member-directory/fields/reorder', authenticateAny, requireAdmin, adminCommunityController.reorderFields as RequestHandler);
 router.get('/member-directory/stats', authenticateAny, requireAdmin, adminCommunityController.getDirectoryStats as RequestHandler);
+router.get('/community/social-stats', authenticateAny, requireAdmin, adminCommunityController.getSocialStats as RequestHandler);
+router.get('/community/interaction-stats', authenticateAny, requireAdmin, adminCommunityController.getInteractionStats as RequestHandler);
+router.get('/community/interaction-details', authenticateAny, requireAdmin, adminCommunityController.getInteractionDetails as RequestHandler);
 router.get('/member-directory/analytics', authenticateAny, requireAdmin, adminCommunityController.getDirectoryAnalytics as RequestHandler);
 router.get('/ai-assistant/knowledge', authenticateAny, requireAdmin, adminCommunityController.listKnowledge as RequestHandler);
 router.post('/ai-assistant/knowledge', authenticateAny, requireAdmin, adminCommunityController.uploadKnowledge as RequestHandler);
@@ -1443,6 +1447,10 @@ router.get('/surveys/:id/responses', authenticateAny, requireAdmin, adminSurveyC
 router.get('/surveys/:id/responses/:responseId', authenticateAny, requireAdmin, adminSurveyController.getResponse as RequestHandler);
 router.delete('/surveys/:id/responses/:responseId', authenticateAny, requireAdmin, adminSurveyController.deleteResponse as RequestHandler);
 router.get('/surveys/:id/analytics', authenticateAny, requireAdmin, adminSurveyController.getAnalytics as RequestHandler);
+
+// ─── Content Performance ──────────────────────────────────────────────────────
+router.get('/content/performance', authenticateAny, requireAdmin, adminContentController.getPerformance as RequestHandler);
+router.patch('/content/:id/featured', authenticateAny, requireAdmin, adminContentController.updateFeatured as RequestHandler);
 
 // ─── Tracking & Analytics ─────────────────────────────────────────────────────
 router.get('/onboarding/stats', authenticateAny, requireAdmin, adminTrackingController.getOnboardingStats as RequestHandler);
