@@ -54,13 +54,21 @@ const createBadge = async (input: CreateBadgeInput): Promise<Badge> => {
     RETURNING *
   `
 
+  const [counts] = await prisma.$queryRaw<Array<{ awarded_count: bigint }>>`
+    SELECT COUNT(ub.user_id)::bigint AS awarded_count
+    FROM badges b
+    LEFT JOIN user_badges ub ON b.id = ub.badge_id
+    WHERE b.id = ${row.id}
+    GROUP BY b.id
+  `
+
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     iconUrl: row.icon_url,
     triggerCondition: row.trigger_condition,
-    awardedCount: 0,
+    awardedCount: Number(counts?.awarded_count ?? 0),
     createdAt: row.created_at.toISOString(),
   }
 }
@@ -158,6 +166,18 @@ const createChallenge = async (input: CreateChallengeInput): Promise<Challenge> 
   if (row.start_date > now) status = 'upcoming'
   else if (row.end_date < now) status = 'completed'
 
+  const [stats] = await prisma.$queryRaw<Array<{
+    participant_count: bigint; completion_rate: number;
+  }>>(
+    Prisma.sql`SELECT
+      COUNT(cp.user_id)::bigint AS participant_count,
+      AVG(CASE WHEN cp.completed THEN 1.0 ELSE 0.0 END)::float AS completion_rate
+    FROM challenges c
+    LEFT JOIN challenge_progress cp ON c.id = cp.challenge_id
+    WHERE c.id = ${row.id}
+    GROUP BY c.id`
+  )
+
   return {
     id: row.id,
     name: row.name,
@@ -166,8 +186,8 @@ const createChallenge = async (input: CreateChallengeInput): Promise<Challenge> 
     endDate: row.end_date.toISOString(),
     requiredAction: row.required_action,
     reward: row.reward,
-    participantCount: 0,
-    completionRate: 0,
+    participantCount: Number(stats?.participant_count ?? 0),
+    completionRate: stats?.completion_rate ?? 0,
     status,
   }
 }
