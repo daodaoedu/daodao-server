@@ -296,14 +296,33 @@ const createQuiz = async (input: CreateQuizInput): Promise<Quiz> => {
     SELECT title FROM practices WHERE id = ${input.courseId}
   `;
 
+  const [stats] = await prisma.$queryRaw<Array<{
+    question_count: bigint;
+    avg_score: number | null;
+    pass_rate: number | null;
+  }>>`
+    SELECT
+      COUNT(DISTINCT qq.id)::bigint AS question_count,
+      AVG(qa.score) AS avg_score,
+      CASE
+        WHEN COUNT(qa.id) = 0 THEN 0
+        ELSE (COUNT(CASE WHEN qa.score >= q.pass_threshold THEN 1 END)::float / COUNT(qa.id) * 100)
+      END AS pass_rate
+    FROM quizzes q
+    LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
+    LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id
+    WHERE q.id = ${row.id}
+    GROUP BY q.id
+  `;
+
   return {
     id: row.id,
     name: row.name,
     courseName: course?.title ?? '',
-    questionCount: 0,
+    questionCount: Number(stats?.question_count ?? 0),
     passThreshold: row.pass_threshold,
-    avgScore: 0,
-    passRate: 0,
+    avgScore: Math.round(stats?.avg_score ?? 0),
+    passRate: Math.round(stats?.pass_rate ?? 0),
   };
 };
 
@@ -469,11 +488,19 @@ const createTemplate = async (input: CreateCertificateTemplateInput): Promise<Ce
     RETURNING *
   `;
 
+  const [counts] = await prisma.$queryRaw<Array<{ issued_count: bigint }>>`
+    SELECT COUNT(c.id)::bigint AS issued_count
+    FROM certificate_templates ct
+    LEFT JOIN certificates c ON c.template_id = ct.id
+    WHERE ct.id = ${row.id}
+    GROUP BY ct.id
+  `;
+
   return {
     id: row.id,
     name: row.name,
     criteria: row.criteria,
-    issuedCount: 0,
+    issuedCount: Number(counts?.issued_count ?? 0),
     createdAt: row.created_at.toISOString(),
   };
 };
@@ -718,13 +745,28 @@ const createPath = async (input: CreateLearningPathInput): Promise<LearningPath>
     ORDER BY lpc.sort_order
   `;
 
+  const [pathStats] = await prisma.$queryRaw<Array<{
+    enrolled_users: bigint;
+    completion_rate: number | null;
+  }>>`
+    SELECT
+      COUNT(DISTINCT lprog.user_id)::bigint AS enrolled_users,
+      CASE
+        WHEN COUNT(lprog.user_id) = 0 THEN 0
+        ELSE (COUNT(CASE WHEN lprog.completed_at IS NOT NULL THEN 1 END)::float / COUNT(lprog.user_id) * 100)
+      END AS completion_rate
+    FROM learning_path_courses lpc
+    LEFT JOIN learning_progress lprog ON lprog.practice_id = lpc.practice_id
+    WHERE lpc.learning_path_id = ${row.id}
+  `;
+
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     courseCount: input.courseIds.length,
-    enrolledUsers: 0,
-    completionRate: 0,
+    enrolledUsers: Number(pathStats?.enrolled_users ?? 0),
+    completionRate: Math.round(pathStats?.completion_rate ?? 0),
     courses: courses.map((c) => ({
       id: c.practice_id,
       name: c.title,
@@ -783,13 +825,28 @@ const updatePath = async (id: number, input: Partial<CreateLearningPathInput>): 
     ORDER BY lpc.sort_order
   `;
 
+  const [pathStats] = await prisma.$queryRaw<Array<{
+    enrolled_users: bigint;
+    completion_rate: number | null;
+  }>>`
+    SELECT
+      COUNT(DISTINCT lprog.user_id)::bigint AS enrolled_users,
+      CASE
+        WHEN COUNT(lprog.user_id) = 0 THEN 0
+        ELSE (COUNT(CASE WHEN lprog.completed_at IS NOT NULL THEN 1 END)::float / COUNT(lprog.user_id) * 100)
+      END AS completion_rate
+    FROM learning_path_courses lpc
+    LEFT JOIN learning_progress lprog ON lprog.practice_id = lpc.practice_id
+    WHERE lpc.learning_path_id = ${id}
+  `;
+
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     courseCount: courses.length,
-    enrolledUsers: 0,
-    completionRate: 0,
+    enrolledUsers: Number(pathStats?.enrolled_users ?? 0),
+    completionRate: Math.round(pathStats?.completion_rate ?? 0),
     courses: courses.map((c) => ({
       id: c.practice_id,
       name: c.title,

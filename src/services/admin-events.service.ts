@@ -77,6 +77,12 @@ const listEvents = async (filter?: { status?: 'upcoming' | 'past' }): Promise<Ad
  * @param input - 建立活動輸入
  */
 const createEvent = async (input: CreateEventInput): Promise<AdminEvent> => {
+  const [inserted] = await prisma.$queryRaw<Array<{ id: number }>>`
+    INSERT INTO admin_events (title, description, start_at, end_at, location, max_capacity, is_recurring)
+    VALUES (${input.title}, ${input.description}, ${input.startAt}::timestamptz, ${input.endAt}::timestamptz, ${input.location}, ${input.maxCapacity}, ${input.isRecurring ?? false})
+    RETURNING id
+  `;
+
   const [row] = await prisma.$queryRaw<Array<{
     id: number;
     title: string;
@@ -86,10 +92,19 @@ const createEvent = async (input: CreateEventInput): Promise<AdminEvent> => {
     location: string;
     max_capacity: number;
     is_recurring: boolean;
+    rsvp_count: bigint;
+    waitlist_count: bigint;
+    attended_count: bigint;
   }>>`
-    INSERT INTO admin_events (title, description, start_at, end_at, location, max_capacity, is_recurring)
-    VALUES (${input.title}, ${input.description}, ${input.startAt}::timestamptz, ${input.endAt}::timestamptz, ${input.location}, ${input.maxCapacity}, ${input.isRecurring ?? false})
-    RETURNING *
+    SELECT
+      e.id, e.title, e.description, e.start_at, e.end_at, e.location, e.max_capacity, e.is_recurring,
+      COUNT(CASE WHEN er.status = 'registered' THEN 1 END)::bigint AS rsvp_count,
+      COUNT(CASE WHEN er.status = 'waitlist' THEN 1 END)::bigint AS waitlist_count,
+      COUNT(CASE WHEN er.status = 'attended' THEN 1 END)::bigint AS attended_count
+    FROM admin_events e
+    LEFT JOIN event_rsvps er ON er.event_id = e.id
+    WHERE e.id = ${inserted.id}
+    GROUP BY e.id
   `;
 
   return {
@@ -100,9 +115,9 @@ const createEvent = async (input: CreateEventInput): Promise<AdminEvent> => {
     endAt: row.end_at.toISOString(),
     location: row.location,
     maxCapacity: row.max_capacity,
-    rsvpCount: 0,
-    waitlistCount: 0,
-    attendedCount: 0,
+    rsvpCount: Number(row.rsvp_count),
+    waitlistCount: Number(row.waitlist_count),
+    attendedCount: Number(row.attended_count),
     status: row.start_at > new Date() ? 'upcoming' : 'past',
     isRecurring: row.is_recurring,
   };
@@ -344,19 +359,10 @@ const generateFromTemplate = async (templateId: number): Promise<AdminEvent> => 
   const interval = intervalMap[template.frequency] ?? '7 days';
 
   // Create a new event from the template
-  const [row] = await prisma.$queryRawUnsafe<Array<{
-    id: number;
-    title: string;
-    description: string;
-    start_at: Date;
-    end_at: Date;
-    location: string;
-    max_capacity: number;
-    is_recurring: boolean;
-  }>>(
+  const [inserted] = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
     `INSERT INTO admin_events (title, description, start_at, end_at, location, max_capacity, is_recurring)
      VALUES ($1, '', NOW() + INTERVAL '${interval}', NOW() + INTERVAL '${interval}' + INTERVAL '1 hour', '', 0, true)
-     RETURNING *`,
+     RETURNING id`,
     template.name
   );
 
@@ -370,6 +376,30 @@ const generateFromTemplate = async (templateId: number): Promise<AdminEvent> => 
     templateId
   );
 
+  const [row] = await prisma.$queryRaw<Array<{
+    id: number;
+    title: string;
+    description: string;
+    start_at: Date;
+    end_at: Date;
+    location: string;
+    max_capacity: number;
+    is_recurring: boolean;
+    rsvp_count: bigint;
+    waitlist_count: bigint;
+    attended_count: bigint;
+  }>>`
+    SELECT
+      e.id, e.title, e.description, e.start_at, e.end_at, e.location, e.max_capacity, e.is_recurring,
+      COUNT(CASE WHEN er.status = 'registered' THEN 1 END)::bigint AS rsvp_count,
+      COUNT(CASE WHEN er.status = 'waitlist' THEN 1 END)::bigint AS waitlist_count,
+      COUNT(CASE WHEN er.status = 'attended' THEN 1 END)::bigint AS attended_count
+    FROM admin_events e
+    LEFT JOIN event_rsvps er ON er.event_id = e.id
+    WHERE e.id = ${inserted.id}
+    GROUP BY e.id
+  `;
+
   return {
     id: row.id,
     title: row.title,
@@ -378,10 +408,10 @@ const generateFromTemplate = async (templateId: number): Promise<AdminEvent> => 
     endAt: row.end_at.toISOString(),
     location: row.location,
     maxCapacity: row.max_capacity,
-    rsvpCount: 0,
-    waitlistCount: 0,
-    attendedCount: 0,
-    status: 'upcoming',
+    rsvpCount: Number(row.rsvp_count),
+    waitlistCount: Number(row.waitlist_count),
+    attendedCount: Number(row.attended_count),
+    status: row.start_at > new Date() ? 'upcoming' : 'past',
     isRecurring: row.is_recurring,
   };
 };
