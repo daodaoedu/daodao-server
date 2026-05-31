@@ -3,13 +3,11 @@ import { registry } from '@/config/openapi-registry';
 import { authenticate } from '@/middleware/auth';
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-import { getStatus } from '@/controllers/onboarding.controller';
+import { getStatus, getActiveFlow, submitFlowResponse } from '@/controllers/onboarding.controller';
 
 extendZodWithOpenApi(z);
 
 const router = Router();
-
-router.use(authenticate);
 
 // ── OpenAPI schema ────────────────────────────────────────────────────────────
 
@@ -46,8 +44,15 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
 });
 
-// ── Route ─────────────────────────────────────────────────────────────────────
+// ── Public routes (no auth required) ─────────────────────────────────────────
+
+router.get('/flows/active', getActiveFlow);
+
+// ── Authenticated routes ──────────────────────────────────────────────────────
+
+router.use(authenticate);
 
 router.get('/status', getStatus);
+router.post('/flows/:id/responses', submitFlowResponse);
 
 export default router;

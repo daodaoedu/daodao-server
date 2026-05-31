@@ -11703,7 +11703,7 @@ export interface paths {
             parameters: {
                 query: {
                     /** @description 反應目標類型 */
-                    targetType: "practice" | "comment" | "checkin";
+                    targetType: "practice" | "comment" | "checkin" | "persona_answer";
                     /** @description 目標外部 ID（UUID） */
                     targetId: string;
                 };
@@ -11986,7 +11986,7 @@ export interface paths {
             parameters: {
                 query: {
                     /** @description 反應目標類型 */
-                    targetType: "practice" | "comment" | "checkin";
+                    targetType: "practice" | "comment" | "checkin" | "persona_answer";
                     /** @description 目標外部 ID（UUID） */
                     targetId: string;
                 };
@@ -12091,7 +12091,7 @@ export interface paths {
             parameters: {
                 query: {
                     /** @description 反應目標類型 */
-                    targetType: "practice" | "comment" | "checkin";
+                    targetType: "practice" | "comment" | "checkin" | "persona_answer";
                     /** @description 逗號分隔的目標 ID（practice 為 UUID，comment/checkin 為整數），最多 50 個 */
                     targetIds: string;
                 };
@@ -19769,6 +19769,12 @@ export interface paths {
                     sortBy?: "createdAt" | "lastLoginAt" | "name" | "email";
                     /** @description 排序方向 */
                     sortOrder?: "asc" | "desc";
+                    /** @description 篩選學習風格人物誌（最新一次測驗結果） */
+                    personaType?: "L" | "C" | "A" | "D" | "O";
+                    /** @description 篩選 Onboarding Badge 完成狀態 */
+                    badgeGranted?: "true" | "false";
+                    /** @description 篩選用戶來源 */
+                    userSource?: "S1" | "S2" | "S3";
                 };
                 header?: never;
                 path?: never;
@@ -21227,98 +21233,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/persona/resonances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 對人物誌答案表達共鳴
-         * @description 對他人的答案表達共鳴（類似按讚）。每位使用者對同一答案只能共鳴一次，重複操作回傳 409。
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["AddPersonaResonanceBody"];
-                };
-            };
-            responses: {
-                /** @description 共鳴成功，回傳最新共鳴總數 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PersonaResonanceApiResponse"];
-                    };
-                };
-                /** @description 已對此答案表達過共鳴 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/persona/resonances/{answerId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * 取消對人物誌答案的共鳴
-         * @description 移除當前使用者對指定答案的共鳴記錄，並回傳更新後的共鳴總數。
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description 答案 ID */
-                    answerId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 取消成功，回傳最新共鳴總數 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PersonaResonanceApiResponse"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/persona/profile/me": {
         parameters: {
             query?: never;
@@ -21396,6 +21310,55 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PersonaProfileUserApiResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/persona/questions/{questionId}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得單一題目的所有用戶回應
+         * @description 回傳指定題目的所有用戶答案，支援 cursor 分頁。可選登入：登入者會附帶自己對各答案的反應、連結狀態、護照鎖定判斷；不公開個人資料的用戶，userId / name / photoURL 將遮罩為 null。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 語系代碼（預設 zh-TW） */
+                    locale?: "zh-TW" | "en";
+                    /** @description 每頁項目數（1–50，預設 20） */
+                    limit?: number;
+                    /** @description 游標（上一頁最後一筆答案的 ID） */
+                    cursor?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description 問題 ID */
+                    questionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuestionAnswersApiResponse"];
                     };
                 };
             };
@@ -30867,7 +30830,7 @@ export interface components {
              * @example practice
              * @enum {string}
              */
-            targetType: "practice" | "comment" | "checkin";
+            targetType: "practice" | "comment" | "checkin" | "persona_answer";
             /**
              * @description 目標外部 ID（UUID）
              * @example 32859587-f159-43fd-93e7-fcc890661781
@@ -30891,7 +30854,7 @@ export interface components {
              * @example practice
              * @enum {string}
              */
-            targetType: "practice" | "comment" | "checkin";
+            targetType: "practice" | "comment" | "checkin" | "persona_answer";
             /**
              * @description 目標外部 ID（UUID）
              * @example 32859587-f159-43fd-93e7-fcc890661781
@@ -30979,6 +30942,24 @@ export interface components {
              * @enum {string}
              */
             sortOrder: "asc" | "desc";
+            /**
+             * @description 篩選學習風格人物誌（最新一次測驗結果）
+             * @example D
+             * @enum {string}
+             */
+            personaType?: "L" | "C" | "A" | "D" | "O";
+            /**
+             * @description 篩選 Onboarding Badge 完成狀態
+             * @example true
+             * @enum {string}
+             */
+            badgeGranted?: "true" | "false";
+            /**
+             * @description 篩選用戶來源
+             * @example S1
+             * @enum {string}
+             */
+            userSource?: "S1" | "S2" | "S3";
         };
         AdminUserIdParam: {
             /**
@@ -31094,6 +31075,22 @@ export interface components {
              * @example 2024-01-20T08:30:00.000Z
              */
             lastLoginAt: string | null;
+            /**
+             * @description 最新一次學習風格測驗結果
+             * @example D
+             * @enum {string|null}
+             */
+            personaType: "L" | "C" | "A" | "D" | "O" | null;
+            /**
+             * @description 是否完成 Onboarding Badge
+             * @example true
+             */
+            badgeGranted: boolean | null;
+            /**
+             * @description 用戶來源（S1/S2/S3）
+             * @example S1
+             */
+            userSource: string | null;
         };
         AdminUserDetailData: {
             /** @description 用戶外部 ID (UUID) */
@@ -32525,18 +32522,6 @@ export interface components {
             createdAt: string;
             /** @description 更新時間（ISO 8601） */
             updatedAt: string | null;
-        };
-        PersonaResonanceData: {
-            /**
-             * @description 答案 ID
-             * @example 1
-             */
-            answerId: number;
-            /**
-             * @description 最新共鳴總數
-             * @example 5
-             */
-            resonanceCount: number;
         };
         PersonaCarouselState: {
             /** @description 是否應顯示輪播 */
@@ -34735,101 +34720,6 @@ export interface components {
          *       }
          *     }
          */
-        PersonaResonanceApiResponse: {
-            /**
-             * @description Indicates successful API response
-             * @enum {boolean}
-             */
-            success: true;
-            data: components["schemas"]["PersonaResonanceData"] & unknown;
-            /**
-             * Format: date-time
-             * @description ISO 8601 timestamp of the response
-             */
-            timestamp: string;
-            /**
-             * @description Optional metadata about the response
-             * @example {
-             *       "searchQuery": "JavaScript教程",
-             *       "searchTime": 45,
-             *       "cacheHit": false,
-             *       "processingTime": 123.5,
-             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-             *     }
-             * @example {
-             *       "categoryCounts": {
-             *         "前端開發": 25,
-             *         "後端開發": 18,
-             *         "資料科學": 12
-             *       },
-             *       "filters": {
-             *         "difficulty": "intermediate",
-             *         "language": "zh-TW"
-             *       }
-             *     }
-             */
-            meta?: {
-                /** @description Search query used for filtering results */
-                searchQuery?: string;
-                /** @description Time taken to execute the search query in milliseconds */
-                searchTime?: number;
-                /** @description Applied filters for the request */
-                filters?: {
-                    [key: string]: unknown;
-                };
-                /** @description Count of items per category */
-                categoryCounts?: {
-                    [key: string]: number;
-                };
-                /** @description Aggregated statistical data */
-                aggregateData?: {
-                    [key: string]: unknown;
-                };
-                /** @description Unique identifier for request tracking */
-                requestId?: string;
-                /** @description Whether the response was served from cache */
-                cacheHit?: boolean;
-                /** @description Total processing time in milliseconds */
-                processingTime?: number;
-            } & {
-                [key: string]: unknown;
-            };
-        };
-        AddPersonaResonanceBody: {
-            /**
-             * @description 答案 ID
-             * @example 1
-             */
-            answerId: number;
-        };
-        /**
-         * @description Standard success response format
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "id": 123,
-         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
-         *         "name": "JavaScript 基礎教程",
-         *         "description": "從零開始學習 JavaScript 程式設計",
-         *         "status": "published"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z"
-         *     }
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "userId": 456,
-         *         "username": "john_doe",
-         *         "email": "john@example.com",
-         *         "role": "student"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z",
-         *       "meta": {
-         *         "cacheHit": true,
-         *         "processingTime": 23.1
-         *       }
-         *     }
-         */
         PersonaProfileMeApiResponse: {
             /**
              * @description Indicates successful API response
@@ -35005,6 +34895,157 @@ export interface components {
             questions: components["schemas"]["PersonaProfileQuestionItem"][];
             viewerIsLocked?: boolean;
             answersNeeded?: number;
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        QuestionAnswersApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            data: components["schemas"]["QuestionAnswersData"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        /** @description The main response data */
+        QuestionAnswersData: {
+            question: components["schemas"]["QuestionAnswersSummary"];
+            answers: components["schemas"]["QuestionAnswerItem"][];
+            /** @description 是否還有更多資料 */
+            hasMore: boolean;
+            /** @description 下一頁游標（最後一筆答案 ID），無更多資料時為 null */
+            nextCursor: number | null;
+            /** @description 登入者是否因答題數不足而被鎖定 */
+            viewerIsLocked?: boolean;
+            /** @description 解鎖所需的額外答題數 */
+            answersNeeded?: number;
+        };
+        QuestionAnswersSummary: {
+            id: number;
+            prompt: string;
+            /** @enum {string} */
+            questionType: "choice" | "sentence_completion" | "scenario";
+            options: string[] | null;
+            /** @description 此題目的總回應數 */
+            totalAnswerCount: number;
+        };
+        QuestionAnswerItem: {
+            /**
+             * @description 答案 ID
+             * @example 123
+             */
+            answerId: number;
+            /**
+             * @description 使用者 external_id（UUID），不公開時為 null
+             * @example 123e4567-e89b-12d3-a456-426614174000
+             */
+            userId: string | null;
+            /**
+             * @description 使用者暱稱，不公開時為 null
+             * @example 小明
+             */
+            name: string | null;
+            /** @description 頭像 URL，不公開時為 null */
+            photoURL: string | null;
+            /** @description 選擇題答案 */
+            selectedValue: string | null;
+            /** @description 文字題答案 */
+            textAnswer: string | null;
+            /**
+             * @description 獲得的共鳴數
+             * @example 3
+             */
+            resonanceCount: number;
+            /**
+             * @description 目前登入者對此答案的反應類型
+             * @example encourage
+             */
+            currentUserReaction: string | null;
+            /** @description 作答者是否公開個人資料 */
+            isPublic: boolean;
+            /** @description 作答者是否為目前登入者的連結好友 */
+            isConnection: boolean;
+            /** @description 作答時間（ISO 8601） */
+            answeredAt: string;
+            /** @description 是否為目前登入者自己的答案 */
+            isSelf: boolean;
         };
         /**
          * @description Standard success response format

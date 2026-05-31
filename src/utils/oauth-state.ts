@@ -13,7 +13,7 @@ export interface OAuthState {
   /** 登入後要跳轉的 URL */
   redirectUrl: string;
   /** 來源網站 */
-  source: 'website' | 'app';
+  source: 'website' | 'app' | 'admin';
   /** 時間戳（防重放攻擊） */
   timestamp: number;
   /** 隨機字串（防 CSRF） */
@@ -49,7 +49,7 @@ export const generateNonce = (length = 16): string => {
  */
 export const createOAuthState = (
   redirectUrl: string,
-  source: 'website' | 'app' = 'app'
+  source: 'website' | 'app' | 'admin' = 'app'
 ): OAuthState => {
   return {
     redirectUrl: redirectUrl || '/dashboard',
@@ -119,7 +119,7 @@ export const validateOAuthState = (
   }
 
   // 驗證 source 值
-  if (state.source !== 'website' && state.source !== 'app') {
+  if (state.source !== 'website' && state.source !== 'app' && state.source !== 'admin') {
     return { valid: false, error: 'Invalid source value' };
   }
 

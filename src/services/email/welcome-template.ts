@@ -107,7 +107,8 @@ ${generateEmailWrapper({
   `,
 })}`;
 
-  return { subject, html };
+  const innerContent = `${content}\n${generateDivider()}\n${generateAuthorSection()}`;
+  return { subject, html, content: innerContent, preheader };
 };
 
 /**

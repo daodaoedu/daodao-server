@@ -159,7 +159,7 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
       COUNT(*)::bigint as total,
       COUNT(*) FILTER (WHERE status = 'sent')::bigint as success,
       COUNT(*) FILTER (WHERE status = 'failed')::bigint as failed
-    FROM email_history
+    FROM email_logs
   `;
 
   const total = Number(result[0]?.total ?? 0);

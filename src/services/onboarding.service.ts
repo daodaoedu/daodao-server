@@ -100,17 +100,19 @@ async function getEffectiveTaskStates(
  * 建立 onboarding 記錄（新用戶註冊後呼叫）。
  * S2 用戶：task_states.A 預設為 'done'。
  */
-async function createOnboarding(userId: number, userSource: UserSource): Promise<void> {
+async function createOnboarding(userId: number, userSource: UserSource, registrationFlow?: string): Promise<void> {
   const initialTaskStates: TaskStates =
     userSource === UserSource.S2 ? { [OnboardingTask.A]: 'done' } : {};
 
   await prisma.$executeRaw`
-    INSERT INTO user_onboarding (user_id, user_source, task_states, email_states, created_at, updated_at)
+    INSERT INTO user_onboarding (user_id, user_source, task_states, task_completed_at, email_states, registration_flow, created_at, updated_at)
     VALUES (
       ${userId},
       ${userSource},
       ${JSON.stringify(initialTaskStates)}::jsonb,
       '{}'::jsonb,
+      '{}'::jsonb,
+      ${registrationFlow ?? null},
       NOW(),
       NOW()
     )
@@ -195,12 +197,14 @@ async function checkAndAdvance(
 
   // 原子更新：JSONB || 合併避免讀取-寫回競態條件，RETURNING 取最新快照
   const taskPatch = JSON.stringify({ [taskKey]: 'done' });
+  const taskCompletedAtPatch = JSON.stringify({ [taskKey]: new Date().toISOString() });
   const updated = await prisma.$queryRaw<UserOnboardingRow[]>`
     UPDATE user_onboarding
     SET
-      task_states     = task_states || ${taskPatch}::jsonb,
-      creation_method = ${creationMethodClause},
-      updated_at      = NOW()
+      task_states       = task_states || ${taskPatch}::jsonb,
+      task_completed_at = task_completed_at || ${taskCompletedAtPatch}::jsonb,
+      creation_method   = ${creationMethodClause},
+      updated_at        = NOW()
     WHERE user_id = ${userId}
     RETURNING task_states, badge_granted, user_source, created_at
   `;

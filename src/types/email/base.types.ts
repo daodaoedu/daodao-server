@@ -9,6 +9,10 @@
 export interface EmailTemplateContent {
   subject: string;
   html: string;
+  /** 郵件內容區塊 HTML（不含 banner/footer），供 admin seed 使用 */
+  content?: string;
+  /** 郵件列表預覽文字，供 admin seed 使用 */
+  preheader?: string;
 }
 
 /**

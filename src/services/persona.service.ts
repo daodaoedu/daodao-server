@@ -1,12 +1,11 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
+import { BadRequestError } from '../middleware/error.middleware';
 import type { ApiSuccessResponse } from '../types/api-response.types';
 import type {
   PersonaQuestionItem,
   PersonaAnswerItem,
-  PersonaResonanceData,
   SubmitAnswerBody,
 } from '../validators/persona.validators';
 
@@ -64,7 +63,7 @@ function formatPersonaAnswer(row: AnswerRow): PersonaAnswerItem {
 
 // ─── Service Functions ────────────────────────────────────────────────────────
 
-async function getQuestions(userId: number, locale = 'zh-TW'): Promise<ApiSuccessResponse<{ questions: PersonaQuestionItem[] }>> {
+async function getQuestions(userId: number | null, locale = 'zh-TW'): Promise<ApiSuccessResponse<{ questions: PersonaQuestionItem[] }>> {
   const rows = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
     SELECT
       q.id,
@@ -99,13 +98,9 @@ async function submitAnswer(
   }
 
   const existing = await prisma.$queryRaw<AnswerRow[]>(Prisma.sql`
-    SELECT a.*, COALESCE(r.resonance_count, 0) AS resonance_count
+    SELECT a.*,
+      (SELECT COUNT(*) FROM reactions WHERE target_type = 'persona_answer' AND target_id = a.id) AS resonance_count
     FROM persona_answers a
-    LEFT JOIN (
-      SELECT answer_id, COUNT(*) AS resonance_count
-      FROM persona_resonances
-      GROUP BY answer_id
-    ) r ON r.answer_id = a.id
     WHERE a.user_id = ${userId} AND a.question_id = ${questionId}
     LIMIT 1
   `);
@@ -129,7 +124,7 @@ async function submitAnswer(
     RETURNING
       id, user_id, question_id, selected_value, text_answer, created_at, updated_at,
       (
-        SELECT COUNT(*) FROM persona_resonances WHERE answer_id = persona_answers.id
+        SELECT COUNT(*) FROM reactions WHERE target_type = 'persona_answer' AND target_id = persona_answers.id
       ) AS resonance_count
   `);
 
@@ -154,47 +149,6 @@ async function submitSkip(
     skipCount: Number(row.skip_count),
     suppressed: row.suppressed,
   });
-}
-
-async function addResonance(
-  userId: number,
-  answerId: number
-): Promise<ApiSuccessResponse<PersonaResonanceData>> {
-  const answerExists = await prisma.$queryRaw<{ id: number }[]>(
-    Prisma.sql`SELECT id FROM persona_answers WHERE id = ${answerId} LIMIT 1`
-  );
-  if (answerExists.length === 0) throw new NotFoundError('答案不存在');
-
-  // Single INSERT with ON CONFLICT DO NOTHING eliminates check-then-insert race condition
-  const inserted = await prisma.$queryRaw<{ id: number }[]>(Prisma.sql`
-    INSERT INTO persona_resonances (user_id, answer_id, created_at)
-    VALUES (${userId}, ${answerId}, NOW())
-    ON CONFLICT (user_id, answer_id) DO NOTHING
-    RETURNING id
-  `);
-  if (inserted.length === 0) throw new ConflictError('已對此答案表達過共鳴');
-
-  const [countRow] = await prisma.$queryRaw<{ count: number }[]>(
-    Prisma.sql`SELECT COUNT(*) AS count FROM persona_resonances WHERE answer_id = ${answerId}`
-  );
-
-  return createSuccessResponse({ answerId, resonanceCount: Number(countRow.count) });
-}
-
-async function removeResonance(
-  userId: number,
-  answerId: number
-): Promise<ApiSuccessResponse<PersonaResonanceData>> {
-  const deleted = await prisma.$executeRaw(
-    Prisma.sql`DELETE FROM persona_resonances WHERE user_id = ${userId} AND answer_id = ${answerId}`
-  );
-  if (deleted === 0) throw new NotFoundError('共鳴記錄不存在');
-
-  const [countRow] = await prisma.$queryRaw<{ count: number }[]>(
-    Prisma.sql`SELECT COUNT(*) AS count FROM persona_resonances WHERE answer_id = ${answerId}`
-  );
-
-  return createSuccessResponse({ answerId, resonanceCount: Number(countRow.count) });
 }
 
 // ─── Task 3: Passport Gate, Carousel, Session ────────────────────────────────
@@ -392,9 +346,10 @@ async function getProfileMe(userId: number, locale = 'zh-TW'): Promise<ApiSucces
     LEFT JOIN persona_answers a
       ON a.question_id = q.id AND a.user_id = ${userId}
     LEFT JOIN (
-      SELECT answer_id, COUNT(*) AS resonance_count
-      FROM persona_resonances
-      GROUP BY answer_id
+      SELECT target_id AS answer_id, COUNT(*) AS resonance_count
+      FROM reactions
+      WHERE target_type = 'persona_answer'
+      GROUP BY target_id
     ) r ON r.answer_id = a.id
     ORDER BY q.id ASC
   `);
@@ -434,9 +389,10 @@ async function getProfileUser(
     JOIN persona_question_translations t
       ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN (
-      SELECT answer_id, COUNT(*) AS resonance_count
-      FROM persona_resonances
-      GROUP BY answer_id
+      SELECT target_id AS answer_id, COUNT(*) AS resonance_count
+      FROM reactions
+      WHERE target_type = 'persona_answer'
+      GROUP BY target_id
     ) r ON r.answer_id = a.id
     WHERE ${baseWhere}
     ORDER BY q.id ASC
@@ -456,18 +412,219 @@ async function getProfileUser(
   });
 }
 
+// ─── Task 5: Question Community Answers ──────────────────────────────────────
+
+interface QuestionSummaryRow {
+  id: number;
+  prompt: string;
+  question_type: 'choice' | 'sentence_completion' | 'scenario';
+  options: string[] | null;
+  total_answer_count: number;
+}
+
+interface AnswerWithUserRow {
+  answer_id: number;
+  user_internal_id: number;
+  user_external_id: string | null;
+  nickname: string | null;
+  photo_url: string | null;
+  is_open_profile: boolean | null;
+  selected_value: string | null;
+  text_answer: string | null;
+  resonance_count: number;
+  answered_at: Date;
+}
+
+interface ViewerReactionRow {
+  target_id: number;
+  reaction_type: string;
+}
+
+export interface QuestionAnswerItem {
+  answerId: number;
+  userId: string | null;
+  name: string | null;
+  photoURL: string | null;
+  selectedValue: string | null;
+  textAnswer: string | null;
+  resonanceCount: number;
+  currentUserReaction: string | null;
+  isPublic: boolean;
+  isConnection: boolean;
+  answeredAt: string;
+  isSelf: boolean;
+}
+
+async function getQuestionAnswers(
+  questionId: number,
+  viewerId: number | undefined,
+  params: { locale?: string; limit?: number; cursor?: number }
+): Promise<ApiSuccessResponse<{
+  question: { id: number; prompt: string; questionType: string; options: string[] | null; totalAnswerCount: number };
+  answers: QuestionAnswerItem[];
+  hasMore: boolean;
+  nextCursor: number | null;
+  viewerIsLocked?: boolean;
+  answersNeeded?: number;
+}>> {
+  const { locale = 'zh-TW', limit = 20, cursor } = params;
+
+  // 1. Question info + total count
+  const [questionRow] = await prisma.$queryRaw<QuestionSummaryRow[]>(Prisma.sql`
+    SELECT
+      q.id,
+      t.prompt,
+      q.question_type,
+      t.options,
+      COUNT(a.id)::int AS total_answer_count
+    FROM persona_questions q
+    JOIN persona_question_translations t
+      ON t.question_id = q.id AND t.locale = ${locale}
+    LEFT JOIN persona_answers a ON a.question_id = q.id
+    WHERE q.id = ${questionId}
+    GROUP BY q.id, t.prompt, q.question_type, t.options
+  `);
+
+  if (!questionRow) throw new BadRequestError('找不到此題目');
+
+  // 2. Passport gate
+  let viewerIsLocked: boolean | undefined;
+  let answersNeeded: number | undefined;
+  if (viewerId != null) {
+    const passport = await getPassportState(viewerId);
+    viewerIsLocked = passport.isLocked;
+    answersNeeded = passport.answersNeeded;
+  }
+
+  // 3. Fetch answers with cursor (fetch limit+1 to detect hasMore)
+  const fetchLimit = limit + 1;
+  const cursorCondition = cursor != null
+    ? Prisma.sql`AND a.id < ${cursor}`
+    : Prisma.sql``;
+
+  const rows = await prisma.$queryRaw<AnswerWithUserRow[]>(Prisma.sql`
+    SELECT
+      a.id              AS answer_id,
+      u.id              AS user_internal_id,
+      u.external_id     AS user_external_id,
+      u.nickname,
+      c.photo_url,
+      u.is_open_profile,
+      a.selected_value,
+      a.text_answer,
+      COALESCE(r.resonance_count, 0)::int AS resonance_count,
+      a.created_at      AS answered_at
+    FROM persona_answers a
+    JOIN users u ON u.id = a.user_id
+    LEFT JOIN contacts c ON c.id = u.contact_id
+    LEFT JOIN (
+      SELECT target_id, COUNT(*)::int AS resonance_count
+      FROM reactions
+      WHERE target_type = 'persona_answer'
+      GROUP BY target_id
+    ) r ON r.target_id = a.id
+    WHERE a.question_id = ${questionId}
+    ${cursorCondition}
+    ORDER BY a.id DESC
+    LIMIT ${fetchLimit}
+  `);
+
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore ? pageRows[pageRows.length - 1].answer_id : null;
+
+  if (pageRows.length === 0) {
+    return createSuccessResponse({
+      question: {
+        id: questionRow.id,
+        prompt: questionRow.prompt,
+        questionType: questionRow.question_type,
+        options: questionRow.options,
+        totalAnswerCount: Number(questionRow.total_answer_count),
+      },
+      answers: [],
+      hasMore: false,
+      nextCursor: null,
+      ...(viewerId != null && { viewerIsLocked, answersNeeded }),
+    });
+  }
+
+  // 4. Viewer's reactions on this page's answers
+  const answerIds = pageRows.map((r) => r.answer_id);
+  const viewerReactionMap = new Map<number, string>();
+  if (viewerId != null) {
+    const viewerReactions = await prisma.$queryRaw<ViewerReactionRow[]>(Prisma.sql`
+      SELECT target_id, reaction_type
+      FROM reactions
+      WHERE target_type = 'persona_answer'
+        AND user_id = ${viewerId}
+        AND target_id = ANY(${answerIds}::int[])
+    `);
+    for (const vr of viewerReactions) {
+      viewerReactionMap.set(vr.target_id, vr.reaction_type);
+    }
+  }
+
+  // 5. Connection check
+  const connectedUserIds = new Set<number>();
+  if (viewerId != null) {
+    const userInternalIds = pageRows.map((r) => r.user_internal_id);
+    const connections = await prisma.$queryRaw<{ other_id: number }[]>(Prisma.sql`
+      SELECT CASE WHEN user_a_id = ${viewerId} THEN user_b_id ELSE user_a_id END AS other_id
+      FROM connections
+      WHERE (user_a_id = ${viewerId} AND user_b_id = ANY(${userInternalIds}::int[]))
+         OR (user_b_id = ${viewerId} AND user_a_id = ANY(${userInternalIds}::int[]))
+    `);
+    for (const c of connections) connectedUserIds.add(c.other_id);
+  }
+
+  // 6. Format
+  const answers: QuestionAnswerItem[] = pageRows.map((row) => {
+    const isPublic = row.is_open_profile ?? false;
+    const isSelf = viewerId != null && row.user_internal_id === viewerId;
+    const reveal = isPublic || isSelf;
+    return {
+      answerId: row.answer_id,
+      userId: reveal ? (row.user_external_id ?? null) : null,
+      name: reveal ? (row.nickname ?? null) : null,
+      photoURL: reveal ? (row.photo_url ?? null) : null,
+      selectedValue: row.selected_value,
+      textAnswer: row.text_answer,
+      resonanceCount: Number(row.resonance_count),
+      currentUserReaction: viewerReactionMap.get(row.answer_id) ?? null,
+      isPublic,
+      isConnection: connectedUserIds.has(row.user_internal_id),
+      answeredAt: row.answered_at.toISOString(),
+      isSelf,
+    };
+  });
+
+  return createSuccessResponse({
+    question: {
+      id: questionRow.id,
+      prompt: questionRow.prompt,
+      questionType: questionRow.question_type,
+      options: questionRow.options,
+      totalAnswerCount: Number(questionRow.total_answer_count),
+    },
+    answers,
+    hasMore,
+    nextCursor,
+    ...(viewerId != null && { viewerIsLocked, answersNeeded }),
+  });
+}
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const personaService = {
   getQuestions,
   submitAnswer,
   submitSkip,
-  addResonance,
-  removeResonance,
   getPassportState,
   getCarouselState,
   dismissCarousel,
   incrementSession,
   getProfileMe,
   getProfileUser,
+  getQuestionAnswers,
 };

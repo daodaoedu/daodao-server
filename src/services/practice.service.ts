@@ -100,7 +100,7 @@ async function notifyPracticeCreatedAudience(params: {
       recipientId,
       entityType: 'practice',
       entityId: practiceId,
-      priority: 'P2',
+      priority: 'P1',
       payload: { practice_title: practiceTitle },
     })
   ));
@@ -514,7 +514,8 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         has_resources: Boolean(data.resources && data.resources.length > 0),
         progress_percentage: INITIAL_PROGRESS,
         privacy_status: data.privacyStatus ?? 'public',
-        theme_color: themeColor
+        theme_color: themeColor,
+        creation_source: data.creationMethod ?? 'self_created'
       },
       select: {
         id: true,
@@ -1637,6 +1638,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
           theme_color: source.theme_color,
           template_id: source.template_id,
           source_practice_id: sourceId,
+          creation_source: 'copied',
           status: 'not_started',
           progress_percentage: INITIAL_PROGRESS,
           start_date: today,

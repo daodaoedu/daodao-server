@@ -16,6 +16,12 @@ export interface AdminUserFilters {
   isActive?: boolean;
   /** 篩選 email 驗證狀態 */
   isVerified?: boolean;
+  /** 篩選人物誌類型（最新一次測驗結果） */
+  personaType?: 'L' | 'C' | 'A' | 'D' | 'O';
+  /** 篩選 Onboarding Badge 完成狀態 */
+  badgeGranted?: boolean;
+  /** 篩選用戶來源 */
+  userSource?: 'S1' | 'S2' | 'S3';
   /** 頁數 */
   page?: number;
   /** 每頁數量 */
@@ -52,6 +58,12 @@ export interface AdminUserListItem {
   createdAt: string;
   lastLoginAt: string | null;
   lastActiveAt: string | null;
+  /** 最新一次學習風格測驗結果 */
+  personaType: 'L' | 'C' | 'A' | 'D' | 'O' | null;
+  /** 是否完成 Onboarding Badge */
+  badgeGranted: boolean | null;
+  /** 用戶來源（S1/S2/S3） */
+  userSource: string | null;
 }
 
 /**
