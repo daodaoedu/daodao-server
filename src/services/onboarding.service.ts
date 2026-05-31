@@ -146,7 +146,8 @@ async function getStatus(userId: number): Promise<OnboardingStatusResponse | nul
       where: { id: userId },
       select: { referral_source: true },
     });
-    const userSource = deriveUserSource(user?.referral_source ?? null, false);
+    if (!user) return null;
+    const userSource = deriveUserSource(user.referral_source ?? null, false);
     await createOnboarding(userId, userSource);
     row = await findByUserId(userId);
     if (!row) return null;

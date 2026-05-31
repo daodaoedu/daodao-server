@@ -1175,54 +1175,80 @@ export async function getUserCohortRetention(query: {
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  const TRACK_DAYS = [1, 7, 14, 30, 60, 90] as const;
+  const rangeStart = months[0].start;
+  const rangeEnd = months[months.length - 1].end;
 
-  const rows = await Promise.all(
-    months.map(async ({ start, end, label }) => {
-      const cohortUsers = await prisma.users.findMany({
-        where: { created_at: { gte: start, lt: end } },
-        select: { id: true },
-      });
+  type RetentionRow = {
+    cohort_month: Date;
+    cohort_size: bigint;
+    day1: bigint;
+    day7: bigint;
+    day14: bigint;
+    day30: bigint;
+    day60: bigint;
+    day90: bigint;
+  };
 
-      const cohortSize = cohortUsers.length;
-      const userIds = cohortUsers.map(u => u.id);
+  const rawRows = await prisma.$queryRaw<RetentionRow[]>`
+    WITH cohort AS (
+      SELECT id AS user_id,
+             created_at,
+             date_trunc('month', created_at) AS cohort_month
+      FROM users
+      WHERE created_at >= ${rangeStart} AND created_at < ${rangeEnd}
+    ),
+    logins AS (
+      SELECT DISTINCT ulh.user_id,
+             (ulh.login_at::date - cm.created_at::date) AS days_after
+      FROM user_login_history ulh
+      JOIN cohort cm ON cm.user_id = ulh.user_id
+      WHERE (ulh.login_at::date - cm.created_at::date) IN (1, 7, 14, 30, 60, 90)
+    ),
+    cohort_sizes AS (
+      SELECT cohort_month, COUNT(*) AS cohort_size
+      FROM cohort
+      GROUP BY cohort_month
+    ),
+    retained AS (
+      SELECT cm.cohort_month, l.days_after, COUNT(DISTINCT l.user_id) AS retained_count
+      FROM cohort cm
+      JOIN logins l ON l.user_id = cm.user_id
+      GROUP BY cm.cohort_month, l.days_after
+    )
+    SELECT
+      cs.cohort_month,
+      cs.cohort_size,
+      COALESCE(MAX(CASE WHEN r.days_after = 1  THEN r.retained_count END), 0) AS day1,
+      COALESCE(MAX(CASE WHEN r.days_after = 7  THEN r.retained_count END), 0) AS day7,
+      COALESCE(MAX(CASE WHEN r.days_after = 14 THEN r.retained_count END), 0) AS day14,
+      COALESCE(MAX(CASE WHEN r.days_after = 30 THEN r.retained_count END), 0) AS day30,
+      COALESCE(MAX(CASE WHEN r.days_after = 60 THEN r.retained_count END), 0) AS day60,
+      COALESCE(MAX(CASE WHEN r.days_after = 90 THEN r.retained_count END), 0) AS day90
+    FROM cohort_sizes cs
+    LEFT JOIN retained r ON r.cohort_month = cs.cohort_month
+    GROUP BY cs.cohort_month, cs.cohort_size
+    ORDER BY cs.cohort_month
+  `;
 
-      const retentionValues: Record<string, number> = {};
-
-      if (cohortSize > 0) {
-        const daysSinceCohortEnd = Math.floor((now.getTime() - end.getTime()) / 86400000);
-
-        await Promise.all(
-          TRACK_DAYS.map(async day => {
-            if (daysSinceCohortEnd < day) {
-              retentionValues[`day${day}`] = 0;
-              return;
-            }
-            const rangeEnd = new Date(end.getTime() + day * 86400000);
-            const retained = await prisma.user_login_history
-              .groupBy({
-                by: ['user_id'],
-                where: { user_id: { in: userIds }, login_at: { gte: end, lt: rangeEnd } },
-              })
-              .then(r => r.length);
-            retentionValues[`day${day}`] = Math.round((retained / cohortSize) * 10000) / 100;
-          }),
-        );
-      } else {
-        TRACK_DAYS.forEach(day => { retentionValues[`day${day}`] = 0; });
-      }
-
-      return {
-        label,
-        day1: retentionValues['day1'] ?? 0,
-        day7: retentionValues['day7'] ?? 0,
-        day14: retentionValues['day14'] ?? 0,
-        day30: retentionValues['day30'] ?? 0,
-        day60: retentionValues['day60'] ?? 0,
-        day90: retentionValues['day90'] ?? 0,
-      };
-    }),
+  const retentionByMonth = new Map(
+    rawRows.map(r => [r.cohort_month.toISOString().slice(0, 7), r]),
   );
+
+  const rows = months.map(({ label }) => {
+    const r = retentionByMonth.get(label);
+    if (!r) return { label, day1: 0, day7: 0, day14: 0, day30: 0, day60: 0, day90: 0 };
+    const size = Number(r.cohort_size);
+    const pct = (n: bigint) => size > 0 ? Math.round((Number(n) / size) * 10000) / 100 : 0;
+    return {
+      label,
+      day1: pct(r.day1),
+      day7: pct(r.day7),
+      day14: pct(r.day14),
+      day30: pct(r.day30),
+      day60: pct(r.day60),
+      day90: pct(r.day90),
+    };
+  });
 
   return { rows };
 }
