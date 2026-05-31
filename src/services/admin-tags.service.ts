@@ -58,13 +58,21 @@ const createTag = async (input: CreateTagInput): Promise<UserTag> => {
     RETURNING *
   `;
 
+  const [counts] = await prisma.$queryRaw<Array<{ user_count: bigint }>>`
+    SELECT COUNT(uta.user_id)::bigint as user_count
+    FROM user_tags t
+    LEFT JOIN user_tag_assignments uta ON t.id = uta.tag_id
+    WHERE t.id = ${tag.id}
+    GROUP BY t.id
+  `;
+
   return {
     id: tag.id,
     name: tag.name,
     color: tag.color,
     description: tag.description,
     type: tag.type as 'manual' | 'auto',
-    userCount: 0,
+    userCount: Number(counts?.user_count ?? 0),
     createdAt: tag.created_at.toISOString(),
     updatedAt: tag.updated_at?.toISOString() ?? null,
   };

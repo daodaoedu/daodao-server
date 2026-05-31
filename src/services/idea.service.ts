@@ -30,6 +30,30 @@ import {
 } from '@/middleware/error.middleware';
 import tagService from '@/services/tag.service';
 
+const prismaClient = prisma;
+
+/**
+ * 批量取得評論數
+ */
+async function getIdeaCommentCounts(ideaIds: number[]): Promise<Record<number, number>> {
+  if (!ideaIds.length) return {};
+  try {
+    const rows = await prismaClient.comments.groupBy({
+      by: ['target_id'],
+      where: {
+        target_type: 'idea',
+        target_id: { in: ideaIds }
+      },
+      _count: { id: true }
+    });
+    return rows.reduce((acc, row) => {
+      acc[row.target_id] = row._count?.id || 0;
+      return acc;
+    }, {} as Record<number, number>);
+  } catch {
+    return {};
+  }
+}
 
 // 定義分頁參數介面
 interface PaginationParams {
@@ -81,36 +105,37 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     throw new NotFoundError('想法不存在');
   }
 
-  // 查詢標籤
-  const tags = await prisma.entity_tags.findMany({
-    where: {
-      entity_type: 'idea',
-      entity_id: idea.id
-    },
-    include: {
-      tags: true
-    }
-  });
-
-  // 查詢資源
-  const resources = await prisma.entity_resources.findMany({
-    where: {
-      entity_type: 'idea',
-      entity_id: idea.id
-    },
-    include: {
-      resources: {
-        include: {
-          users: {
-            select: {
-              id: true,
-              nickname: true
+  // 批量查詢標籤、資源、評論數
+  const [tags, resources, commentCounts] = await Promise.all([
+    prisma.entity_tags.findMany({
+      where: {
+        entity_type: 'idea',
+        entity_id: idea.id
+      },
+      include: {
+        tags: true
+      }
+    }),
+    prisma.entity_resources.findMany({
+      where: {
+        entity_type: 'idea',
+        entity_id: idea.id
+      },
+      include: {
+        resources: {
+          include: {
+            users: {
+              select: {
+                id: true,
+                nickname: true
+              }
             }
           }
         }
       }
-    }
-  });
+    }),
+    getIdeaCommentCounts([idea.id])
+  ]);
 
   // 構建返回的想法實體
   const ideaEntity: IdeaEntity = {
@@ -130,10 +155,10 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
       name: entityResource.resources.name,
       url: entityResource.resources.url
     })),
-    likeCount: 0, // 可以後續實現
-    commentCount: 0, // 可以後續實現
-    viewCount: 0, // 可以後續實現
-    shareCount: 0, // 可以後續實現
+    likeCount: 0, // reactions 尚未關聯 idea entity type
+    commentCount: commentCounts[idea.id] || 0,
+    viewCount: 0, // entity_stats 尚無 idea 瀏覽記錄（未呼叫 recordView）
+    shareCount: 0, // 尚未實現 share 追蹤
     resourceCount: resources.length,
     isLiked: false, // 可以後續實現
     isFavorited: false, // 可以後續實現
@@ -281,37 +306,38 @@ export async function getIdeas(
     prisma.ideas.count({ where })
   ]);
 
-  // 批量查詢標籤
+  // 批量查詢標籤、資源、評論數
   const ideaIds = ideas.map(idea => idea.id);
-  const allTags = await prisma.entity_tags.findMany({
-    where: {
-      entity_type: 'idea',
-      entity_id: { in: ideaIds }
-    },
-    include: {
-      tags: true
-    }
-  });
-
-  // 批量查詢資源
-  const allResources = await prisma.entity_resources.findMany({
-    where: {
-      entity_type: 'idea',
-      entity_id: { in: ideaIds }
-    },
-    include: {
-      resources: {
-        include: {
-          users: {
-            select: {
-              id: true,
-              nickname: true
+  const [allTags, allResources, commentCounts] = await Promise.all([
+    prisma.entity_tags.findMany({
+      where: {
+        entity_type: 'idea',
+        entity_id: { in: ideaIds }
+      },
+      include: {
+        tags: true
+      }
+    }),
+    prisma.entity_resources.findMany({
+      where: {
+        entity_type: 'idea',
+        entity_id: { in: ideaIds }
+      },
+      include: {
+        resources: {
+          include: {
+            users: {
+              select: {
+                id: true,
+                nickname: true
+              }
             }
           }
         }
       }
-    }
-  });
+    }),
+    getIdeaCommentCounts(ideaIds)
+  ]);
 
   // 將標籤按想法 ID 分組
   const tagsByIdeaId = allTags.reduce((acc, tag) => {
@@ -376,10 +402,10 @@ export async function getIdeas(
       },
       tags: tagsByIdeaId[idea.id]?.map(tag => tag.name) || [],
       resources: ideaResources,
-      likeCount: 0,
-      commentCount: 0,
-      viewCount: 0,
-      shareCount: 0,
+      likeCount: 0, // reactions 尚未關聯 idea entity type
+      commentCount: commentCounts[idea.id] || 0,
+      viewCount: 0, // entity_stats 尚無 idea 瀏覽記錄（未呼叫 recordView）
+      shareCount: 0, // 尚未實現 share 追蹤
       resourceCount: ideaResources.length,
       isLiked: false,
       isFavorited: false,
