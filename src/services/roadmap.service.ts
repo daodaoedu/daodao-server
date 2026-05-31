@@ -131,19 +131,10 @@ export async function getStats(): Promise<ApiSuccessResponse<RoadmapStats>> {
     });
   }
 
-  const [partnersResult, feedback] = await Promise.all([
-    prisma.$queryRaw<Array<{ count: number }>>`
-      SELECT COUNT(DISTINCT user_id)::int as count
-      FROM (
-        SELECT submitter_user_id AS user_id FROM wishes
-        UNION
-        SELECT user_id FROM roadmap_item_supports
-      ) as temp
-    `,
+  const [partners, feedback] = await Promise.all([
+    prisma.users.count(),
     prisma.wishes.count(),
   ]);
-
-  const partners = partnersResult[0]?.count ?? 0;
   const stats: RoadmapStats = { partners, feedback };
 
   try {
