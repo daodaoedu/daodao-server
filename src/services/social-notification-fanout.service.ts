@@ -8,6 +8,8 @@
 import { prisma } from './database/prisma.service';
 import type { SocialNotificationEventType } from '../types/social.types';
 
+const FANOUT_BATCH_SIZE = 1000;
+
 /**
  * Fan-out 通知給實踐的追蹤者
  * @param event - 社交通知事件類型
@@ -21,15 +23,36 @@ export async function fanoutToPracticeFollowers(
   practiceId: number,
   payload: Record<string, unknown>
 ): Promise<void> {
-  const followers = await prisma.follows.findMany({
-    where: { target_type: 'practice', target_id: practiceId },
-    select: { follower_id: true },
-  });
   const { bulkEnqueueSocialNotifications } = await import('../queues/social-notification.queue');
-  const jobs = followers
-    .filter(f => f.follower_id !== actorId)
-    .map(f => ({ event, actorId, recipientId: f.follower_id, payload }));
-  await bulkEnqueueSocialNotifications(jobs);
+  let cursor: number | undefined;
+  let batchSize: number;
+
+  do {
+    const followers = await prisma.follows.findMany({
+      where: {
+        target_type: 'practice',
+        target_id: practiceId,
+        ...(cursor !== undefined ? { id: { gt: cursor } } : {}),
+      },
+      take: FANOUT_BATCH_SIZE,
+      orderBy: { id: 'asc' },
+      select: { follower_id: true, id: true },
+    });
+
+    batchSize = followers.length;
+
+    const jobs = followers
+      .filter(f => f.follower_id !== actorId)
+      .map(f => ({ event, actorId, recipientId: f.follower_id, payload }));
+
+    if (jobs.length > 0) {
+      await bulkEnqueueSocialNotifications(jobs);
+    }
+
+    if (batchSize > 0) {
+      cursor = followers[batchSize - 1].id;
+    }
+  } while (batchSize === FANOUT_BATCH_SIZE);
 }
 
 /**
@@ -45,6 +68,7 @@ export async function fanoutToConnectedPartners(
 ): Promise<void> {
   const connections = await prisma.connections.findMany({
     where: { OR: [{ user_a_id: actorId }, { user_b_id: actorId }] },
+    take: 5000,
     select: { user_a_id: true, user_b_id: true },
   });
   const { bulkEnqueueSocialNotifications } = await import('../queues/social-notification.queue');
