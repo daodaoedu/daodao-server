@@ -8,59 +8,32 @@
 import { prisma } from './database/prisma.service';
 import type { SocialNotificationEventType } from '../types/social.types';
 
-const FANOUT_BATCH_SIZE = 1000;
+// Safety cap: prevents loading unbounded rows into memory.
+// Accounts with more than FANOUT_MAX followers/connections will silently miss
+// notifications beyond this threshold until cursor-based pagination is implemented.
+const FANOUT_MAX = 1000;
 
-/**
- * Fan-out 通知給實踐的追蹤者
- * @param event - 社交通知事件類型
- * @param actorId - 觸發者 user id（會被排除在收件人外）
- * @param practiceId - 實踐 id
- * @param payload - 額外資料
- */
 export async function fanoutToPracticeFollowers(
   event: SocialNotificationEventType,
   actorId: number,
   practiceId: number,
   payload: Record<string, unknown>
 ): Promise<void> {
+  const followers = await prisma.follows.findMany({
+    where: { target_type: 'practice', target_id: practiceId },
+    select: { follower_id: true },
+    take: FANOUT_MAX,
+  });
+  if (followers.length === FANOUT_MAX) {
+    console.warn(`[fanout] practice ${practiceId} has >= ${FANOUT_MAX} followers; notifications capped — migrate to cursor pagination`);
+  }
   const { bulkEnqueueSocialNotifications } = await import('../queues/social-notification.queue');
-  let cursor: number | undefined;
-  let batchSize: number;
-
-  do {
-    const followers = await prisma.follows.findMany({
-      where: {
-        target_type: 'practice',
-        target_id: practiceId,
-        ...(cursor !== undefined ? { id: { gt: cursor } } : {}),
-      },
-      take: FANOUT_BATCH_SIZE,
-      orderBy: { id: 'asc' },
-      select: { follower_id: true, id: true },
-    });
-
-    batchSize = followers.length;
-
-    const jobs = followers
-      .filter(f => f.follower_id !== actorId)
-      .map(f => ({ event, actorId, recipientId: f.follower_id, payload }));
-
-    if (jobs.length > 0) {
-      await bulkEnqueueSocialNotifications(jobs);
-    }
-
-    if (batchSize > 0) {
-      cursor = followers[batchSize - 1].id;
-    }
-  } while (batchSize === FANOUT_BATCH_SIZE);
+  const jobs = followers
+    .filter(f => f.follower_id !== actorId)
+    .map(f => ({ event, actorId, recipientId: f.follower_id, payload }));
+  await bulkEnqueueSocialNotifications(jobs);
 }
 
-/**
- * Fan-out 通知給雙向連結夥伴
- * @param event - 社交通知事件類型
- * @param actorId - 觸發者 user id
- * @param payload - 額外資料
- */
 export async function fanoutToConnectedPartners(
   event: SocialNotificationEventType,
   actorId: number,
@@ -68,9 +41,12 @@ export async function fanoutToConnectedPartners(
 ): Promise<void> {
   const connections = await prisma.connections.findMany({
     where: { OR: [{ user_a_id: actorId }, { user_b_id: actorId }] },
-    take: 5000,
     select: { user_a_id: true, user_b_id: true },
+    take: FANOUT_MAX,
   });
+  if (connections.length === FANOUT_MAX) {
+    console.warn(`[fanout] actor ${actorId} has >= ${FANOUT_MAX} connections; notifications capped — migrate to cursor pagination`);
+  }
   const { bulkEnqueueSocialNotifications } = await import('../queues/social-notification.queue');
   const jobs = connections.map(conn => ({
     event,
