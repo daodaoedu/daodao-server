@@ -15,6 +15,7 @@ import {
 } from '../types/auth.types';
 import { isTemporaryUser } from '../utils/user-type-detection';
 import { getAuthToken } from '../utils/cookie-config';
+import redis from '../services/database/redis.service';
 
 // AuthRequest has been deprecated in favor of the augmented Express Request type
 
@@ -27,7 +28,7 @@ import { getAuthToken } from '../utils/cookie-config';
  * @param res - Express 響應對象
  * @param next - Express 下一個中間件
  */
-export const authenticateJWT: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticateJWT: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // 從 Cookie 或 Authorization header 取得 token
   const token = getAuthToken(req);
 
@@ -44,6 +45,13 @@ export const authenticateJWT: RequestHandler = (req: Request, res: Response, nex
     }
 
     const decoded = jwt.verify(token, secret);
+
+    // 檢查 token 是否已被撤銷（例如登出後）
+    const isRevoked = await redis.exists(`jwt_revoked:${token}`);
+    if (isRevoked) {
+      next(new UnauthorizedError('Token has been revoked'));
+      return;
+    }
 
     // 將解碼後的用戶信息添加到請求對象中
     if (typeof decoded === 'object' && decoded !== null) {

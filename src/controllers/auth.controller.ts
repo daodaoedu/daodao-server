@@ -25,6 +25,7 @@ import {
   appleSignInResponseSchema
 } from '../validators/auth.validators';
 import { setAuthCookie, clearAuthCookie, getAuthToken } from '../utils/cookie-config';
+import redis from '../services/database/redis.service';
 import {
   validateOAuthState,
   OAuthState
@@ -244,11 +245,19 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
  * POST /api/auth/logout
  * 清除認證 Cookie
  */
-export const logout = asyncHandler(async (_req: Request, res: Response) => {
-  // 清除認證 Cookie
-  clearAuthCookie(res);
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const token = getAuthToken(req);
+  if (token) {
+    const decoded = jwtService.verifyToken(token) as { exp?: unknown; error?: string };
+    if (!decoded.error && typeof decoded.exp === 'number') {
+      const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+      if (ttl > 0) {
+        await redis.setex(`jwt_revoked:${token}`, ttl, '1');
+      }
+    }
+  }
 
-  // 如果需要服務端登出，可以實現 token 黑名單機制
+  clearAuthCookie(res);
 
   const response = createSuccessResponse({
     message: '登出成功'
