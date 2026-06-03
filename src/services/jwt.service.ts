@@ -26,7 +26,8 @@ interface JwtVerifyResult {
   [key: string]: unknown;
 }
 
-const JWT_EXPIRATION = '7d';
+const JWT_EXPIRATION = '24h';
+const JWT_REFRESH_EXPIRATION = '30d';
 
 // 移除立即檢查，改為在函數中檢查
 const getJwtSecret = (): string => {
@@ -40,14 +41,15 @@ const getJwtSecret = (): string => {
 /**
  * 生成 JWT Token
  * @param payload - JWT payload 數據
+ * @param expiresIn - token 有效期（預設 24h）
  * @returns 生成的 JWT token
  */
-export const generateToken = (payload: JwtPayload): string => {
+export const generateToken = (payload: JwtPayload, expiresIn: string = JWT_EXPIRATION): string => {
   try {
     const secret = getJwtSecret();
-    return jwt.sign(payload, secret, { 
-      expiresIn: JWT_EXPIRATION
-    });
+    return jwt.sign(payload, secret, {
+      expiresIn
+    } as jwt.SignOptions);
   } catch (error) {
     console.error('Token generation failed:', error instanceof Error ? error.message : error);
     // Re-throw the original error message if it's from getJwtSecret
@@ -56,6 +58,15 @@ export const generateToken = (payload: JwtPayload): string => {
     }
     throw new Error('Token generation failed');
   }
+};
+
+/**
+ * 生成 Refresh Token（30d 有效期）
+ * @param payload - JWT payload 數據
+ * @returns 生成的 refresh token
+ */
+export const generateRefreshToken = (payload: JwtPayload): string => {
+  return generateToken(payload, JWT_REFRESH_EXPIRATION);
 };
 
 /**
@@ -114,6 +125,7 @@ export const refreshToken = (token: string): string | null => {
 
 export const jwtService = {
   generateToken,
+  generateRefreshToken,
   verifyToken,
   refreshToken
 };

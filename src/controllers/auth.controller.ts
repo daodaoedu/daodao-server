@@ -693,12 +693,19 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     }
   }
 
+  // 生成獨立的 refresh token（30d 有效期，與 access token 24h 不同）
+  const refreshTokenPayload = { ...decoded };
+  delete refreshTokenPayload.iat;
+  delete refreshTokenPayload.exp;
+  delete refreshTokenPayload.error;
+  const refreshToken = jwtService.generateRefreshToken(refreshTokenPayload as Parameters<typeof jwtService.generateRefreshToken>[0]);
+
   // 回傳 token（camelCase 格式，與專案一致）
   res.json({
     accessToken: result.token,
     tokenType: 'Bearer',
     expiresIn: 86400, // 24 小時
-    refreshToken: result.token, // 目前使用相同 token
+    refreshToken,
     user: userInfo,
     isNewUser: result.isNewUser
   });
