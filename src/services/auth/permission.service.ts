@@ -230,8 +230,27 @@ export class PermissionService {
    */
   async removeRole(userId: number, roleId: number): Promise<boolean> {
     try {
-      // 簡化實現
-      return true;
+      const defaultRole = await prisma.roles.findFirst({
+        where: { name: { in: ['member', 'Member', 'user', 'User'] } },
+        orderBy: { id: 'asc' }
+      });
+
+      if (!defaultRole) {
+        console.error('Default role not found, cannot remove role');
+        return false;
+      }
+
+      if (defaultRole.id === roleId) {
+        console.warn('Cannot remove the default role');
+        return false;
+      }
+
+      const result = await prisma.users.updateMany({
+        where: { id: userId, role_id: roleId },
+        data: { role_id: defaultRole.id }
+      });
+
+      return result.count > 0;
     } catch (error) {
       console.error('Error removing role:', error);
       return false;
