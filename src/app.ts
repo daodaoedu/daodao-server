@@ -79,6 +79,7 @@ import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
 import { requireOnboardingComplete } from './middleware/onboarding-gate.middleware';
 import { authenticate } from './middleware/auth';
+import { requireAdmin } from './middleware/permission.middleware';
 
 /**
  * 設置 TypeScript 路由和模型
@@ -267,12 +268,12 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/quiz', quizRoutes);
   console.log('📝 v1 測驗結果路由已註冊 - 可在 /api/v1/quiz 訪問');
 
-  // 註冊資料庫資訊路由
-  app.use('/api/v1/db-info', dbInfoRoutes);
+  // 註冊資料庫資訊路由（管理員專用）
+  app.use('/api/v1/db-info', authenticate, requireAdmin, dbInfoRoutes);
   console.log('🗃️ v1 資料庫資訊路由已註冊 - 可在 /api/v1/db-info 訪問');
 
-  // 註冊系統監控路由
-  app.use('/api/v1/monitor', monitorRoutes);
+  // 註冊系統監控路由（管理員專用）
+  app.use('/api/v1/monitor', authenticate, requireAdmin, monitorRoutes);
   console.log('📊 v1 系統監控路由已註冊 - 可在 /api/v1/monitor 訪問');
 
   // 註冊使用者統計路由（管理員專用）
