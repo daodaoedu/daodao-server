@@ -138,20 +138,13 @@ const corsOptions = {
       'https://app-feat.daodao.so'
     ];
     const daodaoTestPattern = /^https:\/\/[\w-]+\.daodao-notion-test\.pages\.dev$/;
-    const daodaoSoPattern = /^https:\/\/[\w-]+\.daodao\.so$/;
     const devPattern = /^https:\/\/[\w-]+\.daoedu\.workers\.dev$/;
     const localhostPattern = /^https?:\/\/localhost(:[0-9]+)?$/;
     const chromeExtensionPattern = /^chrome-extension:\/\//;
 
-    // 允許沒有 origin 的請求（例如從同源或某些工具的請求）
-    // 允許已配置的來源
-    // 允許 Chrome 擴充功能
-    // 允許本地開發
-    // 允許所有 daodao.so 子域名
     if (!origin ||
       allowedOrigins.includes(origin) ||
       daodaoTestPattern.test(origin) ||
-      daodaoSoPattern.test(origin) ||
       devPattern.test(origin) ||
       localhostPattern.test(origin) ||
       chromeExtensionPattern.test(origin)) {
