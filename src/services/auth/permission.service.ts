@@ -226,11 +226,29 @@ export class PermissionService {
   }
 
   /**
-   * 移除用戶角色 (簡化版本)
+   * 移除用戶角色：將用戶重置為最低權限的預設角色
    */
   async removeRole(userId: number, roleId: number): Promise<boolean> {
     try {
-      // 簡化實現
+      const user = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { role_id: true },
+      });
+      if (!user || user.role_id !== roleId) {
+        return false;
+      }
+      const defaultRole = await prisma.roles.findFirst({
+        where: { name: { in: ['member', 'user', 'Member', 'User'] } },
+        orderBy: { id: 'asc' },
+        select: { id: true },
+      });
+      if (!defaultRole) {
+        return false;
+      }
+      await prisma.users.update({
+        where: { id: userId },
+        data: { role_id: defaultRole.id },
+      });
       return true;
     } catch (error) {
       console.error('Error removing role:', error);
