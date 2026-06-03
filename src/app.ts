@@ -106,21 +106,6 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use(trackActivity);
   console.log('📊 活動追蹤中間件已初始化');
 
-  // 為 Swagger UI 路徑添加特殊的 CORS 處理中間件
-  // 這允許 Chrome 擴充功能和其他工具訪問 Swagger UI 的靜態資源
-  app.use(['/api-docs', '/api/docs'], (req, res, next) => {
-    // 允許所有來源訪問 Swagger UI 的靜態資源
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(204);
-    } else {
-      next();
-    }
-  });
-
   // 確保所有路由模組都被載入並註冊到 registry
   console.log('📦 載入路由模組...');
   // 強制評估所有路由模組以觸發 registry.registerPath() 調用
