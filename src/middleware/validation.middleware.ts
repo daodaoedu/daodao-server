@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { z, ZodError, ZodSchema } from 'zod';
+import { logger } from '@/services/logging';
 
 /**
  * 創建驗證中間件
@@ -28,7 +29,7 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        console.log('❌ Validation failed:', formatZodErrors(error));
+        logger.debug('Validation failed', { errors: formatZodErrors(error) });
         res.status(400).json({
           success: false,
           error: {

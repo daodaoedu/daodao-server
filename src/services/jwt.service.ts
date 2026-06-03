@@ -4,6 +4,7 @@
  */
 
 import * as jwt from 'jsonwebtoken';
+import { logger } from '@/services/logging';
 
 interface JwtPayload {
   id: number;
@@ -49,8 +50,7 @@ export const generateToken = (payload: JwtPayload): string => {
       expiresIn: JWT_EXPIRATION
     });
   } catch (error) {
-    console.error('Token generation failed:', error instanceof Error ? error.message : error);
-    // Re-throw the original error message if it's from getJwtSecret
+    logger.error('Token generation failed', { message: error instanceof Error ? error.message : error });
     if (error instanceof Error && error.message === 'JWT_SECRET environment variable is required') {
       throw error;
     }
@@ -70,14 +70,13 @@ export const verifyToken = (token: string): JwtVerifyResult => {
     return decoded;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      console.error('Token verification failed: Token has expired');
+      logger.warn('Token verification failed: expired');
       return { error: "Token has expired" };
     } else if (error instanceof jwt.JsonWebTokenError) {
-      console.error('Token verification failed:', error.message);
+      logger.warn('Token verification failed: invalid', { message: error.message });
       return { error: "Token is invalid" };
     } else {
-      console.error('Token verification failed:', error instanceof Error ? error.message : error);
-      // Re-throw the original error if it's from getJwtSecret
+      logger.error('Token verification failed', { message: error instanceof Error ? error.message : error });
       if (error instanceof Error && error.message === 'JWT_SECRET environment variable is required') {
         throw error;
       }

@@ -5,6 +5,7 @@
 
 import { prisma } from '../database/prisma.service';
 import type { users, roles, permissions } from '../../../generated/prisma';
+import { logger } from '@/services/logging';
 
 /**
  * 權限服務類
@@ -20,7 +21,7 @@ export class PermissionService {
     options?: { allowTemp?: boolean }
   ): Promise<boolean> {
     try {
-      console.log('Checking permission for user:', userId, 'resource:', resource, 'action:', action);
+      logger.debug('Checking permission', { userId, resource, action });
       
       // 檢查是否為超級管理員
       if (await this.isSuperAdmin(userId)) {
@@ -311,7 +312,7 @@ export class PermissionService {
     resourceId: number | string
   ): Promise<boolean> {
     try {
-      console.log('Checking resource ownership for user:', userId, 'resource:', resourceType, 'id:', resourceId);
+      logger.debug('Checking resource ownership', { userId, resourceType, resourceId });
 
       switch (resourceType) {
         case 'user': {
