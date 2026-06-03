@@ -159,14 +159,14 @@ export class PrismaService {
   /**
    * 執行原始 SQL 查詢
    */
-  public async queryRaw<T = unknown>(query: string, ...values: unknown[]): Promise<T> {
+  private async queryRaw<T = unknown>(query: string, ...values: unknown[]): Promise<T> {
     return this.prismaClient.$queryRawUnsafe(query, ...values) as Promise<T>;
   }
 
   /**
    * 執行原始 SQL 命令
    */
-  public async executeRaw(query: string, ...values: unknown[]): Promise<number> {
+  private async executeRaw(query: string, ...values: unknown[]): Promise<number> {
     return this.prismaClient.$executeRawUnsafe(query, ...values);
   }
 }
