@@ -3,6 +3,7 @@
 # 注意：depends_on 不包含在此模板中，因為 YAML merge 會合併而非覆蓋 map
 # prod_app 使用 redis_prod，production_app 使用 redis_production
 x-prod-app-base: &prod-app-base
+  restart: unless-stopped
   env_file:
     - .env.prod
   # 禁用 Docker 日誌捕獲（應用程式透過 Winston 寫入掛載的 logs 目錄）
@@ -48,6 +49,7 @@ services:
 
   dev_app:
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-dev}${COMMIT_SHA:+-}${COMMIT_SHA}
+    restart: unless-stopped
     env_file:
       - .env.dev
     volumes:
@@ -79,6 +81,7 @@ services:
   redis_prod:
     image: redis:6
     container_name: redis_prod
+    restart: unless-stopped
     volumes:
       - redis_prod_data:/data
     networks:
@@ -92,6 +95,7 @@ services:
   redis_production:
     image: redis:6
     container_name: redis_production
+    restart: unless-stopped
     volumes:
       - redis_production_data:/data
     networks:
@@ -105,6 +109,7 @@ services:
   redis_dev:
     image: redis:6
     container_name: redis_dev
+    restart: unless-stopped
     volumes:
       - redis_dev_data:/data
     networks:
@@ -118,6 +123,7 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
