@@ -271,7 +271,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build]
-    if: needs.build.result == 'success'
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     environment: ${{ needs.build.outputs.image-tag == 'dev' && 'development' || 'production' }}
     timeout-minutes: 20
     steps:
