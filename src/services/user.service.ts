@@ -514,8 +514,10 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
   }
 
   // 查詢用戶
+  // Emergency cap: prevent full-table load. TODO: refactor to DB-side pagination with completeness score.
   const users = await prisma.users.findMany({
     where: whereConditions,
+    take: 1000,
     include: {
       roles: true,
       location: {
