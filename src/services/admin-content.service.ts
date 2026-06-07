@@ -7,6 +7,10 @@ import { NotFoundError } from '../middleware/error.middleware';
 export interface ContentPerformanceItem {
   id: number;
   title: string;
+  creatorName: string | null;
+  creatorEmail: string | null;
+  copyCount: number;
+  copiedFromTitle: string | null;
   views: number;
   depth: number;
   avgTime: number;
@@ -83,6 +87,10 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     prisma.$queryRaw<Array<{
       id: number;
       title: string;
+      creator_name: string | null;
+      creator_email: string | null;
+      copy_count: number;
+      copied_from_title: string | null;
       view_count: bigint;
       reaction_count: bigint;
       comment_count: bigint;
@@ -91,11 +99,18 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       SELECT
         p.id,
         p.title,
+        u.nickname AS creator_name,
+        c.email AS creator_email,
+        COALESCE(p.copy_count, 0) AS copy_count,
+        sp.title AS copied_from_title,
         COALESCE(es.view_count, 0)::bigint AS view_count,
         (SELECT COUNT(*)::bigint FROM reactions WHERE target_type = 'practice' AND target_id = p.id) AS reaction_count,
         (SELECT COUNT(*)::bigint FROM comments  WHERE target_type = 'practice' AND target_id = p.id) AS comment_count,
         COALESCE(p.is_featured, false) AS is_featured
       FROM practices p
+      LEFT JOIN users u ON u.id = p.user_id
+      LEFT JOIN contacts c ON c.id = u.contact_id
+      LEFT JOIN practices sp ON sp.id = p.source_practice_id
       LEFT JOIN entity_stats es ON es.entity_id = p.id AND es.entity_type = 'practice'
       WHERE p.deleted_at IS NULL AND p.visibility = 'public'
       ORDER BY COALESCE(es.view_count, 0) DESC
@@ -208,6 +223,10 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     return {
       id: p.id,
       title: p.title,
+      creatorName: p.creator_name ?? null,
+      creatorEmail: p.creator_email ?? null,
+      copyCount: Number(p.copy_count),
+      copiedFromTitle: p.copied_from_title ?? null,
       views,
       depth: depthMap.get(p.id) ?? 0,
       avgTime: avgSecs > 0 ? Math.round(avgSecs / 60 * 10) / 10 : 0,
@@ -296,6 +315,10 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
   return {
     id: row.id,
     title: row.title,
+    creatorName: null,
+    creatorEmail: null,
+    copyCount: 0,
+    copiedFromTitle: null,
     views,
     depth: 0,
     avgTime: 0,
