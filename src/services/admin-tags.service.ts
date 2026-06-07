@@ -16,6 +16,8 @@ const listTags = async (): Promise<UserTag[]> => {
     color: string;
     description: string | null;
     type: string;
+    category: string | null;
+    tracking_slug: string | null;
     created_at: Date;
     updated_at: Date | null;
     user_count: bigint;
@@ -33,6 +35,8 @@ const listTags = async (): Promise<UserTag[]> => {
     color: t.color,
     description: t.description,
     type: t.type as 'manual' | 'auto',
+    category: t.category as 'source' | 'characteristic' | 'event' | null,
+    trackingSlug: t.tracking_slug,
     userCount: Number(t.user_count),
     createdAt: t.created_at.toISOString(),
     updatedAt: t.updated_at?.toISOString() ?? null,
@@ -50,11 +54,13 @@ const createTag = async (input: CreateTagInput): Promise<UserTag> => {
     color: string;
     description: string | null;
     type: string;
+    category: string | null;
+    tracking_slug: string | null;
     created_at: Date;
     updated_at: Date | null;
   }>>`
-    INSERT INTO user_tags (name, color, description, type)
-    VALUES (${input.name}, ${input.color ?? '#6366f1'}, ${input.description ?? null}, ${input.type ?? 'manual'})
+    INSERT INTO user_tags (name, color, description, type, category, tracking_slug)
+    VALUES (${input.name}, ${input.color ?? '#6366f1'}, ${input.description ?? null}, ${input.type ?? 'manual'}, ${input.category ?? null}, ${input.trackingSlug ?? null})
     RETURNING *
   `;
 
@@ -72,6 +78,8 @@ const createTag = async (input: CreateTagInput): Promise<UserTag> => {
     color: tag.color,
     description: tag.description,
     type: tag.type as 'manual' | 'auto',
+    category: tag.category as 'source' | 'characteristic' | 'event' | null,
+    trackingSlug: tag.tracking_slug,
     userCount: Number(counts?.user_count ?? 0),
     createdAt: tag.created_at.toISOString(),
     updatedAt: tag.updated_at?.toISOString() ?? null,
@@ -94,10 +102,17 @@ const updateTag = async (id: number, input: UpdateTagInput): Promise<UserTag> =>
   if (input.description !== undefined) {
     await prisma.$executeRaw`UPDATE user_tags SET description = ${input.description}, updated_at = NOW() WHERE id = ${id}`;
   }
+  if (input.category !== undefined) {
+    await prisma.$executeRaw`UPDATE user_tags SET category = ${input.category}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.trackingSlug !== undefined) {
+    await prisma.$executeRaw`UPDATE user_tags SET tracking_slug = ${input.trackingSlug}, updated_at = NOW() WHERE id = ${id}`;
+  }
 
   const [tag] = await prisma.$queryRaw<Array<{
     id: number; name: string; color: string; description: string | null;
-    type: string; created_at: Date; updated_at: Date | null; user_count: bigint;
+    type: string; category: string | null; tracking_slug: string | null;
+    created_at: Date; updated_at: Date | null; user_count: bigint;
   }>>`
     SELECT t.*, COUNT(uta.user_id)::bigint as user_count
     FROM user_tags t
@@ -110,7 +125,10 @@ const updateTag = async (id: number, input: UpdateTagInput): Promise<UserTag> =>
 
   return {
     id: tag.id, name: tag.name, color: tag.color, description: tag.description,
-    type: tag.type as 'manual' | 'auto', userCount: Number(tag.user_count),
+    type: tag.type as 'manual' | 'auto',
+    category: tag.category as 'source' | 'characteristic' | 'event' | null,
+    trackingSlug: tag.tracking_slug,
+    userCount: Number(tag.user_count),
     createdAt: tag.created_at.toISOString(), updatedAt: tag.updated_at?.toISOString() ?? null,
   };
 };
@@ -212,6 +230,18 @@ const bulkAssignTag = async (input: BulkTagInput): Promise<{ affected: number }>
   return { affected: input.userIds.length };
 };
 
+/**
+ * 根據追蹤短網址識別碼查找標籤
+ * @param slug - 追蹤短網址識別碼（對應 ?ref= URL 參數）
+ * @returns 標籤 ID 與名稱，若不存在則回傳 null
+ */
+const findByTrackingSlug = async (slug: string): Promise<{ id: number; name: string } | null> => {
+  const results = await prisma.$queryRaw<Array<{ id: number; name: string }>>`
+    SELECT id, name FROM user_tags WHERE tracking_slug = ${slug} LIMIT 1
+  `;
+  return results[0] ?? null;
+};
+
 export default {
   listTags,
   createTag,
@@ -221,4 +251,5 @@ export default {
   createTagRule,
   deleteTagRule,
   bulkAssignTag,
+  findByTrackingSlug,
 };

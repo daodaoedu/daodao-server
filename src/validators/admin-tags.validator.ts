@@ -17,6 +17,8 @@ export const createTagSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().default('#6366f1'),
   description: z.string().max(500).optional(),
   type: z.enum(['manual', 'auto']).optional().default('manual'),
+  category: z.enum(['source', 'characteristic', 'event']).optional(),
+  trackingSlug: z.string().max(100).regex(/^[a-z0-9-]+$/).optional(),
 });
 
 /**
@@ -26,6 +28,8 @@ export const updateTagSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   description: z.string().max(500).optional(),
+  category: z.enum(['source', 'characteristic', 'event']).optional(),
+  trackingSlug: z.string().max(100).regex(/^[a-z0-9-]+$/).optional(),
 });
 
 /**
