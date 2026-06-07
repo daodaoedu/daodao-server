@@ -295,6 +295,10 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
   const [row] = await prisma.$queryRaw<Array<{
     id: number;
     title: string;
+    creator_name: string | null;
+    creator_email: string | null;
+    copy_count: number;
+    copied_from_title: string | null;
     view_count: bigint;
     reaction_count: bigint;
     comment_count: bigint;
@@ -302,11 +306,18 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
   }>>`
     SELECT
       p.id, p.title,
+      u.nickname AS creator_name,
+      c.email AS creator_email,
+      COALESCE(p.copy_count, 0) AS copy_count,
+      sp.title AS copied_from_title,
       COALESCE(es.view_count, 0)::bigint AS view_count,
       (SELECT COUNT(*)::bigint FROM reactions WHERE target_type = 'practice' AND target_id = p.id) AS reaction_count,
       (SELECT COUNT(*)::bigint FROM comments  WHERE target_type = 'practice' AND target_id = p.id) AS comment_count,
       COALESCE(p.is_featured, false) AS is_featured
     FROM practices p
+    LEFT JOIN users u ON u.id = p.user_id
+    LEFT JOIN contacts c ON c.id = u.contact_id
+    LEFT JOIN practices sp ON sp.id = p.source_practice_id
     LEFT JOIN entity_stats es ON es.entity_id = p.id AND es.entity_type = 'practice'
     WHERE p.id = ${id}
   `;
@@ -315,10 +326,10 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
   return {
     id: row.id,
     title: row.title,
-    creatorName: null,
-    creatorEmail: null,
-    copyCount: 0,
-    copiedFromTitle: null,
+    creatorName: row.creator_name ?? null,
+    creatorEmail: row.creator_email ?? null,
+    copyCount: Number(row.copy_count),
+    copiedFromTitle: row.copied_from_title ?? null,
     views,
     depth: 0,
     avgTime: 0,
