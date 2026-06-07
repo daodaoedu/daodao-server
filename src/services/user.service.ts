@@ -875,16 +875,13 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
 
     // 處理追蹤標籤（來自 ?ref= URL 參數）
     if (referralSource) {
-      const trackingTag = await tx.$queryRaw<Array<{ id: number }>>`
-        SELECT id FROM user_tags WHERE tracking_slug = ${referralSource} LIMIT 1
+      await tx.$executeRaw`
+        INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
+        SELECT ${newUser.id}, id, 'system', NOW()
+        FROM user_tags
+        WHERE tracking_slug = ${referralSource}
+        ON CONFLICT (user_id, tag_id) DO NOTHING
       `;
-      if (trackingTag.length > 0) {
-        await tx.$executeRaw`
-          INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
-          VALUES (${newUser.id}, ${trackingTag[0].id}, 'system', NOW())
-          ON CONFLICT (user_id, tag_id) DO NOTHING
-        `;
-      }
     }
 
     // 處理職位關聯
