@@ -873,6 +873,17 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       }
     });
 
+    // 處理追蹤標籤（來自 ?ref= URL 參數）
+    if (referralSource) {
+      await tx.$executeRaw`
+        INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
+        SELECT ${newUser.id}, id, 'system', NOW()
+        FROM user_tags
+        WHERE tracking_slug = ${referralSource}
+        ON CONFLICT (user_id, tag_id) DO NOTHING
+      `;
+    }
+
     // 處理職位關聯
     if (positionList && positionList.length > 0) {
       const positions = await tx.position.findMany({
