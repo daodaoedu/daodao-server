@@ -339,12 +339,12 @@ export const checkInSchema = z.object({
       format: 'uri'
     }),
   tags: z.array(z.string().max(50, '標籤名稱不可超過50字'))
+    .min(1, '請至少選擇一個標籤')
     .max(10, '標籤最多10個')
-    .default([])
     .openapi({
-      description: '打卡標籤（最多10個）',
+      description: '打卡標籤（必填，至少1個，最多10個）',
       example: ['專注', '有收穫'],
-      examples: [[], ['專注', '有收穫'], ['閱讀', '冥想', '運動']]
+      examples: [['專注', '有收穫'], ['閱讀', '冥想', '運動']]
     })
 }).openapi('CheckInRequest', {
   description: '實踐活動簽到記錄',
