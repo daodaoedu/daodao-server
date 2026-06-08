@@ -47,6 +47,7 @@ export interface RoleInfo {
 export interface AdminUserListItem {
   id: string;
   internalId: number;
+  customId: string | null;
   name: string | null;
   email: string | null;
   photoURL: string | null;
@@ -64,6 +65,8 @@ export interface AdminUserListItem {
   badgeGranted: boolean | null;
   /** 用戶來源（S1/S2/S3） */
   userSource: string | null;
+  /** 用戶標籤 */
+  tags: Array<{ id: number; name: string }>;
 }
 
 /**

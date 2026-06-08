@@ -198,6 +198,10 @@ const adminUserListItemSchema = z.object({
     description: '用戶內部 ID',
     example: 123
   }),
+  customId: z.string().nullable().openapi({
+    description: '使用者自訂唯一識別碼（@username）',
+    example: 'my_username'
+  }),
   name: z.string().nullable().openapi({
     description: '用戶名稱',
     example: '王小明'
@@ -248,6 +252,12 @@ const adminUserListItemSchema = z.object({
   userSource: z.string().nullable().openapi({
     description: '用戶來源（S1/S2/S3）',
     example: 'S1'
+  }),
+  tags: z.array(z.object({
+    id: z.number().int(),
+    name: z.string(),
+  })).openapi({
+    description: '用戶標籤列表'
   })
 }).openapi('AdminUserListItem');
 

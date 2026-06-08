@@ -149,6 +149,18 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
   });
   const onboardingMap = new Map(onboardingData.map((o) => [o.user_id, o]));
 
+  // 批次取得用戶標籤
+  const userTagsData = await prisma.entity_tags.findMany({
+    where: { entity_type: 'user', entity_id: { in: userIds } },
+    include: { tags: { select: { id: true, name: true } } },
+  });
+  const userTagsMap = new Map<number, Array<{ id: number; name: string }>>();
+  for (const et of userTagsData) {
+    const arr = userTagsMap.get(et.entity_id) ?? [];
+    arr.push({ id: et.tags.id, name: et.tags.name });
+    userTagsMap.set(et.entity_id, arr);
+  }
+
   // 格式化回應
   const formattedUsers: AdminUserListItem[] = users.map(user => {
     const roles: RoleInfo[] = [];
@@ -171,6 +183,7 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     return {
       id: user.external_id ?? '',
       internalId: user.id,
+      customId: user.custom_id ?? null,
       name: user.nickname,
       email: user.contacts?.email ?? null,
       photoURL: user.contacts?.photo_url ?? null,
@@ -185,6 +198,7 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       personaType: (user.quiz_results[0]?.result_type ?? null) as 'L' | 'C' | 'A' | 'D' | 'O' | null,
       badgeGranted: onboardingMap.get(user.id)?.badge_granted ?? null,
       userSource: onboardingMap.get(user.id)?.user_source ?? null,
+      tags: userTagsMap.get(user.id) ?? [],
     };
   });
 
