@@ -41,20 +41,12 @@ async function processSocialNotificationJob(job: Job<SocialNotificationJob>): Pr
 
   try {
     switch (event) {
-      case SocialNotificationEvent.FOLLOW_USER:
-        await handleFollowUser(actorId, recipientId, payload);
-        break;
-
       case SocialNotificationEvent.FOLLOW_PRACTICE_CHECKIN:
         await handleFollowPracticeCheckin(actorId, recipientId, payload);
         break;
 
       case SocialNotificationEvent.FOLLOW_PRACTICE_UPDATE:
         await handleFollowPracticeUpdate(actorId, recipientId, payload);
-        break;
-
-      case SocialNotificationEvent.CONNECT_REQUEST:
-        await handleConnectRequest(actorId, recipientId, payload);
         break;
 
       case SocialNotificationEvent.CONNECT_PARTNER_CHECKIN:
@@ -94,30 +86,6 @@ async function processSocialNotificationJob(job: Job<SocialNotificationJob>): Pr
 function getPayloadNumber(payload: Record<string, unknown> | undefined, key: string): number | undefined {
   const val = payload?.[key];
   return typeof val === 'number' ? val : undefined;
-}
-
-/**
- * 處理用戶追蹤通知 (follow.user)
- */
-async function handleFollowUser(
-  actorId: number,
-  recipientId: number,
-  payload?: Record<string, unknown>
-): Promise<void> {
-  const entityId = getPayloadNumber(payload, 'targetId');
-  if (entityId === undefined) {
-    loggerService.warn('Missing or invalid targetId in follow.user payload', { actorId, recipientId, payload });
-    return;
-  }
-  await notificationEventService.createEvent({
-    type: 'UserFollowActivity',
-    actorId,
-    recipientId,
-    entityType: 'user',
-    entityId,
-    payload,
-    priority: 'P2',
-  });
 }
 
 /**
@@ -162,30 +130,6 @@ async function handleFollowPracticeUpdate(
     actorId,
     recipientId,
     entityType: 'practice',
-    entityId,
-    payload,
-    priority: 'P2',
-  });
-}
-
-/**
- * 處理連結請求通知 (connect.request)
- */
-async function handleConnectRequest(
-  actorId: number,
-  recipientId: number,
-  payload?: Record<string, unknown>
-): Promise<void> {
-  const entityId = getPayloadNumber(payload, 'receiverId');
-  if (entityId === undefined) {
-    loggerService.warn('Missing or invalid receiverId in connect.request payload', { actorId, recipientId, payload });
-    return;
-  }
-  await notificationEventService.createEvent({
-    type: 'ConnectRequestActivity',
-    actorId,
-    recipientId,
-    entityType: 'connection',
     entityId,
     payload,
     priority: 'P2',
