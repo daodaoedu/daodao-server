@@ -26,10 +26,8 @@ export const ConnectSource = {
 export type ConnectSourceType = typeof ConnectSource[keyof typeof ConnectSource];
 
 export const SocialNotificationEvent = {
-  FOLLOW_USER: 'follow.user',
   FOLLOW_PRACTICE_CHECKIN: 'follow.practice_checkin',
   FOLLOW_PRACTICE_UPDATE: 'follow.practice_update',
-  CONNECT_REQUEST: 'connect.request',
   CONNECT_PARTNER_CHECKIN: 'connect.partner_checkin',
   CONNECT_PARTNER_UPDATE: 'connect.partner_update',
   MENTION: 'mention',

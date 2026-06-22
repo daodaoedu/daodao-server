@@ -73,10 +73,8 @@ function getEventLabel(type: string): string {
     PartnerUpdateActivity:     '更新了主題實踐',
     // 一般追蹤動態
     PracticeCreated:           '建立了新的主題實踐',
-    UserFollowActivity:        '關注了新的對象',
     PracticeCheckinActivity:   '更新了實踐打卡',
     PracticeUpdateActivity:    '更新了主題實踐',
-    ConnectRequestActivity:    '向他人發出連結邀請',
     'update-practice-checkin': '更新了實踐打卡',
     'update-practice-finish':  '完成了主題實踐',
   };
