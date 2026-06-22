@@ -9,7 +9,6 @@
  */
 
 import { prisma } from './database/prisma.service';
-import { loggerService } from './logging/logger.service';
 import { externalToInternalId } from './id-converter.service';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
@@ -160,33 +159,6 @@ const sendRequest = async (
       context_practice_id: contextPracticeId ?? null,
     },
   });
-
-  // Enqueue connect.request notification to followers of requester
-  // Only for new requests (created_at equals updated_at), not re-sends
-  const isNewRequest =
-    upsertedRequest.created_at !== null &&
-    upsertedRequest.updated_at !== null &&
-    upsertedRequest.created_at.getTime() === upsertedRequest.updated_at.getTime();
-  if (isNewRequest) {
-    try {
-      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-      const followers = await prisma.follows.findMany({
-        where: { target_type: 'user', target_id: requesterId },
-        select: { follower_id: true }
-      });
-      for (const follower of followers) {
-        if (follower.follower_id === requesterId) continue;
-        await enqueueSocialNotification({
-          event: 'connect.request',
-          actorId: requesterId,
-          recipientId: follower.follower_id,
-          payload: { receiverId }
-        });
-      }
-    } catch (e) {
-      loggerService.warn('Failed to enqueue connect.request notification', { requesterId, receiverId, error: e });
-    }
-  }
 
   // Fire-and-forget: P1 Connect event
   prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
