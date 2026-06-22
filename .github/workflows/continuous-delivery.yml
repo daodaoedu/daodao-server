@@ -287,7 +287,7 @@ jobs:
           LINODE_INSTANCE_IP: ${{ secrets.LINODE_INSTANCE_IP }}
           BRANCH_NAME: ${{ github.ref_name }}
           IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
-          APP_ENV: ${{ needs.build.outputs.image-tag == 'dev' && 'dev' || (needs.build.outputs.image-tag == 'production' && 'production' || 'prod') }}
+          APP_ENV: ${{ needs.build.outputs.image-tag == 'dev' && 'dev' || 'prod' }}
           APP_SERVICE: ${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || (needs.build.outputs.image-tag == 'production' && 'production_app' || 'dev_app') }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
