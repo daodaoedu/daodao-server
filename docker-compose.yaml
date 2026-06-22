@@ -37,8 +37,6 @@ services:
   production_app:
     <<: *prod-app-base
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-production}${COMMIT_SHA:+-}${COMMIT_SHA}
-    env_file:
-      - .env.production
     networks:
       prod-daodao-network:
         aliases:
