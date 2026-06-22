@@ -361,7 +361,8 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
     // 一次性查詢所有進行中的實踐，並載入打卡資料（優化 N+1 查詢）
     const activePractices = await prismaClient.practices.findMany({
       where: {
-        status: 'active'
+        status: 'active',
+        deleted_at: null
       },
       include: {
         users: {
