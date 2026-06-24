@@ -166,7 +166,6 @@ registry.registerPath({
 router.post('/me',
   authenticate,
   upload.single('avatar'),
-  validate(createUserSchema, 'body'),
   userController.createUser as RequestHandler
 );
 
