@@ -31,7 +31,6 @@ import {
   availablePreferencesResponseSchema,
   loginHistoryResponseSchema,
   userActivityStatsResponseSchema,
-  createUserSchema,
   updateUserSchema
 } from '../validators/user.validators';
 import {
@@ -131,51 +130,10 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * 解析 FormData 中的 JSON 欄位
- * FormData 會將所有值轉為字串，需要解析 JSON 欄位
- */
-const parseFormDataBody = (body: Record<string, unknown>): Record<string, unknown> => {
-  const result: Record<string, unknown> = {};
-
-  // 需要解析為 JSON 的欄位
-  const jsonFields = ['wantToDoList', 'tagList', 'positionList', 'interestList', 'preferences', 'contactList', 'professionalField'];
-
-  // 需要解析為 boolean 的欄位
-  const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail', 'hideConnectionsCount'];
-
-  for (const [key, value] of Object.entries(body)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-
-    if (jsonFields.includes(key) && typeof value === 'string') {
-      // 空字串代表未提供 JSON 欄位，跳過
-      if (value === '') {
-        continue;
-      }
-      try {
-        result[key] = JSON.parse(value);
-      } catch {
-        // 如果解析失敗，保留原始值
-        result[key] = value;
-      }
-    } else if (booleanFields.includes(key)) {
-      result[key] = value === 'true' || value === true;
-    } else if (value === '') {
-      // 非 JSON 欄位的空字串，保留為空字串以便清除欄位
-      result[key] = '';
-    } else {
-      result[key] = value;
-    }
-  }
-
-  return result;
-};
-
-/**
  * 創建用戶
  * POST /api/users/me
- * 此端點用於將臨時用戶轉換為正式用戶，支援 multipart/form-data
+ * 此端點用於將臨時用戶轉換為正式用戶
+ * req.body 已由 parseFormData + validate middleware 處理完畢
  */
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
@@ -188,20 +146,7 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('此端點僅供臨時用戶完成註冊使用');
   }
 
-  const contentType = req.headers['content-type'] || '';
-  const isFormData = contentType.includes('multipart/form-data');
-
-  const parsedBody = isFormData ? parseFormDataBody(req.body) : req.body;
-
-  const validation = createUserSchema.safeParse(parsedBody);
-  if (!validation.success) {
-    const errorMessage = validation.error.issues
-      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
-      .join('; ');
-    throw new BadRequestError(`驗證失敗: ${errorMessage}`);
-  }
-
-  const requestData = validation.data as CreateUserRequest;
+  const requestData = req.body as CreateUserRequest;
   const result = await userService.createUser(requestData, currentUser.id.toString());
 
   if (result.data?.token) {
@@ -224,19 +169,8 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('User information not found');
   }
 
-  // 檢查是否為 multipart/form-data（有檔案上傳）
-  const avatarFile = req.file;
-
-  // 解析表單資料（FormData 會將值轉為字串）
-  const contentType = req.headers['content-type'] || '';
-  const isFormData = contentType.includes('multipart/form-data');
-
-  const parsedBody = isFormData
-    ? parseFormDataBody(req.body)
-    : req.body as UpdateUserRequest;
-
-  // 驗證請求資料
-  const validation = updateUserSchema.safeParse(parsedBody);
+  // 驗證請求資料（req.body 已由 parseFormData middleware 解析）
+  const validation = updateUserSchema.safeParse(req.body);
   if (!validation.success) {
     const errorMessage = validation.error.issues
       .map(issue => `${issue.path.join('.')}: ${issue.message}`)
@@ -246,7 +180,7 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
 
   const requestData: UpdateUserWithAvatarRequest = {
     ...validation.data,
-    avatarFile
+    avatarFile: req.file
   };
 
   const result = await userService.updateUserWithAvatar(currentUser._id, requestData);
