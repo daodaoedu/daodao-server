@@ -117,6 +117,9 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
  * FormData 會將所有值轉為字串，需要解析 JSON 欄位
  */
 const parseFormDataBody = (body: Record<string, unknown>): Record<string, unknown> => {
+  if (!body) {
+    return {};
+  }
   const result: Record<string, unknown> = {};
 
   // 需要解析為 JSON 的欄位
