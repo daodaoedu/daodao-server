@@ -31,6 +31,7 @@ import {
   availablePreferencesResponseSchema,
   loginHistoryResponseSchema,
   userActivityStatsResponseSchema,
+  createUserSchema,
   updateUserSchema
 } from '../validators/user.validators';
 import {
@@ -112,43 +113,10 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * 創建用戶
- * POST /api/users
- * 此端點用於將臨時用戶轉換為正式用戶
- */
-export const createUser = asyncHandler(async (req: Request, res: Response) => {
-  const requestData = req.body as CreateUserRequest;
-  const currentUser = req.user;
-
-  // 檢查用戶是否為臨時用戶
-  // 臨時用戶有 id (數字) 和 isTemp=true，但沒有 _id (UUID)
-  if (!currentUser || !currentUser.id) {
-    throw new NotFoundError('用戶資訊不存在');
-  }
-
-  if (!currentUser.isTemp) {
-    throw new NotFoundError('此端點僅供臨時用戶完成註冊使用');
-  }
-
-  // 將數字 id 轉換為字串傳遞給 service
-  const result = await userService.createUser(requestData, currentUser.id.toString());
-
-  // 設置新的 auth cookie
-  if (result.data?.token) {
-    setAuthCookie(res, result.data.token);
-  }
-
-  // 驗證響應格式確保符合 OpenAPI schema
-  const validatedResponse = createUserResponseSchema.parse(result);
-
-  res.status(201).json(validatedResponse);
-});
-
-/**
  * 解析 FormData 中的 JSON 欄位
  * FormData 會將所有值轉為字串，需要解析 JSON 欄位
  */
-const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => {
+const parseFormDataBody = (body: Record<string, unknown>): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
 
   // 需要解析為 JSON 的欄位
@@ -183,8 +151,57 @@ const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => 
     }
   }
 
-  return result as UpdateUserRequest;
+  return result;
 };
+
+/**
+ * 創建用戶
+ * POST /api/users/me
+ * 此端點用於將臨時用戶轉換為正式用戶，支援 multipart/form-data
+ */
+export const createUser = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser || !currentUser.id) {
+    throw new NotFoundError('用戶資訊不存在');
+  }
+
+  if (!currentUser.isTemp) {
+    throw new NotFoundError('此端點僅供臨時用戶完成註冊使用');
+  }
+
+  const contentType = req.headers['content-type'] || '';
+  const isFormData = contentType.includes('multipart/form-data');
+
+  const parsedBody = isFormData ? parseFormDataBody(req.body) : req.body;
+
+  const validation = createUserSchema.safeParse(parsedBody);
+  if (!validation.success) {
+    res.status(400).json({
+      success: false,
+      error: {
+        type: 'bad_request',
+        message: '驗證失敗',
+        details: validation.error.issues.map(issue => ({
+          path: issue.path.join('.'),
+          message: issue.message
+        }))
+      },
+      timestamp: new Date().toISOString()
+    });
+    return;
+  }
+
+  const requestData = validation.data as CreateUserRequest;
+  const result = await userService.createUser(requestData, currentUser.id.toString());
+
+  if (result.data?.token) {
+    setAuthCookie(res, result.data.token);
+  }
+
+  const validatedResponse = createUserResponseSchema.parse(result);
+  res.status(201).json(validatedResponse);
+});
 
 /**
  * 更新當前用戶
