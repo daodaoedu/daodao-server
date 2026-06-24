@@ -195,19 +195,10 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 
   const validation = createUserSchema.safeParse(parsedBody);
   if (!validation.success) {
-    res.status(400).json({
-      success: false,
-      error: {
-        type: 'bad_request',
-        message: '驗證失敗',
-        details: validation.error.issues.map(issue => ({
-          path: issue.path.join('.'),
-          message: issue.message
-        }))
-      },
-      timestamp: new Date().toISOString()
-    });
-    return;
+    const errorMessage = validation.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new BadRequestError(`驗證失敗: ${errorMessage}`);
   }
 
   const requestData = validation.data as CreateUserRequest;
