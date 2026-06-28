@@ -6,7 +6,8 @@
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
 import { emailService } from '../services/email/email.service';
-import { enqueueOnboardingL0Email } from '../queues/onboarding-email.queue';
+import { enqueueOnboardingEmail, enqueueOnboardingL0Email } from '../queues/onboarding-email.queue';
+import { OnboardingTask, UserSource } from '../types/onboarding.types';
 import { deriveUserSource } from '../utils/onboarding-source';
 import { authService } from '../services/auth/auth.service';
 import { personaService } from '../services/persona.service';
@@ -36,6 +37,23 @@ import { isCustomScheme, buildRedirectUrl } from '../utils/redirect-validation';
 import { oauthNonceService } from '../services/auth/oauth-nonce.service';
 import { authCodeService } from '../services/auth/auth-code.service';
 import { extractDeviceInfo } from '../utils/device-info.utils';
+
+const ONBOARDING_B_DELAY_MS = 3 * 60 * 1000;
+
+function enqueueOnboardingBAfterVerification(userId: number, referralSource: string | null | undefined): void {
+  const userSource = deriveUserSource(referralSource, false);
+  if (userSource !== UserSource.S2) {
+    return;
+  }
+
+  enqueueOnboardingEmail(OnboardingTask.B, userId, userSource, { delayMs: ONBOARDING_B_DELAY_MS })
+    .catch((error: unknown) => {
+      loggerService.error('Failed to enqueue onboarding B email after verification', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      });
+    });
+}
 
 /**
  * 用戶登入
@@ -470,6 +488,7 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
           userId: user.id,
         });
       });
+    enqueueOnboardingBAfterVerification(user.id, user.referral_source ?? null);
 
     const response = createSuccessResponse({
       message: '郵件驗證成功'
@@ -536,6 +555,7 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
           userId: user.id,
         });
       });
+    enqueueOnboardingBAfterVerification(user.id, user.referral_source ?? null);
 
     return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=verified`);
   } catch (err) {
