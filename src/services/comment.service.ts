@@ -750,6 +750,17 @@ export class CommentService implements CommentServiceInterface {
         break;
       }
 
+      case 'persona_answer': {
+        const answer = await prisma.persona_answers.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (answer) {
+          entity = { id: answer.id, user_id: answer.user_id };
+        }
+        break;
+      }
+
       default:
         throw new InternalServerError(`Unsupported target type: ${targetType}`);
     }
