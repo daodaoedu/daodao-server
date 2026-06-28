@@ -168,7 +168,7 @@ const sendRequest = async (
       recipientId: receiverId,
       entityType: 'connection',
       entityId: upsertedRequest.id,
-      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/settings/connections` },
       priority: 'P1',
     }))
     .catch(() => {});
@@ -213,7 +213,7 @@ const acceptRequest = async (
       recipientId: request.requester_id,
       entityType: 'connection',
       entityId: requestId,
-      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/settings/connections` },
       priority: 'P1',
     }))
     .catch(() => {});

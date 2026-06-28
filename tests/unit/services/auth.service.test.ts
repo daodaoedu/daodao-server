@@ -38,13 +38,24 @@ jest.mock('@/services/user.service', () => ({
 
 jest.mock('@/services/email/email.service', () => ({
   emailService: mockEmailService,
-  sendWelcomeEmailWithLog: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Mock onboardingService
+const mockOnboardingService = {
+  createOnboarding: jest.fn().mockResolvedValue(undefined),
+};
+jest.mock('@/services/onboarding.service', () => ({
+  onboardingService: mockOnboardingService,
+}));
+
+// Mock deriveUserSource
+jest.mock('@/utils/onboarding-source', () => ({
+  deriveUserSource: jest.fn().mockReturnValue('S1'),
 }));
 
 // Import mocked modules
 import { jwtService } from '@/services/jwt.service';
 import { authService } from '@/services/auth/auth.service';
-import { sendWelcomeEmailWithLog } from '@/services/email/email.service';
 
 describe('Auth Service', () => {
   const mockJwtService = jwtService as jest.Mocked<typeof jwtService>;
@@ -820,7 +831,7 @@ describe('Auth Service', () => {
 
     beforeEach(() => {
       setupTransactionMock();
-      (sendWelcomeEmailWithLog as jest.Mock).mockClear();
+      mockOnboardingService.createOnboarding.mockClear();
     });
 
     it('should create a new user with verified=true when emailVerified is true', async () => {
@@ -865,7 +876,7 @@ describe('Auth Service', () => {
       });
     });
 
-    it('should send welcome email after creating user', async () => {
+    it('should create onboarding record after creating user', async () => {
       const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
       const mockContact = {
         id: 1,
@@ -887,50 +898,15 @@ describe('Auth Service', () => {
 
       await authService.createUserFromAppleOAuth(mockAppleProfile);
 
-      // Wait for async email to be called
       await new Promise(resolve => setImmediate(resolve));
 
-      expect(sendWelcomeEmailWithLog as jest.Mock).toHaveBeenCalledWith(
-        mockAppleProfile.email,
-        expect.objectContaining({
-          name: mockAppleProfile.name,
-        }),
+      expect(mockOnboardingService.createOnboarding).toHaveBeenCalledWith(
+        mockUser.id,
+        expect.any(String),
       );
     });
 
-    it('should not send welcome email when email is not provided', async () => {
-      const profileWithoutEmail = {
-        appleId: 'apple-no-email-456',
-        name: 'No Email User',
-        emailVerified: false
-      };
-
-      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
-      const mockContact = {
-        id: 1,
-        apple_id: profileWithoutEmail.appleId,
-        email: undefined,
-        is_subscribe_email: false
-      };
-      const mockUser = createTestUser({
-        id: 1,
-        nickname: profileWithoutEmail.name,
-        verified: true
-      });
-
-      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
-      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
-      prismaMock.users.create.mockResolvedValue(mockUser);
-      prismaMock.users.findUnique.mockResolvedValue(mockUser);
-
-      await authService.createUserFromAppleOAuth(profileWithoutEmail);
-
-      await new Promise(resolve => setImmediate(resolve));
-
-      expect(sendWelcomeEmailWithLog as jest.Mock).not.toHaveBeenCalled();
-    });
-
-    it('should not fail if welcome email fails', async () => {
+    it('should not fail if onboarding creation fails', async () => {
       const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
       const mockContact = {
         id: 1,
@@ -949,47 +925,11 @@ describe('Auth Service', () => {
       prismaMock.users.create.mockResolvedValue(mockUser);
       prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
-      // Mock email failure
-      (sendWelcomeEmailWithLog as jest.Mock).mockRejectedValue(new Error('SMTP connection failed'));
+      mockOnboardingService.createOnboarding.mockRejectedValue(new Error('Redis connection failed'));
 
-      // Should not throw error
       const result = await authService.createUserFromAppleOAuth(mockAppleProfile);
 
       expect(result.success).toBe(true);
-    });
-
-    it('should use "User" as default name if name is empty', async () => {
-      const profileWithEmptyName = {
-        appleId: 'apple-empty-name-789',
-        email: 'emptyname@example.com',
-        name: '',
-        emailVerified: true
-      };
-
-      const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
-      const mockContact = {
-        id: 1,
-        apple_id: profileWithEmptyName.appleId,
-        email: profileWithEmptyName.email,
-        is_subscribe_email: false
-      };
-      const mockUser = createTestUser({ id: 1, nickname: '', verified: true });
-
-      prismaMock.basic_info.create.mockResolvedValue(mockBasicInfo);
-      prismaMock.contacts.create.mockResolvedValue(mockContact as any);
-      prismaMock.users.create.mockResolvedValue(mockUser);
-      prismaMock.users.findUnique.mockResolvedValue(mockUser);
-
-      await authService.createUserFromAppleOAuth(profileWithEmptyName);
-
-      await new Promise(resolve => setImmediate(resolve));
-
-      expect(sendWelcomeEmailWithLog as jest.Mock).toHaveBeenCalledWith(
-        profileWithEmptyName.email,
-        expect.objectContaining({
-          name: 'User',
-        }),
-      );
     });
   });
 

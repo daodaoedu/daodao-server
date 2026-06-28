@@ -5205,6 +5205,16 @@
               "others"
             ]
           },
+          "registrationFlow": {
+            "type": "string",
+            "enum": [
+              "quiz",
+              "action_generator",
+              "direct"
+            ],
+            "description": "註冊流程來源（quiz=從測驗註冊, action_generator=從工具註冊, direct=一般註冊）",
+            "example": "direct"
+          },
           "customId": {
             "type": "string",
             "minLength": 3,
@@ -7881,7 +7891,8 @@
               "idea",
               "practice",
               "portfolio",
-              "checkin"
+              "checkin",
+              "persona_answer"
             ],
             "description": "目標對象類型",
             "example": "resource"
@@ -7981,7 +7992,8 @@
               "idea",
               "practice",
               "portfolio",
-              "checkin"
+              "checkin",
+              "persona_answer"
             ],
             "description": "留言目標類型",
             "example": "resource",
@@ -8487,15 +8499,14 @@
               "type": "string",
               "maxLength": 50
             },
+            "minItems": 1,
             "maxItems": 10,
-            "default": [],
-            "description": "打卡標籤（最多10個）",
+            "description": "打卡標籤（必填，至少1個，最多10個）",
             "example": [
               "專注",
               "有收穫"
             ],
             "examples": [
-              [],
               [
                 "專注",
                 "有收穫"
@@ -8508,6 +8519,9 @@
             ]
           }
         },
+        "required": [
+          "tags"
+        ],
         "description": "實踐活動簽到記錄",
         "example": {
           "mood": "happy",
@@ -12117,7 +12131,10 @@
               "createdAt",
               "lastLoginAt",
               "name",
-              "email"
+              "email",
+              "registrationFlow",
+              "creationMethod",
+              "daysToComplete"
             ],
             "default": "createdAt",
             "description": "排序欄位",
@@ -12163,6 +12180,26 @@
             ],
             "description": "篩選用戶來源",
             "example": "S1"
+          },
+          "registrationFlow": {
+            "type": "string",
+            "enum": [
+              "landing_page",
+              "quiz",
+              "action_maker"
+            ],
+            "description": "篩選註冊來源",
+            "example": "landing_page"
+          },
+          "creationMethod": {
+            "type": "string",
+            "enum": [
+              "self_created",
+              "copied",
+              "action_generator"
+            ],
+            "description": "篩選任務建立方式",
+            "example": "self_created"
           }
         }
       },
@@ -12261,6 +12298,12 @@
             "description": "用戶內部 ID",
             "example": 123
           },
+          "customId": {
+            "type": "string",
+            "nullable": true,
+            "description": "使用者自訂唯一識別碼（@username）",
+            "example": "my_username"
+          },
           "name": {
             "type": "string",
             "nullable": true,
@@ -12349,11 +12392,61 @@
             "nullable": true,
             "description": "用戶來源（S1/S2/S3）",
             "example": "S1"
+          },
+          "registrationFlow": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "landing_page",
+              "quiz",
+              "action_maker",
+              null
+            ],
+            "description": "註冊來源",
+            "example": "landing_page"
+          },
+          "creationMethod": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "self_created",
+              "copied",
+              "action_generator",
+              null
+            ],
+            "description": "任務建立方式",
+            "example": "self_created"
+          },
+          "daysToComplete": {
+            "type": "number",
+            "nullable": true,
+            "description": "完成天數",
+            "example": 7
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            },
+            "description": "用戶標籤列表"
           }
         },
         "required": [
           "id",
           "internalId",
+          "customId",
           "name",
           "email",
           "photoURL",
@@ -12366,7 +12459,11 @@
           "lastLoginAt",
           "personaType",
           "badgeGranted",
-          "userSource"
+          "userSource",
+          "registrationFlow",
+          "creationMethod",
+          "daysToComplete",
+          "tags"
         ]
       },
       "AdminUserDetailData": {
@@ -40052,7 +40149,8 @@
                 "idea",
                 "practice",
                 "portfolio",
-                "checkin"
+                "checkin",
+                "persona_answer"
               ],
               "description": "查詢的目標類型",
               "example": "resource",
@@ -40257,7 +40355,8 @@
                 "idea",
                 "practice",
                 "portfolio",
-                "checkin"
+                "checkin",
+                "persona_answer"
               ],
               "description": "查詢的目標類型",
               "example": "resource",
@@ -55670,7 +55769,10 @@
                 "createdAt",
                 "lastLoginAt",
                 "name",
-                "email"
+                "email",
+                "registrationFlow",
+                "creationMethod",
+                "daysToComplete"
               ],
               "default": "createdAt",
               "description": "排序欄位",
@@ -55744,6 +55846,38 @@
             "required": false,
             "description": "篩選用戶來源",
             "name": "userSource",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "landing_page",
+                "quiz",
+                "action_maker"
+              ],
+              "description": "篩選註冊來源",
+              "example": "landing_page"
+            },
+            "required": false,
+            "description": "篩選註冊來源",
+            "name": "registrationFlow",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "self_created",
+                "copied",
+                "action_generator"
+              ],
+              "description": "篩選任務建立方式",
+              "example": "self_created"
+            },
+            "required": false,
+            "description": "篩選任務建立方式",
+            "name": "creationMethod",
             "in": "query"
           }
         ],

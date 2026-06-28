@@ -253,7 +253,7 @@ export class EmailService {
       throw new Error(result.error || '發送歡迎郵件失敗');
     }
 
-    const templateVersion = `welcome-${data.referralGroup}`;
+    const templateVersion = 'welcome';
 
     return createSuccessResponse({
       messageId: result.messageId

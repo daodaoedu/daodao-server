@@ -59,7 +59,15 @@ export const adminUserListQuerySchema = z.object({
       description: '每頁數量',
       example: '20'
     }),
-  sortBy: z.enum(['createdAt', 'lastLoginAt', 'name', 'email'])
+  sortBy: z.enum([
+    'createdAt',
+    'lastLoginAt',
+    'name',
+    'email',
+    'registrationFlow',
+    'creationMethod',
+    'daysToComplete'
+  ])
     .optional()
     .default('createdAt')
     .openapi({
@@ -91,6 +99,18 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '篩選用戶來源',
       example: 'S1'
+    }),
+  registrationFlow: z.enum(['landing_page', 'quiz', 'action_maker'])
+    .optional()
+    .openapi({
+      description: '篩選註冊來源',
+      example: 'landing_page'
+    }),
+  creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
+    .optional()
+    .openapi({
+      description: '篩選任務建立方式',
+      example: 'self_created'
     })
 }).openapi('AdminUserListQuery');
 
@@ -252,6 +272,24 @@ const adminUserListItemSchema = z.object({
   userSource: z.string().nullable().openapi({
     description: '用戶來源（S1/S2/S3）',
     example: 'S1'
+  }),
+  registrationFlow: z
+    .enum(['landing_page', 'quiz', 'action_maker'])
+    .nullable()
+    .openapi({
+      description: '註冊來源',
+      example: 'landing_page'
+    }),
+  creationMethod: z
+    .enum(['self_created', 'copied', 'action_generator'])
+    .nullable()
+    .openapi({
+      description: '任務建立方式',
+      example: 'self_created'
+    }),
+  daysToComplete: z.number().nullable().openapi({
+    description: '完成天數',
+    example: 7
   }),
   tags: z.array(z.object({
     id: z.number().int(),

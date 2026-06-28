@@ -767,6 +767,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       professionalField,
       personalSlogan,
       referralSource,
+      registrationFlow,
       interestList,
       customId,
       name: nickname
@@ -979,7 +980,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     return {
       response: createSuccessResponse(result),
       emailData: pendingEmail,
-      onboardingData: { userId: newUser.id, referralSource: referralSource ?? null },
+      onboardingData: { userId: newUser.id, referralSource: referralSource ?? null, registrationFlow: registrationFlow ?? null },
     };
   });
 
@@ -993,15 +994,22 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     );
   }
 
-  // 建立 Onboarding 記錄（非阻塞，失敗不影響用戶建立流程）
-  onboardingService
-    .createOnboarding(onboardingData.userId, deriveUserSource(onboardingData.referralSource, false))
-    .catch((err: unknown) =>
-      loggerService.warn('Failed to create onboarding record', {
-        userId: onboardingData.userId,
-        error: err instanceof Error ? err.message : String(err),
-      })
+  // 建立 Onboarding 記錄（await 確保後續 quiz hook 能找到記錄）
+  // skipL0Email: email 尚未驗證，歡迎信延後到驗證成功再寄
+  try {
+    const fromQuiz = onboardingData.registrationFlow === 'quiz';
+    await onboardingService.createOnboarding(
+      onboardingData.userId,
+      deriveUserSource(onboardingData.referralSource, fromQuiz),
+      onboardingData.registrationFlow ?? undefined,
+      { skipL0Email: true },
     );
+  } catch (err: unknown) {
+    loggerService.warn('Failed to create onboarding record', {
+      userId: onboardingData.userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return response;
 };

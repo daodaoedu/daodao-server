@@ -88,6 +88,7 @@ export interface CreateUserRequest {
   professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
+  registrationFlow?: 'quiz' | 'action_generator' | 'direct';
   customId: string; // 自訂 ID
 }
 

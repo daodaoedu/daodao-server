@@ -5,8 +5,9 @@
 
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
-import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
-import { getReferralGroup } from '../services/email/welcome-template';
+import { emailService } from '../services/email/email.service';
+import { enqueueOnboardingL0Email } from '../queues/onboarding-email.queue';
+import { deriveUserSource } from '../utils/onboarding-source';
 import { authService } from '../services/auth/auth.service';
 import { personaService } from '../services/persona.service';
 import { prisma } from '../services/database/prisma.service';
@@ -461,20 +462,14 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     }
     loggerService.info('User email verification updated', { userId: user.id });
 
-    // 發送歡迎郵件（fire-and-forget，不阻斷驗證回應）
-    const contact = user.contacts;
-    if (contact?.email) {
-      sendWelcomeEmailWithLog(contact.email, {
-        name: user.nickname || 'User',
-        referralGroup: getReferralGroup(user.referral_source ?? undefined),
-        userId: user.id
-      }).catch(error => {
-        loggerService.error('Failed to send welcome email after email verification', {
+    // Email 驗證成功，觸發 L0 歡迎信（註冊時已建立 onboarding 記錄但 skipL0Email）
+    enqueueOnboardingL0Email(user.id, deriveUserSource(user.referral_source ?? null, false))
+      .catch(error => {
+        loggerService.error('Failed to enqueue onboarding L0 email after verification', {
           error: error instanceof Error ? error.message : String(error),
-          userId: user.id
+          userId: user.id,
         });
       });
-    }
 
     const response = createSuccessResponse({
       message: '郵件驗證成功'
@@ -533,20 +528,14 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
       return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
     }
 
-    // 發送歡迎郵件（fire-and-forget，不阻斷 redirect 回應）
-    const contact = user.contacts;
-    if (contact?.email) {
-      sendWelcomeEmailWithLog(contact.email, {
-        name: user.nickname || 'User',
-        referralGroup: getReferralGroup(user.referral_source ?? undefined),
-        userId: user.id
-      }).catch(error => {
-        loggerService.error('Failed to send welcome email after email verification (GET)', {
+    // Email 驗證成功，觸發 L0 歡迎信
+    enqueueOnboardingL0Email(user.id, deriveUserSource(user.referral_source ?? null, false))
+      .catch(error => {
+        loggerService.error('Failed to enqueue onboarding L0 email after verification (GET)', {
           error: error instanceof Error ? error.message : String(error),
-          userId: user.id
+          userId: user.id,
         });
       });
-    }
 
     return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=verified`);
   } catch (err) {

@@ -172,6 +172,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
               id: true,
               external_id: true,
               nickname: true,
+              custom_id: true,
               contacts: {
                 select: {
                   photo_url: true
@@ -265,7 +266,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: tagsByPracticeId[practice.id]?.map(tag => tag.name) || [],
       stats: {
@@ -315,6 +317,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -419,7 +422,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: tags.map(tag => tag.tags.name),
       stats: {
@@ -549,6 +553,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -606,7 +611,8 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: data.tags || [],
       stats: {
@@ -743,6 +749,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -835,7 +842,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: updatedTags.map(tag => tag.tags.name),
       stats: {
@@ -1370,6 +1378,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -1435,6 +1444,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -1504,7 +1514,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
         id: updatedPractice.users.external_id || '',
         name: updatedPractice.users.nickname || 'Unknown User',
         photoURL: updatedPractice.users.contacts?.photo_url || null,
-        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: updatedPractice.users.custom_id ?? null
       },
       tags: tags.map(tag => tag.tags.name),
       stats: {
