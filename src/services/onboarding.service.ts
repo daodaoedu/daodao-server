@@ -141,7 +141,8 @@ async function createOnboarding(
   }
 
   // S2（測驗導向）：歡迎信後 3 分鐘寄出帳號設定提醒（Onboarding B）
-  if (userSource === UserSource.S2) {
+  // 若 skipL0Email 為 true（尚未驗證信箱），則同步跳過，避免未驗證者收到提醒信。
+  if (userSource === UserSource.S2 && !opts?.skipL0Email) {
     try {
       const { enqueueOnboardingEmail } = await import('../queues/onboarding-email.queue');
       await enqueueOnboardingEmail(OnboardingTask.B, userId, userSource, { delayMs: 3 * 60 * 1000 });

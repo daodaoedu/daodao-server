@@ -12399,8 +12399,7 @@
             "enum": [
               "landing_page",
               "quiz",
-              "action_maker",
-              null
+              "action_maker"
             ],
             "description": "註冊來源",
             "example": "landing_page"
@@ -12411,8 +12410,7 @@
             "enum": [
               "self_created",
               "copied",
-              "action_generator",
-              null
+              "action_generator"
             ],
             "description": "任務建立方式",
             "example": "self_created"
@@ -12440,6 +12438,12 @@
                 "name"
               ]
             },
+            "example": [
+              {
+                "id": 1,
+                "name": "新手"
+              }
+            ],
             "description": "用戶標籤列表"
           }
         },

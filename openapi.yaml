@@ -9134,7 +9134,6 @@ components:
             - landing_page
             - quiz
             - action_maker
-            - null
           description: 註冊來源
           example: landing_page
         creationMethod:
@@ -9144,7 +9143,6 @@ components:
             - self_created
             - copied
             - action_generator
-            - null
           description: 任務建立方式
           example: self_created
         daysToComplete:
@@ -9165,6 +9163,9 @@ components:
               - id
               - name
           description: 用戶標籤列表
+          example:
+            - id: 1
+              name: 新手
       required:
         - id
         - internalId

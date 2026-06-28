@@ -175,15 +175,16 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
 
   // 批次取得 onboarding 資料（user_onboarding 不在 Prisma 生成的 usersInclude 中）
   const userIds = users.map((u) => u.id);
-  const onboardingData = users.map((user) => ({
-    userId: user.id,
-    badgeGranted: user.user_onboarding?.badge_granted,
-    userSource: user.user_onboarding?.user_source,
-    registrationFlow: user.user_onboarding?.registration_flow,
-    creationMethod: user.user_onboarding?.creation_method,
-    daysToComplete: user.user_onboarding?.days_to_complete,
-  }));
-  const onboardingMap = new Map(onboardingData.map((o) => [o.userId, o]));
+  const onboardingMap = new Map(users.map((user) => [
+    user.id,
+    {
+      badgeGranted: user.user_onboarding?.badge_granted,
+      userSource: user.user_onboarding?.user_source,
+      registrationFlow: user.user_onboarding?.registration_flow,
+      creationMethod: user.user_onboarding?.creation_method,
+      daysToComplete: user.user_onboarding?.days_to_complete,
+    },
+  ]));
 
   // 批次取得用戶標籤
   const userTagsData = await prisma.entity_tags.findMany({
@@ -199,8 +200,9 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
 
   // 格式化回應
   const formattedUsers: AdminUserListItem[] = users.map(user => {
-    const userRegistrationFlow = onboardingMap.get(user.id)?.registrationFlow;
-    const userCreationMethod = onboardingMap.get(user.id)?.creationMethod;
+    const userOnboarding = onboardingMap.get(user.id);
+    const userRegistrationFlow = userOnboarding?.registrationFlow;
+    const userCreationMethod = userOnboarding?.creationMethod;
 
     const normalizedRegistrationFlow = userRegistrationFlow === 'landing_page' ||
       userRegistrationFlow === 'quiz' ||
@@ -247,11 +249,11 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       lastLoginAt: user.user_activity_stats?.last_login_at?.toISOString() ?? null,
       lastActiveAt: user.user_activity_stats?.last_active_at?.toISOString() ?? null,
       personaType: (user.quiz_results[0]?.result_type ?? null) as 'L' | 'C' | 'A' | 'D' | 'O' | null,
-      badgeGranted: onboardingMap.get(user.id)?.badgeGranted ?? null,
-      userSource: onboardingMap.get(user.id)?.userSource ?? null,
+      badgeGranted: userOnboarding?.badgeGranted ?? null,
+      userSource: userOnboarding?.userSource ?? null,
       registrationFlow: normalizedRegistrationFlow,
       creationMethod: normalizedCreationMethod,
-      daysToComplete: onboardingMap.get(user.id)?.daysToComplete ?? null,
+      daysToComplete: userOnboarding?.daysToComplete ?? null,
       tags: userTagsMap.get(user.id) ?? [],
     };
   });
