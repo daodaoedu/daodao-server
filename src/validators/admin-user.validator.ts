@@ -59,7 +59,15 @@ export const adminUserListQuerySchema = z.object({
       description: '每頁數量',
       example: '20'
     }),
-  sortBy: z.enum(['createdAt', 'lastLoginAt', 'name', 'email'])
+  sortBy: z.enum([
+    'createdAt',
+    'lastLoginAt',
+    'name',
+    'email',
+    'registrationFlow',
+    'creationMethod',
+    'daysToComplete'
+  ])
     .optional()
     .default('createdAt')
     .openapi({
@@ -91,6 +99,32 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '篩選用戶來源',
       example: 'S1'
+    }),
+  registrationFlow: z.enum(['landing_page', 'quiz', 'action_maker'])
+    .meta({
+      enumDescriptions: {
+        'landing_page': '由註冊頁面進入',
+        'quiz': '由測驗流程進入',
+        'action_maker': '由工具進入'
+      }
+    })
+    .optional()
+    .openapi({
+      description: '篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。',
+      example: 'landing_page'
+    }),
+  creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
+    .meta({
+      enumDescriptions: {
+        'self_created': '使用者自行建立',
+        'copied': '複製既有任務',
+        'action_generator': '工具產生建立'
+      }
+    })
+    .optional()
+    .openapi({
+      description: '篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。',
+      example: 'self_created'
     })
 }).openapi('AdminUserListQuery');
 
@@ -253,10 +287,43 @@ const adminUserListItemSchema = z.object({
     description: '用戶來源（S1/S2/S3）',
     example: 'S1'
   }),
+  registrationFlow: z
+    .enum(['landing_page', 'quiz', 'action_maker'])
+    .nullable()
+    .meta({
+      enumDescriptions: {
+        'landing_page': '由註冊頁面進入',
+        'quiz': '由測驗流程進入',
+        'action_maker': '由工具進入'
+      }
+    })
+    .openapi({
+      description: '註冊來源。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。',
+      example: 'landing_page'
+    }),
+  creationMethod: z
+    .enum(['self_created', 'copied', 'action_generator'])
+    .nullable()
+    .meta({
+      enumDescriptions: {
+        'self_created': '使用者自行建立',
+        'copied': '複製既有任務',
+        'action_generator': '工具產生建立'
+      }
+    })
+    .openapi({
+      description: '任務建立方式。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。',
+      example: 'self_created'
+    }),
+  daysToComplete: z.number().nullable().openapi({
+    description: '完成天數',
+    example: 7
+  }),
   tags: z.array(z.object({
     id: z.number().int(),
     name: z.string(),
   })).openapi({
+    maxItems: 20,
     description: '用戶標籤列表'
   })
 }).openapi('AdminUserListItem');

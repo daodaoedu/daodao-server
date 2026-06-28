@@ -101,7 +101,12 @@ async function getEffectiveTaskStates(
  * 建立 onboarding 記錄（新用戶註冊後呼叫）。
  * S2 用戶：task_states.A 預設為 'done'。
  */
-async function createOnboarding(userId: number, userSource: UserSource, registrationFlow?: string): Promise<void> {
+async function createOnboarding(
+  userId: number,
+  userSource: UserSource,
+  registrationFlow?: string,
+  opts?: { skipL0Email?: boolean },
+): Promise<void> {
   const initialTaskStates: TaskStates =
     userSource === UserSource.S2 ? { [OnboardingTask.A]: 'done' } : {};
 
@@ -122,15 +127,31 @@ async function createOnboarding(userId: number, userSource: UserSource, registra
 
   loggerService.info('Onboarding record created', { userId, userSource });
 
-  // 觸發 L0 歡迎信
-  try {
-    const { enqueueOnboardingL0Email } = await import('../queues/onboarding-email.queue');
-    await enqueueOnboardingL0Email(userId, userSource);
-  } catch (err) {
-    loggerService.warn('Failed to enqueue onboarding L0 email', {
-      userId,
-      error: err instanceof Error ? err.message : String(err),
-    });
+  // 觸發 L0 歡迎信（skipL0Email 為 true 時跳過，例如 email 尚未驗證的用戶）
+  if (!opts?.skipL0Email) {
+    try {
+      const { enqueueOnboardingL0Email } = await import('../queues/onboarding-email.queue');
+      await enqueueOnboardingL0Email(userId, userSource);
+    } catch (err) {
+      loggerService.warn('Failed to enqueue onboarding L0 email', {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // S2（測驗導向）：歡迎信後 3 分鐘寄出帳號設定提醒（Onboarding B）
+  // 若 skipL0Email 為 true（尚未驗證信箱），則同步跳過，避免未驗證者收到提醒信。
+  if (userSource === UserSource.S2 && !opts?.skipL0Email) {
+    try {
+      const { enqueueOnboardingEmail } = await import('../queues/onboarding-email.queue');
+      await enqueueOnboardingEmail(OnboardingTask.B, userId, userSource, { delayMs: 3 * 60 * 1000 });
+    } catch (err) {
+      loggerService.warn('Failed to enqueue onboarding B email', {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 }
 
@@ -148,7 +169,7 @@ async function getStatus(userId: number): Promise<OnboardingStatusResponse | nul
     });
     if (!user) return null;
     const userSource = deriveUserSource(user.referral_source ?? null, false);
-    await createOnboarding(userId, userSource);
+    await createOnboarding(userId, userSource, undefined, { skipL0Email: true });
     row = await findByUserId(userId);
     if (!row) return null;
   }
