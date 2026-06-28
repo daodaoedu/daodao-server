@@ -426,6 +426,7 @@ interface AnswerWithUserRow {
   answer_id: number;
   user_internal_id: number;
   user_external_id: string | null;
+  custom_id: string | null;
   nickname: string | null;
   photo_url: string | null;
   is_open_profile: boolean | null;
@@ -445,6 +446,7 @@ export interface QuestionAnswerItem {
   userId: string | null;
   name: string | null;
   photoURL: string | null;
+  customId: string | null;
   selectedValue: string | null;
   textAnswer: string | null;
   resonanceCount: number;
@@ -507,6 +509,7 @@ async function getQuestionAnswers(
       a.id              AS answer_id,
       u.id              AS user_internal_id,
       u.external_id     AS user_external_id,
+      u.custom_id,
       u.nickname,
       c.photo_url,
       u.is_open_profile,
@@ -588,6 +591,7 @@ async function getQuestionAnswers(
       userId: reveal ? (row.user_external_id ?? null) : null,
       name: reveal ? (row.nickname ?? null) : null,
       photoURL: reveal ? (row.photo_url ?? null) : null,
+      customId: reveal ? (row.custom_id ?? null) : null,
       selectedValue: row.selected_value,
       textAnswer: row.text_answer,
       resonanceCount: Number(row.resonance_count),

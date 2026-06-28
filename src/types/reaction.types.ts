@@ -44,6 +44,7 @@ export interface ReactionListItem {
   userId: string;
   name: string;
   photoURL: string | null;
+  customId: string | null;
   reactionType: ReactionTypeValue;
   reactedAt: string;
   isPublic: boolean;

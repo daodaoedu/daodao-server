@@ -31,6 +31,8 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
     personaType: query.personaType,
     badgeGranted: query.badgeGranted,
     userSource: query.userSource,
+    registrationFlow: query.registrationFlow,
+    creationMethod: query.creationMethod,
     page: query.page,
     limit: query.limit,
     sortBy: query.sortBy,

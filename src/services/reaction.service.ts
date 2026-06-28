@@ -309,6 +309,7 @@ export async function getReactionsListByTarget(params: GetReactionsByTargetParam
           select: {
             external_id: true,
             nickname: true,
+            custom_id: true,
             is_open_profile: true,
             contacts: { select: { photo_url: true } },
           },
@@ -338,6 +339,7 @@ export async function getReactionsListByTarget(params: GetReactionsByTargetParam
       userId: r.users.external_id ?? String(r.user_id),
       name: r.users.nickname ?? '未知用戶',
       photoURL: r.users.contacts?.photo_url ?? null,
+      customId: r.users.custom_id ?? null,
       reactionType: r.reaction_type as ReactionListItem['reactionType'],
       reactedAt: (r.created_at ?? new Date()).toISOString(),
       isPublic: r.users.is_open_profile ?? false,
@@ -370,6 +372,7 @@ export async function getReactionsBatchByTargets(params: {
           select: {
             external_id: true,
             nickname: true,
+            custom_id: true,
             is_open_profile: true,
             contacts: { select: { photo_url: true } },
           },
@@ -436,6 +439,7 @@ export async function getReactionsBatchByTargets(params: {
         userId: r.users.external_id ?? String(r.user_id),
         name: r.users.nickname ?? '未知用戶',
         photoURL: r.users.contacts?.photo_url ?? null,
+        customId: r.users.custom_id ?? null,
         reactionType: r.reaction_type as ReactionListItem['reactionType'],
         reactedAt: (r.created_at ?? new Date()).toISOString(),
         isPublic: r.users.is_open_profile ?? false,

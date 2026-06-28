@@ -135,6 +135,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
         select: {
           external_id: true,
           nickname:    true,
+          custom_id:   true,
           contacts: {
             select: {
               photo_url: true,
@@ -275,6 +276,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
         id:       row.actor.external_id ?? '',
         name:     row.actor.nickname ?? '',
         photoURL: row.actor.contacts?.photo_url ?? undefined,
+        customId: row.actor.custom_id ?? null,
       },
       ...(p.practice_title !== undefined        && { practiceTitle:        p.practice_title as string }),
       ...(p.intent !== undefined                && { connectMessage:        p.intent as string }),

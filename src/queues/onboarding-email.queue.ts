@@ -44,11 +44,14 @@ export function createOnboardingEmailQueue(): Queue<OnboardingEmailJobData> {
 /**
  * 推送 Onboarding email job（使用 jobId 冪等）。
  * 供 onboardingService.checkAndAdvance 呼叫。
+ *
+ * @param opts.delayMs - 延遲毫秒數（BullMQ delayed job）
  */
 export async function enqueueOnboardingEmail(
   taskKey: OnboardingTask,
   userId: number,
-  userSource: UserSource
+  userSource: UserSource,
+  opts?: { delayMs?: number }
 ): Promise<string | null> {
   const queue = onboardingEmailQueueInstance;
   if (!queue) {
@@ -62,8 +65,11 @@ export async function enqueueOnboardingEmail(
   const jobData: OnboardingEmailJobData = { userId, emailType, userSource };
   const jobId = `${emailType}-${userId}`;
 
-  const job = await queue.add(`${emailType}-${userId}`, jobData, { jobId });
-  loggerService.info('Onboarding email job enqueued', { jobId: job.id, emailType, userId });
+  const job = await queue.add(`${emailType}-${userId}`, jobData, {
+    jobId,
+    ...(opts?.delayMs ? { delay: opts.delayMs } : {}),
+  });
+  loggerService.info('Onboarding email job enqueued', { jobId: job.id, emailType, userId, delayMs: opts?.delayMs });
   return job.id ?? null;
 }
 
