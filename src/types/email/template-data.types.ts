@@ -10,7 +10,7 @@ export interface WelcomeEmailData {
   /** 使用者名稱 */
   name: string;
 
-  /** @deprecated 已統一版本，不再分版 */
+  /** 來源管道群組，決定歡迎信文案版本 */
   referralGroup?: 'social-media' | 'community' | 'default';
 
   /** CTA 連結（預設為前台首頁） */
