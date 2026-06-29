@@ -5,6 +5,7 @@
  * A–E 使用 onboarding-template.ts 的正式文案。
  */
 
+import { getReferralGroup } from './welcome-template';
 import {
   generateOnboardingAEmail,
   generateOnboardingBEmail,
@@ -33,6 +34,7 @@ export async function sendOnboardingL0Email(userId: number, userSource: UserSour
 
   const result = await emailService.sendWelcomeEmailWithLog(user.contacts.email, {
     name: user.nickname ?? 'User',
+    referralGroup: getReferralGroup(user.referral_source),
     userId,
   });
   if (!result.success) throw new Error(`Failed to send onboarding L0 email: ${result.error}`);

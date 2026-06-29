@@ -196,7 +196,7 @@ export async function getQuizStats() {
     prisma.$queryRaw<Array<{ result_type: string; count: bigint }>>`
       WITH latest AS (
         SELECT DISTINCT ON (user_id) user_id, result_type
-        FROM quiz_results ORDER BY user_id, completed_at DESC
+        FROM quiz_results WHERE user_id IS NOT NULL ORDER BY user_id, completed_at DESC
       )
       SELECT result_type, COUNT(*) AS count FROM latest GROUP BY result_type
     `,
@@ -205,6 +205,7 @@ export async function getQuizStats() {
         SELECT DISTINCT ON (qr.user_id) qr.user_id, qr.result_type, uo.badge_granted
         FROM quiz_results qr
         LEFT JOIN user_onboarding uo ON uo.user_id = qr.user_id
+        WHERE qr.user_id IS NOT NULL
         ORDER BY qr.user_id, qr.completed_at DESC
       )
       SELECT result_type,
