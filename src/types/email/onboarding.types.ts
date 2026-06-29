@@ -9,6 +9,7 @@ export const onboardingEmailJobDataSchema = z.object({
   userId: z.number().int().positive(),
   emailType: onboardingEmailTypeSchema,
   userSource: z.enum([UserSource.S1, UserSource.S2, UserSource.S3]),
+  sequenceMode: z.boolean().optional(),
 });
 
 export type OnboardingEmailJobData = z.infer<typeof onboardingEmailJobDataSchema>;

@@ -117,6 +117,7 @@ export {
   getOnboardingEmailQueue,
   enqueueOnboardingEmail,
   enqueueOnboardingL0Email,
+  enqueueNextSequenceEmail,
 } from './onboarding-email.queue';
 
 // Onboarding Email Worker
