@@ -7,68 +7,106 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '@/middleware/error.middleware';
 import { NotFoundError } from '@/middleware/error.middleware';
 import { quizService } from '@/services/quiz.service';
+import { setQuizClaimCookie, clearQuizClaimCookie } from '@/utils/cookie-config';
 import {
   saveQuizResultResponseSchema,
-  getQuizResultResponseSchema
+  getQuizResultResponseSchema,
+  savePendingQuizResponseSchema,
+  claimQuizResultResponseSchema
 } from '@/validators/quiz.validators';
 
 /**
- * 保存測驗結果
+ * 保存測驗結果（已認證用戶）
  *
- * @route POST /api/v1/quizResults
- * @access Private - 需要 JWT 認證
+ * @route POST /api/v1/quiz
+ * @access Private
  */
 export const saveResult = asyncHandler(async (req: Request, res: Response) => {
-  // 從認證的用戶信息中獲取用戶 ID
   const userId = req.user?.id;
   if (!userId) {
     throw new Error('User ID not found in request');
   }
 
-  // 調用服務層保存測驗結果
   const response = await quizService.saveResult(userId, req.body);
-
-  // 驗證響應格式
   const validatedResponse = saveQuizResultResponseSchema.parse(response);
-
-  // 返回成功響應（201 Created）
   res.status(201).json(validatedResponse);
+});
+
+/**
+ * 暫存測驗結果（匿名用戶，不需認證）
+ * 設定 quiz_claim cookie 供後續認領
+ *
+ * @route POST /api/v1/quiz/pending
+ * @access Public
+ */
+export const savePending = asyncHandler(async (req: Request, res: Response) => {
+  const response = await quizService.createPending(req.body);
+
+  setQuizClaimCookie(res, response.data.claimToken);
+
+  const validatedResponse = savePendingQuizResponseSchema.parse(response);
+  res.status(201).json(validatedResponse);
+});
+
+/**
+ * 認領匿名測驗結果
+ *
+ * @route POST /api/v1/quiz/claim
+ * @access Private
+ */
+export const claimResult = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new Error('User ID not found in request');
+  }
+
+  const claimToken = req.cookies?.quiz_claim as string | undefined;
+  if (!claimToken) {
+    throw new NotFoundError('無可認領的測驗結果');
+  }
+
+  const result = await quizService.claimByToken(userId, claimToken);
+  if (!result) {
+    clearQuizClaimCookie(res);
+    throw new NotFoundError('測驗結果不存在或已過期');
+  }
+
+  clearQuizClaimCookie(res);
+
+  const response = claimQuizResultResponseSchema.parse({
+    success: true,
+    data: result,
+    timestamp: new Date().toISOString()
+  });
+  res.json(response);
 });
 
 /**
  * 取得最新測驗結果
  *
- * @route GET /api/v1/quizResults/latest
- * @access Private - 需要 JWT 認證
+ * @route GET /api/v1/quiz/latest
+ * @access Private
  */
 export const getLatestResult = asyncHandler(async (req: Request, res: Response) => {
-  // 從認證的用戶信息中獲取用戶 ID
   const userId = req.user?.id;
   if (!userId) {
     throw new Error('User ID not found in request');
   }
 
-  // 調用服務層獲取最新結果
   const response = await quizService.getLatestResult(userId);
 
-  // 如果沒有結果，返回 404
   if (response.data === null) {
     throw new NotFoundError('尚無測驗結果');
   }
 
-  // 驗證響應格式
   const validatedResponse = getQuizResultResponseSchema.parse(response);
-
-  // 返回成功響應（200 OK）
   res.json(validatedResponse);
 });
 
-/**
- * 測驗控制器對象
- * 導出所有測驗相關的控制器方法
- */
 export const quizController = {
   saveResult,
+  savePending,
+  claimResult,
   getLatestResult
 };
 

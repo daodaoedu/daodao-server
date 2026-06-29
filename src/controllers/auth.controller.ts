@@ -25,7 +25,8 @@ import {
   verifyEmailResponseSchema,
   appleSignInResponseSchema
 } from '../validators/auth.validators';
-import { setAuthCookie, clearAuthCookie, getAuthToken } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, getAuthToken, clearQuizClaimCookie, QUIZ_CLAIM_COOKIE_NAME } from '../utils/cookie-config';
+import { quizService } from '../services/quiz.service';
 import {
   validateOAuthState,
   OAuthState
@@ -188,6 +189,24 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
       });
     }
     personaService.incrementSession(id).catch(() => undefined);
+
+    // 自動認領匿名測驗結果（quiz_claim cookie）
+    const quizClaimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+    if (quizClaimToken) {
+      quizService.claimByToken(id, quizClaimToken)
+        .then(claimed => {
+          if (claimed) {
+            loggerService.info('Auto-claimed quiz result in OAuth callback', { userId: id });
+          }
+        })
+        .catch(err => {
+          loggerService.warn('Failed to auto-claim quiz result', {
+            userId: id,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        });
+      clearQuizClaimCookie(res);
+    }
   }
 
   // 根據來源決定重定向目標
@@ -642,6 +661,18 @@ export const appleSignIn = asyncHandler(async (req: Request, res: Response) => {
 
   // 設定 HTTP-only Cookie
   setAuthCookie(res, result.data.token);
+
+  // 自動認領匿名測驗結果
+  const quizClaimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+  if (quizClaimToken && result.data.user?.id) {
+    quizService.claimByToken(result.data.user.id, quizClaimToken)
+      .catch(err => {
+        loggerService.warn('Failed to auto-claim quiz result in Apple sign-in', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      });
+    clearQuizClaimCookie(res);
+  }
 
   // 驗證與回傳響應
   const validatedResponse = appleSignInResponseSchema.parse(result);

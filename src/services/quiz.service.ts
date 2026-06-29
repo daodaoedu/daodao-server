@@ -3,17 +3,18 @@
  * 處理測驗結果的業務邏輯和數據庫操作
  */
 
+import { randomUUID } from 'crypto';
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
-import type { ApiResponse } from '@/types/api-response.types';
-import type { QuizResultData, QuizResultResponse } from '@/types/quiz.types';
+import { loggerService } from '@/services/logging/logger.service';
+import type { ApiResponse, ApiSuccessResponse } from '@/types/api-response.types';
+import type { QuizResultData, QuizResultResponse, QuizPendingResponse } from '@/types/quiz.types';
+
+/** 暫存過期時間：24 小時 */
+const PENDING_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * 保存測驗結果
- *
- * @param userId - 用戶 ID（從 JWT token 獲取）
- * @param data - 測驗結果數據
- * @returns 包含保存成功的測驗結果信息
+ * 保存測驗結果（已認證用戶）
  */
 export const saveResult = async (
   userId: number,
@@ -38,10 +39,71 @@ export const saveResult = async (
 };
 
 /**
+ * 暫存測驗結果（匿名用戶，不需認證）
+ * 產生 claim_token，登入後可認領
+ */
+export const createPending = async (
+  data: QuizResultData
+): Promise<ApiSuccessResponse<QuizPendingResponse>> => {
+  const claimToken = randomUUID();
+  const expiresAt = new Date(Date.now() + PENDING_EXPIRY_MS);
+
+  await prisma.quiz_results.create({
+    data: {
+      user_id: null,
+      result_type: data.resultType.toUpperCase(),
+      scores: data.scores,
+      answers: data.answers || undefined,
+      completed_at: new Date(),
+      claim_token: claimToken,
+      expires_at: expiresAt
+    }
+  });
+
+  return createSuccessResponse({ claimToken });
+};
+
+/**
+ * 透過 claim_token 認領匿名測驗結果
+ * @returns 認領成功的結果，找不到或已過期則回傳 null
+ */
+export const claimByToken = async (
+  userId: number,
+  claimToken: string
+): Promise<QuizResultResponse | null> => {
+  const pending = await prisma.quiz_results.findFirst({
+    where: {
+      claim_token: claimToken,
+      user_id: null,
+      expires_at: { gt: new Date() }
+    }
+  });
+
+  if (!pending) {
+    return null;
+  }
+
+  const claimed = await prisma.quiz_results.update({
+    where: { id: pending.id },
+    data: {
+      user_id: userId,
+      claim_token: null,
+      expires_at: null
+    }
+  });
+
+  loggerService.info('Quiz result claimed', { userId, quizResultId: claimed.id });
+
+  return {
+    id: claimed.id,
+    resultType: claimed.result_type,
+    scores: claimed.scores as Record<string, number>,
+    completedAt: claimed.completed_at.toISOString()
+  };
+};
+
+/**
  * 取得用戶最新測驗結果
- *
- * @param userId - 用戶 ID（從 JWT token 獲取）
- * @returns 用戶最新的測驗結果，若無結果則返回 null
  */
 export const getLatestResult = async (
   userId: number
@@ -64,12 +126,29 @@ export const getLatestResult = async (
 };
 
 /**
- * 測驗服務對象
- * 導出所有測驗相關的服務方法
+ * 清理過期的匿名暫存測驗結果
  */
+export const cleanupExpiredPending = async (): Promise<number> => {
+  const { count } = await prisma.quiz_results.deleteMany({
+    where: {
+      user_id: null,
+      expires_at: { lt: new Date() }
+    }
+  });
+
+  if (count > 0) {
+    loggerService.info('Cleaned up expired pending quiz results', { count });
+  }
+
+  return count;
+};
+
 export const quizService = {
   saveResult,
-  getLatestResult
+  createPending,
+  claimByToken,
+  getLatestResult,
+  cleanupExpiredPending
 };
 
 export default quizService;
