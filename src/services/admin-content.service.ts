@@ -175,7 +175,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     prisma.$queryRaw<Array<{ result_type: string; count: bigint }>>`
       WITH latest AS (
         SELECT DISTINCT ON (user_id) user_id, result_type
-        FROM quiz_results WHERE ${quizFilter} ORDER BY user_id, completed_at DESC
+        FROM quiz_results WHERE user_id IS NOT NULL AND ${quizFilter} ORDER BY user_id, completed_at DESC
       )
       SELECT result_type, COUNT(*)::bigint AS count
       FROM latest GROUP BY result_type ORDER BY count DESC

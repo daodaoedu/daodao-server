@@ -4,10 +4,10 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler } from '@/middleware/error.middleware';
-import { NotFoundError } from '@/middleware/error.middleware';
+import { asyncHandler, NotFoundError } from '@/middleware/error.middleware';
+import { createSuccessResponse } from '@/utils/response-helper';
 import { quizService } from '@/services/quiz.service';
-import { setQuizClaimCookie, clearQuizClaimCookie } from '@/utils/cookie-config';
+import { setQuizClaimCookie, clearQuizClaimCookie, QUIZ_CLAIM_COOKIE_NAME } from '@/utils/cookie-config';
 import {
   saveQuizResultResponseSchema,
   getQuizResultResponseSchema,
@@ -60,7 +60,7 @@ export const claimResult = asyncHandler(async (req: Request, res: Response) => {
     throw new Error('User ID not found in request');
   }
 
-  const claimToken = req.cookies?.quiz_claim as string | undefined;
+  const claimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
   if (!claimToken) {
     throw new NotFoundError('無可認領的測驗結果');
   }
@@ -73,12 +73,9 @@ export const claimResult = asyncHandler(async (req: Request, res: Response) => {
 
   clearQuizClaimCookie(res);
 
-  const response = claimQuizResultResponseSchema.parse({
-    success: true,
-    data: result,
-    timestamp: new Date().toISOString()
-  });
-  res.json(response);
+  const response = createSuccessResponse(result);
+  const validatedResponse = claimQuizResultResponseSchema.parse(response);
+  res.json(validatedResponse);
 });
 
 /**

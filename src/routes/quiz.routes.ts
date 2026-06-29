@@ -5,6 +5,7 @@
 import { Router, RequestHandler } from 'express';
 import { registry } from '@/config/openapi-registry';
 import { authenticate } from '@/middleware/auth';
+import { strictLimiter } from '@/middleware/rate-limit.middleware';
 import { validate } from '@/middleware/validation.middleware';
 import {
   saveQuizResultBodySchema,
@@ -58,6 +59,7 @@ registry.registerPath({
 
 router.post(
   '/pending',
+  strictLimiter,
   validate(saveQuizResultBodySchema, 'body'),
   quizController.savePending as RequestHandler
 );

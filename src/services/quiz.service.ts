@@ -60,6 +60,9 @@ export const createPending = async (
     }
   });
 
+  // 附帶清理過期暫存（非阻塞）
+  cleanupExpiredPending().catch(() => undefined);
+
   return createSuccessResponse({ claimToken });
 };
 
@@ -71,26 +74,32 @@ export const claimByToken = async (
   userId: number,
   claimToken: string
 ): Promise<QuizResultResponse | null> => {
-  const pending = await prisma.quiz_results.findFirst({
+  // 原子操作：updateMany 帶完整 WHERE 避免 race condition
+  const { count } = await prisma.quiz_results.updateMany({
     where: {
       claim_token: claimToken,
       user_id: null,
       expires_at: { gt: new Date() }
-    }
-  });
-
-  if (!pending) {
-    return null;
-  }
-
-  const claimed = await prisma.quiz_results.update({
-    where: { id: pending.id },
+    },
     data: {
       user_id: userId,
       claim_token: null,
       expires_at: null
     }
   });
+
+  if (count === 0) {
+    return null;
+  }
+
+  const claimed = await prisma.quiz_results.findFirst({
+    where: { user_id: userId },
+    orderBy: { completed_at: 'desc' }
+  });
+
+  if (!claimed) {
+    return null;
+  }
 
   loggerService.info('Quiz result claimed', { userId, quizResultId: claimed.id });
 
