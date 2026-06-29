@@ -25,7 +25,8 @@ import {
   verifyEmailResponseSchema,
   appleSignInResponseSchema
 } from '../validators/auth.validators';
-import { setAuthCookie, clearAuthCookie, getAuthToken } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, getAuthToken, clearQuizClaimCookie, QUIZ_CLAIM_COOKIE_NAME } from '../utils/cookie-config';
+import { quizService } from '../services/quiz.service';
 import {
   validateOAuthState,
   OAuthState
@@ -38,6 +39,28 @@ import { authCodeService } from '../services/auth/auth-code.service';
 import { extractDeviceInfo } from '../utils/device-info.utils';
 
 const ONBOARDING_SEQUENCE_DELAY_MS = 3 * 60 * 1000;
+
+/**
+ * 嘗試自動認領匿名測驗結果（從 quiz_claim cookie）。
+ * 認領成功才清除 cookie；失敗時保留 cookie 讓下次請求可重試。
+ */
+async function tryAutoClaimQuiz(req: Request, res: Response, userId: number): Promise<void> {
+  const claimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+  if (!claimToken) return;
+
+  try {
+    const claimed = await quizService.claimByToken(userId, claimToken);
+    if (claimed) {
+      clearQuizClaimCookie(res);
+      loggerService.info('Auto-claimed quiz result', { userId });
+    }
+  } catch (err) {
+    loggerService.warn('Failed to auto-claim quiz result', {
+      userId,
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
+}
 
 /** Email 驗證成功後，排程序列第一封提醒信（所有 source 皆適用） */
 function enqueueSequenceAfterVerification(userId: number, referralSource: string | null | undefined): void {
@@ -188,6 +211,8 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
       });
     }
     personaService.incrementSession(id).catch(() => undefined);
+
+    await tryAutoClaimQuiz(req, res, id);
   }
 
   // 根據來源決定重定向目標
@@ -643,6 +668,11 @@ export const appleSignIn = asyncHandler(async (req: Request, res: Response) => {
   // 設定 HTTP-only Cookie
   setAuthCookie(res, result.data.token);
 
+  // 自動認領匿名測驗結果
+  if (result.data.user?.id) {
+    await tryAutoClaimQuiz(req, res, result.data.user.id);
+  }
+
   // 驗證與回傳響應
   const validatedResponse = appleSignInResponseSchema.parse(result);
   res.json(validatedResponse);
@@ -683,6 +713,7 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
 
   if (!decoded.isTemp && decoded.id) {
     personaService.incrementSession(decoded.id).catch(() => undefined);
+    await tryAutoClaimQuiz(req, res, decoded.id);
   }
 
   // 如果不是臨時用戶，獲取完整資訊

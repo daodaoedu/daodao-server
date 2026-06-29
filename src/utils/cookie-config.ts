@@ -107,13 +107,43 @@ export const getAuthToken = (req: {
   return undefined;
 };
 
+/** Quiz Claim Cookie 名稱 */
+export const QUIZ_CLAIM_COOKIE_NAME = 'quiz_claim';
+
+/** Quiz Claim Cookie 過期時間（24 小時） */
+export const QUIZ_CLAIM_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 設定 Quiz Claim Cookie
+ * @param res - Express Response
+ * @param claimToken - 認領 token (UUID)
+ */
+export const setQuizClaimCookie = (res: Response, claimToken: string): void => {
+  const cookieOptions = getCookieOptions({ maxAge: QUIZ_CLAIM_MAX_AGE_MS });
+  res.cookie(QUIZ_CLAIM_COOKIE_NAME, claimToken, cookieOptions);
+};
+
+/**
+ * 清除 Quiz Claim Cookie
+ * @param res - Express Response
+ */
+export const clearQuizClaimCookie = (res: Response): void => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { maxAge, ...clearOptions } = getCookieOptions();
+  res.clearCookie(QUIZ_CLAIM_COOKIE_NAME, clearOptions);
+};
+
 export const cookieUtils = {
   AUTH_COOKIE_NAME,
   COOKIE_MAX_AGE_MS,
   getCookieOptions,
   setAuthCookie,
   clearAuthCookie,
-  getAuthToken
+  getAuthToken,
+  QUIZ_CLAIM_COOKIE_NAME,
+  QUIZ_CLAIM_MAX_AGE_MS,
+  setQuizClaimCookie,
+  clearQuizClaimCookie
 };
 
 export default cookieUtils;
