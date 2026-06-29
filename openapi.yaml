@@ -10712,10 +10712,10 @@ components:
           type: string
           enum:
             - quiz
-            - action_generator
-            - direct
-          description: 註冊流程來源（quiz=從測驗註冊, action_generator=從工具註冊, direct=一般註冊）
-          example: direct
+            - action_maker
+            - landing_page
+          description: 註冊流程來源（quiz=從測驗註冊, action_maker=從工具註冊, landing_page=一般註冊）
+          example: landing_page
         customId:
           type: string
           minLength: 3
