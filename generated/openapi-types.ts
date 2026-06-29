@@ -32220,11 +32220,11 @@ export interface components {
              */
             referralSource?: ("instagram" | "facebook" | "discord" | "linkedin" | "friend_referral" | "others") | string;
             /**
-             * @description 註冊流程來源（quiz=從測驗註冊, action_generator=從工具註冊, direct=一般註冊）
-             * @example direct
+             * @description 註冊流程來源（quiz=從測驗註冊, action_maker=從工具註冊, landing_page=一般註冊）
+             * @example landing_page
              * @enum {string}
              */
-            registrationFlow?: "quiz" | "action_generator" | "direct";
+            registrationFlow?: "quiz" | "action_maker" | "landing_page";
             /**
              * @description 自訂 ID (必填)
              * @example my_custom_id
