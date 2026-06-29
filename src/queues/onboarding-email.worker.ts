@@ -113,16 +113,19 @@ async function processSequenceJob(userId: number, userSource: UserSource): Promi
   const emailType = TASK_EMAIL_MAP[nextTask];
   if (!emailType) return;
 
-  await sendSingleEmail(userId, emailType, source);
+  try {
+    await sendSingleEmail(userId, emailType, source);
+  } finally {
+    // 不論發送成功或失敗都排程下一封，確保序列鏈不中斷
+    const { enqueueNextSequenceEmail } = await import('./onboarding-email.queue');
+    await enqueueNextSequenceEmail(userId, source, SEQUENCE_NEXT_DELAY_MS);
 
-  const { enqueueNextSequenceEmail } = await import('./onboarding-email.queue');
-  await enqueueNextSequenceEmail(userId, source, SEQUENCE_NEXT_DELAY_MS);
-
-  loggerService.info('Onboarding sequence: next email scheduled', {
-    userId,
-    sentEmailType: emailType,
-    nextDelayMs: SEQUENCE_NEXT_DELAY_MS,
-  });
+    loggerService.info('Onboarding sequence: next email scheduled', {
+      userId,
+      sentEmailType: emailType,
+      nextDelayMs: SEQUENCE_NEXT_DELAY_MS,
+    });
+  }
 }
 
 export function createOnboardingEmailWorker(): Worker<OnboardingEmailJobData> {
