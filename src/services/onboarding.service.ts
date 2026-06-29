@@ -138,16 +138,13 @@ async function createOnboarding(
         error: err instanceof Error ? err.message : String(err),
       });
     }
-  }
 
-  // S2（測驗導向）：歡迎信後 3 分鐘寄出帳號設定提醒（Onboarding B）
-  // 若 skipL0Email 為 true（尚未驗證信箱），則同步跳過，避免未驗證者收到提醒信。
-  if (userSource === UserSource.S2 && !opts?.skipL0Email) {
+    // 歡迎信後 3 分鐘排程序列第一封提醒信（依 user_source 的 task order）
     try {
-      const { enqueueOnboardingEmail } = await import('../queues/onboarding-email.queue');
-      await enqueueOnboardingEmail(OnboardingTask.B, userId, userSource, { delayMs: 3 * 60 * 1000 });
+      const { enqueueNextSequenceEmail } = await import('../queues/onboarding-email.queue');
+      await enqueueNextSequenceEmail(userId, userSource, 3 * 60 * 1000);
     } catch (err) {
-      loggerService.warn('Failed to enqueue onboarding B email', {
+      loggerService.warn('Failed to enqueue onboarding sequence email', {
         userId,
         error: err instanceof Error ? err.message : String(err),
       });
@@ -257,18 +254,6 @@ async function checkAndAdvance(
   if (allCompleted && !updatedRow.badge_granted) {
     await grantBadge(userId, updatedRow.created_at);
     onboardingCompletionCache.markCompleted(userId);
-  }
-
-  // 觸發 email（lazy import 避免循環依賴）
-  try {
-    const { enqueueOnboardingEmail } = await import('../queues/onboarding-email.queue');
-    await enqueueOnboardingEmail(taskKey, userId, source);
-  } catch (err) {
-    loggerService.warn('Failed to enqueue onboarding email', {
-      userId,
-      taskKey,
-      error: err instanceof Error ? err.message : String(err),
-    });
   }
 
   return { taskKey, allCompleted };

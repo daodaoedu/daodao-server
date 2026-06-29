@@ -10,7 +10,7 @@ import { getQueueConnection } from './connection';
 import { loggerService } from '../services/logging/logger.service';
 import type { OnboardingEmailJobData } from '../types/email/onboarding.types';
 import type { OnboardingTask, UserSource } from '../types/onboarding.types';
-import { TASK_EMAIL_MAP } from '../types/onboarding.types';
+import { TASK_EMAIL_MAP, TASK_ORDER_BY_SOURCE } from '../types/onboarding.types';
 
 export const ONBOARDING_EMAIL_QUEUE_NAME = 'onboarding-email';
 
@@ -91,5 +91,49 @@ export async function enqueueOnboardingL0Email(
 
   const job = await queue.add(`L0-${userId}`, jobData, { jobId });
   loggerService.info('Onboarding L0 email job enqueued', { jobId: job.id, userId });
+  return job.id ?? null;
+}
+
+/**
+ * 排程下一封序列 email（時間驅動）。
+ * 查詢 user 的 task order，找到第一個尚未完成且尚未寄信的 task，排入隊列。
+ * sequenceMode=true 讓 worker 在發送前再次確認 task 是否已完成。
+ */
+export async function enqueueNextSequenceEmail(
+  userId: number,
+  userSource: UserSource,
+  delayMs: number
+): Promise<string | null> {
+  const queue = onboardingEmailQueueInstance;
+  if (!queue) {
+    loggerService.warn('Onboarding email queue not initialized for sequence', { userId });
+    return null;
+  }
+
+  const order = TASK_ORDER_BY_SOURCE[userSource] ?? TASK_ORDER_BY_SOURCE['S1'];
+  const firstTask = order[0];
+  if (!firstTask) return null;
+
+  const emailType = TASK_EMAIL_MAP[firstTask];
+  if (!emailType) return null;
+
+  const jobData: OnboardingEmailJobData = {
+    userId,
+    emailType,
+    userSource,
+    sequenceMode: true,
+  };
+  const jobId = `seq-${userId}-${Date.now()}`;
+
+  const job = await queue.add(`seq-${userId}`, jobData, {
+    jobId,
+    delay: delayMs,
+  });
+  loggerService.info('Onboarding sequence email job enqueued', {
+    jobId: job.id,
+    emailType,
+    userId,
+    delayMs,
+  });
   return job.id ?? null;
 }
