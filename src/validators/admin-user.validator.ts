@@ -59,7 +59,15 @@ export const adminUserListQuerySchema = z.object({
       description: '每頁數量',
       example: '20'
     }),
-  sortBy: z.enum(['createdAt', 'lastLoginAt', 'name', 'email'])
+  sortBy: z.enum([
+    'createdAt',
+    'lastLoginAt',
+    'name',
+    'email',
+    'registrationFlow',
+    'creationMethod',
+    'daysToComplete'
+  ])
     .optional()
     .default('createdAt')
     .openapi({
@@ -72,6 +80,51 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '排序方向',
       example: 'desc'
+    }),
+  personaType: z.enum(['L', 'C', 'A', 'D', 'O'])
+    .optional()
+    .openapi({
+      description: '篩選學習風格人物誌（最新一次測驗結果）',
+      example: 'D'
+    }),
+  badgeGranted: z.enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .optional()
+    .openapi({
+      description: '篩選 Onboarding Badge 完成狀態',
+      example: 'true'
+    }),
+  userSource: z.enum(['S1', 'S2', 'S3'])
+    .optional()
+    .openapi({
+      description: '篩選用戶來源',
+      example: 'S1'
+    }),
+  registrationFlow: z.enum(['landing_page', 'quiz', 'action_maker'])
+    .meta({
+      enumDescriptions: {
+        'landing_page': '由註冊頁面進入',
+        'quiz': '由測驗流程進入',
+        'action_maker': '由工具進入'
+      }
+    })
+    .optional()
+    .openapi({
+      description: '篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。',
+      example: 'landing_page'
+    }),
+  creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
+    .meta({
+      enumDescriptions: {
+        'self_created': '使用者自行建立',
+        'copied': '複製既有任務',
+        'action_generator': '工具產生建立'
+      }
+    })
+    .optional()
+    .openapi({
+      description: '篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。',
+      example: 'self_created'
     })
 }).openapi('AdminUserListQuery');
 
@@ -179,6 +232,10 @@ const adminUserListItemSchema = z.object({
     description: '用戶內部 ID',
     example: 123
   }),
+  customId: z.string().nullable().openapi({
+    description: '使用者自訂唯一識別碼（@username）',
+    example: 'my_username'
+  }),
   name: z.string().nullable().openapi({
     description: '用戶名稱',
     example: '王小明'
@@ -217,6 +274,57 @@ const adminUserListItemSchema = z.object({
   lastLoginAt: z.string().nullable().openapi({
     description: '最後登入時間',
     example: '2024-01-20T08:30:00.000Z'
+  }),
+  personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
+    description: '最新一次學習風格測驗結果',
+    example: 'D'
+  }),
+  badgeGranted: z.boolean().nullable().openapi({
+    description: '是否完成 Onboarding Badge',
+    example: true
+  }),
+  userSource: z.string().nullable().openapi({
+    description: '用戶來源（S1/S2/S3）',
+    example: 'S1'
+  }),
+  registrationFlow: z
+    .enum(['landing_page', 'quiz', 'action_maker'])
+    .nullable()
+    .meta({
+      enumDescriptions: {
+        'landing_page': '由註冊頁面進入',
+        'quiz': '由測驗流程進入',
+        'action_maker': '由工具進入'
+      }
+    })
+    .openapi({
+      description: '註冊來源。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。',
+      example: 'landing_page'
+    }),
+  creationMethod: z
+    .enum(['self_created', 'copied', 'action_generator'])
+    .nullable()
+    .meta({
+      enumDescriptions: {
+        'self_created': '使用者自行建立',
+        'copied': '複製既有任務',
+        'action_generator': '工具產生建立'
+      }
+    })
+    .openapi({
+      description: '任務建立方式。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。',
+      example: 'self_created'
+    }),
+  daysToComplete: z.number().nullable().openapi({
+    description: '完成天數',
+    example: 7
+  }),
+  tags: z.array(z.object({
+    id: z.number().int(),
+    name: z.string(),
+  })).openapi({
+    maxItems: 20,
+    description: '用戶標籤列表'
   })
 }).openapi('AdminUserListItem');
 
@@ -330,6 +438,15 @@ const adminUserDetailDataSchema = z.object({
   }),
   updatedAt: z.string().openapi({
     description: '更新時間'
+  }),
+  personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
+    description: '人物誌類型'
+  }),
+  badgeGranted: z.boolean().nullable().openapi({
+    description: '是否完成 Onboarding Badge'
+  }),
+  userSource: z.string().nullable().openapi({
+    description: '用戶來源'
   })
 }).openapi('AdminUserDetailData');
 

@@ -16,12 +16,22 @@ export interface AdminUserFilters {
   isActive?: boolean;
   /** 篩選 email 驗證狀態 */
   isVerified?: boolean;
+  /** 篩選人物誌類型（最新一次測驗結果） */
+  personaType?: 'L' | 'C' | 'A' | 'D' | 'O';
+  /** 篩選 Onboarding Badge 完成狀態 */
+  badgeGranted?: boolean;
+  /** 篩選用戶來源 */
+  userSource?: 'S1' | 'S2' | 'S3';
+  /** 篩選註冊來源 */
+  registrationFlow?: 'landing_page' | 'quiz' | 'action_maker';
+  /** 篩選建立方式 */
+  creationMethod?: 'self_created' | 'copied' | 'action_generator';
   /** 頁數 */
   page?: number;
   /** 每頁數量 */
   limit?: number;
   /** 排序欄位 */
-  sortBy?: 'createdAt' | 'lastLoginAt' | 'name' | 'email';
+  sortBy?: 'createdAt' | 'lastLoginAt' | 'name' | 'email' | 'registrationFlow' | 'creationMethod' | 'daysToComplete';
   /** 排序方向 */
   sortOrder?: 'asc' | 'desc';
 }
@@ -41,6 +51,7 @@ export interface RoleInfo {
 export interface AdminUserListItem {
   id: string;
   internalId: number;
+  customId: string | null;
   name: string | null;
   email: string | null;
   photoURL: string | null;
@@ -52,6 +63,20 @@ export interface AdminUserListItem {
   createdAt: string;
   lastLoginAt: string | null;
   lastActiveAt: string | null;
+  /** 最新一次學習風格測驗結果 */
+  personaType: 'L' | 'C' | 'A' | 'D' | 'O' | null;
+  /** 是否完成 Onboarding Badge */
+  badgeGranted: boolean | null;
+  /** 用戶來源（S1/S2/S3） */
+  userSource: string | null;
+  /** 註冊來源 */
+  registrationFlow: 'landing_page' | 'quiz' | 'action_maker' | null;
+  /** 任務建立方式 */
+  creationMethod: 'self_created' | 'copied' | 'action_generator' | null;
+  /** 完成天數 */
+  daysToComplete: number | null;
+  /** 用戶標籤 */
+  tags: Array<{ id: number; name: string }>;
 }
 
 /**
@@ -140,6 +165,12 @@ export interface AdminUserDetailResponse {
   recentLoginHistory: LoginHistoryRecord[];
   /** 活躍統計 */
   activityStats: UserActivityStats;
+  /** 人物誌類型 */
+  personaType: 'L' | 'C' | 'A' | 'D' | 'O' | null;
+  /** 是否完成 Onboarding Badge */
+  badgeGranted: boolean | null;
+  /** 用戶來源 */
+  userSource: string | null;
 }
 
 /**

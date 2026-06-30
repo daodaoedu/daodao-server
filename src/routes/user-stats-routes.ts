@@ -573,4 +573,38 @@ router.get(
  */
 router.get('/segmentation', ...adminOnly, userStatsController.getUserActivitySegmentation);
 
+/**
+ * GET /api/v1/admin/user-stats/active-users/trend
+ * 獲取 DAU/WAU/MAU 每日趨勢
+ *
+ * @query {number} [days=30] - 回溯天數（有 startDate/endDate 時忽略）
+ * @query {string} [startDate] - 開始日期 (YYYY-MM-DD)
+ * @query {string} [endDate] - 結束日期 (YYYY-MM-DD)
+ *
+ * @returns {ActiveUsersTrend} 每日趨勢資料及摘要
+ */
+router.get('/active-users/trend', ...adminOnly, userStatsController.getActiveUsersTrend);
+
+/**
+ * GET /api/v1/admin/user-stats/funnel
+ * 獲取用戶參與漏斗
+ *
+ * @query {string} [startDate] - 開始日期（目前保留，漏斗以即時資料為主）
+ * @query {string} [endDate] - 結束日期
+ *
+ * @returns {ActiveUsersFunnel} 漏斗步驟
+ */
+router.get('/funnel', ...adminOnly, userStatsController.getActiveUsersFunnel);
+
+/**
+ * GET /api/v1/admin/user-stats/cohort-retention
+ * 獲取 Cohort 留存率（月份群組）
+ *
+ * @query {string} [startDate] - 開始月份 (YYYY-MM-DD)
+ * @query {string} [endDate] - 結束月份 (YYYY-MM-DD)
+ *
+ * @returns {CohortRetention} 各月份 day1/7/14/30/60/90 留存率
+ */
+router.get('/cohort-retention', ...adminOnly, userStatsController.getUserCohortRetention);
+
 export default router;

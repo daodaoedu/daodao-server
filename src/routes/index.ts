@@ -18,6 +18,8 @@ import mentorRoutes from './mentor.routes';
 import practiceRoutes from './practice.routes';
 import adminRoutes from './admin.routes';
 import cityRoutes from './city.routes';
+import personaRoutes from './persona.routes';
+import onboardingRoutes from './onboarding.routes';
 
 const router = Router({ mergeParams: true });
 
@@ -175,6 +177,14 @@ router.use('/practices', practiceRoutes);
 // PUT    /api/v1/admin/users/:userId/role
 router.use('/admin', adminRoutes);
 
+// 學習人物誌路由
+// GET    /api/v1/persona/questions
+// POST   /api/v1/persona/answers
+// POST   /api/v1/persona/skips
+// POST   /api/v1/persona/resonances
+// DELETE /api/v1/persona/resonances/:answerId
+router.use('/persona', personaRoutes);
+
 // 城市路由
 // GET    /api/v1/cities
 // GET    /api/v1/cities?country=TW
@@ -183,6 +193,7 @@ router.use('/admin', adminRoutes);
 // GET    /api/v1/cities/countries
 // GET    /api/v1/cities/validate/:code
 router.use('/cities', cityRoutes);
+router.use('/onboarding', onboardingRoutes);
 
 /**
  * API 健康檢查端點

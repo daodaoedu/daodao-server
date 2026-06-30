@@ -9,6 +9,10 @@
 export interface EmailTemplateContent {
   subject: string;
   html: string;
+  /** 郵件內容區塊 HTML（不含 banner/footer），供 admin seed 使用 */
+  content?: string;
+  /** 郵件列表預覽文字，供 admin seed 使用 */
+  preheader?: string;
 }
 
 /**
@@ -34,6 +38,13 @@ export const EMAIL_TYPES = {
   NOTIFICATION_DIGEST: 'notification_digest',
   NOTIFICATION_WEEKLY: 'notification_weekly',
   REACTION_NOTIFICATION: 'reaction_notification',
+  // Onboarding 系列
+  ONBOARDING_L0: 'onboarding_l0',
+  ONBOARDING_A: 'onboarding_a',
+  ONBOARDING_B: 'onboarding_b',
+  ONBOARDING_C: 'onboarding_c',
+  ONBOARDING_D: 'onboarding_d',
+  ONBOARDING_E: 'onboarding_e',
 } as const;
 
 export type EmailTypeValue = (typeof EMAIL_TYPES)[keyof typeof EMAIL_TYPES];

@@ -30,11 +30,11 @@ const JWT_EXPIRATION = '7d';
 
 // 移除立即檢查，改為在函數中檢查
 const getJwtSecret = (): string => {
-  const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECURITY;
-  if (!JWT_SECRET) {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
     throw new Error('JWT_SECRET environment variable is required');
   }
-  return JWT_SECRET;
+  return secret;
 };
 
 /**

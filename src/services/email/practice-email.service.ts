@@ -708,7 +708,7 @@ export async function sendPendingFinalSummaries(): Promise<void> {
  * 生成 PE01 郵件內容
  * @see docs/practice-mvp/practice-email-templates.md Section 2
  */
-function generatePracticeCreatedEmailContent(
+export function generatePracticeCreatedEmailContent(
   variables: PracticeCreatedEmailVariables
 ): EmailTemplateContent {
   const {
@@ -827,7 +827,7 @@ function generatePracticeCreatedEmailContent(
  * 生成 PE02 郵件內容
  * @see docs/practice-mvp/practice-email-templates.md Section 3
  */
-function generateFirstCheckInEmailContent(
+export function generateFirstCheckInEmailContent(
   variables: FirstCheckInEmailVariables
 ): EmailTemplateContent {
   const {
@@ -924,7 +924,7 @@ function generateFirstCheckInEmailContent(
  * PE05: 從建立至今從未打卡
  * PE06: 當週無打卡但累積有打卡
  */
-function generateWeeklySummaryEmailContent(
+export function generateWeeklySummaryEmailContent(
   emailCode: PracticeEmailCode,
   variables: WeeklySummaryEmailVariables
 ): EmailTemplateContent {
@@ -1103,7 +1103,7 @@ function generateWeeklySummaryEmailContent(
  * PE07: 實踐結束，有打卡記錄
  * PE08: 實踐結束，無打卡記錄
  */
-function generateFinalSummaryEmailContent(
+export function generateFinalSummaryEmailContent(
   emailCode: PracticeEmailCode,
   variables: FinalSummaryEmailVariables
 ): EmailTemplateContent {

@@ -610,4 +610,26 @@ router.get('/health',
   emailController.checkEmailHealth as RequestHandler
 );
 
+/**
+ * POST /email/retry-failed
+ * 手動重試失敗的郵件（從 BullMQ failed set）
+ * 需要管理員權限
+ */
+router.post('/retry-failed',
+  authenticate,
+  requireAdmin,
+  emailController.retryFailedEmailsHandler as RequestHandler
+);
+
+/**
+ * POST /email/retry/:logId
+ * 重試單封失敗的郵件
+ * 需要管理員權限
+ */
+router.post('/retry/:logId',
+  authenticate,
+  requireAdmin,
+  emailController.retrySingleEmailHandler as RequestHandler
+);
+
 export default router;

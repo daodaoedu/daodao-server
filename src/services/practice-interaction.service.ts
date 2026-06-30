@@ -7,7 +7,7 @@
 
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
-import { NotFoundError, InternalServerError } from '../middleware/error.middleware';
+import { NotFoundError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import { recordView as trackView, getViewCount } from './view-tracking.service';
 import { upsertReaction, removeReaction, getReactionsByTarget } from './reaction.service';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
@@ -330,5 +330,55 @@ export async function getUserFavorites(userId: number, params: {
   } catch (error) {
     loggerService.error('Failed to get user favorites', { userId, error });
     throw new InternalServerError('取得收藏列表失敗');
+  }
+}
+
+export async function recordReadProgress(
+  practiceId: number,
+  userId: number,
+  depthPercent: number,
+): Promise<ApiSuccessResponse<{ success: boolean }>> {
+  if (!Number.isFinite(depthPercent) || depthPercent < 0 || depthPercent > 100) {
+    throw new BadRequestError('depthPercent 必須介於 0 至 100 之間');
+  }
+  try {
+    await prismaClient.interaction_events.create({
+      data: {
+        entity_type: 'practice',
+        entity_id: practiceId,
+        user_id: userId,
+        event_type: 'read_progress',
+        metadata: { depth_percent: depthPercent },
+      },
+    });
+    return createSuccessResponse({ success: true });
+  } catch (error) {
+    loggerService.error('Failed to record read progress', { practiceId, userId, depthPercent, error });
+    throw new InternalServerError('記錄閱讀進度失敗');
+  }
+}
+
+export async function recordTimeSpent(
+  practiceId: number,
+  userId: number,
+  seconds: number,
+): Promise<ApiSuccessResponse<{ success: boolean }>> {
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 7200) {
+    throw new BadRequestError('seconds 必須介於 1 至 7200 之間');
+  }
+  try {
+    await prismaClient.interaction_events.create({
+      data: {
+        entity_type: 'practice',
+        entity_id: practiceId,
+        user_id: userId,
+        event_type: 'time_spent',
+        metadata: { seconds },
+      },
+    });
+    return createSuccessResponse({ success: true });
+  } catch (error) {
+    loggerService.error('Failed to record time spent', { practiceId, userId, seconds, error });
+    throw new InternalServerError('記錄停留時間失敗');
   }
 }

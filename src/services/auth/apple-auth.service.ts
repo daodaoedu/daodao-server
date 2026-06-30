@@ -5,6 +5,7 @@
 
 import appleSignin from 'apple-signin-auth';
 import { authService } from './auth.service';
+import { personaService } from '../persona.service';
 import { jwtService } from '../jwt.service';
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
@@ -338,6 +339,7 @@ export const handleAppleSignIn = async (
         error: error instanceof Error ? error.message : String(error)
       });
     }
+    personaService.incrementSession(resultUser.id).catch(() => undefined);
   }
 
   return createSuccessResponse({

@@ -282,7 +282,7 @@ export const authenticateGoogle = async (req: Request, res: Response, next: Next
 
     // 根據 URL 類型決定 source
     const isAppScheme = isCustomScheme(redirectUrl);
-    const source = (req.query.source as 'website' | 'app') || (isAppScheme ? 'app' : 'website');
+    const source = (req.query.source as 'website' | 'app' | 'admin') || (isAppScheme ? 'app' : 'website');
 
     const state = createOAuthState(redirectUrl, source);
 

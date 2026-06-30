@@ -9,7 +9,6 @@
  */
 
 import { prisma } from './database/prisma.service';
-import { loggerService } from './logging/logger.service';
 import { externalToInternalId } from './id-converter.service';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
@@ -51,11 +50,19 @@ export interface ConnectionRequestItem {
   createdAt:           string;
 }
 
+export interface ConnectionStatusItem {
+  status:           'none' | 'incoming' | 'outgoing' | 'connected';
+  isConnected:      boolean;
+  requestId:        number | null;
+  interactionCount: number;
+  hasBypass:        boolean;
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================
 
-const normalizePair = (x: number, y: number) => ({
+const normalizePair = (x: number, y: number): { a: number; b: number } => ({
   a: Math.min(x, y),
   b: Math.max(x, y),
 });
@@ -153,33 +160,6 @@ const sendRequest = async (
     },
   });
 
-  // Enqueue connect.request notification to followers of requester
-  // Only for new requests (created_at equals updated_at), not re-sends
-  const isNewRequest =
-    upsertedRequest.created_at !== null &&
-    upsertedRequest.updated_at !== null &&
-    upsertedRequest.created_at.getTime() === upsertedRequest.updated_at.getTime();
-  if (isNewRequest) {
-    try {
-      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-      const followers = await prisma.follows.findMany({
-        where: { target_type: 'user', target_id: requesterId },
-        select: { follower_id: true }
-      });
-      for (const follower of followers) {
-        if (follower.follower_id === requesterId) continue;
-        await enqueueSocialNotification({
-          event: 'connect.request',
-          actorId: requesterId,
-          recipientId: follower.follower_id,
-          payload: { receiverId }
-        });
-      }
-    } catch (e) {
-      loggerService.warn('Failed to enqueue connect.request notification', { requesterId, receiverId, error: e });
-    }
-  }
-
   // Fire-and-forget: P1 Connect event
   prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
@@ -188,7 +168,7 @@ const sendRequest = async (
       recipientId: receiverId,
       entityType: 'connection',
       entityId: upsertedRequest.id,
-      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/settings/connections` },
       priority: 'P1',
     }))
     .catch(() => {});
@@ -233,7 +213,7 @@ const acceptRequest = async (
       recipientId: request.requester_id,
       entityType: 'connection',
       entityId: requestId,
-      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/settings/connections` },
       priority: 'P1',
     }))
     .catch(() => {});
@@ -451,6 +431,89 @@ const getPendingOutgoing = async (
 };
 
 /**
+ * 檢查目前使用者與單一目標用戶的連結狀態
+ */
+const getConnectionStatus = async (
+  currentUserId:    number,
+  targetExternalId: string
+): Promise<ApiSuccessResponse<ConnectionStatusItem>> => {
+  const targetUserId = await externalToInternalId('user', targetExternalId);
+
+  if (currentUserId === targetUserId) {
+    return createSuccessResponse({
+      status:           'connected',
+      isConnected:      true,
+      requestId:        null,
+      interactionCount: 0,
+      hasBypass:        true,
+    });
+  }
+
+  const { a, b } = normalizePair(currentUserId, targetUserId);
+  const [connection, outgoingRequest, incomingRequest, interactionCount, hasBypass] = await Promise.all([
+    prisma.connections.findUnique({
+      where: { user_a_id_user_b_id: { user_a_id: a, user_b_id: b } },
+    }),
+    prisma.connection_requests.findUnique({
+      where: {
+        requester_id_receiver_id: {
+          requester_id: currentUserId,
+          receiver_id:  targetUserId,
+        },
+      },
+    }),
+    prisma.connection_requests.findUnique({
+      where: {
+        requester_id_receiver_id: {
+          requester_id: targetUserId,
+          receiver_id:  currentUserId,
+        },
+      },
+    }),
+    interactionCountService.getCount(currentUserId, targetUserId),
+    interactionCountService.hasFamiliarityBypass(currentUserId, targetUserId),
+  ]);
+
+  if (connection) {
+    return createSuccessResponse({
+      status:           'connected',
+      isConnected:      true,
+      requestId:        null,
+      interactionCount,
+      hasBypass,
+    });
+  }
+
+  if (incomingRequest?.status === 'pending') {
+    return createSuccessResponse({
+      status:           'incoming',
+      isConnected:      false,
+      requestId:        incomingRequest.id,
+      interactionCount,
+      hasBypass,
+    });
+  }
+
+  if (outgoingRequest?.status === 'pending') {
+    return createSuccessResponse({
+      status:           'outgoing',
+      isConnected:      false,
+      requestId:        outgoingRequest.id,
+      interactionCount,
+      hasBypass,
+    });
+  }
+
+  return createSuccessResponse({
+    status:           'none',
+    isConnected:      false,
+    requestId:        null,
+    interactionCount,
+    hasBypass,
+  });
+};
+
+/**
  * 檢查兩個用戶是否已連結
  */
 const isConnected = async (userX: number, userY: number): Promise<boolean> => {
@@ -474,5 +537,6 @@ export const connectionService = {
   getConnections,
   getPendingIncoming,
   getPendingOutgoing,
+  getConnectionStatus,
   isConnected,
 };

@@ -100,7 +100,7 @@ async function notifyPracticeCreatedAudience(params: {
       recipientId,
       entityType: 'practice',
       entityId: practiceId,
-      priority: 'P2',
+      priority: 'P1',
       payload: { practice_title: practiceTitle },
     })
   ));
@@ -172,6 +172,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
               id: true,
               external_id: true,
               nickname: true,
+              custom_id: true,
               contacts: {
                 select: {
                   photo_url: true
@@ -195,7 +196,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 取得統計數據、標籤和資源
     const practiceIds: number[] = practices.map(p => p.id);
-    const [comments, allTags, checkInCounts, lastCheckInDates, resourcesByPracticeId] = await Promise.all([
+    const [comments, allTags, checkInCounts, lastCheckInDates, resourcesByPracticeId, viewCounts, reactionCounts] = await Promise.all([
       getCommentCounts(practiceIds),
       // 批量查詢標籤
       prismaClient.entity_tags.findMany({
@@ -217,7 +218,11 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       // 批量查詢最後打卡時間
       getLastCheckInDates(practiceIds),
       // 批量查詢資源
-      getPracticeResources(practiceIds)
+      getPracticeResources(practiceIds),
+      // 批量查詢瀏覽數
+      getViewCounts(practiceIds),
+      // 批量查詢迴響數
+      getReactionCounts(practiceIds)
     ]);
 
     // 將標籤按實踐 ID 分組
@@ -261,14 +266,15 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: tagsByPracticeId[practice.id]?.map(tag => tag.name) || [],
       stats: {
-        likeCount: 0, // TODO: 待實作 reaction 表格
-        viewCount: 0, // TODO: 待實作 view 表格
-        favoriteCount: 0, // TODO: 待實作 favorite 表格
-        shareCount: 0, // TODO: 待實作 share 表格
+        likeCount: reactionCounts[practice.id] || 0,
+        viewCount: viewCounts[practice.id] || 0,
+        favoriteCount: 0,
+        shareCount: 0,
         commentCount: comments[practice.id] || 0
       }
     }));
@@ -311,6 +317,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -357,7 +364,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     }
 
     // 取得統計數據、標籤和資源
-    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap, viewCount] = await Promise.all([
+    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -381,7 +388,9 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       // 查詢資源
       getPracticeResources([id]),
       // 查詢瀏覽數
-      getViewCount('practice', id)
+      getViewCount('practice', id),
+      // 查詢迴響數
+      getReactionCounts([id])
     ]);
 
     const resources = resourcesMap[id] || [];
@@ -413,14 +422,15 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: tags.map(tag => tag.tags.name),
       stats: {
-        likeCount: 0, // TODO: 待實作 reaction 表格
+        likeCount: reactionCounts[id] || 0,
         viewCount,
-        favoriteCount: 0, // TODO: 待實作 favorite 表格
-        shareCount: 0, // TODO: 待實作 share 表格
+        favoriteCount: 0,
+        shareCount: 0,
         commentCount: comments[id] || 0
       }
     };
@@ -513,7 +523,9 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         status: initialStatus,
         has_resources: Boolean(data.resources && data.resources.length > 0),
         progress_percentage: INITIAL_PROGRESS,
-        theme_color: themeColor
+        privacy_status: data.privacyStatus ?? 'public',
+        theme_color: themeColor,
+        creation_source: data.creationMethod ?? 'self_created'
       },
       select: {
         id: true,
@@ -541,6 +553,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -598,7 +611,8 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: data.tags || [],
       stats: {
@@ -735,6 +749,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -769,7 +784,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     }
 
     // 取得統計數據、標籤和資源
-    const [comments, updatedTags, checkInCounts, lastCheckInDates, resourcesMap] = await Promise.all([
+    const [comments, updatedTags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts] = await Promise.all([
       getCommentCounts([id]),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
@@ -791,7 +806,11 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       // 查詢最後打卡時間
       getLastCheckInDates([id]),
       // 查詢資源
-      getPracticeResources([id])
+      getPracticeResources([id]),
+      // 查詢瀏覽數
+      getViewCount('practice', id),
+      // 查詢迴響數
+      getReactionCounts([id])
     ]);
 
     const resources = resourcesMap[id] || [];
@@ -823,14 +842,15 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: updatedTags.map(tag => tag.tags.name),
       stats: {
-        likeCount: 0, // TODO: 待實作 reaction 表格
-        viewCount: 0, // TODO: 待實作 view 表格
-        favoriteCount: 0, // TODO: 待實作 favorite 表格
-        shareCount: 0, // TODO: 待實作 share 表格
+        likeCount: reactionCounts[id] || 0,
+        viewCount: viewCount,
+        favoriteCount: 0,
+        shareCount: 0,
         commentCount: comments[id] || 0
       }
     };
@@ -1171,6 +1191,41 @@ async function getCommentCounts(practiceIds: number[]): Promise<Record<number, n
   }
 }
 
+async function getViewCounts(practiceIds: number[]): Promise<Record<number, number>> {
+  if (!practiceIds.length) return {};
+  try {
+    const rows = await prismaClient.entity_stats.findMany({
+      where: { entity_type: 'practice', entity_id: { in: practiceIds } },
+      select: { entity_id: true, view_count: true }
+    });
+    return rows.reduce((acc, row) => {
+      acc[row.entity_id] = row.view_count;
+      return acc;
+    }, {} as Record<number, number>);
+  } catch (error) {
+    loggerService.warn('Failed to get view counts', { practiceIds, error });
+    return {};
+  }
+}
+
+async function getReactionCounts(practiceIds: number[]): Promise<Record<number, number>> {
+  if (!practiceIds.length) return {};
+  try {
+    const rows = await prismaClient.reactions.groupBy({
+      by: ['target_id'],
+      where: { target_type: 'practice', target_id: { in: practiceIds } },
+      _count: { id: true }
+    });
+    return rows.reduce((acc, row) => {
+      acc[row.target_id] = row._count?.id || 0;
+      return acc;
+    }, {} as Record<number, number>);
+  } catch (error) {
+    loggerService.warn('Failed to get reaction counts', { practiceIds, error });
+    return {};
+  }
+}
+
 /**
  * 取得打卡次數統計
  */
@@ -1323,6 +1378,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -1388,6 +1444,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -1408,7 +1465,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
     });
 
     // 取得統計數據和標籤
-    const [comments, tags, lastCheckInDates] = await Promise.all([
+    const [comments, tags, lastCheckInDates, viewCount, reactionCounts] = await Promise.all([
       getCommentCounts([id]),
       prismaClient.entity_tags.findMany({
         where: {
@@ -1424,7 +1481,11 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
           }
         }
       }),
-      getLastCheckInDates([id])
+      getLastCheckInDates([id]),
+      // 查詢瀏覽數
+      getViewCount('practice', id),
+      // 查詢迴響數
+      getReactionCounts([id])
     ]);
 
     const practiceEntity: PracticeEntity = {
@@ -1453,12 +1514,13 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
         id: updatedPractice.users.external_id || '',
         name: updatedPractice.users.nickname || 'Unknown User',
         photoURL: updatedPractice.users.contacts?.photo_url || null,
-        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: updatedPractice.users.custom_id ?? null
       },
       tags: tags.map(tag => tag.tags.name),
       stats: {
-        likeCount: 0,
-        viewCount: 0,
+        likeCount: reactionCounts[id] || 0,
+        viewCount: viewCount,
         favoriteCount: 0,
         shareCount: 0,
         commentCount: comments[id] || 0
@@ -1636,6 +1698,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
           theme_color: source.theme_color,
           template_id: source.template_id,
           source_practice_id: sourceId,
+          creation_source: 'copied',
           status: 'not_started',
           progress_percentage: INITIAL_PROGRESS,
           start_date: today,

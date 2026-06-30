@@ -7,7 +7,7 @@ import { registry } from '../config/openapi-registry';
 import { apiSuccessResponseSchema } from './api-response.validators';
 import { REACTION_TYPE_VALUES } from '../types/reaction.types';
 
-const REACTION_TARGET_TYPES = ['practice', 'comment', 'checkin'] as const;
+const REACTION_TARGET_TYPES = ['practice', 'comment', 'checkin', 'persona_answer'] as const;
 
 // ============================================================================
 // Request Schemas
@@ -122,7 +122,7 @@ export const getReactionsBatchQuerySchema = z.object({
     example: '32859587-f159-43fd-93e7-fcc890661781,a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   }),
 }).superRefine((data, ctx) => {
-  const isIntegerType = data.targetType === 'comment' || data.targetType === 'checkin';
+  const isIntegerType = data.targetType === 'comment' || data.targetType === 'checkin' || data.targetType === 'persona_answer';
   const regex = isIntegerType ? INTEGER_REGEX : UUID_REGEX;
   const formatName = isIntegerType ? '整數' : 'UUID';
 

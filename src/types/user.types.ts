@@ -84,9 +84,11 @@ export interface CreateUserRequest {
   isSendEmail?: boolean;
 
   // 新增欄位
+  name?: string; // nickname（表單提交的用戶名稱）
   professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
+  registrationFlow?: 'quiz' | 'action_maker' | 'landing_page';
   customId: string; // 自訂 ID
 }
 
@@ -268,6 +270,17 @@ export interface UserActivityStats {
   loginCount: number;
   profileViews: number;
   recentLoginCount: number;
+  totalPractices: number;
+  totalCheckins: number;
+  totalPosts: number;
+  totalReactions: number;
+}
+
+export interface ActivityTimelineEvent {
+  id: string;
+  type: 'login' | 'checkin' | 'post';
+  description: string;
+  timestamp: string;
 }
 
 // 裝置資訊介面

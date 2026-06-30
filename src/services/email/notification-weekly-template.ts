@@ -26,7 +26,18 @@ export interface WeeklyDigestStats {
 export interface WeeklyDigestPractice {
   title: string;
   checkInCount: number;
-  isCompleted: boolean;
+  status: 'not_started' | 'in_progress' | 'completed';
+}
+
+export interface WeeklyDigestPopularPractice {
+  title: string;
+  url: string;
+}
+
+export interface WeeklyDigestPartnerActivity {
+  name: string;
+  practiceTitle: string;
+  url: string;
 }
 
 export interface WeeklyDigestData {
@@ -37,6 +48,10 @@ export interface WeeklyDigestData {
   weekEnd: string;
   stats: WeeklyDigestStats;
   practiceProgress: WeeklyDigestPractice[];
+  /** 學習夥伴本週正在進行的實踐（最多 3 筆） */
+  partnerActivities?: WeeklyDigestPartnerActivity[];
+  /** 本週熱門主題實踐（共鳴數＋留言數最高，最多 2 筆） */
+  popularPractices?: WeeklyDigestPopularPractice[];
   unsubscribeUrl: string;
   settingsUrl: string;
 }
@@ -59,9 +74,15 @@ function generateStatBox(label: string, value: number): string {
  */
 function generatePracticeRow(practice: WeeklyDigestPractice): string {
   const safeTitle = escapeHtml(practice.title);
-  const statusIcon = practice.isCompleted ? '✅' : '🌱';
-  const statusLabel = practice.isCompleted ? '已完成' : `已打卡 ${practice.checkInCount} 次`;
-  const statusColor = practice.isCompleted ? EMAIL_COLORS.brandCyan : EMAIL_COLORS.textSecondary;
+  const statusIcon =
+    practice.status === 'completed' ? '✅' :
+    practice.status === 'in_progress' ? '🌱' : '💤';
+  const statusLabel =
+    practice.status === 'completed' ? '已完成' :
+    practice.status === 'in_progress' ? `已打卡 ${practice.checkInCount} 次` :
+    '這週你忙於其他挑戰，下週想試試重新開始嗎？';
+  const statusColor =
+    practice.status === 'completed' ? EMAIL_COLORS.brandCyan : EMAIL_COLORS.textSecondary;
 
   return `
 <tr>
@@ -81,13 +102,41 @@ function generatePracticeRow(practice: WeeklyDigestPractice): string {
 </tr>`;
 }
 
+/**
+ * 產生學習夥伴動態列
+ */
+function generatePartnerRow(partner: WeeklyDigestPartnerActivity): string {
+  const safeName  = escapeHtml(partner.name);
+  const safeTitle = escapeHtml(partner.practiceTitle);
+  const safeUrl   = sanitizeUrl(partner.url);
+
+  return `
+<tr>
+  <td style="padding: 10px 0; border-bottom: 1px solid ${EMAIL_COLORS.divider};">
+    <p style="margin: 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary}; line-height: 1.5;">
+      <strong>${safeName}</strong> 正在探索《${safeTitle}》
+    </p>
+    <p style="margin: 4px 0 0 0;">
+      <a href="${safeUrl}" style="font-size: 13px; color: ${EMAIL_COLORS.brandOrange}; text-decoration: underline;">去為他加油 &rarr;</a>
+    </p>
+  </td>
+</tr>`;
+}
+
 // ─── 主要輸出函式 ───────────────────────────────────────────────────────────────
 
 /**
  * 產生週報 Email 主旨
  */
 export function generateWeeklyDigestSubject(data: WeeklyDigestData): string {
-  return `【島島阿學】${data.recipientName} 的本週學習週報（${data.weekStart}～${data.weekEnd}）`;
+  const { recipientName: name, stats, practiceProgress } = data;
+  const hasProgress = practiceProgress.some(p => p.status !== 'not_started');
+  const hasInteraction = stats.reactions + stats.comments + stats.newFollowers + stats.connectRequests > 0;
+
+  if (!hasProgress && hasInteraction) {
+    return `【島島阿學】${name}，這週有人看見了你的學習`;
+  }
+  return `【島島阿學】${name}，島島陪你回顧這一週 🌿`;
 }
 
 /**
@@ -100,12 +149,12 @@ export function generateWeeklyDigestHtml(data: WeeklyDigestData): string {
 
   // 統計區塊
   const statsSection = `
-<!-- 本週統計 -->
+<!-- 本週影響力 -->
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
   <tr>
     <td style="padding-bottom: 8px;">
       <h3 style="margin: 0; font-size: 17px; font-weight: 600; color: ${EMAIL_COLORS.textHeading}; line-height: 150%;">
-        本週你的影響力
+        本週影響力 ✨
       </h3>
     </td>
   </tr>
@@ -128,7 +177,7 @@ export function generateWeeklyDigestHtml(data: WeeklyDigestData): string {
   <tr>
     <td style="padding-bottom: 8px;">
       <h3 style="margin: 0; font-size: 17px; font-weight: 600; color: ${EMAIL_COLORS.textHeading}; line-height: 150%;">
-        本週實踐進度
+        你這週的學習足跡 🌱
       </h3>
     </td>
   </tr>
@@ -138,12 +187,51 @@ export function generateWeeklyDigestHtml(data: WeeklyDigestData): string {
   ${data.practiceProgress.map(generatePracticeRow).join('')}
 </table>` : '';
 
+  // 學習夥伴區塊（若有）
+  const partnerSection = data.partnerActivities && data.partnerActivities.length > 0 ? `
+<!-- 學習夥伴 -->
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+  <tr>
+    <td style="padding-bottom: 8px;">
+      <h3 style="margin: 0; font-size: 17px; font-weight: 600; color: ${EMAIL_COLORS.textHeading}; line-height: 150%;">
+        你的學習夥伴這週也在前進 🤝
+      </h3>
+    </td>
+  </tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
+  ${data.partnerActivities.map(generatePartnerRow).join('')}
+</table>` : '';
+
   // 鼓勵文案
-  const encouragement = data.practiceProgress.some(p => p.isCompleted)
+  const encouragement = data.practiceProgress.some(p => p.status === 'completed')
     ? '你完成了一段旅程，這份堅持是送給自己最好的禮物！'
-    : data.practiceProgress.length > 0
+    : data.practiceProgress.some(p => p.status === 'in_progress')
     ? '持續累積，每一次打卡都是你探索自我的足跡。'
     : '新的一週，要不要開啟一段新的探索旅程？';
+
+  // 熱門主題實踐區塊（最多 2 筆）
+  const popularSection = data.popularPractices && data.popularPractices.length > 0 ? `
+<!-- 熱門主題實踐 -->
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+  <tr>
+    <td style="padding-bottom: 8px; padding-top: 8px;">
+      <h3 style="margin: 0; font-size: 17px; font-weight: 600; color: ${EMAIL_COLORS.textHeading}; line-height: 150%;">
+        看看本週熱門主題實踐！
+      </h3>
+    </td>
+  </tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
+  ${data.popularPractices.map(p => `
+  <tr>
+    <td style="padding: 10px 0; border-bottom: 1px solid ${EMAIL_COLORS.divider};">
+      <a href="${sanitizeUrl(p.url)}" style="font-size: 14px; font-weight: 600; color: ${EMAIL_COLORS.brandCyan}; text-decoration: none;">
+        ${escapeHtml(p.title)} →
+      </a>
+    </td>
+  </tr>`).join('')}
+</table>` : '';
 
   const content = `
 <!-- 問候語 -->
@@ -151,7 +239,7 @@ export function generateWeeklyDigestHtml(data: WeeklyDigestData): string {
   <tr>
     <td style="padding-bottom: 8px;">
       <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: ${EMAIL_COLORS.textHeading}; line-height: 150%; mso-line-height-rule: exactly;">
-        ${safeName}，你的本週學習週報來了！
+        ${safeName}，島島陪你回顧這一週 🌿
       </h2>
     </td>
   </tr>
@@ -161,7 +249,7 @@ export function generateWeeklyDigestHtml(data: WeeklyDigestData): string {
   <tr>
     <td style="padding-bottom: 24px;">
       <p style="margin: 0; font-size: 14px; color: ${EMAIL_COLORS.textSecondary}; line-height: 160%;">
-        ${data.weekStart}～${data.weekEnd} 的學習足跡
+        ${data.weekStart}～${data.weekEnd}
       </p>
     </td>
   </tr>
@@ -170,6 +258,10 @@ export function generateWeeklyDigestHtml(data: WeeklyDigestData): string {
 ${statsSection}
 
 ${practiceSection}
+
+${partnerSection}
+
+${popularSection}
 
 <!-- 鼓勵文案 -->
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
@@ -217,7 +309,7 @@ ${practiceSection}
 
   return `${generateEmailHead(title)}
 ${generateEmailWrapper({
-    preheader: `${data.recipientName} 的本週學習週報（${data.weekStart}～${data.weekEnd}）。`,
+    preheader: `島島陪 ${data.recipientName} 回顧這一週（${data.weekStart}～${data.weekEnd}）。`,
     content: `
     ${generateBanner()}
     <tr>

@@ -39,7 +39,8 @@ import {
   BadRequestError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
-import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, QUIZ_CLAIM_COOKIE_NAME, clearQuizClaimCookie } from '../utils/cookie-config';
+import { permissionService } from '../services/auth/permission.service';
 
 /**
  * 取得所有用戶
@@ -48,10 +49,27 @@ import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
 export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   const params = req.query as UserQueryParams;
   const result = await userService.getAllUsers(params);
-  
+
+  // 非管理員不得取得 PII 欄位（email、birthDay、loginCount 等）
+  const isAdmin = req.user ? await permissionService.isAdmin(req.user.id) : false;
+  if (!isAdmin) {
+    result.data = result.data.map(user => ({
+      ...user,
+      email: null,
+      birthDate: null,
+      isSubscribeEmail: false,
+      loginCount: 0,
+      lastLoginAt: null,
+      lastActiveAt: null,
+      profileViews: 0,
+      referralSource: null,
+      contactList: user.contactList ? { ...user.contactList, email: null, isSubscribeEmail: null } : null,
+    }));
+  }
+
   // 驗證響應格式
   const validatedResponse = usersListResponseSchema.parse(result);
-  
+
   res.json(validatedResponse);
 });
 
@@ -180,27 +198,24 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 
   const validation = createUserSchema.safeParse(parsedBody);
   if (!validation.success) {
-    res.status(400).json({
-      success: false,
-      error: {
-        type: 'bad_request',
-        message: '驗證失敗',
-        details: validation.error.issues.map(issue => ({
-          path: issue.path.join('.'),
-          message: issue.message
-        }))
-      },
-      timestamp: new Date().toISOString()
-    });
-    return;
+    const errorMessage = validation.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new BadRequestError(`驗證失敗: ${errorMessage}`);
   }
 
   const requestData = validation.data as CreateUserRequest;
-  const result = await userService.createUser(requestData, currentUser.id.toString());
+  const quizClaimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+  const result = await userService.createUser(requestData, currentUser.id.toString(), { quizClaimToken });
 
   if (result.data?.token) {
     setAuthCookie(res, result.data.token);
   }
+
+  if (result.quizClaimed) {
+    clearQuizClaimCookie(res);
+  }
+
 
   const validatedResponse = createUserResponseSchema.parse(result);
   res.status(201).json(validatedResponse);

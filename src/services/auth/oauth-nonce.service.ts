@@ -14,7 +14,7 @@ const NONCE_PREFIX = 'oauth_nonce:';
 /** Nonce 資料結構 */
 interface NonceData {
   redirectUrl: string;
-  source: 'website' | 'app';
+  source: 'website' | 'app' | 'admin';
   createdAt: number;
 }
 
@@ -27,7 +27,7 @@ interface NonceData {
 export const storeNonce = async (
   nonce: string,
   redirectUrl: string,
-  source: 'website' | 'app'
+  source: 'website' | 'app' | 'admin'
 ): Promise<void> => {
   const data: NonceData = {
     redirectUrl,

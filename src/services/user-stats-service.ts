@@ -18,7 +18,10 @@ import {
   RetentionStats,
   PopularProfilesStats,
   UserActivitySegmentation,
-  UserActivityLabel
+  UserActivityLabel,
+  ActiveUsersTrend,
+  ActiveUsersFunnel,
+  CohortRetention,
 } from '@/types/user-stats.types';
 import {
   RegistrationStatsQuery,
@@ -1040,6 +1043,216 @@ export async function getUserActivitySegmentation(): Promise<UserActivitySegment
   };
 }
 
+/**
+ * 獲取 DAU/WAU/MAU 每日趨勢
+ */
+export async function getActiveUsersTrend(query: {
+  days?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ActiveUsersTrend> {
+  const { days = 30 } = query;
+
+  const endDate = query.endDate ? new Date(query.endDate) : new Date();
+  const startDate = query.startDate ? new Date(query.startDate) : getDaysAgo(days - 1);
+
+  // 每日 DAU/WAU/MAU — 用 raw SQL + generate_series 一次取完
+  const rows = await prisma.$queryRaw<Array<{
+    date: Date;
+    dau: bigint;
+    wau: bigint;
+    mau: bigint;
+  }>>`
+    WITH date_series AS (
+      SELECT generate_series(${startDate}::date, ${endDate}::date, '1 day'::interval)::date AS d
+    ),
+    raw_data AS (
+      SELECT DATE(login_at) AS login_date, user_id
+      FROM user_login_history
+      WHERE login_at::date BETWEEN (${startDate}::date - 29) AND ${endDate}::date
+    )
+    SELECT
+      ds.d AS date,
+      COUNT(DISTINCT CASE WHEN rd.login_date = ds.d THEN rd.user_id END) AS dau,
+      COUNT(DISTINCT CASE WHEN rd.login_date BETWEEN ds.d - 6 AND ds.d THEN rd.user_id END) AS wau,
+      COUNT(DISTINCT CASE WHEN rd.login_date BETWEEN ds.d - 29 AND ds.d THEN rd.user_id END) AS mau
+    FROM date_series ds
+    LEFT JOIN raw_data rd ON rd.login_date BETWEEN ds.d - 29 AND ds.d
+    GROUP BY ds.d
+    ORDER BY ds.d
+  `;
+
+  // 摘要：目前 DAU/WAU/MAU 及與前期比較
+  const oneDayAgo = getDaysAgo(1);
+  const oneWeekAgo = getDaysAgo(7);
+  const oneMonthAgo = getDaysAgo(30);
+  const twoDaysAgo = getDaysAgo(2);
+  const twoWeeksAgo = getDaysAgo(14);
+  const twoMonthsAgo = getDaysAgo(60);
+
+  const [currentDau, currentWau, currentMau, prevDau, prevWau, prevMau] = await Promise.all([
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneDayAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneWeekAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneMonthAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: twoDaysAgo, lt: oneDayAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: twoWeeksAgo, lt: oneWeekAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: twoMonthsAgo, lt: oneMonthAgo } } }).then(r => r.length),
+  ]);
+
+  const calcPct = (cur: number, prev: number) =>
+    prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 10000) / 100;
+
+  return {
+    data: rows.map(r => ({
+      date: formatDate(r.date),
+      dau: Number(r.dau),
+      wau: Number(r.wau),
+      mau: Number(r.mau),
+    })),
+    summary: {
+      currentDau,
+      currentWau,
+      currentMau,
+      dauChangePercent: calcPct(currentDau, prevDau),
+      wauChangePercent: calcPct(currentWau, prevWau),
+      mauChangePercent: calcPct(currentMau, prevMau),
+    },
+  };
+}
+
+/**
+ * 獲取用戶參與漏斗
+ * 步驟：總用戶 → 30天活躍 → 7天活躍 → 今日活躍
+ */
+export async function getActiveUsersFunnel(_query: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<ActiveUsersFunnel> {
+  const oneDayAgo = getDaysAgo(1);
+  const oneWeekAgo = getDaysAgo(7);
+  const oneMonthAgo = getDaysAgo(30);
+
+  const [totalUsers, mau, wau, dau] = await Promise.all([
+    prisma.users.count(),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneMonthAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneWeekAgo } } }).then(r => r.length),
+    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneDayAgo } } }).then(r => r.length),
+  ]);
+
+  return {
+    steps: [
+      { label: '總用戶', value: totalUsers },
+      { label: '月活躍 (MAU)', value: mau },
+      { label: '週活躍 (WAU)', value: wau },
+      { label: '日活躍 (DAU)', value: dau },
+    ],
+  };
+}
+
+/**
+ * 獲取 Cohort 留存率（以月份為單位，追蹤 day1/7/14/30/60/90）
+ */
+export async function getUserCohortRetention(query: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<CohortRetention> {
+  const now = new Date();
+
+  // 預設：最近 6 個月
+  const endMonth = query.endDate ? new Date(query.endDate) : now;
+  const startMonth = query.startDate
+    ? new Date(query.startDate)
+    : new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  // 產生月份列表（從 startMonth 到 endMonth）
+  const months: Array<{ start: Date; end: Date; label: string }> = [];
+  const cursor = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
+  while (cursor <= endMonth) {
+    const start = new Date(cursor);
+    const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    const label = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+    months.push({ start, end, label });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const rangeStart = months[0].start;
+  const rangeEnd = months[months.length - 1].end;
+
+  type RetentionRow = {
+    cohort_month: Date;
+    cohort_size: bigint;
+    day1: bigint;
+    day7: bigint;
+    day14: bigint;
+    day30: bigint;
+    day60: bigint;
+    day90: bigint;
+  };
+
+  const rawRows = await prisma.$queryRaw<RetentionRow[]>`
+    WITH cohort AS (
+      SELECT id AS user_id,
+             created_at,
+             date_trunc('month', created_at) AS cohort_month
+      FROM users
+      WHERE created_at >= ${rangeStart} AND created_at < ${rangeEnd}
+    ),
+    logins AS (
+      SELECT DISTINCT ulh.user_id,
+             (ulh.login_at::date - cm.created_at::date) AS days_after
+      FROM user_login_history ulh
+      JOIN cohort cm ON cm.user_id = ulh.user_id
+      WHERE (ulh.login_at::date - cm.created_at::date) IN (1, 7, 14, 30, 60, 90)
+    ),
+    cohort_sizes AS (
+      SELECT cohort_month, COUNT(*) AS cohort_size
+      FROM cohort
+      GROUP BY cohort_month
+    ),
+    retained AS (
+      SELECT cm.cohort_month, l.days_after, COUNT(DISTINCT l.user_id) AS retained_count
+      FROM cohort cm
+      JOIN logins l ON l.user_id = cm.user_id
+      GROUP BY cm.cohort_month, l.days_after
+    )
+    SELECT
+      cs.cohort_month,
+      cs.cohort_size,
+      COALESCE(MAX(CASE WHEN r.days_after = 1  THEN r.retained_count END), 0) AS day1,
+      COALESCE(MAX(CASE WHEN r.days_after = 7  THEN r.retained_count END), 0) AS day7,
+      COALESCE(MAX(CASE WHEN r.days_after = 14 THEN r.retained_count END), 0) AS day14,
+      COALESCE(MAX(CASE WHEN r.days_after = 30 THEN r.retained_count END), 0) AS day30,
+      COALESCE(MAX(CASE WHEN r.days_after = 60 THEN r.retained_count END), 0) AS day60,
+      COALESCE(MAX(CASE WHEN r.days_after = 90 THEN r.retained_count END), 0) AS day90
+    FROM cohort_sizes cs
+    LEFT JOIN retained r ON r.cohort_month = cs.cohort_month
+    GROUP BY cs.cohort_month, cs.cohort_size
+    ORDER BY cs.cohort_month
+  `;
+
+  const retentionByMonth = new Map(
+    rawRows.map(r => [r.cohort_month.toISOString().slice(0, 7), r]),
+  );
+
+  const rows = months.map(({ label }) => {
+    const r = retentionByMonth.get(label);
+    if (!r) return { label, day1: 0, day7: 0, day14: 0, day30: 0, day60: 0, day90: 0 };
+    const size = Number(r.cohort_size);
+    const pct = (n: bigint) => size > 0 ? Math.round((Number(n) / size) * 10000) / 100 : 0;
+    return {
+      label,
+      day1: pct(r.day1),
+      day7: pct(r.day7),
+      day14: pct(r.day14),
+      day30: pct(r.day30),
+      day60: pct(r.day60),
+      day90: pct(r.day90),
+    };
+  });
+
+  return { rows };
+}
+
 export default {
   getOverviewStats,
   getRegistrationStats,
@@ -1048,5 +1261,8 @@ export default {
   getDeviceAnalytics,
   getRetentionStats,
   getPopularProfiles,
-  getUserActivitySegmentation
+  getUserActivitySegmentation,
+  getActiveUsersTrend,
+  getActiveUsersFunnel,
+  getUserCohortRetention,
 };

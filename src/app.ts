@@ -41,6 +41,8 @@ import mentorRoutes from './routes/mentor.routes';
 import practiceRoutes from './routes/practice.routes';
 // 引入實踐輔助功能路由（鼓勵句、引導句）
 import practiceHelpersRoutes from './routes/practice-helpers.routes';
+// 引入 Onboarding 路由
+import onboardingRoutes from './routes/onboarding.routes';
 // 引入測驗結果路由
 import quizRoutes from './routes/quiz.routes';
 // 引入使用者統計路由
@@ -64,6 +66,14 @@ import followRoutes from './routes/follow.routes';
 import connectionRoutes from './routes/connection.routes';
 // 引入 Buddy 請求路由
 import { buddyRequestRouter, practiceBuddyRequestRouter } from './routes/buddy-request.routes';
+// 引入人物誌路由
+import personaRoutes from './routes/persona.routes';
+// 引入許願池 / Roadmap 路由
+import roadmapRoutes from './routes/roadmap.routes';
+import wishRoutes from './routes/wish.routes';
+import adminRoadmapRoutes from './routes/admin-roadmap.routes';
+// 引入問卷路由
+import surveyRoutes from './routes/survey.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
@@ -118,9 +128,10 @@ export function setupTypescriptRoutes(app: express.Application) {
     resourceRoutes, resourceReviewRoutes, ideaRoutes, meRoutes,
     tagRoutes, authRoutes, projectRoutes, userRoutes, emailRoutes,
     commentRoutes, reactionRoutes, imageRoutes, mentorRoutes, practiceRoutes,
-    quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
+    onboardingRoutes, quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
     notificationRoutes, followRoutes, connectionRoutes,
-    buddyRequestRouter, practiceBuddyRequestRouter
+    buddyRequestRouter, practiceBuddyRequestRouter,
+    roadmapRoutes, wishRoutes, adminRoadmapRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -248,6 +259,10 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1', practiceHelpersRoutes);
   console.log('⚡ v1 實踐輔助功能路由已註冊 - /api/v1/checkin-encouragements, /api/v1/tag-prompts');
 
+  // 註冊 Onboarding 路由
+  app.use('/api/v1/onboarding', onboardingRoutes);
+  console.log('🧭 v1 Onboarding 路由已註冊 - 可在 /api/v1/onboarding 訪問');
+
   // 註冊測驗結果路由
   app.use('/api/v1/quiz', quizRoutes);
   console.log('📝 v1 測驗結果路由已註冊 - 可在 /api/v1/quiz 訪問');
@@ -284,6 +299,15 @@ export function setupTypescriptRoutes(app: express.Application) {
   app.use('/api/v1/connections', connectionRoutes);
   console.log('🤝 v1 連結路由已註冊 - 可在 /api/v1/connections 訪問');
 
+  app.use('/api/v1/persona', personaRoutes);
+  console.log('🎭 v1 人物誌路由已註冊 - 可在 /api/v1/persona 訪問');
+
+  // 註冊許願池 / Roadmap 路由（公開看板 optionalAuth、互動 authenticate）
+  app.use('/api/v1/roadmap', roadmapRoutes);
+  app.use('/api/v1/wishes', wishRoutes);
+  app.use('/api/v1/admin', adminRoadmapRoutes);
+  console.log('💡 v1 許願池路由已註冊 - /api/v1/roadmap、/api/v1/wishes、/api/v1/admin');
+
   // 註冊 Buddy 請求路由
   app.use('/api/v1/buddy-requests', buddyRequestRouter);
   console.log('🤝 v1 Buddy 請求路由已註冊 - 可在 /api/v1/buddy-requests 訪問');
@@ -291,6 +315,9 @@ export function setupTypescriptRoutes(app: express.Application) {
   // 註冊實踐巢狀 Buddy 請求路由
   app.use('/api/v1/practices/:id/buddy-requests', practiceBuddyRequestRouter);
   console.log('🤝 v1 實踐 Buddy 請求路由已註冊 - 可在 /api/v1/practices/:id/buddy-requests 訪問');
+
+  app.use('/api/v1/surveys', surveyRoutes);
+  console.log('📋 v1 問卷路由已註冊 - 可在 /api/v1/surveys 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {

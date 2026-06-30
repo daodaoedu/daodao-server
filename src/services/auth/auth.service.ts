@@ -15,8 +15,9 @@ import {
 import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
 import { userService } from '../user.service';
-import { emailService, sendWelcomeEmailWithLog } from '../email/email.service';
 import { loggerService } from '../logging/logger.service';
+import { onboardingService } from '../onboarding.service';
+import { deriveUserSource } from '../../utils/onboarding-source';
 
 /**
  * 根據 email 查找用戶及其聯絡資訊
@@ -269,18 +270,16 @@ export const createUserFromAppleOAuth = async (profile: {
     return createdUser;
   });
 
-  // 發送歡迎郵件（含 log 記錄，事務完成後避免影響註冊流程）
-  if (email && newUser) {
-    sendWelcomeEmailWithLog(email, {
-      name: name || 'User',
-      referralGroup: 'default',
-      userId: newUser.id
-    }).catch(error => {
-      loggerService.error('Failed to send welcome email for Apple OAuth user', {
-        error: error instanceof Error ? error.message : String(error),
-        email
-      });
-    });
+  // 建立 Onboarding 記錄（非阻塞，內部會觸發 L0 歡迎信）
+  if (newUser) {
+    onboardingService
+      .createOnboarding(newUser.id, deriveUserSource(null, false))
+      .catch((err: unknown) =>
+        loggerService.warn('Failed to create onboarding record for Apple OAuth user', {
+          userId: newUser.id,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
   }
 
   return createSuccessResponse(newUser);
