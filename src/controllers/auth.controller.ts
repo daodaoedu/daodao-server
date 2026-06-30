@@ -211,7 +211,10 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
       });
     }
     personaService.incrementSession(id).catch(() => undefined);
+  }
 
+  // 認領匿名測驗結果（臨時用戶也需要，因為從 quiz 註冊的新用戶首次 OAuth 時 isTemp=true）
+  if (id) {
     await tryAutoClaimQuiz(req, res, id);
   }
 
@@ -713,6 +716,9 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
 
   if (!decoded.isTemp && decoded.id) {
     personaService.incrementSession(decoded.id).catch(() => undefined);
+  }
+
+  if (decoded.id) {
     await tryAutoClaimQuiz(req, res, decoded.id);
   }
 
