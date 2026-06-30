@@ -313,10 +313,10 @@ export const checkInSchema = z.object({
       examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(300, '詳細描述不可超過300字')
+    .max(600, '詳細描述不可超過600字')
     .optional()
     .openapi({
-      description: '詳細描述（最多300字）',
+      description: '詳細描述（最多600字）',
       example: '今天閱讀了第三章，學到了很多新概念',
       examples: ['今天閱讀了第三章，學到了很多新概念', '完成了 30 分鐘的練習']
     }),
@@ -476,10 +476,10 @@ export const updateCheckInSchema = z.object({
       examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(300, '詳細描述不可超過300字')
+    .max(600, '詳細描述不可超過600字')
     .optional()
     .openapi({
-      description: '詳細描述（最多300字）',
+      description: '詳細描述（最多600字）',
       example: '今天閱讀了第三章，學到了很多新概念'
     }),
   imageUrls: z.array(z.string().url('請輸入有效的圖片網址'))
