@@ -580,6 +580,26 @@ export class PracticeController {
     res.json(validatedResponse);
   });
 
+  recordReadProgress = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const { depthPercent } = req.body as { depthPercent: number };
+    const result = await practiceInteractionService.recordReadProgress(practiceId, req.user.id, depthPercent);
+    res.json(result);
+  });
+
+  recordTimeSpent = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const { seconds } = req.body as { seconds: number };
+    const result = await practiceInteractionService.recordTimeSpent(practiceId, req.user.id, seconds);
+    res.json(result);
+  });
+
   /**
    * 取得實踐互動統計
    * GET /api/v1/practices/:id/stats

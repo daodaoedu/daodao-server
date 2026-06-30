@@ -22,6 +22,7 @@ export interface EmailConfig {
   // URL 配置
   urls: {
     frontend: string;
+    website: string;
     backend: string;
   };
 
@@ -73,6 +74,7 @@ export function createEmailConfig(): EmailConfig {
     
     urls: {
       frontend: process.env.FRONTEND_URL || '',
+      website: process.env.WEBSITE_URL || 'https://daodao.so',
       backend: process.env.BACKEND_URL || 'http://localhost:3000'
     },
     

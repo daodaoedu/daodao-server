@@ -106,7 +106,7 @@ const createBuddyRequest = async (
     recipientId: receiverId,
     entityType:  'buddy_request',
     entityId:    newRequest.id,
-    payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/notifications` },
+    payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${practiceExternalId}` },
     priority:    'P1',
   }).catch(() => {});
 
@@ -126,7 +126,7 @@ const createBuddyRequest = async (
       recipientId: follower_id,
       entityType:  'buddy_request',
       entityId:    newRequest.id,
-      payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/notifications` },
+      payload:     { practice_id: practiceId, practice_title: practiceTitle, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${practiceExternalId}` },
       priority:    'P1',
     }).catch(() => {});
   }
@@ -161,13 +161,20 @@ const updateBuddyRequest = async (
 
   // 3. 若接受，通知請求者 P1 BuddyAccepted 事件
   if (status === 'accepted') {
+    const practice = await prisma.practices.findUnique({
+      where: { id: request.practice_id },
+      select: { external_id: true },
+    });
+    const practiceUrl = practice?.external_id
+      ? `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${practice.external_id}`
+      : `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}`;
     notificationEventService.createEvent({
       type:        'BuddyAccepted',
       actorId:     receiverId,
       recipientId: request.requester_id,
       entityType:  'buddy_request',
       entityId:    requestId,
-      payload:     { practice_id: request.practice_id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/notifications` },
+      payload:     { practice_id: request.practice_id, url: practiceUrl },
       priority:    'P1',
     }).catch(() => {});
   }

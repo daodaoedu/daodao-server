@@ -46,6 +46,28 @@ const MORNING_BATCH_WINDOW_MS = 12 * 60 * 60 * 1000;
 /** notification_preferences 中代表 email 的 channel 值 */
 const EMAIL_CHANNEL = 'N01';
 
+/** 學習夥伴動態：最強問責感，獨立 section */
+const PARTNER_EVENT_TYPES = new Set([
+  'PartnerCheckinActivity',
+  'PartnerUpdateActivity',
+]);
+
+/** 直接互動：有人對你做了什麼，強調被看見 */
+const INTERACTION_EVENT_TYPES = new Set([
+  'Connect',
+  'ConnectAccepted',
+  'comment',
+  'comment_reply',
+  'mention',
+  'Mention',
+  'BuddyRequest',
+  'BuddyRequestFollower',
+  'BuddyAccepted',
+  'wish.linked',
+  'roadmap.shipped',
+  'PracticeCreated',
+]);
+
 // ─── 批次處理邏輯 ──────────────────────────────────────────────────────────────
 
 async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): Promise<void> {
@@ -70,10 +92,11 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     });
 
     // 2. 查詢該時間範圍內的 P1+P2 事件
+    //    wish.linked 由 wishpoolNotificationService 獨立發信，不走 digest；reaction 已納入 digest P2 共鳴回饋
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
-        type: { not: 'reaction' }, // reaction 事件由 reaction-notification.worker 專責處理，此處排除以避免重複寄信
+        type: { notIn: ['wish.linked'] },
         created_at: {
           gte: batchStart,
           lt: batchEnd
@@ -164,9 +187,13 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
           continue;
         }
 
-        // 5c. 區分 P1（重要連結與討論）和 P2（共鳴回饋）
+        // 5c. 依社交學習價值分類事件
         const p1Events = allowedEvents.filter((e) => e.priority === 'P1');
         const p2Events = allowedEvents.filter((e) => e.priority === 'P2');
+
+        const partnerEvents     = p1Events.filter((e) => PARTNER_EVENT_TYPES.has(e.type));
+        const interactionEvents = p1Events.filter((e) => INTERACTION_EVENT_TYPES.has(e.type));
+        const activityEvents    = p1Events.filter((e) => !PARTNER_EVENT_TYPES.has(e.type) && !INTERACTION_EVENT_TYPES.has(e.type));
 
         // 5d. 查詢 recipient 的暱稱與 email（email 位於關聯的 contacts 表）
         const recipient = await prisma.users.findUnique({
@@ -185,28 +212,61 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
         }
 
         // 5e. 組裝 NotificationDigestData 並產生 HTML
+        const mapP1Event = (e: typeof p1Events[number]) => {
+          const payload = e.payload as Record<string, unknown> | null;
+          return {
+            type:           e.type,
+            actorName:      resolveActorName(payload, e.actor_id),
+            entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
+            content:        payload?.content    ? String(payload.content)    : undefined,
+            connectMessage: payload?.intent     ? String(payload.intent)     : payload?.message ? String(payload.message) : undefined,
+            url:            String(payload?.url ?? process.env.FRONTEND_URL ?? 'https://app.daodao.so'),
+          };
+        };
+
+        // 聚合 reaction 事件：同一 entity 的多筆 reaction 合為一筆，顯示首位 actor 名稱與總數
+        const reactionEvents = p2Events.filter((e) => e.type === 'reaction');
+        const otherP2Events  = p2Events.filter((e) => e.type !== 'reaction');
+
+        type ReactionGroup = { actorNames: string[]; entityTitle: string; url: string };
+        const reactionByEntity = new Map<string, ReactionGroup>();
+        for (const e of reactionEvents) {
+          const payload     = e.payload as Record<string, unknown> | null;
+          const entityTitle = payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : '';
+          const key         = entityTitle || String(e.actor_id);
+          const group       = reactionByEntity.get(key) ?? {
+            actorNames: [],
+            entityTitle,
+            url: String(payload?.url ?? process.env.FRONTEND_URL ?? 'https://app.daodao.so'),
+          };
+          group.actorNames.push(resolveActorName(payload, e.actor_id));
+          reactionByEntity.set(key, group);
+        }
+
         const digestData: NotificationDigestData = {
           recipientName,
-          p1Events: p1Events.map((e) => {
-            const payload = e.payload as Record<string, unknown> | null;
-            return {
-              type:           e.type,
-              actorName:      resolveActorName(payload, e.actor_id),
-              entityTitle:    payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
-              content:        payload?.content    ? String(payload.content)    : undefined,
-              connectMessage: payload?.intent     ? String(payload.intent)     : payload?.message ? String(payload.message) : undefined,
-              url:            String(payload?.url ?? process.env.FRONTEND_URL ?? 'https://app.daodao.so'),
-            };
-          }),
-          p2Events: p2Events.map((e) => {
-            const payload = e.payload as Record<string, unknown> | null;
-            return {
-              type:        e.type,
-              actorName:   resolveActorName(payload, e.actor_id),
-              count:       typeof payload?.count === 'number' ? payload.count : 1,
-              entityTitle: payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
-            };
-          }),
+          partnerEvents:     partnerEvents.map(mapP1Event),
+          interactionEvents: interactionEvents.map(mapP1Event),
+          activityEvents:    activityEvents.map(mapP1Event),
+          p2Events: [
+            ...[...reactionByEntity.values()].map((g) => ({
+              type:        'reaction' as const,
+              actorName:   g.actorNames[0],
+              count:       g.actorNames.length,
+              entityTitle: g.entityTitle || undefined,
+              url:         g.url,
+            })),
+            ...otherP2Events.map((e) => {
+              const payload = e.payload as Record<string, unknown> | null;
+              return {
+                type:        e.type,
+                actorName:   resolveActorName(payload, e.actor_id),
+                count:       typeof payload?.count === 'number' ? payload.count : 1,
+                entityTitle: payload?.entityTitle ? String(payload.entityTitle) : payload?.practice_title ? String(payload.practice_title) : undefined,
+                url:         payload?.url ? String(payload.url) : undefined,
+              };
+            }),
+          ],
           unsubscribeUrl: generateUnsubscribeUrl(recipientId, 'digest'),
           settingsUrl:    generateSettingsUrl(),
           homeUrl:        process.env.FRONTEND_URL ?? 'https://app.daodao.so',

@@ -7,6 +7,8 @@ import { Request, Response } from 'express';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse, createPaginatedResponse } from '../utils/response-helper';
 import adminUserService from '../services/admin-user.service';
+import { findUserPractices } from '../services/practice.service';
+import type { SortField, SortOrder } from '../types/practice.types';
 import {
   adminUserListQuerySchema,
   adminUserIdParamSchema,
@@ -26,6 +28,11 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
     roleId: query.roleId,
     isActive: query.isActive,
     isVerified: query.isVerified,
+    personaType: query.personaType,
+    badgeGranted: query.badgeGranted,
+    userSource: query.userSource,
+    registrationFlow: query.registrationFlow,
+    creationMethod: query.creationMethod,
     page: query.page,
     limit: query.limit,
     sortBy: query.sortBy,
@@ -104,6 +111,40 @@ export const getActivityStats = asyncHandler(async (req: Request, res: Response)
 });
 
 /**
+ * 取得使用者實踐列表
+ * GET /admin/users/:userId/practices
+ */
+export const getUserPracticesList = asyncHandler(async (req: Request, res: Response) => {
+  const params = adminUserIdParamSchema.parse(req.params);
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+
+  const result = await findUserPractices(params.userId, {
+    page,
+    limit,
+    sortBy: (req.query.sort ?? req.query.sortBy) as SortField | undefined,
+    sortOrder: (req.query.order ?? req.query.sortOrder) as SortOrder | undefined,
+    status: req.query.status as string | undefined,
+  });
+
+  res.json(result);
+});
+
+/**
+ * 取得使用者活動時間軸
+ * GET /admin/users/:userId/activity-timeline
+ */
+export const getActivityTimeline = asyncHandler(async (req: Request, res: Response) => {
+  const params = adminUserIdParamSchema.parse(req.params);
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+
+  const events = await adminUserService.getActivityTimeline(params.userId, limit);
+
+  const response = createSuccessResponse(events);
+  res.json(response);
+});
+
+/**
  * 更新使用者狀態（啟用/停用）
  * PUT /admin/users/:userId/status
  */
@@ -132,5 +173,7 @@ export default {
   getUserDetail,
   getLoginHistory,
   getActivityStats,
+  getActivityTimeline,
+  getUserPracticesList,
   updateStatus
 };

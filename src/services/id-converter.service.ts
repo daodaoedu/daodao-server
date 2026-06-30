@@ -20,9 +20,10 @@ export type EntityType =
   | 'review'
   | 'group'
   | 'user'
-  | 'circle'   // groups 的別名，用於 comment 系統
-  | 'post'     // 用於 comment 系統
-  | 'checkin'; // practice_checkins，用於 reaction/comment 系統
+  | 'circle'          // groups 的別名，用於 comment 系統
+  | 'post'            // 用於 comment 系統
+  | 'checkin'         // practice_checkins，用於 reaction/comment 系統
+  | 'persona_answer'; // persona_answers，用於 reaction/comment 系統
 
 /**
  * 實體資訊介面
@@ -49,7 +50,8 @@ const ENTITY_TABLE_MAP: Record<EntityType, string> = {
   circle: 'groups',  // circle 對應到 groups 表
   user: 'users',
   post: 'post',
-  checkin: 'practice_checkins'
+  checkin: 'practice_checkins',
+  persona_answer: 'persona_answers',
 };
 
 /**
@@ -210,6 +212,19 @@ export async function externalToInternalId(
         break;
       }
 
+      case 'persona_answer': {
+        const numId = parseInt(externalId);
+        if (isNaN(numId)) {
+          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+        }
+
+        result = await prisma.persona_answers.findUnique({
+          where: { id: numId },
+          select: { id: true }
+        });
+        break;
+      }
+
       default:
         throw new Error(`不支援的實體類型: ${entityType}`);
     }
@@ -292,7 +307,8 @@ export async function internalToExternalId(
       case 'review':
       case 'milestone':
       case 'resource_review':
-      case 'checkin': {
+      case 'checkin':
+      case 'persona_answer': {
         return internalId.toString();
       }
 
@@ -523,6 +539,17 @@ export async function getTargetEntity(
         });
         if (checkin) {
           entity = { id: checkin.id, user_id: checkin.user_id };
+        }
+        break;
+      }
+
+      case 'persona_answer': {
+        const answer = await prisma.persona_answers.findUnique({
+          where: { id: parseInt(targetId) },
+          select: { id: true, user_id: true }
+        });
+        if (answer) {
+          entity = { id: answer.id, user_id: answer.user_id };
         }
         break;
       }

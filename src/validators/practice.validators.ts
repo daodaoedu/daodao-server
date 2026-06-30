@@ -209,6 +209,18 @@ export const createPracticeSchema = z.object({
     .openapi({
       description: '是否存為草稿',
       example: false
+    }),
+  privacyStatus: z.enum(['private', 'public', 'delayed'])
+    .optional()
+    .openapi({
+      description: '隱私狀態（private: 私人, public: 即時公開, delayed: 完成後分享）',
+      example: 'public'
+    }),
+  creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
+    .optional()
+    .openapi({
+      description: '實踐建立方式（用於 Onboarding 任務 C 記錄）',
+      example: 'self_created'
     })
 }).openapi('CreatePracticeRequest', {
   description: '創建實踐活動的請求資料',
@@ -301,10 +313,10 @@ export const checkInSchema = z.object({
       examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(300, '詳細描述不可超過300字')
+    .max(600, '詳細描述不可超過600字')
     .optional()
     .openapi({
-      description: '詳細描述（最多300字）',
+      description: '詳細描述（最多600字）',
       example: '今天閱讀了第三章，學到了很多新概念',
       examples: ['今天閱讀了第三章，學到了很多新概念', '完成了 30 分鐘的練習']
     }),
@@ -327,12 +339,12 @@ export const checkInSchema = z.object({
       format: 'uri'
     }),
   tags: z.array(z.string().max(50, '標籤名稱不可超過50字'))
+    .min(1, '請至少選擇一個標籤')
     .max(10, '標籤最多10個')
-    .default([])
     .openapi({
-      description: '打卡標籤（最多10個）',
+      description: '打卡標籤（必填，至少1個，最多10個）',
       example: ['專注', '有收穫'],
-      examples: [[], ['專注', '有收穫'], ['閱讀', '冥想', '運動']]
+      examples: [['專注', '有收穫'], ['閱讀', '冥想', '運動']]
     })
 }).openapi('CheckInRequest', {
   description: '實踐活動簽到記錄',
@@ -464,10 +476,10 @@ export const updateCheckInSchema = z.object({
       examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(300, '詳細描述不可超過300字')
+    .max(600, '詳細描述不可超過600字')
     .optional()
     .openapi({
-      description: '詳細描述（最多300字）',
+      description: '詳細描述（最多600字）',
       example: '今天閱讀了第三章，學到了很多新概念'
     }),
   imageUrls: z.array(z.string().url('請輸入有效的圖片網址'))

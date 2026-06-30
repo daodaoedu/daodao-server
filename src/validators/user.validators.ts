@@ -239,9 +239,23 @@ export const createUserSchema = z.object({
     }),
 
   // 新增欄位
+  name: z.string()
+    .min(1, '名稱不可為空')
+    .max(100, '名稱長度不可超過 100 字')
+    .optional()
+    .openapi({
+      description: '用戶暱稱',
+      example: 'daodao_user'
+    }),
   professionalField: professionalFieldSchema,
   personalSlogan: personalSloganSchema,
   referralSource: referralSourceSchema,
+  registrationFlow: z.enum(['quiz', 'action_maker', 'landing_page'])
+    .optional()
+    .openapi({
+      description: '註冊流程來源（quiz=從測驗註冊, action_maker=從工具註冊, landing_page=一般註冊）',
+      example: 'landing_page',
+    }),
   customId: z.string()
     .trim()
     .min(3, 'Custom ID 至少 3 個字元')

@@ -7,7 +7,13 @@ import jwt from 'jsonwebtoken';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
-const UNSUBSCRIBE_SECRET = process.env.JWT_SECRET || 'unsubscribe-secret';
+const getUnsubscribeSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is required for notification unsubscribe tokens');
+  }
+  return secret;
+};
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
 
@@ -38,7 +44,7 @@ export function generateUnsubscribeToken(userId: number, notificationType: strin
     purpose: 'unsubscribe',
   };
 
-  return jwt.sign(payload, UNSUBSCRIBE_SECRET, {
+  return jwt.sign(payload, getUnsubscribeSecret(), {
     expiresIn: TOKEN_EXPIRY_SECONDS,
   });
 }
@@ -52,7 +58,7 @@ export function verifyUnsubscribeToken(
   token: string
 ): { userId: number; notificationType: string } | null {
   try {
-    const decoded = jwt.verify(token, UNSUBSCRIBE_SECRET) as UnsubscribeTokenPayload & jwt.JwtPayload;
+    const decoded = jwt.verify(token, getUnsubscribeSecret()) as UnsubscribeTokenPayload & jwt.JwtPayload;
 
     if (decoded.purpose !== 'unsubscribe') return null;
     if (typeof decoded.userId !== 'number') return null;

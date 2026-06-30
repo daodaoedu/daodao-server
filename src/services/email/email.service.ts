@@ -22,6 +22,7 @@ import type { EmailTypeValue } from '../../types/email';
 import { EMAIL_ERROR_CODES, getErrorMessage } from '../../constants/errors';
 import type { Logger } from '../../types/logger.types';
 import loggerService from '../logging/logger.service';
+import { enqueueEmail } from '../../queues/email.queue';
 
 export interface EmailSendOptions {
   to: string | string[];
@@ -228,26 +229,16 @@ export class EmailService {
     // 3. 產生郵件內容
     const template = this.templateService.generateWelcomeEmail(templateData);
 
-    // 4. 發送郵件（trackingToken 由 sendEmail 統一注入 pixel）
-    const result = await this.sendEmail({
+    // 4. 透過 queue 發送（worker 負責更新 log 狀態）
+    return this.enqueueOrSend({
       to,
       subject: template.subject,
       html: template.html,
       trackingToken: logRecord.tracking_token ?? undefined,
+      emailLogId: logRecord.id,
+      emailType: EMAIL_TYPES.WELCOME_LETTER,
+      userId,
     });
-
-    // 5. 更新發送紀錄狀態
-    try {
-      await updateEmailLogStatus(
-        logRecord.id,
-        result.success ? 'sent' : 'failed'
-      );
-    } catch (error) {
-      const errorDetail = error instanceof Error ? error.message : String(error);
-      this.logger?.error(`更新歡迎信發送紀錄狀態失敗 - 用戶 ID: ${userId}: ${errorDetail}`);
-    }
-
-    return result;
   }
 
   /**
@@ -262,7 +253,7 @@ export class EmailService {
       throw new Error(result.error || '發送歡迎郵件失敗');
     }
 
-    const templateVersion = `welcome-${data.referralGroup}`;
+    const templateVersion = 'welcome';
 
     return createSuccessResponse({
       messageId: result.messageId
@@ -408,7 +399,8 @@ export class EmailService {
 
   /**
    * 內部輔助方法：先建立 email_logs (pending) 取得 trackingToken，
-   * 再發送郵件，最後更新 log 狀態。若無 userId 會自動從收件人 email 解析。
+   * 再透過 BullMQ queue 發送郵件。Worker 負責實際發送及更新 log 狀態。
+   * Queue 未初始化時自動 fallback 為同步直送。
    */
   private async sendWithOptionalLog(params: {
     to: string;
@@ -434,7 +426,7 @@ export class EmailService {
     }
 
     if (!userId) {
-      return this.sendEmail({ to, subject, html });
+      return this.enqueueOrSend({ to, subject, html });
     }
 
     // 1. 建立 pending 紀錄，取得 trackingToken
@@ -449,27 +441,66 @@ export class EmailService {
     } catch (error) {
       const errorDetail = error instanceof Error ? error.message : String(error);
       this.logger?.error(`建立郵件紀錄失敗 - emailType: ${emailType}, userId: ${userId}: ${errorDetail}`);
-      // 紀錄失敗仍嘗試發送，只是沒有追蹤
-      return this.sendEmail({ to, subject, html });
+      return this.enqueueOrSend({ to, subject, html });
     }
 
-    // 2. 發送郵件（帶 trackingToken）
-    const result = await this.sendEmail({
+    // 2. 透過 queue 發送（worker 負責更新 log 狀態）
+    return this.enqueueOrSend({
       to,
       subject,
       html,
       trackingToken: logRecord.tracking_token ?? undefined,
+      emailLogId: logRecord.id,
+      emailType,
+      userId,
+    });
+  }
+
+  /**
+   * 嘗試透過 queue 發送；queue 未初始化時 fallback 為直送
+   */
+  private async enqueueOrSend(params: {
+    to: string | string[];
+    subject: string;
+    html: string;
+    from?: string;
+    replyTo?: string;
+    cc?: string[];
+    bcc?: string[];
+    trackingToken?: string;
+    emailLogId?: number;
+    emailType?: string;
+    userId?: number;
+  }): Promise<EmailSendResult> {
+    const jobId = await enqueueEmail(params);
+
+    if (jobId) {
+      return { success: true };
+    }
+
+    // Queue 未初始化 — fallback 同步直送
+    const result = await this.sendEmail({
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+      from: params.from,
+      replyTo: params.replyTo,
+      cc: params.cc,
+      bcc: params.bcc,
+      trackingToken: params.trackingToken,
     });
 
-    // 3. 更新 log 狀態
-    try {
-      await updateEmailLogStatus(
-        logRecord.id,
-        result.success ? 'sent' : 'failed'
-      );
-    } catch (error) {
-      const errorDetail = error instanceof Error ? error.message : String(error);
-      this.logger?.error(`更新郵件紀錄狀態失敗 - emailType: ${emailType}, userId: ${userId}: ${errorDetail}`);
+    // Fallback 時需要自行更新 log
+    if (params.emailLogId) {
+      try {
+        await updateEmailLogStatus(
+          params.emailLogId,
+          result.success ? 'sent' : 'failed'
+        );
+      } catch (error) {
+        const errorDetail = error instanceof Error ? error.message : String(error);
+        this.logger?.error(`更新郵件紀錄狀態失敗 - emailLogId: ${params.emailLogId}: ${errorDetail}`);
+      }
     }
 
     return result;
@@ -554,34 +585,6 @@ export class EmailService {
     }
 
     return { success, failed, results };
-  }
-
-  /**
-   * 帶重試機制的郵件發送
-   */
-  async sendEmailWithRetry(options: EmailSendOptions): Promise<EmailSendResult> {
-    let lastError: string = '';
-    
-    for (let attempt = 1; attempt <= (emailConfig?.retry.maxAttempts || 3); attempt++) {
-      const result = await this.sendEmail(options);
-      
-      if (result.success) {
-        if (attempt > 1) {
-          this.logger?.info(`郵件在第 ${attempt} 次嘗試後發送成功`);
-        }
-        return result;
-      }
-      
-      lastError = result.error || '未知錯誤';
-      
-      if (attempt < (emailConfig?.retry.maxAttempts || 3)) {
-        this.logger?.warn(`郵件發送失敗，將在 ${emailConfig?.retry.backoffMs || 1000}ms 後重試 (嘗試 ${attempt}/${emailConfig?.retry.maxAttempts || 3})`);
-        await new Promise(resolve => setTimeout(resolve, (emailConfig?.retry.backoffMs || 1000) * attempt));
-      }
-    }
-    
-    this.logger?.error(`郵件發送在 ${emailConfig?.retry.maxAttempts || 3} 次嘗試後仍然失敗: ${lastError}`);
-    return { success: false, error: `重試失敗: ${lastError}` };
   }
 
   /**

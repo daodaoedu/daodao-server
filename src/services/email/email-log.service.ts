@@ -238,6 +238,47 @@ export const prepareBulkEmailLogs = async (
 };
 
 /**
+ * 撈取可重試的失敗郵件（status='failed', retry_count < maxRetries, 在指定時間範圍內）
+ */
+export const findFailedEmailsForRetry = async (params: {
+  maxRetries?: number;
+  sinceHours?: number;
+  limit?: number;
+} = {}) => {
+  const { maxRetries = 3, sinceHours = 24, limit = 50 } = params;
+  const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000);
+
+  return prisma.email_logs.findMany({
+    where: {
+      status: EMAIL_STATUS.FAILED,
+      retry_count: { lt: maxRetries },
+      created_at: { gte: since },
+    },
+    include: {
+      users: {
+        select: { contacts: { select: { email: true } } },
+      },
+    },
+    orderBy: { created_at: 'desc' },
+    take: limit,
+  });
+};
+
+/**
+ * 將 email_log 標記為已重新排入佇列（retry_count + 1, status → pending）
+ */
+export const markEmailLogRetrying = async (logId: number) => {
+  return prisma.email_logs.update({
+    where: { id: logId },
+    data: {
+      status: EMAIL_STATUS.PENDING,
+      retry_count: { increment: 1 },
+      last_retry_at: new Date(),
+    },
+  });
+};
+
+/**
  * 取得最近一次特定類型郵件的發送時間
  */
 export const getLastEmailSentAt = async (params: {

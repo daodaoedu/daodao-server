@@ -153,11 +153,24 @@ export class CommentService implements CommentServiceInterface {
           checkinId = targetEntity.id;
         }
 
+        let personaUrl: string | undefined;
+        if (targetType === 'persona_answer') {
+          const answer = await tx.persona_answers.findUnique({
+            where: { id: targetEntity.id },
+            select: { question_id: true },
+          });
+          if (answer) {
+            const baseUrl = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+            personaUrl = `${baseUrl}/persona/${answer.question_id}`;
+          }
+        }
+
         const notificationPayload = {
           content,
           ...(practiceTitle !== undefined && { practice_title: practiceTitle }),
           ...(practiceExternalId !== undefined && { entity_external_id: practiceExternalId }),
           ...(checkinId !== undefined && { checkinId }),
+          ...(personaUrl !== undefined && { url: personaUrl }),
         };
 
         // Fire-and-forget: Comment 通知給內容擁有者
@@ -169,7 +182,7 @@ export class CommentService implements CommentServiceInterface {
             entityType:  'comment',
             entityId:    createdComment.id,
             payload:     notificationPayload,
-            priority: 'P2',
+            priority: 'P1',
           }).catch(() => {});
         }
 
@@ -182,7 +195,7 @@ export class CommentService implements CommentServiceInterface {
             entityType:  'comment',
             entityId:    createdComment.id,
             payload:     { ...notificationPayload, parent_comment_id: parentId },
-            priority: 'P2',
+            priority: 'P1',
           }).catch(() => {});
         }
 
@@ -737,6 +750,17 @@ export class CommentService implements CommentServiceInterface {
         break;
       }
 
+      case 'persona_answer': {
+        const answer = await prisma.persona_answers.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (answer) {
+          entity = { id: answer.id, user_id: answer.user_id };
+        }
+        break;
+      }
+
       default:
         throw new InternalServerError(`Unsupported target type: ${targetType}`);
     }
@@ -921,7 +945,9 @@ export class CommentService implements CommentServiceInterface {
           return internalId.toString();
 
         case 'checkin':
-          // Checkin uses internal integer ID directly
+          return internalId.toString();
+
+        case 'persona_answer':
           return internalId.toString();
 
         default:
@@ -1144,6 +1170,14 @@ export class CommentService implements CommentServiceInterface {
         },
       });
       return checkin?.practices?.user_id ?? null;
+    }
+
+    if (targetType === 'persona_answer') {
+      const answer = await client.persona_answers.findUnique({
+        where: { id: internalTargetId },
+        select: { user_id: true },
+      });
+      return answer?.user_id ?? null;
     }
 
     return null;

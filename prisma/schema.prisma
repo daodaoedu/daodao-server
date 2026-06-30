@@ -423,16 +423,19 @@ model practices {
   deleted_at               DateTime?                 @db.Timestamptz(6)
   reflection               String?
   privacy_status           String                    @default("public") @db.VarChar(20)
-  visibility               String?                   @default("public") @db.VarChar(20)
+  visibility               String                    @default("public") @db.VarChar(20)
+  insight                  String?
   source_practice_id       Int?
   copy_count               Int                       @default(0)
+  creation_source          String?                   @db.VarChar(20)
+  is_featured              Boolean                   @default(false)
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
+  source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onUpdate: NoAction)
+  copied_practices         practices[]               @relation("PracticeCopies")
   practice_templates       practice_templates?       @relation(fields: [template_id], references: [id], onUpdate: NoAction)
   users                    users                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  copied_practices         practices[]               @relation("PracticeCopies")
 
   @@index([start_date, end_date], map: "idx_practices_dates")
   @@index([status], map: "idx_practices_status")
@@ -784,89 +787,95 @@ model user_subscription {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model users {
-  id                                   Int                        @id @default(autoincrement())
-  external_id                          String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mongo_id                             String                     @unique
-  gender                               gender_t?
-  language                             String?                    @db.VarChar(255)
-  education_stage                      education_stage_t?         @default(other)
-  tag_list                             String[]
-  contact_id                           Int?
-  is_open_location                     Boolean?
-  location_id                          Int?
-  nickname                             String?                    @db.VarChar(255)
-  role_id                              Int
-  is_open_profile                      Boolean?
-  hide_connections_count               Boolean                    @default(false)
-  birth_date                           DateTime?                  @db.Date
-  basic_info_id                        Int?
-  createdDate                          DateTime?                  @db.Timestamptz(6)
-  updatedDate                          DateTime?                  @db.Timestamptz(6)
-  created_by                           String?                    @db.VarChar(255)
-  created_at                           DateTime?                  @db.Timestamptz(6)
-  updated_by                           String?                    @db.VarChar(255)
-  updated_at                           DateTime?                  @db.Timestamptz(6)
-  is_active                            Boolean?                   @default(true)
-  verified                             Boolean?                   @default(false)
-  verified_at                          DateTime?                  @db.Timestamptz(6)
-  custom_id                            String?                    @db.VarChar(255)
-  custom_id_created_at                 DateTime?                  @db.Timestamp(6)
-  personal_slogan                      String?
-  referral_source                      String?                    @db.VarChar(255)
-  custom_id_verified                   Boolean?                   @default(false)
-  professional_field                   String?                    @db.VarChar(255)
-  activity_stats_id                    Int?
-  custom_position                      String?                    @db.VarChar(100)
-  comments                             comments[]
-  received_connection_requests         connection_requests[]      @relation("connection_requests_receiver_idTousers")
-  sent_connection_requests             connection_requests[]      @relation("connection_requests_requester_idTousers")
-  connections_as_user_a                connections[]              @relation("connections_user_a_idTousers")
-  connections_as_user_b                connections[]              @relation("connections_user_b_idTousers")
-  email_logs                           email_logs[]
-  entity_resources                     entity_resources[]
-  entity_tags                          entity_tags[]
-  follows                              follows[]
-  groups                               groups[]
-  ideas                                ideas[]
-  interaction_counts_as_user_a         interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
-  interaction_counts_as_user_b         interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
-  likes                                likes[]
-  marathon                             marathon[]
-  mentor_participants_as_mentor        mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
-  mentor_participants_as_participant   mentor_participants[]      @relation("mentor_participants_participant_idTousers")
-  notification_events_as_actor         notification_events[]      @relation("notification_events_actor_idTousers")
-  notification_events_as_recipient     notification_events[]      @relation("notification_events_recipient_idTousers")
-  notification_preferences             notification_preferences[]
-  notifications_as_actor               notifications[]            @relation("notifications_actor")
-  notifications_as_recipient           notifications[]            @relation("notifications_recipient")
-  post                                 post[]
-  practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
-  practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
-  practice_checkins                    practice_checkins[]
-  practice_social_proofs               practice_social_proofs[]
-  practices                            practices[]
-  project                              project[]
-  quiz_results                         quiz_results[]
-  rating                               rating[]
-  reactions                            reactions[]
-  resource_review                      resource_review[]
-  resources                            resources[]
-  store                                store?
-  user_interests                       user_interests[]
-  user_join_group                      user_join_group[]
-  user_login_history                   user_login_history[]
-  user_permissions                     user_permissions[]
-  user_positions                       user_positions[]
-  user_preferences                     user_preferences[]
-  user_professional_fields             user_professional_fields[]
-  user_profiles                        user_profiles[]
-  user_project                         user_project[]
-  user_subscription                    user_subscription[]
-  user_activity_stats                  user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
-  basic_info                           basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  contacts                             contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  location                             location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  roles                                roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                                              Int                        @id @default(autoincrement())
+  external_id                                     String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mongo_id                                        String                     @unique
+  gender                                          gender_t?
+  language                                        String?                    @db.VarChar(255)
+  education_stage                                 education_stage_t?         @default(other)
+  tag_list                                        String[]
+  contact_id                                      Int?
+  is_open_location                                Boolean?
+  location_id                                     Int?
+  nickname                                        String?                    @db.VarChar(255)
+  role_id                                         Int
+  is_open_profile                                 Boolean?
+  birth_date                                      DateTime?                  @db.Date
+  basic_info_id                                   Int?
+  createdDate                                     DateTime?                  @db.Timestamptz(6)
+  updatedDate                                     DateTime?                  @db.Timestamptz(6)
+  created_by                                      String?                    @db.VarChar(255)
+  created_at                                      DateTime?                  @db.Timestamptz(6)
+  updated_by                                      String?                    @db.VarChar(255)
+  updated_at                                      DateTime?                  @db.Timestamptz(6)
+  is_active                                       Boolean?                   @default(true)
+  verified                                        Boolean?                   @default(false)
+  verified_at                                     DateTime?                  @db.Timestamptz(6)
+  custom_id                                       String?                    @db.VarChar(255)
+  custom_id_created_at                            DateTime?                  @db.Timestamp(6)
+  personal_slogan                                 String?
+  referral_source                                 String?                    @db.VarChar(255)
+  custom_id_verified                              Boolean?                   @default(false)
+  professional_field                              String?                    @db.VarChar(255)
+  activity_stats_id                               Int?
+  custom_position                                 String?                    @db.VarChar(100)
+  hide_connections_count                          Boolean                    @default(false)
+  comments                                        comments[]
+  received_connection_requests                    connection_requests[]      @relation("connection_requests_receiver_idTousers")
+  sent_connection_requests                        connection_requests[]      @relation("connection_requests_requester_idTousers")
+  connections_as_user_a                           connections[]              @relation("connections_user_a_idTousers")
+  connections_as_user_b                           connections[]              @relation("connections_user_b_idTousers")
+  email_logs                                      email_logs[]
+  entity_resources                                entity_resources[]
+  entity_tags                                     entity_tags[]
+  follows                                         follows[]
+  groups                                          groups[]
+  ideas                                           ideas[]
+  interaction_counts_as_user_a                    interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
+  interaction_counts_as_user_b                    interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
+  likes                                           likes[]
+  marathon                                        marathon[]
+  mentor_participants_as_mentor                   mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
+  mentor_participants_as_participant              mentor_participants[]      @relation("mentor_participants_participant_idTousers")
+  notification_events_as_actor                    notification_events[]      @relation("notification_events_actor_idTousers")
+  notification_events_as_recipient                notification_events[]      @relation("notification_events_recipient_idTousers")
+  notification_preferences                        notification_preferences[]
+  notifications_as_actor                          notifications[]            @relation("notifications_actor")
+  notifications_as_recipient                      notifications[]            @relation("notifications_recipient")
+  post                                            post[]
+  practice_buddy_requests_as_receiver             practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
+  practice_buddy_requests_as_requester            practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
+  practice_checkins                               practice_checkins[]
+  practice_social_proofs                          practice_social_proofs[]
+  practices                                       practices[]
+  project                                         project[]
+  quiz_results                                    quiz_results[]
+  rating                                          rating[]
+  reactions                                       reactions[]
+  resource_review                                 resource_review[]
+  resources                                       resources[]
+  store                                           store?
+  user_interests                                  user_interests[]
+  user_join_group                                 user_join_group[]
+  user_login_history                              user_login_history[]
+  user_onboarding                                 user_onboarding?
+  user_permissions                                user_permissions[]
+  user_positions                                  user_positions[]
+  user_preferences                                user_preferences[]
+  user_professional_fields                        user_professional_fields[]
+  user_profiles                                   user_profiles[]
+  user_project                                    user_project[]
+  user_subscription                               user_subscription[]
+  user_activity_stats                             user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
+  basic_info                                      basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts                                        contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location                                        location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                                           roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  persona_answers                                 persona_answers[]
+  persona_skips                                   persona_skips[]
+  persona_user_state                              persona_user_state?
+  wishes                                          wishes[]
+  roadmap_item_supports                           roadmap_item_supports[]
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -1028,13 +1037,15 @@ model tag_prompt_templates {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model quiz_results {
-  id           Int      @id @default(autoincrement())
-  user_id      Int
-  result_type  String   @db.VarChar(1)
+  id           Int       @id @default(autoincrement())
+  user_id      Int?
+  result_type  String    @db.VarChar(1)
   scores       Json
   answers      Json?
-  completed_at DateTime @default(now()) @db.Timestamptz(6)
-  users        users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  completed_at DateTime  @default(now()) @db.Timestamptz(6)
+  claim_token  String?   @unique @db.VarChar(36)
+  expires_at   DateTime? @db.Timestamptz(6)
+  users        users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([completed_at], map: "idx_quiz_results_completed_at")
   @@index([result_type], map: "idx_quiz_results_result_type")
@@ -1057,12 +1068,86 @@ model email_logs {
   tracking_token String?   @unique @db.Uuid
   opened_at      DateTime? @db.Timestamptz(6)
   open_count     Int       @default(0)
+  retry_count    Int       @default(0)
+  last_retry_at  DateTime? @db.Timestamptz(6)
   users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id], map: "idx_email_logs_user_id")
   @@index([email_type], map: "idx_email_logs_type")
   @@index([entity_type, entity_id], map: "idx_email_logs_entity")
   @@index([sent_at], map: "idx_email_logs_sent_at")
+  @@index([status, retry_count], map: "idx_email_logs_retry")
+}
+
+/// 信件模板：可在後台編輯的 HTML 郵件模板
+model email_templates {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(200)
+  slug        String?   @unique @db.VarChar(100)
+  subject     String    @db.VarChar(500)
+  preheader   String?   @db.VarChar(300)
+  body        String
+  variables   String[]  @default([])
+  data_source String    @default("none") @db.VarChar(20)
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @updatedAt @db.Timestamptz(6)
+
+  @@index([slug], map: "idx_email_templates_slug")
+  @@index([is_active], map: "idx_email_templates_active")
+}
+
+/// 觸發式郵件規則：定義自動發信的條件、模板與排程
+model email_trigger_rules {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(100)
+  description  String?   @db.VarChar(500)
+  trigger_type String    @db.VarChar(50)
+  trigger_config Json    @default("{}")
+  template     String    @db.VarChar(50)
+  subject      String    @db.VarChar(255)
+  enabled      Boolean   @default(true)
+  sent_count   Int       @default(0)
+  open_rate    Float     @default(0)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+  created_by   Int?
+
+  @@index([trigger_type], map: "idx_email_trigger_rules_type")
+  @@index([enabled], map: "idx_email_trigger_rules_enabled")
+}
+
+/// 觸發式郵件執行紀錄
+model email_trigger_logs {
+  id         Int       @id @default(autoincrement())
+  rule_id    Int
+  rule_name  String    @db.VarChar(100)
+  recipient  String    @db.VarChar(255)
+  status     String    @default("success") @db.VarChar(20)
+  sent_at    DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([rule_id], map: "idx_email_trigger_logs_rule")
+  @@index([sent_at], map: "idx_email_trigger_logs_sent_at")
+}
+
+/// 管理員通知：後台建立的站內通知/公告
+model admin_notifications {
+  id         Int       @id @default(autoincrement())
+  title      String    @db.VarChar(200)
+  content    String?
+  type       String    @db.VarChar(50)
+  target     String    @db.VarChar(100)
+  status     String    @default("draft") @db.VarChar(20)
+  sent_at    DateTime? @db.Timestamptz(6)
+  read_count Int       @default(0)
+  total_sent Int       @default(0)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @db.Timestamptz(6)
+  created_by Int?
+
+  @@index([status], map: "idx_admin_notifications_status")
+  @@index([type], map: "idx_admin_notifications_type")
+  @@index([sent_at], map: "idx_admin_notifications_sent_at")
 }
 
 /// 用戶登入歷史表：記錄每次登入的時間和裝置資訊
@@ -1286,6 +1371,54 @@ model interaction_counts {
   @@index([user_b_id], map: "idx_interaction_counts_user_b")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_onboarding {
+  id               Int       @id @default(autoincrement())
+  user_id          Int       @unique(map: "idx_user_onboarding_user_id")
+  user_source       String    @db.VarChar(10)
+  task_states       Json      @default("{}")
+  task_completed_at Json      @default("{}")
+  email_states      Json      @default("{}")
+  creation_method   String?   @db.VarChar(20)
+  registration_flow String?   @db.VarChar(30)
+  badge_granted     Boolean   @default(false)
+  badge_granted_at  DateTime? @db.Timestamptz(6)
+  completed_at      DateTime? @db.Timestamptz(6)
+  days_to_complete  Int?
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([badge_granted], map: "idx_user_onboarding_badge_granted")
+  @@index([registration_flow], map: "idx_user_onboarding_registration_flow")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
 enum age_t {
   preschool
   elementary
@@ -1505,4 +1638,257 @@ enum project_status {
   Completed
   Not_Started @map("Not Started")
   Canceled
+}
+
+// ─── Learner Persona ──────────────────────────────────────────────────────────
+
+enum persona_question_type_t {
+  choice
+  sentence_completion
+  scenario
+}
+
+model persona_questions {
+  id                   Int                      @id @default(autoincrement())
+  question_type        persona_question_type_t
+  is_new_user_priority Boolean                  @default(false)
+  created_at           DateTime                 @default(now()) @db.Timestamptz(6)
+
+  persona_answers                  persona_answers[]
+  persona_skips                    persona_skips[]
+  persona_question_translations    persona_question_translations[]
+}
+
+model persona_question_translations {
+  id          Int     @id @default(autoincrement())
+  question_id Int
+  locale      String  @db.VarChar(10)
+  prompt      String
+  options     Json?
+
+  persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([question_id, locale], map: "uq_persona_question_translations_question_locale")
+  @@index([locale], map: "idx_persona_question_translations_locale")
+}
+
+model persona_answers {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  question_id    Int
+  selected_value String?   @db.VarChar(500)
+  text_answer    String?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+
+  users             users             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, question_id], map: "uq_persona_answers_user_question")
+  @@index([user_id], map: "idx_persona_answers_user_id")
+  @@index([question_id], map: "idx_persona_answers_question_id")
+}
+
+model persona_skips {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  question_id Int
+  skip_count  Int       @default(0)
+  suppressed  Boolean   @default(false)
+  updated_at  DateTime? @db.Timestamptz(6)
+
+  users             users             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  persona_questions persona_questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, question_id], map: "uq_persona_skips_user_question")
+  @@index([user_id], map: "idx_persona_skips_user_id")
+}
+
+model persona_user_state {
+  user_id                          Int       @id
+  session_count_since_last_prompt  Int       @default(0)
+  last_prompt_timestamp            DateTime? @db.Timestamptz(6)
+  last_dismissed_at                DateTime? @db.Timestamptz(6)
+  created_at                       DateTime  @default(now()) @db.Timestamptz(6)
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model roadmap_items {
+  id            Int                     @id @default(autoincrement())
+  external_id   String                  @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String                  @db.VarChar(255)
+  description   String
+  category      String                  @db.VarChar(20)
+  status        String                  @default("collected") @db.VarChar(20)
+  support_count Int                     @default(0)
+  is_public     Boolean                 @default(true)
+  pinned        Boolean                 @default(false)
+  sort_order    Int                     @default(0)
+  shipped_at    DateTime?               @db.Timestamptz(6)
+  created_at    DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime                @default(now()) @db.Timestamptz(6)
+  wishes        wishes[]
+  supports      roadmap_item_supports[]
+
+  @@index([status], map: "idx_roadmap_items_status")
+  @@index([is_public, status], map: "idx_roadmap_items_public_status")
+  @@index([category], map: "idx_roadmap_items_category")
+}
+
+model wishes {
+  id                     Int            @id @default(autoincrement())
+  category               String         @db.VarChar(20)
+  situation              String
+  desire                 String
+  submitter_user_id      Int
+  contact_email          String?        @db.VarChar(255)
+  status                 String         @default("pending") @db.VarChar(20)
+  linked_roadmap_item_id Int?
+  internal_module_tag    String?        @db.VarChar(50)
+  source                 String         @default("web") @db.VarChar(10)
+  created_at             DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime       @default(now()) @db.Timestamptz(6)
+  submitter              users          @relation(fields: [submitter_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_wishes_submitter")
+  linked_item            roadmap_items? @relation(fields: [linked_roadmap_item_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_wishes_linked_item")
+
+  @@index([status], map: "idx_wishes_status")
+  @@index([category], map: "idx_wishes_category")
+  @@index([submitter_user_id], map: "idx_wishes_submitter")
+  @@index([linked_roadmap_item_id], map: "idx_wishes_linked_item")
+}
+
+model roadmap_item_supports {
+  id              Int           @id @default(autoincrement())
+  roadmap_item_id Int
+  user_id         Int
+  origin          String        @default("vote") @db.VarChar(20)
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  roadmap_item    roadmap_items @relation(fields: [roadmap_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ris_item")
+  user            users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ris_user")
+
+  @@unique([roadmap_item_id, user_id], map: "uq_roadmap_item_supports")
+  @@index([roadmap_item_id], map: "idx_ris_item")
+  @@index([user_id], map: "idx_ris_user")
+}
+
+// ─── Survey ───────────────────────────────────────────────────────────────────
+
+enum survey_status_t {
+  draft
+  active
+  closed
+  archived
+}
+
+enum question_type_t {
+  multiple_choice
+  single_choice
+  rating
+  text
+  yesno
+  scale
+  ranking
+}
+
+model surveys {
+  id            Int              @id @default(autoincrement())
+  external_id   String           @unique @default(dbgenerated("gen_random_uuid()::text"))
+  title         String
+  description   String?
+  status        survey_status_t  @default(draft)
+  is_public     Boolean          @default(true)
+  is_anonymous  Boolean          @default(false)
+  max_responses Int?
+  tags          String[]         @default([])
+  cover_url     String?
+  view_count    Int              @default(0)
+  created_by    Int
+  start_time    DateTime?        @db.Timestamptz(6)
+  end_time      DateTime?        @db.Timestamptz(6)
+  created_at    DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime         @updatedAt @db.Timestamptz(6)
+
+  questions         questions[]
+  responses         survey_responses[]
+  partial_submissions survey_partial_submissions[]
+
+  @@index([created_by], map: "idx_surveys_created_by")
+  @@index([status], map: "idx_surveys_status")
+}
+
+model questions {
+  id            Int              @id @default(autoincrement())
+  survey_id     Int
+  question_type question_type_t
+  question_text String
+  is_required   Boolean          @default(false)
+  position      Int              @default(0)
+  conditions    Json             @default("[]") @db.JsonB
+  created_at    DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime         @updatedAt @db.Timestamptz(6)
+
+  survey   surveys            @relation(fields: [survey_id], references: [id], onDelete: Cascade)
+  options  question_options[]
+  answers  survey_answers[]
+
+  @@index([survey_id], map: "idx_questions_survey_id")
+}
+
+model question_options {
+  id          Int      @id @default(autoincrement())
+  question_id Int
+  option_text String
+  position    Int      @default(0)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  question questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@index([question_id], map: "idx_question_options_question_id")
+}
+
+model survey_responses {
+  id           Int       @id @default(autoincrement())
+  survey_id    Int
+  user_id      Int?
+  started_at   DateTime? @db.Timestamptz(6)
+  completed_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  survey  surveys          @relation(fields: [survey_id], references: [id], onDelete: Cascade)
+  answers survey_answers[]
+
+  @@index([survey_id], map: "idx_survey_responses_survey_id")
+  @@index([user_id], map: "idx_survey_responses_user_id")
+}
+
+model survey_partial_submissions {
+  id            Int      @id @default(autoincrement())
+  survey_id     Int
+  session_key   String
+  last_position Int      @default(0)
+  started_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @updatedAt @db.Timestamptz(6)
+
+  survey surveys @relation(fields: [survey_id], references: [id], onDelete: Cascade)
+
+  @@unique([survey_id, session_key])
+  @@index([survey_id, last_position], map: "idx_partial_submissions_survey_position")
+}
+
+model survey_answers {
+  id                  Int             @id @default(autoincrement())
+  survey_response_id  Int
+  survey_id           Int
+  question_id         Int
+  question_type       question_type_t
+  answer_text         String?
+  selected_option_ids Int[]           @default([])
+  rating_value        Int?
+  boolean_value       Boolean?
+
+  response  survey_responses @relation(fields: [survey_response_id], references: [id], onDelete: Cascade)
+  question  questions        @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@index([survey_response_id], map: "idx_survey_answers_response_id")
+  @@index([survey_id, question_id], map: "idx_survey_answers_survey_question")
 }

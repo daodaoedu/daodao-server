@@ -5,9 +5,11 @@
 
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
-import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
-import { getReferralGroup } from '../services/email/welcome-template';
+import { emailService } from '../services/email/email.service';
+import { enqueueOnboardingL0Email, enqueueNextSequenceEmail } from '../queues/onboarding-email.queue';
+import { deriveUserSource } from '../utils/onboarding-source';
 import { authService } from '../services/auth/auth.service';
+import { personaService } from '../services/persona.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import {
@@ -23,7 +25,8 @@ import {
   verifyEmailResponseSchema,
   appleSignInResponseSchema
 } from '../validators/auth.validators';
-import { setAuthCookie, clearAuthCookie, getAuthToken } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, getAuthToken, clearQuizClaimCookie, QUIZ_CLAIM_COOKIE_NAME } from '../utils/cookie-config';
+import { quizService } from '../services/quiz.service';
 import {
   validateOAuthState,
   OAuthState
@@ -34,6 +37,43 @@ import { isCustomScheme, buildRedirectUrl } from '../utils/redirect-validation';
 import { oauthNonceService } from '../services/auth/oauth-nonce.service';
 import { authCodeService } from '../services/auth/auth-code.service';
 import { extractDeviceInfo } from '../utils/device-info.utils';
+
+const ONBOARDING_SEQUENCE_DELAY_MS = 3 * 60 * 1000;
+
+/**
+ * 嘗試自動認領匿名測驗結果（從 quiz_claim cookie）。
+ * 認領成功才清除 cookie；失敗時保留 cookie 讓下次請求可重試。
+ */
+async function tryAutoClaimQuiz(req: Request, res: Response, userId: number): Promise<void> {
+  const claimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+  if (!claimToken) return;
+
+  try {
+    const claimed = await quizService.claimByToken(userId, claimToken);
+    if (claimed) {
+      clearQuizClaimCookie(res);
+      loggerService.info('Auto-claimed quiz result', { userId });
+    }
+  } catch (err) {
+    loggerService.warn('Failed to auto-claim quiz result', {
+      userId,
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
+}
+
+/** Email 驗證成功後，排程序列第一封提醒信（所有 source 皆適用） */
+function enqueueSequenceAfterVerification(userId: number, referralSource: string | null | undefined): void {
+  const userSource = deriveUserSource(referralSource, false);
+
+  enqueueNextSequenceEmail(userId, userSource, ONBOARDING_SEQUENCE_DELAY_MS)
+    .catch((error: unknown) => {
+      loggerService.error('Failed to enqueue onboarding sequence email after verification', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+      });
+    });
+}
 
 /**
  * 用戶登入
@@ -170,6 +210,9 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
         error: error instanceof Error ? error.message : String(error)
       });
     }
+    personaService.incrementSession(id).catch(() => undefined);
+
+    await tryAutoClaimQuiz(req, res, id);
   }
 
   // 根據來源決定重定向目標
@@ -187,6 +230,23 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
     });
 
     loggerService.debug('OAuth callback - app redirect with auth code', { isNewUser });
+  } else if (oauthState.source === 'admin') {
+    // Admin UI 登入：檢查是否有 admin 角色
+    const adminFrontendUrl = process.env.ADMIN_FRONTEND_URL || 'http://localhost:3002';
+    const hasAdminRole = Array.isArray(payload.roles) && payload.roles.some(
+      (role: string) => role === 'super_admin' || role === 'admin'
+    );
+
+    if (!hasAdminRole) {
+      loggerService.warn('OAuth callback - non-admin user attempted admin login', { userId: id });
+      redirectTarget = `${adminFrontendUrl}/admin/auth/error?reason=not_admin`;
+    } else {
+      redirectTarget = buildRedirectUrl(`${adminFrontendUrl}/admin/auth/callback`, {
+        state: stateParam,
+        redirect: nonceData.redirectUrl
+      });
+      loggerService.debug('OAuth callback - admin redirect', { userId: id });
+    }
   } else {
     // Web 登入：重定向到前端 callback 頁面（token 已在 cookie 中）
     // 同時傳遞 state（完整資訊）和 redirect（明確最終 URL，免除前端解碼負擔）
@@ -198,6 +258,24 @@ export const googleCallback = asyncHandler(async (req: Request, res: Response) =
 
     loggerService.debug('OAuth callback - web redirect', { isNewUser, redirectUrl: nonceData.redirectUrl });
   }
+
+  const setCookieHeader = res.getHeader('Set-Cookie');
+  loggerService.info('OAuth callback set auth cookie', {
+    userAgent: req.get('User-Agent'),
+    secChUa: req.get('Sec-CH-UA'),
+    secChUaMobile: req.get('Sec-CH-UA-Mobile'),
+    secChUaPlatform: req.get('Sec-CH-UA-Platform'),
+    origin: req.get('Origin'),
+    referer: req.get('Referer'),
+    host: req.get('Host'),
+    forwardedHost: req.get('X-Forwarded-Host'),
+    forwardedProto: req.get('X-Forwarded-Proto'),
+    ip: req.ip,
+    frontendUrl,
+    cookieDomain: process.env.COOKIE_DOMAIN,
+    redirectTarget,
+    setCookieHeaderCount: Array.isArray(setCookieHeader) ? setCookieHeader.length : setCookieHeader ? 1 : 0
+  });
 
   res.redirect(redirectTarget);
 });
@@ -261,6 +339,26 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
   const token = getAuthToken(req);
 
   if (!token) {
+    loggerService.warn('Auth me missing token', {
+      userAgent: req.get('User-Agent'),
+      secChUa: req.get('Sec-CH-UA'),
+      secChUaMobile: req.get('Sec-CH-UA-Mobile'),
+      secChUaPlatform: req.get('Sec-CH-UA-Platform'),
+      origin: req.get('Origin'),
+      referer: req.get('Referer'),
+      host: req.get('Host'),
+      forwardedHost: req.get('X-Forwarded-Host'),
+      forwardedProto: req.get('X-Forwarded-Proto'),
+      ip: req.ip,
+      cookieDomain: process.env.COOKIE_DOMAIN,
+      cookieNames: Object.keys(req.cookies ?? {}),
+      hasAuthTokenCookie: Boolean(req.cookies?.auth_token),
+      hasAuthorizationHeader: Boolean(req.get('Authorization')),
+      secFetchSite: req.get('Sec-Fetch-Site'),
+      secFetchMode: req.get('Sec-Fetch-Mode'),
+      secFetchDest: req.get('Sec-Fetch-Dest')
+    });
+
     throw new UnauthorizedError('缺少認證令牌');
   }
   
@@ -404,20 +502,15 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     }
     loggerService.info('User email verification updated', { userId: user.id });
 
-    // 發送歡迎郵件（fire-and-forget，不阻斷驗證回應）
-    const contact = user.contacts;
-    if (contact?.email) {
-      sendWelcomeEmailWithLog(contact.email, {
-        name: user.nickname || 'User',
-        referralGroup: getReferralGroup(user.referral_source ?? undefined),
-        userId: user.id
-      }).catch(error => {
-        loggerService.error('Failed to send welcome email after email verification', {
+    // Email 驗證成功，觸發 L0 歡迎信（註冊時已建立 onboarding 記錄但 skipL0Email）
+    enqueueOnboardingL0Email(user.id, deriveUserSource(user.referral_source ?? null, false))
+      .catch(error => {
+        loggerService.error('Failed to enqueue onboarding L0 email after verification', {
           error: error instanceof Error ? error.message : String(error),
-          userId: user.id
+          userId: user.id,
         });
       });
-    }
+    enqueueSequenceAfterVerification(user.id, user.referral_source ?? null);
 
     const response = createSuccessResponse({
       message: '郵件驗證成功'
@@ -476,20 +569,15 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
       return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
     }
 
-    // 發送歡迎郵件（fire-and-forget，不阻斷 redirect 回應）
-    const contact = user.contacts;
-    if (contact?.email) {
-      sendWelcomeEmailWithLog(contact.email, {
-        name: user.nickname || 'User',
-        referralGroup: getReferralGroup(user.referral_source ?? undefined),
-        userId: user.id
-      }).catch(error => {
-        loggerService.error('Failed to send welcome email after email verification (GET)', {
+    // Email 驗證成功，觸發 L0 歡迎信
+    enqueueOnboardingL0Email(user.id, deriveUserSource(user.referral_source ?? null, false))
+      .catch(error => {
+        loggerService.error('Failed to enqueue onboarding L0 email after verification (GET)', {
           error: error instanceof Error ? error.message : String(error),
-          userId: user.id
+          userId: user.id,
         });
       });
-    }
+    enqueueSequenceAfterVerification(user.id, user.referral_source ?? null);
 
     return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=verified`);
   } catch (err) {
@@ -580,6 +668,11 @@ export const appleSignIn = asyncHandler(async (req: Request, res: Response) => {
   // 設定 HTTP-only Cookie
   setAuthCookie(res, result.data.token);
 
+  // 自動認領匿名測驗結果
+  if (result.data.user?.id) {
+    await tryAutoClaimQuiz(req, res, result.data.user.id);
+  }
+
   // 驗證與回傳響應
   const validatedResponse = appleSignInResponseSchema.parse(result);
   res.json(validatedResponse);
@@ -617,6 +710,11 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     name: decoded.username || '',
     avatar: ''
   };
+
+  if (!decoded.isTemp && decoded.id) {
+    personaService.incrementSession(decoded.id).catch(() => undefined);
+    await tryAutoClaimQuiz(req, res, decoded.id);
+  }
 
   // 如果不是臨時用戶，獲取完整資訊
   if (!decoded.isTemp && decoded._id) {
