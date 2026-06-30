@@ -39,7 +39,7 @@ import {
   BadRequestError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
-import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, QUIZ_CLAIM_COOKIE_NAME, clearQuizClaimCookie } from '../utils/cookie-config';
 import { permissionService } from '../services/auth/permission.service';
 
 /**
@@ -202,10 +202,15 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const requestData = validation.data as CreateUserRequest;
-  const result = await userService.createUser(requestData, currentUser.id.toString());
+  const quizClaimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+  const result = await userService.createUser(requestData, currentUser.id.toString(), { quizClaimToken });
 
   if (result.data?.token) {
     setAuthCookie(res, result.data.token);
+  }
+
+  if (result.quizClaimed) {
+    clearQuizClaimCookie(res);
   }
 
   const validatedResponse = createUserResponseSchema.parse(result);

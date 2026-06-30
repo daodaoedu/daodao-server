@@ -7,6 +7,7 @@ import { prisma } from './database/prisma.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
 import { onboardingService } from './onboarding.service';
+import { quizService } from './quiz.service';
 import { deriveUserSource } from '../utils/onboarding-source';
 import { cityService } from './city.service';
 import {
@@ -743,7 +744,11 @@ const getOneUser = async (
 /**
  * 創建用戶
  */
-const createUser = async (userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>> => {
+const createUser = async (
+  userData: CreateUserRequest,
+  tempUserId: string,
+  opts?: { quizClaimToken?: string }
+): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }> & { quizClaimed?: boolean }> => {
   // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
   // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
   const { response, emailData, onboardingData } = await prisma.$transaction(async (tx) => {
@@ -1011,7 +1016,24 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     });
   }
 
-  return response;
+  // 認領匿名測驗結果（臨時用戶轉正式用戶時，用正式的 users.id 認領）
+  let quizClaimed = false;
+  if (opts?.quizClaimToken) {
+    try {
+      const claimed = await quizService.claimByToken(onboardingData.userId, opts.quizClaimToken);
+      if (claimed) {
+        quizClaimed = true;
+        loggerService.info('Claimed pending quiz result during registration', { userId: onboardingData.userId });
+      }
+    } catch (err: unknown) {
+      loggerService.warn('Failed to claim quiz result during registration', {
+        userId: onboardingData.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return { ...response, quizClaimed };
 };
 
 /**
