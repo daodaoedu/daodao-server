@@ -85,6 +85,16 @@ export interface PracticeEntity {
     commentCount: number;
   };
   checkIns?: CheckInEntity[];
+  /** 使用者的實踐反思文字（DB 欄位已存在，供總結頁顯示） */
+  reflection?: string;
+  /** 「接下來我想」文字，實踐總結頁使用 */
+  nextIntent?: string;
+  /** 使用者精選的打卡 ID 列表，實踐總結頁使用 */
+  selectedCheckInIds?: string[];
+  /** 使用者對 AI 洞察的回饋 */
+  insightFeedback?: { type: 'positive' | 'negative'; reasons?: string[] } | null;
+  /** 打卡筆記平均字數，實踐總結頁使用 */
+  avgWords?: number;
 }
 
 // Check-in entity interface - 基於 Prisma schema practice_checkins 表

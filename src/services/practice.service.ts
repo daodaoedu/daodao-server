@@ -364,7 +364,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     }
 
     // 取得統計數據、標籤和資源
-    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts] = await Promise.all([
+    const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts, avgWords] = await Promise.all([
       getCommentCounts([id]),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
@@ -390,7 +390,9 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       // 查詢瀏覽數
       getViewCount('practice', id),
       // 查詢迴響數
-      getReactionCounts([id])
+      getReactionCounts([id]),
+      // 計算打卡筆記平均字數
+      getAvgWords(id)
     ]);
 
     const resources = resourcesMap[id] || [];
@@ -432,7 +434,12 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         favoriteCount: 0,
         shareCount: 0,
         commentCount: comments[id] || 0
-      }
+      },
+      reflection: practice.reflection ?? undefined,
+      nextIntent: practice.next_intent ?? undefined,
+      selectedCheckInIds: (practice.selected_checkin_ids as string[] | null) ?? [],
+      insightFeedback: (practice.insight_feedback as PracticeEntity['insightFeedback']) ?? null,
+      avgWords
     };
 
     loggerService.info('Practice detail retrieved', { practiceId: id, userId, resourceCount: resources.length });
@@ -1248,6 +1255,32 @@ async function getCheckInCounts(practiceIds: number[]): Promise<Record<number, n
   } catch (error) {
     loggerService.warn('Failed to get check-in counts', { practiceIds, error });
     return {};
+  }
+}
+
+/**
+ * 計算單一實踐打卡筆記的平均字數（供實踐總結頁使用）
+ *
+ * 使用 raw SQL 是因為 Prisma 的 aggregate API 無法針對字串長度／字數做平均計算，
+ * 需要透過 PostgreSQL 的 regexp_split_to_array 來拆字計算字數。
+ */
+async function getAvgWords(practiceId: number): Promise<number> {
+  try {
+    const result = await prismaClient.$queryRaw<{ avg_words: number | null }[]>`
+      SELECT COALESCE(
+        AVG(array_length(regexp_split_to_array(trim(note), '\\s+'), 1)),
+        0
+      )::numeric AS avg_words
+      FROM practice_checkins
+      WHERE practice_id = ${practiceId}
+        AND note IS NOT NULL
+        AND trim(note) != ''
+    `;
+
+    return Math.round(Number(result[0]?.avg_words ?? 0));
+  } catch (error) {
+    loggerService.warn('Failed to compute average check-in note word count', { practiceId, error });
+    return 0;
   }
 }
 

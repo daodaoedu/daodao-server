@@ -429,6 +429,10 @@ model practices {
   copy_count               Int                       @default(0)
   creation_source          String?                   @db.VarChar(20)
   is_featured              Boolean                   @default(false)
+  next_intent              String?
+  next_intent_draft_id     Int?
+  selected_checkin_ids     Json?                     @default("[]")
+  insight_feedback         Json?
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
