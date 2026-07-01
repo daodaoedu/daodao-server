@@ -32,6 +32,10 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     userSource,
     registrationFlow,
     creationMethod,
+    lastLoginFrom,
+    lastLoginTo,
+    lastActivityFrom,
+    lastActivityTo,
     page = 1,
     limit = 20,
     sortBy = 'createdAt',
@@ -62,6 +66,24 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
   // 篩選 email 驗證狀態
   if (isVerified !== undefined) {
     where.verified = isVerified;
+  }
+
+  // 篩選最後登入 / 最後操作日期區間
+  if (lastLoginFrom || lastLoginTo || lastActivityFrom || lastActivityTo) {
+    const statsFilter: Record<string, unknown> = {};
+    if (lastLoginFrom || lastLoginTo) {
+      const loginFilter: Record<string, Date> = {};
+      if (lastLoginFrom) loginFilter.gte = new Date(`${lastLoginFrom}T00:00:00.000Z`);
+      if (lastLoginTo) loginFilter.lte = new Date(`${lastLoginTo}T23:59:59.999Z`);
+      statsFilter.last_login_at = loginFilter;
+    }
+    if (lastActivityFrom || lastActivityTo) {
+      const activityFilter: Record<string, Date> = {};
+      if (lastActivityFrom) activityFilter.gte = new Date(`${lastActivityFrom}T00:00:00.000Z`);
+      if (lastActivityTo) activityFilter.lte = new Date(`${lastActivityTo}T23:59:59.999Z`);
+      statsFilter.last_active_at = activityFilter;
+    }
+    where.user_activity_stats = { is: statsFilter as Prisma.user_activity_statsWhereInput };
   }
 
   // 篩選人物誌類型（有做過該類型測驗的用戶）
@@ -105,6 +127,9 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       break;
     case 'lastLoginAt':
       orderBy.user_activity_stats = { last_login_at: { sort: sortOrder, nulls: 'last' } };
+      break;
+    case 'lastActiveAt':
+      orderBy.user_activity_stats = { last_active_at: { sort: sortOrder, nulls: 'last' } };
       break;
     case 'registrationFlow':
       orderBy.user_onboarding = { registration_flow: sortOrder };

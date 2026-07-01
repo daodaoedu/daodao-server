@@ -122,7 +122,7 @@ export const getUserPracticesList = asyncHandler(async (req: Request, res: Respo
   const result = await findUserPractices(params.userId, {
     page,
     limit,
-    sortBy: (req.query.sort ?? req.query.sortBy) as SortField | undefined,
+              sortBy: (req.query.sort ?? req.query.sortBy) as SortField | undefined,
     sortOrder: (req.query.order ?? req.query.sortOrder) as SortOrder | undefined,
     status: req.query.status as string | undefined,
   });
