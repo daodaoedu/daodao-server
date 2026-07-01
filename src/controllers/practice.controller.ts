@@ -773,6 +773,76 @@ export class PracticeController {
   });
 
   /**
+   * 更新實踐反思文字
+   * PATCH /api/v1/practices/:id/reflection
+   */
+  patchReflection = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const result = await practiceService.updateReflection(practiceId, req.user.id, req.body.reflection);
+
+    res.json(result);
+  });
+
+  /**
+   * 更新「接下來我想」文字
+   * PATCH /api/v1/practices/:id/next-intent
+   */
+  patchNextIntent = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const result = await practiceService.updateNextIntent(
+      practiceId,
+      req.user.id,
+      req.body.nextIntent,
+      req.body.saveDraft
+    );
+
+    res.json(result);
+  });
+
+  /**
+   * 更新精選打卡列表
+   * PATCH /api/v1/practices/:id/selected-checkins
+   */
+  patchSelectedCheckins = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const result = await practiceService.updateSelectedCheckins(practiceId, req.user.id, req.body.checkinIds);
+
+    res.json(result);
+  });
+
+  /**
+   * 建立 AI 洞察回饋
+   * POST /api/v1/practices/:id/insight-feedback
+   */
+  createInsightFeedback = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const result = await practiceService.createInsightFeedback(
+      practiceId,
+      req.user.id,
+      req.body.type,
+      req.body.reasons
+    );
+
+    res.json(result);
+  });
+
+  /**
    * 封存實踐
    * POST /api/v1/practices/:id/archive
    */

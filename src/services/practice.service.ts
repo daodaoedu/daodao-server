@@ -43,6 +43,7 @@ import { enqueuePracticeEmail } from '../queues';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
+import { externalToInternalId } from './id-converter.service';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
 let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
@@ -1761,6 +1762,173 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
 
   } catch (error) {
     loggerService.error('Failed to copy practice', { sourceId, userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 更新實踐反思文字（實踐總結頁）
+ */
+export async function updateReflection(
+  practiceId: number,
+  userId: number,
+  reflection: string
+): Promise<ApiSuccessResponse<{ reflection: string }>> {
+  try {
+    const practice = await prismaClient.practices.findUnique({
+      where: { id: practiceId },
+      select: { user_id: true, deleted_at: true }
+    });
+
+    if (!practice || practice.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    if (practice.user_id !== userId) {
+      throw new ForbiddenError('只有實踐擁有者可以編輯反思');
+    }
+
+    const updated = await prismaClient.practices.update({
+      where: { id: practiceId },
+      data: { reflection, updated_at: new Date() },
+      select: { reflection: true }
+    });
+
+    return createSuccessResponse({ reflection: updated.reflection || '' });
+  } catch (error) {
+    loggerService.error('Failed to update practice reflection', { practiceId, userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 更新「接下來我想」文字（實踐總結頁）
+ * - 若 saveDraft 為 true，會複製此實踐建立草稿，並將草稿 ID 存於 next_intent_draft_id
+ */
+export async function updateNextIntent(
+  practiceId: number,
+  userId: number,
+  nextIntent: string,
+  saveDraft?: boolean
+): Promise<ApiSuccessResponse<{ nextIntent: string; draftId?: string }>> {
+  try {
+    const practice = await prismaClient.practices.findUnique({
+      where: { id: practiceId },
+      select: { user_id: true, deleted_at: true }
+    });
+
+    if (!practice || practice.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    if (practice.user_id !== userId) {
+      throw new ForbiddenError('只有實踐擁有者可以編輯「接下來我想」');
+    }
+
+    let draftExternalId: string | undefined;
+    let draftInternalId: number | undefined;
+
+    if (saveDraft) {
+      const copyResult = await copyPractice(practiceId, userId);
+      draftExternalId = copyResult.data.id;
+      draftInternalId = await externalToInternalId('practice', draftExternalId);
+    }
+
+    const updated = await prismaClient.practices.update({
+      where: { id: practiceId },
+      data: {
+        next_intent: nextIntent,
+        ...(draftInternalId !== undefined ? { next_intent_draft_id: draftInternalId } : {}),
+        updated_at: new Date()
+      },
+      select: { next_intent: true }
+    });
+
+    return createSuccessResponse({
+      nextIntent: updated.next_intent || '',
+      ...(draftExternalId ? { draftId: draftExternalId } : {})
+    });
+  } catch (error) {
+    loggerService.error('Failed to update practice next intent', { practiceId, userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 更新精選打卡列表（實踐總結頁）
+ * checkinIds 為外部 UUID，原樣存入 selected_checkin_ids JSONB 欄位
+ */
+export async function updateSelectedCheckins(
+  practiceId: number,
+  userId: number,
+  checkinIds: string[]
+): Promise<ApiSuccessResponse<{ selectedCheckinIds: string[] }>> {
+  try {
+    const practice = await prismaClient.practices.findUnique({
+      where: { id: practiceId },
+      select: { user_id: true, deleted_at: true }
+    });
+
+    if (!practice || practice.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    if (practice.user_id !== userId) {
+      throw new ForbiddenError('只有實踐擁有者可以編輯精選打卡');
+    }
+
+    const updated = await prismaClient.practices.update({
+      where: { id: practiceId },
+      data: {
+        selected_checkin_ids: checkinIds as Prisma.InputJsonValue,
+        updated_at: new Date()
+      },
+      select: { selected_checkin_ids: true }
+    });
+
+    return createSuccessResponse({
+      selectedCheckinIds: (updated.selected_checkin_ids as string[] | null) ?? []
+    });
+  } catch (error) {
+    loggerService.error('Failed to update practice selected checkins', { practiceId, userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 建立 AI 洞察回饋（實踐總結頁）
+ */
+export async function createInsightFeedback(
+  practiceId: number,
+  userId: number,
+  type: 'positive' | 'negative',
+  reasons?: string[]
+): Promise<ApiSuccessResponse<{ success: boolean }>> {
+  try {
+    const practice = await prismaClient.practices.findUnique({
+      where: { id: practiceId },
+      select: { user_id: true, deleted_at: true }
+    });
+
+    if (!practice || practice.deleted_at !== null) {
+      throw new NotFoundError('實踐不存在');
+    }
+
+    if (practice.user_id !== userId) {
+      throw new ForbiddenError('只有實踐擁有者可以提供洞察回饋');
+    }
+
+    await prismaClient.practices.update({
+      where: { id: practiceId },
+      data: {
+        insight_feedback: { type, reasons: reasons ?? [] } as Prisma.InputJsonValue,
+        updated_at: new Date()
+      }
+    });
+
+    return createSuccessResponse({ success: true });
+  } catch (error) {
+    loggerService.error('Failed to create practice insight feedback', { practiceId, userId, error });
     throw error;
   }
 }

@@ -1359,6 +1359,111 @@ export const createPracticeApiResponseSchema = apiSuccessResponseSchema(practice
 export const updatePracticeApiResponseSchema = apiSuccessResponseSchema(practiceEntityResponseSchema);
 export const operationSuccessApiResponseSchema = apiSuccessResponseSchema(operationSuccessResponseSchema);
 
+// ===== Practice Summary Schemas =====
+
+// 更新實踐反思請求
+export const patchReflectionSchema = z.object({
+  reflection: z.string()
+    .min(1, '反思內容不可為空')
+    .max(2000, '反思內容不可超過 2000 字')
+    .openapi({
+      description: '使用者的實踐反思文字',
+      example: '這次實踐讓我學到了很多，也培養了持續的習慣'
+    })
+}).openapi('PatchReflectionRequest', {
+  description: '更新實踐反思請求',
+  example: {
+    reflection: '這次實踐讓我學到了很多，也培養了持續的習慣'
+  }
+});
+
+// 註冊 PatchReflectionRequest
+registry.register('PatchReflectionRequest', patchReflectionSchema);
+
+// 更新「接下來我想」請求
+export const patchNextIntentSchema = z.object({
+  nextIntent: z.string()
+    .min(1, '「接下來我想」內容不可為空')
+    .max(2000, '「接下來我想」內容不可超過 2000 字')
+    .openapi({
+      description: '完成實踐後，接下來想做的事',
+      example: '我想繼續保持每天閱讀的習慣，並嘗試更難的書籍'
+    }),
+  saveDraft: z.boolean()
+    .optional()
+    .openapi({
+      description: '是否同時複製此實踐建立草稿',
+      example: false
+    })
+}).openapi('PatchNextIntentRequest', {
+  description: '更新「接下來我想」請求',
+  example: {
+    nextIntent: '我想繼續保持每天閱讀的習慣，並嘗試更難的書籍',
+    saveDraft: true
+  }
+});
+
+// 註冊 PatchNextIntentRequest
+registry.register('PatchNextIntentRequest', patchNextIntentSchema);
+
+// 更新精選打卡列表請求
+export const patchSelectedCheckinsSchema = z.object({
+  checkinIds: z.array(z.string().uuid('打卡 ID 格式不正確'))
+    .min(1, '請至少選擇一筆打卡紀錄')
+    .max(3, '最多選擇 3 筆打卡紀錄')
+    .openapi({
+      description: '精選打卡 ID 列表（外部 UUID，最多 3 筆）',
+      example: ['550e8400-e29b-41d4-a716-446655440000']
+    })
+}).openapi('PatchSelectedCheckinsRequest', {
+  description: '更新精選打卡列表請求',
+  example: {
+    checkinIds: ['550e8400-e29b-41d4-a716-446655440000']
+  }
+});
+
+// 註冊 PatchSelectedCheckinsRequest
+registry.register('PatchSelectedCheckinsRequest', patchSelectedCheckinsSchema);
+
+// 洞察回饋類型
+export const insightFeedbackTypeSchema = z.enum(['positive', 'negative']).openapi({
+  description: '洞察回饋類型 (positive: 正面, negative: 負面)',
+  example: 'positive'
+});
+
+// 建立洞察回饋請求
+export const createInsightFeedbackSchema = z.object({
+  type: insightFeedbackTypeSchema,
+  reasons: z.array(z.string().min(1).max(100))
+    .max(10, '回饋原因最多 10 個')
+    .optional()
+    .openapi({
+      description: '回饋原因（選填，通常用於負面回饋）',
+      example: ['內容不準確', '與我的實踐無關']
+    })
+}).openapi('CreateInsightFeedbackRequest', {
+  description: '建立 AI 洞察回饋請求',
+  example: {
+    type: 'positive',
+    reasons: []
+  }
+});
+
+// 註冊 CreateInsightFeedbackRequest
+registry.register('CreateInsightFeedbackRequest', createInsightFeedbackSchema);
+
+// 型別導出
+export type PatchReflectionRequest = z.infer<typeof patchReflectionSchema>;
+export type PatchNextIntentRequest = z.infer<typeof patchNextIntentSchema>;
+export type PatchSelectedCheckinsRequest = z.infer<typeof patchSelectedCheckinsSchema>;
+export type CreateInsightFeedbackRequest = z.infer<typeof createInsightFeedbackSchema>;
+
+// 驗證函數
+export const validatePatchReflection = (data: unknown): PatchReflectionRequest => patchReflectionSchema.parse(data);
+export const validatePatchNextIntent = (data: unknown): PatchNextIntentRequest => patchNextIntentSchema.parse(data);
+export const validatePatchSelectedCheckins = (data: unknown): PatchSelectedCheckinsRequest => patchSelectedCheckinsSchema.parse(data);
+export const validateCreateInsightFeedback = (data: unknown): CreateInsightFeedbackRequest => createInsightFeedbackSchema.parse(data);
+
 // 複製實踐回應
 export const copyPracticeResponseSchema = z.object({
   id: z.string().describe("新實踐 external ID（UUID）")
@@ -1459,7 +1564,14 @@ export const practiceValidators = {
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
   copyPracticeResponseSchema,
-  copyPracticeApiResponseSchema
+  copyPracticeApiResponseSchema,
+
+  // Practice Summary schemas
+  patchReflectionSchema,
+  patchNextIntentSchema,
+  patchSelectedCheckinsSchema,
+  insightFeedbackTypeSchema,
+  createInsightFeedbackSchema
 };
 
 export default practiceValidators;
