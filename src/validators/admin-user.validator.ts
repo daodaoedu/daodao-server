@@ -62,6 +62,7 @@ export const adminUserListQuerySchema = z.object({
   sortBy: z.enum([
     'createdAt',
     'lastLoginAt',
+    'lastActiveAt',
     'name',
     'email',
     'registrationFlow',
@@ -125,6 +126,34 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。',
       example: 'self_created'
+    }),
+  lastLoginFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後登入起始日期（含）',
+      example: '2024-01-01'
+    }),
+  lastLoginTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後登入結束日期（含）',
+      example: '2024-12-31'
+    }),
+  lastActivityFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後操作起始日期（含）',
+      example: '2024-01-01'
+    }),
+  lastActivityTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後操作結束日期（含）',
+      example: '2024-12-31'
     })
 }).openapi('AdminUserListQuery');
 
@@ -274,6 +303,10 @@ const adminUserListItemSchema = z.object({
   lastLoginAt: z.string().nullable().openapi({
     description: '最後登入時間',
     example: '2024-01-20T08:30:00.000Z'
+  }),
+  lastActiveAt: z.string().nullable().openapi({
+    description: '最後操作時間',
+    example: '2024-01-22T14:00:00.000Z'
   }),
   personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
     description: '最新一次學習風格測驗結果',

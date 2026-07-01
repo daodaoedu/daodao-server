@@ -1121,6 +1121,64 @@ export async function getActiveUsersTrend(query: {
 }
 
 /**
+ * 取得活躍用戶名單
+ * 回傳指定日期的 DAU / WAU / MAU 對應的實際用戶清單
+ */
+export async function getActiveUsersList(query: {
+  date: string;
+  period: 'day' | 'week' | 'month';
+}): Promise<Array<{
+  id: string;
+  name: string | null;
+  email: string | null;
+  photoURL: string | null;
+  lastActiveAt: string | null;
+}>> {
+  const periodDays = query.period === 'day' ? 1 : query.period === 'week' ? 7 : 30;
+  const since = getDaysAgo(periodDays);
+
+  const loginRecords = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: since },
+    },
+  });
+
+  const userIds = loginRecords.map((r) => r.user_id);
+  if (userIds.length === 0) return [];
+
+  const users = await prisma.users.findMany({
+    where: { id: { in: userIds } },
+    select: {
+      id: true,
+      external_id: true,
+      nickname: true,
+      contacts: {
+        select: {
+          email: true,
+          photo_url: true,
+        },
+      },
+      user_activity_stats: {
+        select: {
+          last_active_at: true,
+        },
+      },
+    },
+  });
+
+  return users.map((u) => ({
+    id: u.external_id || String(u.id),
+    name: u.nickname,
+    email: u.contacts?.email || null,
+    photoURL: u.contacts?.photo_url || null,
+    lastActiveAt: u.user_activity_stats?.last_active_at
+      ? formatDate(u.user_activity_stats.last_active_at)
+      : null,
+  }));
+}
+
+/**
  * 獲取用戶參與漏斗
  * 步驟：總用戶 → 30天活躍 → 7天活躍 → 今日活躍
  */
@@ -1263,6 +1321,7 @@ export default {
   getPopularProfiles,
   getUserActivitySegmentation,
   getActiveUsersTrend,
+  getActiveUsersList,
   getActiveUsersFunnel,
   getUserCohortRetention,
 };
