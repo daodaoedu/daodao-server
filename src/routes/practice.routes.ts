@@ -49,6 +49,11 @@ import {
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
   copyPracticeApiResponseSchema,
+  // Practice Summary
+  patchReflectionSchema,
+  patchNextIntentSchema,
+  patchSelectedCheckinsSchema,
+  createInsightFeedbackSchema,
   // Practice Template
   practiceTemplateQuerySchema,
   practiceTemplateParamsSchema,
@@ -1392,5 +1397,53 @@ router.post('/:id/unarchive',
   authenticate,
   validate(practiceParamsSchema, 'params'),
   practiceController.unarchive as RequestHandler);
+
+// ============================================================================
+// 實踐總結頁功能
+// ============================================================================
+
+/**
+ * PATCH /practices/:id/reflection
+ * 更新實踐反思文字
+ * 需要身份驗證和擁有權驗證
+ */
+router.patch('/:id/reflection',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  validate(patchReflectionSchema, 'body'),
+  practiceController.patchReflection as RequestHandler);
+
+/**
+ * PATCH /practices/:id/next-intent
+ * 更新「接下來我想」文字，可選擇同時建立草稿
+ * 需要身份驗證和擁有權驗證
+ */
+router.patch('/:id/next-intent',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  validate(patchNextIntentSchema, 'body'),
+  practiceController.patchNextIntent as RequestHandler);
+
+/**
+ * PATCH /practices/:id/selected-checkins
+ * 更新精選打卡列表（最多 3 筆）
+ * 需要身份驗證和擁有權驗證
+ */
+router.patch('/:id/selected-checkins',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  validate(patchSelectedCheckinsSchema, 'body'),
+  practiceController.patchSelectedCheckins as RequestHandler);
+
+/**
+ * POST /practices/:id/insight-feedback
+ * 建立 AI 洞察回饋
+ * 需要身份驗證和擁有權驗證
+ */
+router.post('/:id/insight-feedback',
+  authenticate,
+  validate(practiceParamsSchema, 'params'),
+  validate(createInsightFeedbackSchema, 'body'),
+  practiceController.createInsightFeedback as RequestHandler);
 
 export default router;
