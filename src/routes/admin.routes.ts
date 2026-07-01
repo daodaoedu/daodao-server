@@ -1459,5 +1459,6 @@ router.get('/quiz/stats', authenticateAny, requireAdmin, adminTrackingController
 router.get('/persona/stats', authenticateAny, requireAdmin, adminTrackingController.getPersonaStats as RequestHandler);
 router.get('/email/onboarding-stats', authenticateAny, requireAdmin, adminTrackingController.getEmailOnboardingStats as RequestHandler);
 router.get('/engagement/stats', authenticateAny, requireAdmin, adminTrackingController.getEngagementStats as RequestHandler);
+router.get('/metrics/drilldown', authenticateAny, requireAdmin, adminTrackingController.getMetricDrillDown as RequestHandler);
 
 export default router;

@@ -26,15 +26,25 @@ export interface AdminUserFilters {
   registrationFlow?: 'landing_page' | 'quiz' | 'action_maker';
   /** 篩選建立方式 */
   creationMethod?: 'self_created' | 'copied' | 'action_generator';
+  /** 最後登入起始日期 (YYYY-MM-DD) */
+  lastLoginFrom?: string;
+  /** 最後登入結束日期 (YYYY-MM-DD) */
+  lastLoginTo?: string;
+  /** 最後操作起始日期 (YYYY-MM-DD) */
+  lastActivityFrom?: string;
+  /** 最後操作結束日期 (YYYY-MM-DD) */
+  lastActivityTo?: string;
   /** 頁數 */
   page?: number;
   /** 每頁數量 */
   limit?: number;
   /** 排序欄位 */
-  sortBy?: 'createdAt' | 'lastLoginAt' | 'name' | 'email' | 'registrationFlow' | 'creationMethod' | 'daysToComplete';
+  sortBy?: 'createdAt' | 'lastLoginAt' | 'lastActiveAt' | 'name' | 'email' | 'registrationFlow' | 'creationMethod' | 'daysToComplete';
   /** 排序方向 */
   sortOrder?: 'asc' | 'desc';
 }
+
+export type AdminUserSortField = NonNullable<AdminUserFilters['sortBy']>;
 
 /**
  * 角色資訊

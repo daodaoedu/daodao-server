@@ -478,6 +478,125 @@ export async function getEngagementStats() {
   }
 }
 
+type DrillDownUser = {
+  id: string
+  name: string | null
+  email: string | null
+  photoURL: string | null
+  lastActiveAt: string | null
+}
+
+function mapUsers(rows: Array<{
+  external_id: string | null
+  id: number
+  nickname: string | null
+  contacts: { email: string | null; photo_url: string | null } | null
+  user_activity_stats: { last_active_at: Date | null } | null
+}>): DrillDownUser[] {
+  return rows.map(u => ({
+    id: u.external_id || String(u.id),
+    name: u.nickname,
+    email: u.contacts?.email || null,
+    photoURL: u.contacts?.photo_url || null,
+    lastActiveAt: u.user_activity_stats?.last_active_at?.toISOString() || null,
+  }))
+}
+
+const USER_SELECT = {
+  id: true,
+  external_id: true,
+  nickname: true,
+  contacts: { select: { email: true, photo_url: true } },
+  user_activity_stats: { select: { last_active_at: true } },
+} as const
+
+export async function getMetricDrillDown(metric: string): Promise<DrillDownUser[]> {
+  switch (metric) {
+    case 'badge_completed': {
+      const rows = await prisma.users.findMany({
+        where: { user_onboarding: { badge_granted: true } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'quiz_completed': {
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        SELECT DISTINCT user_id FROM quiz_results WHERE user_id IS NOT NULL
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'practice_abandoned': {
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        SELECT p.user_id
+        FROM practices p
+        LEFT JOIN practice_checkins pc ON pc.practice_id = p.id
+        WHERE p.deleted_at IS NULL AND pc.practice_id IS NULL
+        GROUP BY p.user_id
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'streak_7plus': {
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        WITH deduped AS (
+          SELECT DISTINCT user_id, checkin_date::date AS checkin_date
+          FROM practice_checkins
+        ),
+        ranked AS (
+          SELECT user_id, checkin_date,
+                 ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY checkin_date) AS rn
+          FROM deduped
+        ),
+        island_groups AS (
+          SELECT user_id, (checkin_date - (rn * INTERVAL '1 day'))::date AS grp
+          FROM ranked
+        ),
+        streak_counts AS (
+          SELECT user_id, COUNT(*) AS streak_len
+          FROM island_groups GROUP BY user_id, grp
+        )
+        SELECT user_id FROM streak_counts WHERE streak_len >= 7 GROUP BY user_id
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'persona_D':
+    case 'persona_A':
+    case 'persona_O':
+    case 'persona_L':
+    case 'persona_C': {
+      const personaType = metric.split('_')[1]
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        SELECT DISTINCT ON (user_id) user_id
+        FROM quiz_results
+        WHERE user_id IS NOT NULL AND result_type = ${personaType}
+        ORDER BY user_id, completed_at DESC
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    default:
+      return []
+  }
+}
+
 export default {
   getOnboardingStats,
   getUserOnboardingDetail,
@@ -485,4 +604,5 @@ export default {
   getPersonaStats,
   getEmailOnboardingStats,
   getEngagementStats,
+  getMetricDrillDown,
 }
