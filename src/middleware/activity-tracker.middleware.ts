@@ -4,10 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import * as jwt from 'jsonwebtoken';
 import { prisma } from '../services/database/prisma.service';
-import { getAuthToken } from '../utils/cookie-config';
-import { UserJwtPayload } from '../types/auth.types';
 
 // 用於節流的快取（避免每個請求都更新資料庫）
 const lastUpdateCache = new Map<number, number>();
@@ -47,106 +44,70 @@ const ensureCacheLimit = (): void => {
 };
 
 /**
- * 從請求中解析已登入用戶
- * trackActivity 註冊於路由層 authenticate 中間件之前，
- * 此時 req.user 尚未被填入，因此需要獨立解碼 JWT 取得用戶身份
- * 採 best-effort：token 缺失或無效時直接視為未登入，不影響請求流程
- * @param req - Express 請求對象
- * @returns 解碼後的用戶資訊，若無法取得則為 undefined
- */
-const resolveUser = (req: Request): UserJwtPayload | undefined => {
-  if (req.user) {
-    return req.user;
-  }
-
-  const token = getAuthToken(req);
-  if (!token) {
-    return undefined;
-  }
-
-  try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      return undefined;
-    }
-    const decoded = jwt.verify(token, secret);
-    return typeof decoded === 'object' && decoded !== null
-      ? (decoded as UserJwtPayload)
-      : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-/**
  * 活動追蹤中間件
- * 在用戶發起請求時更新 last_active_at
+ * 在回應送出後更新 last_active_at
+ * trackActivity 註冊於路由層 authenticate 中間件之前執行，
+ * 此時 req.user 尚未被填入；改為監聽 res 的 finish 事件，
+ * 待回應送出時（此時同一請求鏈上的 authenticate 必已執行完畢）再讀取 req.user，
+ * 避免重複解碼 JWT，也不會拖慢請求本身
  * 使用節流機制避免過於頻繁的資料庫操作
  */
-export const trackActivity = async (
+export const trackActivity = (
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction
-): Promise<void> => {
-  try {
-    const user = resolveUser(req);
+): void => {
+  res.on('finish', async (): Promise<void> => {
+    try {
+      const user = req.user;
 
-    // 只追蹤已登入且非臨時用戶
-    if (!user || !user.id || user.isTemp) {
-      next();
-      return;
-    }
-
-    const userId = user.id;
-    const now = Date.now();
-    const lastUpdate = lastUpdateCache.get(userId);
-
-    // 節流：5 分鐘內不重複更新
-    if (lastUpdate && now - lastUpdate < UPDATE_INTERVAL_MS) {
-      next();
-      return;
-    }
-
-    // 更新快取（確保不超過上限）
-    ensureCacheLimit();
-    lastUpdateCache.set(userId, now);
-
-    // 非同步更新資料庫（不阻塞請求）
-    // 透過 user_activity_stats 關聯更新
-    (async (): Promise<void> => {
-      try {
-        const user = await prisma.users.findUnique({
-          where: { id: userId },
-          select: { activity_stats_id: true }
-        });
-
-        if (user?.activity_stats_id) {
-          // 更新現有的 activity_stats 記錄
-          await prisma.user_activity_stats.update({
-            where: { id: user.activity_stats_id },
-            data: { last_active_at: new Date() }
-          });
-        } else {
-          // 創建新的 activity_stats 記錄並關聯到用戶
-          const activityStats = await prisma.user_activity_stats.create({
-            data: { last_active_at: new Date() }
-          });
-          await prisma.users.update({
-            where: { id: userId },
-            data: { activity_stats_id: activityStats.id }
-          });
-        }
-      } catch (error) {
-        console.error('Failed to update last_active_at:', error);
+      // 只追蹤已登入且非臨時用戶
+      if (!user || !user.id || user.isTemp) {
+        return;
       }
-    })();
 
-    next();
-  } catch (error) {
-    // 錯誤不應該影響正常請求流程
-    console.error('Activity tracker error:', error);
-    next();
-  }
+      const userId = user.id;
+      const now = Date.now();
+      const lastUpdate = lastUpdateCache.get(userId);
+
+      // 節流：5 分鐘內不重複更新
+      if (lastUpdate && now - lastUpdate < UPDATE_INTERVAL_MS) {
+        return;
+      }
+
+      // 更新快取（確保不超過上限）
+      ensureCacheLimit();
+      lastUpdateCache.set(userId, now);
+
+      // 透過 user_activity_stats 關聯更新
+      const dbUser = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { activity_stats_id: true }
+      });
+
+      if (dbUser?.activity_stats_id) {
+        // 更新現有的 activity_stats 記錄
+        await prisma.user_activity_stats.update({
+          where: { id: dbUser.activity_stats_id },
+          data: { last_active_at: new Date() }
+        });
+      } else {
+        // 創建新的 activity_stats 記錄並關聯到用戶
+        const activityStats = await prisma.user_activity_stats.create({
+          data: { last_active_at: new Date() }
+        });
+        await prisma.users.update({
+          where: { id: userId },
+          data: { activity_stats_id: activityStats.id }
+        });
+      }
+    } catch (error) {
+      // 錯誤不應該影響正常請求流程
+      console.error('Failed to update last_active_at:', error);
+    }
+  });
+
+  next();
 };
 
 /**
