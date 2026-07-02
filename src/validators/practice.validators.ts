@@ -1407,18 +1407,20 @@ export const patchNextIntentSchema = z.object({
 registry.register('PatchNextIntentRequest', patchNextIntentSchema);
 
 // 更新精選打卡列表請求
+// 注意：practice_checkins 表沒有 external_id 欄位，僅有整數 id，
+// 因此 checkinIds 應驗證為正整數字串，而非 UUID
 export const patchSelectedCheckinsSchema = z.object({
-  checkinIds: z.array(z.string().uuid('打卡 ID 格式不正確'))
+  checkinIds: z.array(z.string().regex(/^[1-9]\d*$/, '打卡 ID 格式不正確'))
     .min(1, '請至少選擇一筆打卡紀錄')
     .max(3, '最多選擇 3 筆打卡紀錄')
     .openapi({
-      description: '精選打卡 ID 列表（外部 UUID，最多 3 筆）',
-      example: ['550e8400-e29b-41d4-a716-446655440000']
+      description: '精選打卡 ID 列表（整數 ID 字串，最多 3 筆）',
+      example: ['456']
     })
 }).openapi('PatchSelectedCheckinsRequest', {
   description: '更新精選打卡列表請求',
   example: {
-    checkinIds: ['550e8400-e29b-41d4-a716-446655440000']
+    checkinIds: ['456']
   }
 });
 

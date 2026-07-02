@@ -1262,14 +1262,16 @@ async function getCheckInCounts(practiceIds: number[]): Promise<Record<number, n
 /**
  * 計算單一實踐打卡筆記的平均字數（供實踐總結頁使用）
  *
- * 使用 raw SQL 是因為 Prisma 的 aggregate API 無法針對字串長度／字數做平均計算，
- * 需要透過 PostgreSQL 的 regexp_split_to_array 來拆字計算字數。
+ * 使用 raw SQL 是因為 Prisma 的 aggregate API 無法針對字串長度／字數做平均計算。
+ * 以 char_length() 計算字元數而非以空白切字：中文等 CJK 文字詞間不使用空白，
+ * 若用 regexp_split_to_array 依空白切割會嚴重低估字數，字元數是較合理的替代指標
+ * （AI 洞察解鎖門檻 ≥30 也是以字元數作為判斷基準）。
  */
 async function getAvgWords(practiceId: number): Promise<number> {
   try {
     const result = await prismaClient.$queryRaw<{ avg_words: number | null }[]>`
       SELECT COALESCE(
-        AVG(array_length(regexp_split_to_array(trim(note), '\\s+'), 1)),
+        AVG(char_length(trim(note))),
         0
       )::numeric AS avg_words
       FROM practice_checkins
@@ -1856,7 +1858,7 @@ export async function updateNextIntent(
 
 /**
  * 更新精選打卡列表（實踐總結頁）
- * checkinIds 為外部 UUID，原樣存入 selected_checkin_ids JSONB 欄位
+ * checkinIds 為 practice_checkins 的整數 id（以字串形式傳入），原樣存入 selected_checkin_ids JSONB 欄位
  */
 export async function updateSelectedCheckins(
   practiceId: number,
@@ -1875,6 +1877,19 @@ export async function updateSelectedCheckins(
 
     if (practice.user_id !== userId) {
       throw new ForbiddenError('只有實踐擁有者可以編輯精選打卡');
+    }
+
+    // 驗證 checkinIds 均屬於此實踐，避免用戶把其他實踐的打卡 id 帶入精選列表
+    const checkinIdNumbers = checkinIds.map(id => Number(id));
+    const validCount = await prismaClient.practice_checkins.count({
+      where: {
+        practice_id: practiceId,
+        id: { in: checkinIdNumbers }
+      }
+    });
+
+    if (validCount !== checkinIds.length) {
+      throw new BadRequestError('部分打卡紀錄不屬於此實踐');
     }
 
     const updated = await prismaClient.practices.update({
