@@ -95,6 +95,10 @@ source_season_id    Int?      FK → challenge_seasons
 
 ### `practice_checkins`（完全沿用，不動）
 
+> **UI 原則**：挑戰的「打卡」動作完全沿用主題實踐既有的打卡流程與元件
+> （check-in sheet、心情、照片、打卡卡片、reaction、留言），不另做新的
+> 打卡 UI。挑戰頁的「今日打卡」按鈕開啟的就是既有的打卡 sheet。
+
 ---
 
 ## API 規格
@@ -187,6 +191,34 @@ Response: {
   }[]
 }
 ```
+
+**與 Showcase（全平台打卡動態牆）的關係**
+
+現有前台已有 Showcase 模組（`components/showcase/*`），是以追蹤關係（follow）驅動的全平台打卡動態流，`CheckInShowcaseCard` 元件與 reaction/comment 機制皆已存在。共同挑戰的打卡不是另建一套系統，而是同一份 `practice_checkins` 資料的兩種呈現範圍：
+
+```
+Showcase（全平台）                    挑戰打卡牆（限定範圍）
+════════════════════                  ════════════════════════
+依據追蹤關係（誰關注誰）              依據挑戰成員關係（同一個 season）
+「我關注的人在做什麼」                「跟我拚同一件事的人在做什麼」
+```
+
+**決策：挑戰打卡預設同時出現在 Showcase**，不做排除。理由：
+- 打卡本身仍是使用者的公開動態，沒有理由對追蹤者隱藏
+- 挑戰打卡若能被 Showcase 上的其他人看到，本身就是自然導流入口（「原來有這個挑戰，我也想加入」），呼應 PRD 中「公開打卡牆是最好的推廣素材」的定位
+
+**顯示規則**：挑戰打卡在 Showcase 卡片上需額外帶上挑戰標籤，作為導流入口：
+
+```
+🧑 王小明
+今天練完聽力第 3 回，錯了 8 題要再加油
+🏷️ 英檢 N3 備考衝刺・第 2 期   ← 可點擊，導向 /challenges/:id/seasons/:sid
+```
+
+**實作方式**：
+- `practices` 已新增 `source_season_id`，`practice_checkins` 透過 `practice_id` 即可反查所屬挑戰與期數，不需新增欄位
+- Showcase feed API 回傳打卡資料時，若該筆 `practice.source_season_id` 不為空，一併帶出 `challenge` 摘要（`id`, `title`, `seasonNumber`）供前端渲染標籤
+- 前端可直接複用 `CheckInShowcaseCard`，僅需新增挑戰標籤區塊與挑戰打卡牆的 API 資料來源（同一元件、不同 data source）
 
 ### 排名
 
