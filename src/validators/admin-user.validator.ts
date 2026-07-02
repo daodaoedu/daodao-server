@@ -62,6 +62,7 @@ export const adminUserListQuerySchema = z.object({
   sortBy: z.enum([
     'createdAt',
     'lastLoginAt',
+    'lastActiveAt',
     'name',
     'email',
     'registrationFlow',
@@ -125,7 +126,56 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。',
       example: 'self_created'
+    }),
+  lastLoginFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）',
+      example: '2024-01-01'
+    }),
+  lastLoginTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）',
+      example: '2024-12-31'
+    }),
+  lastActivityFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）',
+      example: '2024-01-01'
+    }),
+  lastActivityTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）',
+      example: '2024-12-31'
     })
+}).superRefine((data, ctx) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const ranges: Array<[string, string, string, string]> = [
+    ['lastLoginFrom', 'lastLoginTo', 'lastLoginFrom', 'lastLoginTo'],
+    ['lastActivityFrom', 'lastActivityTo', 'lastActivityFrom', 'lastActivityTo'],
+  ];
+
+  for (const [fromKey, toKey] of ranges) {
+    const from = data[fromKey as keyof typeof data] as string | undefined;
+    const to = data[toKey as keyof typeof data] as string | undefined;
+
+    if (from && from > today) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '起始日期不可晚於今天', path: [fromKey] });
+    }
+    if (to && to > today) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '結束日期不可晚於今天', path: [toKey] });
+    }
+    if (from && to && from > to) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '起始日期不可晚於結束日期', path: [fromKey] });
+    }
+  }
 }).openapi('AdminUserListQuery');
 
 registry.register('AdminUserListQuery', adminUserListQuerySchema);
@@ -275,6 +325,10 @@ const adminUserListItemSchema = z.object({
     description: '最後登入時間',
     example: '2024-01-20T08:30:00.000Z'
   }),
+  lastActiveAt: z.string().nullable().openapi({
+    description: '最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）',
+    example: '2024-01-22T14:00:00.000Z'
+  }),
   personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
     description: '最新一次學習風格測驗結果',
     example: 'D'
@@ -377,7 +431,7 @@ const userActivityStatsSchema = z.object({
     description: '最後登入時間'
   }),
   lastActiveAt: z.string().nullable().openapi({
-    description: '最後活動時間'
+    description: '最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）'
   }),
   loginCount: z.number().int().openapi({
     description: '總登入次數',

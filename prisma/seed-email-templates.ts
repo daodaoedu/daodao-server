@@ -226,10 +226,13 @@ async function main() {
   }
 
   console.log(`\n✓ Done — created: ${created}, skipped: ${skipped}`)
-  await prisma.$disconnect()
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

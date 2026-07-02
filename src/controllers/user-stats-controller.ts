@@ -342,6 +342,31 @@ export const getActiveUsersTrend = asyncWrapper(
 );
 
 /**
+ * 取得活躍用戶名單
+ * GET /api/v1/admin/user-stats/active-users/list
+ */
+export const getActiveUsersList = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const { date, period } = req.query as {
+      date?: string;
+      period?: string;
+    };
+
+    const validPeriods = ['day', 'week', 'month'] as const;
+    const safePeriod = validPeriods.includes(period as typeof validPeriods[number])
+      ? (period as typeof validPeriods[number])
+      : 'day';
+
+    const users = await userStatsService.getActiveUsersList({
+      date: date || new Date().toISOString().slice(0, 10),
+      period: safePeriod,
+    });
+
+    res.json({ success: true, data: users, metadata: { generated_at: new Date().toISOString() } });
+  }
+);
+
+/**
  * 獲取用戶參與漏斗
  * GET /api/v1/admin/user-stats/funnel
  */
@@ -386,6 +411,7 @@ export default {
   getPopularProfiles,
   getUserActivitySegmentation,
   getActiveUsersTrend,
+  getActiveUsersList,
   getActiveUsersFunnel,
   getUserCohortRetention,
 };
