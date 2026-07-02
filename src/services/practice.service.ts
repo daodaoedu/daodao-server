@@ -398,6 +398,10 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
 
     const resources = resourcesMap[id] || [];
 
+    // 反思、下一步意圖、精選打卡、AI 洞察回饋屬於實踐擁有者的私人資料，
+    // 未登入訪客或非擁有者（即便有權瀏覽 public/partner 實踐）皆不應看到這些欄位
+    const isOwner = userId !== undefined && userId === practice.user_id;
+
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
@@ -436,10 +440,11 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         shareCount: 0,
         commentCount: comments[id] || 0
       },
-      reflection: practice.reflection ?? undefined,
-      nextIntent: practice.next_intent ?? undefined,
-      selectedCheckInIds: (practice.selected_checkin_ids as string[] | null) ?? [],
-      insightFeedback: (practice.insight_feedback as PracticeEntity['insightFeedback']) ?? null,
+      reflection: isOwner ? (practice.reflection ?? undefined) : undefined,
+      nextIntent: isOwner ? (practice.next_intent ?? undefined) : undefined,
+      selectedCheckInIds: isOwner ? ((practice.selected_checkin_ids as string[] | null) ?? []) : [],
+      insightFeedback: isOwner ? ((practice.insight_feedback as PracticeEntity['insightFeedback']) ?? null) : null,
+      // avgWords 是聚合統計，無敏感性，保持對所有可瀏覽者公開
       avgWords
     };
 
@@ -1816,7 +1821,7 @@ export async function updateNextIntent(
   try {
     const practice = await prismaClient.practices.findUnique({
       where: { id: practiceId },
-      select: { user_id: true, deleted_at: true }
+      select: { user_id: true, deleted_at: true, next_intent_draft_id: true }
     });
 
     if (!practice || practice.deleted_at !== null) {
@@ -1831,16 +1836,29 @@ export async function updateNextIntent(
     let draftInternalId: number | undefined;
 
     if (saveDraft) {
-      const copyResult = await copyPractice(practiceId, userId);
-      draftExternalId = copyResult.data.id;
-      draftInternalId = await externalToInternalId('practice', draftExternalId);
+      if (practice.next_intent_draft_id) {
+        // 草稿已存在：避免重複點擊 saveDraft 時不斷複製出孤兒草稿實踐，沿用既有草稿
+        draftInternalId = practice.next_intent_draft_id;
+        const existingDraft = await prismaClient.practices.findUnique({
+          where: { id: draftInternalId },
+          select: { external_id: true }
+        });
+        draftExternalId = existingDraft?.external_id ?? undefined;
+      } else {
+        const copyResult = await copyPractice(practiceId, userId);
+        draftExternalId = copyResult.data.id;
+        draftInternalId = await externalToInternalId('practice', draftExternalId);
+      }
     }
 
     const updated = await prismaClient.practices.update({
       where: { id: practiceId },
       data: {
         next_intent: nextIntent,
-        ...(draftInternalId !== undefined ? { next_intent_draft_id: draftInternalId } : {}),
+        // 只有新建立草稿時才需要寫入 next_intent_draft_id（既有草稿已經是同一個值）
+        ...(draftInternalId !== undefined && !practice.next_intent_draft_id
+          ? { next_intent_draft_id: draftInternalId }
+          : {}),
         updated_at: new Date()
       },
       select: { next_intent: true }

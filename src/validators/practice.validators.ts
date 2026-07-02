@@ -1466,6 +1466,41 @@ export const validatePatchNextIntent = (data: unknown): PatchNextIntentRequest =
 export const validatePatchSelectedCheckins = (data: unknown): PatchSelectedCheckinsRequest => patchSelectedCheckinsSchema.parse(data);
 export const validateCreateInsightFeedback = (data: unknown): CreateInsightFeedbackRequest => createInsightFeedbackSchema.parse(data);
 
+// ===== Practice Summary Response Schemas =====
+
+// 更新反思回應
+export const reflectionResponseSchema = z.object({
+  reflection: z.string().openapi({ description: '使用者的實踐反思文字', example: '這次實踐讓我學到了很多' })
+}).openapi('ReflectionResponse', {
+  description: '更新實踐反思回應'
+});
+export const reflectionApiResponseSchema = apiSuccessResponseSchema(reflectionResponseSchema);
+
+// 更新「接下來我想」回應
+export const nextIntentResponseSchema = z.object({
+  nextIntent: z.string().openapi({ description: '接下來想做的事', example: '我想繼續保持每天閱讀的習慣' }),
+  draftId: z.string().optional().openapi({ description: '複製建立的草稿實踐外部 ID（UUID），僅在 saveDraft 為 true 時提供', example: '550e8400-e29b-41d4-a716-446655440000' })
+}).openapi('NextIntentResponse', {
+  description: '更新「接下來我想」回應'
+});
+export const nextIntentApiResponseSchema = apiSuccessResponseSchema(nextIntentResponseSchema);
+
+// 更新精選打卡列表回應
+export const selectedCheckinsResponseSchema = z.object({
+  selectedCheckinIds: z.array(z.string()).openapi({ description: '精選打卡 ID 列表', example: ['456'] })
+}).openapi('SelectedCheckinsResponse', {
+  description: '更新精選打卡列表回應'
+});
+export const selectedCheckinsApiResponseSchema = apiSuccessResponseSchema(selectedCheckinsResponseSchema);
+
+// 建立 AI 洞察回饋回應
+export const insightFeedbackResponseSchema = z.object({
+  success: z.boolean().openapi({ description: '操作成功狀態', example: true })
+}).openapi('InsightFeedbackResponse', {
+  description: '建立 AI 洞察回饋回應'
+});
+export const insightFeedbackApiResponseSchema = apiSuccessResponseSchema(insightFeedbackResponseSchema);
+
 // 複製實踐回應
 export const copyPracticeResponseSchema = z.object({
   id: z.string().describe("新實踐 external ID（UUID）")
@@ -1573,7 +1608,17 @@ export const practiceValidators = {
   patchNextIntentSchema,
   patchSelectedCheckinsSchema,
   insightFeedbackTypeSchema,
-  createInsightFeedbackSchema
+  createInsightFeedbackSchema,
+
+  // Practice Summary response schemas
+  reflectionResponseSchema,
+  reflectionApiResponseSchema,
+  nextIntentResponseSchema,
+  nextIntentApiResponseSchema,
+  selectedCheckinsResponseSchema,
+  selectedCheckinsApiResponseSchema,
+  insightFeedbackResponseSchema,
+  insightFeedbackApiResponseSchema
 };
 
 export default practiceValidators;
