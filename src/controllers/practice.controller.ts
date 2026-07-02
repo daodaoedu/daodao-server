@@ -47,6 +47,10 @@ import {
   updatePracticeApiResponseSchema,
   operationSuccessApiResponseSchema,
   copyPracticeApiResponseSchema,
+  reflectionApiResponseSchema,
+  nextIntentApiResponseSchema,
+  selectedCheckinsApiResponseSchema,
+  insightFeedbackApiResponseSchema,
   // Request validation schemas
   checkInSchema,
   updateCheckInSchema
@@ -784,7 +788,10 @@ export class PracticeController {
     const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceService.updateReflection(practiceId, req.user.id, req.body.reflection);
 
-    res.json(result);
+    // 驗證響應格式
+    const validatedResponse = reflectionApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -804,7 +811,10 @@ export class PracticeController {
       req.body.saveDraft
     );
 
-    res.json(result);
+    // 驗證響應格式
+    const validatedResponse = nextIntentApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -819,7 +829,10 @@ export class PracticeController {
     const practiceId = await validateAndConvertPracticeId(req.params.id);
     const result = await practiceService.updateSelectedCheckins(practiceId, req.user.id, req.body.checkinIds);
 
-    res.json(result);
+    // 驗證響應格式
+    const validatedResponse = selectedCheckinsApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
@@ -839,7 +852,10 @@ export class PracticeController {
       req.body.reasons
     );
 
-    res.json(result);
+    // 驗證響應格式
+    const validatedResponse = insightFeedbackApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
   });
 
   /**
