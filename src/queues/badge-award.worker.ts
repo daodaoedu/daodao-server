@@ -76,7 +76,7 @@ async function findQualifiedUserIds(condition: TriggerCondition): Promise<number
     case 'likes_received': {
       const rows = await prisma.$queryRaw<Array<{ user_id: number }>>`
         SELECT r.user_id FROM reactions re
-        JOIN resources r ON re.resource_id = r.id
+        JOIN resources r ON re.target_id = r.id AND re.target_type = 'resource'
         GROUP BY r.user_id
         HAVING COUNT(*)::int >= ${condition.value}
       `;

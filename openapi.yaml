@@ -416,22 +416,22 @@ components:
         lastLoginFrom:
           type: string
           pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 篩選最後登入起始日期（含）
+          description: 篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）
           example: '2024-01-01'
         lastLoginTo:
           type: string
           pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 篩選最後登入結束日期（含）
+          description: 篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）
           example: '2024-12-31'
         lastActivityFrom:
           type: string
           pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 篩選最後操作起始日期（含）
+          description: 篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）
           example: '2024-01-01'
         lastActivityTo:
           type: string
           pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 篩選最後操作結束日期（含）
+          description: 篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）
           example: '2024-12-31'
     AdminUserIdParam:
       type: object
@@ -564,7 +564,7 @@ components:
         lastActiveAt:
           type: string
           nullable: true
-          description: 最後操作時間
+          description: 最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）
           example: '2024-01-22T14:00:00.000Z'
         personaType:
           type: string
@@ -802,7 +802,7 @@ components:
         lastActiveAt:
           type: string
           nullable: true
-          description: 最後活動時間
+          description: 最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）
         loginCount:
           type: integer
           description: 總登入次數
