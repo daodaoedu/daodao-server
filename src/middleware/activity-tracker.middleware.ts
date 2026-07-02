@@ -4,7 +4,10 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import * as jwt from 'jsonwebtoken';
 import { prisma } from '../services/database/prisma.service';
+import { getAuthToken } from '../utils/cookie-config';
+import { UserJwtPayload } from '../types/auth.types';
 
 // 用於節流的快取（避免每個請求都更新資料庫）
 const lastUpdateCache = new Map<number, number>();
@@ -44,6 +47,38 @@ const ensureCacheLimit = (): void => {
 };
 
 /**
+ * 從請求中解析已登入用戶
+ * trackActivity 註冊於路由層 authenticate 中間件之前，
+ * 此時 req.user 尚未被填入，因此需要獨立解碼 JWT 取得用戶身份
+ * 採 best-effort：token 缺失或無效時直接視為未登入，不影響請求流程
+ * @param req - Express 請求對象
+ * @returns 解碼後的用戶資訊，若無法取得則為 undefined
+ */
+const resolveUser = (req: Request): UserJwtPayload | undefined => {
+  if (req.user) {
+    return req.user;
+  }
+
+  const token = getAuthToken(req);
+  if (!token) {
+    return undefined;
+  }
+
+  try {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return undefined;
+    }
+    const decoded = jwt.verify(token, secret);
+    return typeof decoded === 'object' && decoded !== null
+      ? (decoded as UserJwtPayload)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * 活動追蹤中間件
  * 在用戶發起請求時更新 last_active_at
  * 使用節流機制避免過於頻繁的資料庫操作
@@ -54,7 +89,7 @@ export const trackActivity = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const user = req.user;
+    const user = resolveUser(req);
 
     // 只追蹤已登入且非臨時用戶
     if (!user || !user.id || user.isTemp) {
