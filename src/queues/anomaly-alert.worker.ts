@@ -58,7 +58,7 @@ async function queryMetricValue(metric: string): Promise<number> {
       // 查詢最近 5 分鐘的錯誤率（audit_logs 中 action 含 error 的比例）
       const [row] = await prisma.$queryRaw<Array<{ rate: number }>>`
         SELECT COALESCE(
-          AVG(CASE WHEN action LIKE '%error%' THEN 1.0 ELSE 0.0 END)::float,
+          AVG(CASE WHEN action_type LIKE '%error%' THEN 1.0 ELSE 0.0 END)::float,
           0
         ) AS rate
         FROM audit_logs

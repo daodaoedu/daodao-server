@@ -4,12 +4,13 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/error.middleware';
+import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
 import adminSystemService from '../services/admin-system.service';
 import { emailService } from '../services/email/email.service';
 import { generateStandardEmail } from '../services/email/base-template';
 import { emailSendSchema, emailBulkSendSchema } from '../validators/admin-system.validator';
+import { bulkEnqueueEmails } from '../queues/email.queue';
 
 /**
  * 取得系統監控資訊
@@ -102,7 +103,27 @@ const sendEmail = asyncHandler(async (req: Request, res: Response) => {
  */
 const sendBulkEmail = asyncHandler(async (req: Request, res: Response) => {
   const input = emailBulkSendSchema.parse(req.body);
-  res.json(createSuccessResponse({ queued: true, subject: input.subject }));
+
+  const recipients = await adminSystemService.getBulkEmailRecipients(input.tagId);
+  if (recipients.length === 0) {
+    throw new BadRequestError('找不到符合條件的收件人');
+  }
+
+  const isFullHtml = input.body.trimStart().startsWith('<!DOCTYPE') || input.body.trimStart().startsWith('<html');
+  const html = isFullHtml
+    ? input.body
+    : generateStandardEmail({ title: input.subject, subject: input.subject, preheader: '', content: input.body }).html;
+
+  await bulkEnqueueEmails(
+    recipients.map((to) => ({
+      to,
+      subject: input.subject,
+      html,
+      emailType: 'bulk_admin',
+    }))
+  );
+
+  res.json(createSuccessResponse({ queued: true, subject: input.subject, recipientCount: recipients.length }));
 });
 
 export default {
