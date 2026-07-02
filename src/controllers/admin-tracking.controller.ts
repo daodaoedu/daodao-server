@@ -36,6 +36,16 @@ export const getEngagementStats = asyncHandler(async (_req: Request, res: Respon
   res.json(createSuccessResponse(stats))
 })
 
+export const getMetricDrillDown = asyncHandler(async (req: Request, res: Response) => {
+  const metric = req.query.metric as string
+  if (!metric) {
+    res.json(createSuccessResponse([]))
+    return
+  }
+  const users = await adminTrackingService.getMetricDrillDown(metric)
+  res.json(createSuccessResponse(users))
+})
+
 export default {
   getOnboardingStats,
   getUserOnboardingDetail,
@@ -43,4 +53,5 @@ export default {
   getPersonaStats,
   getEmailOnboardingStats,
   getEngagementStats,
+  getMetricDrillDown,
 }

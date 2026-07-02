@@ -186,6 +186,31 @@ const getEmailHealth = async (): Promise<EmailHealthResponse> => {
   };
 };
 
+/**
+ * 取得批次寄信收件人清單
+ * 有指定 tagId 時只寄給該標籤的用戶，否則寄給所有已訂閱 email 的用戶
+ */
+const getBulkEmailRecipients = async (tagId?: number): Promise<string[]> => {
+  const rows = tagId
+    ? await prisma.$queryRaw<Array<{ email: string }>>`
+        SELECT DISTINCT c.email
+        FROM contacts c
+        JOIN users u ON u.contact_id = c.id
+        JOIN user_tag_assignments uta ON uta.user_id = u.id
+        WHERE uta.tag_id = ${tagId}
+          AND c.email IS NOT NULL
+          AND c.is_subscribe_email IS NOT FALSE
+      `
+    : await prisma.$queryRaw<Array<{ email: string }>>`
+        SELECT DISTINCT c.email
+        FROM contacts c
+        WHERE c.email IS NOT NULL
+          AND c.is_subscribe_email IS NOT FALSE
+      `;
+
+  return rows.map((r) => r.email);
+};
+
 export default {
   getSystemMonitor,
   getDbInfo,
@@ -194,4 +219,5 @@ export default {
   getDashboardActiveUsers,
   getEmailStats,
   getEmailHealth,
+  getBulkEmailRecipients,
 };
