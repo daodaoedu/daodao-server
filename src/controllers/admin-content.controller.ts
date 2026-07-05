@@ -18,8 +18,8 @@ const updateFeatured = asyncHandler(async (req: Request, res: Response) => {
 
 const getCheckins = asyncHandler(async (req: Request, res: Response) => {
   const days = req.query.days ? Number(req.query.days) : undefined;
-  const limit = req.query.limit ? Number(req.query.limit) : 20;
-  const offset = req.query.offset ? Number(req.query.offset) : 0;
+  const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
   const result = await listCheckinsService(days, limit, offset);
   res.json(createPaginatedResponse(result.items, {
     currentPage: result.pagination.currentPage,

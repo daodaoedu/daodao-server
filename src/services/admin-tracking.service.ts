@@ -603,46 +603,40 @@ export async function getMetricDrillDown(metric: string, period?: string): Promi
       return mapUsers(rows)
     }
     case 'comments': {
-      const userIds = sinceDate
-        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
-            SELECT DISTINCT user_id FROM comments WHERE created_at >= ${sinceDate}
-          `
-        : await prisma.$queryRaw<Array<{ user_id: number }>>`
-            SELECT DISTINCT user_id FROM comments
-          `
-      if (userIds.length === 0) return []
+      const comments = await prisma.comments.findMany({
+        where: sinceDate ? { created_at: { gte: sinceDate } } : {},
+        select: { user_id: true },
+        distinct: ['user_id'],
+      })
+      if (comments.length === 0) return []
       const rows = await prisma.users.findMany({
-        where: { id: { in: userIds.map(r => r.user_id) } },
+        where: { id: { in: comments.map(c => c.user_id) } },
         select: USER_SELECT,
       })
       return mapUsers(rows)
     }
     case 'reactions': {
-      const userIds = sinceDate
-        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
-            SELECT DISTINCT user_id FROM reactions WHERE created_at >= ${sinceDate}
-          `
-        : await prisma.$queryRaw<Array<{ user_id: number }>>`
-            SELECT DISTINCT user_id FROM reactions
-          `
-      if (userIds.length === 0) return []
+      const reactions = await prisma.reactions.findMany({
+        where: sinceDate ? { created_at: { gte: sinceDate } } : {},
+        select: { user_id: true },
+        distinct: ['user_id'],
+      })
+      if (reactions.length === 0) return []
       const rows = await prisma.users.findMany({
-        where: { id: { in: userIds.map(r => r.user_id) } },
+        where: { id: { in: reactions.map(r => r.user_id) } },
         select: USER_SELECT,
       })
       return mapUsers(rows)
     }
     case 'follows': {
-      const userIds = sinceDate
-        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
-            SELECT DISTINCT follower_id AS user_id FROM follows WHERE created_at >= ${sinceDate}
-          `
-        : await prisma.$queryRaw<Array<{ user_id: number }>>`
-            SELECT DISTINCT follower_id AS user_id FROM follows
-          `
-      if (userIds.length === 0) return []
+      const follows = await prisma.follows.findMany({
+        where: sinceDate ? { created_at: { gte: sinceDate } } : {},
+        select: { follower_id: true },
+        distinct: ['follower_id'],
+      })
+      if (follows.length === 0) return []
       const rows = await prisma.users.findMany({
-        where: { id: { in: userIds.map(r => r.user_id) } },
+        where: { id: { in: follows.map(f => f.follower_id) } },
         select: USER_SELECT,
       })
       return mapUsers(rows)

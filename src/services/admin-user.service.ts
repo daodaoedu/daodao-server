@@ -17,8 +17,11 @@ import type {
 import type { LoginHistoryRecord, UserActivityStats, ActivityTimelineEvent } from '../types/user.types';
 import { NotFoundError, BadRequestError } from '../middleware/error.middleware';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const resolveUserId = async (userId: string): Promise<number> => {
   if (/^\d+$/.test(userId)) return Number(userId);
+  if (!UUID_REGEX.test(userId)) throw new NotFoundError('User not found');
   const user = await prisma.users.findUnique({
     where: { external_id: userId },
     select: { id: true },
@@ -321,7 +324,11 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
  * @param userId - 使用者內部 ID
  */
 const getAdminUserDetail = async (userId: number | string): Promise<AdminUserDetailResponse> => {
-  const numericId = typeof userId === 'number' ? userId : /^\d+$/.test(userId) ? Number(userId) : null;
+  const numericId = typeof userId === 'number' ? userId : /^\d+$/.test(String(userId)) ? Number(userId) : null;
+
+  if (!numericId && !UUID_REGEX.test(String(userId))) {
+    throw new NotFoundError('User not found');
+  }
 
   const user = await prisma.users.findUnique({
     where: numericId ? { id: numericId } : { external_id: String(userId) },
