@@ -158,6 +158,9 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
     total: bigint
     success: bigint
     failed: bigint
+    curr_total: bigint
+    curr_success: bigint
+    curr_failed: bigint
     prev_total: bigint
     prev_success: bigint
     prev_failed: bigint
@@ -166,6 +169,9 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
       COUNT(*)::bigint as total,
       COUNT(*) FILTER (WHERE status = 'sent')::bigint as success,
       COUNT(*) FILTER (WHERE status = 'failed')::bigint as failed,
+      COUNT(*) FILTER (WHERE sent_at >= ${thisMonthStart})::bigint as curr_total,
+      COUNT(*) FILTER (WHERE status = 'sent' AND sent_at >= ${thisMonthStart})::bigint as curr_success,
+      COUNT(*) FILTER (WHERE status = 'failed' AND sent_at >= ${thisMonthStart})::bigint as curr_failed,
       COUNT(*) FILTER (WHERE sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_total,
       COUNT(*) FILTER (WHERE status = 'sent' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_success,
       COUNT(*) FILTER (WHERE status = 'failed' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_failed
@@ -175,24 +181,27 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
   const total = Number(result[0]?.total ?? 0);
   const success = Number(result[0]?.success ?? 0);
   const failed = Number(result[0]?.failed ?? 0);
+  const currTotal = Number(result[0]?.curr_total ?? 0);
+  const currSuccess = Number(result[0]?.curr_success ?? 0);
+  const currFailed = Number(result[0]?.curr_failed ?? 0);
   const prevTotal = Number(result[0]?.prev_total ?? 0);
   const prevSuccess = Number(result[0]?.prev_success ?? 0);
   const prevFailed = Number(result[0]?.prev_failed ?? 0);
 
-  const curSent = total;
+  const curSent = currTotal;
   const prevSent = prevTotal;
-  const curSuccessRate = total > 0 ? Math.round((success / total) * 1000) / 10 : 0;
+  const curSuccessRate = currTotal > 0 ? Math.round((currSuccess / currTotal) * 1000) / 10 : 0;
   const prevSuccessRate = prevTotal > 0 ? Math.round((prevSuccess / prevTotal) * 1000) / 10 : 0;
-  const curBounceRate = total > 0 ? Math.round((failed / total) * 1000) / 10 : 0;
+  const curBounceRate = currTotal > 0 ? Math.round((currFailed / currTotal) * 1000) / 10 : 0;
   const prevBounceRate = prevTotal > 0 ? Math.round((prevFailed / prevTotal) * 1000) / 10 : 0;
 
   const pct = (cur: number, prev: number) =>
     prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 1000) / 10;
 
   return {
-    totalSent: curSent,
-    successRate: curSuccessRate,
-    bounceRate: curBounceRate,
+    totalSent: total,
+    successRate: total > 0 ? Math.round((success / total) * 1000) / 10 : 0,
+    bounceRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : 0,
     queueSize: 0,
     sentChange: pct(curSent, prevSent),
     successRateChange: pct(curSuccessRate, prevSuccessRate),
