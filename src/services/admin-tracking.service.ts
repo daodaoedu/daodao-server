@@ -9,7 +9,7 @@ type OnboardingEmailType = 'L0' | 'A' | 'B' | 'C' | 'D' | 'E'
 // ─── Onboarding Stats ────────────────────────────────────────────────────────
 
 export async function getOnboardingStats() {
-  const [total, byFlow, byMethod, byDay] = await Promise.all([
+  const [total, totalAllUsers, byFlow, byMethod, byDay] = await Promise.all([
     prisma.$queryRaw<[{ total: bigint; badge_granted: bigint; avg_days: number }]>`
       SELECT
         COUNT(*)                                              AS total,
@@ -17,6 +17,7 @@ export async function getOnboardingStats() {
         AVG(days_to_complete) FILTER (WHERE days_to_complete IS NOT NULL) AS avg_days
       FROM user_onboarding
     `,
+    prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) AS count FROM users`,
     prisma.$queryRaw<Array<{ flow: string | null; total: bigint; badge_granted: bigint }>>`
       SELECT
         registration_flow AS flow,
@@ -41,7 +42,8 @@ export async function getOnboardingStats() {
   ])
 
   const row = total[0]
-  const totalUsers = Number(row?.total ?? 0)
+  const onboardingTotal = Number(row?.total ?? 0)
+  const totalUsers = Number(totalAllUsers[0]?.count ?? 0)
   const badgeGrantedCount = Number(row?.badge_granted ?? 0)
 
   const flowMap: Record<string, { total: number; badgeGranted: number }> = {
@@ -64,7 +66,7 @@ export async function getOnboardingStats() {
   return {
     totalUsers,
     badgeGrantedCount,
-    badgeGrantedRate: totalUsers > 0 ? Math.round((badgeGrantedCount / totalUsers) * 1000) / 10 : 0,
+    badgeGrantedRate: onboardingTotal > 0 ? Math.round((badgeGrantedCount / onboardingTotal) * 1000) / 10 : 0,
     avgDaysToComplete: Math.round((row?.avg_days ?? 0) * 10) / 10,
     byRegistrationFlow: flowMap as Record<RegistrationFlow, { total: number; badgeGranted: number }>,
     byCreationMethod: methodMap,
