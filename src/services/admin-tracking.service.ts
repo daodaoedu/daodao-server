@@ -512,7 +512,15 @@ const USER_SELECT = {
   user_activity_stats: { select: { last_active_at: true } },
 } as const
 
-export async function getMetricDrillDown(metric: string): Promise<DrillDownUser[]> {
+export async function getMetricDrillDown(metric: string, period?: string): Promise<DrillDownUser[]> {
+  const sinceDate = period ? (() => {
+    const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 0
+    if (days === 0) return undefined
+    const d = new Date()
+    d.setDate(d.getDate() - days)
+    return d
+  })() : undefined
+
   switch (metric) {
     case 'badge_completed': {
       const rows = await prisma.users.findMany({
@@ -587,6 +595,74 @@ export async function getMetricDrillDown(metric: string): Promise<DrillDownUser[
         WHERE user_id IS NOT NULL AND result_type = ${personaType}
         ORDER BY user_id, completed_at DESC
       `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'comments': {
+      const userIds = sinceDate
+        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM comments WHERE created_at >= ${sinceDate}
+          `
+        : await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM comments
+          `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'reactions': {
+      const userIds = sinceDate
+        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM reactions WHERE created_at >= ${sinceDate}
+          `
+        : await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM reactions
+          `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'follows': {
+      const userIds = sinceDate
+        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT follower_id AS user_id FROM follows WHERE created_at >= ${sinceDate}
+          `
+        : await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT follower_id AS user_id FROM follows
+          `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'connects': {
+      const userIds = sinceDate
+        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM (
+              SELECT user_a_id AS user_id FROM connections WHERE connected_at >= ${sinceDate}
+              UNION
+              SELECT user_b_id AS user_id FROM connections WHERE connected_at >= ${sinceDate}
+            ) t
+          `
+        : await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM (
+              SELECT user_a_id AS user_id FROM connections
+              UNION
+              SELECT user_b_id AS user_id FROM connections
+            ) t
+          `
       if (userIds.length === 0) return []
       const rows = await prisma.users.findMany({
         where: { id: { in: userIds.map(r => r.user_id) } },
