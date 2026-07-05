@@ -32,6 +32,8 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     userSource,
     registrationFlow,
     creationMethod,
+    createdFrom,
+    createdTo,
     lastLoginFrom,
     lastLoginTo,
     lastActivityFrom,
@@ -66,6 +68,14 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
   // 篩選 email 驗證狀態
   if (isVerified !== undefined) {
     where.verified = isVerified;
+  }
+
+  // 篩選註冊日期區間
+  if (createdFrom || createdTo) {
+    const createdFilter: Record<string, Date> = {};
+    if (createdFrom) createdFilter.gte = new Date(`${createdFrom}T00:00:00.000Z`);
+    if (createdTo) createdFilter.lte = new Date(`${createdTo}T23:59:59.999Z`);
+    where.created_at = createdFilter;
   }
 
   // 篩選最後登入 / 最後操作日期區間

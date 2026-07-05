@@ -127,6 +127,20 @@ export const adminUserListQuerySchema = z.object({
       description: '篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。',
       example: 'self_created'
     }),
+  createdFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選註冊起始日期（含）',
+      example: '2024-01-01'
+    }),
+  createdTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選註冊結束日期（含）',
+      example: '2024-12-31'
+    }),
   lastLoginFrom: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
     .optional()
