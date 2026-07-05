@@ -26,6 +26,14 @@ const upsertTranslationBodySchema = z.object({
   options: z.array(z.string()).nullable().optional(),
 });
 
+const listUsersQuerySchema = z.object({
+  search: z.string().optional(),
+  sort: z.enum(['answer_count', 'last_answered']).optional(),
+  order: z.enum(['asc', 'desc']).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
 /**
  * GET /admin/persona/questions
  */
@@ -100,4 +108,20 @@ export const deleteTranslation = asyncHandler(async (req: Request, res: Response
   res.json(createSuccessResponse({ message: '翻譯已刪除' }));
 });
 
-export default { listQuestions, getQuestion, createQuestion, updateQuestion, deleteQuestion, upsertTranslation, deleteTranslation };
+/**
+ * GET /admin/persona/users
+ * 列出已回答 persona 題目的使用者（支援搜尋、排序、分頁）
+ */
+export const listPersonaUsers = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = listUsersQuerySchema.safeParse(req.query);
+  if (!parsed.success) throw new BadRequestError(parsed.error.issues[0]?.message ?? '無效的查詢參數');
+  const { data, pagination } = await personaQuestionService.listPersonaUsers(parsed.data);
+  res.json({
+    success: true,
+    data,
+    pagination,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+export default { listQuestions, getQuestion, createQuestion, updateQuestion, deleteQuestion, upsertTranslation, deleteTranslation, listPersonaUsers };

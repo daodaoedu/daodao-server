@@ -66,6 +66,9 @@ export interface EmailStatsResponse {
   successRate: number
   bounceRate: number
   queueSize: number
+  sentChange: number
+  successRateChange: number
+  bounceRateChange: number
 }
 
 /**
