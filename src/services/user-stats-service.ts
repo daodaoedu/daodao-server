@@ -1056,7 +1056,7 @@ export async function getActiveUsersTrend(query: {
   const endDate = query.endDate ? new Date(query.endDate) : new Date();
   const startDate = query.startDate ? new Date(query.startDate) : getDaysAgo(days - 1);
 
-  // 每日 DAU/WAU/MAU — 合併 login_history 與 activity_stats
+  // 每日 DAU/WAU/MAU — 僅用 login_history（activity_stats 只存最後一筆，無法還原歷史）
   const rows = await prisma.$queryRaw<Array<{
     date: Date;
     dau: bigint;
@@ -1070,12 +1070,6 @@ export async function getActiveUsersTrend(query: {
       SELECT DATE(login_at) AS active_date, user_id
       FROM user_login_history
       WHERE login_at::date BETWEEN (${startDate}::date - 29) AND ${endDate}::date
-      UNION
-      SELECT DATE(uas.last_active_at) AS active_date, u.id AS user_id
-      FROM user_activity_stats uas
-      JOIN users u ON u.activity_stats_id = uas.id
-      WHERE uas.last_active_at IS NOT NULL
-        AND DATE(uas.last_active_at) BETWEEN (${startDate}::date - 29) AND ${endDate}::date
     )
     SELECT
       ds.d AS date,
@@ -1096,19 +1090,26 @@ export async function getActiveUsersTrend(query: {
   const twoWeeksAgo = getDaysAgo(14);
   const twoMonthsAgo = getDaysAgo(60);
 
-  const countActive = (since: Date, until?: Date) =>
-    prisma.$queryRaw<[{ count: bigint }]>`
+  const countActive = (since: Date, until?: Date) => {
+    if (until) {
+      // 歷史區間：只用 login_history（activity_stats 只存最後一筆，會低估歷史）
+      return prisma.user_login_history.groupBy({
+        by: ['user_id'],
+        where: { login_at: { gte: since, lt: until } },
+      }).then(r => r.length);
+    }
+    // 當前區間：合併 login_history + activity_stats
+    return prisma.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(DISTINCT user_id) AS count FROM (
-        SELECT user_id FROM user_login_history
-        WHERE login_at >= ${since} ${until ? Prisma.sql`AND login_at < ${until}` : Prisma.empty}
+        SELECT user_id FROM user_login_history WHERE login_at >= ${since}
         UNION
         SELECT u.id AS user_id
         FROM user_activity_stats uas
         JOIN users u ON u.activity_stats_id = uas.id
         WHERE uas.last_active_at >= ${since}
-        ${until ? Prisma.sql`AND uas.last_active_at < ${until}` : Prisma.empty}
       ) combined
     `.then(r => Number(r[0].count));
+  };
 
   const [currentDau, currentWau, currentMau, prevDau, prevWau, prevMau] = await Promise.all([
     countActive(oneDayAgo),
