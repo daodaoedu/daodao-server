@@ -1,3 +1,4 @@
+import { Prisma } from '../../../generated/prisma';
 import { prisma } from '../database/prisma.service';
 import { BadRequestError, NotFoundError } from '../../middleware/error.middleware';
 
@@ -16,6 +17,24 @@ export interface CreateQuestionInput {
 export interface UpdateQuestionInput {
   questionType?: 'choice' | 'sentence_completion' | 'scenario';
   isNewUserPriority?: boolean;
+}
+
+export interface ListPersonaUsersInput {
+  search?: string;
+  sort?: 'answer_count' | 'last_answered';
+  order?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+export interface PersonaUserRow {
+  userId: number;
+  externalId: string | null;
+  name: string | null;
+  photoUrl: string | null;
+  personaType: 'D' | 'A' | 'O' | 'L' | 'C' | null;
+  answerCount: number;
+  lastAnsweredAt: string | null;
 }
 
 async function listQuestions() {
@@ -198,4 +217,79 @@ async function deleteTranslation(questionId: number, locale: string) {
   `;
 }
 
-export default { listQuestions, getQuestion, createQuestion, updateQuestion, deleteQuestion, upsertTranslation, deleteTranslation };
+async function listPersonaUsers(input: ListPersonaUsersInput) {
+  const search = input.search?.trim() ? input.search.trim() : null;
+  const sort = input.sort ?? 'answer_count';
+  const order = input.order ?? 'desc';
+  const limit = input.limit ?? 20;
+  const offset = input.offset ?? 0;
+
+  const orderColumn = sort === 'last_answered' ? 'last_answered_at' : 'answer_count';
+  const orderDir = order === 'asc' ? 'ASC' : 'DESC';
+
+  const rows = await prisma.$queryRaw<
+    Array<{
+      user_id: number;
+      external_id: string | null;
+      name: string | null;
+      photo_url: string | null;
+      persona_type: string | null;
+      answer_count: number;
+      last_answered_at: Date | null;
+    }>
+  >(Prisma.sql`
+    SELECT
+      u.id            AS user_id,
+      u.external_id   AS external_id,
+      u.nickname      AS name,
+      c.photo_url     AS photo_url,
+      qr.result_type  AS persona_type,
+      COUNT(pa.id)::int AS answer_count,
+      MAX(pa.created_at) AS last_answered_at
+    FROM persona_answers pa
+    JOIN users u ON u.id = pa.user_id
+    LEFT JOIN contacts c ON c.id = u.contact_id
+    LEFT JOIN LATERAL (
+      SELECT q.result_type
+      FROM quiz_results q
+      WHERE q.user_id = u.id
+      ORDER BY q.completed_at DESC
+      LIMIT 1
+    ) qr ON TRUE
+    WHERE (${search}::text IS NULL OR u.nickname ILIKE '%' || ${search} || '%')
+    GROUP BY u.id, u.external_id, u.nickname, c.photo_url, qr.result_type
+    ORDER BY ${Prisma.raw(orderColumn)} ${Prisma.raw(orderDir)}, u.id ASC
+    LIMIT ${limit} OFFSET ${offset}
+  `);
+
+  const [countRow] = await prisma.$queryRaw<Array<{ total_count: number }>>(Prisma.sql`
+    SELECT COUNT(DISTINCT pa.user_id)::int AS total_count
+    FROM persona_answers pa
+    JOIN users u ON u.id = pa.user_id
+    WHERE (${search}::text IS NULL OR u.nickname ILIKE '%' || ${search} || '%')
+  `);
+
+  const totalCount = countRow?.total_count ?? 0;
+
+  const data: PersonaUserRow[] = rows.map(r => ({
+    userId: r.user_id,
+    externalId: r.external_id,
+    name: r.name,
+    photoUrl: r.photo_url,
+    personaType: (r.persona_type as PersonaUserRow['personaType']) ?? null,
+    answerCount: r.answer_count,
+    lastAnsweredAt: r.last_answered_at ? r.last_answered_at.toISOString() : null,
+  }));
+
+  return {
+    data,
+    pagination: {
+      total_count: totalCount,
+      limit,
+      offset,
+      has_next: offset + rows.length < totalCount,
+    },
+  };
+}
+
+export default { listQuestions, getQuestion, createQuestion, updateQuestion, deleteQuestion, upsertTranslation, deleteTranslation, listPersonaUsers };

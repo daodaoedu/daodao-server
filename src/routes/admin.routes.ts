@@ -1079,6 +1079,16 @@ router.get('/email/history',
 // ===== Persona 題目管理路由 =====
 
 /**
+ * GET /admin/persona/users
+ * 列出已回答 persona 題目的使用者（搜尋、排序、分頁）
+ */
+router.get('/persona/users',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.listPersonaUsers as RequestHandler
+);
+
+/**
  * GET /admin/persona/questions
  * 列出所有 persona 題目（含各語系翻譯）
  */
