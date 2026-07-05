@@ -281,6 +281,95 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
   return { items, collections, checkinSummary, quizSummary, personaSummary };
 }
 
+// ── Checkin list ─────────────────────────────────────────────────────────────
+
+export interface CheckinRecord {
+  id: number;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  practiceId: number;
+  practiceTitle: string;
+  mood: string | null;
+  content: string | null;
+  reactionCount: number;
+  commentCount: number;
+  createdAt: string;
+}
+
+export interface CheckinListResult {
+  items: CheckinRecord[];
+  pagination: { totalCount: number; currentPage: number; totalPages: number; hasNext: boolean; hasPrev: boolean; limit: number };
+}
+
+export async function listCheckins(days?: number, limit = 20, offset = 0): Promise<CheckinListResult> {
+  const periodFilter = days
+    ? Prisma.sql`pc.created_at > NOW() - ${days} * INTERVAL '1 day'`
+    : Prisma.sql`1 = 1`;
+
+  const [countResult, rows] = await Promise.all([
+    prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM practice_checkins pc
+      WHERE ${periodFilter}
+    `,
+    prisma.$queryRaw<Array<{
+      id: number;
+      user_id: number;
+      user_name: string | null;
+      user_email: string | null;
+      practice_id: number;
+      practice_title: string;
+      mood: string | null;
+      note: string | null;
+      reaction_count: bigint;
+      comment_count: bigint;
+      created_at: Date;
+    }>>`
+      SELECT
+        pc.id,
+        pc.user_id,
+        u.nickname AS user_name,
+        c.email AS user_email,
+        pc.practice_id,
+        p.title AS practice_title,
+        pc.mood,
+        pc.note,
+        (SELECT COUNT(*)::bigint FROM reactions WHERE target_type = 'checkin' AND target_id = pc.id) AS reaction_count,
+        (SELECT COUNT(*)::bigint FROM comments  WHERE target_type = 'checkin' AND target_id = pc.id) AS comment_count,
+        pc.created_at
+      FROM practice_checkins pc
+      LEFT JOIN users u ON u.id = pc.user_id
+      LEFT JOIN contacts c ON c.id = u.contact_id
+      LEFT JOIN practices p ON p.id = pc.practice_id
+      WHERE ${periodFilter}
+      ORDER BY pc.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `,
+  ]);
+
+  const totalCount = Number(countResult[0]?.count ?? 0);
+  const currentPage = Math.floor(offset / limit) + 1;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return {
+    items: rows.map(r => ({
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name ?? null,
+      userEmail: r.user_email ?? null,
+      practiceId: r.practice_id,
+      practiceTitle: r.practice_title ?? '(已刪除)',
+      mood: r.mood ?? null,
+      content: r.note ?? null,
+      reactionCount: Number(r.reaction_count),
+      commentCount: Number(r.comment_count),
+      createdAt: r.created_at?.toISOString() ?? '',
+    })),
+    pagination: { totalCount, currentPage, totalPages, hasNext: currentPage < totalPages, hasPrev: currentPage > 1, limit },
+  };
+}
+
 // ── Featured ──────────────────────────────────────────────────────────────────
 
 export async function setContentFeatured(id: number, featured: boolean): Promise<ContentPerformanceItem> {

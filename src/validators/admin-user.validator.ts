@@ -199,10 +199,8 @@ registry.register('AdminUserListQuery', adminUserListQuerySchema);
  */
 export const adminUserIdParamSchema = z.object({
   userId: z.string()
-    .regex(/^\d+$/, '用戶 ID 必須為正整數')
-    .transform(Number)
     .openapi({
-      description: '用戶內部 ID',
+      description: '用戶內部 ID（數字）或外部 ID（UUID）',
       example: '123'
     })
 }).openapi('AdminUserIdParam');
