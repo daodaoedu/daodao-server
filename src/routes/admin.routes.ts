@@ -1460,6 +1460,7 @@ router.get('/surveys/:id/analytics', authenticateAny, requireAdmin, adminSurveyC
 
 // ─── Content Performance ──────────────────────────────────────────────────────
 router.get('/content/performance', authenticateAny, requireAdmin, adminContentController.getPerformance as RequestHandler);
+router.get('/content/checkins', authenticateAny, requireAdmin, adminContentController.getCheckins as RequestHandler);
 router.patch('/content/:id/featured', authenticateAny, requireAdmin, adminContentController.updateFeatured as RequestHandler);
 
 // ─── Tracking & Analytics ─────────────────────────────────────────────────────

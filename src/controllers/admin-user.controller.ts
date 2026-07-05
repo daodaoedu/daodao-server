@@ -73,6 +73,10 @@ export const getUserDetail = asyncHandler(async (req: Request, res: Response) =>
   res.json(response);
 });
 
+async function resolveId(rawId: string): Promise<number> {
+  return adminUserService.resolveUserId(rawId);
+}
+
 /**
  * 取得使用者登入歷史
  * GET /admin/users/:userId/login-history
@@ -81,7 +85,7 @@ export const getLoginHistory = asyncHandler(async (req: Request, res: Response) 
   const params = adminUserIdParamSchema.parse(req.params);
   const query = adminLoginHistoryQuerySchema.parse(req.query);
 
-  const result = await adminUserService.getUserLoginHistory(params.userId, {
+  const result = await adminUserService.getUserLoginHistory(await resolveId(params.userId), {
     startDate: query.startDate,
     endDate: query.endDate,
     page: query.page,
@@ -110,7 +114,7 @@ export const getLoginHistory = asyncHandler(async (req: Request, res: Response) 
 export const getActivityStats = asyncHandler(async (req: Request, res: Response) => {
   const params = adminUserIdParamSchema.parse(req.params);
 
-  const stats = await adminUserService.getUserActivityStats(params.userId);
+  const stats = await adminUserService.getUserActivityStats(await resolveId(params.userId));
 
   const response = createSuccessResponse(stats);
   res.json(response);
@@ -125,7 +129,7 @@ export const getUserPracticesList = asyncHandler(async (req: Request, res: Respo
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
 
-  const result = await findUserPractices(params.userId, {
+  const result = await findUserPractices(await resolveId(params.userId), {
     page,
     limit,
               sortBy: (req.query.sort ?? req.query.sortBy) as SortField | undefined,
@@ -144,7 +148,7 @@ export const getActivityTimeline = asyncHandler(async (req: Request, res: Respon
   const params = adminUserIdParamSchema.parse(req.params);
   const limit = Math.min(Number(req.query.limit) || 50, 100);
 
-  const events = await adminUserService.getActivityTimeline(params.userId, limit);
+  const events = await adminUserService.getActivityTimeline(await resolveId(params.userId), limit);
 
   const response = createSuccessResponse(events);
   res.json(response);
@@ -165,7 +169,7 @@ export const updateStatus = asyncHandler(async (req: Request, res: Response) => 
   }
 
   const result = await adminUserService.toggleUserStatus(
-    params.userId,
+    await resolveId(params.userId),
     body.isActive,
     currentUserId
   );

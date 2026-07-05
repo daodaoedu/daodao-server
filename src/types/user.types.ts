@@ -278,9 +278,10 @@ export interface UserActivityStats {
 
 export interface ActivityTimelineEvent {
   id: string;
-  type: 'login' | 'checkin' | 'post';
+  type: 'login' | 'checkin' | 'post' | 'practice' | 'persona' | 'view' | 'reaction' | 'comment';
   description: string;
   timestamp: string;
+  url?: string;
 }
 
 // 裝置資訊介面
