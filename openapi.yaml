@@ -9039,6 +9039,16 @@ components:
             action_generator: 工具產生建立
           description: 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
           example: self_created
+        createdFrom:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選註冊起始日期（含）
+          example: '2024-01-01'
+        createdTo:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選註冊結束日期（含）
+          example: '2024-12-31'
         lastLoginFrom:
           type: string
           pattern: ^\d{4}-\d{2}-\d{2}$
@@ -36585,6 +36595,24 @@ paths:
           required: false
           description: 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
           name: creationMethod
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選註冊起始日期（含）
+            example: '2024-01-01'
+          required: false
+          description: 篩選註冊起始日期（含）
+          name: createdFrom
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選註冊結束日期（含）
+            example: '2024-12-31'
+          required: false
+          description: 篩選註冊結束日期（含）
+          name: createdTo
           in: query
         - schema:
             type: string

@@ -26,6 +26,10 @@ export interface AdminUserFilters {
   registrationFlow?: 'landing_page' | 'quiz' | 'action_maker';
   /** 篩選建立方式 */
   creationMethod?: 'self_created' | 'copied' | 'action_generator';
+  /** 註冊起始日期 (YYYY-MM-DD) */
+  createdFrom?: string;
+  /** 註冊結束日期 (YYYY-MM-DD) */
+  createdTo?: string;
   /** 最後登入起始日期 (YYYY-MM-DD) */
   lastLoginFrom?: string;
   /** 最後登入結束日期 (YYYY-MM-DD) */

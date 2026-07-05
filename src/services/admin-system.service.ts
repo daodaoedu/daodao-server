@@ -150,27 +150,53 @@ const getDashboardActiveUsers = async (): Promise<DashboardActiveUsersResponse> 
  * 取得 Email 發送統計
  */
 const getEmailStats = async (): Promise<EmailStatsResponse> => {
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
   const result = await prisma.$queryRaw<Array<{
     total: bigint
     success: bigint
     failed: bigint
+    prev_total: bigint
+    prev_success: bigint
+    prev_failed: bigint
   }>>`
     SELECT
       COUNT(*)::bigint as total,
       COUNT(*) FILTER (WHERE status = 'sent')::bigint as success,
-      COUNT(*) FILTER (WHERE status = 'failed')::bigint as failed
+      COUNT(*) FILTER (WHERE status = 'failed')::bigint as failed,
+      COUNT(*) FILTER (WHERE sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_total,
+      COUNT(*) FILTER (WHERE status = 'sent' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_success,
+      COUNT(*) FILTER (WHERE status = 'failed' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_failed
     FROM email_logs
   `;
 
   const total = Number(result[0]?.total ?? 0);
   const success = Number(result[0]?.success ?? 0);
   const failed = Number(result[0]?.failed ?? 0);
+  const prevTotal = Number(result[0]?.prev_total ?? 0);
+  const prevSuccess = Number(result[0]?.prev_success ?? 0);
+  const prevFailed = Number(result[0]?.prev_failed ?? 0);
+
+  const curSent = total;
+  const prevSent = prevTotal;
+  const curSuccessRate = total > 0 ? Math.round((success / total) * 1000) / 10 : 0;
+  const prevSuccessRate = prevTotal > 0 ? Math.round((prevSuccess / prevTotal) * 1000) / 10 : 0;
+  const curBounceRate = total > 0 ? Math.round((failed / total) * 1000) / 10 : 0;
+  const prevBounceRate = prevTotal > 0 ? Math.round((prevFailed / prevTotal) * 1000) / 10 : 0;
+
+  const pct = (cur: number, prev: number) =>
+    prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 1000) / 10;
 
   return {
-    totalSent: total,
-    successRate: total > 0 ? Math.round((success / total) * 1000) / 10 : 0,
-    bounceRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : 0,
+    totalSent: curSent,
+    successRate: curSuccessRate,
+    bounceRate: curBounceRate,
     queueSize: 0,
+    sentChange: pct(curSent, prevSent),
+    successRateChange: pct(curSuccessRate, prevSuccessRate),
+    bounceRateChange: pct(curBounceRate, prevBounceRate),
   };
 };
 
