@@ -17,6 +17,16 @@ import type {
 import type { LoginHistoryRecord, UserActivityStats, ActivityTimelineEvent } from '../types/user.types';
 import { NotFoundError, BadRequestError } from '../middleware/error.middleware';
 
+const resolveUserId = async (userId: string): Promise<number> => {
+  if (/^\d+$/.test(userId)) return Number(userId);
+  const user = await prisma.users.findUnique({
+    where: { external_id: userId },
+    select: { id: true },
+  });
+  if (!user) throw new NotFoundError('User not found');
+  return user.id;
+};
+
 /**
  * 取得 Admin 使用者列表
  * @param filters - 查詢參數
@@ -310,10 +320,11 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
  * 取得 Admin 使用者詳情
  * @param userId - 使用者內部 ID
  */
-const getAdminUserDetail = async (userId: number): Promise<AdminUserDetailResponse> => {
-  // 查詢使用者
+const getAdminUserDetail = async (userId: number | string): Promise<AdminUserDetailResponse> => {
+  const numericId = typeof userId === 'number' ? userId : /^\d+$/.test(userId) ? Number(userId) : null;
+
   const user = await prisma.users.findUnique({
-    where: { id: userId },
+    where: numericId ? { id: numericId } : { external_id: String(userId) },
     include: {
       contacts: true,
       roles: {
@@ -343,7 +354,7 @@ const getAdminUserDetail = async (userId: number): Promise<AdminUserDetailRespon
   }
 
   const onboarding = await prisma.user_onboarding.findUnique({
-    where: { user_id: userId },
+    where: { user_id: user.id },
     select: { badge_granted: true, user_source: true },
   });
 
@@ -380,11 +391,11 @@ const getAdminUserDetail = async (userId: number): Promise<AdminUserDetailRespon
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const [recentLoginCount, totalPractices, totalCheckins, totalPosts, totalReactions] = await Promise.all([
-    prisma.user_login_history.count({ where: { user_id: userId, login_at: { gte: thirtyDaysAgo } } }),
-    prisma.practices.count({ where: { user_id: userId } }),
-    prisma.practice_checkins.count({ where: { user_id: userId } }),
-    prisma.post.count({ where: { user_id: userId } }),
-    prisma.reactions.count({ where: { user_id: userId } }),
+    prisma.user_login_history.count({ where: { user_id: user.id, login_at: { gte: thirtyDaysAgo } } }),
+    prisma.practices.count({ where: { user_id: user.id } }),
+    prisma.practice_checkins.count({ where: { user_id: user.id } }),
+    prisma.post.count({ where: { user_id: user.id } }),
+    prisma.reactions.count({ where: { user_id: user.id } }),
   ]);
 
   const activityStats: UserActivityStats = {
@@ -565,7 +576,7 @@ const getUserActivityStats = async (userId: number): Promise<UserActivityStats> 
 };
 
 /**
- * 取得使用者活動時間軸（登入、打卡、發文，依時間倒序）
+ * 取得使用者活動時間軸（登入、打卡、發文、瀏覽、反應、留言，依時間倒序）
  * @param userId - 使用者內部 ID
  * @param limit - 最多筆數，預設 50，最大 100
  */
@@ -576,26 +587,100 @@ const getActivityTimeline = async (userId: number, limit = 50): Promise<Activity
     throw new NotFoundError('User not found');
   }
 
-  const [logins, checkins, posts] = await Promise.all([
+  const perSource = Math.ceil(limit * 1.5);
+
+  const [logins, checkins, practices, personaAnswers, interactions, reactions, comments] = await Promise.all([
     prisma.user_login_history.findMany({
       where: { user_id: userId },
       orderBy: { login_at: 'desc' },
-      take: limit,
+      take: perSource,
       select: { id: true, user_agent: true, login_at: true },
     }),
     prisma.practice_checkins.findMany({
       where: { user_id: userId },
       orderBy: { created_at: 'desc' },
-      take: limit,
-      select: { id: true, note: true, created_at: true, practices: { select: { title: true } } },
+      take: perSource,
+      select: { id: true, created_at: true, practices: { select: { title: true, external_id: true } } },
     }),
-    prisma.post.findMany({
+    prisma.practices.findMany({
       where: { user_id: userId },
       orderBy: { created_at: 'desc' },
-      take: limit,
-      select: { id: true, title: true, created_at: true },
+      take: perSource,
+      select: { id: true, external_id: true, title: true, created_at: true },
+    }),
+    prisma.persona_answers.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      take: perSource,
+      select: {
+        id: true,
+        selected_value: true,
+        created_at: true,
+        persona_questions: {
+          select: {
+            persona_question_translations: {
+              where: { locale: 'zh-TW' },
+              select: { prompt: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    }),
+    prisma.interaction_events.findMany({
+      where: { user_id: userId, event_type: 'view' },
+      orderBy: { created_at: 'desc' },
+      take: perSource,
+      select: { id: true, entity_type: true, entity_id: true, created_at: true },
+    }),
+    prisma.reactions.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      take: perSource,
+      select: { id: true, target_type: true, target_id: true, reaction_type: true, created_at: true },
+    }),
+    prisma.comments.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      take: perSource,
+      select: { id: true, target_type: true, target_id: true, content: true, created_at: true },
     }),
   ]);
+
+  // 批次查所有 polymorphic 引用的 practice（瀏覽/反應/留言用）
+  const refPracticeIds = new Set<number>();
+  for (const i of interactions) { if (i.entity_type === 'practice') refPracticeIds.add(i.entity_id); }
+  for (const r of reactions) { if (r.target_type === 'practice') refPracticeIds.add(r.target_id); }
+  for (const c of comments) { if (c.target_type === 'practice') refPracticeIds.add(c.target_id); }
+
+  const practiceMap = new Map<number, { title: string; extId: string | null }>();
+  if (refPracticeIds.size > 0) {
+    const rows = await prisma.practices.findMany({
+      where: { id: { in: [...refPracticeIds] } },
+      select: { id: true, title: true, external_id: true },
+    });
+    for (const r of rows) { practiceMap.set(r.id, { title: r.title, extId: r.external_id }); }
+  }
+
+  const ENTITY_LABEL: Record<string, string> = {
+    practice: '實踐', resource: '資源', group: '社群',
+  };
+
+  const entityName = (type: string, id: number) => {
+    if (type === 'practice') {
+      const p = practiceMap.get(id);
+      return p ? `「${p.title}」` : `${ENTITY_LABEL[type] ?? type}`;
+    }
+    return `${ENTITY_LABEL[type] ?? type}`;
+  };
+
+  const practiceUrl = (extId: string | null | undefined) =>
+    extId ? `/practices/${extId}` : undefined;
+
+  const entityUrl = (type: string, id: number) => {
+    if (type === 'practice') return practiceUrl(practiceMap.get(id)?.extId);
+    return undefined;
+  };
 
   const events: ActivityTimelineEvent[] = [
     ...logins.map(l => ({
@@ -609,12 +694,46 @@ const getActivityTimeline = async (userId: number, limit = 50): Promise<Activity
       type: 'checkin' as const,
       description: c.practices?.title ? `打卡「${c.practices.title}」` : '打卡',
       timestamp: c.created_at?.toISOString() ?? '',
+      url: practiceUrl(c.practices?.external_id),
     })),
-    ...posts.map(p => ({
-      id: `post-${p.id}`,
-      type: 'post' as const,
-      description: p.title || '發文',
+    ...practices.map(p => ({
+      id: `practice-${p.id}`,
+      type: 'practice' as const,
+      description: `建立實踐「${p.title}」`,
       timestamp: p.created_at?.toISOString() ?? '',
+      url: practiceUrl(p.external_id),
+    })),
+    ...personaAnswers.map(a => {
+      const prompt = a.persona_questions.persona_question_translations[0]?.prompt;
+      return {
+        id: `persona-${a.id}`,
+        type: 'persona' as const,
+        description: prompt
+          ? `回答「${prompt}」${a.selected_value ? `：${a.selected_value}` : ''}`
+          : '填寫人物誌',
+        timestamp: a.created_at.toISOString(),
+      };
+    }),
+    ...interactions.map(i => ({
+      id: `view-${i.id}`,
+      type: 'view' as const,
+      description: `瀏覽${entityName(i.entity_type, i.entity_id)}`,
+      timestamp: i.created_at.toISOString(),
+      url: entityUrl(i.entity_type, i.entity_id),
+    })),
+    ...reactions.map(r => ({
+      id: `reaction-${r.id}`,
+      type: 'reaction' as const,
+      description: `對${entityName(r.target_type, r.target_id)} ${r.reaction_type === 'like' ? '按讚' : `反應 ${r.reaction_type}`}`,
+      timestamp: r.created_at?.toISOString() ?? '',
+      url: entityUrl(r.target_type, r.target_id),
+    })),
+    ...comments.map(c => ({
+      id: `comment-${c.id}`,
+      type: 'comment' as const,
+      description: `在${entityName(c.target_type, c.target_id)}留言：${c.content.slice(0, 50)}${c.content.length > 50 ? '…' : ''}`,
+      timestamp: c.created_at?.toISOString() ?? '',
+      url: entityUrl(c.target_type, c.target_id),
     })),
   ];
 
@@ -672,6 +791,7 @@ const toggleUserStatus = async (
 };
 
 export const adminUserService = {
+  resolveUserId,
   getAdminUserList,
   getAdminUserDetail,
   getUserLoginHistory,

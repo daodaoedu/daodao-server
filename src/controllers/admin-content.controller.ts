@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/error.middleware';
-import { createSuccessResponse } from '../utils/response-helper';
-import { getContentPerformance, setContentFeatured } from '../services/admin-content.service';
+import { createPaginatedResponse, createSuccessResponse } from '../utils/response-helper';
+import { getContentPerformance, listCheckins as listCheckinsService, setContentFeatured } from '../services/admin-content.service';
 
 const getPerformance = asyncHandler(async (req: Request, res: Response) => {
   const days = req.query.days ? Number(req.query.days) : undefined;
@@ -16,4 +16,19 @@ const updateFeatured = asyncHandler(async (req: Request, res: Response) => {
   res.json(createSuccessResponse(item));
 });
 
-export default { getPerformance, updateFeatured };
+const getCheckins = asyncHandler(async (req: Request, res: Response) => {
+  const days = req.query.days ? Number(req.query.days) : undefined;
+  const limit = req.query.limit ? Number(req.query.limit) : 20;
+  const offset = req.query.offset ? Number(req.query.offset) : 0;
+  const result = await listCheckinsService(days, limit, offset);
+  res.json(createPaginatedResponse(result.items, {
+    currentPage: result.pagination.currentPage,
+    totalPages: result.pagination.totalPages,
+    totalItems: result.pagination.totalCount,
+    itemsPerPage: result.pagination.limit,
+    hasNext: result.pagination.hasNext,
+    hasPrev: result.pagination.hasPrev,
+  }));
+});
+
+export default { getPerformance, updateFeatured, getCheckins };
