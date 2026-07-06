@@ -14,7 +14,6 @@ DaoDao Server 是一個基於 Node.js 和 Express 的全功能學習平台後端
 
 ### Database Layer
 - **Primary ORM**: Prisma ^6.16.2 (PostgreSQL)
-- **Document DB**: MongoDB (Mongoose ^7.2.3)
 - **Cache**: Redis (ioredis ^5.4.1)
 - **Task Queue**: BullMQ ^5.67.1
 
@@ -56,7 +55,7 @@ daodao-server/
 │   ├── prisma/             # Prisma Client types
 │   └── openapi-types.ts    # OpenAPI types
 ├── prisma/                 # Prisma ORM configuration
-│   └── schema.prisma       # Database schema (50+ models)
+│   └── schema.prisma       # Database schema (90+ models)
 ├── tests/                  # Test suite
 │   ├── unit/               # Unit tests
 │   ├── integration/        # Integration tests
@@ -210,7 +209,6 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 Key configuration (see `.env.dev_temp` for full list):
 - `DATABASE_URL` - PostgreSQL connection string
-- `MONGODB_URI` - MongoDB connection string
 - `REDIS_HOST`, `REDIS_PORT` - Redis configuration
 - `JWT_SECRET`, `JWT_EXPIRATION` - JWT configuration
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - OAuth
