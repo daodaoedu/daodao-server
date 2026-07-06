@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+@AGENTS.md
+
+（工作流程規範在 AGENTS.md；以下為本 repo 架構參考。）
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Development Commands

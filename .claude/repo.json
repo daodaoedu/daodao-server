@@ -1,0 +1,25 @@
+{
+  "repo": "daodao-server",
+  "defaultBranch": "dev",
+  "highRisk": false,
+  "quality": {
+    "fix": "pnpm run lint:fix",
+    "lint": "pnpm run lint",
+    "typecheck": "pnpm run typecheck",
+    "test": "pnpm test"
+  },
+  "formatFile": "npx eslint --fix \"{file}\"",
+  "reviewFocus": [
+    "邏輯錯誤：null/undefined 處理、async/await、錯誤處理路徑",
+    "安全：SQL injection、缺少認證/授權、輸入驗證（Zod）",
+    "效能：不必要的資料庫查詢、大量資料未分頁、缺少 cache",
+    "架構：service 層分離、禁用 any、factory 函式而非 class、API response 格式一致"
+  ],
+  "protectedPaths": [
+    ".github/workflows/*",
+    ".env*",
+    "secrets/*",
+    "migrate/sql/*"
+  ],
+  "generatedBy": "daodao/.claude/sync.sh — 不要手改，改 bin/pipeline.config.json 後重新 sync"
+}
