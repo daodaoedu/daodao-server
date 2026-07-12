@@ -4,6 +4,8 @@
  */
 
 import { Request, Response } from 'express';
+import { validate as isUuid } from 'uuid';
+import type { Prisma } from '../../generated/prisma';
 import { userService, getCommonCirclesCount, getUserConnectionsCount } from '../services/user.service';
 import { getRecentPracticeCount } from '../services/practice.service';
 import {
@@ -515,12 +517,16 @@ export const getUserProfile = asyncHandler(async (req: Request, res: Response) =
   // 嘗試用 custom_id 或 external_id 查詢用戶
   const { prisma } = await import('../services/database/prisma.service');
 
+  // external_id 為 UUID 欄位，identifier 非 UUID 時不可納入比對，
+  // 否則 Prisma 會嘗試將 custom_id 字串 parse 成 UUID 而丟出例外（回傳 500）
+  const orConditions: Prisma.usersWhereInput[] = [{ custom_id: identifier }];
+  if (isUuid(identifier)) {
+    orConditions.push({ external_id: identifier });
+  }
+
   const user = await prisma.users.findFirst({
     where: {
-      OR: [
-        { custom_id: identifier },
-        { external_id: identifier }
-      ]
+      OR: orConditions
     },
     include: {
       contacts: true,
