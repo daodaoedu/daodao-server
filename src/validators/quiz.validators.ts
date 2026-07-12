@@ -172,6 +172,51 @@ export const getQuizResultResponseSchema = z.object({
   description: '取得測驗結果成功響應'
 });
 
+/**
+ * 暫存測驗結果響應
+ */
+export const pendingQuizDataSchema = z.object({
+  claimToken: z.string().uuid().openapi({
+    description: '認領 token (UUID)',
+    example: '550e8400-e29b-41d4-a716-446655440000'
+  })
+}).openapi('PendingQuizData', {
+  description: '暫存測驗結果數據'
+});
+
+export const savePendingQuizResponseSchema = z.object({
+  success: z.literal(true).openapi({
+    description: '請求成功標誌',
+    example: true
+  }),
+  data: pendingQuizDataSchema,
+  timestamp: z.string().datetime().openapi({
+    description: '回應時間戳',
+    example: '2026-01-07T14:30:00.000Z',
+    format: 'date-time'
+  })
+}).openapi('SavePendingQuizResponse', {
+  description: '暫存測驗結果成功響應'
+});
+
+/**
+ * 認領測驗結果響應（復用 quizResultDataSchema）
+ */
+export const claimQuizResultResponseSchema = z.object({
+  success: z.literal(true).openapi({
+    description: '請求成功標誌',
+    example: true
+  }),
+  data: quizResultDataSchema,
+  timestamp: z.string().datetime().openapi({
+    description: '回應時間戳',
+    example: '2026-01-07T14:30:00.000Z',
+    format: 'date-time'
+  })
+}).openapi('ClaimQuizResultResponse', {
+  description: '認領測驗結果成功響應'
+});
+
 // ===================================
 // 🎯 註冊 schemas 到 OpenAPI registry
 // ===================================
@@ -182,6 +227,9 @@ registry.register('SaveQuizResultRequest', saveQuizResultBodySchema);
 registry.register('QuizResultData', quizResultDataSchema);
 registry.register('SaveQuizResultResponse', saveQuizResultResponseSchema);
 registry.register('GetQuizResultResponse', getQuizResultResponseSchema);
+registry.register('PendingQuizData', pendingQuizDataSchema);
+registry.register('SavePendingQuizResponse', savePendingQuizResponseSchema);
+registry.register('ClaimQuizResultResponse', claimQuizResultResponseSchema);
 
 // 導出類型
 export type SaveQuizResultRequest = z.infer<typeof saveQuizResultBodySchema>;

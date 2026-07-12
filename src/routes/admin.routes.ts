@@ -1079,6 +1079,16 @@ router.get('/email/history',
 // ===== Persona 題目管理路由 =====
 
 /**
+ * GET /admin/persona/users
+ * 列出已回答 persona 題目的使用者（搜尋、排序、分頁）
+ */
+router.get('/persona/users',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.listPersonaUsers as RequestHandler
+);
+
+/**
  * GET /admin/persona/questions
  * 列出所有 persona 題目（含各語系翻譯）
  */
@@ -1450,6 +1460,7 @@ router.get('/surveys/:id/analytics', authenticateAny, requireAdmin, adminSurveyC
 
 // ─── Content Performance ──────────────────────────────────────────────────────
 router.get('/content/performance', authenticateAny, requireAdmin, adminContentController.getPerformance as RequestHandler);
+router.get('/content/checkins', authenticateAny, requireAdmin, adminContentController.getCheckins as RequestHandler);
 router.patch('/content/:id/featured', authenticateAny, requireAdmin, adminContentController.updateFeatured as RequestHandler);
 
 // ─── Tracking & Analytics ─────────────────────────────────────────────────────
@@ -1459,5 +1470,6 @@ router.get('/quiz/stats', authenticateAny, requireAdmin, adminTrackingController
 router.get('/persona/stats', authenticateAny, requireAdmin, adminTrackingController.getPersonaStats as RequestHandler);
 router.get('/email/onboarding-stats', authenticateAny, requireAdmin, adminTrackingController.getEmailOnboardingStats as RequestHandler);
 router.get('/engagement/stats', authenticateAny, requireAdmin, adminTrackingController.getEngagementStats as RequestHandler);
+router.get('/metrics/drilldown', authenticateAny, requireAdmin, adminTrackingController.getMetricDrillDown as RequestHandler);
 
 export default router;

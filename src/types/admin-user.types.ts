@@ -22,15 +22,33 @@ export interface AdminUserFilters {
   badgeGranted?: boolean;
   /** 篩選用戶來源 */
   userSource?: 'S1' | 'S2' | 'S3';
+  /** 篩選註冊來源 */
+  registrationFlow?: 'landing_page' | 'quiz' | 'action_maker';
+  /** 篩選建立方式 */
+  creationMethod?: 'self_created' | 'copied' | 'action_generator';
+  /** 註冊起始日期 (YYYY-MM-DD) */
+  createdFrom?: string;
+  /** 註冊結束日期 (YYYY-MM-DD) */
+  createdTo?: string;
+  /** 最後登入起始日期 (YYYY-MM-DD) */
+  lastLoginFrom?: string;
+  /** 最後登入結束日期 (YYYY-MM-DD) */
+  lastLoginTo?: string;
+  /** 最後操作起始日期 (YYYY-MM-DD) */
+  lastActivityFrom?: string;
+  /** 最後操作結束日期 (YYYY-MM-DD) */
+  lastActivityTo?: string;
   /** 頁數 */
   page?: number;
   /** 每頁數量 */
   limit?: number;
   /** 排序欄位 */
-  sortBy?: 'createdAt' | 'lastLoginAt' | 'name' | 'email';
+  sortBy?: 'createdAt' | 'lastLoginAt' | 'lastActiveAt' | 'name' | 'email' | 'registrationFlow' | 'creationMethod' | 'daysToComplete';
   /** 排序方向 */
   sortOrder?: 'asc' | 'desc';
 }
+
+export type AdminUserSortField = NonNullable<AdminUserFilters['sortBy']>;
 
 /**
  * 角色資訊
@@ -65,6 +83,12 @@ export interface AdminUserListItem {
   badgeGranted: boolean | null;
   /** 用戶來源（S1/S2/S3） */
   userSource: string | null;
+  /** 註冊來源 */
+  registrationFlow: 'landing_page' | 'quiz' | 'action_maker' | null;
+  /** 任務建立方式 */
+  creationMethod: 'self_created' | 'copied' | 'action_generator' | null;
+  /** 完成天數 */
+  daysToComplete: number | null;
   /** 用戶標籤 */
   tags: Array<{ id: number; name: string }>;
 }

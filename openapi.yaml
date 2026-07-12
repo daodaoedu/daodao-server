@@ -3738,6 +3738,14 @@ components:
             - facebook
             - friend_referral
             - others
+        registrationFlow:
+          type: string
+          enum:
+            - quiz
+            - action_maker
+            - landing_page
+          description: 註冊流程來源（quiz=從測驗註冊, action_maker=從工具註冊, landing_page=一般註冊）
+          example: landing_page
         customId:
           type: string
           minLength: 3
@@ -5691,6 +5699,7 @@ components:
             - practice
             - portfolio
             - checkin
+            - persona_answer
           description: 目標對象類型
           example: resource
         content:
@@ -5764,6 +5773,7 @@ components:
             - practice
             - portfolio
             - checkin
+            - persona_answer
           description: 留言目標類型
           example: resource
           examples:
@@ -6122,8 +6132,8 @@ components:
             - happy
         note:
           type: string
-          maxLength: 300
-          description: 詳細描述（最多300字）
+          maxLength: 600
+          description: 詳細描述（最多600字）
           example: 今天閱讀了第三章，學到了很多新概念
           examples:
             - 今天閱讀了第三章，學到了很多新概念
@@ -6152,19 +6162,20 @@ components:
           items:
             type: string
             maxLength: 50
+          minItems: 1
           maxItems: 10
-          default: []
-          description: 打卡標籤（最多10個）
+          description: 打卡標籤（必填，至少1個，最多10個）
           example:
             - 專注
             - 有收穫
           examples:
-            - []
             - - 專注
               - 有收穫
             - - 閱讀
               - 冥想
               - 運動
+      required:
+        - tags
       description: 實踐活動簽到記錄
       example:
         mood: happy
@@ -6197,8 +6208,8 @@ components:
             - happy
         note:
           type: string
-          maxLength: 300
-          description: 詳細描述（最多300字）
+          maxLength: 600
+          description: 詳細描述（最多600字）
           example: 今天閱讀了第三章，學到了很多新概念
         imageUrls:
           type: array
@@ -8332,6 +8343,59 @@ components:
         - data
         - timestamp
       description: 取得測驗結果成功響應
+    PendingQuizData:
+      type: object
+      properties:
+        claimToken:
+          type: string
+          format: uuid
+          description: 認領 token (UUID)
+          example: 550e8400-e29b-41d4-a716-446655440000
+      required:
+        - claimToken
+      description: 暫存測驗結果數據
+    SavePendingQuizResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: 請求成功標誌
+          example: true
+        data:
+          $ref: '#/components/schemas/PendingQuizData'
+        timestamp:
+          type: string
+          format: date-time
+          description: 回應時間戳
+          example: '2026-01-07T14:30:00.000Z'
+      required:
+        - success
+        - data
+        - timestamp
+      description: 暫存測驗結果成功響應
+    ClaimQuizResultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: 請求成功標誌
+          example: true
+        data:
+          $ref: '#/components/schemas/QuizResultData'
+        timestamp:
+          type: string
+          format: date-time
+          description: 回應時間戳
+          example: '2026-01-07T14:30:00.000Z'
+      required:
+        - success
+        - data
+        - timestamp
+      description: 認領測驗結果成功響應
     RoleEntity:
       type: object
       properties:
@@ -8909,8 +8973,12 @@ components:
           enum:
             - createdAt
             - lastLoginAt
+            - lastActiveAt
             - name
             - email
+            - registrationFlow
+            - creationMethod
+            - daysToComplete
           default: createdAt
           description: 排序欄位
           example: createdAt
@@ -8947,13 +9015,66 @@ components:
             - S3
           description: 篩選用戶來源
           example: S1
+        registrationFlow:
+          type: string
+          enum:
+            - landing_page
+            - quiz
+            - action_maker
+          enumDescriptions: &ref_110
+            landing_page: 由註冊頁面進入
+            quiz: 由測驗流程進入
+            action_maker: 由工具進入
+          description: 篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。
+          example: landing_page
+        creationMethod:
+          type: string
+          enum:
+            - self_created
+            - copied
+            - action_generator
+          enumDescriptions: &ref_111
+            self_created: 使用者自行建立
+            copied: 複製既有任務
+            action_generator: 工具產生建立
+          description: 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
+          example: self_created
+        createdFrom:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選註冊起始日期（含）
+          example: '2024-01-01'
+        createdTo:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選註冊結束日期（含）
+          example: '2024-12-31'
+        lastLoginFrom:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）
+          example: '2024-01-01'
+        lastLoginTo:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）
+          example: '2024-12-31'
+        lastActivityFrom:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）
+          example: '2024-01-01'
+        lastActivityTo:
+          type: string
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）
+          example: '2024-12-31'
     AdminUserIdParam:
       type: object
       properties:
         userId:
           type: string
-          pattern: ^\d+$
-          description: 用戶內部 ID
+          description: 用戶內部 ID（數字）或外部 ID（UUID）
           example: '123'
       required:
         - userId
@@ -9020,6 +9141,11 @@ components:
           type: integer
           description: 用戶內部 ID
           example: 123
+        customId:
+          type: string
+          nullable: true
+          description: 使用者自訂唯一識別碼（@username）
+          example: my_username
         name:
           type: string
           nullable: true
@@ -9070,6 +9196,11 @@ components:
           nullable: true
           description: 最後登入時間
           example: '2024-01-20T08:30:00.000Z'
+        lastActiveAt:
+          type: string
+          nullable: true
+          description: 最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）
+          example: '2024-01-22T14:00:00.000Z'
         personaType:
           type: string
           nullable: true
@@ -9092,9 +9223,57 @@ components:
           nullable: true
           description: 用戶來源（S1/S2/S3）
           example: S1
+        registrationFlow:
+          type: string
+          nullable: true
+          enum:
+            - landing_page
+            - quiz
+            - action_maker
+            - null
+          enumDescriptions:
+            landing_page: 由註冊頁面進入
+            quiz: 由測驗流程進入
+            action_maker: 由工具進入
+          description: 註冊來源。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。
+          example: landing_page
+        creationMethod:
+          type: string
+          nullable: true
+          enum:
+            - self_created
+            - copied
+            - action_generator
+            - null
+          enumDescriptions:
+            self_created: 使用者自行建立
+            copied: 複製既有任務
+            action_generator: 工具產生建立
+          description: 任務建立方式。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。
+          example: self_created
+        daysToComplete:
+          type: number
+          nullable: true
+          description: 完成天數
+          example: 7
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+            required:
+              - id
+              - name
+          maxItems: 20
+          description: 用戶標籤列表
       required:
         - id
         - internalId
+        - customId
         - name
         - email
         - photoURL
@@ -9105,9 +9284,14 @@ components:
         - permissions
         - createdAt
         - lastLoginAt
+        - lastActiveAt
         - personaType
         - badgeGranted
         - userSource
+        - registrationFlow
+        - creationMethod
+        - daysToComplete
+        - tags
     AdminUserDetailData:
       type: object
       properties:
@@ -9253,7 +9437,7 @@ components:
         lastActiveAt:
           type: string
           nullable: true
-          description: 最後活動時間
+          description: 最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）
         loginCount:
           type: integer
           description: 總登入次數
@@ -26688,6 +26872,7 @@ paths:
               - practice
               - portfolio
               - checkin
+              - persona_answer
             description: 查詢的目標類型
             example: resource
             examples: &ref_80
@@ -26822,6 +27007,7 @@ paths:
               - practice
               - portfolio
               - checkin
+              - persona_answer
             description: 查詢的目標類型
             example: resource
             examples: *ref_80
@@ -33630,6 +33816,29 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+  /api/v1/quiz/pending:
+    post:
+      tags:
+        - Quiz
+      summary: 暫存測驗結果（匿名）
+      description: 未登入用戶完成測驗後暫存結果。回傳 claim token 並設定 quiz_claim cookie，登入後可自動認領。暫存結果 24 小時後過期。
+      requestBody:
+        description: 測驗結果數據
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveQuizResultRequest'
+      responses:
+        '201':
+          description: 暫存成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavePendingQuizResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/quiz:
     post:
       tags:
@@ -33655,6 +33864,27 @@ paths:
           $ref: '#/components/responses/BadRequestError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/quiz/claim:
+    post:
+      tags:
+        - Quiz
+      summary: 認領匿名測驗結果
+      description: 透過 quiz_claim cookie 認領暫存的匿名測驗結果，將其關聯到當前登入用戶。認領後清除 cookie。
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 認領成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimQuizResultResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/quiz/latest:
@@ -36277,8 +36507,12 @@ paths:
             enum:
               - createdAt
               - lastLoginAt
+              - lastActiveAt
               - name
               - email
+              - registrationFlow
+              - creationMethod
+              - daysToComplete
             default: createdAt
             description: 排序欄位
             example: createdAt
@@ -36335,6 +36569,86 @@ paths:
           description: 篩選用戶來源
           name: userSource
           in: query
+        - schema:
+            type: string
+            enum:
+              - landing_page
+              - quiz
+              - action_maker
+            enumDescriptions: *ref_110
+            description: 篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。
+            example: landing_page
+          required: false
+          description: 篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。
+          name: registrationFlow
+          in: query
+        - schema:
+            type: string
+            enum:
+              - self_created
+              - copied
+              - action_generator
+            enumDescriptions: *ref_111
+            description: 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
+            example: self_created
+          required: false
+          description: 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
+          name: creationMethod
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選註冊起始日期（含）
+            example: '2024-01-01'
+          required: false
+          description: 篩選註冊起始日期（含）
+          name: createdFrom
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選註冊結束日期（含）
+            example: '2024-12-31'
+          required: false
+          description: 篩選註冊結束日期（含）
+          name: createdTo
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）
+            example: '2024-01-01'
+          required: false
+          description: 篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）
+          name: lastLoginFrom
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）
+            example: '2024-12-31'
+          required: false
+          description: 篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）
+          name: lastLoginTo
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）
+            example: '2024-01-01'
+          required: false
+          description: 篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）
+          name: lastActivityFrom
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）
+            example: '2024-12-31'
+          required: false
+          description: 篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）
+          name: lastActivityTo
+          in: query
       responses:
         '200':
           description: 成功取得使用者列表
@@ -36359,11 +36673,10 @@ paths:
       parameters:
         - schema:
             type: string
-            pattern: ^\d+$
-            description: 用戶內部 ID
+            description: 用戶內部 ID（數字）或外部 ID（UUID）
             example: '123'
           required: true
-          description: 用戶內部 ID
+          description: 用戶內部 ID（數字）或外部 ID（UUID）
           name: userId
           in: path
       responses:
@@ -36392,11 +36705,10 @@ paths:
       parameters:
         - schema:
             type: string
-            pattern: ^\d+$
-            description: 用戶內部 ID
+            description: 用戶內部 ID（數字）或外部 ID（UUID）
             example: '123'
           required: true
-          description: 用戶內部 ID
+          description: 用戶內部 ID（數字）或外部 ID（UUID）
           name: userId
           in: path
         - schema:
@@ -36461,11 +36773,10 @@ paths:
       parameters:
         - schema:
             type: string
-            pattern: ^\d+$
-            description: 用戶內部 ID
+            description: 用戶內部 ID（數字）或外部 ID（UUID）
             example: '123'
           required: true
-          description: 用戶內部 ID
+          description: 用戶內部 ID（數字）或外部 ID（UUID）
           name: userId
           in: path
       responses:
@@ -36494,11 +36805,10 @@ paths:
       parameters:
         - schema:
             type: string
-            pattern: ^\d+$
-            description: 用戶內部 ID
+            description: 用戶內部 ID（數字）或外部 ID（UUID）
             example: '123'
           required: true
-          description: 用戶內部 ID
+          description: 用戶內部 ID（數字）或外部 ID（UUID）
           name: userId
           in: path
       requestBody:
@@ -38278,7 +38588,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_110
+                examples: &ref_112
                   - success: true
                     data:
                       id: 123
@@ -38385,7 +38695,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_110
+                examples: *ref_112
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -38638,7 +38948,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_110
+                examples: *ref_112
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -38730,7 +39040,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_110
+                examples: *ref_112
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':

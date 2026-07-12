@@ -5,7 +5,6 @@
 
 import { Request, Response } from 'express';
 import { emailService, sendWelcomeEmailWithLog } from '../services/email/email.service';
-import { getReferralGroup } from '../services/email/welcome-template';
 import type { EmailSendResult } from '../services/email/email.service';
 import {
   createEmailLog,
@@ -156,7 +155,7 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
  * POST /api/v1/email/welcome
  */
 export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response) => {
-  const { email, name, referralSource, practiceUrl, illustrationUrl, unsubscribeUrl } = req.body;
+  const { email, name, practiceUrl, unsubscribeUrl } = req.body;
 
   if (!email || !name) {
     throw new BadRequestError('email 和 name 為必填項');
@@ -165,13 +164,9 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
   // 查找用戶 ID 以啟用 email_logs 記錄
   const userId = await resolveUserIdByEmail(email);
 
-  const referralGroup = getReferralGroup(referralSource);
-
   const emailData = {
     name,
-    referralGroup,
     practiceUrl,
-    illustrationUrl,
     unsubscribeUrl,
   };
 
@@ -195,7 +190,7 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
     aggregateData: {
       emailInfo: {
         recipient: email,
-        template: `welcome-${referralGroup}`,
+        template: 'welcome',
         sentAt: new Date().toISOString()
       }
     }

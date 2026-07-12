@@ -2,12 +2,10 @@
  * Onboarding Email Service
  *
  * 實作 L0 歡迎信與 A–E 任務觸發信。
- * L0 重用 generateWelcomeEmail 結構，依 userSource 切換 CTA。
  * A–E 使用 onboarding-template.ts 的正式文案。
  */
 
-import { getEmailConfig } from '../../config/email.config';
-import { generateWelcomeEmail } from './welcome-template';
+import { getReferralGroup } from './welcome-template';
 import {
   generateOnboardingAEmail,
   generateOnboardingBEmail,
@@ -23,18 +21,6 @@ import type { OnboardingEmailType } from '../../types/email/onboarding.types';
 
 // ── L0 歡迎信 ────────────────────────────────────────────────────────────────
 
-/**
- * 依 userSource 決定 L0 歡迎信的 CTA 連結與文案。
- * S1 → 帳號設定；S2 / S3 → 建立實踐
- */
-function resolveL0Cta(userSource: UserSource): { url: string; label: string } {
-  const config = getEmailConfig();
-  if (userSource === UserSource.S1) {
-    return { url: `${config.urls.frontend}/settings/profile`, label: '完成帳號設定' };
-  }
-  return { url: `${config.urls.frontend}/practices/new`, label: '建立第一個實踐' };
-}
-
 export async function sendOnboardingL0Email(userId: number, userSource: UserSource): Promise<void> {
   const user = await prisma.users.findUnique({
     where: { id: userId },
@@ -46,19 +32,10 @@ export async function sendOnboardingL0Email(userId: number, userSource: UserSour
     return;
   }
 
-  const config = getEmailConfig();
-  const cta = resolveL0Cta(userSource);
-
-  const template = generateWelcomeEmail({
+  const result = await emailService.sendWelcomeEmailWithLog(user.contacts.email, {
     name: user.nickname ?? 'User',
-    referralGroup: 'default',
-    practiceUrl: cta.url,
-  });
-
-  const result = await emailService.sendEmail({
-    to: user.contacts.email,
-    subject: template.subject,
-    html: template.html,
+    referralGroup: getReferralGroup(user.referral_source),
+    userId,
   });
   if (!result.success) throw new Error(`Failed to send onboarding L0 email: ${result.error}`);
 

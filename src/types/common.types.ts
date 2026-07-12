@@ -15,6 +15,7 @@ export interface UserBasicInfo {
   educationStage: string | null;
   tagList: string[];
   selfIntroduction: string | null;
+  customId?: string | null;
 }
 
 // 使用者簡化資訊（用於 idea, practice, project 等服務）
@@ -23,6 +24,7 @@ export interface UserSimpleInfo {
   name: string;
   roleList: string[];
   photoURL: string | null;
+  customId?: string | null;
 }
 
 // Resource status enumeration

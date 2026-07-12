@@ -58,7 +58,7 @@ async function findMatchingUsers(
     return prisma.$queryRaw<MatchedUser[]>`
       SELECT u.id, c.email, u.nickname
       FROM users u
-      LEFT JOIN contacts c ON u.id = c.user_id
+      LEFT JOIN contacts c ON c.id = u.contact_id
       WHERE u.last_login_at < NOW() - MAKE_INTERVAL(days => ${days})
         AND u.last_login_at IS NOT NULL
         AND c.email IS NOT NULL
@@ -70,7 +70,7 @@ async function findMatchingUsers(
     return prisma.$queryRaw<MatchedUser[]>`
       SELECT u.id, c.email, u.nickname
       FROM users u
-      LEFT JOIN contacts c ON u.id = c.user_id
+      LEFT JOIN contacts c ON c.id = u.contact_id
       WHERE u.id NOT IN (
         SELECT DISTINCT user_id FROM resources
         WHERE created_at >= NOW() - MAKE_INTERVAL(days => ${days})

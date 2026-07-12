@@ -27,7 +27,8 @@ const COMMENT_TARGET_TYPES = [
   'idea',
   'practice',
   'portfolio',
-  'checkin'
+  'checkin',
+  'persona_answer'
 ] as const;
 
 // Comment visibility enum values for validation

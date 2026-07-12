@@ -35,3 +35,11 @@ export interface QuizResultResponse {
   /** 測驗完成時間 */
   completedAt: string;
 }
+
+/**
+ * 暫存測驗結果響應數據
+ */
+export interface QuizPendingResponse {
+  /** 認領 token (UUID) */
+  claimToken: string;
+}

@@ -196,7 +196,7 @@ const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
   throw new Error('SESSION_SECRET environment variable is required');
 }
-if (process.env.NODE_ENV === 'prod' && sessionSecret.length < 32) {
+if ((process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production') && sessionSecret.length < 32) {
   throw new Error('SESSION_SECRET must be at least 32 characters in production');
 }
 const hasDeployedDomain = !!process.env.COOKIE_DOMAIN;

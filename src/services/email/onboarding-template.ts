@@ -50,7 +50,7 @@ export function generateOnboardingAEmail(data: { name: string }): EmailTemplateC
   const content = `
     ${greeting(data.name)}
     ${paragraph('每個人都有不同的學習方式和習慣！<br>利用 2 分鐘了解你是哪種學習類型，找到你適合的學習策略與夥伴！')}
-    ${generateCtaButton({ text: '開始測驗', url: `${config.urls.frontend}/quiz`, color: 'cyan' })}
+    ${generateCtaButton({ text: '進行測驗', url: `${config.urls.website}/quiz`, color: 'cyan' })}
     ${generateDivider()}
     ${generateAuthorSection()}
   `;

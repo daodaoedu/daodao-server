@@ -9,7 +9,7 @@ type OnboardingEmailType = 'L0' | 'A' | 'B' | 'C' | 'D' | 'E'
 // ─── Onboarding Stats ────────────────────────────────────────────────────────
 
 export async function getOnboardingStats() {
-  const [total, byFlow, byMethod, byDay] = await Promise.all([
+  const [total, totalAllUsers, byFlow, byMethod, byDay] = await Promise.all([
     prisma.$queryRaw<[{ total: bigint; badge_granted: bigint; avg_days: number }]>`
       SELECT
         COUNT(*)                                              AS total,
@@ -17,6 +17,7 @@ export async function getOnboardingStats() {
         AVG(days_to_complete) FILTER (WHERE days_to_complete IS NOT NULL) AS avg_days
       FROM user_onboarding
     `,
+    prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) AS count FROM users`,
     prisma.$queryRaw<Array<{ flow: string | null; total: bigint; badge_granted: bigint }>>`
       SELECT
         registration_flow AS flow,
@@ -41,7 +42,8 @@ export async function getOnboardingStats() {
   ])
 
   const row = total[0]
-  const totalUsers = Number(row?.total ?? 0)
+  const onboardingTotal = Number(row?.total ?? 0)
+  const totalUsers = Number(totalAllUsers[0]?.count ?? 0)
   const badgeGrantedCount = Number(row?.badge_granted ?? 0)
 
   const flowMap: Record<string, { total: number; badgeGranted: number }> = {
@@ -64,7 +66,7 @@ export async function getOnboardingStats() {
   return {
     totalUsers,
     badgeGrantedCount,
-    badgeGrantedRate: totalUsers > 0 ? Math.round((badgeGrantedCount / totalUsers) * 1000) / 10 : 0,
+    badgeGrantedRate: onboardingTotal > 0 ? Math.round((badgeGrantedCount / onboardingTotal) * 1000) / 10 : 0,
     avgDaysToComplete: Math.round((row?.avg_days ?? 0) * 10) / 10,
     byRegistrationFlow: flowMap as Record<RegistrationFlow, { total: number; badgeGranted: number }>,
     byCreationMethod: methodMap,
@@ -196,7 +198,7 @@ export async function getQuizStats() {
     prisma.$queryRaw<Array<{ result_type: string; count: bigint }>>`
       WITH latest AS (
         SELECT DISTINCT ON (user_id) user_id, result_type
-        FROM quiz_results ORDER BY user_id, completed_at DESC
+        FROM quiz_results WHERE user_id IS NOT NULL ORDER BY user_id, completed_at DESC
       )
       SELECT result_type, COUNT(*) AS count FROM latest GROUP BY result_type
     `,
@@ -205,6 +207,7 @@ export async function getQuizStats() {
         SELECT DISTINCT ON (qr.user_id) qr.user_id, qr.result_type, uo.badge_granted
         FROM quiz_results qr
         LEFT JOIN user_onboarding uo ON uo.user_id = qr.user_id
+        WHERE qr.user_id IS NOT NULL
         ORDER BY qr.user_id, qr.completed_at DESC
       )
       SELECT result_type,
@@ -477,6 +480,195 @@ export async function getEngagementStats() {
   }
 }
 
+type DrillDownUser = {
+  id: string
+  name: string | null
+  email: string | null
+  photoURL: string | null
+  lastActiveAt: string | null
+}
+
+function mapUsers(rows: Array<{
+  external_id: string | null
+  id: number
+  nickname: string | null
+  contacts: { email: string | null; photo_url: string | null } | null
+  user_activity_stats: { last_active_at: Date | null } | null
+}>): DrillDownUser[] {
+  return rows.map(u => ({
+    id: u.external_id || String(u.id),
+    name: u.nickname,
+    email: u.contacts?.email || null,
+    photoURL: u.contacts?.photo_url || null,
+    lastActiveAt: u.user_activity_stats?.last_active_at?.toISOString() || null,
+  }))
+}
+
+const USER_SELECT = {
+  id: true,
+  external_id: true,
+  nickname: true,
+  contacts: { select: { email: true, photo_url: true } },
+  user_activity_stats: { select: { last_active_at: true } },
+} as const
+
+export async function getMetricDrillDown(metric: string, period?: string): Promise<DrillDownUser[]> {
+  const sinceDate = period ? (() => {
+    const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 0
+    if (days === 0) return undefined
+    const d = new Date()
+    d.setDate(d.getDate() - days)
+    return d
+  })() : undefined
+
+  switch (metric) {
+    case 'badge_completed': {
+      const rows = await prisma.users.findMany({
+        where: { user_onboarding: { badge_granted: true } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'quiz_completed': {
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        SELECT DISTINCT user_id FROM quiz_results WHERE user_id IS NOT NULL
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'practice_abandoned': {
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        SELECT p.user_id
+        FROM practices p
+        LEFT JOIN practice_checkins pc ON pc.practice_id = p.id
+        WHERE p.deleted_at IS NULL AND pc.practice_id IS NULL
+        GROUP BY p.user_id
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'streak_7plus': {
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        WITH deduped AS (
+          SELECT DISTINCT user_id, checkin_date::date AS checkin_date
+          FROM practice_checkins
+        ),
+        ranked AS (
+          SELECT user_id, checkin_date,
+                 ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY checkin_date) AS rn
+          FROM deduped
+        ),
+        island_groups AS (
+          SELECT user_id, (checkin_date - (rn * INTERVAL '1 day'))::date AS grp
+          FROM ranked
+        ),
+        streak_counts AS (
+          SELECT user_id, COUNT(*) AS streak_len
+          FROM island_groups GROUP BY user_id, grp
+        )
+        SELECT user_id FROM streak_counts WHERE streak_len >= 7 GROUP BY user_id
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'persona_D':
+    case 'persona_A':
+    case 'persona_O':
+    case 'persona_L':
+    case 'persona_C': {
+      const personaType = metric.split('_')[1]
+      const userIds = await prisma.$queryRaw<Array<{ user_id: number }>>`
+        SELECT DISTINCT ON (user_id) user_id
+        FROM quiz_results
+        WHERE user_id IS NOT NULL AND result_type = ${personaType}
+        ORDER BY user_id, completed_at DESC
+      `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'comments': {
+      const comments = await prisma.comments.findMany({
+        where: sinceDate ? { created_at: { gte: sinceDate } } : {},
+        select: { user_id: true },
+        distinct: ['user_id'],
+      })
+      if (comments.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: comments.map(c => c.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'reactions': {
+      const reactions = await prisma.reactions.findMany({
+        where: sinceDate ? { created_at: { gte: sinceDate } } : {},
+        select: { user_id: true },
+        distinct: ['user_id'],
+      })
+      if (reactions.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: reactions.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'follows': {
+      const follows = await prisma.follows.findMany({
+        where: sinceDate ? { created_at: { gte: sinceDate } } : {},
+        select: { follower_id: true },
+        distinct: ['follower_id'],
+      })
+      if (follows.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: follows.map(f => f.follower_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    case 'connects': {
+      const userIds = sinceDate
+        ? await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM (
+              SELECT user_a_id AS user_id FROM connections WHERE connected_at >= ${sinceDate}
+              UNION
+              SELECT user_b_id AS user_id FROM connections WHERE connected_at >= ${sinceDate}
+            ) t
+          `
+        : await prisma.$queryRaw<Array<{ user_id: number }>>`
+            SELECT DISTINCT user_id FROM (
+              SELECT user_a_id AS user_id FROM connections
+              UNION
+              SELECT user_b_id AS user_id FROM connections
+            ) t
+          `
+      if (userIds.length === 0) return []
+      const rows = await prisma.users.findMany({
+        where: { id: { in: userIds.map(r => r.user_id) } },
+        select: USER_SELECT,
+      })
+      return mapUsers(rows)
+    }
+    default:
+      return []
+  }
+}
+
 export default {
   getOnboardingStats,
   getUserOnboardingDetail,
@@ -484,4 +676,5 @@ export default {
   getPersonaStats,
   getEmailOnboardingStats,
   getEngagementStats,
+  getMetricDrillDown,
 }
