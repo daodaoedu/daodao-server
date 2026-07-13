@@ -6,15 +6,15 @@ context: |
 
   ## Tech Stack
   - Runtime: Node.js + Express.js
-  - Language: TypeScript (migrating from JavaScript)
-  - Databases: PostgreSQL (Prisma ORM), MongoDB (Mongoose), Redis (ioredis)
+  - Language: TypeScript (migration from JavaScript is complete; all code in src/)
+  - Databases: PostgreSQL (Prisma ORM), Redis (ioredis)
   - Authentication: JWT, Passport.js with Google OAuth
   - File Storage: Cloudflare R2
   - Validation: Zod schemas
   - Documentation: Swagger/OpenAPI
 
   ## Architecture
-  - Hybrid JS/TS architecture (legacy JS at root, modern TS in src/)
+  - All application code is TypeScript in src/ (legacy root-level JS has been removed)
   - Path aliases: @/* → src/*, @types/* → src/types/*, @services/* → src/services/*
   - Auto-generated types: Prisma at generated/prisma, OpenAPI at generated/openapi-types.ts
 
@@ -37,7 +37,7 @@ rules:
   proposal:
     - Keep proposals concise and focused
     - Always include "Non-goals" section to clarify scope
-    - Consider impact on both legacy JS and modern TS code
+    - Consider cross-repo impact (openapi types for f2e, schema sync with daodao-storage)
   spec:
     - Define Zod schemas for validation
     - Include API response format specifications

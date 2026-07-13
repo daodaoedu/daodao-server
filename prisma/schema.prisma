@@ -692,7 +692,7 @@ model temp_users {
   google_id    String?  @unique @db.VarChar(255)
   email        String   @unique @db.VarChar(255)
   name         String   @db.VarChar(255)
-  photo_url    String?  @db.VarChar(255)
+  photo_url    String?  @db.Text
   created_date DateTime @default(now()) @db.Timestamptz(6)
   updated_date DateTime @default(now()) @db.Timestamptz(6)
   apple_id     String?  @unique @db.VarChar(255)

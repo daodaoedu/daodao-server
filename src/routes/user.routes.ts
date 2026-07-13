@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { userController } from '../controllers/user.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
+import { parseFormData } from '../middleware/parse-formdata.middleware';
 import {
   canUpdateUser,
   // canDeleteUser,
@@ -169,6 +170,8 @@ registry.registerPath({
 router.post('/me',
   authenticate,
   upload.single('avatar'),
+  parseFormData,
+  validate(createUserSchema, 'body'),
   userController.createUser as RequestHandler
 );
 
@@ -248,6 +251,7 @@ registry.registerPath({
 router.put('/me',
   authenticate,
   upload.single('avatar'),
+  parseFormData,
   withOnboardingHook(OnboardingTask.B, userController.updateMe as RequestHandler, {
     shouldAdvance: (req) => {
       const userId = req.user?.id;

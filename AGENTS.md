@@ -1,5 +1,9 @@
 # AI Agent Instructions
 
+## 專案規範
+
+進行任何開發工作（規劃、實作、除錯、review）前，先讀 `.claude/skills/project-rules/SKILL.md` 了解專案規範；不熟 codebase 結構時先讀 `.claude/skills/codebase-map/SKILL.md`；變更可能影響其他 daodao repo（API contract、DB schema、auth）時先讀 `.claude/skills/system-map/SKILL.md`。
+
 ## Commit 規範
 
 每次執行 git commit 時，必須使用 `.claude/skills/format-commit/SKILL.md` skill 的流程來產生 commit message。
