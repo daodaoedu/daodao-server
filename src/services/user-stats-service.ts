@@ -905,7 +905,7 @@ export async function getPopularProfiles(query: PopularProfilesQuery): Promise<P
       nickname: p.nickname,
       photoUrl: p.contacts?.photo_url || null,
       profileViews: p.user_activity_stats?.profile_views || 0,
-      lastActiveAt: p.user_activity_stats?.last_active_at ? formatDate(p.user_activity_stats.last_active_at) : null
+      lastActiveAt: p.user_activity_stats?.last_active_at ? p.user_activity_stats.last_active_at.toISOString() : null
     })),
     totalCount
   };
@@ -1206,7 +1206,7 @@ export async function getActiveUsersList(query: {
     email: u.contacts?.email || null,
     photoURL: u.contacts?.photo_url || null,
     lastActiveAt: u.user_activity_stats?.last_active_at
-      ? formatDate(u.user_activity_stats.last_active_at)
+      ? u.user_activity_stats.last_active_at.toISOString()
       : null,
   }));
 }
