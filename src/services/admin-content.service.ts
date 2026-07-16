@@ -653,8 +653,13 @@ export async function reorderCurationCollectionItems(
     select: { id: true },
   });
   const existingIds = new Set(items.map(i => i.id));
-  if (itemIds.length !== existingIds.size || itemIds.some(id => !existingIds.has(id))) {
-    throw new BadRequestError('itemIds 必須恰好包含此合輯的所有項目');
+  const uniqueInput = new Set(itemIds);
+  if (
+    uniqueInput.size !== itemIds.length ||
+    uniqueInput.size !== existingIds.size ||
+    itemIds.some(id => !existingIds.has(id))
+  ) {
+    throw new BadRequestError('itemIds 必須恰好包含此合輯的所有項目且不可重複');
   }
 
   await prisma.$transaction(
