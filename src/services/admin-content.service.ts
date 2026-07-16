@@ -393,30 +393,43 @@ export interface SetFeaturedOptions {
 
 /**
  * 設定精選與排程。生效狀態由查詢時計算（is_featured AND now 在起訖區間內），
- * 到期自動失效，無需排程器。取消精選時一併清空排程。
+ * 到期自動失效，無需排程器。
+ *
+ * 排程欄位採 PATCH 語義：undefined = 保留原值、null = 清空、字串 = 設定新時間；
+ * 取消精選（featured=false）時一併清空排程。
  */
 export async function setContentFeatured(
   id: number,
   featured: boolean,
   options: SetFeaturedOptions = {},
 ): Promise<ContentPerformanceItem> {
-  const startAt = featured && options.featuredStartAt ? new Date(options.featuredStartAt) : null;
-  const endAt = featured && options.featuredEndAt ? new Date(options.featuredEndAt) : null;
+  const current = await prisma.practices.findFirst({
+    where: { id, deleted_at: null },
+    select: { featured_start_at: true, featured_end_at: true },
+  });
+  if (!current) throw new NotFoundError('找不到此 practice');
 
-  if (startAt && Number.isNaN(startAt.getTime())) throw new BadRequestError('featuredStartAt 不是有效時間');
-  if (endAt && Number.isNaN(endAt.getTime())) throw new BadRequestError('featuredEndAt 不是有效時間');
+  const resolveSchedule = (
+    input: string | null | undefined,
+    existing: Date | null,
+    label: string,
+  ): Date | null => {
+    if (!featured) return null;
+    if (input === undefined) return existing;
+    if (input === null) return null;
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) throw new BadRequestError(`${label} 不是有效時間`);
+    return parsed;
+  };
+
+  const startAt = resolveSchedule(options.featuredStartAt, current.featured_start_at, 'featuredStartAt');
+  const endAt = resolveSchedule(options.featuredEndAt, current.featured_end_at, 'featuredEndAt');
   if (startAt && endAt && endAt <= startAt) throw new BadRequestError('featuredEndAt 必須晚於 featuredStartAt');
 
-  const updated = await prisma.$queryRaw<Array<{ id: number }>>`
-    UPDATE practices
-    SET is_featured = ${featured},
-        featured_start_at = ${startAt},
-        featured_end_at = ${endAt}
-    WHERE id = ${id} AND deleted_at IS NULL
-    RETURNING id
-  `;
-
-  if (!updated.length) throw new NotFoundError('找不到此 practice');
+  await prisma.practices.update({
+    where: { id },
+    data: { is_featured: featured, featured_start_at: startAt, featured_end_at: endAt },
+  });
 
   const [row] = await prisma.$queryRaw<Array<{
     id: number;

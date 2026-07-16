@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/error.middleware';
+import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createPaginatedResponse, createSuccessResponse } from '../utils/response-helper';
 import {
   addCurationCollectionItem,
@@ -15,6 +15,12 @@ import {
   updateCurationCollection,
 } from '../services/admin-content.service';
 
+function parseNumericId(value: unknown, label: string): number {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) throw new BadRequestError(`${label} 必須為正整數`);
+  return id;
+}
+
 const getPerformance = asyncHandler(async (req: Request, res: Response) => {
   const days = req.query.days ? Number(req.query.days) : undefined;
   const data = await getContentPerformance(days);
@@ -22,7 +28,7 @@ const getPerformance = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const updateFeatured = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = parseNumericId(req.params.id, 'id');
   const { featured, featuredStartAt, featuredEndAt } = req.body as {
     featured: boolean;
     featuredStartAt?: string | null;
@@ -55,7 +61,7 @@ const listCollections = asyncHandler(async (_req: Request, res: Response) => {
 });
 
 const getCollection = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = parseNumericId(req.params.id, 'id');
   const collection = await getCurationCollection(id);
   res.json(createSuccessResponse(collection));
 });
@@ -67,36 +73,40 @@ const createCollection = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const updateCollection = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = parseNumericId(req.params.id, 'id');
   const { name, description } = req.body as { name?: string; description?: string | null };
   const collection = await updateCurationCollection(id, { name, description });
   res.json(createSuccessResponse(collection));
 });
 
 const deleteCollection = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = parseNumericId(req.params.id, 'id');
   await deleteCurationCollection(id);
   res.json(createSuccessResponse({ deleted: true, id }));
 });
 
 const addCollectionItem = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const { practiceId } = req.body as { practiceId: number };
-  const collection = await addCurationCollectionItem(id, Number(practiceId));
+  const id = parseNumericId(req.params.id, 'id');
+  const practiceId = parseNumericId((req.body as { practiceId: number }).practiceId, 'practiceId');
+  const collection = await addCurationCollectionItem(id, practiceId);
   res.status(201).json(createSuccessResponse(collection));
 });
 
 const removeCollectionItem = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const itemId = Number(req.params.itemId);
+  const id = parseNumericId(req.params.id, 'id');
+  const itemId = parseNumericId(req.params.itemId, 'itemId');
   const collection = await removeCurationCollectionItem(id, itemId);
   res.json(createSuccessResponse(collection));
 });
 
 const reorderCollectionItems = asyncHandler(async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const id = parseNumericId(req.params.id, 'id');
   const { itemIds } = req.body as { itemIds: number[] };
-  const collection = await reorderCurationCollectionItems(id, (itemIds ?? []).map(Number));
+  if (!Array.isArray(itemIds)) throw new BadRequestError('itemIds 必須為陣列');
+  const collection = await reorderCurationCollectionItems(
+    id,
+    itemIds.map(itemId => parseNumericId(itemId, 'itemIds 內的項目')),
+  );
   res.json(createSuccessResponse(collection));
 });
 
