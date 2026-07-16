@@ -22,7 +22,7 @@ function parseNumericId(value: unknown, label: string): number {
 }
 
 const getPerformance = asyncHandler(async (req: Request, res: Response) => {
-  const days = req.query.days ? Number(req.query.days) : undefined;
+  const days = req.query.days !== undefined ? parseNumericId(req.query.days, 'days') : undefined;
   const data = await getContentPerformance(days);
   res.json(createSuccessResponse(data));
 });
@@ -39,7 +39,7 @@ const updateFeatured = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const getCheckins = asyncHandler(async (req: Request, res: Response) => {
-  const days = req.query.days ? Number(req.query.days) : undefined;
+  const days = req.query.days !== undefined ? parseNumericId(req.query.days, 'days') : undefined;
   const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
   const offset = Math.max(0, Number(req.query.offset) || 0);
   const result = await listCheckinsService(days, limit, offset);
