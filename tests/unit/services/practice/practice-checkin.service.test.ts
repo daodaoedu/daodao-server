@@ -127,6 +127,8 @@ describe('Practice CheckIn Service', () => {
     copy_count: 0,
     creation_source: null,
     is_featured: false,
+    featured_start_at: null,
+    featured_end_at: null,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,

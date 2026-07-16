@@ -1,6 +1,6 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
-import { NotFoundError } from '../middleware/error.middleware';
+import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -16,6 +16,9 @@ export interface ContentPerformanceItem {
   avgTime: number;
   interactionRate: number;
   featured: boolean;
+  featuredStartAt: string | null;
+  featuredEndAt: string | null;
+  featuredActive: boolean;
 }
 
 export interface ContentCollection {
@@ -95,6 +98,9 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       reaction_count: bigint;
       comment_count: bigint;
       is_featured: boolean;
+      featured_start_at: Date | null;
+      featured_end_at: Date | null;
+      featured_active: boolean;
     }>>`
       SELECT
         p.id,
@@ -106,7 +112,12 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
         COALESCE(es.view_count, 0)::bigint AS view_count,
         (SELECT COUNT(*)::bigint FROM reactions WHERE target_type = 'practice' AND target_id = p.id) AS reaction_count,
         (SELECT COUNT(*)::bigint FROM comments  WHERE target_type = 'practice' AND target_id = p.id) AS comment_count,
-        COALESCE(p.is_featured, false) AS is_featured
+        COALESCE(p.is_featured, false) AS is_featured,
+        p.featured_start_at,
+        p.featured_end_at,
+        (COALESCE(p.is_featured, false)
+          AND (p.featured_start_at IS NULL OR p.featured_start_at <= NOW())
+          AND (p.featured_end_at IS NULL OR p.featured_end_at > NOW())) AS featured_active
       FROM practices p
       LEFT JOIN users u ON u.id = p.user_id
       LEFT JOIN contacts c ON c.id = u.contact_id
@@ -232,6 +243,9 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       avgTime: avgSecs > 0 ? Math.round(avgSecs / 60 * 10) / 10 : 0,
       interactionRate: views > 0 ? Math.round((reactions + comments) / views * 100) : 0,
       featured: p.is_featured,
+      featuredStartAt: p.featured_start_at?.toISOString() ?? null,
+      featuredEndAt: p.featured_end_at?.toISOString() ?? null,
+      featuredActive: p.featured_active,
     };
   });
 
@@ -372,9 +386,32 @@ export async function listCheckins(days?: number, limit = 20, offset = 0): Promi
 
 // ── Featured ──────────────────────────────────────────────────────────────────
 
-export async function setContentFeatured(id: number, featured: boolean): Promise<ContentPerformanceItem> {
+export interface SetFeaturedOptions {
+  featuredStartAt?: string | null;
+  featuredEndAt?: string | null;
+}
+
+/**
+ * 設定精選與排程。生效狀態由查詢時計算（is_featured AND now 在起訖區間內），
+ * 到期自動失效，無需排程器。取消精選時一併清空排程。
+ */
+export async function setContentFeatured(
+  id: number,
+  featured: boolean,
+  options: SetFeaturedOptions = {},
+): Promise<ContentPerformanceItem> {
+  const startAt = featured && options.featuredStartAt ? new Date(options.featuredStartAt) : null;
+  const endAt = featured && options.featuredEndAt ? new Date(options.featuredEndAt) : null;
+
+  if (startAt && Number.isNaN(startAt.getTime())) throw new BadRequestError('featuredStartAt 不是有效時間');
+  if (endAt && Number.isNaN(endAt.getTime())) throw new BadRequestError('featuredEndAt 不是有效時間');
+  if (startAt && endAt && endAt <= startAt) throw new BadRequestError('featuredEndAt 必須晚於 featuredStartAt');
+
   const updated = await prisma.$queryRaw<Array<{ id: number }>>`
-    UPDATE practices SET is_featured = ${featured}
+    UPDATE practices
+    SET is_featured = ${featured},
+        featured_start_at = ${startAt},
+        featured_end_at = ${endAt}
     WHERE id = ${id} AND deleted_at IS NULL
     RETURNING id
   `;
@@ -392,6 +429,9 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
     reaction_count: bigint;
     comment_count: bigint;
     is_featured: boolean;
+    featured_start_at: Date | null;
+    featured_end_at: Date | null;
+    featured_active: boolean;
   }>>`
     SELECT
       p.id, p.title,
@@ -402,7 +442,12 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
       COALESCE(es.view_count, 0)::bigint AS view_count,
       (SELECT COUNT(*)::bigint FROM reactions WHERE target_type = 'practice' AND target_id = p.id) AS reaction_count,
       (SELECT COUNT(*)::bigint FROM comments  WHERE target_type = 'practice' AND target_id = p.id) AS comment_count,
-      COALESCE(p.is_featured, false) AS is_featured
+      COALESCE(p.is_featured, false) AS is_featured,
+      p.featured_start_at,
+      p.featured_end_at,
+      (COALESCE(p.is_featured, false)
+        AND (p.featured_start_at IS NULL OR p.featured_start_at <= NOW())
+        AND (p.featured_end_at IS NULL OR p.featured_end_at > NOW())) AS featured_active
     FROM practices p
     LEFT JOIN users u ON u.id = p.user_id
     LEFT JOIN contacts c ON c.id = u.contact_id
@@ -426,5 +471,199 @@ export async function setContentFeatured(id: number, featured: boolean): Promise
       ? Math.round((Number(row.reaction_count) + Number(row.comment_count)) / views * 100)
       : 0,
     featured: row.is_featured,
+    featuredStartAt: row.featured_start_at?.toISOString() ?? null,
+    featuredEndAt: row.featured_end_at?.toISOString() ?? null,
+    featuredActive: row.featured_active,
   };
+}
+
+// ── Curation Collections（策展合輯）─────────────────────────────────────────────
+
+export interface CurationCollectionSummary {
+  id: number;
+  name: string;
+  description: string | null;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface CurationCollectionItem {
+  id: number;
+  practiceId: number;
+  title: string;
+  sortOrder: number;
+}
+
+export interface CurationCollectionDetail extends CurationCollectionSummary {
+  items: CurationCollectionItem[];
+}
+
+export async function listCurationCollections(): Promise<CurationCollectionSummary[]> {
+  const rows = await prisma.content_collections.findMany({
+    include: { _count: { select: { content_collection_items: true } } },
+    orderBy: { id: 'desc' },
+  });
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    itemCount: r._count.content_collection_items,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at?.toISOString() ?? null,
+  }));
+}
+
+export async function getCurationCollection(id: number): Promise<CurationCollectionDetail> {
+  const collection = await prisma.content_collections.findUnique({
+    where: { id },
+    include: {
+      content_collection_items: { orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] },
+    },
+  });
+  if (!collection) throw new NotFoundError('找不到此合輯');
+
+  const practiceIds = collection.content_collection_items.map(i => i.entity_id);
+  const practices = practiceIds.length
+    ? await prisma.practices.findMany({
+        where: { id: { in: practiceIds } },
+        select: { id: true, title: true, deleted_at: true },
+      })
+    : [];
+  const practiceMap = new Map(practices.map(p => [p.id, p]));
+
+  return {
+    id: collection.id,
+    name: collection.name,
+    description: collection.description,
+    itemCount: collection.content_collection_items.length,
+    createdAt: collection.created_at.toISOString(),
+    updatedAt: collection.updated_at?.toISOString() ?? null,
+    items: collection.content_collection_items.map(item => {
+      const practice = practiceMap.get(item.entity_id);
+      return {
+        id: item.id,
+        practiceId: item.entity_id,
+        title: practice && !practice.deleted_at ? practice.title : '(已刪除)',
+        sortOrder: item.sort_order,
+      };
+    }),
+  };
+}
+
+export async function createCurationCollection(
+  name: string,
+  description?: string | null,
+): Promise<CurationCollectionDetail> {
+  if (!name?.trim()) throw new BadRequestError('合輯名稱為必填');
+  const created = await prisma.content_collections.create({
+    data: { name: name.trim(), description: description?.trim() || null },
+  });
+  return getCurationCollection(created.id);
+}
+
+export async function updateCurationCollection(
+  id: number,
+  data: { name?: string; description?: string | null },
+): Promise<CurationCollectionDetail> {
+  if (data.name !== undefined && !data.name.trim()) throw new BadRequestError('合輯名稱不可為空');
+  try {
+    await prisma.content_collections.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+        ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+        updated_at: new Date(),
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw new NotFoundError('找不到此合輯');
+    }
+    throw error;
+  }
+  return getCurationCollection(id);
+}
+
+export async function deleteCurationCollection(id: number): Promise<void> {
+  try {
+    await prisma.content_collections.delete({ where: { id } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw new NotFoundError('找不到此合輯');
+    }
+    throw error;
+  }
+}
+
+export async function addCurationCollectionItem(
+  collectionId: number,
+  practiceId: number,
+): Promise<CurationCollectionDetail> {
+  const collection = await prisma.content_collections.findUnique({ where: { id: collectionId } });
+  if (!collection) throw new NotFoundError('找不到此合輯');
+
+  const practice = await prisma.practices.findFirst({
+    where: { id: practiceId, deleted_at: null },
+    select: { id: true },
+  });
+  if (!practice) throw new NotFoundError('找不到此 practice');
+
+  const maxOrder = await prisma.content_collection_items.aggregate({
+    where: { collection_id: collectionId },
+    _max: { sort_order: true },
+  });
+
+  try {
+    await prisma.content_collection_items.create({
+      data: {
+        collection_id: collectionId,
+        entity_type: 'practice',
+        entity_id: practiceId,
+        sort_order: (maxOrder._max.sort_order ?? -1) + 1,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new ConflictError('此內容已在合輯中');
+    }
+    throw error;
+  }
+  return getCurationCollection(collectionId);
+}
+
+export async function removeCurationCollectionItem(
+  collectionId: number,
+  itemId: number,
+): Promise<CurationCollectionDetail> {
+  const item = await prisma.content_collection_items.findFirst({
+    where: { id: itemId, collection_id: collectionId },
+  });
+  if (!item) throw new NotFoundError('找不到此合輯項目');
+  await prisma.content_collection_items.delete({ where: { id: itemId } });
+  return getCurationCollection(collectionId);
+}
+
+export async function reorderCurationCollectionItems(
+  collectionId: number,
+  itemIds: number[],
+): Promise<CurationCollectionDetail> {
+  const items = await prisma.content_collection_items.findMany({
+    where: { collection_id: collectionId },
+    select: { id: true },
+  });
+  const existingIds = new Set(items.map(i => i.id));
+  if (itemIds.length !== existingIds.size || itemIds.some(id => !existingIds.has(id))) {
+    throw new BadRequestError('itemIds 必須恰好包含此合輯的所有項目');
+  }
+
+  await prisma.$transaction(
+    itemIds.map((itemId, index) =>
+      prisma.content_collection_items.update({
+        where: { id: itemId },
+        data: { sort_order: index },
+      }),
+    ),
+  );
+  return getCurationCollection(collectionId);
 }
