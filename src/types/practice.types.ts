@@ -241,6 +241,8 @@ export interface PracticeQueryParams {
   sortBy?: SortField;
   sortOrder?: SortOrder;
   excludePrivate?: boolean;
+  /** 排除非公開實踐：private 全排除，delayed + 未完成也排除 */
+  excludeNonPublic?: boolean;
 }
 
 export interface CheckInQueryParams {

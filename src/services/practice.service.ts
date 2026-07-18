@@ -120,7 +120,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       sortBy = 'createdAt',
       sortOrder = 'desc',
       userId,
-      excludePrivate
+      excludePrivate,
+      excludeNonPublic
     } = params;
 
     const skip = (page - 1) * limit;
@@ -128,13 +129,29 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 建構查詢條件
     // 預設排除 archived 狀態，除非明確指定 status=archived
-    const where: Prisma.practicesWhereInput = {
-      ...(search && {
+    const andConditions: Prisma.practicesWhereInput[] = [];
+
+    if (search) {
+      andConditions.push({
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
           { practice_action: { contains: search, mode: 'insensitive' } }
         ]
-      }),
+      });
+    }
+
+    // 公開存取：排除 private，且排除未完成的 delayed（完成後才公開）
+    if (excludeNonPublic) {
+      andConditions.push({
+        OR: [
+          { privacy_status: 'public' },
+          { privacy_status: 'delayed', status: 'completed' },
+        ],
+      });
+    }
+
+    const where: Prisma.practicesWhereInput = {
+      ...(andConditions.length > 0 && { AND: andConditions }),
       // status 過濾邏輯：
       // - 'archived': 只顯示 archived（需明確指定）
       // - 其他具體狀態: 只顯示該狀態
@@ -145,8 +162,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
           ? { status }
           : { status: { not: 'archived' } }),
       ...(userId && { user_id: userId }),
-      // 公開存取時排除私人練習
-      ...(excludePrivate && { privacy_status: { not: 'private' } }),
+      // 向後相容：僅排除 private
+      ...(!excludeNonPublic && excludePrivate && { privacy_status: { not: 'private' } }),
       // 排除已刪除的實踐（deleted_at 不為 null 表示已刪除）
       deleted_at: null
     };
@@ -934,9 +951,10 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
 
 /**
  * 取得使用者的實踐列表
+ * @param viewerIsOwner 觀看者是否為該使用者本人；非本人時排除 private 及未完成的 delayed
  */
-export async function findUserPractices(userId: number, params: PracticeQueryParams): Promise<PaginatedApiResponse<PracticeEntity>> {
-  return findAll({ ...params, userId, excludePrivate: false });
+export async function findUserPractices(userId: number, params: PracticeQueryParams, viewerIsOwner = true): Promise<PaginatedApiResponse<PracticeEntity>> {
+  return findAll({ ...params, userId, excludeNonPublic: !viewerIsOwner });
 }
 
 /**
