@@ -1463,6 +1463,16 @@ router.get('/content/performance', authenticateAny, requireAdmin, adminContentCo
 router.get('/content/checkins', authenticateAny, requireAdmin, adminContentController.getCheckins as RequestHandler);
 router.patch('/content/:id/featured', authenticateAny, requireAdmin, adminContentController.updateFeatured as RequestHandler);
 
+// ─── Content Curation Collections（策展合輯）──────────────────────────────────
+router.get('/content/collections', authenticateAny, requireAdmin, adminContentController.listCollections as RequestHandler);
+router.post('/content/collections', authenticateAny, requireAdmin, adminContentController.createCollection as RequestHandler);
+router.get('/content/collections/:id', authenticateAny, requireAdmin, adminContentController.getCollection as RequestHandler);
+router.patch('/content/collections/:id', authenticateAny, requireAdmin, adminContentController.updateCollection as RequestHandler);
+router.delete('/content/collections/:id', authenticateAny, requireAdmin, adminContentController.deleteCollection as RequestHandler);
+router.post('/content/collections/:id/items', authenticateAny, requireAdmin, adminContentController.addCollectionItem as RequestHandler);
+router.put('/content/collections/:id/items/order', authenticateAny, requireAdmin, adminContentController.reorderCollectionItems as RequestHandler);
+router.delete('/content/collections/:id/items/:itemId', authenticateAny, requireAdmin, adminContentController.removeCollectionItem as RequestHandler);
+
 // ─── Tracking & Analytics ─────────────────────────────────────────────────────
 router.get('/onboarding/stats', authenticateAny, requireAdmin, adminTrackingController.getOnboardingStats as RequestHandler);
 router.get('/users/:userId/onboarding', authenticateAny, requireAdmin, adminTrackingController.getUserOnboardingDetail as RequestHandler);
