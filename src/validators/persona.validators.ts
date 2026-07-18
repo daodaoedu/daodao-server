@@ -149,7 +149,7 @@ export const carouselStateQuerySchema = z.object({
 export const carouselStateDataSchema = z.object({
   shouldShow: z.boolean().openapi({ description: '是否應顯示輪播' }),
   allAnswered: z.boolean().openapi({ description: '是否所有問題已回答' }),
-  questions: z.array(personaQuestionItemSchema).openapi({ description: '本次輪播問題（最多 5 題）' }),
+  questions: z.array(personaQuestionItemSchema).openapi({ description: '本次輪播的全部可用題目' }),
 }).openapi('PersonaCarouselState');
 
 export const carouselDismissDataSchema = z.object({

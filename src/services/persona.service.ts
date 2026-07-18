@@ -168,10 +168,6 @@ async function getPassportState(userId: number): Promise<{ isLocked: boolean; an
 }
 
 interface CarouselInitRow {
-  is_new_user: boolean;
-  session_count: number;
-  prompted_today: boolean;
-  dismissed_today: boolean;
   unanswered: number;
 }
 
@@ -180,44 +176,19 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
   allAnswered: boolean;
   questions: PersonaQuestionItem[];
 }>> {
-  // Combine user check, state, dismissed-today flag, and unanswered count into one round-trip
+  // Count all unanswered, non-suppressed questions
   const [init] = await prisma.$queryRaw<CarouselInitRow[]>(Prisma.sql`
-    WITH user_data AS (
-      SELECT (created_at + interval '5 days' > NOW()) AS is_new_user
-      FROM users WHERE id = ${userId} LIMIT 1
-    ),
-    state_data AS (
-      SELECT
-        session_count_since_last_prompt,
-        (last_prompt_timestamp IS NOT NULL AND last_prompt_timestamp::date = CURRENT_DATE) AS prompted_today,
-        (last_dismissed_at IS NOT NULL AND last_dismissed_at::date = CURRENT_DATE) AS dismissed_today
-      FROM persona_user_state WHERE user_id = ${userId} LIMIT 1
-    ),
-    unanswered_data AS (
-      SELECT COUNT(*) AS unanswered
-      FROM persona_questions q
-      LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
-      LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
-      WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
-    )
-    SELECT
-      COALESCE((SELECT is_new_user FROM user_data), FALSE)                          AS is_new_user,
-      COALESCE((SELECT session_count_since_last_prompt FROM state_data), 0)         AS session_count,
-      COALESCE((SELECT prompted_today FROM state_data), FALSE)                      AS prompted_today,
-      COALESCE((SELECT dismissed_today FROM state_data), FALSE)                     AS dismissed_today,
-      (SELECT unanswered FROM unanswered_data)                                      AS unanswered
+    SELECT COUNT(*) AS unanswered
+    FROM persona_questions q
+    LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
+    LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
+    WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
   `);
 
   const allAnswered = Number(init.unanswered) === 0;
 
   if (allAnswered) {
     return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
-  }
-
-  const shouldShow = !init.dismissed_today;
-
-  if (!shouldShow) {
-    return createSuccessResponse({ shouldShow: false, allAnswered: false, questions: [] });
   }
 
   const baseCondition = replace != null
@@ -237,7 +208,6 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
     LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
     WHERE ${baseCondition}
     ORDER BY RANDOM()
-    LIMIT 5
   `);
 
   await prisma.$executeRaw(Prisma.sql`
