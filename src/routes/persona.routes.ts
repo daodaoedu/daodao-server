@@ -144,7 +144,7 @@ registry.registerPath({
   path: '/api/v1/persona/carousel-state',
   tags: ['Persona'],
   summary: '取得輪播狀態（是否應顯示 + 本次問題清單）',
-  description: '決定是否顯示人物誌輪播（shouldShow）及本次要展示的全部可用題目。新使用者（註冊未滿 5 天）每次都顯示；老使用者每隔 2 個 session 顯示一次；當天已 dismiss 則不再顯示。可傳 replace 參數替換特定題目。',
+  description: '決定是否顯示人物誌輪播（shouldShow）及本次要展示的全部可用題目。只要仍有未作答題目即顯示（shouldShow=true），全部作答完畢則不顯示。可傳 replace 參數替換特定題目。',
   request: { query: carouselStateQuerySchema },
   responses: {
     200: {

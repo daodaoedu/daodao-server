@@ -167,35 +167,15 @@ async function getPassportState(userId: number): Promise<{ isLocked: boolean; an
   };
 }
 
-interface CarouselInitRow {
-  unanswered: number;
-}
-
 async function getCarouselState(userId: number, replace?: number, locale = 'zh-TW'): Promise<ApiSuccessResponse<{
   shouldShow: boolean;
   allAnswered: boolean;
   questions: PersonaQuestionItem[];
 }>> {
-  // Count all unanswered, non-suppressed questions
-  const [init] = await prisma.$queryRaw<CarouselInitRow[]>(Prisma.sql`
-    SELECT COUNT(*) AS unanswered
-    FROM persona_questions q
-    LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
-    LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
-    WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
-  `);
-
-  const allAnswered = Number(init.unanswered) === 0;
-
-  if (allAnswered) {
-    return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
-  }
-
-  const baseCondition = replace != null
-    ? Prisma.sql`a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE AND q.id != ${replace}`
-    : Prisma.sql`a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE`;
-
-  const questions = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
+  // Fetch all unanswered, non-suppressed questions in a single query.
+  // 移除 LIMIT 後第二段查詢本來就會抓回全部可顯示題目，因此不再需要額外的 count 查詢，
+  // allAnswered 直接由結果推得，省去一次 DB round-trip。
+  const allQuestions = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
     SELECT q.id, q.question_type, q.is_new_user_priority,
            t.prompt, t.options,
            FALSE AS answered,
@@ -206,9 +186,20 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
       ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
     LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
-    WHERE ${baseCondition}
+    WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
     ORDER BY RANDOM()
   `);
+
+  const allAnswered = allQuestions.length === 0;
+
+  if (allAnswered) {
+    return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
+  }
+
+  // replace 僅影響本次回傳清單，不影響 allAnswered 判定，故於記憶體中過濾
+  const questions = replace != null
+    ? allQuestions.filter((q) => q.id !== replace)
+    : allQuestions;
 
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO persona_user_state (user_id, session_count_since_last_prompt, last_prompt_timestamp, created_at)
