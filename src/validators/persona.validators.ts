@@ -127,6 +127,10 @@ export const questionAnswersDataSchema = z.object({
     questionType: z.enum(['choice', 'sentence_completion', 'scenario']),
     options: z.array(z.string()).nullable(),
     totalAnswerCount: z.number().openapi({ description: '此題目的總回應數' }),
+    optionCounts: z.record(z.string(), z.number().int().nonnegative()).openapi({
+      description: '各選擇題選項的作答人數；非選擇題或尚無選項回答時為空物件',
+      example: { '看影片教學': 12, 'PDF 閱讀': 7 },
+    }),
   }).openapi('QuestionAnswersSummary'),
   answers: z.array(questionAnswerItemSchema),
   hasMore: z.boolean().openapi({ description: '是否還有更多資料' }),
@@ -145,7 +149,7 @@ export const carouselStateQuerySchema = z.object({
 export const carouselStateDataSchema = z.object({
   shouldShow: z.boolean().openapi({ description: '是否應顯示輪播' }),
   allAnswered: z.boolean().openapi({ description: '是否所有問題已回答' }),
-  questions: z.array(personaQuestionItemSchema).openapi({ description: '本次輪播問題（最多 5 題）' }),
+  questions: z.array(personaQuestionItemSchema).openapi({ description: '本次輪播的全部可用題目' }),
 }).openapi('PersonaCarouselState');
 
 export const carouselDismissDataSchema = z.object({

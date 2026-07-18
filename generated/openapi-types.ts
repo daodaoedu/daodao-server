@@ -1915,7 +1915,7 @@ export interface paths {
                     /** @description 每頁數量 */
                     limit?: string;
                     /** @description 排序欄位 */
-                    sortBy?: "createdAt" | "lastLoginAt" | "name" | "email" | "registrationFlow" | "creationMethod" | "daysToComplete";
+                    sortBy?: "createdAt" | "lastLoginAt" | "lastActiveAt" | "name" | "email" | "registrationFlow" | "creationMethod" | "daysToComplete";
                     /** @description 排序方向 */
                     sortOrder?: "asc" | "desc";
                     /** @description 篩選學習風格人物誌（最新一次測驗結果） */
@@ -1928,6 +1928,18 @@ export interface paths {
                     registrationFlow?: "landing_page" | "quiz" | "action_maker";
                     /** @description 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。 */
                     creationMethod?: "self_created" | "copied" | "action_generator";
+                    /** @description 篩選註冊起始日期（含） */
+                    createdFrom?: string;
+                    /** @description 篩選註冊結束日期（含） */
+                    createdTo?: string;
+                    /** @description 篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天） */
+                    lastLoginFrom?: string;
+                    /** @description 篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom） */
+                    lastLoginTo?: string;
+                    /** @description 篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天） */
+                    lastActivityFrom?: string;
+                    /** @description 篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom） */
+                    lastActivityTo?: string;
                 };
                 header?: never;
                 path?: never;
@@ -1973,7 +1985,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description 用戶內部 ID */
+                    /** @description 用戶內部 ID（數字）或外部 ID（UUID） */
                     userId: string;
                 };
                 cookie?: never;
@@ -2028,7 +2040,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description 用戶內部 ID */
+                    /** @description 用戶內部 ID（數字）或外部 ID（UUID） */
                     userId: string;
                 };
                 cookie?: never;
@@ -2074,7 +2086,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description 用戶內部 ID */
+                    /** @description 用戶內部 ID（數字）或外部 ID（UUID） */
                     userId: string;
                 };
                 cookie?: never;
@@ -2121,7 +2133,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description 用戶內部 ID */
+                    /** @description 用戶內部 ID（數字）或外部 ID（UUID） */
                     userId: string;
                 };
                 cookie?: never;
@@ -8858,7 +8870,7 @@ export interface paths {
         };
         /**
          * 取得輪播狀態（是否應顯示 + 本次問題清單）
-         * @description 決定是否顯示人物誌輪播（shouldShow）及本次要展示的最多 5 題。新使用者（註冊未滿 5 天）每次都顯示；老使用者每隔 2 個 session 顯示一次；當天已 dismiss 則不再顯示。可傳 replace 參數替換特定題目。
+         * @description 決定是否顯示人物誌輪播（shouldShow）及本次要展示的全部可用題目。只要仍有未作答題目即顯示（shouldShow=true），全部作答完畢則不顯示。可傳 replace 參數替換特定題目。
          */
         get: {
             parameters: {
@@ -16446,6 +16458,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quiz/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 暫存測驗結果（匿名）
+         * @description 未登入用戶完成測驗後暫存結果。回傳 claim token 並設定 quiz_claim cookie，登入後可自動認領。暫存結果 24 小時後過期。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description 測驗結果數據 */
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SaveQuizResultRequest"];
+                };
+            };
+            responses: {
+                /** @description 暫存成功 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SavePendingQuizResponse"];
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quiz": {
         parameters: {
             query?: never;
@@ -16484,6 +16542,48 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quiz/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 認領匿名測驗結果
+         * @description 透過 quiz_claim cookie 認領暫存的匿名測驗結果，將其關聯到當前登入用戶。認領後清除 cookie。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 認領成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ClaimQuizResultResponse"];
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                404: components["responses"]["NotFoundError"];
                 500: components["responses"]["InternalServerError"];
             };
         };
@@ -23057,7 +23157,7 @@ export interface components {
              * @example createdAt
              * @enum {string}
              */
-            sortBy: "createdAt" | "lastLoginAt" | "name" | "email" | "registrationFlow" | "creationMethod" | "daysToComplete";
+            sortBy: "createdAt" | "lastLoginAt" | "lastActiveAt" | "name" | "email" | "registrationFlow" | "creationMethod" | "daysToComplete";
             /**
              * @description 排序方向
              * @default desc
@@ -23095,10 +23195,40 @@ export interface components {
              * @enum {string}
              */
             creationMethod?: "self_created" | "copied" | "action_generator";
+            /**
+             * @description 篩選註冊起始日期（含）
+             * @example 2024-01-01
+             */
+            createdFrom?: string;
+            /**
+             * @description 篩選註冊結束日期（含）
+             * @example 2024-12-31
+             */
+            createdTo?: string;
+            /**
+             * @description 篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）
+             * @example 2024-01-01
+             */
+            lastLoginFrom?: string;
+            /**
+             * @description 篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）
+             * @example 2024-12-31
+             */
+            lastLoginTo?: string;
+            /**
+             * @description 篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）
+             * @example 2024-01-01
+             */
+            lastActivityFrom?: string;
+            /**
+             * @description 篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）
+             * @example 2024-12-31
+             */
+            lastActivityTo?: string;
         };
         AdminUserIdParam: {
             /**
-             * @description 用戶內部 ID
+             * @description 用戶內部 ID（數字）或外部 ID（UUID）
              * @example 123
              */
             userId: string;
@@ -23216,6 +23346,11 @@ export interface components {
              */
             lastLoginAt: string | null;
             /**
+             * @description 最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）
+             * @example 2024-01-22T14:00:00.000Z
+             */
+            lastActiveAt: string | null;
+            /**
              * @description 最新一次學習風格測驗結果
              * @example D
              * @enum {string|null}
@@ -23330,7 +23465,7 @@ export interface components {
         UserActivityStats: {
             /** @description 最後登入時間 */
             lastLoginAt: string | null;
-            /** @description 最後活動時間 */
+            /** @description 最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間） */
             lastActiveAt: string | null;
             /**
              * @description 總登入次數
@@ -28621,7 +28756,7 @@ export interface components {
             shouldShow: boolean;
             /** @description 是否所有問題已回答 */
             allAnswered: boolean;
-            /** @description 本次輪播問題（最多 5 題） */
+            /** @description 本次輪播的全部可用題目 */
             questions: components["schemas"]["PersonaQuestionItem"][];
         };
         /**
@@ -28845,7 +28980,7 @@ export interface components {
              */
             mood?: "give_up" | "frustrated" | "bored" | "neutral" | "good" | "happy";
             /**
-             * @description 詳細描述（最多300字）
+             * @description 詳細描述（最多600字）
              * @example 今天閱讀了第三章，學到了很多新概念
              * @example 今天閱讀了第三章，學到了很多新概念
              * @example 完成了 30 分鐘的練習
@@ -28912,7 +29047,7 @@ export interface components {
              */
             mood?: "give_up" | "frustrated" | "bored" | "neutral" | "good" | "happy";
             /**
-             * @description 詳細描述（最多300字）
+             * @description 詳細描述（最多600字）
              * @example 今天閱讀了第三章，學到了很多新概念
              */
             note?: string;
@@ -30173,6 +30308,47 @@ export interface components {
         };
         /** @description 取得測驗結果成功響應 */
         GetQuizResultResponse: {
+            /**
+             * @description 請求成功標誌
+             * @example true
+             * @enum {boolean}
+             */
+            success: true;
+            data: components["schemas"]["QuizResultData"];
+            /**
+             * Format: date-time
+             * @description 回應時間戳
+             * @example 2026-01-07T14:30:00.000Z
+             */
+            timestamp: string;
+        };
+        /** @description 暫存測驗結果數據 */
+        PendingQuizData: {
+            /**
+             * Format: uuid
+             * @description 認領 token (UUID)
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            claimToken: string;
+        };
+        /** @description 暫存測驗結果成功響應 */
+        SavePendingQuizResponse: {
+            /**
+             * @description 請求成功標誌
+             * @example true
+             * @enum {boolean}
+             */
+            success: true;
+            data: components["schemas"]["PendingQuizData"];
+            /**
+             * Format: date-time
+             * @description 回應時間戳
+             * @example 2026-01-07T14:30:00.000Z
+             */
+            timestamp: string;
+        };
+        /** @description 認領測驗結果成功響應 */
+        ClaimQuizResultResponse: {
             /**
              * @description 請求成功標誌
              * @example true
@@ -34581,6 +34757,16 @@ export interface components {
             options: string[] | null;
             /** @description 此題目的總回應數 */
             totalAnswerCount: number;
+            /**
+             * @description 各選擇題選項的作答人數；非選擇題或尚無選項回答時為空物件
+             * @example {
+             *       "看影片教學": 12,
+             *       "PDF 閱讀": 7
+             *     }
+             */
+            optionCounts: {
+                [key: string]: number;
+            };
         };
         QuestionAnswerItem: {
             /**
