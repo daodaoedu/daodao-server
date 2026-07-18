@@ -36,17 +36,19 @@ export const parseFormData = (req: Request, _res: Response, next: NextFunction):
 
     if (JSON_FIELDS.includes(key) && typeof value === 'string') {
       if (value === '') continue;
-      try {
-        const parsed = JSON.parse(value);
-        // share 的 schema 僅接受 string | string[]，若 JSON.parse 得到 number/boolean 等
-        // 非陣列型別（例如 "12345" -> 12345、"true" -> true），保留原始字串以免驗證失敗
-        result[key] = key === 'share' && !Array.isArray(parsed) ? value : parsed;
-      } catch (error) {
-        // 解析失敗時保留原始字串，並記錄警告方便除錯
-        logger.warn('parseFormData: 無法解析 JSON 欄位，保留原始字串', {
-          field: key,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      const trimmed = value.trimStart();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(value);
+          result[key] = key === 'share' && !Array.isArray(parsed) ? value : parsed;
+        } catch (error) {
+          logger.warn('parseFormData: 無法解析 JSON 欄位，保留原始字串', {
+            field: key,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          result[key] = value;
+        }
+      } else {
         result[key] = value;
       }
     } else if (BOOLEAN_FIELDS.includes(key)) {

@@ -20,7 +20,7 @@ fi
 # 3. 首次寫入時自動載入 project-rules
 PROJECT_ROOT="${CLAUDE_WORKING_DIRECTORY:-$(pwd)}"
 rules="$PROJECT_ROOT/.claude/skills/project-rules/SKILL.md"
-flag="/tmp/.claude-rules-loaded-$(basename "$PROJECT_ROOT")-$$"
+flag="/tmp/.claude-rules-loaded-$(basename "$PROJECT_ROOT")-$PPID"
 if [ -f "$rules" ] && [ ! -f "$flag" ]; then
   echo "📋 自動載入專案規範："
   cat "$rules"
