@@ -81,6 +81,15 @@ export interface CreateTagRuleInput {
   isEnabled?: boolean;
 }
 
+/** 更新標籤規則輸入 */
+export interface UpdateTagRuleInput {
+  conditionType?: string;
+  conditionOperator?: string;
+  conditionValue?: string;
+  logicOperator?: 'AND' | 'OR';
+  isEnabled?: boolean;
+}
+
 /** 批量標籤操作輸入 */
 export interface BulkTagInput {
   userIds: number[];
