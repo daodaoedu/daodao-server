@@ -352,7 +352,7 @@ describe('Practice CheckIn Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'update-practice-finish',
+          type: 'PracticeFinished',
           actorId: 1,
           recipientId: 2,
           entityType: 'practice',
@@ -386,7 +386,7 @@ describe('Practice CheckIn Service', () => {
         await Promise.resolve();
 
         expect(mockCreateEvent).not.toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'update-practice-finish' })
+          expect.objectContaining({ type: 'PracticeFinished' })
         );
       }
     );

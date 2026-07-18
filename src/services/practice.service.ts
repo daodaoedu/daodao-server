@@ -43,6 +43,7 @@ import { enqueuePracticeEmail } from '../queues';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
 let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
@@ -95,7 +96,7 @@ async function notifyPracticeCreatedAudience(params: {
 
   await Promise.all([...recipientIds].map(recipientId =>
     notificationEventService.createEvent({
-      type: 'PracticeCreated',
+      type: NOTIFICATION_TYPES.PRACTICE_CREATED,
       actorId,
       recipientId,
       entityType: 'practice',

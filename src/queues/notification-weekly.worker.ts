@@ -33,6 +33,7 @@ import {
   hasEmailBeenSent,
 } from '../services/email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -182,10 +183,10 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
 
         // 將 allowedStats 映射成 WeeklyDigestStats 欄位
         const statsTyped = {
-          reactions:       allowedStats['reaction'] ?? 0,
-          comments:        (allowedStats['comment'] ?? 0) + (allowedStats['comment_reply'] ?? 0),
-          newFollowers:    (allowedStats['UserFollowed'] ?? 0) + (allowedStats['PracticeFollowed'] ?? 0),
-          connectRequests: allowedStats['Connect'] ?? 0,
+          reactions:       allowedStats[NOTIFICATION_TYPES.REACTION] ?? 0,
+          comments:        (allowedStats[NOTIFICATION_TYPES.COMMENT] ?? 0) + (allowedStats[NOTIFICATION_TYPES.COMMENT_REPLY] ?? 0),
+          newFollowers:    (allowedStats[NOTIFICATION_TYPES.USER_FOLLOWED] ?? 0) + (allowedStats[NOTIFICATION_TYPES.PRACTICE_FOLLOWED] ?? 0),
+          connectRequests: allowedStats[NOTIFICATION_TYPES.CONNECT] ?? 0,
         };
 
         // 3d. 查詢該用戶進行中的實踐及本週打卡次數

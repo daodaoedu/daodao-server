@@ -118,7 +118,7 @@ export const mockResponses = {
     id: 1,
     uuid: 'comment-uuid',
     content: 'Test comment',
-    type: 'comment',
+    type: 'Comment',
     status: 'published',
     authorId: 1,
     resourceId: null,
