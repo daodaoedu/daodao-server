@@ -127,6 +127,8 @@ describe('Practice CheckIn Service', () => {
     copy_count: 0,
     creation_source: null,
     is_featured: false,
+    featured_start_at: null,
+    featured_end_at: null,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
@@ -350,7 +352,7 @@ describe('Practice CheckIn Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'update-practice-finish',
+          type: 'PracticeFinished',
           actorId: 1,
           recipientId: 2,
           entityType: 'practice',
@@ -384,7 +386,7 @@ describe('Practice CheckIn Service', () => {
         await Promise.resolve();
 
         expect(mockCreateEvent).not.toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'update-practice-finish' })
+          expect.objectContaining({ type: 'PracticeFinished' })
         );
       }
     );

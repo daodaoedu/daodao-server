@@ -96,7 +96,8 @@ export class PracticeController {
       status: req.query.status as PracticeStatus,
       sortBy: req.query.sortBy as SortField,
       sortOrder: req.query.sortOrder as SortOrder,
-      userId: req.query.userId ? parseInt(req.query.userId as string) : undefined
+      userId: req.query.userId ? parseInt(req.query.userId as string) : undefined,
+      excludeNonPublic: true,
     };
 
     const result = await practiceService.findAll(queryParams);
@@ -153,7 +154,8 @@ export class PracticeController {
       sortOrder: req.query.sortOrder as SortOrder
     };
 
-    const result = await practiceService.findUserPractices(userId, queryParams);
+    const viewerIsOwner = !!req.user && req.user.id === userId;
+    const result = await practiceService.findUserPractices(userId, queryParams, viewerIsOwner);
 
     // 驗證響應格式
     const validatedResponse = practicesListApiResponseSchema.parse(result);

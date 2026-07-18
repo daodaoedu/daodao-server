@@ -72,7 +72,7 @@ import type { Request, Response } from 'express';
  */
 const makeNotificationRow = (overrides: Record<string, unknown> = {}) => ({
   id:                Math.floor(Math.random() * 100_000),
-  type:              'comment',
+  type:              'Comment',
   entity_type:       'practice',
   entity_id:         10,
   priority:          'P2',
@@ -481,7 +481,7 @@ describe('Regression: reaction 通知 API response 包含 reactionType', () => {
     prismaMock.notifications.findMany.mockResolvedValue([
       makeNotificationRow({
         id: 3,
-        type: 'comment',
+        type: 'Comment',
         payload: { content: '很棒的實踐！', practice_title: '書摘記錄' },
       }),
     ] as any);
@@ -500,7 +500,7 @@ describe('Regression: reaction 通知 API response 包含 reactionType', () => {
     prismaMock.notifications.findMany.mockResolvedValue([
       makeNotificationRow({
         id: 4,
-        type: 'comment_reply',
+        type: 'CommentReply',
         entity_type: 'comment',
         entity_id: 99,
         payload: { content: '回覆內容' },
@@ -527,7 +527,7 @@ describe('Regression: reaction 通知 API response 包含 reactionType', () => {
     prismaMock.notifications.findMany.mockResolvedValue([
       makeNotificationRow({
         id: 5,
-        type: 'reaction',
+        type: 'Reaction',
         entity_type: 'comment',
         entity_id: 99,
         payload: { reactionType: 'fire' },

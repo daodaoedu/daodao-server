@@ -43,6 +43,7 @@ import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
 import { MS_PER_DAY } from '../utils/date-utils';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
 let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
@@ -265,7 +266,7 @@ export async function createCheckIn(
       }).then((followers) => {
         for (const { follower_id } of followers) {
           notificationEventService.createEvent({
-            type:        'update-practice-finish',
+            type:        NOTIFICATION_TYPES.PRACTICE_FINISHED,
             actorId:     userId,
             recipientId: follower_id,
             entityType:  'practice',
@@ -449,16 +450,29 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
     // 驗證實踐存在且未被刪除
     const practice = await prismaClient.practices.findUnique({
       where: { id: practiceId },
-      select: { id: true, user_id: true, status: true, deleted_at: true }
+      select: { id: true, user_id: true, status: true, deleted_at: true, privacy_status: true }
     });
 
     if (!practice || practice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
 
+    const isOwner = practice.user_id === requestUserId;
+
     // 草稿狀態僅允許擁有者查看打卡紀錄
-    if (practice.status === 'draft' && practice.user_id !== requestUserId) {
+    if (practice.status === 'draft' && !isOwner) {
       throw new ForbiddenError('沒有權限查看此實踐的打卡紀錄');
+    }
+
+    // 隱私過濾：private 僅擁有者可看；delayed 未完成前僅擁有者可看
+    if (!isOwner) {
+      const privacyStatus = practice.privacy_status ?? 'public';
+      if (privacyStatus === 'private') {
+        throw new ForbiddenError('此實踐為私人，無法查看打卡紀錄');
+      }
+      if (privacyStatus === 'delayed' && practice.status !== 'completed') {
+        throw new ForbiddenError('此實踐尚未完成，打卡紀錄暫不公開');
+      }
     }
 
     const {
