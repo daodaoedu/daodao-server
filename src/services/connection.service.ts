@@ -12,6 +12,7 @@ import { prisma } from './database/prisma.service';
 import { externalToInternalId } from './id-converter.service';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import {
   BadRequestError,
   NotFoundError,
@@ -163,7 +164,7 @@ const sendRequest = async (
   // Fire-and-forget: P1 Connect event
   prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'Connect',
+      type: NOTIFICATION_TYPES.CONNECT,
       actorId: requesterId,
       recipientId: receiverId,
       entityType: 'connection',
@@ -208,7 +209,7 @@ const acceptRequest = async (
   // Fire-and-forget: P1 ConnectAccepted event — notify the original requester
   prisma.users.findUnique({ where: { id: currentUserId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'ConnectAccepted',
+      type: NOTIFICATION_TYPES.CONNECT_ACCEPTED,
       actorId: currentUserId,
       recipientId: request.requester_id,
       entityType: 'connection',
@@ -220,8 +221,8 @@ const acceptRequest = async (
 
   // 更新接收者的 Connect 通知狀態，讓重整後仍顯示「已同意」
   prisma.notifications.updateMany({
-    where: { recipient_id: currentUserId, type: 'Connect', entity_id: requestId },
-    data:  { type: 'connect-agree' },
+    where: { recipient_id: currentUserId, type: NOTIFICATION_TYPES.CONNECT, entity_id: requestId },
+    data:  { type: NOTIFICATION_TYPES.CONNECT_AGREED },
   }).catch(() => {});
 
   return createSuccessResponse({ message: '已接受連結請求' });
@@ -249,8 +250,8 @@ const rejectRequest = async (
 
   // 更新接收者的 Connect 通知狀態，讓重整後仍顯示「已忽略」
   prisma.notifications.updateMany({
-    where: { recipient_id: currentUserId, type: 'Connect', entity_id: requestId },
-    data:  { type: 'connect-rejected' },
+    where: { recipient_id: currentUserId, type: NOTIFICATION_TYPES.CONNECT, entity_id: requestId },
+    data:  { type: NOTIFICATION_TYPES.CONNECT_REJECTED },
   }).catch(() => {});
 
   return createSuccessResponse({ message: '已忽略連結請求' });

@@ -9,6 +9,7 @@ import { getQueueConnection } from './connection';
 import { SOCIAL_NOTIFICATION_QUEUE_NAME } from './social-notification.queue';
 import { loggerService } from '../services/logging/logger.service';
 import { notificationEventService } from '../services/notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import type { SocialNotificationJob } from '../types/social.types';
 import { SocialNotificationEvent } from '../types/social.types';
 
@@ -102,7 +103,7 @@ async function handleFollowPracticeCheckin(
     return;
   }
   await notificationEventService.createEvent({
-    type: 'PracticeCheckinActivity',
+    type: NOTIFICATION_TYPES.PRACTICE_CHECKIN_ACTIVITY,
     actorId,
     recipientId,
     entityType: 'practice',
@@ -126,7 +127,7 @@ async function handleFollowPracticeUpdate(
     return;
   }
   await notificationEventService.createEvent({
-    type: 'PracticeUpdateActivity',
+    type: NOTIFICATION_TYPES.PRACTICE_UPDATE_ACTIVITY,
     actorId,
     recipientId,
     entityType: 'practice',
@@ -150,7 +151,7 @@ async function handleConnectPartnerCheckin(
     return;
   }
   await notificationEventService.createEvent({
-    type: 'PartnerCheckinActivity',
+    type: NOTIFICATION_TYPES.PARTNER_CHECKIN_ACTIVITY,
     actorId,
     recipientId,
     entityType: 'practice',
@@ -174,7 +175,7 @@ async function handleConnectPartnerUpdate(
     return;
   }
   await notificationEventService.createEvent({
-    type: 'PartnerUpdateActivity',
+    type: NOTIFICATION_TYPES.PARTNER_UPDATE_ACTIVITY,
     actorId,
     recipientId,
     entityType: 'practice',
@@ -200,7 +201,7 @@ async function handleMention(
     return;
   }
   await notificationEventService.createEvent({
-    type: 'Mention',
+    type: NOTIFICATION_TYPES.MENTION,
     actorId,
     recipientId,
     entityType: 'comment',

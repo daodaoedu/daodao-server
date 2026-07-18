@@ -30,6 +30,7 @@ import {
   hasEmailBeenSent,
 } from '../services/email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -47,25 +48,24 @@ const MORNING_BATCH_WINDOW_MS = 12 * 60 * 60 * 1000;
 const EMAIL_CHANNEL = 'N01';
 
 /** 學習夥伴動態：最強問責感，獨立 section */
-const PARTNER_EVENT_TYPES = new Set([
-  'PartnerCheckinActivity',
-  'PartnerUpdateActivity',
+const PARTNER_EVENT_TYPES: Set<string> = new Set([
+  NOTIFICATION_TYPES.PARTNER_CHECKIN_ACTIVITY,
+  NOTIFICATION_TYPES.PARTNER_UPDATE_ACTIVITY,
 ]);
 
 /** 直接互動：有人對你做了什麼，強調被看見 */
-const INTERACTION_EVENT_TYPES = new Set([
-  'Connect',
-  'ConnectAccepted',
-  'comment',
-  'comment_reply',
-  'mention',
-  'Mention',
-  'BuddyRequest',
-  'BuddyRequestFollower',
-  'BuddyAccepted',
-  'wish.linked',
-  'roadmap.shipped',
-  'PracticeCreated',
+const INTERACTION_EVENT_TYPES: Set<string> = new Set([
+  NOTIFICATION_TYPES.CONNECT,
+  NOTIFICATION_TYPES.CONNECT_ACCEPTED,
+  NOTIFICATION_TYPES.COMMENT,
+  NOTIFICATION_TYPES.COMMENT_REPLY,
+  NOTIFICATION_TYPES.MENTION,
+  NOTIFICATION_TYPES.BUDDY_REQUEST,
+  NOTIFICATION_TYPES.BUDDY_REQUEST_FOLLOWER,
+  NOTIFICATION_TYPES.BUDDY_ACCEPTED,
+  NOTIFICATION_TYPES.WISH_LINKED,
+  NOTIFICATION_TYPES.ROADMAP_SHIPPED,
+  NOTIFICATION_TYPES.PRACTICE_CREATED,
 ]);
 
 // ─── 批次處理邏輯 ──────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
-        type: { notIn: ['wish.linked'] },
+        type: { notIn: [NOTIFICATION_TYPES.WISH_LINKED] },
         created_at: {
           gte: batchStart,
           lt: batchEnd
@@ -225,8 +225,8 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
         };
 
         // 聚合 reaction 事件：同一 entity 的多筆 reaction 合為一筆，顯示首位 actor 名稱與總數
-        const reactionEvents = p2Events.filter((e) => e.type === 'reaction');
-        const otherP2Events  = p2Events.filter((e) => e.type !== 'reaction');
+        const reactionEvents = p2Events.filter((e) => e.type === NOTIFICATION_TYPES.REACTION);
+        const otherP2Events  = p2Events.filter((e) => e.type !== NOTIFICATION_TYPES.REACTION);
 
         type ReactionGroup = { actorNames: string[]; entityTitle: string; url: string };
         const reactionByEntity = new Map<string, ReactionGroup>();
@@ -250,7 +250,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
           activityEvents:    activityEvents.map(mapP1Event),
           p2Events: [
             ...[...reactionByEntity.values()].map((g) => ({
-              type:        'reaction' as const,
+              type:        NOTIFICATION_TYPES.REACTION,
               actorName:   g.actorNames[0],
               count:       g.actorNames.length,
               entityTitle: g.entityTitle || undefined,
