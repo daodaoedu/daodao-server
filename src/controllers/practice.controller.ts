@@ -154,7 +154,7 @@ export class PracticeController {
       sortOrder: req.query.sortOrder as SortOrder
     };
 
-    const viewerIsOwner = req.user?.id === userId;
+    const viewerIsOwner = !!req.user && req.user.id === userId;
     const result = await practiceService.findUserPractices(userId, queryParams, viewerIsOwner);
 
     // 驗證響應格式
