@@ -583,7 +583,8 @@ export const userBasicInfoResponseSchema = z.object({
   roleList: z.array(z.string()).optional().openapi({ description: '用戶角色列表', example: ['normal_student', 'educator'] }),
   educationStage: z.string().nullable().optional().openapi({ description: '教育階段', example: 'university' }),
   tagList: z.array(z.string()).optional().openapi({ description: '用戶標籤列表', example: ['前端', 'React'] }),
-  selfIntroduction: z.string().nullable().optional().openapi({ description: '自我介紹', example: '熱愛學習的開發者' })
+  selfIntroduction: z.string().nullable().optional().openapi({ description: '自我介紹', example: '熱愛學習的開發者' }),
+  customId: z.string().nullable().optional().openapi({ description: '用戶自訂 ID（用於個人頁面網址）', example: 'xiaoming' })
 }).openapi('UserBasicInfo', {
   description: '用戶基本資訊',
   example: {
@@ -593,7 +594,8 @@ export const userBasicInfoResponseSchema = z.object({
     roleList: ['normal_student', 'educator'],
     educationStage: 'university',
     tagList: ['前端', 'React'],
-    selfIntroduction: '熱愛學習的開發者'
+    selfIntroduction: '熱愛學習的開發者',
+    customId: 'xiaoming'
   }
 });
 
