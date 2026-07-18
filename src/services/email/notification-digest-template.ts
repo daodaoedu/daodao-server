@@ -63,6 +63,7 @@ function getEventLabel(type: string): string {
     [NOTIFICATION_TYPES.PRACTICE_FOLLOWED]:         '追蹤了你的主題實踐',
     [NOTIFICATION_TYPES.COMMENT]:                   '在你的內容留言',
     [NOTIFICATION_TYPES.COMMENT_REPLY]:             '回覆了你的留言',
+    [NOTIFICATION_TYPES.MENTION]:                   '在內容中提及了你',
     [NOTIFICATION_TYPES.REACTION]:                  '對你的內容按了共鳴',
     [NOTIFICATION_TYPES.BUDDY_REQUEST]:             '想成為你的學習夥伴',
     [NOTIFICATION_TYPES.BUDDY_REQUEST_FOLLOWER]:    '想成為學習夥伴',
