@@ -420,6 +420,7 @@ interface QuestionSummaryRow {
   question_type: 'choice' | 'sentence_completion' | 'scenario';
   options: string[] | null;
   total_answer_count: number;
+  option_counts: Record<string, number>;
 }
 
 interface AnswerWithUserRow {
@@ -462,7 +463,14 @@ async function getQuestionAnswers(
   viewerId: number | undefined,
   params: { locale?: string; limit?: number; cursor?: number }
 ): Promise<ApiSuccessResponse<{
-  question: { id: number; prompt: string; questionType: string; options: string[] | null; totalAnswerCount: number };
+  question: {
+    id: number;
+    prompt: string;
+    questionType: string;
+    options: string[] | null;
+    totalAnswerCount: number;
+    optionCounts: Record<string, number>;
+  };
   answers: QuestionAnswerItem[];
   hasMore: boolean;
   nextCursor: number | null;
@@ -478,13 +486,27 @@ async function getQuestionAnswers(
       t.prompt,
       q.question_type,
       t.options,
-      COUNT(a.id)::int AS total_answer_count
+      stats.total_answer_count,
+      stats.option_counts
     FROM persona_questions q
     JOIN persona_question_translations t
       ON t.question_id = q.id AND t.locale = ${locale}
-    LEFT JOIN persona_answers a ON a.question_id = q.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(grouped.answer_count), 0)::int AS total_answer_count,
+        COALESCE(
+          jsonb_object_agg(grouped.selected_value, grouped.answer_count)
+            FILTER (WHERE grouped.selected_value IS NOT NULL),
+          '{}'::jsonb
+        ) AS option_counts
+      FROM (
+        SELECT a.selected_value, COUNT(*)::int AS answer_count
+        FROM persona_answers a
+        WHERE a.question_id = q.id
+        GROUP BY a.selected_value
+      ) grouped
+    ) stats ON TRUE
     WHERE q.id = ${questionId}
-    GROUP BY q.id, t.prompt, q.question_type, t.options
   `);
 
   if (!questionRow) throw new BadRequestError('找不到此題目');
@@ -544,6 +566,7 @@ async function getQuestionAnswers(
         questionType: questionRow.question_type,
         options: questionRow.options,
         totalAnswerCount: Number(questionRow.total_answer_count),
+        optionCounts: questionRow.option_counts ?? {},
       },
       answers: [],
       hasMore: false,
@@ -610,6 +633,7 @@ async function getQuestionAnswers(
       questionType: questionRow.question_type,
       options: questionRow.options,
       totalAnswerCount: Number(questionRow.total_answer_count),
+      optionCounts: questionRow.option_counts ?? {},
     },
     answers,
     hasMore,
