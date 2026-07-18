@@ -11,6 +11,7 @@
 
 import { prisma } from './database/prisma.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import {
   BadRequestError,
   NotFoundError,
@@ -101,7 +102,7 @@ const createBuddyRequest = async (
 
   // 5. 通知被請求方（P1 BuddyRequest）
   notificationEventService.createEvent({
-    type:        'BuddyRequest',
+    type:        NOTIFICATION_TYPES.BUDDY_REQUEST,
     actorId:     requesterId,
     recipientId: receiverId,
     entityType:  'buddy_request',
@@ -121,7 +122,7 @@ const createBuddyRequest = async (
 
   for (const { follower_id } of followers) {
     notificationEventService.createEvent({
-      type:        'BuddyRequestFollower',
+      type:        NOTIFICATION_TYPES.BUDDY_REQUEST_FOLLOWER,
       actorId:     requesterId,
       recipientId: follower_id,
       entityType:  'buddy_request',
@@ -169,7 +170,7 @@ const updateBuddyRequest = async (
       ? `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/practices/${practice.external_id}`
       : `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}`;
     notificationEventService.createEvent({
-      type:        'BuddyAccepted',
+      type:        NOTIFICATION_TYPES.BUDDY_ACCEPTED,
       actorId:     receiverId,
       recipientId: request.requester_id,
       entityType:  'buddy_request',

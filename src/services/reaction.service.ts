@@ -23,6 +23,7 @@ import {
   GetReactionsListResponse,
 } from '../types/reaction.types';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 async function getCommentReactionPayload(
   comment: { target_type: string; target_id: number },
@@ -109,7 +110,7 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
 
           if (practice && practice.user_id !== userId) {
             notificationEventService.createEvent({
-              type: 'reaction',
+              type: NOTIFICATION_TYPES.REACTION,
               actorId: userId,
               recipientId: practice.user_id,
               entityType: 'practice',
@@ -136,7 +137,7 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
             });
 
             notificationEventService.createEvent({
-              type: 'reaction',
+              type: NOTIFICATION_TYPES.REACTION,
               actorId: userId,
               recipientId: checkin.user_id,
               entityType: 'checkin',
@@ -159,7 +160,7 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
           if (comment && comment.user_id !== userId) {
             const payload = await getCommentReactionPayload(comment, reactionType);
             notificationEventService.createEvent({
-              type: 'reaction',
+              type: NOTIFICATION_TYPES.REACTION,
               actorId: userId,
               recipientId: comment.user_id,
               entityType: 'comment',
@@ -179,7 +180,7 @@ export async function upsertReaction(params: UpsertReactionParams): Promise<ApiS
             const personaUrl = `${baseUrl}/persona/${answer.question_id}`;
 
             notificationEventService.createEvent({
-              type: 'reaction',
+              type: NOTIFICATION_TYPES.REACTION,
               actorId: userId,
               recipientId: answer.user_id,
               entityType: 'persona_answer',

@@ -6,6 +6,7 @@
 import { prisma } from './database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { ApiSuccessResponse } from '../types/api-response.types';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 // ============================================================================
 // Constants
@@ -13,25 +14,24 @@ import type { ApiSuccessResponse } from '../types/api-response.types';
 
 /** 所有通知類型 */
 const ALL_NOTIFICATION_TYPES = [
-  'reaction',
-  'comment',
-  'comment_reply',
-  'mention',
-  'UserFollowed',
-  'PracticeFollowed',
-  'Connect',
-  'ConnectAccepted',
-  'PracticeCreated',
-  'PracticeCheckinActivity',
-  'PracticeUpdateActivity',
-  'PartnerCheckinActivity',
-  'PartnerUpdateActivity',
-  'update-practice-checkin',
-  'update-practice-finish',
-  'BuddyRequest',
-  'BuddyRequestFollower',
-  'BuddyAccepted',
-  'WeeklyDigest',
+  NOTIFICATION_TYPES.REACTION,
+  NOTIFICATION_TYPES.COMMENT,
+  NOTIFICATION_TYPES.COMMENT_REPLY,
+  NOTIFICATION_TYPES.MENTION,
+  NOTIFICATION_TYPES.USER_FOLLOWED,
+  NOTIFICATION_TYPES.PRACTICE_FOLLOWED,
+  NOTIFICATION_TYPES.CONNECT,
+  NOTIFICATION_TYPES.CONNECT_ACCEPTED,
+  NOTIFICATION_TYPES.PRACTICE_CREATED,
+  NOTIFICATION_TYPES.PRACTICE_CHECKIN_ACTIVITY,
+  NOTIFICATION_TYPES.PRACTICE_UPDATE_ACTIVITY,
+  NOTIFICATION_TYPES.PARTNER_CHECKIN_ACTIVITY,
+  NOTIFICATION_TYPES.PARTNER_UPDATE_ACTIVITY,
+  NOTIFICATION_TYPES.PRACTICE_FINISHED,
+  NOTIFICATION_TYPES.BUDDY_REQUEST,
+  NOTIFICATION_TYPES.BUDDY_REQUEST_FOLLOWER,
+  NOTIFICATION_TYPES.BUDDY_ACCEPTED,
+  NOTIFICATION_TYPES.WEEKLY_DIGEST,
 ] as const;
 
 /** 通知頻道 */
@@ -58,7 +58,7 @@ export interface NotificationPreferenceItem {
  * 判斷某個 type+channel 組合的預設 is_enabled 值
  */
 function getDefaultEnabled(type: string, channel: string): boolean {
-  if (type === 'WeeklyDigest' && WEEKLY_DIGEST_DISABLED_CHANNELS.has(channel)) {
+  if (type === NOTIFICATION_TYPES.WEEKLY_DIGEST && WEEKLY_DIGEST_DISABLED_CHANNELS.has(channel)) {
     return false;
   }
   return true;

@@ -7,6 +7,7 @@
 import { prisma } from './database/prisma.service';
 import { externalToInternalId } from './id-converter.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import {
   BadRequestError,
   NotFoundError,
@@ -93,7 +94,7 @@ const followUser = async (
   // Fire-and-forget: P2 UserFollowed event
   prisma.users.findUnique({ where: { id: followerId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'UserFollowed',
+      type: NOTIFICATION_TYPES.USER_FOLLOWED,
       actorId: followerId,
       recipientId: targetId,
       entityType: 'user',
@@ -170,7 +171,7 @@ const followPractice = async (
   // Fire-and-forget: P2 PracticeFollowed event to practice owner
   prisma.users.findUnique({ where: { id: followerId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'PracticeFollowed',
+      type: NOTIFICATION_TYPES.PRACTICE_FOLLOWED,
       actorId: followerId,
       recipientId: practice.user_id,
       entityType: 'practice',

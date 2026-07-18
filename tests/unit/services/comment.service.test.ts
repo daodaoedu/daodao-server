@@ -196,7 +196,7 @@ describe('Comment Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'mention',
+          type: 'Mention',
           recipientId: 3,
           entityType: 'comment',
         }),
@@ -220,7 +220,7 @@ describe('Comment Service', () => {
 
       expect(mockCreateEvent).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'mention',
+          type: 'Mention',
           recipientId: 999,
         }),
       );
@@ -595,11 +595,11 @@ describe('createComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(2);
     expect(mentionCalls[0][0]).toMatchObject({
-      type: 'mention',
+      type: 'Mention',
       actorId: 1,
       recipientId: 3,
       entityType: 'comment',
@@ -616,7 +616,7 @@ describe('createComment — mention notifications', () => {
     await commentService.createComment({ ...baseParams, mentionedUserIds: [1] });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -631,7 +631,7 @@ describe('createComment — mention notifications', () => {
     await commentService.createComment({ ...baseParams, mentionedUserIds: [2] });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -645,7 +645,7 @@ describe('createComment — mention notifications', () => {
     await commentService.createComment({ ...baseParams, mentionedUserIds: [999] });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -664,7 +664,7 @@ describe('createComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -675,7 +675,7 @@ describe('createComment — mention notifications', () => {
     await commentService.createComment(baseParams); // no mentionedUserIds
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -715,11 +715,11 @@ describe('updateComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(1);
     expect(mentionCalls[0][0]).toMatchObject({
-      type: 'mention',
+      type: 'Mention',
       actorId: 1,
       recipientId: 3,
       entityType: 'comment',
@@ -749,11 +749,11 @@ describe('updateComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(1);
     expect(mentionCalls[0][0]).toMatchObject({
-      type: 'mention',
+      type: 'Mention',
       recipientId: 2,
       entityType: 'comment',
     });
@@ -772,7 +772,7 @@ describe('updateComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -793,7 +793,7 @@ describe('updateComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -811,7 +811,7 @@ describe('updateComment — mention notifications', () => {
     });
 
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -827,7 +827,7 @@ describe('updateComment — mention notifications', () => {
 
     expect(prismaMock.notification_events.findMany).not.toHaveBeenCalled();
     const mentionCalls = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'mention'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Mention'
     );
     expect(mentionCalls).toHaveLength(0);
   });
@@ -883,16 +883,16 @@ describe('createComment — comment_reply notifications', () => {
     });
 
     const replyNotifications = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'comment_reply'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'CommentReply'
     );
     expect(replyNotifications).toHaveLength(1);
     expect(replyNotifications[0][0]).toMatchObject({
-      type: 'comment_reply',
+      type: 'CommentReply',
       actorId: 1,
       recipientId: 3,
       entityType: 'comment',
       entityId: 5,
-      priority: 'P2',
+      priority: 'P1',
       payload: expect.objectContaining({
         parent_comment_id: 2,
         entity_external_id: 'ext-10',
@@ -915,7 +915,7 @@ describe('createComment — comment_reply notifications', () => {
     // 呼叫端不做 self-filter，由 notificationEventService 內部處理
     // 所以 createEvent 會被呼叫，且 actorId === recipientId === 1
     const replyNotifications = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'comment_reply'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'CommentReply'
     );
     expect(replyNotifications).toHaveLength(1);
     expect(replyNotifications[0][0]).toMatchObject({
@@ -947,10 +947,10 @@ describe('createComment — comment_reply notifications', () => {
     });
 
     const commentNotifications = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'comment'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'Comment'
     );
     const replyNotifications = mockCreateEvent.mock.calls.filter(
-      (args: unknown[]) => (args[0] as { type: string }).type === 'comment_reply'
+      (args: unknown[]) => (args[0] as { type: string }).type === 'CommentReply'
     );
     expect(commentNotifications).toHaveLength(1);
     expect(commentNotifications[0][0]).toMatchObject({ recipientId: 2 });
