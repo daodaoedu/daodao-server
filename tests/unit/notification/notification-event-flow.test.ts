@@ -154,7 +154,7 @@ describe('12.6 冪等性：批次 worker 重啟後不重複寫入已處理事件
 
   it('worker 處理後標記 processed_at，再次執行時同一事件不被重複處理', async () => {
     // 第一次執行：有一筆未處理事件
-    const event = makeEvent({ id: 101, priority: 'P1', type: 'comment' });
+    const event = makeEvent({ id: 101, priority: 'P1', type: 'Comment' });
     prismaMock.notification_events.findMany
       .mockResolvedValueOnce([event] as any)  // 第一次：有事件
       .mockResolvedValueOnce([]);              // 第二次：已處理（filtered by processed_at=null）
@@ -175,7 +175,7 @@ describe('12.6 冪等性：批次 worker 重啟後不重複寫入已處理事件
 
   it('批次結束後 processedIds 全部寫入 processed_at', async () => {
     const events = [
-      makeEvent({ id: 201, priority: 'P1', type: 'comment' }),
+      makeEvent({ id: 201, priority: 'P1', type: 'Comment' }),
       makeEvent({ id: 202, priority: 'P1', type: 'BuddyRequest' }),
     ];
     prismaMock.notification_events.findMany.mockResolvedValue(events as any);
@@ -307,12 +307,12 @@ describe('12.1 留言事件：用戶 A 留言 → notification_events 寫入 →
 
     expect(mockCreateEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        type:        'comment',
+        type:        'Comment',
         actorId:     1,
         recipientId: 2,
         entityType:  'comment',
         entityId:    999,
-        priority:    'P2',
+        priority:    'P1',
       }),
     );
   });
@@ -320,7 +320,7 @@ describe('12.1 留言事件：用戶 A 留言 → notification_events 寫入 →
   it('inapp worker 批次處理後在 notifications 表建立留言通知記錄', async () => {
     const commentEvent = makeEvent({
       id: 301,
-      type: 'comment',
+      type: 'Comment',
       actor_id: 1,
       recipient_id: 2,
       entity_type: 'comment',
@@ -337,7 +337,7 @@ describe('12.1 留言事件：用戶 A 留言 → notification_events 寫入 →
     expect(prismaMock.notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          type:        'comment',
+          type:        'Comment',
           recipient_id: 2,
           actor_id:     1,
           entity_type:  'comment',

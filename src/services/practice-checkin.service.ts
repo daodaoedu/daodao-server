@@ -43,6 +43,7 @@ import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
 import { MS_PER_DAY } from '../utils/date-utils';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
 let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
@@ -265,7 +266,7 @@ export async function createCheckIn(
       }).then((followers) => {
         for (const { follower_id } of followers) {
           notificationEventService.createEvent({
-            type:        'update-practice-finish',
+            type:        NOTIFICATION_TYPES.PRACTICE_FINISHED,
             actorId:     userId,
             recipientId: follower_id,
             entityType:  'practice',

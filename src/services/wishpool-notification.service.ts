@@ -15,6 +15,7 @@ import { generateWishLinkedEmail } from './email/wish-linked-template';
 import { generateUnsubscribeUrl } from './notification-unsubscribe.service';
 import { createEmailLog, updateEmailLogStatus } from './email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 /** notification_preferences 中代表 email 的 channel 值（與 digest worker 一致） */
 const EMAIL_CHANNEL = 'N01';
@@ -52,7 +53,7 @@ async function sendWishLinkedEmail(params: NotifyWishLinkedParams): Promise<void
 
     // 尊重 email 偏好（未設定預設開啟，與 digest worker 一致）
     const pref = await prisma.notification_preferences.findFirst({
-      where: { user_id: wisherUserId, channel: EMAIL_CHANNEL, notification_type: 'wish.linked' },
+      where: { user_id: wisherUserId, channel: EMAIL_CHANNEL, notification_type: NOTIFICATION_TYPES.WISH_LINKED },
       select: { is_enabled: true },
     });
     if (pref?.is_enabled === false) return;
@@ -102,7 +103,7 @@ export async function notifyWishLinked(params: NotifyWishLinkedParams): Promise<
 
   // 站內通知（沿用 notification_events → in-app worker）
   await notificationEventService.createEvent({
-    type: 'wish.linked',
+    type: NOTIFICATION_TYPES.WISH_LINKED,
     actorId: actorUserId,
     recipientId: wisherUserId,
     entityType: 'roadmap_item',
@@ -140,7 +141,7 @@ export async function notifyRoadmapShipped(params: NotifyRoadmapShippedParams): 
     await Promise.all(
       batch.map((s) =>
         notificationEventService.createEvent({
-          type: 'roadmap.shipped',
+          type: NOTIFICATION_TYPES.ROADMAP_SHIPPED,
           actorId: actorUserId,
           recipientId: s.user_id,
           entityType: 'roadmap_item',

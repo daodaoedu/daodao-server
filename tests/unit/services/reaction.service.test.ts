@@ -24,10 +24,6 @@ jest.mock('@/services/logging/logger.service', () => ({
   loggerService: mockLoggerService,
 }));
 
-jest.mock('@/queues/reaction-notification.queue', () => ({
-  enqueueReactionNotification: jest.fn().mockResolvedValue(undefined),
-}));
-
 const mockCreateEvent = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('@/services/notification-event.service', () => ({
@@ -349,7 +345,7 @@ describe('Reaction Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'reaction',
+          type: 'Reaction',
           actorId: 1,
           recipientId: 2,
           entityType: 'comment',
@@ -389,7 +385,7 @@ describe('Reaction Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'reaction',
+          type: 'Reaction',
           actorId: 1,
           recipientId: 2,
           entityType: 'comment',
@@ -489,7 +485,7 @@ describe('Reaction Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'reaction',
+          type: 'Reaction',
           actorId: 1,
           recipientId: 2,
           entityType: 'checkin',
@@ -526,8 +522,6 @@ describe('Reaction Service', () => {
     });
 
     it('should enqueue reaction notification for checkin', async () => {
-      const { enqueueReactionNotification } = require('@/queues/reaction-notification.queue') as { enqueueReactionNotification: jest.Mock };
-
       const reaction = makeReaction({ target_type: 'checkin', target_id: 20, user_id: 1 });
 
       // No existing reaction
@@ -556,15 +550,19 @@ describe('Reaction Service', () => {
         reactionType: 'fire',
       });
 
-      expect(enqueueReactionNotification).toHaveBeenCalledWith(
+      expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          practiceId: 100,
-          actorUserId: 1,
-          practiceOwnerId: 2,
-          practiceTitle: '每日冥想',
-          reactionType: 'fire',
+          type: 'Reaction',
+          actorId: 1,
+          recipientId: 2,
           entityType: 'checkin',
           entityId: 20,
+          priority: 'P2',
+          payload: expect.objectContaining({
+            reactionType: 'fire',
+            practice_title: '每日冥想',
+            entity_external_id: 'ext-100',
+          }),
         }),
       );
     });

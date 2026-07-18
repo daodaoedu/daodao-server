@@ -168,7 +168,7 @@ describe('通知系統 — 後端事件流程（Issue #182）', () => {
   // --------------------------------------------------------------------------
 
   describe('12.1 留言事件', () => {
-    it('用戶 A 留言給用戶 B 擁有的 practice → notification event 寫入 (P2, type=comment)', async () => {
+    it('用戶 A 留言給用戶 B 擁有的 practice → notification event 寫入 (P1, type=comment)', async () => {
       const created = makeDbComment({ user_id: 1 });
       prismaMock.comments.create.mockResolvedValue(created as any);
       // target entity owner = 2 (from id-converter mock)
@@ -184,15 +184,15 @@ describe('通知系統 — 後端事件流程（Issue #182）', () => {
       await new Promise(resolve => setImmediate(resolve));
 
       const commentCalls = mockCreateEvent.mock.calls.filter(
-        (c: unknown[]) => (c[0] as { type: string }).type === 'comment'
+        (c: unknown[]) => (c[0] as { type: string }).type === 'Comment'
       );
       expect(commentCalls.length).toBeGreaterThanOrEqual(1);
       expect(commentCalls[0][0]).toMatchObject({
-        type: 'comment',
+        type: 'Comment',
         actorId: 1,
         recipientId: 2,
         entityType: 'comment',
-        priority: 'P2',
+        priority: 'P1',
       });
     });
 
@@ -216,7 +216,7 @@ describe('通知系統 — 後端事件流程（Issue #182）', () => {
       // comment service 仍然呼叫 createEvent，但 actorId === recipientId
       // 真正的 notificationEventService 會在此處過濾（見 12.7 regression）
       const commentCalls = mockCreateEvent.mock.calls.filter(
-        (c: unknown[]) => (c[0] as { type: string }).type === 'comment'
+        (c: unknown[]) => (c[0] as { type: string }).type === 'Comment'
       );
       if (commentCalls.length > 0) {
         // 若有呼叫，確認是帶著 actorId === recipientId（交由真實 service 過濾）
