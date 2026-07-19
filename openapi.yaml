@@ -3134,7 +3134,7 @@ components:
           pattern: ^[a-zA-Z0-9._-]+$
           description: 圖片檔案名稱
           example: image_123.jpg
-          examples: &ref_84
+          examples: &ref_85
             - image_123.jpg
             - user-avatar.png
             - banner.webp
@@ -5956,7 +5956,7 @@ components:
           maxLength: 100
           description: 實踐活動標題
           example: 每日閱讀 30 分鐘
-          examples: &ref_89
+          examples: &ref_90
             - 每日閱讀 30 分鐘
             - 學習 React Hooks
             - 每天運動 20 分鐘
@@ -5965,7 +5965,7 @@ components:
           maxLength: 200
           description: 具體的實踐行動描述
           example: 閱讀技術書籍或文章
-          examples: &ref_90
+          examples: &ref_91
             - 閱讀技術書籍或文章
             - 完成線上課程一個章節
             - 跑步或健身
@@ -5975,7 +5975,7 @@ components:
           pattern: ^\d{4}-\d{2}-\d{2}$
           description: 實踐開始日期（不可超過 14 天後）
           example: '2024-01-15'
-          examples: &ref_91
+          examples: &ref_92
             - '2024-01-15'
             - '2024-03-01'
             - '2024-06-01'
@@ -5985,7 +5985,7 @@ components:
           maximum: 90
           description: 實踐持續天數
           example: 14
-          examples: &ref_92
+          examples: &ref_93
             - 7
             - 14
             - 21
@@ -5996,7 +5996,7 @@ components:
           maximum: 7
           description: 每週最低打卡天數
           example: 4
-          examples: &ref_93
+          examples: &ref_94
             - 1
             - 3
             - 4
@@ -6007,7 +6007,7 @@ components:
           maximum: 7
           description: 每週最高打卡天數
           example: 7
-          examples: &ref_94
+          examples: &ref_95
             - 5
             - 6
             - 7
@@ -6017,7 +6017,7 @@ components:
           maximum: 240
           description: 每次實踐時長（分鐘）
           example: 30
-          examples: &ref_95
+          examples: &ref_96
             - 15
             - 30
             - 60
@@ -6041,12 +6041,12 @@ components:
               - night
               - commute
           maxItems: 4
-          default: &ref_96 []
+          default: &ref_97 []
           description: 偏好實踐時段
-          example: &ref_97
+          example: &ref_98
             - morning
             - evening
-          examples: &ref_98
+          examples: &ref_99
             - - morning
             - - afternoon
               - evening
@@ -6064,12 +6064,12 @@ components:
             minLength: 1
             maxLength: 50
           maxItems: 10
-          default: &ref_99 []
+          default: &ref_100 []
           description: 相關標籤（最多 10 個）
-          example: &ref_100
+          example: &ref_101
             - 閱讀
             - 學習
-          examples: &ref_101
+          examples: &ref_102
             - - 閱讀
               - 學習
             - - 運動
@@ -6083,7 +6083,7 @@ components:
             $ref: '#/components/schemas/PracticeResourceInput'
           maxItems: 5
           description: 相關學習資源（最多 5 個）
-          example: &ref_102
+          example: &ref_103
             - name: React 官方文檔
               url: https://react.dev/
         isDraft:
@@ -8567,6 +8567,189 @@ components:
       required:
         - userId
       description: 用戶 ID 參數
+    UserIslandData:
+      type: object
+      properties:
+        profile:
+          $ref: '#/components/schemas/IslandProfile'
+        personaType:
+          type: string
+          nullable: true
+          description: quiz 人格類型（單字母代碼，如 A/C/D/L/O）；未完成 quiz 為 null，前端渲染中性預設島
+          example: D
+        practices:
+          type: array
+          items:
+            $ref: '#/components/schemas/IslandPractice'
+          description: 可見實踐清單（已依觀看者關係於 server 端過濾；僅含 active/completed）
+        recentCheckinCount:
+          type: integer
+          description: 近 30 天可見實踐的打卡總量（決定生態熱鬧度）
+          example: 23
+        viewerRelation:
+          type: string
+          enum:
+            - self
+            - connection
+            - visitor
+          description: 觀看者與島主的關係：self 島主本人、connection 已連結夥伴、visitor 一般訪客（含未登入）
+          example: visitor
+      required:
+        - profile
+        - personaType
+        - practices
+        - recentCheckinCount
+        - viewerRelation
+    IslandProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 島主 external_id（UUID）
+          example: 550e8400-e29b-41d4-a716-446655440000
+        customId:
+          type: string
+          nullable: true
+          description: 島主 custom_id
+          example: my_custom_id
+        name:
+          type: string
+          nullable: true
+          description: 島主暱稱
+          example: 小島
+        photoURL:
+          type: string
+          nullable: true
+          description: 島主頭像 URL
+          example: https://example.com/avatar.png
+      required:
+        - id
+        - customId
+        - name
+        - photoURL
+    IslandPractice:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 實踐 external_id
+          example: 550e8400-e29b-41d4-a716-446655440001
+        title:
+          type: string
+          description: 實踐標題
+          example: 每天寫 500 字
+        status:
+          type: string
+          enum:
+            - active
+            - completed
+          description: 實踐狀態：active 渲染為帳篷＋營火、completed 渲染為小木屋
+          example: active
+        themeColor:
+          type: string
+          nullable: true
+          description: 實踐主題色，建築配色依據
+          example: '#FF6B6B'
+        checkinCount:
+          type: integer
+          description: 該實踐的打卡總數（決定周圍植栽數量）
+          example: 12
+        checkinIds:
+          type: array
+          items:
+            type: integer
+          description: 該實踐的打卡 id 清單（依 id 升冪；作為植栽種類/位置的 deterministic 種子）
+          example:
+            - 101
+            - 102
+            - 103
+      required:
+        - id
+        - title
+        - status
+        - themeColor
+        - checkinCount
+        - checkinIds
+    UserIslandApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          allOf:
+            - $ref: '#/components/schemas/UserIslandData'
+            - description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples: &ref_78
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
     FollowTargetBody:
       type: object
       properties:
@@ -8874,6 +9057,10 @@ components:
         userId:
           type: string
           description: 用戶外部 ID（UUID）
+        customId:
+          type: string
+          nullable: true
+          description: 用戶自訂 ID
         name:
           type: string
           description: 用戶名稱
@@ -8888,12 +9075,21 @@ components:
         reactedAt:
           type: string
           description: 反應時間（ISO 8601）
+        isPublic:
+          type: boolean
+          description: 該用戶是否公開帳號
+        isConnection:
+          type: boolean
+          description: 該用戶是否為目前登入者的連結好友
       required:
         - userId
+        - customId
         - name
         - photoURL
         - reactionType
         - reactedAt
+        - isPublic
+        - isConnection
       description: 單筆用戶反應資料
     GetReactionsListResponse:
       type: object
@@ -9022,7 +9218,7 @@ components:
             - landing_page
             - quiz
             - action_maker
-          enumDescriptions: &ref_110
+          enumDescriptions: &ref_111
             landing_page: 由註冊頁面進入
             quiz: 由測驗流程進入
             action_maker: 由工具進入
@@ -9034,7 +9230,7 @@ components:
             - self_created
             - copied
             - action_generator
-          enumDescriptions: &ref_111
+          enumDescriptions: &ref_112
             self_created: 使用者自行建立
             copied: 複製既有任務
             action_generator: 工具產生建立
@@ -13837,6 +14033,11 @@ components:
           nullable: true
           description: 使用者 external_id（UUID），不公開時為 null
           example: 123e4567-e89b-12d3-a456-426614174000
+        customId:
+          type: string
+          nullable: true
+          description: 使用者自訂 ID，未設定或不公開時為 null
+          example: xiaoming
         name:
           type: string
           nullable: true
@@ -13878,6 +14079,7 @@ components:
       required:
         - answerId
         - userId
+        - customId
         - name
         - photoURL
         - selectedValue
@@ -25091,7 +25293,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_78
+                examples: &ref_79
                   - success: true
                     data:
                       id: 123
@@ -25195,7 +25397,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_79
+                examples: &ref_80
                   - success: true
                     data:
                       id: 123
@@ -26133,6 +26335,93 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/users/{identifier}/island:
+    get:
+      tags:
+        - Users
+      summary: 取得 3D 島嶼頁 islandData 聚合資料
+      description: 根據 custom_id 或 external_id 聚合島主 profile、quiz 人格、可見實踐（含打卡統計與 checkin id 種子）、近 30 天打卡總量與 viewerRelation。實踐可見性於 server 端依觀看者關係過濾（public / connections_only / private），私有實踐不進 payload。無需登入，帶 JWT 可判斷 self/connection 關係。
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            description: 島主的 custom_id 或 external_id（UUID）
+            example: my_custom_id
+          required: true
+          description: 島主的 custom_id 或 external_id（UUID）
+          name: identifier
+          in: path
+      responses:
+        '200':
+          description: 成功取得 islandData
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/UserIslandData'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_78
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/v1/users/{id}:
     get:
       tags:
@@ -26308,7 +26597,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_78
+                examples: *ref_79
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -26407,7 +26696,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_79
+                examples: *ref_80
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -26886,7 +27175,7 @@ paths:
               - persona_answer
             description: 查詢的目標類型
             example: resource
-            examples: &ref_80
+            examples: &ref_81
               - post
               - resource
               - note
@@ -26899,7 +27188,7 @@ paths:
             minLength: 1
             description: 目標對象ID
             example: 123e4567-e89b-12d3-a456-426614174000
-            examples: &ref_81
+            examples: &ref_82
               - 123e4567-e89b-12d3-a456-426614174000
               - post_12345
           required: true
@@ -27021,7 +27310,7 @@ paths:
               - persona_answer
             description: 查詢的目標類型
             example: resource
-            examples: *ref_80
+            examples: *ref_81
           required: true
           description: 查詢的目標類型
           name: targetType
@@ -27031,7 +27320,7 @@ paths:
             minLength: 1
             description: 目標對象ID
             example: 123e4567-e89b-12d3-a456-426614174000
-            examples: *ref_81
+            examples: *ref_82
           required: true
           description: 目標對象ID
           name: targetId
@@ -27151,7 +27440,7 @@ paths:
             exclusiveMinimum: true
             description: 留言唯一識別碼
             example: 123
-            examples: &ref_82
+            examples: &ref_83
               - 1
               - 25
               - 100
@@ -27263,7 +27552,7 @@ paths:
             exclusiveMinimum: true
             description: 留言唯一識別碼
             example: 123
-            examples: *ref_82
+            examples: *ref_83
           required: true
           description: 留言唯一識別碼
           name: commentId
@@ -27382,7 +27671,7 @@ paths:
             exclusiveMinimum: true
             description: 留言唯一識別碼
             example: 123
-            examples: *ref_82
+            examples: *ref_83
           required: true
           description: 留言唯一識別碼
           name: commentId
@@ -27559,7 +27848,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_83
+                examples: &ref_84
                   - success: true
                     data:
                       id: 123
@@ -27662,7 +27951,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_83
+                examples: *ref_84
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -27763,7 +28052,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_83
+                examples: *ref_84
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -28018,7 +28307,7 @@ paths:
             pattern: ^[a-zA-Z0-9._-]+$
             description: 圖片檔案名稱
             example: image_123.jpg
-            examples: *ref_84
+            examples: *ref_85
           required: true
           description: 圖片檔案名稱
           name: filename
@@ -28071,7 +28360,7 @@ paths:
             pattern: ^[a-zA-Z0-9._-]+$
             description: 圖片檔案名稱
             example: image_123.jpg
-            examples: *ref_84
+            examples: *ref_85
           required: true
           description: 圖片檔案名稱
           name: filename
@@ -28404,7 +28693,7 @@ paths:
             pattern: ^\d+$
             description: 導師指派記錄的唯一識別 ID
             example: '123'
-            examples: &ref_85
+            examples: &ref_86
               - '123'
               - '456'
               - '789'
@@ -28523,7 +28812,7 @@ paths:
             pattern: ^\d+$
             description: 導師指派記錄的唯一識別 ID
             example: '123'
-            examples: *ref_85
+            examples: *ref_86
           required: true
           description: 導師指派記錄的唯一識別 ID
           name: assignmentId
@@ -28861,7 +29150,7 @@ paths:
             pattern: ^\d+$
             description: 學習參與者的唯一識別 ID
             example: '1001'
-            examples: &ref_87
+            examples: &ref_88
               - '1001'
               - '2045'
               - '3078'
@@ -28934,7 +29223,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_86
+                examples: &ref_87
                   - success: true
                     data:
                       id: 123
@@ -29023,7 +29312,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_86
+                examples: *ref_87
     delete:
       tags:
         - Mentor
@@ -29037,7 +29326,7 @@ paths:
             pattern: ^\d+$
             description: 學習參與者的唯一識別 ID
             example: '1001'
-            examples: *ref_87
+            examples: *ref_88
           required: true
           description: 學習參與者的唯一識別 ID
           name: participantId
@@ -29146,7 +29435,7 @@ paths:
             minLength: 1
             description: 學習活動或馬拉松的唯一識別 ID
             example: marathon_2024_spring
-            examples: &ref_88
+            examples: &ref_89
               - marathon_2024_spring
               - bootcamp_react_2024
               - workshop_nodejs_basics
@@ -29259,7 +29548,7 @@ paths:
             minLength: 1
             description: 學習活動或馬拉松的唯一識別 ID
             example: marathon_2024_spring
-            examples: *ref_88
+            examples: *ref_89
           required: true
           description: 學習活動或馬拉松的唯一識別 ID
           name: eventId
@@ -29536,7 +29825,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_103
+                examples: &ref_104
                   - success: true
                     data:
                       - id: 1
@@ -29585,48 +29874,48 @@ paths:
                   maxLength: 100
                   description: 實踐活動標題
                   example: 每日閱讀 30 分鐘
-                  examples: *ref_89
+                  examples: *ref_90
                 practiceAction:
                   type: string
                   maxLength: 200
                   description: 具體的實踐行動描述
                   example: 閱讀技術書籍或文章
-                  examples: *ref_90
+                  examples: *ref_91
                 startDate:
                   type: string
                   format: date
                   pattern: ^\d{4}-\d{2}-\d{2}$
                   description: 實踐開始日期（不可超過 14 天後）
                   example: '2024-01-15'
-                  examples: *ref_91
+                  examples: *ref_92
                 durationDays:
                   type: integer
                   minimum: 7
                   maximum: 90
                   description: 實踐持續天數
                   example: 14
-                  examples: *ref_92
+                  examples: *ref_93
                 frequencyMinDays:
                   type: integer
                   minimum: 1
                   maximum: 7
                   description: 每週最低打卡天數
                   example: 4
-                  examples: *ref_93
+                  examples: *ref_94
                 frequencyMaxDays:
                   type: integer
                   minimum: 1
                   maximum: 7
                   description: 每週最高打卡天數
                   example: 7
-                  examples: *ref_94
+                  examples: *ref_95
                 sessionDurationMinutes:
                   type: integer
                   minimum: 5
                   maximum: 240
                   description: 每次實踐時長（分鐘）
                   example: 30
-                  examples: *ref_95
+                  examples: *ref_96
                 practiceTimePeriods:
                   type: array
                   items:
@@ -29641,10 +29930,10 @@ paths:
                     example: morning
                     examples: *ref_17
                   maxItems: 4
-                  default: *ref_96
+                  default: *ref_97
                   description: 偏好實踐時段
-                  example: *ref_97
-                  examples: *ref_98
+                  example: *ref_98
+                  examples: *ref_99
                 otherContext:
                   type: string
                   maxLength: 500
@@ -29657,17 +29946,17 @@ paths:
                     minLength: 1
                     maxLength: 50
                   maxItems: 10
-                  default: *ref_99
+                  default: *ref_100
                   description: 相關標籤（最多 10 個）
-                  example: *ref_100
-                  examples: *ref_101
+                  example: *ref_101
+                  examples: *ref_102
                 resources:
                   type: array
                   items:
                     $ref: '#/components/schemas/PracticeResourceInput'
                   maxItems: 5
                   description: 相關學習資源（最多 5 個）
-                  example: *ref_102
+                  example: *ref_103
                 isDraft:
                   type: boolean
                   default: false
@@ -29965,7 +30254,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_103
+                examples: *ref_104
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -30263,7 +30552,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_103
+                examples: *ref_104
         '400':
           $ref: '#/components/responses/BadRequestError'
         '404':
@@ -30349,7 +30638,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_106
+                examples: &ref_107
                   - success: true
                     data:
                       id: 123
@@ -30599,7 +30888,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: &ref_104
+                    examples: &ref_105
                       - success: true
                   timestamp:
                     type: string
@@ -30650,7 +30939,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_105
+                examples: &ref_106
                   - success: true
                     data:
                       id: 123
@@ -31208,7 +31497,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: *ref_104
+                    examples: *ref_105
                   timestamp:
                     type: string
                     format: date-time
@@ -31258,7 +31547,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_105
+                examples: *ref_106
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -32472,7 +32761,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: *ref_104
+                    examples: *ref_105
                   timestamp:
                     type: string
                     format: date-time
@@ -32522,7 +32811,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_105
+                examples: *ref_106
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -32614,7 +32903,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_106
+                examples: *ref_107
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -34950,7 +35239,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_107
+                examples: &ref_108
                   - success: true
                     data:
                       id: 123
@@ -35191,7 +35480,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_107
+                examples: *ref_108
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -35514,7 +35803,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_108
+                examples: &ref_109
                   - success: true
                     data:
                       id: 123
@@ -35756,7 +36045,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_108
+                examples: *ref_109
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -35990,7 +36279,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_109
+                examples: &ref_110
                   - success: true
                     data:
                       id: 123
@@ -36080,7 +36369,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_109
+                examples: *ref_110
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -36190,7 +36479,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_109
+                examples: *ref_110
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -36586,7 +36875,7 @@ paths:
               - landing_page
               - quiz
               - action_maker
-            enumDescriptions: *ref_110
+            enumDescriptions: *ref_111
             description: 篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。
             example: landing_page
           required: false
@@ -36599,7 +36888,7 @@ paths:
               - self_created
               - copied
               - action_generator
-            enumDescriptions: *ref_111
+            enumDescriptions: *ref_112
             description: 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
             example: self_created
           required: false
@@ -38599,7 +38888,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_112
+                examples: &ref_113
                   - success: true
                     data:
                       id: 123
@@ -38706,7 +38995,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_112
+                examples: *ref_113
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -38959,7 +39248,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_112
+                examples: *ref_113
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -39051,7 +39340,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_112
+                examples: *ref_113
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':

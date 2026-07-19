@@ -41,6 +41,8 @@ import {
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
 import { setAuthCookie, clearAuthCookie, QUIZ_CLAIM_COOKIE_NAME, clearQuizClaimCookie } from '../utils/cookie-config';
+import { createSuccessResponse } from '../utils/response-helper';
+import { getUserIslandData } from '../services/user-island.service';
 import { permissionService } from '../services/auth/permission.service';
 
 /**
@@ -513,6 +515,48 @@ export const getUserProfile = asyncHandler(async (req: Request, res: Response) =
   });
 });
 
+/**
+ * 取得 3D 島嶼頁 islandData 聚合資料
+ * GET /api/v1/users/:identifier/island
+ * identifier 可為 custom_id（字母數字）或 external_id（UUID）
+ * 無需強制登入；帶 JWT 則解析 viewerId 以計算 viewerRelation 與隱私過濾
+ */
+export const getUserIsland = asyncHandler(async (req: Request, res: Response) => {
+  const { identifier } = req.params;
+  const currentUser = req.user;
+
+  const { prisma } = await import('../services/database/prisma.service');
+
+  // external_id 為 UUID 欄位，identifier 非 UUID 時不可納入比對，
+  // 否則 Prisma 會嘗試將 custom_id 字串 parse 成 UUID 而丟出例外（回傳 500）
+  const orConditions: Prisma.usersWhereInput[] = [{ custom_id: identifier }];
+  if (isUuid(identifier)) {
+    orConditions.push({ external_id: identifier });
+  }
+
+  const user = await prisma.users.findFirst({
+    where: { OR: orConditions },
+    include: { contacts: true }
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const islandData = await getUserIslandData(
+    {
+      id: user.id,
+      external_id: user.external_id,
+      custom_id: user.custom_id,
+      nickname: user.nickname,
+      photoUrl: user.contacts?.photo_url ?? null
+    },
+    currentUser?.id ?? null
+  );
+
+  res.json(createSuccessResponse(islandData));
+});
+
 export const userController = {
   getAllUsers,
   getMe,
@@ -532,7 +576,8 @@ export const userController = {
   getLoginHistory,
   getActivityStats,
   getSettingsSummary,
-  getUserProfile
+  getUserProfile,
+  getUserIsland
 };
 
 export default userController;

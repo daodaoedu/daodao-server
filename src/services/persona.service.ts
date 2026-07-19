@@ -172,6 +172,17 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
   allAnswered: boolean;
   questions: PersonaQuestionItem[];
 }>> {
+  // 同一 UTC 日內 dismiss 過就不再顯示（呼應 persona_user_state.last_dismissed_at 的設計；
+  // 先前 getCarouselState 沒有讀這個欄位，導致「今天不再顯示」按鈕實際上不生效）。
+  const [dismissState] = await prisma.$queryRaw<{ dismissed_today: boolean | null }[]>(Prisma.sql`
+    SELECT (last_dismissed_at AT TIME ZONE 'UTC')::date = (NOW() AT TIME ZONE 'UTC')::date AS dismissed_today
+    FROM persona_user_state
+    WHERE user_id = ${userId}
+  `);
+  if (dismissState?.dismissed_today === true) {
+    return createSuccessResponse({ shouldShow: false, allAnswered: false, questions: [] });
+  }
+
   // Fetch all unanswered, non-suppressed questions in a single query.
   // 移除 LIMIT 後第二段查詢本來就會抓回全部可顯示題目，因此不再需要額外的 count 查詢，
   // allAnswered 直接由結果推得，省去一次 DB round-trip。
