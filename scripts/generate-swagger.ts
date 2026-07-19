@@ -69,8 +69,10 @@ async function loadAllRoutes() {
     return;
   }
 
+  // 同時涵蓋 `*.routes.ts` 與 `*-routes.ts` 兩種命名（如 user-stats-routes.ts），
+  // 否則後者的 registerPath 不會被載入，生成的文檔會漏掉整組路徑
   const files = fs.readdirSync(routesDir).filter(file =>
-    file.endsWith('.routes.ts') || file.endsWith('.routes.js')
+    file.endsWith('routes.ts') || file.endsWith('routes.js')
   );
 
   console.log(`📁 找到 ${files.length} 個 route 檔案`);
@@ -151,6 +153,10 @@ async function main() {
     console.log('  - 文檔已更新: openapi.json / openapi.yaml');
     console.log('  - 可在 /api-docs 或 /api/docs 查看 Swagger UI');
     console.log('  - 舊版本已備份至: .archived/generate-swagger.ts.backup');
+
+    // route 模組載入時會建立 BullMQ/Redis 等連線，導致 event loop 不會自然結束；
+    // 文件已同步寫入完成，直接退出
+    process.exit(0);
 
   } catch (error) {
     console.error('❌ 生成失敗:', error);
