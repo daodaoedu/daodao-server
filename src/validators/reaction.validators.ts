@@ -94,8 +94,8 @@ const reactionListItemSchema = z.object({
   photoURL: z.string().nullable().openapi({ description: '用戶頭像 URL' }),
   reactionType: z.string().openapi({ description: '反應類型', example: 'fire' }),
   reactedAt: z.string().openapi({ description: '反應時間（ISO 8601）' }),
-  isPublic: z.boolean().openapi({ description: '該用戶是否公開帳號' }),
-  isConnection: z.boolean().openapi({ description: '該用戶是否為目前登入者的連結好友' }),
+  isPublic: z.boolean().optional().openapi({ description: '該用戶是否公開帳號' }),
+  isConnection: z.boolean().optional().openapi({ description: '該用戶是否為目前登入者的連結好友' }),
 }).openapi('ReactionListItem', { description: '單筆用戶反應資料' });
 
 const getReactionsListResponseSchema = z.object({
