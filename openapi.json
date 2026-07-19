@@ -11624,6 +11624,271 @@
         ],
         "description": "用戶 ID 參數"
       },
+      "UserIslandData": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/IslandProfile"
+          },
+          "personaType": {
+            "type": "string",
+            "nullable": true,
+            "description": "quiz 人格類型（單字母代碼，如 A/C/D/L/O）；未完成 quiz 為 null，前端渲染中性預設島",
+            "example": "D"
+          },
+          "practices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IslandPractice"
+            },
+            "description": "可見實踐清單（已依觀看者關係於 server 端過濾；僅含 active/completed）"
+          },
+          "recentCheckinCount": {
+            "type": "integer",
+            "description": "近 30 天可見實踐的打卡總量（決定生態熱鬧度）",
+            "example": 23
+          },
+          "viewerRelation": {
+            "type": "string",
+            "enum": [
+              "self",
+              "connection",
+              "visitor"
+            ],
+            "description": "觀看者與島主的關係：self 島主本人、connection 已連結夥伴、visitor 一般訪客（含未登入）",
+            "example": "visitor"
+          }
+        },
+        "required": [
+          "profile",
+          "personaType",
+          "practices",
+          "recentCheckinCount",
+          "viewerRelation"
+        ]
+      },
+      "IslandProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "島主 external_id（UUID）",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "customId": {
+            "type": "string",
+            "nullable": true,
+            "description": "島主 custom_id",
+            "example": "my_custom_id"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "島主暱稱",
+            "example": "小島"
+          },
+          "photoURL": {
+            "type": "string",
+            "nullable": true,
+            "description": "島主頭像 URL",
+            "example": "https://example.com/avatar.png"
+          }
+        },
+        "required": [
+          "id",
+          "customId",
+          "name",
+          "photoURL"
+        ]
+      },
+      "IslandPractice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "實踐 external_id",
+            "example": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "title": {
+            "type": "string",
+            "description": "實踐標題",
+            "example": "每天寫 500 字"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed"
+            ],
+            "description": "實踐狀態：active 渲染為帳篷＋營火、completed 渲染為小木屋",
+            "example": "active"
+          },
+          "themeColor": {
+            "type": "string",
+            "nullable": true,
+            "description": "實踐主題色，建築配色依據",
+            "example": "#FF6B6B"
+          },
+          "checkinCount": {
+            "type": "integer",
+            "description": "該實踐的打卡總數（決定周圍植栽數量）",
+            "example": 12
+          },
+          "checkinIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "該實踐的打卡 id 清單（依 id 升冪；作為植栽種類/位置的 deterministic 種子）",
+            "example": [
+              101,
+              102,
+              103
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "themeColor",
+          "checkinCount",
+          "checkinIds"
+        ]
+      },
+      "UserIslandApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserIslandData"
+              },
+              {
+                "description": "The main response data"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "description": "Search query used for filtering results"
+              },
+              "searchTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Time taken to execute the search query in milliseconds"
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Applied filters for the request"
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Count of items per category"
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Aggregated statistical data"
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Unique identifier for request tracking"
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "description": "Whether the response was served from cache"
+              },
+              "processingTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Total processing time in milliseconds"
+              }
+            },
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Optional metadata about the response",
+            "examples": [
+              {
+                "searchQuery": "JavaScript教程",
+                "searchTime": 45,
+                "cacheHit": false,
+                "processingTime": 123.5,
+                "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+              },
+              {
+                "categoryCounts": {
+                  "前端開發": 25,
+                  "後端開發": 18,
+                  "資料科學": 12
+                },
+                "filters": {
+                  "difficulty": "intermediate",
+                  "language": "zh-TW"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "Standard success response format",
+        "examples": [
+          {
+            "success": true,
+            "data": {
+              "id": 123,
+              "_id": "550e8400-e29b-41d4-a716-446655440000",
+              "name": "JavaScript 基礎教程",
+              "description": "從零開始學習 JavaScript 程式設計",
+              "status": "published"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          },
+          {
+            "success": true,
+            "data": {
+              "userId": 456,
+              "username": "john_doe",
+              "email": "john@example.com",
+              "role": "student"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z",
+            "meta": {
+              "cacheHit": true,
+              "processingTime": 23.1
+            }
+          }
+        ]
+      },
       "FollowTargetBody": {
         "type": "object",
         "properties": {
@@ -12072,6 +12337,11 @@
             "type": "string",
             "description": "用戶外部 ID（UUID）"
           },
+          "customId": {
+            "type": "string",
+            "nullable": true,
+            "description": "用戶自訂 ID"
+          },
           "name": {
             "type": "string",
             "description": "用戶名稱"
@@ -12089,14 +12359,25 @@
           "reactedAt": {
             "type": "string",
             "description": "反應時間（ISO 8601）"
+          },
+          "isPublic": {
+            "type": "boolean",
+            "description": "該用戶是否公開帳號"
+          },
+          "isConnection": {
+            "type": "boolean",
+            "description": "該用戶是否為目前登入者的連結好友"
           }
         },
         "required": [
           "userId",
+          "customId",
           "name",
           "photoURL",
           "reactionType",
-          "reactedAt"
+          "reactedAt",
+          "isPublic",
+          "isConnection"
         ],
         "description": "單筆用戶反應資料"
       },
@@ -19275,6 +19556,12 @@
             "description": "使用者 external_id（UUID），不公開時為 null",
             "example": "123e4567-e89b-12d3-a456-426614174000"
           },
+          "customId": {
+            "type": "string",
+            "nullable": true,
+            "description": "使用者自訂 ID，未設定或不公開時為 null",
+            "example": "xiaoming"
+          },
           "name": {
             "type": "string",
             "nullable": true,
@@ -19327,6 +19614,7 @@
         "required": [
           "answerId",
           "userId",
+          "customId",
           "name",
           "photoURL",
           "selectedValue",
@@ -38979,6 +39267,177 @@
                     "success",
                     "data",
                     "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/users/{identifier}/island": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "取得 3D 島嶼頁 islandData 聚合資料",
+        "description": "根據 custom_id 或 external_id 聚合島主 profile、quiz 人格、可見實踐（含打卡統計與 checkin id 種子）、近 30 天打卡總量與 viewerRelation。實踐可見性於 server 端依觀看者關係過濾（public / connections_only / private），私有實踐不進 payload。無需登入，帶 JWT 可判斷 self/connection 關係。",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "島主的 custom_id 或 external_id（UUID）",
+              "example": "my_custom_id"
+            },
+            "required": true,
+            "description": "島主的 custom_id 或 external_id（UUID）",
+            "name": "identifier",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得 islandData",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/UserIslandData"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
                   ]
                 }
               }

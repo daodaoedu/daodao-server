@@ -108,6 +108,7 @@ export const questionAnswersQuerySchema = z.object({
 export const questionAnswerItemSchema = z.object({
   answerId: z.number().openapi({ description: '答案 ID', example: 123 }),
   userId: z.string().nullable().openapi({ description: '使用者 external_id（UUID），不公開時為 null', example: '123e4567-e89b-12d3-a456-426614174000' }),
+  customId: z.string().nullable().openapi({ description: '使用者自訂 ID，未設定或不公開時為 null', example: 'xiaoming' }),
   name: z.string().nullable().openapi({ description: '使用者暱稱，不公開時為 null', example: '小明' }),
   photoURL: z.string().nullable().openapi({ description: '頭像 URL，不公開時為 null' }),
   selectedValue: z.string().nullable().openapi({ description: '選擇題答案' }),

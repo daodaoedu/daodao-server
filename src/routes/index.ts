@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import healthRoutes from './health.routes';
 import resourceRoutes from './resource.routes';
 import resourceReviewRoutes from './resource-review.routes';
 import tagRoutes from './tag.routes';
@@ -198,15 +199,9 @@ router.use('/onboarding', onboardingRoutes);
 /**
  * API 健康檢查端點
  * GET /api/v1/health
+ * 實作移至 health.routes.ts（含 OpenAPI 註冊）
  */
-router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'DaoDao API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  });
-});
+router.use('/health', healthRoutes);
 
 /**
  * API 資訊端點
