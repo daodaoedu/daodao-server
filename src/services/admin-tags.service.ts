@@ -4,7 +4,7 @@
  */
 
 import { prisma } from './database/prisma.service';
-import type { CreateTagInput, UpdateTagInput, CreateTagRuleInput, BulkTagInput, UserTag, TagRule } from '../types/admin-tags.types';
+import type { CreateTagInput, UpdateTagInput, CreateTagRuleInput, UpdateTagRuleInput, BulkTagInput, UserTag, TagRule } from '../types/admin-tags.types';
 
 /**
  * 列出所有標籤（含已指派用戶數）
@@ -205,6 +205,49 @@ const createTagRule = async (input: CreateTagRuleInput): Promise<TagRule> => {
 };
 
 /**
+ * 更新標籤規則
+ * @param id - 規則 ID
+ * @param input - 更新標籤規則輸入
+ */
+const updateTagRule = async (id: number, input: UpdateTagRuleInput): Promise<TagRule> => {
+  if (input.conditionType !== undefined) {
+    await prisma.$executeRaw`UPDATE tag_rules SET condition_type = ${input.conditionType}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.conditionOperator !== undefined) {
+    await prisma.$executeRaw`UPDATE tag_rules SET condition_operator = ${input.conditionOperator}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.conditionValue !== undefined) {
+    await prisma.$executeRaw`UPDATE tag_rules SET condition_value = ${input.conditionValue}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.logicOperator !== undefined) {
+    await prisma.$executeRaw`UPDATE tag_rules SET logic_operator = ${input.logicOperator}, updated_at = NOW() WHERE id = ${id}`;
+  }
+  if (input.isEnabled !== undefined) {
+    await prisma.$executeRaw`UPDATE tag_rules SET is_enabled = ${input.isEnabled}, updated_at = NOW() WHERE id = ${id}`;
+  }
+
+  const [rule] = await prisma.$queryRaw<Array<{
+    id: number; tag_id: number; condition_type: string; condition_operator: string;
+    condition_value: string; logic_operator: string; is_enabled: boolean;
+    created_at: Date; updated_at: Date | null;
+  }>>`SELECT * FROM tag_rules WHERE id = ${id}`;
+
+  if (!rule) throw new Error('Tag rule not found');
+
+  return {
+    id: rule.id,
+    tagId: rule.tag_id,
+    conditionType: rule.condition_type,
+    conditionOperator: rule.condition_operator,
+    conditionValue: rule.condition_value,
+    logicOperator: rule.logic_operator as 'AND' | 'OR',
+    isEnabled: rule.is_enabled,
+    createdAt: rule.created_at.toISOString(),
+    updatedAt: rule.updated_at?.toISOString() ?? null,
+  };
+};
+
+/**
  * 刪除標籤規則
  * @param id - 規則 ID
  */
@@ -249,6 +292,7 @@ export default {
   deleteTag,
   listTagRules,
   createTagRule,
+  updateTagRule,
   deleteTagRule,
   bulkAssignTag,
   findByTrackingSlug,
