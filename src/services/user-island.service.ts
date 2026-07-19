@@ -156,7 +156,7 @@ export const getUserIslandData = async (
   }
 
   const quizResult = await getLatestResult(owner.id);
-  const personaType = quizResult.data?.resultType ?? null;
+  const personaType = quizResult?.data?.resultType ?? null;
 
   return {
     profile: {
