@@ -22361,6 +22361,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{identifier}/island": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得 3D 島嶼頁 islandData 聚合資料
+         * @description 根據 custom_id 或 external_id 聚合島主 profile、quiz 人格、可見實踐（含打卡統計與 checkin id 種子）、近 30 天打卡總量與 viewerRelation。實踐可見性於 server 端依觀看者關係過濾（public / connections_only / private），私有實踐不進 payload。無需登入，帶 JWT 可判斷 self/connection 關係。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 島主的 custom_id 或 external_id（UUID） */
+                    identifier: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功取得 islandData */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            data: components["schemas"]["UserIslandData"] & unknown;
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}": {
         parameters: {
             query?: never;
@@ -29088,7 +29191,8 @@ export interface components {
          *         "前端",
          *         "React"
          *       ],
-         *       "selfIntroduction": "熱愛學習的開發者"
+         *       "selfIntroduction": "熱愛學習的開發者",
+         *       "customId": "xiaoming"
          *     }
          */
         UserBasicInfo: {
@@ -29134,6 +29238,11 @@ export interface components {
              * @example 熱愛學習的開發者
              */
             selfIntroduction?: string | null;
+            /**
+             * @description 用戶自訂 ID（用於個人頁面網址）
+             * @example xiaoming
+             */
+            customId?: string | null;
         };
         /**
          * @description 實踐活動統計資訊
@@ -32150,6 +32259,174 @@ export interface components {
              * @example 自訂 ID 已成功移除
              */
             message: string;
+        };
+        UserIslandData: {
+            profile: components["schemas"]["IslandProfile"];
+            /**
+             * @description quiz 人格類型（單字母代碼，如 A/C/D/L/O）；未完成 quiz 為 null，前端渲染中性預設島
+             * @example D
+             */
+            personaType: string | null;
+            /** @description 可見實踐清單（已依觀看者關係於 server 端過濾；僅含 active/completed） */
+            practices: components["schemas"]["IslandPractice"][];
+            /**
+             * @description 近 30 天可見實踐的打卡總量（決定生態熱鬧度）
+             * @example 23
+             */
+            recentCheckinCount: number;
+            /**
+             * @description 觀看者與島主的關係：self 島主本人、connection 已連結夥伴、visitor 一般訪客（含未登入）
+             * @example visitor
+             * @enum {string}
+             */
+            viewerRelation: "self" | "connection" | "visitor";
+        };
+        IslandProfile: {
+            /**
+             * @description 島主 external_id（UUID）
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            id: string;
+            /**
+             * @description 島主 custom_id
+             * @example my_custom_id
+             */
+            customId: string | null;
+            /**
+             * @description 島主暱稱
+             * @example 小島
+             */
+            name: string | null;
+            /**
+             * @description 島主頭像 URL
+             * @example https://example.com/avatar.png
+             */
+            photoURL: string | null;
+        };
+        IslandPractice: {
+            /**
+             * @description 實踐 external_id
+             * @example 550e8400-e29b-41d4-a716-446655440001
+             */
+            id: string;
+            /**
+             * @description 實踐標題
+             * @example 每天寫 500 字
+             */
+            title: string;
+            /**
+             * @description 實踐狀態：active 渲染為帳篷＋營火、completed 渲染為小木屋
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "completed";
+            /**
+             * @description 實踐主題色，建築配色依據
+             * @example #FF6B6B
+             */
+            themeColor: string | null;
+            /**
+             * @description 該實踐的打卡總數（決定周圍植栽數量）
+             * @example 12
+             */
+            checkinCount: number;
+            /**
+             * @description 該實踐的打卡 id 清單（依 id 升冪；作為植栽種類/位置的 deterministic 種子）
+             * @example [
+             *       101,
+             *       102,
+             *       103
+             *     ]
+             */
+            checkinIds: number[];
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        UserIslandApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            data: components["schemas"]["UserIslandData"] & unknown;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
         };
         /** @description 用戶聯絡資訊 */
         ContactList: {
