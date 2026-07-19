@@ -12,6 +12,7 @@ import {
   updateTagSchema,
   tagIdParamSchema,
   createTagRuleSchema,
+  updateTagRuleSchema,
   ruleIdParamSchema,
   bulkTagSchema,
 } from '../validators/admin-tags.validator';
@@ -76,6 +77,17 @@ const createTagRule = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * 更新標籤規則
+ * PATCH /admin/tag-rules/:id
+ */
+const updateTagRule = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = ruleIdParamSchema.parse(req.params);
+  const input = updateTagRuleSchema.parse(req.body);
+  const rule = await adminTagsService.updateTagRule(id, input);
+  res.json(createSuccessResponse(rule));
+});
+
+/**
  * 刪除標籤規則
  * DELETE /admin/tag-rules/:id
  */
@@ -102,6 +114,7 @@ export default {
   deleteTag,
   listTagRules,
   createTagRule,
+  updateTagRule,
   deleteTagRule,
   bulkAssignTag,
 };
