@@ -108,9 +108,9 @@ describe('personaService.getCarouselState', () => {
         unanswered,
       },
     ]);
-    // questions (only called when shouldShow = true)
-    if (unanswered > 0 && !dismissedToday) {
-      prismaMock.$queryRaw.mockResolvedValueOnce(questions);
+    // questions query（現行實作：未 dismiss 就會跑，並以結果長度推得 allAnswered）
+    if (!dismissedToday) {
+      prismaMock.$queryRaw.mockResolvedValueOnce(unanswered > 0 ? questions : []);
     }
     // upsert persona_user_state (only called when shouldShow = true)
     prismaMock.$executeRaw.mockResolvedValue(1);
