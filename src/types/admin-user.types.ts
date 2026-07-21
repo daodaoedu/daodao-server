@@ -91,6 +91,8 @@ export interface AdminUserListItem {
   daysToComplete: number | null;
   /** 用戶標籤 */
   tags: Array<{ id: number; name: string }>;
+  /** 推薦來源（從哪知道島島） */
+  referralSource: string | null;
 }
 
 /**
