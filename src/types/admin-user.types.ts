@@ -89,8 +89,12 @@ export interface AdminUserListItem {
   creationMethod: 'self_created' | 'copied' | 'action_generator' | null;
   /** 完成天數 */
   daysToComplete: number | null;
-  /** 用戶標籤 */
-  tags: Array<{ id: number; name: string }>;
+  /** 管理標籤 */
+  tags: Array<{ id: number; name: string; color: string }>;
+  /** 內容標籤 */
+  entityTags: Array<{ id: number; name: string }>;
+  /** 推薦來源（從哪知道島島） */
+  referralSource: string | null;
 }
 
 /**
@@ -185,6 +189,10 @@ export interface AdminUserDetailResponse {
   badgeGranted: boolean | null;
   /** 用戶來源 */
   userSource: string | null;
+  /** 管理標籤 */
+  tags: Array<{ id: number; name: string; color: string }>;
+  /** 內容標籤 */
+  entityTags: Array<{ id: number; name: string }>;
 }
 
 /**
