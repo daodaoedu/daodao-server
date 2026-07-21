@@ -234,22 +234,36 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     },
   ]));
 
-  // 批次取得用戶標籤（從 user_tag_assignments + user_tags）
-  const userTagsData = await prisma.$queryRaw<Array<{
+  // 批次取得管理標籤（user_tag_assignments + user_tags）
+  const adminTagsData = await prisma.$queryRaw<Array<{
     user_id: number;
     tag_id: number;
     tag_name: string;
+    tag_color: string;
   }>>`
-    SELECT uta.user_id, ut.id AS tag_id, ut.name AS tag_name
+    SELECT uta.user_id, ut.id AS tag_id, ut.name AS tag_name, ut.color AS tag_color
     FROM user_tag_assignments uta
     JOIN user_tags ut ON ut.id = uta.tag_id
     WHERE uta.user_id = ANY(${userIds}::int[])
   `;
-  const userTagsMap = new Map<number, Array<{ id: number; name: string }>>();
-  for (const row of userTagsData) {
-    const arr = userTagsMap.get(row.user_id) ?? [];
-    arr.push({ id: row.tag_id, name: row.tag_name });
-    userTagsMap.set(row.user_id, arr);
+  const adminTagsMap = new Map<number, Array<{ id: number; name: string; color: string }>>();
+  for (const row of adminTagsData) {
+    const arr = adminTagsMap.get(row.user_id) ?? [];
+    arr.push({ id: row.tag_id, name: row.tag_name, color: row.tag_color });
+    adminTagsMap.set(row.user_id, arr);
+  }
+
+  // 批次取得內容標籤（entity_tags + tags）
+  const entityTagsData = await prisma.entity_tags.findMany({
+    where: { entity_type: 'user', entity_id: { in: userIds } },
+    include: { tags: { select: { id: true, name: true } } },
+  });
+  const entityTagsMap = new Map<number, Array<{ id: number; name: string }>>();
+  for (const et of entityTagsData) {
+    if (!et.tags) continue;
+    const arr = entityTagsMap.get(et.entity_id) ?? [];
+    arr.push({ id: et.tags.id, name: et.tags.name });
+    entityTagsMap.set(et.entity_id, arr);
   }
 
   // 格式化回應
@@ -308,7 +322,8 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       registrationFlow: normalizedRegistrationFlow,
       creationMethod: normalizedCreationMethod,
       daysToComplete: userOnboarding?.daysToComplete ?? null,
-      tags: userTagsMap.get(user.id) ?? [],
+      tags: adminTagsMap.get(user.id) ?? [],
+      entityTags: entityTagsMap.get(user.id) ?? [],
       referralSource: user.referral_source ?? null,
     };
   });
@@ -404,12 +419,22 @@ const getAdminUserDetail = async (userId: number | string): Promise<AdminUserDet
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [recentLoginCount, totalPractices, totalCheckins, totalPosts, totalReactions] = await Promise.all([
+  const [recentLoginCount, totalPractices, totalCheckins, totalPosts, totalReactions, userTagsData, entityTagsRaw] = await Promise.all([
     prisma.user_login_history.count({ where: { user_id: user.id, login_at: { gte: thirtyDaysAgo } } }),
     prisma.practices.count({ where: { user_id: user.id } }),
     prisma.practice_checkins.count({ where: { user_id: user.id } }),
     prisma.post.count({ where: { user_id: user.id } }),
     prisma.reactions.count({ where: { user_id: user.id } }),
+    prisma.$queryRaw<Array<{ id: number; name: string; color: string }>>`
+      SELECT ut.id, ut.name, ut.color
+      FROM user_tag_assignments uta
+      JOIN user_tags ut ON ut.id = uta.tag_id
+      WHERE uta.user_id = ${user.id}
+    `,
+    prisma.entity_tags.findMany({
+      where: { entity_type: 'user', entity_id: user.id },
+      include: { tags: { select: { id: true, name: true } } },
+    }),
   ]);
 
   const activityStats: UserActivityStats = {
@@ -468,6 +493,8 @@ const getAdminUserDetail = async (userId: number | string): Promise<AdminUserDet
     personaType: (user.quiz_results[0]?.result_type ?? null) as 'L' | 'C' | 'A' | 'D' | 'O' | null,
     badgeGranted: onboarding?.badge_granted ?? null,
     userSource: onboarding?.user_source ?? null,
+    tags: userTagsData.map((t) => ({ id: t.id, name: t.name, color: t.color })),
+    entityTags: entityTagsRaw.filter((et) => et.tags).map((et) => ({ id: et.tags.id, name: et.tags.name })),
   };
 };
 
