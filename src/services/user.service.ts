@@ -629,9 +629,9 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
         : 9999;
 
       // 加權分數：checkin 活躍度（權重 50%）+ 實踐數量（權重 25%）+ 最近建立（權重 25%）
-      const checkinScore = checkinDaysAgo < 9999 ? Math.max(0, 100 - checkinDaysAgo) : 0;
+      const checkinScore = checkinDaysAgo < 9999 ? Math.min(100, Math.max(0, 100 - checkinDaysAgo)) : 0;
       const countScore = Math.min(practiceCount * 10, 100);
-      const createdScore = practiceCreatedDaysAgo < 9999 ? Math.max(0, 100 - practiceCreatedDaysAgo) : 0;
+      const createdScore = practiceCreatedDaysAgo < 9999 ? Math.min(100, Math.max(0, 100 - practiceCreatedDaysAgo)) : 0;
 
       const activityScore = checkinScore * 0.5 + countScore * 0.25 + createdScore * 0.25;
 
@@ -654,7 +654,17 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
       positions: 1,
     };
 
-    const usersWithCompleteness = await Promise.all(users.map(async (user) => {
+    const userIds = users.map(u => u.id);
+    const allEntityTags = await prisma.entity_tags.findMany({
+      where: { entity_type: 'user', entity_id: { in: userIds } },
+      include: { tags: true }
+    });
+    const tagCountByUserId: Record<number, number> = {};
+    for (const et of allEntityTags) {
+      tagCountByUserId[et.entity_id] = (tagCountByUserId[et.entity_id] ?? 0) + 1;
+    }
+
+    const usersWithCompleteness = users.map((user) => {
       let completenessScore = 0;
 
       if (user.basic_info) {
@@ -671,10 +681,10 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
         }
       }
 
-      const userTags = await getUserTags(user.id);
-      if (userTags && userTags.length > 0) {
+      const tagCount = tagCountByUserId[user.id] ?? 0;
+      if (tagCount > 0) {
         const tagScore = Math.min(
-          userTags.length * completenessWeights.tag_list.tagWeight,
+          tagCount * completenessWeights.tag_list.tagWeight,
           completenessWeights.tag_list.maxScore
         );
         completenessScore += tagScore;
@@ -691,7 +701,7 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
       }
 
       return { user, completenessScore };
-    }));
+    });
 
     usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
 
