@@ -53,6 +53,7 @@ export interface UserQueryParams {
   positionList?: string;
   location?: string;
   search?: string;
+  hasPractices?: string;
 }
 
 // 用戶創建請求介面

@@ -462,7 +462,8 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
     educationStage,
     positionList,
     location,
-    search
+    search,
+    hasPractices
   } = params;
 
   const currentPage = parseInt(String(page));
@@ -510,6 +511,16 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
         name: {
           in: String(location).split(',')
         }
+      }
+    };
+  }
+
+  // 只顯示有主題實踐的用戶
+  if (hasPractices === 'true') {
+    whereConditions.practices = {
+      some: {
+        deleted_at: null,
+        status: { notIn: ['draft', 'archived'] }
       }
     };
   }

@@ -468,6 +468,13 @@ export const getUserQuerySchema = z.object({
       description: '搜尋關鍵字',
       example: '小明',
       examples: ['小明', 'john', 'test']
+    }),
+  hasPractices: z.string()
+    .optional()
+    .openapi({
+      description: '是否只顯示有主題實踐的用戶',
+      example: 'true',
+      examples: ['true']
     })
 }).openapi({
   description: '獲取用戶列表的查詢參數'
