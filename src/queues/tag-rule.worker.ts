@@ -8,6 +8,7 @@
 import { Worker, Job } from 'bullmq';
 import { getQueueConnection } from './connection';
 import { loggerService } from '../services/logging/logger.service';
+import { Prisma } from '../../generated/prisma';
 import { prisma } from '../services/database/prisma.service';
 import { TAG_RULE_QUEUE_NAME } from './tag-rule.queue';
 import type { TagRuleJobData } from './tag-rule.queue';
@@ -36,7 +37,7 @@ function toSqlOperator(op: string): string {
     case 'lt': return '<';
     case 'lte': return '<=';
     case 'eq': return '=';
-    default: return '>';
+    default: throw new Error(`Unsupported SQL operator: ${op}`);
   }
 }
 
@@ -46,16 +47,18 @@ async function findMatchingUserIds(
   value: number,
   tagId: number,
 ): Promise<number[]> {
-  let query: string;
+  const op = Prisma.raw(sqlOp);
+  type Row = { user_id: number };
+  let rows: Row[];
 
   switch (conditionType) {
     case 'practice_count':
-      query = `
+      rows = await prisma.$queryRaw<Row[]>`
         SELECT u.id AS user_id FROM users u
         WHERE (
           SELECT COUNT(*) FROM practices p
           WHERE p.user_id = u.id AND p.deleted_at IS NULL
-        ) ${sqlOp} ${value}
+        ) ${op} ${value}
         AND u.id NOT IN (
           SELECT user_id FROM user_tag_assignments WHERE tag_id = ${tagId}
         )
@@ -63,11 +66,11 @@ async function findMatchingUserIds(
       break;
 
     case 'days_since_login':
-      query = `
+      rows = await prisma.$queryRaw<Row[]>`
         SELECT u.id AS user_id FROM users u
         LEFT JOIN user_activity_stats uas ON uas.id = u.activity_stats_id
         WHERE EXTRACT(EPOCH FROM (NOW() - COALESCE(uas.last_login_at, u.created_at))) / 86400
-        ${sqlOp} ${value}
+        ${op} ${value}
         AND u.id NOT IN (
           SELECT user_id FROM user_tag_assignments WHERE tag_id = ${tagId}
         )
@@ -75,12 +78,12 @@ async function findMatchingUserIds(
       break;
 
     case 'connection_count':
-      query = `
+      rows = await prisma.$queryRaw<Row[]>`
         SELECT u.id AS user_id FROM users u
         WHERE (
           SELECT COUNT(*) FROM connections c
           WHERE c.user_a_id = u.id OR c.user_b_id = u.id
-        ) ${sqlOp} ${value}
+        ) ${op} ${value}
         AND u.id NOT IN (
           SELECT user_id FROM user_tag_assignments WHERE tag_id = ${tagId}
         )
@@ -88,9 +91,9 @@ async function findMatchingUserIds(
       break;
 
     case 'role_level':
-      query = `
+      rows = await prisma.$queryRaw<Row[]>`
         SELECT u.id AS user_id FROM users u
-        WHERE u.role_id ${sqlOp} ${value}
+        WHERE u.role_id ${op} ${value}
         AND u.id NOT IN (
           SELECT user_id FROM user_tag_assignments WHERE tag_id = ${tagId}
         )
@@ -101,7 +104,6 @@ async function findMatchingUserIds(
       return [];
   }
 
-  const rows = await prisma.$queryRawUnsafe<Array<{ user_id: number }>>(query);
   return rows.map((r) => r.user_id);
 }
 
