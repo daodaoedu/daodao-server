@@ -525,98 +525,180 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
     };
   }
 
-  // 查詢用戶
-  const users = await prisma.users.findMany({
-    where: whereConditions,
-    include: {
-      roles: true,
-      location: {
-        include: {
-          city: true,
-          country: true
-        }
+  const userInclude = {
+    roles: true,
+    location: {
+      include: {
+        city: true,
+        country: true
+      }
+    },
+    contacts: true,
+    basic_info: true,
+    user_positions: {
+      include: {
+        position: true
+      }
+    },
+    user_preferences: {
+      where: {
+        is_selected: true
       },
-      contacts: true,
-      basic_info: true,
-      user_positions: {
-        include: {
-          position: true
-        }
-      },
-      user_preferences: {
-        where: {
-          is_selected: true
-        },
-        include: {
-          preference_options: {
-            include: {
-              preference_types: true
-            }
+      include: {
+        preference_options: {
+          include: {
+            preference_types: true
           }
         }
       }
-    },
+    }
+  };
+
+  // hasPractices 模式：額外 include practices + checkins 用於排序
+  if (hasPractices === 'true') {
+    Object.assign(userInclude, {
+      practices: {
+        where: {
+          deleted_at: null,
+          status: { notIn: ['draft', 'archived'] }
+        },
+        select: {
+          id: true,
+          created_at: true,
+          first_checkin_at: true,
+          practice_checkins: {
+            select: { checkin_date: true },
+            orderBy: { checkin_date: 'desc' as const },
+            take: 1
+          }
+        }
+      }
+    });
+  }
+
+  // 查詢用戶
+  const users = await prisma.users.findMany({
+    where: whereConditions,
+    include: userInclude,
     orderBy: {
       created_at: 'desc'
     }
   });
 
-  // 計算完整度並排序
-  const completenessWeights: CompletenessWeights = {
-    self_introduction: { base: 2, levels: [50, 100, 200, 300] },
-    share_list: { base: 2, levels: [50, 100, 200, 300] },
-    tag_list: { tagWeight: 0.5, maxScore: 4 },
-    contact: 1,
-    location: 1,
-    positions: 1,
-  };
+  let paginatedUsers;
 
-  const usersWithCompleteness = await Promise.all(users.map(async (user) => {
-    let completenessScore = 0;
+  if (hasPractices === 'true') {
+    // 依實踐活躍度排序：最近 checkin 時間 + 實踐數量 + 最近建立實踐時間
+    const now = Date.now();
+    const DAY_MS = 86400000;
 
-    if (user.basic_info) {
-      if (user.basic_info.self_introduction) {
-        const introLength = user.basic_info.self_introduction.length;
-        completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
+    const usersWithActivity = (users as (typeof users[number] & {
+      practices: {
+        id: number;
+        created_at: Date;
+        first_checkin_at: Date | null;
+        practice_checkins: { checkin_date: Date }[];
+      }[];
+    })[]).map(user => {
+      const practices = user.practices ?? [];
+      const practiceCount = practices.length;
+
+      let latestCheckinTime = 0;
+      let latestPracticeCreatedTime = 0;
+
+      for (const p of practices) {
+        const createdAt = new Date(p.created_at).getTime();
+        if (createdAt > latestPracticeCreatedTime) {
+          latestPracticeCreatedTime = createdAt;
+        }
+        if (p.practice_checkins.length > 0) {
+          const checkinTime = new Date(p.practice_checkins[0].checkin_date).getTime();
+          if (checkinTime > latestCheckinTime) {
+            latestCheckinTime = checkinTime;
+          }
+        }
       }
 
-      if (user.basic_info.share_list) {
-        const shareLength = typeof user.basic_info.share_list === 'string'
-          ? user.basic_info.share_list.length
-          : JSON.stringify(user.basic_info.share_list).length;
-        completenessScore += calculateScore(shareLength, completenessWeights.share_list);
+      // 最近 checkin 的天數差（越小越好），沒有 checkin 給極大值
+      const checkinDaysAgo = latestCheckinTime > 0
+        ? (now - latestCheckinTime) / DAY_MS
+        : 9999;
+      // 最近建立實踐的天數差
+      const practiceCreatedDaysAgo = latestPracticeCreatedTime > 0
+        ? (now - latestPracticeCreatedTime) / DAY_MS
+        : 9999;
+
+      // 加權分數：checkin 活躍度（權重 50%）+ 實踐數量（權重 25%）+ 最近建立（權重 25%）
+      const checkinScore = checkinDaysAgo < 9999 ? Math.max(0, 100 - checkinDaysAgo) : 0;
+      const countScore = Math.min(practiceCount * 10, 100);
+      const createdScore = practiceCreatedDaysAgo < 9999 ? Math.max(0, 100 - practiceCreatedDaysAgo) : 0;
+
+      const activityScore = checkinScore * 0.5 + countScore * 0.25 + createdScore * 0.25;
+
+      return { user, activityScore };
+    });
+
+    usersWithActivity.sort((a, b) => b.activityScore - a.activityScore);
+
+    paginatedUsers = usersWithActivity
+      .slice(offset, offset + currentPageSize)
+      .map(item => item.user);
+  } else {
+    // 原有邏輯：按 profile 完整度排序
+    const completenessWeights: CompletenessWeights = {
+      self_introduction: { base: 2, levels: [50, 100, 200, 300] },
+      share_list: { base: 2, levels: [50, 100, 200, 300] },
+      tag_list: { tagWeight: 0.5, maxScore: 4 },
+      contact: 1,
+      location: 1,
+      positions: 1,
+    };
+
+    const usersWithCompleteness = await Promise.all(users.map(async (user) => {
+      let completenessScore = 0;
+
+      if (user.basic_info) {
+        if (user.basic_info.self_introduction) {
+          const introLength = user.basic_info.self_introduction.length;
+          completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
+        }
+
+        if (user.basic_info.share_list) {
+          const shareLength = typeof user.basic_info.share_list === 'string'
+            ? user.basic_info.share_list.length
+            : JSON.stringify(user.basic_info.share_list).length;
+          completenessScore += calculateScore(shareLength, completenessWeights.share_list);
+        }
       }
-    }
 
-    const userTags = await getUserTags(user.id);
-    if (userTags && userTags.length > 0) {
-      const tagScore = Math.min(
-        userTags.length * completenessWeights.tag_list.tagWeight,
-        completenessWeights.tag_list.maxScore
-      );
-      completenessScore += tagScore;
-    }
+      const userTags = await getUserTags(user.id);
+      if (userTags && userTags.length > 0) {
+        const tagScore = Math.min(
+          userTags.length * completenessWeights.tag_list.tagWeight,
+          completenessWeights.tag_list.maxScore
+        );
+        completenessScore += tagScore;
+      }
 
-    if (user.contacts && Object.keys(user.contacts).length > 1) {
-      completenessScore += completenessWeights.contact;
-    }
-    if (user.location?.city) {
-      completenessScore += completenessWeights.location;
-    }
-    if (user.user_positions && user.user_positions.length > 0) {
-      completenessScore += completenessWeights.positions;
-    }
+      if (user.contacts && Object.keys(user.contacts).length > 1) {
+        completenessScore += completenessWeights.contact;
+      }
+      if (user.location?.city) {
+        completenessScore += completenessWeights.location;
+      }
+      if (user.user_positions && user.user_positions.length > 0) {
+        completenessScore += completenessWeights.positions;
+      }
 
-    return { user, completenessScore };
-  }));
+      return { user, completenessScore };
+    }));
 
-  // 按完整度排序
-  usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
+    usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
 
-  // 分頁
-  const paginatedUsers = usersWithCompleteness
-    .slice(offset, offset + currentPageSize)
-    .map(item => item.user);
+    paginatedUsers = usersWithCompleteness
+      .slice(offset, offset + currentPageSize)
+      .map(item => item.user);
+  }
 
   const formattedData = await Promise.all(paginatedUsers.map(user => formatUserResponse(user)));
 
