@@ -234,16 +234,22 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     },
   ]));
 
-  // 批次取得用戶標籤
-  const userTagsData = await prisma.entity_tags.findMany({
-    where: { entity_type: 'user', entity_id: { in: userIds } },
-    include: { tags: { select: { id: true, name: true } } },
-  });
+  // 批次取得用戶標籤（從 user_tag_assignments + user_tags）
+  const userTagsData = await prisma.$queryRaw<Array<{
+    user_id: number;
+    tag_id: number;
+    tag_name: string;
+  }>>`
+    SELECT uta.user_id, ut.id AS tag_id, ut.name AS tag_name
+    FROM user_tag_assignments uta
+    JOIN user_tags ut ON ut.id = uta.tag_id
+    WHERE uta.user_id = ANY(${userIds}::int[])
+  `;
   const userTagsMap = new Map<number, Array<{ id: number; name: string }>>();
-  for (const et of userTagsData) {
-    const arr = userTagsMap.get(et.entity_id) ?? [];
-    arr.push({ id: et.tags.id, name: et.tags.name });
-    userTagsMap.set(et.entity_id, arr);
+  for (const row of userTagsData) {
+    const arr = userTagsMap.get(row.user_id) ?? [];
+    arr.push({ id: row.tag_id, name: row.tag_name });
+    userTagsMap.set(row.user_id, arr);
   }
 
   // 格式化回應
@@ -303,6 +309,7 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       creationMethod: normalizedCreationMethod,
       daysToComplete: userOnboarding?.daysToComplete ?? null,
       tags: userTagsMap.get(user.id) ?? [],
+      referralSource: user.referral_source ?? null,
     };
   });
 
