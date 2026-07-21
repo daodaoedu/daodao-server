@@ -1227,6 +1227,17 @@ router.post('/tag-rules',
 );
 
 /**
+ * PATCH /admin/tag-rules/:id
+ * 更新標籤規則
+ * 需要：Admin 或 SuperAdmin
+ */
+router.patch('/tag-rules/:id',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.updateTagRule as RequestHandler
+);
+
+/**
  * DELETE /admin/tag-rules/:id
  * 刪除標籤規則
  * 需要：Admin 或 SuperAdmin

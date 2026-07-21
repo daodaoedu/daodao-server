@@ -3,8 +3,9 @@
  * 提供標籤 CRUD、規則管理、批量指派功能
  */
 
+import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
-import type { CreateTagInput, UpdateTagInput, CreateTagRuleInput, BulkTagInput, UserTag, TagRule } from '../types/admin-tags.types';
+import type { CreateTagInput, UpdateTagInput, CreateTagRuleInput, UpdateTagRuleInput, BulkTagInput, UserTag, TagRule } from '../types/admin-tags.types';
 
 /**
  * 列出所有標籤（含已指派用戶數）
@@ -205,6 +206,54 @@ const createTagRule = async (input: CreateTagRuleInput): Promise<TagRule> => {
 };
 
 /**
+ * 更新標籤規則
+ * @param id - 規則 ID
+ * @param input - 更新標籤規則輸入
+ */
+const updateTagRule = async (id: number, input: UpdateTagRuleInput): Promise<TagRule> => {
+  const setClauses: Prisma.Sql[] = [];
+  if (input.conditionType !== undefined) {
+    setClauses.push(Prisma.sql`condition_type = ${input.conditionType}`);
+  }
+  if (input.conditionOperator !== undefined) {
+    setClauses.push(Prisma.sql`condition_operator = ${input.conditionOperator}`);
+  }
+  if (input.conditionValue !== undefined) {
+    setClauses.push(Prisma.sql`condition_value = ${input.conditionValue}`);
+  }
+  if (input.logicOperator !== undefined) {
+    setClauses.push(Prisma.sql`logic_operator = ${input.logicOperator}`);
+  }
+  if (input.isEnabled !== undefined) {
+    setClauses.push(Prisma.sql`is_enabled = ${input.isEnabled}`);
+  }
+  if (setClauses.length > 0) {
+    setClauses.push(Prisma.sql`updated_at = NOW()`);
+    await prisma.$executeRaw`UPDATE tag_rules SET ${Prisma.join(setClauses, ', ')} WHERE id = ${id}`;
+  }
+
+  const [rule] = await prisma.$queryRaw<Array<{
+    id: number; tag_id: number; condition_type: string; condition_operator: string;
+    condition_value: string; logic_operator: string; is_enabled: boolean;
+    created_at: Date; updated_at: Date | null;
+  }>>`SELECT * FROM tag_rules WHERE id = ${id}`;
+
+  if (!rule) throw new Error('Tag rule not found');
+
+  return {
+    id: rule.id,
+    tagId: rule.tag_id,
+    conditionType: rule.condition_type,
+    conditionOperator: rule.condition_operator,
+    conditionValue: rule.condition_value,
+    logicOperator: rule.logic_operator as 'AND' | 'OR',
+    isEnabled: rule.is_enabled,
+    createdAt: rule.created_at.toISOString(),
+    updatedAt: rule.updated_at?.toISOString() ?? null,
+  };
+};
+
+/**
  * 刪除標籤規則
  * @param id - 規則 ID
  */
@@ -218,9 +267,12 @@ const deleteTagRule = async (id: number): Promise<void> => {
  */
 const bulkAssignTag = async (input: BulkTagInput): Promise<{ affected: number }> => {
   if (input.action === 'add') {
-    const values = input.userIds.map((uid) => `(${uid}, ${input.tagId}, 'manual', NOW())`).join(', ');
     await prisma.$executeRawUnsafe(
-      `INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at) VALUES ${values} ON CONFLICT (user_id, tag_id) DO NOTHING`
+      `INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
+       SELECT unnest($1::int[]), $2, 'manual', NOW()
+       ON CONFLICT (user_id, tag_id) DO NOTHING`,
+      input.userIds,
+      input.tagId,
     );
   } else {
     await prisma.$executeRaw`
@@ -249,6 +301,7 @@ export default {
   deleteTag,
   listTagRules,
   createTagRule,
+  updateTagRule,
   deleteTagRule,
   bulkAssignTag,
   findByTrackingSlug,
