@@ -114,33 +114,51 @@ async function evaluateTagRules(): Promise<{ rulesEvaluated: number; usersTagged
   let totalTagged = 0;
 
   for (const rule of rules) {
-    const value = Number(rule.condition_value);
-    if (Number.isNaN(value)) {
-      loggerService.warn('Tag rule has non-numeric condition_value, skipping', {
+    try {
+      if (!rule.condition_value || rule.condition_value.trim() === '') {
+        loggerService.warn('Tag rule has empty condition_value, skipping', {
+          ruleId: rule.id,
+        });
+        continue;
+      }
+
+      const value = Number(rule.condition_value);
+      if (Number.isNaN(value)) {
+        loggerService.warn('Tag rule has non-numeric condition_value, skipping', {
+          ruleId: rule.id,
+          conditionValue: rule.condition_value,
+        });
+        continue;
+      }
+
+      const sqlOp = toSqlOperator(rule.condition_operator);
+      const userIds = await findMatchingUserIds(rule.condition_type, sqlOp, value, rule.tag_id);
+
+      if (userIds.length > 0) {
+        const chunkSize = 1000;
+        for (let i = 0; i < userIds.length; i += chunkSize) {
+          const chunk = userIds.slice(i, i + chunkSize);
+          await prisma.$executeRawUnsafe(
+            `INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
+             SELECT unnest($1::int[]), $2, 'auto', NOW()
+             ON CONFLICT (user_id, tag_id) DO NOTHING`,
+            chunk,
+            rule.tag_id,
+          );
+        }
+        totalTagged += userIds.length;
+
+        loggerService.info('Tag rule matched users', {
+          ruleId: rule.id,
+          tagId: rule.tag_id,
+          conditionType: rule.condition_type,
+          matchedUsers: userIds.length,
+        });
+      }
+    } catch (error) {
+      loggerService.error('Failed to evaluate tag rule, skipping to next', {
         ruleId: rule.id,
-        conditionValue: rule.condition_value,
-      });
-      continue;
-    }
-
-    const sqlOp = toSqlOperator(rule.condition_operator);
-    const userIds = await findMatchingUserIds(rule.condition_type, sqlOp, value, rule.tag_id);
-
-    if (userIds.length > 0) {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
-         SELECT unnest($1::int[]), $2, 'auto', NOW()
-         ON CONFLICT (user_id, tag_id) DO NOTHING`,
-        userIds,
-        rule.tag_id,
-      );
-      totalTagged += userIds.length;
-
-      loggerService.info('Tag rule matched users', {
-        ruleId: rule.id,
-        tagId: rule.tag_id,
-        conditionType: rule.condition_type,
-        matchedUsers: userIds.length,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
