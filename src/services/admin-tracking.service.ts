@@ -79,7 +79,7 @@ export async function getOnboardingStats() {
 export async function getUserOnboardingDetail(externalUserId: string) {
   const user = await prisma.users.findUnique({
     where: { external_id: externalUserId },
-    select: { id: true }
+    select: { id: true, referral_source: true }
   })
   if (!user) return null
 
@@ -187,6 +187,7 @@ export async function getUserOnboardingDetail(externalUserId: string) {
       maxCheckinStreak: checkinRow?.max_streak ?? 0,
       lastActiveAt: checkinRow?.last_active_at?.toISOString() ?? null,
     },
+    referralSource: user.referral_source ?? null,
   }
 }
 
