@@ -76,6 +76,10 @@ import {
   closeTagRuleWorker,
   registerTagRuleScheduledJobs,
   type TagRuleJobData,
+  createCohortStatQueue,
+  createCohortStatWorker,
+  registerCohortStatJobs,
+  type CohortStatJobData,
 } from './queues';
 import type { OnboardingEmailJobData } from './types/email/onboarding.types';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
@@ -100,6 +104,8 @@ let emailQueue: Queue<EmailJobData> | null = null;
 let emailWorker: Worker<EmailJobData> | null = null;
 let tagRuleQueue: Queue<TagRuleJobData> | null = null;
 let tagRuleWorker: Worker<TagRuleJobData> | null = null;
+let cohortStatQueue: Queue<CohortStatJobData> | null = null;
+let cohortStatWorker: Worker<CohortStatJobData> | null = null;
 
 
 const app = express();
@@ -363,6 +369,11 @@ async function initializeBullMQ(): Promise<void> {
     await registerTagRuleScheduledJobs(tagRuleQueue);
     console.log('🏷️ 標籤規則排程任務已註冊（每小時檢查）');
 
+    cohortStatQueue = createCohortStatQueue();
+    cohortStatWorker = createCohortStatWorker();
+    await registerCohortStatJobs(cohortStatQueue);
+    console.log('🗼 燈塔每週統計快照排程已註冊');
+
     console.log('✅ BullMQ 系統初始化完成');
   } catch (error) {
     console.error('❌ BullMQ 初始化失敗:', error);
@@ -443,6 +454,8 @@ async function gracefulShutdown(signal: string) {
       await tagRuleQueue.close();
       console.log('✅ Tag Rule Queue 已關閉');
     }
+    if (cohortStatWorker) await cohortStatWorker.close();
+    if (cohortStatQueue) await cohortStatQueue.close();
 
     // 關閉 BullMQ Redis 連線
     await closeQueueConnection();

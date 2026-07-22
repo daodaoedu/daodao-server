@@ -65,6 +65,13 @@ export class ConflictError extends AppError {
   }
 }
 
+/** 410 Gone - resource existed but its retention window has ended. */
+export class GoneError extends AppError {
+  constructor(message = '資源已超過保留期限') {
+    super(message, 410);
+  }
+}
+
 /**
  * 422 錯誤 - UNPROCESSABLE_ENTITY
  */

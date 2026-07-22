@@ -3,6 +3,8 @@
  */
 
 // 連線
+export { COHORT_STAT_QUEUE_NAME, createCohortStatQueue, registerCohortStatJobs, type CohortStatJobData } from './cohort-stat.queue';
+export { createCohortStatWorker, processCohortStatJob } from './cohort-stat.worker';
 export {
   createQueueConnection,
   getQueueConnection,

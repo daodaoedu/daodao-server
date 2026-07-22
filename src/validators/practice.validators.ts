@@ -973,6 +973,12 @@ export const practiceTemplateResponseSchema = z.object({
       { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev' }
     ]
   }),
+  organization: z.object({
+    id: z.number().int(),
+    name: z.string(),
+    bio: z.string().nullable(),
+    externalLink: z.string().url().nullable()
+  }).optional().openapi({ description: '模板所屬組織；官方模板不提供此欄位' }),
   createdAt: z.string().openapi({
     description: '建立時間',
     example: '2024-01-15T10:30:00.000Z'
