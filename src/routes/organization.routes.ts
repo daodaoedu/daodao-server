@@ -124,6 +124,7 @@ registry.registerPath({
 
 router.use(authenticateAny as RequestHandler);
 router.post('/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
+router.post('/admin/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
 router.get('/admin/organizations', requireAdmin as RequestHandler, organizationController.listAllOrganizations as RequestHandler);
 router.patch('/admin/organizations/:organizationId', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), validate(adminUpdateOrganizationSchema), organizationController.adminUpdateOrganization as RequestHandler);
 router.get('/admin/organizations/:organizationId/members', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), organizationController.adminListMembers as RequestHandler);
