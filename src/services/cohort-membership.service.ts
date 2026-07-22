@@ -20,7 +20,7 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
       select: { id: true, user_id: true, status: true }
     });
     if (!enrollment) throw new ForbiddenError('無權限移除此成員');
-    if (enrollment.status !== 'joined') throw new ConflictError('此成員目前不在期內');
+    if (enrollment.status !== 'joined' && enrollment.status !== 'invited') throw new ConflictError('此成員目前不在期內');
     const detached = enrollment.user_id === null ? { count: 0 } : await tx.practices.updateMany({ where: { cohort_id: cohortId, user_id: enrollment.user_id }, data: { cohort_id: null } });
     await tx.cohort_enrollments.update({ where: { id: enrollment.id }, data: { status: 'removed', exited_at: now } });
     await tx.$executeRaw`

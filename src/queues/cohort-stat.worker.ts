@@ -12,7 +12,14 @@ export const processCohortStatJob = async (job: Job<CohortStatJobData>): Promise
   if (job.data.kind === 'final') {
     const taipei = new Date(Date.now() + 8 * 60 * 60 * 1000);
     const today = new Date(Date.UTC(taipei.getUTCFullYear(), taipei.getUTCMonth(), taipei.getUTCDate()));
-    const cohorts = await prisma.cohorts.findMany({ where: { end_date: today }, select: { id: true, start_date: true, end_date: true } });
+    const cohorts = await prisma.cohorts.findMany({
+      where: {
+        end_date: { lte: today },
+        status: 'published',
+        cohort_stat_snapshots: { none: { kind: 'final' } }
+      },
+      select: { id: true, start_date: true, end_date: true }
+    });
     for (const cohort of cohorts) {
       const periodEnd = new Date(cohort.end_date);
       periodEnd.setUTCDate(periodEnd.getUTCDate() + 1);
