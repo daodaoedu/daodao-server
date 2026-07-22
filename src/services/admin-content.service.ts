@@ -6,6 +6,7 @@ import { BadRequestError, ConflictError, NotFoundError } from '../middleware/err
 
 export interface ContentPerformanceItem {
   id: number;
+  externalId: string | null;
   title: string;
   creatorName: string | null;
   creatorEmail: string | null;
@@ -89,6 +90,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     // ── Practices ──────────────────────────────────────────────────
     prisma.$queryRaw<Array<{
       id: number;
+      external_id: string | null;
       title: string;
       creator_name: string | null;
       creator_email: string | null;
@@ -104,6 +106,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     }>>`
       SELECT
         p.id,
+        p.external_id,
         p.title,
         u.nickname AS creator_name,
         c.email AS creator_email,
@@ -233,6 +236,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     const avgSecs   = timeMap.get(p.id) ?? 0;
     return {
       id: p.id,
+      externalId: p.external_id ?? null,
       title: p.title,
       creatorName: p.creator_name ?? null,
       creatorEmail: p.creator_email ?? null,
@@ -303,6 +307,7 @@ export interface CheckinRecord {
   userName: string | null;
   userEmail: string | null;
   practiceId: number;
+  practiceExternalId: string | null;
   practiceTitle: string;
   mood: string | null;
   content: string | null;
@@ -333,6 +338,7 @@ export async function listCheckins(days?: number, limit = 20, offset = 0): Promi
       user_name: string | null;
       user_email: string | null;
       practice_id: number;
+      practice_external_id: string | null;
       practice_title: string;
       mood: string | null;
       note: string | null;
@@ -346,6 +352,7 @@ export async function listCheckins(days?: number, limit = 20, offset = 0): Promi
         u.nickname AS user_name,
         c.email AS user_email,
         pc.practice_id,
+        p.external_id AS practice_external_id,
         p.title AS practice_title,
         pc.mood,
         pc.note,
@@ -373,6 +380,7 @@ export async function listCheckins(days?: number, limit = 20, offset = 0): Promi
       userName: r.user_name ?? null,
       userEmail: r.user_email ?? null,
       practiceId: r.practice_id,
+      practiceExternalId: r.practice_external_id ?? null,
       practiceTitle: r.practice_title ?? '(已刪除)',
       mood: r.mood ?? null,
       content: r.note ?? null,
@@ -433,6 +441,7 @@ export async function setContentFeatured(
 
   const [row] = await prisma.$queryRaw<Array<{
     id: number;
+    external_id: string | null;
     title: string;
     creator_name: string | null;
     creator_email: string | null;
@@ -447,7 +456,7 @@ export async function setContentFeatured(
     featured_active: boolean;
   }>>`
     SELECT
-      p.id, p.title,
+      p.id, p.external_id, p.title,
       u.nickname AS creator_name,
       c.email AS creator_email,
       COALESCE(p.copy_count, 0) AS copy_count,
@@ -472,6 +481,7 @@ export async function setContentFeatured(
   const views = Number(row.view_count);
   return {
     id: row.id,
+    externalId: row.external_id ?? null,
     title: row.title,
     creatorName: row.creator_name ?? null,
     creatorEmail: row.creator_email ?? null,

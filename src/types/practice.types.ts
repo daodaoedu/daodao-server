@@ -243,6 +243,10 @@ export interface PracticeQueryParams {
   excludePrivate?: boolean;
   /** 排除非公開實踐：private 全排除，delayed + 未完成也排除 */
   excludeNonPublic?: boolean;
+  /** 依隱私狀態篩選（admin 用）：private / public / delayed */
+  privacyStatus?: string;
+  /** status='all' 時是否連 archived 一併回傳（admin 用） */
+  includeArchived?: boolean;
 }
 
 export interface CheckInQueryParams {
