@@ -12,7 +12,7 @@ const uniqueFeedbackTag = (cohortId: number): string => `lighthouse:cohort-feedb
 export const sendCohortFeedbackSurveys = async (now = new Date()): Promise<number> => {
   const today = taipeiDate(now);
   const cohorts = await prisma.cohorts.findMany({
-    where: { end_date: today, status: 'published' },
+    where: { end_date: { lte: today }, status: 'published' },
     select: {
       id: true,
       display_name: true,
