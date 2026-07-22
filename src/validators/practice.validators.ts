@@ -1377,6 +1377,38 @@ export const copyPracticeResponseSchema = z.object({
 export const copyPracticeApiResponseSchema = apiSuccessResponseSchema(copyPracticeResponseSchema);
 export type CopyPracticeResponse = z.infer<typeof copyPracticeResponseSchema>;
 
+// ===== Admin Practice Schemas =====
+
+// Admin 實踐列表查詢參數（不排除 private / 未完成的 delayed）
+export const adminPracticeListQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1).openapi({ description: '頁碼', example: 1 }),
+  limit: z.coerce.number().min(1).max(100).default(20).openapi({ description: '每頁筆數', example: 20 }),
+  query: z.string().optional().openapi({ description: '搜尋關鍵字（標題、實踐目標）' }),
+  status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all'])
+    .default('all')
+    .openapi({ description: '實踐狀態篩選；all 包含 archived', example: 'all' }),
+  privacyStatus: z.enum(['private', 'public', 'delayed', 'all'])
+    .default('all')
+    .openapi({ description: '隱私狀態篩選（private: 私密, public: 公開, delayed: 完成後公開）', example: 'all' }),
+  sort: z.enum(['createdAt', 'updatedAt', 'likeCount']).default('createdAt').openapi({ description: '排序欄位' }),
+  order: z.enum(['asc', 'desc']).default('desc').openapi({ description: '排序方向' })
+});
+export type AdminPracticeListQuery = z.infer<typeof adminPracticeListQuerySchema>;
+
+// Admin 更新實踐狀態
+export const adminPracticeStatusUpdateSchema = z.object({
+  status: practiceStatusSchema
+});
+export type AdminPracticeStatusUpdate = z.infer<typeof adminPracticeStatusUpdateSchema>;
+
+export const adminPracticeStatusResponseSchema = z.object({
+  id: z.string().openapi({ description: '實踐 external ID（UUID）' }),
+  status: practiceStatusSchema,
+  privacyStatus: z.string().openapi({ description: '隱私狀態', example: 'public' }),
+  updatedAt: z.string().optional().openapi({ description: '更新時間（ISO 8601）' })
+});
+export const adminPracticeStatusApiResponseSchema = apiSuccessResponseSchema(adminPracticeStatusResponseSchema);
+
 // 統一導出對象，遵循專案模式
 export const practiceValidators = {
   // 主要 schemas

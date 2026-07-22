@@ -122,7 +122,9 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       sortOrder = 'desc',
       userId,
       excludePrivate,
-      excludeNonPublic
+      excludeNonPublic,
+      privacyStatus,
+      includeArchived
     } = params;
 
     const skip = (page - 1) * limit;
@@ -156,25 +158,29 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       // status 過濾邏輯：
       // - 'archived': 只顯示 archived（需明確指定）
       // - 其他具體狀態: 只顯示該狀態
-      // - 'all' 或無指定: 排除 archived
+      // - 'all' 或無指定: 排除 archived（admin 帶 includeArchived 時不排除）
       ...(status === 'archived'
         ? { status: 'archived' }
         : status && status !== 'all'
           ? { status }
-          : { status: { not: 'archived' } }),
+          : includeArchived
+            ? {}
+            : { status: { not: 'archived' } }),
       ...(userId && { user_id: userId }),
+      // 依隱私狀態篩選（admin 用；與 excludeNonPublic 互斥使用）
+      ...(!excludeNonPublic && privacyStatus && privacyStatus !== 'all' && { privacy_status: privacyStatus }),
       // 向後相容：僅排除 private
-      ...(!excludeNonPublic && excludePrivate && { privacy_status: { not: 'private' } }),
+      ...(!excludeNonPublic && !privacyStatus && excludePrivate && { privacy_status: { not: 'private' } }),
       // 排除已刪除的實踐（deleted_at 不為 null 表示已刪除）
       deleted_at: null
     };
 
-    // 建構排序條件
+    // 建構排序條件（其餘 sortBy 值 fallback 到 created_at，避免無排序造成分頁不穩定）
     const orderBy: Prisma.practicesOrderByWithRelationInput = {};
-    if (sortBy === 'createdAt') {
-      orderBy.created_at = sortOrder;
-    } else if (sortBy === 'updatedAt') {
+    if (sortBy === 'updatedAt') {
       orderBy.updated_at = sortOrder;
+    } else {
+      orderBy.created_at = sortOrder;
     }
 
     // 執行查詢
@@ -956,6 +962,37 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
  */
 export async function findUserPractices(userId: number, params: PracticeQueryParams, viewerIsOwner = true): Promise<PaginatedApiResponse<PracticeEntity>> {
   return findAll({ ...params, userId, excludeNonPublic: !viewerIsOwner });
+}
+
+/**
+ * Admin 直接更新實踐狀態（不受擁有者與可編輯狀態限制）
+ */
+export async function adminUpdateStatus(
+  id: number,
+  status: PracticeStatus
+): Promise<ApiSuccessResponse<{ id: string; status: PracticeStatus; privacyStatus: string; updatedAt?: string }>> {
+  const existing = await prismaClient.practices.findFirst({
+    where: { id, deleted_at: null },
+    select: { id: true }
+  });
+
+  if (!existing) {
+    throw new NotFoundError('實踐不存在');
+  }
+
+  const updated = await prismaClient.practices.update({
+    where: { id },
+    data: { status, updated_at: new Date() }
+  });
+
+  loggerService.info('Admin updated practice status', { practiceId: id, status });
+
+  return createSuccessResponse({
+    id: updated.external_id || '',
+    status: updated.status as PracticeStatus,
+    privacyStatus: updated.privacy_status || 'public',
+    updatedAt: updated.updated_at?.toISOString()
+  });
 }
 
 /**

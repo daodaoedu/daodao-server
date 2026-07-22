@@ -3974,18 +3974,35 @@ export interface paths {
                                 /** @enum {string} */
                                 perspective: "coach" | "learner";
                                 items: {
-                                    id: number;
-                                    practiceId: number;
-                                    userId: number;
-                                    nickname: string | null;
-                                    avatar: string | null;
-                                    /** Format: date-time */
+                                    id: string;
                                     checkinDate: string;
                                     mood: string | null;
                                     note: string | null;
+                                    tags: string[];
                                     imageUrls: string[];
-                                    /** Format: date-time */
                                     createdAt: string;
+                                    practice: {
+                                        id: string;
+                                        title: string;
+                                    };
+                                    user?: {
+                                        id: string;
+                                        name: string;
+                                        photoUrl: string | null;
+                                        customId: string | null;
+                                    };
+                                    commentCount: number;
+                                    commentPreview: {
+                                        id: string;
+                                        content: string;
+                                        createdAt: string;
+                                        user?: {
+                                            id: string;
+                                            name: string;
+                                            photoUrl: string | null;
+                                            customId: string | null;
+                                        };
+                                    }[];
                                 }[];
                                 total: number;
                                 pendingResponseCount: number;
@@ -7182,6 +7199,119 @@ export interface paths {
                                 /** @description Whether there are pages before current page */
                                 hasPrev: boolean;
                             };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/cohorts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得我加入的期列表
+         * @description 取得當前用戶已加入且尚未退出的所有期，包含計畫與組織名稱
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功獲取我的期列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                cohortId: number;
+                                displayName: string;
+                                /** Format: date-time */
+                                startDate: string;
+                                /** Format: date-time */
+                                endDate: string;
+                                status: string;
+                                /** Format: date-time */
+                                joinedAt: string | null;
+                                programName: string;
+                                organizationName: string;
+                            }[];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -10673,7 +10803,7 @@ export interface paths {
                             data: {
                                 id: number;
                                 /** Format: email */
-                                email: string;
+                                email: string | null;
                                 userId: number | null;
                                 nickname: string | null;
                                 /** @enum {string} */
@@ -12059,18 +12189,35 @@ export interface paths {
                                 /** @enum {string} */
                                 perspective: "coach" | "learner";
                                 items: {
-                                    id: number;
-                                    practiceId: number;
-                                    userId: number;
-                                    nickname: string | null;
-                                    avatar: string | null;
-                                    /** Format: date-time */
+                                    id: string;
                                     checkinDate: string;
                                     mood: string | null;
                                     note: string | null;
+                                    tags: string[];
                                     imageUrls: string[];
-                                    /** Format: date-time */
                                     createdAt: string;
+                                    practice: {
+                                        id: string;
+                                        title: string;
+                                    };
+                                    user?: {
+                                        id: string;
+                                        name: string;
+                                        photoUrl: string | null;
+                                        customId: string | null;
+                                    };
+                                    commentCount: number;
+                                    commentPreview: {
+                                        id: string;
+                                        content: string;
+                                        createdAt: string;
+                                        user?: {
+                                            id: string;
+                                            name: string;
+                                            photoUrl: string | null;
+                                            customId: string | null;
+                                        };
+                                    }[];
                                 }[];
                                 total: number;
                                 pendingResponseCount: number;
@@ -17780,6 +17927,298 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/practices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取得 Admin 實踐列表
+         * @description 取得全站實踐列表，包含私密（private）與尚未完成的「完成後公開」（delayed）實踐；支援狀態、隱私狀態篩選與搜尋。需要管理員權限。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 頁碼 */
+                    page?: number;
+                    /** @description 每頁筆數 */
+                    limit?: number;
+                    /** @description 搜尋關鍵字（標題、實踐目標） */
+                    query?: string;
+                    /** @description 實踐狀態篩選；all 包含 archived */
+                    status?: "draft" | "not_started" | "active" | "completed" | "archived" | "all";
+                    /** @description 隱私狀態篩選（private: 私密, public: 公開, delayed: 完成後公開） */
+                    privacyStatus?: "private" | "public" | "delayed" | "all";
+                    /** @description 排序欄位 */
+                    sort?: "createdAt" | "updatedAt" | "likeCount";
+                    /** @description 排序方向 */
+                    order?: "asc" | "desc";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功取得實踐列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description Array of paginated data items */
+                            data: components["schemas"]["PracticeEntity"][];
+                            /**
+                             * @description Pagination information
+                             * @example {
+                             *       "currentPage": 1,
+                             *       "totalPages": 5,
+                             *       "totalItems": 50,
+                             *       "itemsPerPage": 10,
+                             *       "hasNext": true,
+                             *       "hasPrev": false
+                             *     }
+                             * @example {
+                             *       "currentPage": 3,
+                             *       "totalPages": 8,
+                             *       "totalItems": 156,
+                             *       "itemsPerPage": 20,
+                             *       "hasNext": true,
+                             *       "hasPrev": true
+                             *     }
+                             */
+                            pagination: {
+                                /** @description Current page number (1-based) */
+                                currentPage: number;
+                                /** @description Total number of pages */
+                                totalPages: number;
+                                /** @description Total number of items across all pages */
+                                totalItems: number;
+                                /** @description Number of items per page */
+                                itemsPerPage: number;
+                                /** @description Whether there are more pages after current page */
+                                hasNext: boolean;
+                                /** @description Whether there are pages before current page */
+                                hasPrev: boolean;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/practices/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 更新實踐狀態
+         * @description 由管理員直接更新實踐狀態（不受擁有者限制）。需要管理員權限。
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description 實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)
+                         * @example not_started
+                         * @example draft
+                         * @example not_started
+                         * @example active
+                         * @example completed
+                         * @example archived
+                         * @enum {string}
+                         */
+                        status: "draft" | "not_started" | "active" | "completed" | "archived";
+                    };
+                };
+            };
+            responses: {
+                /** @description 成功更新實踐狀態 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /** @description 實踐 external ID（UUID） */
+                                id: string;
+                                /**
+                                 * @description 實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)
+                                 * @example not_started
+                                 * @example draft
+                                 * @example not_started
+                                 * @example active
+                                 * @example completed
+                                 * @example archived
+                                 * @enum {string}
+                                 */
+                                status: "draft" | "not_started" | "active" | "completed" | "archived";
+                                /**
+                                 * @description 隱私狀態
+                                 * @example public
+                                 */
+                                privacyStatus: string;
+                                /** @description 更新時間（ISO 8601） */
+                                updatedAt?: string;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                404: components["responses"]["NotFoundError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
         trace?: never;
     };
     "/api/v1/projects": {
