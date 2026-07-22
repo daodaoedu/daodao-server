@@ -18,18 +18,19 @@ describe('cohortInvitationService', () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
     const result = await cohortInvitationService.invite(2, 8, 42, { csv: 'email\nGOOD@example.com\nbad', preview: true });
     expect(result).toEqual(expect.objectContaining({ total: 2, validCount: 1, errorCount: 1, queuedCount: 0 }));
-    expect(prismaMock.cohort_enrollments.upsert).not.toHaveBeenCalled();
+    expect(prismaMock.cohort_enrollments.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.cohort_enrollments.create).not.toHaveBeenCalled();
     expect(bulkEnqueueEmails).not.toHaveBeenCalled();
   });
 
-  it('upserts invited enrollments, writes audit counts, and enqueues templated email jobs', async () => {
+  it('creates invited enrollments, writes audit counts, and enqueues templated email jobs', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
-    prismaMock.cohort_enrollments.upsert.mockResolvedValue({ id: 99, invite_token: '123e4567-e89b-12d3-a456-426614174000' } as never);
+    prismaMock.cohort_enrollments.findUnique.mockResolvedValue(null as never);
+    prismaMock.cohort_enrollments.create.mockResolvedValue({ id: 99, invite_token: '123e4567-e89b-12d3-a456-426614174000' } as never);
     const result = await cohortInvitationService.invite(2, 8, 42, { emails: ['GOOD@example.com'], preview: false });
     expect(result).toEqual(expect.objectContaining({ validCount: 1, errorCount: 0, queuedCount: 1 }));
-    expect(prismaMock.cohort_enrollments.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { cohort_id_email: { cohort_id: 8, email: 'good@example.com' } },
-      create: expect.objectContaining({ status: 'invited' })
+    expect(prismaMock.cohort_enrollments.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ cohort_id: 8, email: 'good@example.com', status: 'invited' })
     }));
     expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
     expect(prismaMock.$executeRaw.mock.calls.flat()).toEqual(expect.arrayContaining([
@@ -46,13 +47,36 @@ describe('cohortInvitationService', () => {
 
   it('creates a P1 invitation event when the invited email already belongs to a user', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
-    prismaMock.cohort_enrollments.upsert.mockResolvedValue({ id: 99, invite_token: '123e4567-e89b-12d3-a456-426614174000' } as never);
+    prismaMock.cohort_enrollments.findUnique.mockResolvedValue(null as never);
+    prismaMock.cohort_enrollments.create.mockResolvedValue({ id: 99, invite_token: '123e4567-e89b-12d3-a456-426614174000' } as never);
     prismaMock.users.findMany.mockResolvedValue([{ id: 77 }] as never);
 
     await cohortInvitationService.invite(2, 8, 42, { emails: ['member@example.com'], preview: false });
     expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({
       type: 'CohortInvitation', actorId: 42, recipientId: 77, entityType: 'cohort', entityId: 8, priority: 'P1'
     }));
+  });
+
+  it('re-invites an existing non-joined enrollment by resetting it to invited', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.findUnique.mockResolvedValue({ id: 55, invite_token: '123e4567-e89b-12d3-a456-426614174000', status: 'exited' } as never);
+    prismaMock.cohort_enrollments.update.mockResolvedValue({ id: 55, invite_token: '123e4567-e89b-12d3-a456-426614174000' } as never);
+    const result = await cohortInvitationService.invite(2, 8, 42, { emails: ['good@example.com'], preview: false });
+    expect(result).toEqual(expect.objectContaining({ validCount: 1, queuedCount: 1 }));
+    expect(prismaMock.cohort_enrollments.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { cohort_id_email: { cohort_id: 8, email: 'good@example.com' } },
+      data: { status: 'invited', exited_at: null }
+    }));
+    expect(prismaMock.cohort_enrollments.create).not.toHaveBeenCalled();
+  });
+
+  it('does not downgrade a joined member to invited when re-invited', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.findUnique.mockResolvedValue({ id: 55, invite_token: '123e4567-e89b-12d3-a456-426614174000', status: 'joined' } as never);
+    const result = await cohortInvitationService.invite(2, 8, 42, { emails: ['good@example.com'], preview: false });
+    expect(result).toEqual(expect.objectContaining({ validCount: 1 }));
+    expect(prismaMock.cohort_enrollments.update).not.toHaveBeenCalled();
+    expect(prismaMock.cohort_enrollments.create).not.toHaveBeenCalled();
   });
 
   it('resends an existing invitation through the same BullMQ email job', async () => {

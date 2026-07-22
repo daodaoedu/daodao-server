@@ -29,12 +29,13 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
     const items: Array<{ email: string; valid: boolean; reason: string | null; enrollmentId: number | null; inviteToken?: string }> = validated.map(item => ({ ...item, enrollmentId: null }));
     for (const item of items) {
       if (!item.valid) continue;
-      const enrollment = await tx.cohort_enrollments.upsert({
-        where: { cohort_id_email: { cohort_id: cohort.id, email: item.email } },
-        create: { cohort_id: cohort.id, email: item.email, status: 'invited', role: 'member' },
-        update: { status: 'invited', exited_at: null },
-        select: { id: true, invite_token: true }
-      });
+      const where = { cohort_id_email: { cohort_id: cohort.id, email: item.email } };
+      const existing = await tx.cohort_enrollments.findUnique({ where, select: { id: true, invite_token: true, status: true } });
+      const enrollment = !existing
+        ? await tx.cohort_enrollments.create({ data: { cohort_id: cohort.id, email: item.email, status: 'invited', role: 'member' }, select: { id: true, invite_token: true } })
+        : existing.status === 'joined'
+          ? existing
+          : await tx.cohort_enrollments.update({ where, data: { status: 'invited', exited_at: null }, select: { id: true, invite_token: true } });
       item.enrollmentId = enrollment.id;
       item.inviteToken = enrollment.invite_token ?? undefined;
     }
