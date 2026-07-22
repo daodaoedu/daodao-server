@@ -4,6 +4,7 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { anonymizeCohortEnrollments } from './cohort-anonymization.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
 import { onboardingService } from './onboarding.service';
@@ -1566,6 +1567,9 @@ const deleteMe = async (externalId: string): Promise<ApiSuccessResponse<{ messag
     const appleId = user.contacts?.apple_id;
     const email = user.contacts?.email;
 
+    // 保留 Lighthouse 名冊與快照，但移除可識別欄位。
+    await anonymizeCohortEnrollments(tx, userId);
+
     // --- 3. 刪除用戶（其餘 onDelete: Cascade 的關聯會由 DB 自動處理） ---
     await tx.users.delete({ where: { id: userId } });
 
@@ -1632,6 +1636,9 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
     // 保存關聯資料以便稍後刪除
     const contacts = user.contacts;
     const basicInfo = user.basic_info;
+
+    // 保留 Lighthouse 名冊與快照，但移除可識別欄位。
+    await anonymizeCohortEnrollments(tx, userId);
 
     // 先刪除用戶（解除外鍵引用）
     await tx.users.delete({

@@ -403,6 +403,7 @@ model practices {
   external_id              String?                   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                  Int
   template_id              Int?
+  cohort_id                Int?
   title                    String                    @db.VarChar(100)
   practice_action          String?
   start_date               DateTime?                 @db.Date
@@ -434,6 +435,7 @@ model practices {
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
+  cohorts                  cohorts?                  @relation(fields: [cohort_id], references: [id], onUpdate: NoAction, map: "fk_practices_cohort")
   source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   copied_practices         practices[]               @relation("PracticeCopies")
   practice_templates       practice_templates?       @relation(fields: [template_id], references: [id], onUpdate: NoAction)
@@ -444,6 +446,7 @@ model practices {
   @@index([privacy_status], map: "idx_practices_privacy_status")
   @@index([template_id], map: "idx_practices_template_id")
   @@index([user_id], map: "idx_practices_user_id")
+  @@index([cohort_id], map: "idx_practices_cohort_id")
 }
 
 model preference_options {
@@ -789,95 +792,98 @@ model user_subscription {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model users {
-  id                                              Int                        @id @default(autoincrement())
-  external_id                                     String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mongo_id                                        String                     @unique
-  gender                                          gender_t?
-  language                                        String?                    @db.VarChar(255)
-  education_stage                                 education_stage_t?         @default(other)
-  tag_list                                        String[]
-  contact_id                                      Int?
-  is_open_location                                Boolean?
-  location_id                                     Int?
-  nickname                                        String?                    @db.VarChar(255)
-  role_id                                         Int
-  is_open_profile                                 Boolean?
-  birth_date                                      DateTime?                  @db.Date
-  basic_info_id                                   Int?
-  createdDate                                     DateTime?                  @db.Timestamptz(6)
-  updatedDate                                     DateTime?                  @db.Timestamptz(6)
-  created_by                                      String?                    @db.VarChar(255)
-  created_at                                      DateTime?                  @db.Timestamptz(6)
-  updated_by                                      String?                    @db.VarChar(255)
-  updated_at                                      DateTime?                  @db.Timestamptz(6)
-  is_active                                       Boolean?                   @default(true)
-  verified                                        Boolean?                   @default(false)
-  verified_at                                     DateTime?                  @db.Timestamptz(6)
-  custom_id                                       String?                    @db.VarChar(255)
-  custom_id_created_at                            DateTime?                  @db.Timestamp(6)
-  personal_slogan                                 String?
-  referral_source                                 String?                    @db.VarChar(255)
-  custom_id_verified                              Boolean?                   @default(false)
-  professional_field                              String?                    @db.VarChar(255)
-  activity_stats_id                               Int?
-  custom_position                                 String?                    @db.VarChar(100)
-  hide_connections_count                          Boolean                    @default(false)
-  comments                                        comments[]
-  received_connection_requests                    connection_requests[]      @relation("connection_requests_receiver_idTousers")
-  sent_connection_requests                        connection_requests[]      @relation("connection_requests_requester_idTousers")
-  connections_as_user_a                           connections[]              @relation("connections_user_a_idTousers")
-  connections_as_user_b                           connections[]              @relation("connections_user_b_idTousers")
-  email_logs                                      email_logs[]
-  entity_resources                                entity_resources[]
-  entity_tags                                     entity_tags[]
-  follows                                         follows[]
-  groups                                          groups[]
-  ideas                                           ideas[]
-  interaction_counts_as_user_a                    interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
-  interaction_counts_as_user_b                    interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
-  likes                                           likes[]
-  marathon                                        marathon[]
-  mentor_participants_as_mentor                   mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
-  mentor_participants_as_participant              mentor_participants[]      @relation("mentor_participants_participant_idTousers")
-  notification_events_as_actor                    notification_events[]      @relation("notification_events_actor_idTousers")
-  notification_events_as_recipient                notification_events[]      @relation("notification_events_recipient_idTousers")
-  notification_preferences                        notification_preferences[]
-  notifications_as_actor                          notifications[]            @relation("notifications_actor")
-  notifications_as_recipient                      notifications[]            @relation("notifications_recipient")
-  post                                            post[]
-  practice_buddy_requests_as_receiver             practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
-  practice_buddy_requests_as_requester            practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
-  practice_checkins                               practice_checkins[]
-  practice_social_proofs                          practice_social_proofs[]
-  practices                                       practices[]
-  project                                         project[]
-  quiz_results                                    quiz_results[]
-  rating                                          rating[]
-  reactions                                       reactions[]
-  resource_review                                 resource_review[]
-  resources                                       resources[]
-  store                                           store?
-  user_interests                                  user_interests[]
-  user_join_group                                 user_join_group[]
-  user_login_history                              user_login_history[]
-  user_onboarding                                 user_onboarding?
-  user_permissions                                user_permissions[]
-  user_positions                                  user_positions[]
-  user_preferences                                user_preferences[]
-  user_professional_fields                        user_professional_fields[]
-  user_profiles                                   user_profiles[]
-  user_project                                    user_project[]
-  user_subscription                               user_subscription[]
-  user_activity_stats                             user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
-  basic_info                                      basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  contacts                                        contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  location                                        location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  roles                                           roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  persona_answers                                 persona_answers[]
-  persona_skips                                   persona_skips[]
-  persona_user_state                              persona_user_state?
-  wishes                                          wishes[]
-  roadmap_item_supports                           roadmap_item_supports[]
+  id                                   Int                        @id @default(autoincrement())
+  external_id                          String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mongo_id                             String                     @unique
+  gender                               gender_t?
+  language                             String?                    @db.VarChar(255)
+  education_stage                      education_stage_t?         @default(other)
+  tag_list                             String[]
+  contact_id                           Int?
+  is_open_location                     Boolean?
+  location_id                          Int?
+  nickname                             String?                    @db.VarChar(255)
+  role_id                              Int
+  is_open_profile                      Boolean?
+  birth_date                           DateTime?                  @db.Date
+  basic_info_id                        Int?
+  createdDate                          DateTime?                  @db.Timestamptz(6)
+  updatedDate                          DateTime?                  @db.Timestamptz(6)
+  created_by                           String?                    @db.VarChar(255)
+  created_at                           DateTime?                  @db.Timestamptz(6)
+  updated_by                           String?                    @db.VarChar(255)
+  updated_at                           DateTime?                  @db.Timestamptz(6)
+  is_active                            Boolean?                   @default(true)
+  verified                             Boolean?                   @default(false)
+  verified_at                          DateTime?                  @db.Timestamptz(6)
+  custom_id                            String?                    @db.VarChar(255)
+  custom_id_created_at                 DateTime?                  @db.Timestamp(6)
+  personal_slogan                      String?
+  referral_source                      String?                    @db.VarChar(255)
+  custom_id_verified                   Boolean?                   @default(false)
+  professional_field                   String?                    @db.VarChar(255)
+  activity_stats_id                    Int?
+  custom_position                      String?                    @db.VarChar(100)
+  hide_connections_count               Boolean                    @default(false)
+  cohort_enrollments                   cohort_enrollments[]
+  comments                             comments[]
+  received_connection_requests         connection_requests[]      @relation("connection_requests_receiver_idTousers")
+  sent_connection_requests             connection_requests[]      @relation("connection_requests_requester_idTousers")
+  connections_as_user_a                connections[]              @relation("connections_user_a_idTousers")
+  connections_as_user_b                connections[]              @relation("connections_user_b_idTousers")
+  email_logs                           email_logs[]
+  entity_resources                     entity_resources[]
+  entity_tags                          entity_tags[]
+  follows                              follows[]
+  groups                               groups[]
+  ideas                                ideas[]
+  interaction_counts_as_user_a         interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
+  interaction_counts_as_user_b         interaction_counts[]       @relation("interaction_counts_user_b_idTousers")
+  likes                                likes[]
+  marathon                             marathon[]
+  mentor_participants_as_mentor        mentor_participants[]      @relation("mentor_participants_mentor_idTousers")
+  mentor_participants_as_participant   mentor_participants[]      @relation("mentor_participants_participant_idTousers")
+  notification_events_as_actor         notification_events[]      @relation("notification_events_actor_idTousers")
+  notification_events_as_recipient     notification_events[]      @relation("notification_events_recipient_idTousers")
+  notification_preferences             notification_preferences[]
+  notifications_as_actor               notifications[]            @relation("notifications_actor")
+  notifications_as_recipient           notifications[]            @relation("notifications_recipient")
+  organization                         organization[]
+  organization_members                 organization_members[]
+  post                                 post[]
+  practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
+  practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
+  practice_checkins                    practice_checkins[]
+  practice_social_proofs               practice_social_proofs[]
+  practices                            practices[]
+  project                              project[]
+  quiz_results                         quiz_results[]
+  rating                               rating[]
+  reactions                            reactions[]
+  resource_review                      resource_review[]
+  resources                            resources[]
+  store                                store?
+  user_interests                       user_interests[]
+  user_join_group                      user_join_group[]
+  user_login_history                   user_login_history[]
+  user_onboarding                      user_onboarding?
+  user_permissions                     user_permissions[]
+  user_positions                       user_positions[]
+  user_preferences                     user_preferences[]
+  user_professional_fields             user_professional_fields[]
+  user_profiles                        user_profiles[]
+  user_project                         user_project[]
+  user_subscription                    user_subscription[]
+  user_activity_stats                  user_activity_stats?       @relation(fields: [activity_stats_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_activity_stats")
+  basic_info                           basic_info?                @relation(fields: [basic_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contacts                             contacts?                  @relation(fields: [contact_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  location                             location?                  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                                roles                      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  persona_answers                      persona_answers[]
+  persona_skips                        persona_skips[]
+  persona_user_state                   persona_user_state?
+  wishes                               wishes[]
+  roadmap_item_supports                roadmap_item_supports[]
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -1029,8 +1035,13 @@ model practice_templates {
   other_context                String?
   created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
   updated_at                   DateTime?                      @db.Timestamptz(6)
+  organization_id              Int?
+  cohort_templates             cohort_templates[]
+  organization                 organization?                  @relation(fields: [organization_id], references: [id], onUpdate: NoAction, map: "fk_practice_templates_organization")
   practice_template_categories practice_template_categories[]
   practices                    practices[]
+
+  @@index([organization_id], map: "idx_practice_templates_organization_id")
 }
 
 /// 打卡鼓勵句表
@@ -1123,19 +1134,19 @@ model email_templates {
 
 /// 觸發式郵件規則：定義自動發信的條件、模板與排程
 model email_trigger_rules {
-  id           Int       @id @default(autoincrement())
-  name         String    @db.VarChar(100)
-  description  String?   @db.VarChar(500)
-  trigger_type String    @db.VarChar(50)
-  trigger_config Json    @default("{}")
-  template     String    @db.VarChar(50)
-  subject      String    @db.VarChar(255)
-  enabled      Boolean   @default(true)
-  sent_count   Int       @default(0)
-  open_rate    Float     @default(0)
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
-  created_by   Int?
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(100)
+  description    String?  @db.VarChar(500)
+  trigger_type   String   @db.VarChar(50)
+  trigger_config Json     @default("{}")
+  template       String   @db.VarChar(50)
+  subject        String   @db.VarChar(255)
+  enabled        Boolean  @default(true)
+  sent_count     Int      @default(0)
+  open_rate      Float    @default(0)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @updatedAt @db.Timestamptz(6)
+  created_by     Int?
 
   @@index([trigger_type], map: "idx_email_trigger_rules_type")
   @@index([enabled], map: "idx_email_trigger_rules_enabled")
@@ -1143,12 +1154,12 @@ model email_trigger_rules {
 
 /// 觸發式郵件執行紀錄
 model email_trigger_logs {
-  id         Int       @id @default(autoincrement())
-  rule_id    Int
-  rule_name  String    @db.VarChar(100)
-  recipient  String    @db.VarChar(255)
-  status     String    @default("success") @db.VarChar(20)
-  sent_at    DateTime  @default(now()) @db.Timestamptz(6)
+  id        Int      @id @default(autoincrement())
+  rule_id   Int
+  rule_name String   @db.VarChar(100)
+  recipient String   @db.VarChar(255)
+  status    String   @default("success") @db.VarChar(20)
+  sent_at   DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([rule_id], map: "idx_email_trigger_logs_rule")
   @@index([sent_at], map: "idx_email_trigger_logs_sent_at")
@@ -1421,8 +1432,8 @@ model interaction_counts {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model user_onboarding {
-  id               Int       @id @default(autoincrement())
-  user_id          Int       @unique(map: "idx_user_onboarding_user_id")
+  id                Int       @id @default(autoincrement())
+  user_id           Int       @unique(map: "idx_user_onboarding_user_id")
   user_source       String    @db.VarChar(10)
   task_states       Json      @default("{}")
   task_completed_at Json      @default("{}")
@@ -1673,20 +1684,20 @@ enum persona_question_type_t {
 }
 
 model persona_questions {
-  id                   Int                      @id @default(autoincrement())
+  id                   Int                     @id @default(autoincrement())
   question_type        persona_question_type_t
-  is_new_user_priority Boolean                  @default(false)
-  created_at           DateTime                 @default(now()) @db.Timestamptz(6)
+  is_new_user_priority Boolean                 @default(false)
+  created_at           DateTime                @default(now()) @db.Timestamptz(6)
 
-  persona_answers                  persona_answers[]
-  persona_skips                    persona_skips[]
-  persona_question_translations    persona_question_translations[]
+  persona_answers               persona_answers[]
+  persona_skips                 persona_skips[]
+  persona_question_translations persona_question_translations[]
 }
 
 model persona_question_translations {
-  id          Int     @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   question_id Int
-  locale      String  @db.VarChar(10)
+  locale      String @db.VarChar(10)
   prompt      String
   options     Json?
 
@@ -1729,11 +1740,11 @@ model persona_skips {
 }
 
 model persona_user_state {
-  user_id                          Int       @id
-  session_count_since_last_prompt  Int       @default(0)
-  last_prompt_timestamp            DateTime? @db.Timestamptz(6)
-  last_dismissed_at                DateTime? @db.Timestamptz(6)
-  created_at                       DateTime  @default(now()) @db.Timestamptz(6)
+  user_id                         Int       @id
+  session_count_since_last_prompt Int       @default(0)
+  last_prompt_timestamp           DateTime? @db.Timestamptz(6)
+  last_dismissed_at               DateTime? @db.Timestamptz(6)
+  created_at                      DateTime  @default(now()) @db.Timestamptz(6)
 
   users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
@@ -1816,25 +1827,25 @@ enum question_type_t {
 }
 
 model surveys {
-  id            Int              @id @default(autoincrement())
-  external_id   String           @unique @default(dbgenerated("gen_random_uuid()::text"))
+  id            Int             @id @default(autoincrement())
+  external_id   String          @unique @default(dbgenerated("gen_random_uuid()::text"))
   title         String
   description   String?
-  status        survey_status_t  @default(draft)
-  is_public     Boolean          @default(true)
-  is_anonymous  Boolean          @default(false)
+  status        survey_status_t @default(draft)
+  is_public     Boolean         @default(true)
+  is_anonymous  Boolean         @default(false)
   max_responses Int?
-  tags          String[]         @default([])
+  tags          String[]        @default([])
   cover_url     String?
-  view_count    Int              @default(0)
+  view_count    Int             @default(0)
   created_by    Int
-  start_time    DateTime?        @db.Timestamptz(6)
-  end_time      DateTime?        @db.Timestamptz(6)
-  created_at    DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime         @updatedAt @db.Timestamptz(6)
+  start_time    DateTime?       @db.Timestamptz(6)
+  end_time      DateTime?       @db.Timestamptz(6)
+  created_at    DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime        @updatedAt @db.Timestamptz(6)
 
-  questions         questions[]
-  responses         survey_responses[]
+  questions           questions[]
+  responses           survey_responses[]
   partial_submissions survey_partial_submissions[]
 
   @@index([created_by], map: "idx_surveys_created_by")
@@ -1842,19 +1853,19 @@ model surveys {
 }
 
 model questions {
-  id            Int              @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   survey_id     Int
   question_type question_type_t
   question_text String
-  is_required   Boolean          @default(false)
-  position      Int              @default(0)
-  conditions    Json             @default("[]") @db.JsonB
-  created_at    DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime         @updatedAt @db.Timestamptz(6)
+  is_required   Boolean         @default(false)
+  position      Int             @default(0)
+  conditions    Json            @default("[]") @db.JsonB
+  created_at    DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime        @updatedAt @db.Timestamptz(6)
 
-  survey   surveys            @relation(fields: [survey_id], references: [id], onDelete: Cascade)
-  options  question_options[]
-  answers  survey_answers[]
+  survey  surveys            @relation(fields: [survey_id], references: [id], onDelete: Cascade)
+  options question_options[]
+  answers survey_answers[]
 
   @@index([survey_id], map: "idx_questions_survey_id")
 }
@@ -1910,9 +1921,127 @@ model survey_answers {
   rating_value        Int?
   boolean_value       Boolean?
 
-  response  survey_responses @relation(fields: [survey_response_id], references: [id], onDelete: Cascade)
-  question  questions        @relation(fields: [question_id], references: [id], onDelete: Cascade)
+  response survey_responses @relation(fields: [survey_response_id], references: [id], onDelete: Cascade)
+  question questions        @relation(fields: [question_id], references: [id], onDelete: Cascade)
 
   @@index([survey_response_id], map: "idx_survey_answers_response_id")
   @@index([survey_id, question_id], map: "idx_survey_answers_survey_question")
+}
+
+/// 燈塔組織；個人講師以單成員組織表示。
+model organization {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @db.VarChar(100)
+  bio                  String?
+  external_link        String?
+  status               String                 @default("active") @db.VarChar(20)
+  approved_by          Int?
+  approved_at          DateTime?              @db.Timestamptz(6)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  approver             users?                 @relation(fields: [approved_by], references: [id], onUpdate: NoAction, map: "fk_organization_approved_by")
+  organization_members organization_members[]
+  practice_templates   practice_templates[]
+  programs             programs[]
+}
+
+/// 組織成員；是否存在此關係即為燈塔登入門檻。
+model organization_members {
+  id              Int          @id @default(autoincrement())
+  organization_id Int
+  user_id         Int
+  role            String       @default("owner") @db.VarChar(20)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  organization    organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_organization_members_organization")
+  user            users        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_organization_members_user")
+
+  @@unique([organization_id, user_id], map: "uq_organization_members_organization_user")
+  @@index([user_id], map: "idx_organization_members_user")
+}
+
+/// 燈塔系列；無時間屬性的期容器。
+model programs {
+  id              Int          @id @default(autoincrement())
+  organization_id Int
+  name            String       @db.VarChar(100)
+  description     String?
+  deleted_at      DateTime?    @db.Timestamptz(6)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?    @db.Timestamptz(6)
+  cohorts         cohorts[]
+  organization    organization @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_programs_organization")
+
+  @@index([organization_id], map: "idx_programs_organization_id")
+}
+
+/// 燈塔的期；status 僅表示 draft、published、archived 編輯狀態。
+model cohorts {
+  id                    Int                     @id @default(autoincrement())
+  program_id            Int
+  slug                  String                  @db.VarChar(50)
+  display_name          String                  @db.VarChar(100)
+  start_date            DateTime                @db.Date
+  end_date              DateTime                @db.Date
+  join_token            String?                 @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  join_deadline         DateTime?               @db.Date
+  capacity              Int?
+  invite_message        String?
+  status                String                  @default("draft") @db.VarChar(20)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @db.Timestamptz(6)
+  cohort_enrollments    cohort_enrollments[]
+  cohort_stat_snapshots cohort_stat_snapshots[]
+  cohort_templates      cohort_templates[]
+  practices             practices[]
+  program               programs                @relation(fields: [program_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohorts_program")
+
+  @@unique([program_id, slug], map: "uq_cohorts_program_slug")
+  @@index([program_id], map: "idx_cohorts_program_id")
+}
+
+/// 期邀請與參與關係；email 是聯絡紀錄，身分以 token 綁定。
+model cohort_enrollments {
+  id                 Int       @id @default(autoincrement())
+  cohort_id          Int
+  email              String?   @db.VarChar(255)
+  user_id            Int?
+  invite_token       String?   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status             String    @default("invited") @db.VarChar(20)
+  role               String    @default("member") @db.VarChar(20)
+  invited_at         DateTime  @default(now()) @db.Timestamptz(6)
+  joined_at          DateTime? @db.Timestamptz(6)
+  exited_at          DateTime? @db.Timestamptz(6)
+  export_opt_in      Boolean   @default(false)
+  export_opted_in_at DateTime? @db.Timestamptz(6)
+  cohort             cohorts   @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_enrollments_cohort")
+  user               users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "fk_cohort_enrollments_user")
+
+  @@unique([cohort_id, email], map: "uq_cohort_enrollments_cohort_email")
+  @@index([cohort_id, status], map: "idx_enrollments_cohort_status")
+  @@index([user_id], map: "idx_enrollments_user")
+}
+
+/// 模板與期的綁定歷程；解綁以 unbound_at 表示。
+model cohort_templates {
+  id                Int                @id @default(autoincrement())
+  cohort_id         Int
+  template_id       Int
+  bound_at          DateTime           @default(now()) @db.Timestamptz(6)
+  unbound_at        DateTime?          @db.Timestamptz(6)
+  cohort            cohorts            @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_cohort")
+  practice_template practice_templates @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_template")
+
+  @@unique([cohort_id, template_id], map: "uq_cohort_templates_cohort_template")
+}
+
+/// 期的週次與期末聚合快照，不含個人識別資訊。
+model cohort_stat_snapshots {
+  id           Int      @id @default(autoincrement())
+  cohort_id    Int
+  period_start DateTime @db.Date
+  kind         String   @default("weekly") @db.VarChar(20)
+  metrics      Json
+  computed_at  DateTime @default(now()) @db.Timestamptz(6)
+  cohort       cohorts  @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_stat_snapshots_cohort")
+
+  @@unique([cohort_id, kind, period_start], map: "uq_cohort_stat_snapshots_period")
 }

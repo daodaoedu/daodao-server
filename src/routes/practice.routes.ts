@@ -11,6 +11,7 @@ import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
 import upload from '../middleware/multer.middleware';
 import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
+import { enforcePracticeCohortContentLifecycle } from '../middleware/cohort-content-lifecycle.middleware';
 import { OnboardingTask } from '../types/onboarding.types';
 import type { CreationMethod } from '../types/onboarding.types';
 import {
@@ -1183,6 +1184,7 @@ router.put('/:id',
   authenticate,
   validate(practiceParamsSchema, 'params'),
   validate(updatePracticeSchema, 'body'),
+  enforcePracticeCohortContentLifecycle,
   // TODO: requirePracticeOwnership middleware
   practiceController.updatePractice as RequestHandler);
 
@@ -1195,6 +1197,7 @@ router.put('/:id',
 router.delete('/:id',
   authenticate,
   validate(practiceParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
   // TODO: requirePracticeOwnership middleware
   practiceController.deletePractice as RequestHandler);
 
@@ -1207,8 +1210,9 @@ router.delete('/:id',
  */
 router.post('/:id/checkins',
   authenticate,
-  upload.array('images', 3),
   validate(practiceParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
+  upload.array('images', 3),
   // TODO: requirePracticeOwnership middleware
   withOnboardingHook(OnboardingTask.D, practiceController.createCheckIn as RequestHandler, {
     shouldAdvance: (_req, body) => isFirstCheckInResponse(body),
@@ -1223,8 +1227,9 @@ router.post('/:id/checkins',
  */
 router.put('/:id/checkins/:checkInId',
   authenticate,
-  upload.array('images', 3),
   validate(updateCheckInParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
+  upload.array('images', 3),
   practiceController.updateCheckIn as RequestHandler);
 
 /**
@@ -1236,6 +1241,7 @@ router.put('/:id/checkins/:checkInId',
 router.delete('/:id/checkins/:checkInId',
   authenticate,
   validate(deleteCheckInParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
   practiceController.deleteCheckIn as RequestHandler);
 
 /**
