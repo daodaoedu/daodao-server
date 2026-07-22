@@ -4,23 +4,47 @@ import { prisma } from './database/prisma.service';
 
 interface CountRow { count: bigint }
 
+interface CommentPreviewUser {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  customId: string | null;
+}
+
+interface CommentPreview {
+  id: string;
+  content: string;
+  createdAt: string;
+  user?: CommentPreviewUser;
+}
+
+interface CohortFeedItem {
+  id: string;
+  checkinDate: string;
+  mood: string | null;
+  note: string;
+  tags: string[];
+  imageUrls: string[];
+  createdAt: string;
+  practice: { id: string; title: string };
+  user?: {
+    id: string;
+    name: string;
+    photoUrl: string | null;
+    customId: string | null;
+  };
+  commentCount: number;
+  commentPreview: CommentPreview[];
+}
+
 interface CohortFeed {
   perspective: 'coach' | 'learner';
   total: number;
   pendingResponseCount: number;
-  items: Array<{
-    id: number;
-    practiceId: number;
-    userId: number;
-    nickname: string | null;
-    avatar: string | null;
-    checkinDate: Date;
-    mood: string | null;
-    note: string | null;
-    imageUrls: string[];
-    createdAt: Date;
-  }>;
+  items: CohortFeedItem[];
 }
+
+const COMMENT_PREVIEW_LIMIT = 2;
 
 const get = async (
   cohortId: number,
@@ -42,7 +66,25 @@ const get = async (
   const [rows, total, pendingRows] = await Promise.all([
     prisma.practice_checkins.findMany({
       where, orderBy: [{ created_at: 'desc' }, { id: 'desc' }], take: limit, skip: offset,
-      select: { id: true, practice_id: true, user_id: true, checkin_date: true, mood: true, note: true, image_urls: true, created_at: true, users: { select: { nickname: true, contacts: { select: { photo_url: true } } } } }
+      select: {
+        id: true,
+        practice_id: true,
+        user_id: true,
+        checkin_date: true,
+        mood: true,
+        note: true,
+        image_urls: true,
+        created_at: true,
+        practices: { select: { external_id: true, title: true } },
+        users: {
+          select: {
+            external_id: true,
+            nickname: true,
+            custom_id: true,
+            contacts: { select: { photo_url: true } },
+          },
+        },
+      },
     }),
     prisma.practice_checkins.count({ where }),
     prisma.$queryRaw<CountRow[]>(Prisma.sql`
@@ -58,6 +100,82 @@ const get = async (
         )
     `)
   ]);
-  return { perspective, total, pendingResponseCount: Number(pendingRows[0]?.count ?? 0n), items: rows.flatMap(row => row.created_at === null ? [] : [{ id: row.id, practiceId: row.practice_id, userId: row.user_id, nickname: row.users.nickname, avatar: row.users.contacts?.photo_url ?? null, checkinDate: row.checkin_date, mood: row.mood, note: row.note, imageUrls: row.image_urls, createdAt: row.created_at }]) };
+
+  const checkinIds = rows.map(r => r.id);
+
+  const [commentCounts, commentPreviews] = checkinIds.length > 0
+    ? await Promise.all([
+        prisma.comments.groupBy({
+          by: ['target_id'],
+          where: { target_type: 'checkin', target_id: { in: checkinIds } },
+          _count: true,
+        }),
+        prisma.comments.findMany({
+          where: { target_type: 'checkin', target_id: { in: checkinIds }, parent_id: null },
+          orderBy: { created_at: 'desc' },
+          select: {
+            id: true,
+            target_id: true,
+            content: true,
+            created_at: true,
+            users: {
+              select: {
+                external_id: true,
+                nickname: true,
+                custom_id: true,
+                contacts: { select: { photo_url: true } },
+              },
+            },
+          },
+        }),
+      ])
+    : [[], []];
+
+  const countMap = new Map(commentCounts.map(c => [c.target_id, c._count]));
+
+  const previewMap = new Map<number, CommentPreview[]>();
+  for (const c of commentPreviews) {
+    const existing = previewMap.get(c.target_id) ?? [];
+    if (existing.length >= COMMENT_PREVIEW_LIMIT) continue;
+    existing.push({
+      id: String(c.id),
+      content: c.content,
+      createdAt: c.created_at?.toISOString() ?? new Date().toISOString(),
+      user: c.users ? {
+        id: c.users.external_id ?? String(c.target_id),
+        name: c.users.nickname ?? '',
+        photoUrl: c.users.contacts?.photo_url ?? null,
+        customId: c.users.custom_id ?? null,
+      } : undefined,
+    });
+    previewMap.set(c.target_id, existing);
+  }
+
+  const items: CohortFeedItem[] = rows.flatMap(row => {
+    if (row.created_at === null) return [];
+    return [{
+      id: String(row.id),
+      checkinDate: row.checkin_date.toISOString().split('T')[0],
+      mood: row.mood,
+      note: row.note ?? '',
+      tags: [],
+      imageUrls: row.image_urls,
+      createdAt: row.created_at.toISOString(),
+      practice: {
+        id: row.practices.external_id ?? String(row.practice_id),
+        title: row.practices.title,
+      },
+      user: row.users ? {
+        id: row.users.external_id ?? String(row.user_id),
+        name: row.users.nickname ?? '',
+        photoUrl: row.users.contacts?.photo_url ?? null,
+        customId: row.users.custom_id ?? null,
+      } : undefined,
+      commentCount: countMap.get(row.id) ?? 0,
+      commentPreview: previewMap.get(row.id) ?? [],
+    }];
+  });
+
+  return { perspective, total, pendingResponseCount: Number(pendingRows[0]?.count ?? 0n), items };
 };
 export const cohortFeedService = { get };
