@@ -43,6 +43,12 @@ export const NOTIFICATION_TYPES = {
   WISH_LINKED:     'WishLinked',
   ROADMAP_SHIPPED: 'RoadmapShipped',
 
+  // 燈塔 cohort
+  COHORT_INVITATION:    'CohortInvitation',
+  COHORT_JOINED:        'CohortJoined',
+  COHORT_MEMBER_REMOVED: 'CohortMemberRemoved',
+  COHORT_WEEKLY_DIGEST: 'CohortWeeklyDigest',
+
   // 週報（僅 email，無 InApp/Push）
   WEEKLY_DIGEST: 'WeeklyDigest',
 } as const;

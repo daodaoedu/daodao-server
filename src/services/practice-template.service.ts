@@ -38,6 +38,7 @@ export interface PracticeTemplateEntity {
   practiceTimePeriods: string[];
   suggestedTags: string[];
   resources?: PracticeResourceEntity[];
+  organization?: { id: number; name: string; bio: string | null; externalLink: string | null };
   createdAt: string;
 }
 
@@ -326,6 +327,7 @@ export async function getTemplateById(
     const template = await prismaClient.practice_templates.findFirst({
       where: { external_id: id },
       include: {
+        organization: { select: { id: true, name: true, bio: true, external_link: true } },
         practice_template_categories: {
           include: {
             content_categories: {
@@ -384,6 +386,12 @@ export async function getTemplateById(
         practiceTimePeriods: template.practice_time_periods || [],
         suggestedTags: templateTags.map(et => et.tags.name),
         resources: resources.length > 0 ? resources : undefined,
+        organization: template.organization ? {
+          id: template.organization.id,
+          name: template.organization.name,
+          bio: template.organization.bio,
+          externalLink: template.organization.external_link
+        } : undefined,
         createdAt: template.created_at?.toISOString() || new Date().toISOString()
       });
     }

@@ -1,0 +1,13 @@
+export const LIGHTHOUSE_AUDIT_ACTIONS = {
+  ORGANIZATION_CREATED: 'lighthouse.organization_created',
+  ORGANIZATION_STATUS_CHANGED: 'lighthouse.organization_status_changed',
+  ORGANIZATION_MEMBER_ADDED: 'lighthouse.organization_member_added',
+  ORGANIZATION_MEMBER_REMOVED: 'lighthouse.organization_member_removed',
+  COHORT_INVITATION_UPLOADED: 'lighthouse.cohort_invitation_uploaded',
+  COHORT_MEMBER_REMOVED: 'lighthouse.cohort_member_removed',
+  COHORT_OUTCOME_EXPORTED: 'lighthouse.cohort_outcome_exported',
+  COHORT_JOIN_TOKEN_ROTATED: 'lighthouse.cohort_join_token_rotated',
+  COHORT_JOIN_PAUSED: 'lighthouse.cohort_join_paused'
+} as const;
+
+export type LighthouseAuditAction = (typeof LIGHTHOUSE_AUDIT_ACTIONS)[keyof typeof LIGHTHOUSE_AUDIT_ACTIONS];

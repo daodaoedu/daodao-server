@@ -1,7 +1,7 @@
 import { Router, RequestHandler } from 'express';
 import { z } from 'zod';
 import { registry } from '@/config/openapi-registry';
-import { authenticate } from '@/middleware/auth';
+import { authenticate, optionalAuth } from '@/middleware/auth';
 import { validate } from '@/middleware/validation.middleware';
 import { createLimiter } from '@/middleware/rate-limit.middleware';
 import {
@@ -63,8 +63,8 @@ registry.registerPath({
 });
 
 // Public routes (no auth required)
-router.get('/public/:externalId', surveyController.getPublic as RequestHandler);
-router.post('/public/:externalId/responses',
+router.get('/public/:externalId', optionalAuth, surveyController.getPublic as RequestHandler);
+router.post('/public/:externalId/responses', optionalAuth,
   validate(submitResponseBodySchema, 'body'),
   surveyController.submitResponse as RequestHandler
 );
