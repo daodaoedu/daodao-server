@@ -31,6 +31,10 @@ export interface CreateEventParams {
   payload?: Record<string, unknown>;
   /** 事件優先級 */
   priority: 'P1' | 'P2' | 'P3';
+  /** 系統排程事件可允許 actor 與 recipient 相同。 */
+  allowSelf?: boolean;
+  /** 覆寫預設一分鐘的防重複時間窗。 */
+  dedupeWindowMs?: number;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -45,16 +49,16 @@ const createNotificationEventService = () => {
    * @param params - 事件參數
    */
   const createEvent = async (params: CreateEventParams): Promise<void> => {
-    const { type, actorId, recipientId, entityType, entityId, payload, priority } = params;
+    const { type, actorId, recipientId, entityType, entityId, payload, priority, allowSelf = false, dedupeWindowMs = 60 * 1000 } = params;
 
     // 1. 自我互動過濾
-    if (actorId === recipientId) {
+    if (actorId === recipientId && !allowSelf) {
       return;
     }
 
     try {
       // 2. 重複事件防護：相同 (type, actorId, recipientId, entityId) 在 1 分鐘內不重複寫入
-      const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+      const dedupeSince = new Date(Date.now() - dedupeWindowMs);
 
       const existing = await prisma.notification_events.findFirst({
         where: {
@@ -63,7 +67,7 @@ const createNotificationEventService = () => {
           recipient_id: recipientId,
           entity_id: entityId,
           created_at: {
-            gte: oneMinuteAgo,
+            gte: dedupeSince,
           },
         },
         select: { id: true },

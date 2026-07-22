@@ -166,6 +166,30 @@ export function registerCommonResponses(): void {
     }
   });
 
+  // 409 Conflict
+  registry.registerComponent('responses', 'ConflictError', {
+    description: '資源狀態或唯一約束衝突',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            data: { type: 'null' },
+            error: {
+              type: 'object',
+              properties: {
+                code: { type: 'string', example: 'CONFLICT' },
+                message: { type: 'string', example: '資源衝突' }
+              }
+            },
+            timestamp: { type: 'string', format: 'date-time' }
+          }
+        }
+      }
+    }
+  });
+
   // 500 Internal Server Error
   registry.registerComponent('responses', 'InternalServerError', {
     description: '服務器內部錯誤',

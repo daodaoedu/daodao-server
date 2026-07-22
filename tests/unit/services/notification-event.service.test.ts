@@ -64,6 +64,24 @@ describe('NotificationEventService', () => {
       expect(prismaMock.notification_events.findFirst).not.toHaveBeenCalled();
       expect(prismaMock.notification_events.create).not.toHaveBeenCalled();
     });
+
+    it('allows a system-generated self event and uses its longer dedupe window', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-07-22T00:00:00.000Z'));
+      prismaMock.notification_events.findFirst.mockResolvedValue(null);
+      prismaMock.notification_events.create.mockResolvedValue({} as never);
+
+      await notificationEventService.createEvent(makeParams({
+        actorId: 5,
+        recipientId: 5,
+        allowSelf: true,
+        dedupeWindowMs: 6 * 24 * 60 * 60 * 1000
+      }));
+      expect(prismaMock.notification_events.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ created_at: { gte: new Date('2026-07-16T00:00:00.000Z') } })
+      }));
+      expect(prismaMock.notification_events.create).toHaveBeenCalledTimes(1);
+      jest.useRealTimers();
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -72,7 +90,7 @@ describe('NotificationEventService', () => {
 
   describe('createEvent — 重複事件防護', () => {
     it('1 分鐘內相同事件已存在時不重複寫入', async () => {
-      prismaMock.notification_events.findFirst.mockResolvedValue({ id: 99 } as any);
+      prismaMock.notification_events.findFirst.mockResolvedValue({ id: 99 } as never);
 
       await notificationEventService.createEvent(makeParams());
 
@@ -85,13 +103,15 @@ describe('NotificationEventService', () => {
 
     it('查詢重複事件時使用正確的 where 條件（type + actorId + entityId + 1 分鐘內）', async () => {
       prismaMock.notification_events.findFirst.mockResolvedValue(null);
-      prismaMock.notification_events.create.mockResolvedValue({} as any);
+      prismaMock.notification_events.create.mockResolvedValue({} as never);
 
       const before = Date.now();
       await notificationEventService.createEvent(makeParams());
       const after = Date.now();
 
-      const call = prismaMock.notification_events.findFirst.mock.calls[0][0] as any;
+      const call = prismaMock.notification_events.findFirst.mock.calls[0][0] as {
+        where: { type: string; actor_id: number; entity_id: number; created_at: { gte: Date } };
+      };
       expect(call.where.type).toBe('Comment');
       expect(call.where.actor_id).toBe(1);
       expect(call.where.entity_id).toBe(10);
@@ -109,7 +129,7 @@ describe('NotificationEventService', () => {
   describe('createEvent — 正常寫入', () => {
     it('寫入 notification_events 並帶入正確欄位', async () => {
       prismaMock.notification_events.findFirst.mockResolvedValue(null);
-      prismaMock.notification_events.create.mockResolvedValue({} as any);
+      prismaMock.notification_events.create.mockResolvedValue({} as never);
 
       const params = makeParams({ payload: { foo: 'bar' } });
       await notificationEventService.createEvent(params);
@@ -130,17 +150,17 @@ describe('NotificationEventService', () => {
 
     it('沒有 payload 時不帶 payload 欄位（undefined）', async () => {
       prismaMock.notification_events.findFirst.mockResolvedValue(null);
-      prismaMock.notification_events.create.mockResolvedValue({} as any);
+      prismaMock.notification_events.create.mockResolvedValue({} as never);
 
       await notificationEventService.createEvent(makeParams());
 
-      const data = (prismaMock.notification_events.create.mock.calls[0][0] as any).data;
+      const data = (prismaMock.notification_events.create.mock.calls[0][0] as { data: { payload?: unknown } }).data;
       expect(data.payload).toBeUndefined();
     });
 
     it('寫入成功後 log debug 訊息', async () => {
       prismaMock.notification_events.findFirst.mockResolvedValue(null);
-      prismaMock.notification_events.create.mockResolvedValue({} as any);
+      prismaMock.notification_events.create.mockResolvedValue({} as never);
 
       await notificationEventService.createEvent(makeParams());
 

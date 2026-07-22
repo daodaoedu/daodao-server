@@ -104,6 +104,7 @@ describe('Practice CheckIn Service', () => {
     external_id: 'practice-uuid',
     user_id: 1,
     template_id: null,
+    cohort_id: null,
     title: 'TypeScript 學習',
     practice_action: '閱讀技術書籍',
     start_date: futureStart,
