@@ -35,6 +35,17 @@ describe('ensureCohortDrafts', () => {
     }));
   });
 
+  it('prefers the start date pinned on the binding over the cohort start date', async () => {
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], start_date: new Date('2026-09-07T00:00:00Z') }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42);
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ start_date: new Date('2026-09-07T00:00:00Z'), end_date: new Date('2026-10-06T00:00:00Z') })]
+    }));
+  });
+
   it('links template resources onto the generated drafts', async () => {
     prismaMock.cohort_templates.findMany.mockResolvedValue([bindings[0]] as never);
     prismaMock.practices.createMany.mockResolvedValue({ count: 1 });

@@ -21,11 +21,17 @@ export const organizationTemplateResponseSchema = z.object({
   id: z.number().int(), externalId: z.string().uuid(), organizationId: z.number().int(), title: z.string(), practiceAction: z.string().nullable(),
   durationDays: z.number().int().nullable(), frequencyMinDays: z.number().int().nullable(), frequencyMaxDays: z.number().int().nullable(),
   sessionDurationMinutes: z.number().int().nullable(), practiceTimePeriods: z.array(z.string()), boundCohortIds: z.array(z.number().int()),
+  bindings: z.array(z.object({ cohortId: z.number().int(), startDate: z.date().nullable() })),
   resources: z.array(z.object({ id: z.string(), name: z.string(), url: z.string().nullable() })),
   generatedDraftCount: z.number().int().nonnegative(),
   createdAt: z.date().nullable(), updatedAt: z.date().nullable()
 });
 export const organizationTemplateListResponseSchema = z.array(organizationTemplateResponseSchema);
-export const templateBindingResponseSchema = z.object({ templateId: z.number().int(), cohortId: z.number().int(), bound: z.boolean() });
+// 綁定時可指定草稿開始日；不給就由 API 回退為該期的 start_date
+export const bindOrganizationTemplateSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD').nullable().optional()
+});
+export const templateBindingResponseSchema = z.object({ templateId: z.number().int(), cohortId: z.number().int(), bound: z.boolean(), startDate: z.date().nullable() });
 export type CreateOrganizationTemplateInput = z.infer<typeof createOrganizationTemplateSchema>;
 export type UpdateOrganizationTemplateInput = z.infer<typeof updateOrganizationTemplateSchema>;
+export type BindOrganizationTemplateInput = z.infer<typeof bindOrganizationTemplateSchema>;

@@ -2027,6 +2027,8 @@ model cohort_templates {
   template_id       Int
   bound_at          DateTime           @default(now()) @db.Timestamptz(6)
   unbound_at        DateTime?          @db.Timestamptz(6)
+  /// 此綁定產生的實踐草稿開始日；NULL 時回退為該期的 start_date
+  start_date        DateTime?          @db.Date
   cohort            cohorts            @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_cohort")
   practice_template practice_templates @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_template")
 
