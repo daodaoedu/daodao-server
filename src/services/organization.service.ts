@@ -2,6 +2,7 @@ import { Prisma } from '../../generated/prisma';
 import { ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
 import type {
   AddOrganizationMemberInput,
+  AdminOrganizationMemberResponse,
   AdminUpdateOrganizationInput,
   CreateOrganizationInput,
   OrganizationMemberResponse,
@@ -27,7 +28,7 @@ const memberSelect = {
   user_id: true,
   role: true,
   created_at: true,
-  user: { select: { nickname: true } }
+  user: { select: { nickname: true, contacts: { select: { email: true } } } }
 } satisfies Prisma.organization_membersSelect;
 
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -80,18 +81,26 @@ const toOrganization = (organization: {
   createdAt: organization.created_at
 });
 
-const toMember = (member: {
+type MemberRow = {
   id: number;
   user_id: number;
   role: string;
   created_at: Date;
-  user: { nickname: string | null };
-}): OrganizationMemberResponse => ({
+  user: { nickname: string | null; contacts: { email: string | null } | null };
+};
+
+const toMember = (member: MemberRow): OrganizationMemberResponse => ({
   id: member.id,
   userId: member.user_id,
   nickname: member.user.nickname,
   role: asOrganizationRole(member.role),
   createdAt: member.created_at
+});
+
+/** email 只給 requireAdmin 的後台端點，組織自己的成員清單不得外流 */
+const toAdminMember = (member: MemberRow): AdminOrganizationMemberResponse => ({
+  ...toMember(member),
+  email: member.user.contacts?.email ?? null
 });
 
 const assertOrganizationMember = async (
@@ -248,15 +257,19 @@ const adminUpdate = async (
   return toOrganization(row);
 });
 
-const listMembers = async (organizationId: number, actorId: number, skipMembership = false): Promise<OrganizationMemberResponse[]> => {
-  if (!skipMembership) await assertOrganizationMember(organizationId, actorId);
-  const rows = await prisma.organization_members.findMany({
-    where: { organization_id: organizationId },
-    select: memberSelect,
-    orderBy: { created_at: 'asc' }
-  });
-  return rows.map(toMember);
+const findMemberRows = async (organizationId: number): Promise<MemberRow[]> => prisma.organization_members.findMany({
+  where: { organization_id: organizationId },
+  select: memberSelect,
+  orderBy: { created_at: 'asc' }
+});
+
+const listMembers = async (organizationId: number, actorId: number): Promise<OrganizationMemberResponse[]> => {
+  await assertOrganizationMember(organizationId, actorId);
+  return (await findMemberRows(organizationId)).map(toMember);
 };
+
+const adminListMembers = async (organizationId: number): Promise<AdminOrganizationMemberResponse[]> =>
+  (await findMemberRows(organizationId)).map(toAdminMember);
 
 const addMember = async (
   organizationId: number,
@@ -327,6 +340,7 @@ export const organizationService = {
   update,
   adminUpdate,
   listMembers,
+  adminListMembers,
   addMember,
   removeMember
 };
