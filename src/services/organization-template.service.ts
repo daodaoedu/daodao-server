@@ -28,6 +28,18 @@ const loadResources = async (templateIds: number[]): Promise<Map<number, Templat
 
 /** 整批換掉模板資源：舊關聯軟刪除，新的重建（resources 本體保留，供既有草稿續用） */
 const replaceResources = async (templateId: number, userId: number, resources: Array<{ name: string; url?: string }>): Promise<void> => {
+  // 前端每次存檔都會帶 resources（即使只改了標題），沒有這道比對就會每次重造一批
+  // resources 列，孤兒資料越積越多、id 也無謂地換掉
+  const existing = await prisma.entity_resources.findMany({
+    where: { entity_type: 'practice_template', entity_id: templateId, deleted_at: null },
+    select: { resources: { select: { name: true, url: true } } },
+    orderBy: { id: 'asc' }
+  });
+  const unchanged = existing.length === resources.length
+    && existing.every((row, index) => row.resources.name === resources[index]?.name
+      && (row.resources.url ?? '') === (resources[index]?.url ?? ''));
+  if (unchanged) return;
+
   await prisma.entity_resources.updateMany({ where: { entity_type: 'practice_template', entity_id: templateId, deleted_at: null }, data: { deleted_at: new Date() } });
   for (const resource of resources) {
     const created = await prisma.resources.create({ data: { name: resource.name, url: resource.url || '', description: '', type: 'other', cost: 'free', created_by: userId } });
