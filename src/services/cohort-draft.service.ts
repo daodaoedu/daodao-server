@@ -35,15 +35,16 @@ export const ensureCohortDrafts = async (tx: TransactionClient, cohortId: number
     tx.cohorts.findUnique({ where: { id: cohortId }, select: { start_date: true } }),
     tx.cohort_templates.findMany({
       where: { cohort_id: cohortId, unbound_at: null },
-      select: { template_id: true, practice_template: { select: { title: true, practice_action: true, duration_days: true, frequency_min_days: true, frequency_max_days: true, session_duration_minutes: true, practice_time_periods: true, other_context: true } } }
+      select: { template_id: true, start_date: true, practice_template: { select: { title: true, practice_action: true, duration_days: true, frequency_min_days: true, frequency_max_days: true, session_duration_minutes: true, practice_time_periods: true, other_context: true } } }
     })
   ]);
   if (bindings.length === 0) return 0;
 
-  // 模板本身沒有開始日；沿用本期的開始日，避免學員拿到開始日空白的草稿
-  const startDate = cohort?.start_date ?? null;
+  // 開始日優先用綁定時指定的；沒指定就沿用本期的，避免學員拿到開始日空白的草稿
   const result = await tx.practices.createMany({
-    data: bindings.map(binding => ({
+    data: bindings.map(binding => {
+      const startDate = binding.start_date ?? cohort?.start_date ?? null;
+      return {
       user_id: userId, cohort_id: cohortId, template_id: binding.template_id,
       title: binding.practice_template.title, practice_action: binding.practice_template.practice_action,
       start_date: startDate,
@@ -52,7 +53,8 @@ export const ensureCohortDrafts = async (tx: TransactionClient, cohortId: number
       frequency_max_days: binding.practice_template.frequency_max_days, session_duration_minutes: binding.practice_template.session_duration_minutes,
       practice_time_periods: binding.practice_template.practice_time_periods, other_context: binding.practice_template.other_context,
       status: 'draft', creation_source: 'cohort_template'
-    })),
+      };
+    }),
     skipDuplicates: true
   });
 

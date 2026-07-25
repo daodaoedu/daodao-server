@@ -27,9 +27,28 @@ describe('organizationTemplateService', () => {
     expect(result.resources).toEqual([{ id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' }]);
   });
   it('binds only when template and cohort belong to the same organization', async () => {
-    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8 } as never); prismaMock.cohort_templates.upsert.mockResolvedValue({ id: 1 } as never);
-    await expect(organizationTemplateService.bind(3, 5, 8, 42, true)).resolves.toEqual({ templateId: 5, cohortId: 8, bound: true });
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8 } as never); prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: null } as never);
+    await expect(organizationTemplateService.bind(3, 5, 8, 42, true)).resolves.toEqual({ templateId: 5, cohortId: 8, bound: true, startDate: null });
     expect(prismaMock.cohorts.findFirst).toHaveBeenCalledWith({ where: { id: 8, program: { organization_id: 3 } }, select: { id: true } });
+  });
+
+  it('stores the start date supplied when the template is assigned to a cohort', async () => {
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8 } as never);
+    prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: new Date('2026-08-03T00:00:00.000Z') } as never);
+    await expect(organizationTemplateService.bind(3, 5, 8, 42, true, { startDate: '2026-08-03' }))
+      .resolves.toEqual({ templateId: 5, cohortId: 8, bound: true, startDate: new Date('2026-08-03T00:00:00.000Z') });
+    expect(prismaMock.cohort_templates.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: { cohort_id: 8, template_id: 5, start_date: new Date('2026-08-03T00:00:00.000Z') },
+      update: expect.objectContaining({ start_date: new Date('2026-08-03T00:00:00.000Z') })
+    }));
+  });
+
+  it('leaves an existing start date untouched when the caller omits it', async () => {
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8 } as never);
+    prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: new Date('2026-08-03T00:00:00.000Z') } as never);
+    await organizationTemplateService.bind(3, 5, 8, 42, true);
+    const update = prismaMock.cohort_templates.upsert.mock.calls[0]?.[0]?.update as Record<string, unknown>;
+    expect(update).not.toHaveProperty('start_date');
   });
   it('records unbound_at and rejects a missing active binding', async () => {
     allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8 } as never); prismaMock.cohort_templates.updateMany.mockResolvedValue({ count: 0 });
