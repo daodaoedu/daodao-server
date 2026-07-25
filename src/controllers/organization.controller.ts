@@ -3,6 +3,7 @@ import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware'
 import { organizationService } from '../services/organization.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import {
+  adminOrganizationMemberListResponseSchema,
   organizationListResponseSchema,
   organizationMemberListResponseSchema,
   organizationMemberResponseSchema,
@@ -65,7 +66,7 @@ const removeMember = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const adminListMembers = asyncHandler(async (req: Request, res: Response) => {
-  const result = organizationMemberListResponseSchema.parse(await organizationService.listMembers(organizationId(req), actorId(req), true));
+  const result = adminOrganizationMemberListResponseSchema.parse(await organizationService.adminListMembers(organizationId(req)));
   res.json(createSuccessResponse(result));
 });
 
