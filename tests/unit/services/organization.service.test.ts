@@ -155,6 +155,26 @@ describe('organizationService', () => {
     expect(JSON.stringify(result)).not.toContain('private@example.com');
   });
 
+  it('exposes email only through the admin member listing', async () => {
+    prismaMock.organization_members.findMany.mockResolvedValue([{
+      id: 8,
+      organization_id: 3,
+      user_id: 77,
+      role: 'owner',
+      created_at: now,
+      user: { nickname: '小島', contacts: { email: 'owner@example.com' } }
+    }] as never);
+
+    await expect(organizationService.adminListMembers(3)).resolves.toEqual([{
+      id: 8,
+      userId: 77,
+      nickname: '小島',
+      email: 'owner@example.com',
+      role: 'owner',
+      createdAt: now
+    }]);
+  });
+
   it('prevents removing the last owner', async () => {
     allowMembership();
     prismaMock.organization_members.findUnique

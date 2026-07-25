@@ -17,6 +17,10 @@ export const cohortMemberHomeResponseSchema = z.object({
   organization: z.object({ name: z.string(), bio: z.string().nullable(), externalLink: z.string().nullable() }),
   practices: z.array(z.object({
     id: z.string().uuid(), title: z.string(), practiceAction: z.string().nullable(),
-    status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived']), creationSource: z.string().nullable()
+    status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived']), creationSource: z.string().nullable(),
+    // 以下欄位讓前端能沿用「我的」那張實踐卡，不必自己刻一套簡化版
+    startDate: z.date().nullable(), endDate: z.date().nullable(),
+    progressPercentage: z.number(), checkInCount: z.number().int().nonnegative(),
+    lastCheckinAt: z.date().nullable(), themeColor: z.string().nullable()
   }))
 });
