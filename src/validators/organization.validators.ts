@@ -58,9 +58,17 @@ export const organizationMemberResponseSchema = z.object({
 
 export const organizationMemberListResponseSchema = z.array(organizationMemberResponseSchema);
 
+// 只有 requireAdmin 的後台端點才回 email；組織自己的成員清單維持不含 email
+export const adminOrganizationMemberResponseSchema = organizationMemberResponseSchema.extend({
+  email: z.string().nullable()
+});
+
+export const adminOrganizationMemberListResponseSchema = z.array(adminOrganizationMemberResponseSchema);
+
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
 export type AdminUpdateOrganizationInput = z.infer<typeof adminUpdateOrganizationSchema>;
 export type AddOrganizationMemberInput = z.infer<typeof addOrganizationMemberSchema>;
 export type OrganizationResponse = z.infer<typeof organizationResponseSchema>;
 export type OrganizationMemberResponse = z.infer<typeof organizationMemberResponseSchema>;
+export type AdminOrganizationMemberResponse = z.infer<typeof adminOrganizationMemberResponseSchema>;
