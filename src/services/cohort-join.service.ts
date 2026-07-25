@@ -3,6 +3,7 @@ import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { notificationEventService } from './notification-event.service';
+import { INITIAL_PROGRESS } from '../utils/practice-progress';
 
 const visibilityNotice = '加入後，你的本期打卡內容將對教練與同期學員可見。';
 const cohortSelect = {
@@ -132,9 +133,19 @@ const getMemberHome = async (cohortId: number, userId: number) => {
   if (!enrollment) throw new NotFoundError('找不到已加入的期');
   const practices = await prisma.practices.findMany({
     where: { cohort_id: cohortId, user_id: userId, deleted_at: null },
-    select: { external_id: true, title: true, practice_action: true, status: true, creation_source: true },
+    select: {
+      id: true, external_id: true, title: true, practice_action: true, status: true, creation_source: true,
+      start_date: true, end_date: true, progress_percentage: true, theme_color: true
+    },
     orderBy: { created_at: 'asc' }
   });
+  const checkins = await prisma.practice_checkins.groupBy({
+    by: ['practice_id'],
+    where: { practice_id: { in: practices.map(practice => practice.id) } },
+    _count: { id: true },
+    _max: { checkin_date: true }
+  });
+  const checkinByPracticeId = new Map(checkins.map(row => [row.practice_id, row]));
   const organization = enrollment.cohort.program.organization;
   return {
     cohortId: enrollment.cohort.id,
@@ -148,7 +159,13 @@ const getMemberHome = async (cohortId: number, userId: number) => {
       title: practice.title,
       practiceAction: practice.practice_action,
       status: practice.status ?? 'draft',
-      creationSource: practice.creation_source
+      creationSource: practice.creation_source,
+      startDate: practice.start_date,
+      endDate: practice.end_date,
+      progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,
+      checkInCount: checkinByPracticeId.get(practice.id)?._count.id ?? 0,
+      lastCheckinAt: checkinByPracticeId.get(practice.id)?._max.checkin_date ?? null,
+      themeColor: practice.theme_color
     }])
   };
 };

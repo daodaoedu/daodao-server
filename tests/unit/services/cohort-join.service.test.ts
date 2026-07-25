@@ -113,9 +113,33 @@ describe('cohortJoinService', () => {
 
   it('returns the joined learner home with cohort-scoped drafts', async () => {
     prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), program: { organization: { name: '島島', bio: '社群', external_link: 'https://example.com' } } } } as never);
-    prismaMock.practices.findMany.mockResolvedValue([{ external_id: '123e4567-e89b-12d3-a456-426614174000', title: '每日反思', practice_action: '寫一段', status: 'draft', creation_source: 'cohort_template' }] as never);
+    prismaMock.practices.findMany.mockResolvedValue([{ id: 900, external_id: '123e4567-e89b-12d3-a456-426614174000', title: '每日反思', practice_action: '寫一段', status: 'draft', creation_source: 'cohort_template', start_date: new Date('2026-07-01'), end_date: new Date('2026-07-30'), progress_percentage: 40, theme_color: '#FCDD84' }] as never);
+    prismaMock.practice_checkins.groupBy.mockResolvedValue([{ practice_id: 900, _count: { id: 3 }, _max: { checkin_date: new Date('2026-07-20') } }] as never);
     const result = await cohortJoinService.getMemberHome(8, 42);
     expect(result.practices).toEqual([expect.objectContaining({ title: '每日反思', status: 'draft', creationSource: 'cohort_template' })]);
     expect(prismaMock.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { cohort_id: 8, user_id: 42, deleted_at: null } }));
+  });
+
+  it('carries the fields the practice card needs so the cohort page can reuse it', async () => {
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), program: { organization: { name: '島島', bio: '社群', external_link: null } } } } as never);
+    prismaMock.practices.findMany.mockResolvedValue([{ id: 900, external_id: '123e4567-e89b-12d3-a456-426614174000', title: '每日反思', practice_action: '寫一段', status: 'active', creation_source: 'cohort_template', start_date: new Date('2026-07-01'), end_date: new Date('2026-07-30'), progress_percentage: 40, theme_color: '#FCDD84' }] as never);
+    prismaMock.practice_checkins.groupBy.mockResolvedValue([{ practice_id: 900, _count: { id: 3 }, _max: { checkin_date: new Date('2026-07-20') } }] as never);
+    const result = await cohortJoinService.getMemberHome(8, 42);
+    expect(result.practices[0]).toEqual(expect.objectContaining({
+      startDate: new Date('2026-07-01'),
+      endDate: new Date('2026-07-30'),
+      progressPercentage: 40,
+      checkInCount: 3,
+      lastCheckinAt: new Date('2026-07-20'),
+      themeColor: '#FCDD84'
+    }));
+  });
+
+  it('falls back to zero counts when a practice has no check-in yet', async () => {
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: false, cohort: { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), program: { organization: { name: '島島', bio: null, external_link: null } } } } as never);
+    prismaMock.practices.findMany.mockResolvedValue([{ id: 901, external_id: '223e4567-e89b-12d3-a456-426614174000', title: '晨間閱讀', practice_action: null, status: 'draft', creation_source: 'cohort_template', start_date: null, end_date: null, progress_percentage: null, theme_color: null }] as never);
+    prismaMock.practice_checkins.groupBy.mockResolvedValue([] as never);
+    const result = await cohortJoinService.getMemberHome(8, 42);
+    expect(result.practices[0]).toEqual(expect.objectContaining({ checkInCount: 0, lastCheckinAt: null, themeColor: null }));
   });
 });
