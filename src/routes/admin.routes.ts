@@ -25,6 +25,7 @@ import adminCommunityController from '@/controllers/admin-community.controller';
 import adminEventsController from '@/controllers/admin-events.controller';
 import adminTrackingController from '@/controllers/admin-tracking.controller';
 import adminContentController from '@/controllers/admin-content.controller';
+import adminPracticeController from '@/controllers/admin-practice.controller';
 import { adminSurveyController } from '@/controllers/admin-survey.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
@@ -1037,6 +1038,30 @@ router.put('/users/:userId/status',
   authenticateAny,
   requireSuperAdmin,
   adminUserController.updateStatus as RequestHandler
+);
+
+// ===== Admin 實踐管理路由 =====
+
+/**
+ * GET /admin/practices
+ * 取得實踐列表（含 private 與未完成的 delayed）
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/practices',
+  authenticateAny,
+  requireAdmin,
+  adminPracticeController.listPractices as RequestHandler
+);
+
+/**
+ * PATCH /admin/practices/:id/status
+ * 更新實踐狀態
+ * 需要：Admin 或 SuperAdmin
+ */
+router.patch('/practices/:id/status',
+  authenticateAny,
+  requireAdmin,
+  adminPracticeController.updateStatus as RequestHandler
 );
 
 // ===== Admin 統計路由 =====
