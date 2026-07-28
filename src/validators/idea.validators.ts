@@ -452,6 +452,20 @@ export const deleteIdeaResponseSchema = apiSuccessResponseSchema(
   description: '刪除想法的成功回應'
 });
 
+/**
+ * 記錄想法瀏覽回應 Schema
+ */
+export const recordIdeaViewResponseSchema = apiSuccessResponseSchema(
+  z.object({
+    viewCount: z.number().int().min(0).openapi({
+      description: '該想法目前的累計瀏覽數',
+      example: 42
+    })
+  })
+).openapi('RecordIdeaViewResponse', {
+  description: '記錄想法瀏覽的成功回應'
+});
+
 // 保留舊的類型名稱以保持向後兼容
 export type CreateIdeaRequest = CreateIdeaData;
 export type UpdateIdeaRequest = UpdateIdeaData;

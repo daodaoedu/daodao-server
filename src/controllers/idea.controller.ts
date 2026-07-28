@@ -4,7 +4,7 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler } from '@/middleware/error.middleware';
+import { asyncHandler, UnauthorizedError } from '@/middleware/error.middleware';
 import ideaService from '@/services/idea.service';
 import type { IdeaQueryParams, IdeaParams, CreateIdeaData, UpdateIdeaData } from '@/validators/idea.validators';
 import {
@@ -12,7 +12,8 @@ import {
   ideasListResponseSchema,
   createIdeaResponseSchema,
   updateIdeaResponseSchema,
-  deleteIdeaResponseSchema
+  deleteIdeaResponseSchema,
+  recordIdeaViewResponseSchema
 } from '@/validators/idea.validators';
 
 /**
@@ -184,11 +185,29 @@ export const getMyIdeas = asyncHandler(async (req: Request, res: Response) => {
   res.json(validatedResponse);
 });
 
+/**
+ * 記錄想法瀏覽
+ */
+export const recordIdeaView = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as IdeaParams;
+
+  if (!req.user?.id) {
+    throw new UnauthorizedError('必須登入才能執行此操作');
+  }
+
+  const result = await ideaService.recordIdeaView(id, req.user.id);
+
+  const validatedResponse = recordIdeaViewResponseSchema.parse(result);
+
+  res.json(validatedResponse);
+});
+
 export default {
   getIdeas,
   getIdeaById,
   createIdea,
   updateIdea,
   deleteIdea,
-  getMyIdeas
+  getMyIdeas,
+  recordIdeaView
 };

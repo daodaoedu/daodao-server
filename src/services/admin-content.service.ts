@@ -12,7 +12,10 @@ export interface ContentPerformanceItem {
   creatorEmail: string | null;
   copyCount: number;
   copiedFromTitle: string | null;
+  /** 累計瀏覽次數（同一使用者 24h 內只計一次，非不重複人數） */
   views: number;
+  /** 不重複瀏覽者人數（interaction_events 去重後的 user 數；僅涵蓋事件表建立後的資料） */
+  uniqueViews: number;
   depth: number;
   avgTime: number;
   interactionRate: number;
@@ -87,6 +90,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
 
   const [
     practiceRows,
+    practiceUniqueViewRows,
     depthRows,
     timeRows,
     collectionRows,
@@ -140,6 +144,14 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       LEFT JOIN entity_stats es ON es.entity_id = p.id AND es.entity_type = 'practice'
       WHERE p.deleted_at IS NULL AND p.visibility = 'public'
       ORDER BY COALESCE(es.view_count, 0) DESC
+    `,
+
+    // ── Practices: unique viewers ───────────────────────────────────
+    prisma.$queryRaw<Array<{ entity_id: number; unique_views: bigint }>>`
+      SELECT entity_id, COUNT(DISTINCT user_id)::bigint AS unique_views
+      FROM interaction_events
+      WHERE entity_type = 'practice' AND event_type = 'view'
+      GROUP BY entity_id
     `,
 
     // ── Practices: read depth ───────────────────────────────────────
@@ -261,6 +273,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
   ]);
 
   // ── Practices ─────────────────────────────────────────────────────────────
+  const uniqueViewMap = new Map(practiceUniqueViewRows.map(r => [r.entity_id, Number(r.unique_views)]));
   const depthMap = new Map(depthRows.map(r => [r.entity_id, Number(r.avg_depth)]));
   const timeMap  = new Map(timeRows.map(r => [r.entity_id, Number(r.avg_seconds)]));
   const items: ContentPerformanceItem[] = practiceRows.map(p => {
@@ -277,6 +290,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       copyCount: Number(p.copy_count),
       copiedFromTitle: p.copied_from_title ?? null,
       views,
+      uniqueViews: uniqueViewMap.get(p.id) ?? 0,
       depth: depthMap.get(p.id) ?? 0,
       avgTime: avgSecs > 0 ? Math.round(avgSecs / 60 * 10) / 10 : 0,
       interactionRate: views > 0 ? Math.round((reactions + comments) / views * 100) : 0,
@@ -490,6 +504,7 @@ export async function setContentFeatured(
     copy_count: number;
     copied_from_title: string | null;
     view_count: bigint;
+    unique_view_count: bigint;
     reaction_count: bigint;
     comment_count: bigint;
     is_featured: boolean;
@@ -504,6 +519,8 @@ export async function setContentFeatured(
       COALESCE(p.copy_count, 0) AS copy_count,
       sp.title AS copied_from_title,
       COALESCE(es.view_count, 0)::bigint AS view_count,
+      (SELECT COUNT(DISTINCT user_id)::bigint FROM interaction_events
+        WHERE entity_type = 'practice' AND event_type = 'view' AND entity_id = p.id) AS unique_view_count,
       (SELECT COUNT(*)::bigint FROM reactions WHERE target_type = 'practice' AND target_id = p.id) AS reaction_count,
       (SELECT COUNT(*)::bigint FROM comments  WHERE target_type = 'practice' AND target_id = p.id) AS comment_count,
       COALESCE(p.is_featured, false) AS is_featured,
@@ -529,6 +546,7 @@ export async function setContentFeatured(
     creatorEmail: row.creator_email ?? null,
     copyCount: Number(row.copy_count),
     copiedFromTitle: row.copied_from_title ?? null,
+    uniqueViews: Number(row.unique_view_count),
     views,
     depth: 0,
     avgTime: 0,
