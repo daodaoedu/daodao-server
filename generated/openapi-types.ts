@@ -3649,6 +3649,15 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "draft" | "not_started" | "active" | "completed" | "archived";
                                     creationSource: string | null;
+                                    /** Format: date-time */
+                                    startDate: string | null;
+                                    /** Format: date-time */
+                                    endDate: string | null;
+                                    progressPercentage: number;
+                                    checkInCount: number;
+                                    /** Format: date-time */
+                                    lastCheckinAt: string | null;
+                                    themeColor: string | null;
                                 }[];
                             };
                             /**
@@ -9213,7 +9222,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 成員列表 */
+                /** @description 成員列表（含 email） */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -9234,6 +9243,7 @@ export interface paths {
                                 role: "owner";
                                 /** Format: date-time */
                                 createdAt: string;
+                                email: string | null;
                             }[];
                             /**
                              * Format: date-time
@@ -11140,6 +11150,16 @@ export interface paths {
                                 sessionDurationMinutes: number | null;
                                 practiceTimePeriods: string[];
                                 boundCohortIds: number[];
+                                bindings: {
+                                    cohortId: number;
+                                    /** Format: date-time */
+                                    startDate: string | null;
+                                }[];
+                                resources: {
+                                    id: string;
+                                    name: string;
+                                    url: string | null;
+                                }[];
                                 generatedDraftCount: number;
                                 /** Format: date-time */
                                 createdAt: string | null;
@@ -11221,12 +11241,13 @@ export interface paths {
                     "application/json": {
                         title: string;
                         practiceAction?: string | null;
-                        durationDays?: number | null;
+                        durationDays?: 7 | 14 | 21 | 30 | unknown;
                         frequencyMinDays?: number | null;
                         frequencyMaxDays?: number | null;
-                        sessionDurationMinutes?: number | null;
+                        sessionDurationMinutes?: 15 | 30 | 45 | 60 | unknown;
                         /** @default [] */
-                        practiceTimePeriods?: string[];
+                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
+                        resources?: components["schemas"]["PracticeResourceInput"][];
                     };
                 };
             };
@@ -11257,6 +11278,16 @@ export interface paths {
                                 sessionDurationMinutes: number | null;
                                 practiceTimePeriods: string[];
                                 boundCohortIds: number[];
+                                bindings: {
+                                    cohortId: number;
+                                    /** Format: date-time */
+                                    startDate: string | null;
+                                }[];
+                                resources: {
+                                    id: string;
+                                    name: string;
+                                    url: string | null;
+                                }[];
                                 generatedDraftCount: number;
                                 /** Format: date-time */
                                 createdAt: string | null;
@@ -11381,12 +11412,13 @@ export interface paths {
                     "application/json": {
                         title?: string;
                         practiceAction?: string | null;
-                        durationDays?: number | null;
+                        durationDays?: 7 | 14 | 21 | 30 | unknown;
                         frequencyMinDays?: number | null;
                         frequencyMaxDays?: number | null;
-                        sessionDurationMinutes?: number | null;
+                        sessionDurationMinutes?: 15 | 30 | 45 | 60 | unknown;
                         /** @default [] */
-                        practiceTimePeriods?: string[];
+                        practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
+                        resources?: components["schemas"]["PracticeResourceInput"][];
                     };
                 };
             };
@@ -11417,6 +11449,16 @@ export interface paths {
                                 sessionDurationMinutes: number | null;
                                 practiceTimePeriods: string[];
                                 boundCohortIds: number[];
+                                bindings: {
+                                    cohortId: number;
+                                    /** Format: date-time */
+                                    startDate: string | null;
+                                }[];
+                                resources: {
+                                    id: string;
+                                    name: string;
+                                    url: string | null;
+                                }[];
                                 generatedDraftCount: number;
                                 /** Format: date-time */
                                 createdAt: string | null;
@@ -11504,7 +11546,13 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        startDate?: string | null;
+                    };
+                };
+            };
             responses: {
                 /** @description 已綁定 */
                 200: {
@@ -11523,6 +11571,8 @@ export interface paths {
                                 templateId: number;
                                 cohortId: number;
                                 bound: boolean;
+                                /** Format: date-time */
+                                startDate: string | null;
                             };
                             /**
                              * Format: date-time
@@ -11615,6 +11665,8 @@ export interface paths {
                                 templateId: number;
                                 cohortId: number;
                                 bound: boolean;
+                                /** Format: date-time */
+                                startDate: string | null;
                             };
                             /**
                              * Format: date-time
@@ -13971,6 +14023,50 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/persona/questions/{questionId}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 記錄人物誌題目觀看
+         * @description 記錄登入使用者觀看指定人物誌題目的事件（同一使用者對同一題 24h 內去重），回傳該題目前的累計觀看數。後台「人物誌填寫統計」以此計算曝光與回答轉換率。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 問題 ID */
+                    questionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 記錄成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuestionViewApiResponse"];
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                404: components["responses"]["NotFoundError"];
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -34780,241 +34876,6 @@ export interface components {
              */
             isEnabled: boolean;
         };
-        /** @description 創建新學習成果的請求資料 */
-        CreateOutcomeRequest: {
-            /**
-             * @description 成果所屬的週數（學習週期）
-             * @example 4
-             * @example 1
-             * @example 2
-             * @example 4
-             * @example 8
-             * @example 12
-             */
-            week: number;
-            /**
-             * @description 成果的標題或名稱
-             * @example React Todo App 完成
-             * @example React Todo App 完成
-             * @example 第一個網站上線
-             * @example JavaScript 基礎學習成果
-             */
-            title: string;
-            /**
-             * Format: date
-             * @description 成果完成的日期
-             * @example 2024-03-15
-             * @example 2024-03-15
-             * @example 2024-12-01
-             * @example 2025-01-20
-             */
-            date: string;
-            /**
-             * @description 成果的詳細描述或學習心得
-             * @example 完成了一個功能完整的 Todo 應用，包括增删改查功能、回應式設計和本地存储。
-             */
-            content: string;
-            /**
-             * @description 成果相關的圖片網址列表
-             * @example [
-             *       "https://example.com/screenshots/app1.png",
-             *       "https://example.com/screenshots/app2.png"
-             *     ]
-             */
-            imgUrls?: string[];
-            /**
-             * @description 成果相關的影片網址列表
-             * @example [
-             *       "https://youtube.com/watch?v=demo123",
-             *       "https://vimeo.com/123456789"
-             *     ]
-             */
-            videoUrls?: string[];
-            /**
-             * @description 成果的可見性設定
-             * @default private
-             * @example private
-             * @example private
-             * @example public
-             * @enum {string}
-             */
-            visibility: "private" | "public";
-        };
-        /** @description 更新現有學習成果的請求資料 */
-        UpdateOutcomeRequest: {
-            /**
-             * @description 更新後的學習週數
-             * @example 4
-             * @example 1
-             * @example 2
-             * @example 4
-             * @example 8
-             * @example 12
-             */
-            week?: number;
-            /**
-             * @description 更新後的成果標題
-             * @example React Todo App 完成 v2.0
-             * @example React Todo App 完成 v2.0
-             * @example 更新：增加新功能
-             */
-            title?: string;
-            /**
-             * Format: date
-             * @description 更新後的完成日期
-             * @example 2024-03-20
-             * @example 2024-03-20
-             * @example 2024-12-05
-             */
-            date?: string;
-            /**
-             * @description 更新後的成果描述內容
-             * @example 更新：增加了使用者認證功能和資料持久化。
-             */
-            content?: string;
-            /**
-             * @description 更新後的成果圖片列表
-             * @example [
-             *       "https://example.com/screenshots/updated-app1.png",
-             *       "https://example.com/screenshots/updated-app2.png"
-             *     ]
-             */
-            imgUrls?: string[];
-            /**
-             * @description 更新後的成果影片列表
-             * @example [
-             *       "https://youtube.com/watch?v=updated-demo1",
-             *       "https://youtube.com/watch?v=updated-demo2"
-             *     ]
-             */
-            videoUrls?: string[];
-            /**
-             * @description 成果的可見性設定
-             * @example private
-             * @example private
-             * @example public
-             * @enum {string}
-             */
-            visibility?: "private" | "public";
-        };
-        /** @description 成果回應資料 */
-        OutcomeResponse: {
-            /**
-             * @description 成果唯一識別ID
-             * @example 123
-             */
-            id: number;
-            /**
-             * @description 成果所屬週數
-             * @example 4
-             */
-            week: number;
-            /**
-             * @description 成果標題
-             * @example React Todo App 完成
-             */
-            title: string;
-            /**
-             * @description 成果內容描述
-             * @example 完成了一個功能完整的 Todo 應用
-             */
-            content: string;
-            /**
-             * Format: date
-             * @description 成果完成日期
-             * @example 2024-03-15
-             */
-            date: string;
-            /**
-             * @description 成果圖片URL列表
-             * @example [
-             *       "https://example.com/screenshots/app1.png"
-             *     ]
-             */
-            imgUrls?: string[];
-            /**
-             * @description 成果影片URL列表
-             * @example [
-             *       "https://youtube.com/watch?v=demo123"
-             *     ]
-             */
-            videoUrls?: string[];
-            /**
-             * @description 成果可見性
-             * @example public
-             * @example private
-             * @example public
-             */
-            visibility: string;
-        };
-        PersonaQuestionItem: {
-            /**
-             * @description 問題 ID
-             * @example 1
-             */
-            id: number;
-            /**
-             * @description 問題文字
-             * @example 你最喜歡哪種學習方式？
-             */
-            prompt: string;
-            /**
-             * @description 題型
-             * @enum {string}
-             */
-            questionType: "choice" | "sentence_completion" | "scenario";
-            /** @description 選擇題選項（非選擇題為 null） */
-            options: string[] | null;
-            /** @description 是否為新使用者優先題 */
-            isNewUserPriority: boolean;
-            /** @description 當前使用者是否已回答 */
-            answered: boolean;
-            /**
-             * @description 當前使用者的跳過次數
-             * @example 0
-             */
-            skipCount: number;
-            /** @description 是否已被壓制（不再展示） */
-            suppressed: boolean;
-        };
-        PersonaAnswerItem: {
-            /**
-             * @description 答案 ID
-             * @example 1
-             */
-            id: number;
-            /**
-             * @description 使用者 ID
-             * @example 42
-             */
-            userId: number;
-            /**
-             * @description 問題 ID
-             * @example 1
-             */
-            questionId: number;
-            /** @description 選擇題答案 */
-            selectedValue: string | null;
-            /** @description 文字題答案 */
-            textAnswer: string | null;
-            /**
-             * @description 獲得的共鳴數
-             * @example 3
-             */
-            resonanceCount: number;
-            /** @description 建立時間（ISO 8601） */
-            createdAt: string;
-            /** @description 更新時間（ISO 8601） */
-            updatedAt: string | null;
-        };
-        PersonaCarouselState: {
-            /** @description 是否應顯示輪播 */
-            shouldShow: boolean;
-            /** @description 是否所有問題已回答 */
-            allAnswered: boolean;
-            /** @description 本次輪播的全部可用題目 */
-            questions: components["schemas"]["PersonaQuestionItem"][];
-        };
         /**
          * @description 實踐資源輸入資料
          * @example {
@@ -36067,6 +35928,241 @@ export interface components {
              * @example false
              */
             hasReachedTarget: boolean;
+        };
+        /** @description 創建新學習成果的請求資料 */
+        CreateOutcomeRequest: {
+            /**
+             * @description 成果所屬的週數（學習週期）
+             * @example 4
+             * @example 1
+             * @example 2
+             * @example 4
+             * @example 8
+             * @example 12
+             */
+            week: number;
+            /**
+             * @description 成果的標題或名稱
+             * @example React Todo App 完成
+             * @example React Todo App 完成
+             * @example 第一個網站上線
+             * @example JavaScript 基礎學習成果
+             */
+            title: string;
+            /**
+             * Format: date
+             * @description 成果完成的日期
+             * @example 2024-03-15
+             * @example 2024-03-15
+             * @example 2024-12-01
+             * @example 2025-01-20
+             */
+            date: string;
+            /**
+             * @description 成果的詳細描述或學習心得
+             * @example 完成了一個功能完整的 Todo 應用，包括增删改查功能、回應式設計和本地存储。
+             */
+            content: string;
+            /**
+             * @description 成果相關的圖片網址列表
+             * @example [
+             *       "https://example.com/screenshots/app1.png",
+             *       "https://example.com/screenshots/app2.png"
+             *     ]
+             */
+            imgUrls?: string[];
+            /**
+             * @description 成果相關的影片網址列表
+             * @example [
+             *       "https://youtube.com/watch?v=demo123",
+             *       "https://vimeo.com/123456789"
+             *     ]
+             */
+            videoUrls?: string[];
+            /**
+             * @description 成果的可見性設定
+             * @default private
+             * @example private
+             * @example private
+             * @example public
+             * @enum {string}
+             */
+            visibility: "private" | "public";
+        };
+        /** @description 更新現有學習成果的請求資料 */
+        UpdateOutcomeRequest: {
+            /**
+             * @description 更新後的學習週數
+             * @example 4
+             * @example 1
+             * @example 2
+             * @example 4
+             * @example 8
+             * @example 12
+             */
+            week?: number;
+            /**
+             * @description 更新後的成果標題
+             * @example React Todo App 完成 v2.0
+             * @example React Todo App 完成 v2.0
+             * @example 更新：增加新功能
+             */
+            title?: string;
+            /**
+             * Format: date
+             * @description 更新後的完成日期
+             * @example 2024-03-20
+             * @example 2024-03-20
+             * @example 2024-12-05
+             */
+            date?: string;
+            /**
+             * @description 更新後的成果描述內容
+             * @example 更新：增加了使用者認證功能和資料持久化。
+             */
+            content?: string;
+            /**
+             * @description 更新後的成果圖片列表
+             * @example [
+             *       "https://example.com/screenshots/updated-app1.png",
+             *       "https://example.com/screenshots/updated-app2.png"
+             *     ]
+             */
+            imgUrls?: string[];
+            /**
+             * @description 更新後的成果影片列表
+             * @example [
+             *       "https://youtube.com/watch?v=updated-demo1",
+             *       "https://youtube.com/watch?v=updated-demo2"
+             *     ]
+             */
+            videoUrls?: string[];
+            /**
+             * @description 成果的可見性設定
+             * @example private
+             * @example private
+             * @example public
+             * @enum {string}
+             */
+            visibility?: "private" | "public";
+        };
+        /** @description 成果回應資料 */
+        OutcomeResponse: {
+            /**
+             * @description 成果唯一識別ID
+             * @example 123
+             */
+            id: number;
+            /**
+             * @description 成果所屬週數
+             * @example 4
+             */
+            week: number;
+            /**
+             * @description 成果標題
+             * @example React Todo App 完成
+             */
+            title: string;
+            /**
+             * @description 成果內容描述
+             * @example 完成了一個功能完整的 Todo 應用
+             */
+            content: string;
+            /**
+             * Format: date
+             * @description 成果完成日期
+             * @example 2024-03-15
+             */
+            date: string;
+            /**
+             * @description 成果圖片URL列表
+             * @example [
+             *       "https://example.com/screenshots/app1.png"
+             *     ]
+             */
+            imgUrls?: string[];
+            /**
+             * @description 成果影片URL列表
+             * @example [
+             *       "https://youtube.com/watch?v=demo123"
+             *     ]
+             */
+            videoUrls?: string[];
+            /**
+             * @description 成果可見性
+             * @example public
+             * @example private
+             * @example public
+             */
+            visibility: string;
+        };
+        PersonaQuestionItem: {
+            /**
+             * @description 問題 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 問題文字
+             * @example 你最喜歡哪種學習方式？
+             */
+            prompt: string;
+            /**
+             * @description 題型
+             * @enum {string}
+             */
+            questionType: "choice" | "sentence_completion" | "scenario";
+            /** @description 選擇題選項（非選擇題為 null） */
+            options: string[] | null;
+            /** @description 是否為新使用者優先題 */
+            isNewUserPriority: boolean;
+            /** @description 當前使用者是否已回答 */
+            answered: boolean;
+            /**
+             * @description 當前使用者的跳過次數
+             * @example 0
+             */
+            skipCount: number;
+            /** @description 是否已被壓制（不再展示） */
+            suppressed: boolean;
+        };
+        PersonaAnswerItem: {
+            /**
+             * @description 答案 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 使用者 ID
+             * @example 42
+             */
+            userId: number;
+            /**
+             * @description 問題 ID
+             * @example 1
+             */
+            questionId: number;
+            /** @description 選擇題答案 */
+            selectedValue: string | null;
+            /** @description 文字題答案 */
+            textAnswer: string | null;
+            /**
+             * @description 獲得的共鳴數
+             * @example 3
+             */
+            resonanceCount: number;
+            /** @description 建立時間（ISO 8601） */
+            createdAt: string;
+            /** @description 更新時間（ISO 8601） */
+            updatedAt: string | null;
+        };
+        PersonaCarouselState: {
+            /** @description 是否應顯示輪播 */
+            shouldShow: boolean;
+            /** @description 是否所有問題已回答 */
+            allAnswered: boolean;
+            /** @description 本次輪播的全部可用題目 */
+            questions: components["schemas"]["PersonaQuestionItem"][];
         };
         /** @description 創建專案的請求資料 */
         CreateProjectRequest: {
@@ -41280,6 +41376,102 @@ export interface components {
             answeredAt: string;
             /** @description 是否為目前登入者自己的答案 */
             isSelf: boolean;
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        QuestionViewApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            data: components["schemas"]["QuestionViewData"];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        /** @description The main response data */
+        QuestionViewData: {
+            /**
+             * @description 此題目目前的累計觀看數
+             * @example 42
+             */
+            viewCount: number;
         };
         /**
          * @description Standard success response format

@@ -48,7 +48,17 @@ export interface PersonaSummary {
   totalQuestions: number;
   usersAnswered: number;
   totalAnswers: number;
-  questions: Array<{ id: number; prompt: string; answerCount: number }>;
+  /** 期間內人物誌題目的觀看次數（24h 去重後的 view 事件數） */
+  totalViews: number;
+  /** 期間內看過任一題目的不重複用戶數 */
+  uniqueViewers: number;
+  questions: Array<{
+    id: number;
+    prompt: string;
+    answerCount: number;
+    viewCount: number;
+    viewerCount: number;
+  }>;
 }
 
 export interface ContentPerformanceData {
@@ -86,6 +96,8 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
     totalUsersCount,
     personaStatRows,
     personaQuestionRows,
+    personaViewRows,
+    personaViewTotalRows,
   ] = await Promise.all([
     // ── Practices ──────────────────────────────────────────────────
     prisma.$queryRaw<Array<{
@@ -224,6 +236,28 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       GROUP BY pq.id, pqt.prompt
       ORDER BY answer_count DESC, pq.id
     `,
+
+    // ── Persona: per-question views (interaction_events) ────────────
+    prisma.$queryRaw<Array<{ entity_id: number; view_count: bigint; viewer_count: bigint }>>`
+      SELECT
+        entity_id,
+        COUNT(*)::bigint                AS view_count,
+        COUNT(DISTINCT user_id)::bigint AS viewer_count
+      FROM interaction_events
+      WHERE entity_type = 'persona_question' AND event_type = 'view'
+        AND ${eventsFilter}
+      GROUP BY entity_id
+    `,
+
+    // ── Persona: overall views ──────────────────────────────────────
+    prisma.$queryRaw<Array<{ total_views: bigint; unique_viewers: bigint }>>`
+      SELECT
+        COUNT(*)::bigint                AS total_views,
+        COUNT(DISTINCT user_id)::bigint AS unique_viewers
+      FROM interaction_events
+      WHERE entity_type = 'persona_question' AND event_type = 'view'
+        AND ${eventsFilter}
+    `,
   ]);
 
   // ── Practices ─────────────────────────────────────────────────────────────
@@ -285,14 +319,22 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
 
   // ── Persona ───────────────────────────────────────────────────────────────
   const ps = personaStatRows[0];
+  const pv = personaViewTotalRows[0];
+  const personaViewMap = new Map(
+    personaViewRows.map(r => [r.entity_id, { views: Number(r.view_count), viewers: Number(r.viewer_count) }]),
+  );
   const personaSummary: PersonaSummary = {
     totalQuestions: Number(ps?.total_questions ?? 0),
     usersAnswered:  Number(ps?.users_answered ?? 0),
     totalAnswers:   Number(ps?.total_answers ?? 0),
+    totalViews:     Number(pv?.total_views ?? 0),
+    uniqueViewers:  Number(pv?.unique_viewers ?? 0),
     questions: personaQuestionRows.map(r => ({
       id:          r.id,
       prompt:      r.prompt ?? `問題 ${r.id}`,
       answerCount: Number(r.answer_count),
+      viewCount:   personaViewMap.get(r.id)?.views ?? 0,
+      viewerCount: personaViewMap.get(r.id)?.viewers ?? 0,
     })),
   };
 

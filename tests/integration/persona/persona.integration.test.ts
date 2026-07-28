@@ -7,6 +7,7 @@
  * - POST /resonances 重複 → 409
  * - POST /carousel-dismiss 後 GET /carousel-state 回 shouldShow = false
  * - GET /profile/:userId 訪客 isLocked 回傳正確 answersNeeded
+ * - POST /questions/:questionId/view 記錄觀看（401 / 404 / 200）
  */
 
 import { prismaMock } from '@tests/utils/prisma-mock';
@@ -23,6 +24,12 @@ jest.mock('@/services/logging/logger.service', () => ({
   loggerService: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
 }));
 
+// Mock redis — view tracking 用它做 24h 去重（factory 不可引用外部變數，hoisting）
+jest.mock('@/services/database/redis.service', () => {
+  const redisMock = { set: jest.fn() };
+  return { __esModule: true, default: redisMock, redis: redisMock };
+});
+
 let app: Application;
 let token: string;
 const userId = 42;
@@ -38,6 +45,9 @@ beforeEach(() => {
 });
 
 const auth = (req: request.Test) => req.set('Authorization', `Bearer ${token}`);
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const redisMock = jest.requireMock('@/services/database/redis.service').default as { set: jest.Mock };
 
 // ─── POST /answers ─────────────────────────────────────────────────────────
 
@@ -209,5 +219,51 @@ describe('GET /profile/:userId', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.viewerIsLocked).toBeUndefined();
     expect(res.body.data.answersNeeded).toBeUndefined();
+  });
+});
+
+// ─── POST /questions/:questionId/view ─────────────────────────────────────────
+
+describe('POST /questions/:questionId/view', () => {
+  it('未授權 → 401', async () => {
+    const res = await request(app).post(`${API}/questions/1/view`);
+
+    expect(res.status).toBe(401);
+  });
+
+  it('題目不存在 → 404', async () => {
+    prismaMock.persona_questions.findUnique.mockResolvedValueOnce(null);
+
+    const res = await auth(request(app).post(`${API}/questions/999/view`));
+
+    expect(res.status).toBe(404);
+  });
+
+  it('首次觀看 → 200 並回傳累計觀看數', async () => {
+    prismaMock.persona_questions.findUnique.mockResolvedValueOnce({ id: 1 } as never);
+    redisMock.set.mockResolvedValueOnce('OK');
+    prismaMock.entity_stats.upsert.mockResolvedValueOnce({ view_count: 5 } as never);
+    prismaMock.interaction_events.create.mockResolvedValueOnce({ id: 1 } as never);
+
+    const res = await auth(request(app).post(`${API}/questions/1/view`));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.viewCount).toBe(5);
+    expect(prismaMock.interaction_events.create).toHaveBeenCalledWith({
+      data: { entity_type: 'persona_question', entity_id: 1, user_id: userId, event_type: 'view' },
+    });
+  });
+
+  it('24h 內重複觀看 → 不重複計數，回傳現有觀看數', async () => {
+    prismaMock.persona_questions.findUnique.mockResolvedValueOnce({ id: 1 } as never);
+    redisMock.set.mockResolvedValueOnce(null); // SETNX 失敗＝已存在
+    prismaMock.entity_stats.findUnique.mockResolvedValueOnce({ view_count: 5 } as never);
+
+    const res = await auth(request(app).post(`${API}/questions/1/view`));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.viewCount).toBe(5);
+    expect(prismaMock.entity_stats.upsert).not.toHaveBeenCalled();
+    expect(prismaMock.interaction_events.create).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,7 @@ import {
   getProfileMe,
   getProfileUser,
   getQuestionAnswers,
+  recordQuestionView,
 } from '../controllers/persona.controller';
 import { optionalAuth } from '../middleware/auth';
 import {
@@ -29,6 +30,8 @@ import {
   questionAnswersParamSchema,
   questionAnswersQuerySchema,
   questionAnswersApiResponseSchema,
+  questionViewParamSchema,
+  questionViewApiResponseSchema,
 } from '../validators/persona.validators';
 
 // ============================================================================
@@ -140,6 +143,24 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'post',
+  path: '/api/v1/persona/questions/{questionId}/view',
+  tags: ['Persona'],
+  summary: '記錄人物誌題目觀看',
+  description: '記錄登入使用者觀看指定人物誌題目的事件（同一使用者對同一題 24h 內去重），回傳該題目前的累計觀看數。後台「人物誌填寫統計」以此計算曝光與回答轉換率。',
+  request: { params: questionViewParamSchema },
+  responses: {
+    200: {
+      description: '記錄成功',
+      content: { 'application/json': { schema: questionViewApiResponseSchema } },
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+  },
+  security: [{ bearerAuth: [] }],
+});
+
+registry.registerPath({
   method: 'get',
   path: '/api/v1/persona/carousel-state',
   tags: ['Persona'],
@@ -214,6 +235,12 @@ router.get('/questions/:questionId/answers',
   validate(questionAnswersParamSchema, 'params'),
   validate(questionAnswersQuerySchema, 'query'),
   getQuestionAnswers
+);
+
+router.post('/questions/:questionId/view',
+  authenticate,
+  validate(questionViewParamSchema, 'params'),
+  recordQuestionView
 );
 
 router.get('/profile/:userId',
