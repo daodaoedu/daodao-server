@@ -2,8 +2,9 @@ import { Request, Response } from 'express';
 import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
 import { prisma } from '../services/database/prisma.service';
 import { personaService } from '../services/persona.service';
+import { recordView as trackView } from '../services/view-tracking.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import type { SubmitAnswerBody, SubmitSkipBody, CarouselStateQuery, ProfileUserQuery, QuestionAnswersParam, QuestionAnswersQuery } from '../validators/persona.validators';
+import type { SubmitAnswerBody, SubmitSkipBody, CarouselStateQuery, ProfileUserQuery, QuestionAnswersParam, QuestionAnswersQuery, QuestionViewParam } from '../validators/persona.validators';
 
 export const getQuestions = asyncHandler(async (req: Request, res: Response) => {
   const locale = (req.query.locale as string) || 'zh-TW';
@@ -51,6 +52,19 @@ export const getQuestionAnswers = asyncHandler(async (req: Request, res: Respons
   const { locale, limit, cursor } = req.query as unknown as QuestionAnswersQuery;
   const result = await personaService.getQuestionAnswers(questionId, req.user?.id, { locale, limit, cursor });
   res.json(result);
+});
+
+/**
+ * 記錄一次人物誌題目的觀看事件（同一使用者對同一題 24h 內去重）。
+ * POST /api/v1/persona/questions/:questionId/view
+ */
+export const recordQuestionView = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user?.id) throw new UnauthorizedError('需要登入');
+  const { questionId } = req.params as unknown as QuestionViewParam;
+  const question = await prisma.persona_questions.findUnique({ where: { id: questionId }, select: { id: true } });
+  if (!question) throw new NotFoundError('找不到人物誌題目');
+  const viewCount = await trackView('persona_question', question.id, req.user.id);
+  res.json(createSuccessResponse({ viewCount }));
 });
 
 export const getProfileUser = asyncHandler(async (req: Request, res: Response) => {
