@@ -40893,6 +40893,16 @@ export interface components {
              *     ]
              */
             tags: string[];
+            /**
+             * @description 累計瀏覽數（同一使用者 24h 內只計一次）
+             * @example 24
+             */
+            viewCount: number;
+            /**
+             * @description 留言數
+             * @example 3
+             */
+            commentCount: number;
         };
         /** @description 學習足跡項目 */
         MyLearningFootprintItem: {

@@ -56,7 +56,8 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       throw new Error('Failed to fetch practices');
     }
 
-    // Transform to match MyPracticeItem interface (排除 user, stats, checkIns)
+    // Transform to match MyPracticeItem interface（排除 user、checkIns 與 stats 中尚未實作的欄位，
+    // 只帶出有真實資料的 viewCount / commentCount）
     const practices: MyPracticeItem[] = result.data.map(practice => ({
       id: practice.id,
       title: practice.title,
@@ -79,7 +80,9 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       themeColor: practice.themeColor,
       createdAt: practice.createdAt,
       updatedAt: practice.updatedAt,
-      tags: practice.tags
+      tags: practice.tags,
+      viewCount: practice.stats.viewCount,
+      commentCount: practice.stats.commentCount
     }));
 
     loggerService.info('User practices retrieved', { 
