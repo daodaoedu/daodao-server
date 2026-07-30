@@ -1001,6 +1001,10 @@ export const practiceTemplateResponseSchema = z.object({
     bio: z.string().nullable(),
     externalLink: z.string().url().nullable()
   }).optional().openapi({ description: '模板所屬組織；官方模板不提供此欄位' }),
+  answerCount: z.number().int().openapi({
+    description: '使用此模板建立實踐的總人次',
+    example: 42
+  }),
   createdAt: z.string().openapi({
     description: '建立時間',
     example: '2024-01-15T10:30:00.000Z'
@@ -1021,6 +1025,7 @@ export const practiceTemplateResponseSchema = z.object({
     resources: [
       { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev' }
     ],
+    answerCount: 42,
     createdAt: '2024-01-15T10:30:00.000Z'
   }
 });

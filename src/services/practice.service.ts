@@ -367,19 +367,20 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       throw new NotFoundError('實踐不存在');
     }
 
-    // 隱私控制：依 visibility 欄位判斷存取權限
-    const visibility = practice.visibility ?? 'public';
-    if (visibility !== 'public') {
+    // 隱私控制：依 privacy_status 判斷存取權限
+    const privacyStatus = practice.privacy_status ?? 'public';
+    const isDelayedAndCompleted = privacyStatus === 'delayed' && practice.status === 'completed';
+    if (privacyStatus !== 'public' && !isDelayedAndCompleted) {
       const canAccess = await privacyService.canAccessContent(
         userId ?? null,
         practice.user_id,
-        visibility,
+        privacyStatus,
       );
       if (!canAccess) {
-        if (visibility === 'private') {
+        if (privacyStatus === 'private') {
           throw new ForbiddenError('此實踐為私人');
         }
-        throw new ForbiddenError('此實踐僅限夥伴可見');
+        throw new ForbiddenError('此實踐尚未公開');
       }
     }
 
@@ -1723,8 +1724,9 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
 
     const isSelf = source.user_id === userId;
     if (!isSelf) {
-      const visibility = source.visibility ?? 'public';
-      if (visibility !== 'public') {
+      const ps = source.privacy_status ?? 'public';
+      const isAccessible = ps === 'public' || (ps === 'delayed' && source.status === 'completed');
+      if (!isAccessible) {
         throw new ForbiddenError('此實踐不公開，無法複製');
       }
     }

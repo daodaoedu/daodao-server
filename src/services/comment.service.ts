@@ -1031,7 +1031,7 @@ export class CommentService implements CommentServiceInterface {
       return privacyService.canAccessContent(
         currentUserId,
         practice.user_id,
-        practice.visibility ?? practice.privacy_status ?? 'public'
+        practice.privacy_status ?? 'public'
       );
     }
 
@@ -1040,7 +1040,7 @@ export class CommentService implements CommentServiceInterface {
         where: { id: internalTargetId },
         select: {
           practices: {
-            select: { user_id: true, visibility: true, privacy_status: true },
+            select: { user_id: true, privacy_status: true },
           },
         },
       });
@@ -1050,7 +1050,7 @@ export class CommentService implements CommentServiceInterface {
       return privacyService.canAccessContent(
         currentUserId,
         checkin.practices.user_id,
-        checkin.practices.visibility ?? checkin.practices.privacy_status ?? 'public'
+        checkin.practices.privacy_status ?? 'public'
       );
     }
 

@@ -68,6 +68,13 @@ const INTERACTION_EVENT_TYPES: Set<string> = new Set([
   NOTIFICATION_TYPES.PRACTICE_CREATED,
 ]);
 
+/** 關注的人的動態（allow-list，防止新型別誤落入此桶） */
+const FOLLOW_ACTIVITY_EVENT_TYPES: Set<string> = new Set([
+  NOTIFICATION_TYPES.PRACTICE_CHECKIN_ACTIVITY,
+  NOTIFICATION_TYPES.PRACTICE_UPDATE_ACTIVITY,
+  NOTIFICATION_TYPES.PRACTICE_FINISHED,
+]);
+
 // ─── 批次處理邏輯 ──────────────────────────────────────────────────────────────
 
 async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): Promise<void> {
@@ -96,7 +103,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
-        type: { notIn: [NOTIFICATION_TYPES.WISH_LINKED] },
+        type: { notIn: [NOTIFICATION_TYPES.WISH_LINKED, NOTIFICATION_TYPES.COHORT_INVITATION, NOTIFICATION_TYPES.COHORT_JOINED, NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST] },
         created_at: {
           gte: batchStart,
           lt: batchEnd
@@ -193,7 +200,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
 
         const partnerEvents     = p1Events.filter((e) => PARTNER_EVENT_TYPES.has(e.type));
         const interactionEvents = p1Events.filter((e) => INTERACTION_EVENT_TYPES.has(e.type));
-        const activityEvents    = p1Events.filter((e) => !PARTNER_EVENT_TYPES.has(e.type) && !INTERACTION_EVENT_TYPES.has(e.type));
+        const activityEvents    = p1Events.filter((e) => FOLLOW_ACTIVITY_EVENT_TYPES.has(e.type));
 
         // 5d. 查詢 recipient 的暱稱與 email（email 位於關聯的 contacts 表）
         const recipient = await prisma.users.findUnique({

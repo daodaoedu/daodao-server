@@ -7250,6 +7250,10 @@ components:
             - bio
             - externalLink
           description: 模板所屬組織；官方模板不提供此欄位
+        answerCount:
+          type: integer
+          description: 使用此模板建立實踐的總人次
+          example: 42
         createdAt:
           type: string
           description: 建立時間
@@ -7264,6 +7268,7 @@ components:
         - sessionDurationMinutes
         - practiceTimePeriods
         - suggestedTags
+        - answerCount
         - createdAt
       description: 實踐模板
       example:
@@ -7287,6 +7292,7 @@ components:
           - id: 123e4567-e89b-12d3-a456-426614174000
             name: React 官方文檔
             url: https://react.dev
+        answerCount: 42
         createdAt: '2024-01-15T10:30:00.000Z'
     CreatePracticeTemplateRequest:
       type: object

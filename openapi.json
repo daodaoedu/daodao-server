@@ -9949,6 +9949,11 @@
             ],
             "description": "模板所屬組織；官方模板不提供此欄位"
           },
+          "answerCount": {
+            "type": "integer",
+            "description": "使用此模板建立實踐的總人次",
+            "example": 42
+          },
           "createdAt": {
             "type": "string",
             "description": "建立時間",
@@ -9965,6 +9970,7 @@
           "sessionDurationMinutes",
           "practiceTimePeriods",
           "suggestedTags",
+          "answerCount",
           "createdAt"
         ],
         "description": "實踐模板",
@@ -9995,6 +10001,7 @@
               "url": "https://react.dev"
             }
           ],
+          "answerCount": 42,
           "createdAt": "2024-01-15T10:30:00.000Z"
         }
       },
