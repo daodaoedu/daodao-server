@@ -6324,316 +6324,6 @@ components:
         - type
         - channel
         - isEnabled
-    CreateOutcomeRequest:
-      type: object
-      properties:
-        week:
-          type: integer
-          minimum: 1
-          description: 成果所屬的週數（學習週期）
-          example: 4
-          examples:
-            - 1
-            - 2
-            - 4
-            - 8
-            - 12
-        title:
-          type: string
-          minLength: 1
-          maxLength: 100
-          description: 成果的標題或名稱
-          example: React Todo App 完成
-          examples:
-            - React Todo App 完成
-            - 第一個網站上線
-            - JavaScript 基礎學習成果
-        date:
-          type: string
-          format: date
-          pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 成果完成的日期
-          example: '2024-03-15'
-          examples:
-            - '2024-03-15'
-            - '2024-12-01'
-            - '2025-01-20'
-        content:
-          type: string
-          minLength: 1
-          maxLength: 5000
-          description: 成果的詳細描述或學習心得
-          example: 完成了一個功能完整的 Todo 應用，包括增删改查功能、回應式設計和本地存储。
-        imgUrls:
-          type: array
-          items:
-            type: string
-            format: uri
-            pattern: ^https?:\/\/.+
-            description: 成果截圖或相關圖片的網址
-            example: https://example.com/screenshots/app1.png
-          description: 成果相關的圖片網址列表
-          example:
-            - https://example.com/screenshots/app1.png
-            - https://example.com/screenshots/app2.png
-        videoUrls:
-          type: array
-          items:
-            type: string
-            format: uri
-            pattern: ^https?:\/\/.+
-            description: 成果演示影片或說明影片的網址
-            example: https://youtube.com/watch?v=demo123
-          description: 成果相關的影片網址列表
-          example:
-            - https://youtube.com/watch?v=demo123
-            - https://vimeo.com/123456789
-        visibility:
-          type: string
-          enum: &ref_3
-            - private
-            - public
-          default: private
-          description: 成果的可見性設定
-          example: private
-          examples: &ref_4
-            - private
-            - public
-      required:
-        - week
-        - title
-        - date
-        - content
-      description: 創建新學習成果的請求資料
-    UpdateOutcomeRequest:
-      type: object
-      properties:
-        week:
-          type: integer
-          minimum: 1
-          description: 更新後的學習週數
-          example: 4
-          examples:
-            - 1
-            - 2
-            - 4
-            - 8
-            - 12
-        title:
-          type: string
-          minLength: 1
-          maxLength: 100
-          description: 更新後的成果標題
-          example: React Todo App 完成 v2.0
-          examples:
-            - React Todo App 完成 v2.0
-            - 更新：增加新功能
-        date:
-          type: string
-          format: date
-          pattern: ^\d{4}-\d{2}-\d{2}$
-          description: 更新後的完成日期
-          example: '2024-03-20'
-          examples:
-            - '2024-03-20'
-            - '2024-12-05'
-        content:
-          type: string
-          minLength: 1
-          maxLength: 5000
-          description: 更新後的成果描述內容
-          example: 更新：增加了使用者認證功能和資料持久化。
-        imgUrls:
-          type: array
-          items:
-            type: string
-            format: uri
-            pattern: ^https?:\/\/.+
-            description: 更新後的成果圖片網址
-            example: https://example.com/screenshots/updated-app.png
-          description: 更新後的成果圖片列表
-          example:
-            - https://example.com/screenshots/updated-app1.png
-            - https://example.com/screenshots/updated-app2.png
-        videoUrls:
-          type: array
-          items:
-            type: string
-            format: uri
-            pattern: ^https?:\/\/.+
-            description: 更新後的成果影片網址
-            example: https://youtube.com/watch?v=updated-demo
-          description: 更新後的成果影片列表
-          example:
-            - https://youtube.com/watch?v=updated-demo1
-            - https://youtube.com/watch?v=updated-demo2
-        visibility:
-          type: string
-          enum: *ref_3
-          description: 成果的可見性設定
-          example: private
-          examples: *ref_4
-      description: 更新現有學習成果的請求資料
-    OutcomeResponse:
-      type: object
-      properties:
-        id:
-          type: number
-          description: 成果唯一識別ID
-          example: 123
-        week:
-          type: number
-          description: 成果所屬週數
-          example: 4
-        title:
-          type: string
-          description: 成果標題
-          example: React Todo App 完成
-        content:
-          type: string
-          description: 成果內容描述
-          example: 完成了一個功能完整的 Todo 應用
-        date:
-          type: string
-          format: date
-          description: 成果完成日期
-          example: '2024-03-15'
-        imgUrls:
-          type: array
-          items:
-            type: string
-          description: 成果圖片URL列表
-          example:
-            - https://example.com/screenshots/app1.png
-        videoUrls:
-          type: array
-          items:
-            type: string
-          description: 成果影片URL列表
-          example:
-            - https://youtube.com/watch?v=demo123
-        visibility:
-          type: string
-          description: 成果可見性
-          example: public
-          examples:
-            - private
-            - public
-      required:
-        - id
-        - week
-        - title
-        - content
-        - date
-        - visibility
-      description: 成果回應資料
-    PersonaQuestionItem:
-      type: object
-      properties:
-        id:
-          type: number
-          description: 問題 ID
-          example: 1
-        prompt:
-          type: string
-          description: 問題文字
-          example: 你最喜歡哪種學習方式？
-        questionType:
-          type: string
-          enum:
-            - choice
-            - sentence_completion
-            - scenario
-          description: 題型
-        options:
-          type: array
-          nullable: true
-          items:
-            type: string
-          description: 選擇題選項（非選擇題為 null）
-        isNewUserPriority:
-          type: boolean
-          description: 是否為新使用者優先題
-        answered:
-          type: boolean
-          description: 當前使用者是否已回答
-        skipCount:
-          type: number
-          description: 當前使用者的跳過次數
-          example: 0
-        suppressed:
-          type: boolean
-          description: 是否已被壓制（不再展示）
-      required:
-        - id
-        - prompt
-        - questionType
-        - options
-        - isNewUserPriority
-        - answered
-        - skipCount
-        - suppressed
-    PersonaAnswerItem:
-      type: object
-      properties:
-        id:
-          type: number
-          description: 答案 ID
-          example: 1
-        userId:
-          type: number
-          description: 使用者 ID
-          example: 42
-        questionId:
-          type: number
-          description: 問題 ID
-          example: 1
-        selectedValue:
-          type: string
-          nullable: true
-          description: 選擇題答案
-        textAnswer:
-          type: string
-          nullable: true
-          description: 文字題答案
-        resonanceCount:
-          type: number
-          description: 獲得的共鳴數
-          example: 3
-        createdAt:
-          type: string
-          description: 建立時間（ISO 8601）
-        updatedAt:
-          type: string
-          nullable: true
-          description: 更新時間（ISO 8601）
-      required:
-        - id
-        - userId
-        - questionId
-        - selectedValue
-        - textAnswer
-        - resonanceCount
-        - createdAt
-        - updatedAt
-    PersonaCarouselState:
-      type: object
-      properties:
-        shouldShow:
-          type: boolean
-          description: 是否應顯示輪播
-        allAnswered:
-          type: boolean
-          description: 是否所有問題已回答
-        questions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PersonaQuestionItem'
-          description: 本次輪播的全部可用題目
-      required:
-        - shouldShow
-        - allAnswered
-        - questions
     PracticeResourceInput:
       type: object
       properties:
@@ -6661,12 +6351,20 @@ components:
             - https://javascript.info/
             - https://vuejs.org/guide/
           format: uri
+        dayNumber:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 30
+          description: 指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）
+          example: 3
       required:
         - name
       description: 實踐資源輸入資料
       example:
         name: React 官方文檔
         url: https://react.dev/
+        dayNumber: 3
     PracticeResource:
       type: object
       properties:
@@ -6690,6 +6388,11 @@ components:
           examples:
             - https://react.dev/
             - https://javascript.info/
+        dayNumber:
+          type: integer
+          nullable: true
+          description: 指定第幾天使用此資源（null 代表整段實踐期間皆可使用）
+          example: 3
       required:
         - id
         - name
@@ -6698,6 +6401,7 @@ components:
         id: 123e4567-e89b-12d3-a456-426614174000
         name: React 官方文檔
         url: https://react.dev/
+        dayNumber: 3
     CreatePracticeRequest:
       type: object
       properties:
@@ -6707,7 +6411,7 @@ components:
           maxLength: 100
           description: 實踐活動標題
           example: 每日閱讀 30 分鐘
-          examples: &ref_62
+          examples:
             - 每日閱讀 30 分鐘
             - 學習 React Hooks
             - 每天運動 20 分鐘
@@ -6716,7 +6420,7 @@ components:
           maxLength: 200
           description: 具體的實踐行動描述
           example: 閱讀技術書籍或文章
-          examples: &ref_63
+          examples:
             - 閱讀技術書籍或文章
             - 完成線上課程一個章節
             - 跑步或健身
@@ -6726,7 +6430,7 @@ components:
           pattern: ^\d{4}-\d{2}-\d{2}$
           description: 實踐開始日期（不可超過 14 天後）
           example: '2024-01-15'
-          examples: &ref_64
+          examples:
             - '2024-01-15'
             - '2024-03-01'
             - '2024-06-01'
@@ -6736,7 +6440,7 @@ components:
           maximum: 90
           description: 實踐持續天數
           example: 14
-          examples: &ref_65
+          examples:
             - 7
             - 14
             - 21
@@ -6747,7 +6451,7 @@ components:
           maximum: 7
           description: 每週最低打卡天數
           example: 4
-          examples: &ref_66
+          examples:
             - 1
             - 3
             - 4
@@ -6758,7 +6462,7 @@ components:
           maximum: 7
           description: 每週最高打卡天數
           example: 7
-          examples: &ref_67
+          examples:
             - 5
             - 6
             - 7
@@ -6768,7 +6472,7 @@ components:
           maximum: 240
           description: 每次實踐時長（分鐘）
           example: 30
-          examples: &ref_68
+          examples:
             - 15
             - 30
             - 60
@@ -6785,19 +6489,19 @@ components:
               - commute
             description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
             example: morning
-            examples: &ref_5
+            examples: &ref_3
               - morning
               - afternoon
               - evening
               - night
               - commute
           maxItems: 4
-          default: &ref_69 []
+          default: []
           description: 偏好實踐時段
-          example: &ref_70
+          example:
             - morning
             - evening
-          examples: &ref_71
+          examples:
             - - morning
             - - afternoon
               - evening
@@ -6815,12 +6519,12 @@ components:
             minLength: 1
             maxLength: 50
           maxItems: 10
-          default: &ref_72 []
+          default: []
           description: 相關標籤（最多 10 個）
-          example: &ref_73
+          example:
             - 閱讀
             - 學習
-          examples: &ref_74
+          examples:
             - - 閱讀
               - 學習
             - - 運動
@@ -6834,7 +6538,7 @@ components:
             $ref: '#/components/schemas/PracticeResourceInput'
           maxItems: 5
           description: 相關學習資源（最多 5 個）
-          example: &ref_75
+          example:
             - name: React 官方文檔
               url: https://react.dev/
         isDraft:
@@ -7121,6 +6825,11 @@ components:
           format: uri
           description: 資源網址
           example: https://react.dev/
+        dayNumber:
+          type: integer
+          nullable: true
+          description: 指定第幾天使用此資源（null 代表整段實踐期間皆可使用）
+          example: 3
       required:
         - id
         - name
@@ -7129,6 +6838,7 @@ components:
         id: 123e4567-e89b-12d3-a456-426614174000
         name: React 官方文檔
         url: https://react.dev/
+        dayNumber: 3
     PracticeEntity:
       type: object
       properties:
@@ -7192,7 +6902,7 @@ components:
             - archived
           description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
           example: not_started
-          examples: &ref_6
+          examples: &ref_4
             - draft
             - not_started
             - active
@@ -7390,7 +7100,7 @@ components:
         - tags
         - createdAt
       description: 簽到記錄詳細資訊
-      example: &ref_7
+      example: &ref_5
         id: 456
         practiceId: 123
         userId: 789
@@ -7639,7 +7349,7 @@ components:
               - commute
             description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
             example: morning
-            examples: *ref_5
+            examples: *ref_3
           maxItems: 4
           default: []
           description: 建議實踐時段
@@ -7743,7 +7453,7 @@ components:
                 - archived
               description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
               example: not_started
-              examples: *ref_6
+              examples: *ref_4
             isFirstCheckIn:
               type: boolean
               description: 是否首次打卡
@@ -7759,7 +7469,317 @@ components:
             - isFirstCheckIn
             - hasReachedTarget
       description: 打卡回應（含鼓勵句）
-      example: *ref_7
+      example: *ref_5
+    CreateOutcomeRequest:
+      type: object
+      properties:
+        week:
+          type: integer
+          minimum: 1
+          description: 成果所屬的週數（學習週期）
+          example: 4
+          examples:
+            - 1
+            - 2
+            - 4
+            - 8
+            - 12
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 成果的標題或名稱
+          example: React Todo App 完成
+          examples:
+            - React Todo App 完成
+            - 第一個網站上線
+            - JavaScript 基礎學習成果
+        date:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 成果完成的日期
+          example: '2024-03-15'
+          examples:
+            - '2024-03-15'
+            - '2024-12-01'
+            - '2025-01-20'
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: 成果的詳細描述或學習心得
+          example: 完成了一個功能完整的 Todo 應用，包括增删改查功能、回應式設計和本地存储。
+        imgUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+            pattern: ^https?:\/\/.+
+            description: 成果截圖或相關圖片的網址
+            example: https://example.com/screenshots/app1.png
+          description: 成果相關的圖片網址列表
+          example:
+            - https://example.com/screenshots/app1.png
+            - https://example.com/screenshots/app2.png
+        videoUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+            pattern: ^https?:\/\/.+
+            description: 成果演示影片或說明影片的網址
+            example: https://youtube.com/watch?v=demo123
+          description: 成果相關的影片網址列表
+          example:
+            - https://youtube.com/watch?v=demo123
+            - https://vimeo.com/123456789
+        visibility:
+          type: string
+          enum: &ref_6
+            - private
+            - public
+          default: private
+          description: 成果的可見性設定
+          example: private
+          examples: &ref_7
+            - private
+            - public
+      required:
+        - week
+        - title
+        - date
+        - content
+      description: 創建新學習成果的請求資料
+    UpdateOutcomeRequest:
+      type: object
+      properties:
+        week:
+          type: integer
+          minimum: 1
+          description: 更新後的學習週數
+          example: 4
+          examples:
+            - 1
+            - 2
+            - 4
+            - 8
+            - 12
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 更新後的成果標題
+          example: React Todo App 完成 v2.0
+          examples:
+            - React Todo App 完成 v2.0
+            - 更新：增加新功能
+        date:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: 更新後的完成日期
+          example: '2024-03-20'
+          examples:
+            - '2024-03-20'
+            - '2024-12-05'
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: 更新後的成果描述內容
+          example: 更新：增加了使用者認證功能和資料持久化。
+        imgUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+            pattern: ^https?:\/\/.+
+            description: 更新後的成果圖片網址
+            example: https://example.com/screenshots/updated-app.png
+          description: 更新後的成果圖片列表
+          example:
+            - https://example.com/screenshots/updated-app1.png
+            - https://example.com/screenshots/updated-app2.png
+        videoUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+            pattern: ^https?:\/\/.+
+            description: 更新後的成果影片網址
+            example: https://youtube.com/watch?v=updated-demo
+          description: 更新後的成果影片列表
+          example:
+            - https://youtube.com/watch?v=updated-demo1
+            - https://youtube.com/watch?v=updated-demo2
+        visibility:
+          type: string
+          enum: *ref_6
+          description: 成果的可見性設定
+          example: private
+          examples: *ref_7
+      description: 更新現有學習成果的請求資料
+    OutcomeResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 成果唯一識別ID
+          example: 123
+        week:
+          type: number
+          description: 成果所屬週數
+          example: 4
+        title:
+          type: string
+          description: 成果標題
+          example: React Todo App 完成
+        content:
+          type: string
+          description: 成果內容描述
+          example: 完成了一個功能完整的 Todo 應用
+        date:
+          type: string
+          format: date
+          description: 成果完成日期
+          example: '2024-03-15'
+        imgUrls:
+          type: array
+          items:
+            type: string
+          description: 成果圖片URL列表
+          example:
+            - https://example.com/screenshots/app1.png
+        videoUrls:
+          type: array
+          items:
+            type: string
+          description: 成果影片URL列表
+          example:
+            - https://youtube.com/watch?v=demo123
+        visibility:
+          type: string
+          description: 成果可見性
+          example: public
+          examples:
+            - private
+            - public
+      required:
+        - id
+        - week
+        - title
+        - content
+        - date
+        - visibility
+      description: 成果回應資料
+    PersonaQuestionItem:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 問題 ID
+          example: 1
+        prompt:
+          type: string
+          description: 問題文字
+          example: 你最喜歡哪種學習方式？
+        questionType:
+          type: string
+          enum:
+            - choice
+            - sentence_completion
+            - scenario
+          description: 題型
+        options:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: 選擇題選項（非選擇題為 null）
+        isNewUserPriority:
+          type: boolean
+          description: 是否為新使用者優先題
+        answered:
+          type: boolean
+          description: 當前使用者是否已回答
+        skipCount:
+          type: number
+          description: 當前使用者的跳過次數
+          example: 0
+        suppressed:
+          type: boolean
+          description: 是否已被壓制（不再展示）
+      required:
+        - id
+        - prompt
+        - questionType
+        - options
+        - isNewUserPriority
+        - answered
+        - skipCount
+        - suppressed
+    PersonaAnswerItem:
+      type: object
+      properties:
+        id:
+          type: number
+          description: 答案 ID
+          example: 1
+        userId:
+          type: number
+          description: 使用者 ID
+          example: 42
+        questionId:
+          type: number
+          description: 問題 ID
+          example: 1
+        selectedValue:
+          type: string
+          nullable: true
+          description: 選擇題答案
+        textAnswer:
+          type: string
+          nullable: true
+          description: 文字題答案
+        resonanceCount:
+          type: number
+          description: 獲得的共鳴數
+          example: 3
+        createdAt:
+          type: string
+          description: 建立時間（ISO 8601）
+        updatedAt:
+          type: string
+          nullable: true
+          description: 更新時間（ISO 8601）
+      required:
+        - id
+        - userId
+        - questionId
+        - selectedValue
+        - textAnswer
+        - resonanceCount
+        - createdAt
+        - updatedAt
+    PersonaCarouselState:
+      type: object
+      properties:
+        shouldShow:
+          type: boolean
+          description: 是否應顯示輪播
+        allAnswered:
+          type: boolean
+          description: 是否所有問題已回答
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonaQuestionItem'
+          description: 本次輪播的全部可用題目
+      required:
+        - shouldShow
+        - allAnswered
+        - questions
     CreateProjectRequest:
       type: object
       properties:
@@ -10762,7 +10782,7 @@ components:
         - data
         - timestamp
       description: Standard success response format
-      examples: &ref_118
+      examples: &ref_106
         - success: true
           data:
             id: 123
@@ -18148,12 +18168,38 @@ paths:
                             creationSource:
                               type: string
                               nullable: true
+                            startDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            endDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            progressPercentage:
+                              type: number
+                            checkInCount:
+                              type: integer
+                              minimum: 0
+                            lastCheckinAt:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            themeColor:
+                              type: string
+                              nullable: true
                           required:
                             - id
                             - title
                             - practiceAction
                             - status
                             - creationSource
+                            - startDate
+                            - endDate
+                            - progressPercentage
+                            - checkInCount
+                            - lastCheckinAt
+                            - themeColor
                     required:
                       - cohortId
                       - displayName
@@ -21855,7 +21901,7 @@ paths:
             maxLength: 50
             description: 按偏好設定分類篩選
             example: 學習偏好
-            examples: &ref_116
+            examples: &ref_104
               - 學習偏好
               - 通知設定
               - 隱私設定
@@ -21870,7 +21916,7 @@ paths:
             default: false
             description: 是否包含系統層級的偏好設定
             example: false
-            examples: &ref_117
+            examples: &ref_105
               - true
               - false
           required: false
@@ -24479,7 +24525,7 @@ paths:
           in: path
       responses:
         '200':
-          description: 成員列表
+          description: 成員列表（含 email）
           content:
             application/json:
               schema:
@@ -24509,12 +24555,16 @@ paths:
                         createdAt:
                           type: string
                           format: date-time
+                        email:
+                          type: string
+                          nullable: true
                       required:
                         - id
                         - userId
                         - nickname
                         - role
                         - createdAt
+                        - email
                     description: The main response data
                   timestamp:
                     type: string
@@ -27004,6 +27054,40 @@ paths:
                           type: array
                           items:
                             type: integer
+                        bindings:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              cohortId:
+                                type: integer
+                              startDate:
+                                type: string
+                                nullable: true
+                                format: date-time
+                            required:
+                              - cohortId
+                              - startDate
+                        resources:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              url:
+                                type: string
+                                nullable: true
+                              dayNumber:
+                                type: integer
+                                nullable: true
+                            required:
+                              - id
+                              - name
+                              - url
+                              - dayNumber
                         generatedDraftCount:
                           type: integer
                           minimum: 0
@@ -27027,6 +27111,8 @@ paths:
                         - sessionDurationMinutes
                         - practiceTimePeriods
                         - boundCohortIds
+                        - bindings
+                        - resources
                         - generatedDraftCount
                         - createdAt
                         - updatedAt
@@ -27131,32 +27217,65 @@ paths:
                   nullable: true
                   maxLength: 2000
                 durationDays:
-                  type: integer
-                  nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  anyOf:
+                    - type: number
+                      enum:
+                        - 7
+                    - type: number
+                      enum:
+                        - 14
+                    - type: number
+                      enum:
+                        - 21
+                    - type: number
+                      enum:
+                        - 30
+                    - nullable: true
                 frequencyMinDays:
                   type: integer
                   nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  minimum: 1
+                  maximum: 7
                 frequencyMaxDays:
                   type: integer
                   nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  minimum: 1
+                  maximum: 7
                 sessionDurationMinutes:
-                  type: integer
-                  nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  anyOf:
+                    - type: number
+                      enum:
+                        - 15
+                    - type: number
+                      enum:
+                        - 30
+                    - type: number
+                      enum:
+                        - 45
+                    - type: number
+                      enum:
+                        - 60
+                    - nullable: true
                 practiceTimePeriods:
                   type: array
                   items:
                     type: string
-                    minLength: 1
-                  maxItems: 20
+                    enum:
+                      - morning
+                      - afternoon
+                      - evening
+                      - night
+                      - commute
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
+                    example: morning
+                    examples: *ref_3
+                  maxItems: 5
                   default: &ref_56 []
+                resources:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PracticeResourceInput'
+                  maxItems: 5
               required:
                 - title
       responses:
@@ -27207,6 +27326,40 @@ paths:
                         type: array
                         items:
                           type: integer
+                      bindings:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            cohortId:
+                              type: integer
+                            startDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                          required:
+                            - cohortId
+                            - startDate
+                      resources:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            url:
+                              type: string
+                              nullable: true
+                            dayNumber:
+                              type: integer
+                              nullable: true
+                          required:
+                            - id
+                            - name
+                            - url
+                            - dayNumber
                       generatedDraftCount:
                         type: integer
                         minimum: 0
@@ -27230,6 +27383,8 @@ paths:
                       - sessionDurationMinutes
                       - practiceTimePeriods
                       - boundCohortIds
+                      - bindings
+                      - resources
                       - generatedDraftCount
                       - createdAt
                       - updatedAt
@@ -27341,32 +27496,65 @@ paths:
                   nullable: true
                   maxLength: 2000
                 durationDays:
-                  type: integer
-                  nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  anyOf:
+                    - type: number
+                      enum:
+                        - 7
+                    - type: number
+                      enum:
+                        - 14
+                    - type: number
+                      enum:
+                        - 21
+                    - type: number
+                      enum:
+                        - 30
+                    - nullable: true
                 frequencyMinDays:
                   type: integer
                   nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  minimum: 1
+                  maximum: 7
                 frequencyMaxDays:
                   type: integer
                   nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  minimum: 1
+                  maximum: 7
                 sessionDurationMinutes:
-                  type: integer
-                  nullable: true
-                  minimum: 0
-                  exclusiveMinimum: true
+                  anyOf:
+                    - type: number
+                      enum:
+                        - 15
+                    - type: number
+                      enum:
+                        - 30
+                    - type: number
+                      enum:
+                        - 45
+                    - type: number
+                      enum:
+                        - 60
+                    - nullable: true
                 practiceTimePeriods:
                   type: array
                   items:
                     type: string
-                    minLength: 1
-                  maxItems: 20
+                    enum:
+                      - morning
+                      - afternoon
+                      - evening
+                      - night
+                      - commute
+                    description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
+                    example: morning
+                    examples: *ref_3
+                  maxItems: 5
                   default: *ref_56
+                resources:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PracticeResourceInput'
+                  maxItems: 5
       responses:
         '200':
           description: 模板已更新
@@ -27415,6 +27603,40 @@ paths:
                         type: array
                         items:
                           type: integer
+                      bindings:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            cohortId:
+                              type: integer
+                            startDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                          required:
+                            - cohortId
+                            - startDate
+                      resources:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            url:
+                              type: string
+                              nullable: true
+                            dayNumber:
+                              type: integer
+                              nullable: true
+                          required:
+                            - id
+                            - name
+                            - url
+                            - dayNumber
                       generatedDraftCount:
                         type: integer
                         minimum: 0
@@ -27438,6 +27660,8 @@ paths:
                       - sessionDurationMinutes
                       - practiceTimePeriods
                       - boundCohortIds
+                      - bindings
+                      - resources
                       - generatedDraftCount
                       - createdAt
                       - updatedAt
@@ -27569,6 +27793,16 @@ paths:
           required: true
           name: cohortId
           in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  nullable: true
+                  pattern: ^\d{4}-\d{2}-\d{2}$
       responses:
         '200':
           description: 已綁定
@@ -27591,10 +27825,15 @@ paths:
                         type: integer
                       bound:
                         type: boolean
+                      startDate:
+                        type: string
+                        nullable: true
+                        format: date-time
                     required:
                       - templateId
                       - cohortId
                       - bound
+                      - startDate
                     description: The main response data
                   timestamp:
                     type: string
@@ -27716,10 +27955,15 @@ paths:
                         type: integer
                       bound:
                         type: boolean
+                      startDate:
+                        type: string
+                        nullable: true
+                        format: date-time
                     required:
                       - templateId
                       - cohortId
                       - bound
+                      - startDate
                     description: The main response data
                   timestamp:
                     type: string
@@ -30256,7 +30500,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_95
+                examples: &ref_83
                   - success: true
                     data:
                       id: 123
@@ -30922,7 +31166,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_76
+                examples: &ref_62
                   - success: true
                     data:
                       - id: 1
@@ -30971,48 +31215,72 @@ paths:
                   maxLength: 100
                   description: 實踐活動標題
                   example: 每日閱讀 30 分鐘
-                  examples: *ref_62
+                  examples:
+                    - 每日閱讀 30 分鐘
+                    - 學習 React Hooks
+                    - 每天運動 20 分鐘
                 practiceAction:
                   type: string
                   maxLength: 200
                   description: 具體的實踐行動描述
                   example: 閱讀技術書籍或文章
-                  examples: *ref_63
+                  examples:
+                    - 閱讀技術書籍或文章
+                    - 完成線上課程一個章節
+                    - 跑步或健身
                 startDate:
                   type: string
                   format: date
                   pattern: ^\d{4}-\d{2}-\d{2}$
                   description: 實踐開始日期（不可超過 14 天後）
                   example: '2024-01-15'
-                  examples: *ref_64
+                  examples:
+                    - '2024-01-15'
+                    - '2024-03-01'
+                    - '2024-06-01'
                 durationDays:
                   type: integer
                   minimum: 7
                   maximum: 90
                   description: 實踐持續天數
                   example: 14
-                  examples: *ref_65
+                  examples:
+                    - 7
+                    - 14
+                    - 21
+                    - 30
                 frequencyMinDays:
                   type: integer
                   minimum: 1
                   maximum: 7
                   description: 每週最低打卡天數
                   example: 4
-                  examples: *ref_66
+                  examples:
+                    - 1
+                    - 3
+                    - 4
+                    - 5
                 frequencyMaxDays:
                   type: integer
                   minimum: 1
                   maximum: 7
                   description: 每週最高打卡天數
                   example: 7
-                  examples: *ref_67
+                  examples:
+                    - 5
+                    - 6
+                    - 7
                 sessionDurationMinutes:
                   type: integer
                   minimum: 5
                   maximum: 240
                   description: 每次實踐時長（分鐘）
                   example: 30
-                  examples: *ref_68
+                  examples:
+                    - 15
+                    - 30
+                    - 60
+                    - 90
                 practiceTimePeriods:
                   type: array
                   items:
@@ -31025,12 +31293,24 @@ paths:
                       - commute
                     description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
-                    examples: *ref_5
+                    examples: &ref_63
+                      - morning
+                      - afternoon
+                      - evening
+                      - night
+                      - commute
                   maxItems: 4
-                  default: *ref_69
+                  default: []
                   description: 偏好實踐時段
-                  example: *ref_70
-                  examples: *ref_71
+                  example:
+                    - morning
+                    - evening
+                  examples:
+                    - - morning
+                    - - afternoon
+                      - evening
+                    - - morning
+                      - night
                 otherContext:
                   type: string
                   maxLength: 500
@@ -31043,17 +31323,28 @@ paths:
                     minLength: 1
                     maxLength: 50
                   maxItems: 10
-                  default: *ref_72
+                  default: []
                   description: 相關標籤（最多 10 個）
-                  example: *ref_73
-                  examples: *ref_74
+                  example:
+                    - 閱讀
+                    - 學習
+                  examples:
+                    - - 閱讀
+                      - 學習
+                    - - 運動
+                      - 健康
+                    - - 程式
+                      - 前端
+                      - React
                 resources:
                   type: array
                   items:
                     $ref: '#/components/schemas/PracticeResourceInput'
                   maxItems: 5
                   description: 相關學習資源（最多 5 個）
-                  example: *ref_75
+                  example:
+                    - name: React 官方文檔
+                      url: https://react.dev/
                 isDraft:
                   type: boolean
                   default: false
@@ -31351,7 +31642,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_76
+                examples: *ref_62
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -31649,7 +31940,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_76
+                examples: *ref_62
         '400':
           $ref: '#/components/responses/BadRequestError'
         '404':
@@ -31735,7 +32026,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_79
+                examples: &ref_66
                   - success: true
                     data:
                       id: 123
@@ -31816,7 +32107,7 @@ paths:
                       - commute
                     description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
-                    examples: *ref_5
+                    examples: *ref_63
                   maxItems: 4
                 otherContext:
                   type: string
@@ -31843,7 +32134,12 @@ paths:
                     - archived
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
-                  examples: *ref_6
+                  examples: &ref_67
+                    - draft
+                    - not_started
+                    - active
+                    - completed
+                    - archived
                 privacyStatus:
                   type: string
                   enum:
@@ -31985,7 +32281,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: &ref_77
+                    examples: &ref_64
                       - success: true
                   timestamp:
                     type: string
@@ -32036,7 +32332,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_78
+                examples: &ref_65
                   - success: true
                     data:
                       id: 123
@@ -32594,7 +32890,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: *ref_77
+                    examples: *ref_64
                   timestamp:
                     type: string
                     format: date-time
@@ -32644,7 +32940,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_78
+                examples: *ref_65
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -33858,7 +34154,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: *ref_77
+                    examples: *ref_64
                   timestamp:
                     type: string
                     format: date-time
@@ -33908,7 +34204,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_78
+                examples: *ref_65
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -34000,7 +34296,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_79
+                examples: *ref_66
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -34712,7 +35008,7 @@ paths:
                       - commute
                     description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
-                    examples: *ref_5
+                    examples: *ref_63
                   maxItems: 4
                   description: 建議實踐時段
                   example:
@@ -35126,7 +35422,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_76
+                examples: *ref_62
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -35159,7 +35455,7 @@ paths:
                     - archived
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
-                  examples: *ref_6
+                  examples: *ref_67
               required:
                 - status
       responses:
@@ -35191,7 +35487,7 @@ paths:
                           - archived
                         description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                         example: not_started
-                        examples: *ref_6
+                        examples: *ref_67
                       privacyStatus:
                         type: string
                         description: 隱私狀態
@@ -35294,7 +35590,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: &ref_80
+            examples: &ref_68
               - '1'
               - '2'
               - '10'
@@ -35307,7 +35603,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: &ref_81
+            examples: &ref_69
               - '10'
               - '20'
               - '50'
@@ -35333,7 +35629,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: &ref_82
+            examples: &ref_70
               - 'true'
               - 'false'
           required: false
@@ -35345,7 +35641,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: &ref_83
+            examples: &ref_71
               - '123'
               - '456'
               - '789'
@@ -35358,7 +35654,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: &ref_84
+            examples: &ref_72
               - React
               - 網站開發
               - 機器學習
@@ -35376,7 +35672,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: &ref_85
+            examples: &ref_73
               - createdAt
               - updatedAt
               - title
@@ -35393,7 +35689,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: &ref_86
+            examples: &ref_74
               - asc
               - desc
           required: false
@@ -35502,7 +35798,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_87
+                examples: &ref_75
                   - success: true
                     data:
                       - id: 1
@@ -35610,7 +35906,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_88
+                examples: &ref_76
                   - success: true
                     data:
                       id: 123
@@ -35649,7 +35945,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: *ref_80
+            examples: *ref_68
           required: false
           description: 頁碼
           name: page
@@ -35659,7 +35955,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: *ref_81
+            examples: *ref_69
           required: false
           description: 每頁項目數
           name: limit
@@ -35682,7 +35978,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: *ref_82
+            examples: *ref_70
           required: false
           description: 是否只查詢公開專案
           name: isPublic
@@ -35692,7 +35988,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: *ref_83
+            examples: *ref_71
           required: false
           description: 指定用戶ID篩選
           name: userId
@@ -35702,7 +35998,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: *ref_84
+            examples: *ref_72
           required: false
           description: 搜尋關鍵字
           name: search
@@ -35717,7 +36013,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: *ref_85
+            examples: *ref_73
           required: false
           description: 排序欄位
           name: sortBy
@@ -35729,7 +36025,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: *ref_86
+            examples: *ref_74
           required: false
           description: 排序順序
           name: sortOrder
@@ -35836,7 +36132,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_87
+                examples: *ref_75
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -35855,7 +36151,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: *ref_80
+            examples: *ref_68
           required: false
           description: 頁碼
           name: page
@@ -35865,7 +36161,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: *ref_81
+            examples: *ref_69
           required: false
           description: 每頁項目數
           name: limit
@@ -35888,7 +36184,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: *ref_82
+            examples: *ref_70
           required: false
           description: 是否只查詢公開專案
           name: isPublic
@@ -35898,7 +36194,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: *ref_83
+            examples: *ref_71
           required: false
           description: 指定用戶ID篩選
           name: userId
@@ -35908,7 +36204,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: *ref_84
+            examples: *ref_72
           required: false
           description: 搜尋關鍵字
           name: search
@@ -35923,7 +36219,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: *ref_85
+            examples: *ref_73
           required: false
           description: 排序欄位
           name: sortBy
@@ -35935,7 +36231,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: *ref_86
+            examples: *ref_74
           required: false
           description: 排序順序
           name: sortOrder
@@ -36042,7 +36338,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_87
+                examples: *ref_75
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -36234,7 +36530,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_88
+                examples: *ref_76
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -36327,7 +36623,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_88
+                examples: *ref_76
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -36543,7 +36839,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_88
+                examples: *ref_76
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -36565,7 +36861,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: &ref_89
+            examples: &ref_77
               - project_123
               - my-study-notes
               - learning-journey-2024
@@ -36755,7 +37051,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -36886,7 +37182,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 里程碑唯一識別碼
-            examples: &ref_90
+            examples: &ref_78
               - '1'
               - '2'
               - '123'
@@ -37073,7 +37369,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 里程碑唯一識別碼
-            examples: *ref_90
+            examples: *ref_78
           required: true
           description: 里程碑唯一識別碼
           name: milestoneId
@@ -37161,7 +37457,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -37241,10 +37537,10 @@ paths:
                     - public
                   default: private
                   description: 便利貼的可見性設定
-                  examples: &ref_93
+                  examples: &ref_81
                     - private
                     - public
-                  enumDescriptions: &ref_94
+                  enumDescriptions: &ref_82
                     private: 私人可見，僅作者可查看
                     public: 公開可見，所有人可查看
               required:
@@ -37380,7 +37676,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -37503,7 +37799,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: &ref_91
+            examples: &ref_79
               - project_123
               - my-study-notes
               - learning-journey-2024
@@ -37515,7 +37811,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: &ref_92
+            examples: &ref_80
               - '123'
               - '456'
               - '789'
@@ -37640,7 +37936,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: *ref_91
+            examples: *ref_79
           required: true
           description: 便利貼所屬的專案唯一識別ID
           name: projectId
@@ -37649,7 +37945,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: *ref_92
+            examples: *ref_80
           required: true
           description: 便利貼的唯一識別ID
           name: noteId
@@ -37723,8 +38019,8 @@ paths:
                     - private
                     - public
                   description: 便利貼的可見性設定
-                  examples: *ref_93
-                  enumDescriptions: *ref_94
+                  examples: *ref_81
+                  enumDescriptions: *ref_82
               description: 更新現有便利貼筆記的請求資料
               examples:
                 - title: React 學習筆記 - 更新
@@ -37851,7 +38147,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: *ref_91
+            examples: *ref_79
           required: true
           description: 便利貼所屬的專案唯一識別ID
           name: projectId
@@ -37860,7 +38156,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: *ref_92
+            examples: *ref_80
           required: true
           description: 便利貼的唯一識別ID
           name: noteId
@@ -38199,7 +38495,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38294,7 +38590,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38670,7 +38966,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_95
+                examples: *ref_83
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -38770,7 +39066,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38786,7 +39082,7 @@ paths:
                   minimum: 1
                   maximum: 52
                   description: 覆盤週數
-                  examples: &ref_96
+                  examples: &ref_84
                     - 1
                     - 12
                     - 24
@@ -38810,13 +39106,13 @@ paths:
                     - tired
                     - frustrated
                   description: 心情評估等級
-                  examples: &ref_97
+                  examples: &ref_85
                     - happy
                     - calm
                     - anxious
                     - tired
                     - frustrated
-                  enumDescriptions: &ref_98
+                  enumDescriptions: &ref_86
                     happy: 開心
                     calm: 平靜
                     anxious: 焦慮
@@ -38827,7 +39123,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 壓力等級評估
-                  examples: &ref_99
+                  examples: &ref_87
                     - 1
                     - 3
                     - 5
@@ -38846,7 +39142,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 學習效果評估等級
-                  examples: &ref_102
+                  examples: &ref_90
                     - 1
                     - 4
                     - 6
@@ -39005,7 +39301,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_89
+            examples: *ref_77
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -39015,7 +39311,7 @@ paths:
             minimum: 1
             maximum: 52
             description: 覆盤週數
-            examples: *ref_96
+            examples: *ref_84
           required: false
           description: 覆盤週數
           name: week
@@ -39029,8 +39325,8 @@ paths:
               - tired
               - frustrated
             description: 心情評估等級
-            examples: *ref_97
-            enumDescriptions: *ref_98
+            examples: *ref_85
+            enumDescriptions: *ref_86
           required: false
           description: 心情評估等級
           name: mood
@@ -39040,7 +39336,7 @@ paths:
             minimum: 1
             maximum: 10
             description: 壓力等級評估
-            examples: *ref_99
+            examples: *ref_87
           required: false
           description: 壓力等級評估
           name: stressLevel
@@ -39178,7 +39474,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: &ref_100
+            examples: &ref_88
               - 123e4567-e89b-12d3-a456-426614174000
               - proj_abc123
               - project-001
@@ -39189,7 +39485,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: &ref_101
+            examples: &ref_89
               - '1'
               - '123'
               - '456'
@@ -39303,7 +39599,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: *ref_100
+            examples: *ref_88
           required: true
           description: 專案識別碼
           name: projectId
@@ -39311,7 +39607,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: *ref_101
+            examples: *ref_89
           required: true
           description: 覆盤識別碼
           name: reviewId
@@ -39339,14 +39635,14 @@ paths:
                     - tired
                     - frustrated
                   description: 心情評估等級
-                  examples: *ref_97
-                  enumDescriptions: *ref_98
+                  examples: *ref_85
+                  enumDescriptions: *ref_86
                 stressLevel:
                   type: integer
                   minimum: 1
                   maximum: 10
                   description: 壓力等級評估
-                  examples: *ref_99
+                  examples: *ref_87
                 moodDescription:
                   type: string
                   maxLength: 1000
@@ -39359,7 +39655,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 學習效果評估等級
-                  examples: *ref_102
+                  examples: *ref_90
                 learningFeedback:
                   type: string
                   maxLength: 2000
@@ -39491,7 +39787,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: *ref_100
+            examples: *ref_88
           required: true
           description: 專案識別碼
           name: projectId
@@ -39499,7 +39795,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: *ref_101
+            examples: *ref_89
           required: true
           description: 覆盤識別碼
           name: reviewId
@@ -39773,7 +40069,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_103
+                examples: &ref_91
                   - success: true
                     data:
                       id: 123
@@ -39876,7 +40172,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_103
+                examples: *ref_91
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -39977,7 +40273,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_103
+                examples: *ref_91
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -40359,7 +40655,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: &ref_107
+                    examples: &ref_95
                       - cursors:
                           start: eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==
                           end: eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ==
@@ -40403,7 +40699,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: &ref_104
+                          examples: &ref_92
                             - value: education_learning
                               count: 45
                             - value: physics
@@ -40425,7 +40721,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_104
+                          examples: *ref_92
                         description: Sub category facet values (parent_id is NOT NULL)
                     additionalProperties:
                       type: array
@@ -40443,9 +40739,9 @@ paths:
                           - value
                           - count
                         description: Single facet value with count
-                        examples: *ref_104
+                        examples: *ref_92
                     description: Faceted search aggregations for filtering
-                    examples: &ref_108
+                    examples: &ref_96
                       - majorCategory:
                           - value: education_learning
                             count: 45
@@ -40878,7 +41174,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_105
+                examples: &ref_93
                   - success: true
                     data:
                       id: 123
@@ -41130,7 +41426,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_105
+                examples: *ref_93
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -41246,7 +41542,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_106
+                examples: &ref_94
                   - success: true
                     data:
                       id: 123
@@ -41375,7 +41671,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_106
+                examples: *ref_94
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -41539,7 +41835,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: *ref_107
+                    examples: *ref_95
                   facets:
                     type: object
                     properties:
@@ -41559,7 +41855,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_104
+                          examples: *ref_92
                         description: Major category facet values (parent_id is NULL)
                       subCategory:
                         type: array
@@ -41577,7 +41873,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_104
+                          examples: *ref_92
                         description: Sub category facet values (parent_id is NOT NULL)
                     additionalProperties:
                       type: array
@@ -41595,9 +41891,9 @@ paths:
                           - value
                           - count
                         description: Single facet value with count
-                        examples: *ref_104
+                        examples: *ref_92
                     description: Faceted search aggregations for filtering
-                    examples: *ref_108
+                    examples: *ref_96
                   timestamp:
                     type: string
                     format: date-time
@@ -42075,7 +42371,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_109
+                examples: &ref_97
                   - success: true
                     data:
                       id: 123
@@ -42353,7 +42649,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_109
+                examples: *ref_97
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -42747,7 +43043,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: *ref_107
+                    examples: *ref_95
                   facets:
                     type: object
                     properties:
@@ -42767,7 +43063,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_104
+                          examples: *ref_92
                         description: Major category facet values (parent_id is NULL)
                       subCategory:
                         type: array
@@ -42785,7 +43081,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_104
+                          examples: *ref_92
                         description: Sub category facet values (parent_id is NOT NULL)
                     additionalProperties:
                       type: array
@@ -42803,9 +43099,9 @@ paths:
                           - value
                           - count
                         description: Single facet value with count
-                        examples: *ref_104
+                        examples: *ref_92
                     description: Faceted search aggregations for filtering
-                    examples: *ref_108
+                    examples: *ref_96
                   timestamp:
                     type: string
                     format: date-time
@@ -43072,7 +43368,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_110
+                examples: &ref_98
                   - success: true
                     data:
                       id: 123
@@ -43179,7 +43475,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_110
+                examples: *ref_98
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -43977,7 +44273,7 @@ paths:
                     - user
                     - review
                   description: 實體類型
-                  examples: &ref_111
+                  examples: &ref_99
                     - resource
                     - project
                     - idea
@@ -43986,7 +44282,7 @@ paths:
                     - circle
                     - user
                     - review
-                  enumDescriptions: &ref_112
+                  enumDescriptions: &ref_100
                     resource: 學習資源
                     project: 專案計畫
                     idea: 創意想法
@@ -44001,7 +44297,7 @@ paths:
                   maxLength: 50
                   pattern: ^[a-zA-Z0-9\u4e00-\u9fa5_-]+$
                   description: 標籤名稱
-                  examples: &ref_113
+                  examples: &ref_101
                     - React
                     - JavaScript
                     - 前端開發
@@ -44142,15 +44438,15 @@ paths:
                     - user
                     - review
                   description: 實體類型
-                  examples: *ref_111
-                  enumDescriptions: *ref_112
+                  examples: *ref_99
+                  enumDescriptions: *ref_100
                 tagName:
                   type: string
                   minLength: 1
                   maxLength: 50
                   pattern: ^[a-zA-Z0-9\u4e00-\u9fa5_-]+$
                   description: 標籤名稱
-                  examples: *ref_113
+                  examples: *ref_101
               required:
                 - entityId
                 - entityType
@@ -44284,8 +44580,8 @@ paths:
               - user
               - review
             description: 實體類型
-            examples: *ref_111
-            enumDescriptions: *ref_112
+            examples: *ref_99
+            enumDescriptions: *ref_100
           required: true
           description: 實體類型
           name: entityType
@@ -45531,7 +45827,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_114
+                examples: &ref_102
                   - success: true
                     data:
                       id: 123
@@ -45630,7 +45926,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_115
+                examples: &ref_103
                   - success: true
                     data:
                       id: 123
@@ -45740,7 +46036,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_114
+                examples: *ref_102
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -45897,7 +46193,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_119
+                examples: &ref_107
                   - success: true
                     data:
                       id: 123
@@ -46001,7 +46297,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_120
+                examples: &ref_108
                   - success: true
                     data:
                       id: 123
@@ -46131,7 +46427,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_115
+                examples: *ref_103
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -46220,7 +46516,7 @@ paths:
             maxLength: 50
             description: 按偏好設定分類篩選
             example: 學習偏好
-            examples: *ref_116
+            examples: *ref_104
           required: false
           description: 按偏好設定分類篩選
           name: category
@@ -46231,7 +46527,7 @@ paths:
             default: false
             description: 是否包含系統層級的偏好設定
             example: false
-            examples: *ref_117
+            examples: *ref_105
           required: false
           description: 是否包含系統層級的偏好設定
           name: includeSystem
@@ -47021,7 +47317,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_118
+                examples: *ref_106
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -47108,7 +47404,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_115
+                examples: *ref_103
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -47201,7 +47497,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_119
+                examples: *ref_107
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -47300,7 +47596,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_120
+                examples: *ref_108
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -47555,7 +47851,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_110
+                examples: *ref_98
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -47647,7 +47943,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_110
+                examples: *ref_98
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':

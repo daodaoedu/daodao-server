@@ -27,6 +27,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import {
   INITIAL_PROGRESS
 } from '../utils/practice-progress';
@@ -1102,7 +1103,7 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
  * 創建資源記錄並建立 practice-resource 關聯
  * @returns 建立的資源列表（包含 external_id）
  */
-async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<PracticeResourceEntity[]> {
+async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<PracticeResourceEntity[]> {
   if (!resources.length) return [];
 
   const createdResources: PracticeResourceEntity[] = [];
@@ -1122,13 +1123,14 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
           }
         });
 
-        // 2. 建立 practice-resource 關聯
+        // 2. 建立 practice-resource 關聯（note 承載「第幾天使用」）
         await prismaClient.entity_resources.create({
           data: {
             resource_id: createdResource.id,
             entity_type: 'practice',
             entity_id: practiceId,
-            created_by: userId
+            created_by: userId,
+            note: encodeResourceDay(resource.dayNumber)
           }
         });
 
@@ -1136,7 +1138,8 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
         createdResources.push({
           id: createdResource.external_id || String(createdResource.id),
           name: createdResource.name,
-          url: createdResource.url || undefined
+          url: createdResource.url || undefined,
+          dayNumber: resource.dayNumber ?? null
         });
       } catch (error) {
         loggerService.warn('Failed to create resource', { practiceId, resource, error });
@@ -1180,7 +1183,7 @@ async function updateTags(practiceId: number, tagNames: string[]): Promise<void>
  * 更新資源
  * 軟刪除現有關聯並建立新的資源關聯
  */
-async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<void> {
+async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<void> {
   try {
     // 1. 取得現有的 practice-resource 關聯
     const existingRelations = await prismaClient.entity_resources.findMany({
@@ -1366,7 +1369,8 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
       acc[er.entity_id].push({
         id: er.resources.external_id || String(er.resources.id),
         name: er.resources.name,
-        url: er.resources.url || undefined
+        url: er.resources.url || undefined,
+        dayNumber: parseResourceDay(er.note)
       });
       return acc;
     }, {} as Record<number, PracticeResourceEntity[]>);

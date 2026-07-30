@@ -45,12 +45,23 @@ export const practiceResourceInputSchema = z.object({
       example: 'https://react.dev/',
       examples: ['https://react.dev/', 'https://javascript.info/', 'https://vuejs.org/guide/'],
       format: 'uri'
+    }),
+  dayNumber: z.number()
+    .int('使用天數必須是整數')
+    .min(1, '使用天數最少為第 1 天')
+    .max(30, '使用天數最多為第 30 天')
+    .nullable()
+    .optional()
+    .openapi({
+      description: '指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）',
+      example: 3
     })
 }).openapi('PracticeResourceInput', {
   description: '實踐資源輸入資料',
   example: {
     name: 'React 官方文檔',
-    url: 'https://react.dev/'
+    url: 'https://react.dev/',
+    dayNumber: 3
   }
 });
 
@@ -79,13 +90,22 @@ export const practiceResourceSchema = z.object({
       example: 'https://react.dev/',
       examples: ['https://react.dev/', 'https://javascript.info/'],
       format: 'uri'
+    }),
+  dayNumber: z.number()
+    .int()
+    .nullable()
+    .optional()
+    .openapi({
+      description: '指定第幾天使用此資源（null 代表整段實踐期間皆可使用）',
+      example: 3
     })
 }).openapi('PracticeResource', {
   description: '實踐資源回應資料',
   example: {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'React 官方文檔',
-    url: 'https://react.dev/'
+    url: 'https://react.dev/',
+    dayNumber: 3
   }
 });
 
@@ -627,13 +647,15 @@ registry.register('PracticeStats', practiceStatsResponseSchema);
 export const practiceResourceEntitySchema = z.object({
   id: z.string().openapi({ description: '資源外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   name: z.string().openapi({ description: '資源名稱', example: 'React 官方文檔' }),
-  url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' })
+  url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' }),
+  dayNumber: z.number().int().nullable().optional().openapi({ description: '指定第幾天使用此資源（null 代表整段實踐期間皆可使用）', example: 3 })
 }).openapi('PracticeResourceEntity', {
   description: '實踐使用的資源',
   example: {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'React 官方文檔',
-    url: 'https://react.dev/'
+    url: 'https://react.dev/',
+    dayNumber: 3
   }
 });
 
