@@ -11,6 +11,9 @@ import type {
 } from '../validators/organization.validators';
 import { prisma } from './database/prisma.service';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
+import { enqueueEmail } from '../queues/email.queue';
+import { generateOrganizationOwnerEmail } from './email/organization-owner-template';
+import { loggerService } from './logging/logger.service';
 
 const organizationSelect = {
   id: true,
@@ -158,8 +161,21 @@ const getForUser = async (organizationId: number, userId: number): Promise<Organ
   return toOrganization(row);
 };
 
+const sendOwnerEmail = async (organizationName: string, userId: number) => {
+  try {
+    const user = await prisma.users.findUnique({ where: { id: userId }, select: { contacts: { select: { email: true } } } });
+    const email = user?.contacts?.email;
+    if (!email) return;
+    const base = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
+    const { subject, html } = generateOrganizationOwnerEmail({ organizationName, dashboardUrl: `${base}/lighthouse` });
+    await enqueueEmail({ to: email, subject, html, emailType: 'organization_owner_invitation', userId, priority: 'P2' });
+  } catch (err) {
+    loggerService.warn('Failed to send owner invitation email', { userId, error: err });
+  }
+};
+
 const create = async (input: CreateOrganizationInput, adminId: number): Promise<OrganizationResponse> => {
-  return prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async tx => {
     const owner = await tx.users.findUnique({
       where: { id: input.ownerUserId },
       select: { id: true }
@@ -188,8 +204,10 @@ const create = async (input: CreateOrganizationInput, adminId: number): Promise<
       targetId: String(row.id),
       newValue: { status: 'active', ownerUserId: input.ownerUserId, affectedCount: 1 }
     });
-    return toOrganization(row);
+    return { org: toOrganization(row), orgName: row.name, ownerId: input.ownerUserId };
   });
+  await sendOwnerEmail(result.orgName, result.ownerId);
+  return result.org;
 };
 
 const update = async (
@@ -278,8 +296,9 @@ const addMember = async (
   skipMembership = false
 ): Promise<OrganizationMemberResponse> => {
   if (!skipMembership) await assertOrganizationMember(organizationId, actorId, { requireActive: true });
+  let result: { member: OrganizationMemberResponse; orgName: string; userId: number };
   try {
-    return await prisma.$transaction(async tx => {
+    result = await prisma.$transaction(async tx => {
       const user = await tx.users.findUnique({ where: { id: input.userId }, select: { id: true } });
       if (!user) throw new NotFoundError('找不到欲新增的使用者');
 
@@ -294,7 +313,8 @@ const addMember = async (
         targetId: String(row.id),
         newValue: { organizationId, userId: input.userId, role: input.role, affectedCount: 1 }
       });
-      return toMember(row);
+      const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+      return { member: toMember(row), orgName: org?.name ?? '', userId: input.userId };
     });
   } catch (error) {
     if (isPrismaCode(error, 'P2002')) {
@@ -302,6 +322,8 @@ const addMember = async (
     }
     throw error;
   }
+  await sendOwnerEmail(result.orgName, result.userId);
+  return result.member;
 };
 
 const removeMember = async (organizationId: number, actorId: number, userId: number, skipMembership = false): Promise<void> => {

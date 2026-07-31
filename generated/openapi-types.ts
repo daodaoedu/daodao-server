@@ -11204,6 +11204,7 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     url: string | null;
+                                    dayNumber: number | null;
                                 }[];
                                 generatedDraftCount: number;
                                 /** Format: date-time */
@@ -11332,6 +11333,7 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     url: string | null;
+                                    dayNumber: number | null;
                                 }[];
                                 generatedDraftCount: number;
                                 /** Format: date-time */
@@ -11503,6 +11505,7 @@ export interface paths {
                                     id: string;
                                     name: string;
                                     url: string | null;
+                                    dayNumber: number | null;
                                 }[];
                                 generatedDraftCount: number;
                                 /** Format: date-time */
@@ -35040,7 +35043,8 @@ export interface components {
          * @description 實踐資源輸入資料
          * @example {
          *       "name": "React 官方文檔",
-         *       "url": "https://react.dev/"
+         *       "url": "https://react.dev/",
+         *       "dayNumber": 3
          *     }
          */
         PracticeResourceInput: {
@@ -35061,13 +35065,19 @@ export interface components {
              * @example https://vuejs.org/guide/
              */
             url?: string | "";
+            /**
+             * @description 指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）
+             * @example 3
+             */
+            dayNumber?: number | null;
         };
         /**
          * @description 實踐資源回應資料
          * @example {
          *       "id": "123e4567-e89b-12d3-a456-426614174000",
          *       "name": "React 官方文檔",
-         *       "url": "https://react.dev/"
+         *       "url": "https://react.dev/",
+         *       "dayNumber": 3
          *     }
          */
         PracticeResource: {
@@ -35092,6 +35102,11 @@ export interface components {
              * @example https://javascript.info/
              */
             url?: string;
+            /**
+             * @description 指定第幾天使用此資源（null 代表整段實踐期間皆可使用）
+             * @example 3
+             */
+            dayNumber?: number | null;
         };
         CreatePracticeRequest: {
             /**
@@ -35460,7 +35475,8 @@ export interface components {
          * @example {
          *       "id": "123e4567-e89b-12d3-a456-426614174000",
          *       "name": "React 官方文檔",
-         *       "url": "https://react.dev/"
+         *       "url": "https://react.dev/",
+         *       "dayNumber": 3
          *     }
          */
         PracticeResourceEntity: {
@@ -35481,6 +35497,11 @@ export interface components {
              * @example https://react.dev/
              */
             url?: string;
+            /**
+             * @description 指定第幾天使用此資源（null 代表整段實踐期間皆可使用）
+             * @example 3
+             */
+            dayNumber?: number | null;
         };
         /**
          * @description 實踐活動詳細資訊
@@ -35838,6 +35859,7 @@ export interface components {
          *           "url": "https://react.dev"
          *         }
          *       ],
+         *       "answerCount": 42,
          *       "createdAt": "2024-01-15T10:30:00.000Z"
          *     }
          */
@@ -35920,6 +35942,11 @@ export interface components {
                 /** Format: uri */
                 externalLink: string | null;
             };
+            /**
+             * @description 使用此模板建立實踐的總人次
+             * @example 42
+             */
+            answerCount: number;
             /**
              * @description 建立時間
              * @example 2024-01-15T10:30:00.000Z

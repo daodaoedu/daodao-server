@@ -39,6 +39,7 @@ export interface PracticeTemplateEntity {
   suggestedTags: string[];
   resources?: PracticeResourceEntity[];
   organization?: { id: number; name: string; bio: string | null; externalLink: string | null };
+  answerCount: number;
   createdAt: string;
 }
 
@@ -63,7 +64,7 @@ export interface RandomTemplateQueryParams {
 /**
  * 預設模板（當資料庫無資料時使用）
  */
-const DEFAULT_TEMPLATES: Omit<PracticeTemplateEntity, 'createdAt'>[] = [
+const DEFAULT_TEMPLATES: Omit<PracticeTemplateEntity, 'createdAt' | 'answerCount'>[] = [
   {
     id: 'tpl-reading-daily',
     title: '每日閱讀 30 分鐘',
@@ -218,9 +219,9 @@ export async function getTemplates(
     ]);
 
     if (templates.length > 0) {
-      // 查詢所有模板的標籤和資源
+      // 查詢所有模板的標籤、資源和使用人數
       const templateIds = templates.map(t => t.id);
-      const [templateTags, templateResources] = await Promise.all([
+      const [templateTags, templateResources, templateCounts] = await Promise.all([
         prismaClient.entity_tags.findMany({
           where: {
             entity_type: 'practice_template',
@@ -244,8 +245,18 @@ export async function getTemplates(
               }
             }
           }
+        }),
+        prismaClient.practices.groupBy({
+          by: ['template_id'],
+          where: { template_id: { in: templateIds } },
+          _count: { id: true }
         })
       ]);
+
+      const countByTemplateId = new Map<number, number>();
+      for (const row of templateCounts) {
+        if (row.template_id !== null) countByTemplateId.set(row.template_id, row._count.id);
+      }
 
       // 建立 templateId -> tagNames 的映射
       const tagsByTemplateId = new Map<number, string[]>();
@@ -279,6 +290,7 @@ export async function getTemplates(
         practiceTimePeriods: t.practice_time_periods || [],
         suggestedTags: tagsByTemplateId.get(t.id) || [],
         resources: resourcesByTemplateId.get(t.id),
+        answerCount: countByTemplateId.get(t.id) ?? 0,
         createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 
@@ -310,6 +322,7 @@ export async function getTemplates(
 
   const entities: PracticeTemplateEntity[] = paginatedTemplates.map(t => ({
     ...t,
+    answerCount: 0,
     createdAt: new Date().toISOString()
   }));
 
@@ -339,8 +352,8 @@ export async function getTemplateById(
     });
 
     if (template) {
-      // 查詢模板的標籤和資源
-      const [templateTags, templateResources] = await Promise.all([
+      // 查詢模板的標籤、資源和使用人數
+      const [templateTags, templateResources, answerCount] = await Promise.all([
         prismaClient.entity_tags.findMany({
           where: {
             entity_type: 'practice_template',
@@ -364,7 +377,8 @@ export async function getTemplateById(
               }
             }
           }
-        })
+        }),
+        prismaClient.practices.count({ where: { template_id: template.id } })
       ]);
 
       // 轉換資源格式
@@ -392,6 +406,7 @@ export async function getTemplateById(
           bio: template.organization.bio,
           externalLink: template.organization.external_link
         } : undefined,
+        answerCount,
         createdAt: template.created_at?.toISOString() || new Date().toISOString()
       });
     }
@@ -405,6 +420,7 @@ export async function getTemplateById(
   if (defaultTemplate) {
     return createSuccessResponse({
       ...defaultTemplate,
+      answerCount: 0,
       createdAt: new Date().toISOString()
     });
   }
@@ -493,9 +509,9 @@ export async function getRandomTemplates(
     });
 
     if (templates.length > 0) {
-      // 查詢所有模板的標籤和資源
+      // 查詢所有模板的標籤、資源和使用人數
       const templateIds = templates.map(t => t.id);
-      const [templateTags, templateResources] = await Promise.all([
+      const [templateTags, templateResources, templateCounts] = await Promise.all([
         prismaClient.entity_tags.findMany({
           where: {
             entity_type: 'practice_template',
@@ -519,8 +535,18 @@ export async function getRandomTemplates(
               }
             }
           }
+        }),
+        prismaClient.practices.groupBy({
+          by: ['template_id'],
+          where: { template_id: { in: templateIds } },
+          _count: { id: true }
         })
       ]);
+
+      const countByTemplateId = new Map<number, number>();
+      for (const row of templateCounts) {
+        if (row.template_id !== null) countByTemplateId.set(row.template_id, row._count.id);
+      }
 
       // 建立 templateId -> tagNames 的映射
       const tagsByTemplateId = new Map<number, string[]>();
@@ -554,6 +580,7 @@ export async function getRandomTemplates(
         practiceTimePeriods: t.practice_time_periods || [],
         suggestedTags: tagsByTemplateId.get(t.id) || [],
         resources: resourcesByTemplateId.get(t.id),
+        answerCount: countByTemplateId.get(t.id) ?? 0,
         createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 
@@ -580,6 +607,7 @@ export async function getRandomTemplates(
 
   const entities: PracticeTemplateEntity[] = selected.map(t => ({
     ...t,
+    answerCount: 0,
     createdAt: new Date().toISOString()
   }));
 
@@ -697,6 +725,7 @@ export async function createTemplate(
     sessionDurationMinutes: template.session_duration_minutes,
     practiceTimePeriods: template.practice_time_periods || [],
     suggestedTags,
+    answerCount: 0,
     createdAt: template.created_at?.toISOString() || new Date().toISOString()
   });
 }
@@ -1034,6 +1063,11 @@ export async function getPopularTemplates(
     // 建立 templateId -> template 的映射
     const templateById = new Map(templates.map(t => [t.id, t]));
 
+    const countByTemplateId = new Map<number, number>();
+    for (const uc of usageCounts) {
+      if (uc.template_id !== null) countByTemplateId.set(uc.template_id, uc._count.id);
+    }
+
     // 5. 按使用次數順序組裝結果
     const entities: PracticeTemplateEntity[] = sortedTemplateIds
       .map(id => templateById.get(id))
@@ -1050,6 +1084,7 @@ export async function getPopularTemplates(
         practiceTimePeriods: t.practice_time_periods || [],
         suggestedTags: tagsByTemplateId.get(t.id) || [],
         resources: resourcesByTemplateId.get(t.id),
+        answerCount: countByTemplateId.get(t.id) ?? 0,
         createdAt: t.created_at?.toISOString() || new Date().toISOString()
       }));
 

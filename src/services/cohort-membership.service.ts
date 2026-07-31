@@ -11,6 +11,7 @@ const exit = async (cohortId: number, userId: number, now = new Date()) => prism
   if (enrollment.status !== 'joined') throw new ConflictError('目前狀態無法退出');
   const detached = await tx.practices.updateMany({ where: { cohort_id: cohortId, user_id: userId }, data: { cohort_id: null } });
   await tx.cohort_enrollments.update({ where: { id: enrollment.id }, data: { status: 'exited', exited_at: now } });
+  await tx.cohort_stat_snapshots.deleteMany({ where: { cohort_id: cohortId } });
   return { enrollmentId: enrollment.id, status: 'exited' as const, detachedPracticeCount: detached.count };
 });
 const remove = async (programId: number, cohortId: number, enrollmentId: number, actorId: number, now = new Date()) => {
@@ -23,6 +24,7 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
     if (enrollment.status !== 'joined' && enrollment.status !== 'invited') throw new ConflictError('此成員目前不在期內');
     const detached = enrollment.user_id === null ? { count: 0 } : await tx.practices.updateMany({ where: { cohort_id: cohortId, user_id: enrollment.user_id }, data: { cohort_id: null } });
     await tx.cohort_enrollments.update({ where: { id: enrollment.id }, data: { status: 'removed', exited_at: now } });
+    await tx.cohort_stat_snapshots.deleteMany({ where: { cohort_id: cohortId } });
     await tx.$executeRaw`
       INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, old_value, new_value)
       VALUES (${actorId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_MEMBER_REMOVED}, 'cohort_enrollment', ${String(enrollment.id)},
