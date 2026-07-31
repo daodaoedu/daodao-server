@@ -8769,404 +8769,6 @@
           "isEnabled"
         ]
       },
-      "CreateOutcomeRequest": {
-        "type": "object",
-        "properties": {
-          "week": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "成果所屬的週數（學習週期）",
-            "example": 4,
-            "examples": [
-              1,
-              2,
-              4,
-              8,
-              12
-            ]
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "成果的標題或名稱",
-            "example": "React Todo App 完成",
-            "examples": [
-              "React Todo App 完成",
-              "第一個網站上線",
-              "JavaScript 基礎學習成果"
-            ]
-          },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "成果完成的日期",
-            "example": "2024-03-15",
-            "examples": [
-              "2024-03-15",
-              "2024-12-01",
-              "2025-01-20"
-            ]
-          },
-          "content": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 5000,
-            "description": "成果的詳細描述或學習心得",
-            "example": "完成了一個功能完整的 Todo 應用，包括增删改查功能、回應式設計和本地存储。"
-          },
-          "imgUrls": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uri",
-              "pattern": "^https?:\\/\\/.+",
-              "description": "成果截圖或相關圖片的網址",
-              "example": "https://example.com/screenshots/app1.png"
-            },
-            "description": "成果相關的圖片網址列表",
-            "example": [
-              "https://example.com/screenshots/app1.png",
-              "https://example.com/screenshots/app2.png"
-            ]
-          },
-          "videoUrls": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uri",
-              "pattern": "^https?:\\/\\/.+",
-              "description": "成果演示影片或說明影片的網址",
-              "example": "https://youtube.com/watch?v=demo123"
-            },
-            "description": "成果相關的影片網址列表",
-            "example": [
-              "https://youtube.com/watch?v=demo123",
-              "https://vimeo.com/123456789"
-            ]
-          },
-          "visibility": {
-            "type": "string",
-            "enum": [
-              "private",
-              "public"
-            ],
-            "default": "private",
-            "description": "成果的可見性設定",
-            "example": "private",
-            "examples": [
-              "private",
-              "public"
-            ]
-          }
-        },
-        "required": [
-          "week",
-          "title",
-          "date",
-          "content"
-        ],
-        "description": "創建新學習成果的請求資料"
-      },
-      "UpdateOutcomeRequest": {
-        "type": "object",
-        "properties": {
-          "week": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "更新後的學習週數",
-            "example": 4,
-            "examples": [
-              1,
-              2,
-              4,
-              8,
-              12
-            ]
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "更新後的成果標題",
-            "example": "React Todo App 完成 v2.0",
-            "examples": [
-              "React Todo App 完成 v2.0",
-              "更新：增加新功能"
-            ]
-          },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "更新後的完成日期",
-            "example": "2024-03-20",
-            "examples": [
-              "2024-03-20",
-              "2024-12-05"
-            ]
-          },
-          "content": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 5000,
-            "description": "更新後的成果描述內容",
-            "example": "更新：增加了使用者認證功能和資料持久化。"
-          },
-          "imgUrls": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uri",
-              "pattern": "^https?:\\/\\/.+",
-              "description": "更新後的成果圖片網址",
-              "example": "https://example.com/screenshots/updated-app.png"
-            },
-            "description": "更新後的成果圖片列表",
-            "example": [
-              "https://example.com/screenshots/updated-app1.png",
-              "https://example.com/screenshots/updated-app2.png"
-            ]
-          },
-          "videoUrls": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uri",
-              "pattern": "^https?:\\/\\/.+",
-              "description": "更新後的成果影片網址",
-              "example": "https://youtube.com/watch?v=updated-demo"
-            },
-            "description": "更新後的成果影片列表",
-            "example": [
-              "https://youtube.com/watch?v=updated-demo1",
-              "https://youtube.com/watch?v=updated-demo2"
-            ]
-          },
-          "visibility": {
-            "type": "string",
-            "enum": [
-              "private",
-              "public"
-            ],
-            "description": "成果的可見性設定",
-            "example": "private",
-            "examples": [
-              "private",
-              "public"
-            ]
-          }
-        },
-        "description": "更新現有學習成果的請求資料"
-      },
-      "OutcomeResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "number",
-            "description": "成果唯一識別ID",
-            "example": 123
-          },
-          "week": {
-            "type": "number",
-            "description": "成果所屬週數",
-            "example": 4
-          },
-          "title": {
-            "type": "string",
-            "description": "成果標題",
-            "example": "React Todo App 完成"
-          },
-          "content": {
-            "type": "string",
-            "description": "成果內容描述",
-            "example": "完成了一個功能完整的 Todo 應用"
-          },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "description": "成果完成日期",
-            "example": "2024-03-15"
-          },
-          "imgUrls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "成果圖片URL列表",
-            "example": [
-              "https://example.com/screenshots/app1.png"
-            ]
-          },
-          "videoUrls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "成果影片URL列表",
-            "example": [
-              "https://youtube.com/watch?v=demo123"
-            ]
-          },
-          "visibility": {
-            "type": "string",
-            "description": "成果可見性",
-            "example": "public",
-            "examples": [
-              "private",
-              "public"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "week",
-          "title",
-          "content",
-          "date",
-          "visibility"
-        ],
-        "description": "成果回應資料"
-      },
-      "PersonaQuestionItem": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "number",
-            "description": "問題 ID",
-            "example": 1
-          },
-          "prompt": {
-            "type": "string",
-            "description": "問題文字",
-            "example": "你最喜歡哪種學習方式？"
-          },
-          "questionType": {
-            "type": "string",
-            "enum": [
-              "choice",
-              "sentence_completion",
-              "scenario"
-            ],
-            "description": "題型"
-          },
-          "options": {
-            "type": "array",
-            "nullable": true,
-            "items": {
-              "type": "string"
-            },
-            "description": "選擇題選項（非選擇題為 null）"
-          },
-          "isNewUserPriority": {
-            "type": "boolean",
-            "description": "是否為新使用者優先題"
-          },
-          "answered": {
-            "type": "boolean",
-            "description": "當前使用者是否已回答"
-          },
-          "skipCount": {
-            "type": "number",
-            "description": "當前使用者的跳過次數",
-            "example": 0
-          },
-          "suppressed": {
-            "type": "boolean",
-            "description": "是否已被壓制（不再展示）"
-          }
-        },
-        "required": [
-          "id",
-          "prompt",
-          "questionType",
-          "options",
-          "isNewUserPriority",
-          "answered",
-          "skipCount",
-          "suppressed"
-        ]
-      },
-      "PersonaAnswerItem": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "number",
-            "description": "答案 ID",
-            "example": 1
-          },
-          "userId": {
-            "type": "number",
-            "description": "使用者 ID",
-            "example": 42
-          },
-          "questionId": {
-            "type": "number",
-            "description": "問題 ID",
-            "example": 1
-          },
-          "selectedValue": {
-            "type": "string",
-            "nullable": true,
-            "description": "選擇題答案"
-          },
-          "textAnswer": {
-            "type": "string",
-            "nullable": true,
-            "description": "文字題答案"
-          },
-          "resonanceCount": {
-            "type": "number",
-            "description": "獲得的共鳴數",
-            "example": 3
-          },
-          "createdAt": {
-            "type": "string",
-            "description": "建立時間（ISO 8601）"
-          },
-          "updatedAt": {
-            "type": "string",
-            "nullable": true,
-            "description": "更新時間（ISO 8601）"
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "questionId",
-          "selectedValue",
-          "textAnswer",
-          "resonanceCount",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "PersonaCarouselState": {
-        "type": "object",
-        "properties": {
-          "shouldShow": {
-            "type": "boolean",
-            "description": "是否應顯示輪播"
-          },
-          "allAnswered": {
-            "type": "boolean",
-            "description": "是否所有問題已回答"
-          },
-          "questions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PersonaQuestionItem"
-            },
-            "description": "本次輪播的全部可用題目"
-          }
-        },
-        "required": [
-          "shouldShow",
-          "allAnswered",
-          "questions"
-        ]
-      },
       "PracticeResourceInput": {
         "type": "object",
         "properties": {
@@ -9203,6 +8805,14 @@
               "https://vuejs.org/guide/"
             ],
             "format": "uri"
+          },
+          "dayNumber": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 30,
+            "description": "指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）",
+            "example": 3
           }
         },
         "required": [
@@ -9211,7 +8821,8 @@
         "description": "實踐資源輸入資料",
         "example": {
           "name": "React 官方文檔",
-          "url": "https://react.dev/"
+          "url": "https://react.dev/",
+          "dayNumber": 3
         }
       },
       "PracticeResource": {
@@ -9241,6 +8852,12 @@
               "https://react.dev/",
               "https://javascript.info/"
             ]
+          },
+          "dayNumber": {
+            "type": "integer",
+            "nullable": true,
+            "description": "指定第幾天使用此資源（null 代表整段實踐期間皆可使用）",
+            "example": 3
           }
         },
         "required": [
@@ -9251,7 +8868,8 @@
         "example": {
           "id": "123e4567-e89b-12d3-a456-426614174000",
           "name": "React 官方文檔",
-          "url": "https://react.dev/"
+          "url": "https://react.dev/",
+          "dayNumber": 3
         }
       },
       "CreatePracticeRequest": {
@@ -9795,6 +9413,12 @@
             "format": "uri",
             "description": "資源網址",
             "example": "https://react.dev/"
+          },
+          "dayNumber": {
+            "type": "integer",
+            "nullable": true,
+            "description": "指定第幾天使用此資源（null 代表整段實踐期間皆可使用）",
+            "example": 3
           }
         },
         "required": [
@@ -9805,7 +9429,8 @@
         "example": {
           "id": "123e4567-e89b-12d3-a456-426614174000",
           "name": "React 官方文檔",
-          "url": "https://react.dev/"
+          "url": "https://react.dev/",
+          "dayNumber": 3
         }
       },
       "PracticeEntity": {
@@ -10324,6 +9949,11 @@
             ],
             "description": "模板所屬組織；官方模板不提供此欄位"
           },
+          "answerCount": {
+            "type": "integer",
+            "description": "使用此模板建立實踐的總人次",
+            "example": 42
+          },
           "createdAt": {
             "type": "string",
             "description": "建立時間",
@@ -10340,6 +9970,7 @@
           "sessionDurationMinutes",
           "practiceTimePeriods",
           "suggestedTags",
+          "answerCount",
           "createdAt"
         ],
         "description": "實踐模板",
@@ -10370,6 +10001,7 @@
               "url": "https://react.dev"
             }
           ],
+          "answerCount": 42,
           "createdAt": "2024-01-15T10:30:00.000Z"
         }
       },
@@ -10631,6 +10263,404 @@
           "createdAt": "2024-01-20T15:45:00.000Z",
           "updatedAt": "2024-01-20T15:45:00.000Z"
         }
+      },
+      "CreateOutcomeRequest": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "成果所屬的週數（學習週期）",
+            "example": 4,
+            "examples": [
+              1,
+              2,
+              4,
+              8,
+              12
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "成果的標題或名稱",
+            "example": "React Todo App 完成",
+            "examples": [
+              "React Todo App 完成",
+              "第一個網站上線",
+              "JavaScript 基礎學習成果"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "成果完成的日期",
+            "example": "2024-03-15",
+            "examples": [
+              "2024-03-15",
+              "2024-12-01",
+              "2025-01-20"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000,
+            "description": "成果的詳細描述或學習心得",
+            "example": "完成了一個功能完整的 Todo 應用，包括增删改查功能、回應式設計和本地存储。"
+          },
+          "imgUrls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?:\\/\\/.+",
+              "description": "成果截圖或相關圖片的網址",
+              "example": "https://example.com/screenshots/app1.png"
+            },
+            "description": "成果相關的圖片網址列表",
+            "example": [
+              "https://example.com/screenshots/app1.png",
+              "https://example.com/screenshots/app2.png"
+            ]
+          },
+          "videoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?:\\/\\/.+",
+              "description": "成果演示影片或說明影片的網址",
+              "example": "https://youtube.com/watch?v=demo123"
+            },
+            "description": "成果相關的影片網址列表",
+            "example": [
+              "https://youtube.com/watch?v=demo123",
+              "https://vimeo.com/123456789"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "public"
+            ],
+            "default": "private",
+            "description": "成果的可見性設定",
+            "example": "private",
+            "examples": [
+              "private",
+              "public"
+            ]
+          }
+        },
+        "required": [
+          "week",
+          "title",
+          "date",
+          "content"
+        ],
+        "description": "創建新學習成果的請求資料"
+      },
+      "UpdateOutcomeRequest": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "更新後的學習週數",
+            "example": 4,
+            "examples": [
+              1,
+              2,
+              4,
+              8,
+              12
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "更新後的成果標題",
+            "example": "React Todo App 完成 v2.0",
+            "examples": [
+              "React Todo App 完成 v2.0",
+              "更新：增加新功能"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "更新後的完成日期",
+            "example": "2024-03-20",
+            "examples": [
+              "2024-03-20",
+              "2024-12-05"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000,
+            "description": "更新後的成果描述內容",
+            "example": "更新：增加了使用者認證功能和資料持久化。"
+          },
+          "imgUrls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?:\\/\\/.+",
+              "description": "更新後的成果圖片網址",
+              "example": "https://example.com/screenshots/updated-app.png"
+            },
+            "description": "更新後的成果圖片列表",
+            "example": [
+              "https://example.com/screenshots/updated-app1.png",
+              "https://example.com/screenshots/updated-app2.png"
+            ]
+          },
+          "videoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?:\\/\\/.+",
+              "description": "更新後的成果影片網址",
+              "example": "https://youtube.com/watch?v=updated-demo"
+            },
+            "description": "更新後的成果影片列表",
+            "example": [
+              "https://youtube.com/watch?v=updated-demo1",
+              "https://youtube.com/watch?v=updated-demo2"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "public"
+            ],
+            "description": "成果的可見性設定",
+            "example": "private",
+            "examples": [
+              "private",
+              "public"
+            ]
+          }
+        },
+        "description": "更新現有學習成果的請求資料"
+      },
+      "OutcomeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "成果唯一識別ID",
+            "example": 123
+          },
+          "week": {
+            "type": "number",
+            "description": "成果所屬週數",
+            "example": 4
+          },
+          "title": {
+            "type": "string",
+            "description": "成果標題",
+            "example": "React Todo App 完成"
+          },
+          "content": {
+            "type": "string",
+            "description": "成果內容描述",
+            "example": "完成了一個功能完整的 Todo 應用"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "成果完成日期",
+            "example": "2024-03-15"
+          },
+          "imgUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "成果圖片URL列表",
+            "example": [
+              "https://example.com/screenshots/app1.png"
+            ]
+          },
+          "videoUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "成果影片URL列表",
+            "example": [
+              "https://youtube.com/watch?v=demo123"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "description": "成果可見性",
+            "example": "public",
+            "examples": [
+              "private",
+              "public"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "week",
+          "title",
+          "content",
+          "date",
+          "visibility"
+        ],
+        "description": "成果回應資料"
+      },
+      "PersonaQuestionItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "問題 ID",
+            "example": 1
+          },
+          "prompt": {
+            "type": "string",
+            "description": "問題文字",
+            "example": "你最喜歡哪種學習方式？"
+          },
+          "questionType": {
+            "type": "string",
+            "enum": [
+              "choice",
+              "sentence_completion",
+              "scenario"
+            ],
+            "description": "題型"
+          },
+          "options": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "選擇題選項（非選擇題為 null）"
+          },
+          "isNewUserPriority": {
+            "type": "boolean",
+            "description": "是否為新使用者優先題"
+          },
+          "answered": {
+            "type": "boolean",
+            "description": "當前使用者是否已回答"
+          },
+          "skipCount": {
+            "type": "number",
+            "description": "當前使用者的跳過次數",
+            "example": 0
+          },
+          "suppressed": {
+            "type": "boolean",
+            "description": "是否已被壓制（不再展示）"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "questionType",
+          "options",
+          "isNewUserPriority",
+          "answered",
+          "skipCount",
+          "suppressed"
+        ]
+      },
+      "PersonaAnswerItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "答案 ID",
+            "example": 1
+          },
+          "userId": {
+            "type": "number",
+            "description": "使用者 ID",
+            "example": 42
+          },
+          "questionId": {
+            "type": "number",
+            "description": "問題 ID",
+            "example": 1
+          },
+          "selectedValue": {
+            "type": "string",
+            "nullable": true,
+            "description": "選擇題答案"
+          },
+          "textAnswer": {
+            "type": "string",
+            "nullable": true,
+            "description": "文字題答案"
+          },
+          "resonanceCount": {
+            "type": "number",
+            "description": "獲得的共鳴數",
+            "example": 3
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "建立時間（ISO 8601）"
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "更新時間（ISO 8601）"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "questionId",
+          "selectedValue",
+          "textAnswer",
+          "resonanceCount",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PersonaCarouselState": {
+        "type": "object",
+        "properties": {
+          "shouldShow": {
+            "type": "boolean",
+            "description": "是否應顯示輪播"
+          },
+          "allAnswered": {
+            "type": "boolean",
+            "description": "是否所有問題已回答"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonaQuestionItem"
+            },
+            "description": "本次輪播的全部可用題目"
+          }
+        },
+        "required": [
+          "shouldShow",
+          "allAnswered",
+          "questions"
+        ]
       },
       "CreateProjectRequest": {
         "type": "object",
@@ -26000,6 +26030,32 @@
                               "creationSource": {
                                 "type": "string",
                                 "nullable": true
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              },
+                              "progressPercentage": {
+                                "type": "number"
+                              },
+                              "checkInCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "lastCheckinAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              },
+                              "themeColor": {
+                                "type": "string",
+                                "nullable": true
                               }
                             },
                             "required": [
@@ -26007,7 +26063,13 @@
                               "title",
                               "practiceAction",
                               "status",
-                              "creationSource"
+                              "creationSource",
+                              "startDate",
+                              "endDate",
+                              "progressPercentage",
+                              "checkInCount",
+                              "lastCheckinAt",
+                              "themeColor"
                             ]
                           }
                         }
@@ -35880,7 +35942,7 @@
         ],
         "responses": {
           "200": {
-            "description": "成員列表",
+            "description": "成員列表（含 email）",
             "content": {
               "application/json": {
                 "schema": {
@@ -35917,6 +35979,10 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "email": {
+                            "type": "string",
+                            "nullable": true
                           }
                         },
                         "required": [
@@ -35924,7 +35990,8 @@
                           "userId",
                           "nickname",
                           "role",
-                          "createdAt"
+                          "createdAt",
+                          "email"
                         ]
                       },
                       "description": "The main response data"
@@ -39793,6 +39860,54 @@
                               "type": "integer"
                             }
                           },
+                          "bindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "cohortId": {
+                                  "type": "integer"
+                                },
+                                "startDate": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "cohortId",
+                                "startDate"
+                              ]
+                            }
+                          },
+                          "resources": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "dayNumber": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "url",
+                                "dayNumber"
+                              ]
+                            }
+                          },
                           "generatedDraftCount": {
                             "type": "integer",
                             "minimum": 0
@@ -39820,6 +39935,8 @@
                           "sessionDurationMinutes",
                           "practiceTimePeriods",
                           "boundCohortIds",
+                          "bindings",
+                          "resources",
                           "generatedDraftCount",
                           "createdAt",
                           "updatedAt"
@@ -39991,37 +40108,109 @@
                     "maxLength": 2000
                   },
                   "durationDays": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          7
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          14
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          21
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
                   },
                   "frequencyMinDays": {
                     "type": "integer",
                     "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "minimum": 1,
+                    "maximum": 7
                   },
                   "frequencyMaxDays": {
                     "type": "integer",
                     "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "minimum": 1,
+                    "maximum": 7
                   },
                   "sessionDurationMinutes": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          45
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          60
+                        ]
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
                   },
                   "practiceTimePeriods": {
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1
+                      "enum": [
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night",
+                        "commute"
+                      ],
+                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
+                      "example": "morning",
+                      "examples": [
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night",
+                        "commute"
+                      ]
                     },
-                    "maxItems": 20,
+                    "maxItems": 5,
                     "default": []
+                  },
+                  "resources": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PracticeResourceInput"
+                    },
+                    "maxItems": 5
                   }
                 },
                 "required": [
@@ -40094,6 +40283,54 @@
                             "type": "integer"
                           }
                         },
+                        "bindings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "cohortId": {
+                                "type": "integer"
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "cohortId",
+                              "startDate"
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "dayNumber": {
+                                "type": "integer",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "url",
+                              "dayNumber"
+                            ]
+                          }
+                        },
                         "generatedDraftCount": {
                           "type": "integer",
                           "minimum": 0
@@ -40121,6 +40358,8 @@
                         "sessionDurationMinutes",
                         "practiceTimePeriods",
                         "boundCohortIds",
+                        "bindings",
+                        "resources",
                         "generatedDraftCount",
                         "createdAt",
                         "updatedAt"
@@ -40302,37 +40541,109 @@
                     "maxLength": 2000
                   },
                   "durationDays": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          7
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          14
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          21
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
                   },
                   "frequencyMinDays": {
                     "type": "integer",
                     "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "minimum": 1,
+                    "maximum": 7
                   },
                   "frequencyMaxDays": {
                     "type": "integer",
                     "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "minimum": 1,
+                    "maximum": 7
                   },
                   "sessionDurationMinutes": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          15
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          45
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          60
+                        ]
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
                   },
                   "practiceTimePeriods": {
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1
+                      "enum": [
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night",
+                        "commute"
+                      ],
+                      "description": "實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)",
+                      "example": "morning",
+                      "examples": [
+                        "morning",
+                        "afternoon",
+                        "evening",
+                        "night",
+                        "commute"
+                      ]
                     },
-                    "maxItems": 20,
+                    "maxItems": 5,
                     "default": []
+                  },
+                  "resources": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PracticeResourceInput"
+                    },
+                    "maxItems": 5
                   }
                 }
               }
@@ -40402,6 +40713,54 @@
                             "type": "integer"
                           }
                         },
+                        "bindings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "cohortId": {
+                                "type": "integer"
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "cohortId",
+                              "startDate"
+                            ]
+                          }
+                        },
+                        "resources": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "dayNumber": {
+                                "type": "integer",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "url",
+                              "dayNumber"
+                            ]
+                          }
+                        },
                         "generatedDraftCount": {
                           "type": "integer",
                           "minimum": 0
@@ -40429,6 +40788,8 @@
                         "sessionDurationMinutes",
                         "practiceTimePeriods",
                         "boundCohortIds",
+                        "bindings",
+                        "resources",
                         "generatedDraftCount",
                         "createdAt",
                         "updatedAt"
@@ -40650,6 +41011,22 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startDate": {
+                    "type": "string",
+                    "nullable": true,
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "已綁定",
@@ -40676,12 +41053,18 @@
                         },
                         "bound": {
                           "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time"
                         }
                       },
                       "required": [
                         "templateId",
                         "cohortId",
-                        "bound"
+                        "bound",
+                        "startDate"
                       ],
                       "description": "The main response data"
                     },
@@ -40877,12 +41260,18 @@
                         },
                         "bound": {
                           "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time"
                         }
                       },
                       "required": [
                         "templateId",
                         "cohortId",
-                        "bound"
+                        "bound",
+                        "startDate"
                       ],
                       "description": "The main response data"
                     },

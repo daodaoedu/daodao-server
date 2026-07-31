@@ -13,7 +13,7 @@ const addDays = (start: Date, durationDays: number): Date => {
 const copyTemplateResources = async (tx: TransactionClient, cohortId: number, userId: number, templateIds: number[]): Promise<void> => {
   const templateResources = await tx.entity_resources.findMany({
     where: { entity_type: 'practice_template', entity_id: { in: templateIds }, deleted_at: null },
-    select: { entity_id: true, resource_id: true }
+    select: { entity_id: true, resource_id: true, note: true }
   });
   if (templateResources.length === 0) return;
 
@@ -21,9 +21,10 @@ const copyTemplateResources = async (tx: TransactionClient, cohortId: number, us
     where: { user_id: userId, cohort_id: cohortId, creation_source: 'cohort_template', template_id: { in: templateIds }, deleted_at: null },
     select: { id: true, template_id: true }
   });
+  // note 帶著「第幾天使用」（day:N），要跟著複製，學員端才知道資源排在哪一天
   const links = drafts.flatMap(draft => templateResources
     .filter(resource => resource.entity_id === draft.template_id)
-    .map(resource => ({ resource_id: resource.resource_id, entity_type: 'practice', entity_id: draft.id, created_by: userId })));
+    .map(resource => ({ resource_id: resource.resource_id, entity_type: 'practice', entity_id: draft.id, created_by: userId, note: resource.note })));
   if (links.length === 0) return;
 
   await tx.entity_resources.createMany({ data: links, skipDuplicates: true });
