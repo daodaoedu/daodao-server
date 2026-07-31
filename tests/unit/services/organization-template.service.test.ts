@@ -24,20 +24,33 @@ describe('organizationTemplateService', () => {
     // 第一次 findMany 是 replaceResources 的比對（新模板尚無資源），第二次才是讀回結果
     prismaMock.entity_resources.findMany
       .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([{ entity_id: 5, resources: { id: 77, external_id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' } }] as never);
-    const result = await organizationTemplateService.create(3, 42, { title: '每日反思', practiceTimePeriods: ['evening'], resources: [{ name: '反思提示卡', url: 'https://example.com/card' }] });
-    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith({ data: { resource_id: 77, entity_type: 'practice_template', entity_id: 5, created_by: 42 } });
-    expect(result.resources).toEqual([{ id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' }]);
+      .mockResolvedValueOnce([{ entity_id: 5, note: 'day:3', resources: { id: 77, external_id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' } }] as never);
+    const result = await organizationTemplateService.create(3, 42, { title: '每日反思', practiceTimePeriods: ['evening'], resources: [{ name: '反思提示卡', url: 'https://example.com/card', dayNumber: 3 }] });
+    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith({ data: { resource_id: 77, entity_type: 'practice_template', entity_id: 5, created_by: 42, note: 'day:3' } });
+    expect(result.resources).toEqual([{ id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card', dayNumber: 3 }]);
   });
   it('skips rewriting resources when the incoming set matches what is stored', async () => {
     allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never);
     prismaMock.practice_templates.update.mockResolvedValue(template as never);
     prismaMock.entity_resources.findMany
-      .mockResolvedValueOnce([{ resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
+      .mockResolvedValueOnce([{ note: 'day:3', resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
       .mockResolvedValueOnce([] as never);
-    await organizationTemplateService.update(3, 5, 42, { title: '換個標題', resources: [{ name: '反思提示卡', url: 'https://example.com/card' }] });
+    await organizationTemplateService.update(3, 5, 42, { title: '換個標題', resources: [{ name: '反思提示卡', url: 'https://example.com/card', dayNumber: 3 }] });
     expect(prismaMock.entity_resources.updateMany).not.toHaveBeenCalled();
     expect(prismaMock.resources.create).not.toHaveBeenCalled();
+  });
+
+  it('rewrites resources when only the assigned day changes', async () => {
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5 } as never);
+    prismaMock.practice_templates.update.mockResolvedValue(template as never);
+    prismaMock.entity_resources.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.resources.create.mockResolvedValue({ id: 79, external_id: '423e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' } as never);
+    prismaMock.entity_resources.create.mockResolvedValue({ id: 3 } as never);
+    prismaMock.entity_resources.findMany
+      .mockResolvedValueOnce([{ note: 'day:3', resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
+      .mockResolvedValueOnce([] as never);
+    await organizationTemplateService.update(3, 5, 42, { resources: [{ name: '反思提示卡', url: 'https://example.com/card', dayNumber: 5 }] });
+    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ note: 'day:5' }) }));
   });
 
   it('rewrites resources when the set actually differs', async () => {

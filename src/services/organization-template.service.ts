@@ -1,9 +1,10 @@
 import { ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
+import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import type { BindOrganizationTemplateInput, CreateOrganizationTemplateInput, UpdateOrganizationTemplateInput } from '../validators/organization-template.validators';
 import { prisma } from './database/prisma.service';
 
 const select = { id: true, external_id: true, organization_id: true, title: true, practice_action: true, duration_days: true, frequency_min_days: true, frequency_max_days: true, session_duration_minutes: true, practice_time_periods: true, created_at: true, updated_at: true, cohort_templates: { where: { unbound_at: null }, select: { cohort_id: true, start_date: true } }, _count: { select: { practices: { where: { creation_source: 'cohort_template' } } } } } as const;
-type TemplateResource = { id: string; name: string; url: string | null };
+type TemplateResource = { id: string; name: string; url: string | null; dayNumber: number | null };
 const map = (row: { id: number; external_id: string; organization_id: number | null; title: string; practice_action: string | null; duration_days: number | null; frequency_min_days: number | null; frequency_max_days: number | null; session_duration_minutes: number | null; practice_time_periods: string[]; created_at: Date | null; updated_at: Date | null; cohort_templates: Array<{ cohort_id: number; start_date: Date | null }>; _count: { practices: number } }, resources: TemplateResource[] = []) => {
   if (row.organization_id === null) throw new Error('Organization template is missing organization_id');
   return { id: row.id, externalId: row.external_id, organizationId: row.organization_id, title: row.title, practiceAction: row.practice_action, durationDays: row.duration_days, frequencyMinDays: row.frequency_min_days, frequencyMaxDays: row.frequency_max_days, sessionDurationMinutes: row.session_duration_minutes, practiceTimePeriods: row.practice_time_periods, boundCohortIds: row.cohort_templates.map(item => item.cohort_id), bindings: row.cohort_templates.map(item => ({ cohortId: item.cohort_id, startDate: item.start_date })), resources, generatedDraftCount: row._count.practices, createdAt: row.created_at, updatedAt: row.updated_at };
@@ -15,35 +16,36 @@ const loadResources = async (templateIds: number[]): Promise<Map<number, Templat
   if (templateIds.length === 0) return grouped;
   const rows = await prisma.entity_resources.findMany({
     where: { entity_type: 'practice_template', entity_id: { in: templateIds }, deleted_at: null },
-    select: { entity_id: true, resources: { select: { id: true, external_id: true, name: true, url: true } } },
+    select: { entity_id: true, note: true, resources: { select: { id: true, external_id: true, name: true, url: true } } },
     orderBy: { id: 'asc' }
   });
   for (const row of rows) {
     const list = grouped.get(row.entity_id) ?? [];
-    list.push({ id: row.resources.external_id ?? String(row.resources.id), name: row.resources.name, url: row.resources.url || null });
+    list.push({ id: row.resources.external_id ?? String(row.resources.id), name: row.resources.name, url: row.resources.url || null, dayNumber: parseResourceDay(row.note) });
     grouped.set(row.entity_id, list);
   }
   return grouped;
 };
 
 /** 整批換掉模板資源：舊關聯軟刪除，新的重建（resources 本體保留，供既有草稿續用） */
-const replaceResources = async (templateId: number, userId: number, resources: Array<{ name: string; url?: string }>): Promise<void> => {
+const replaceResources = async (templateId: number, userId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>): Promise<void> => {
   // 前端每次存檔都會帶 resources（即使只改了標題），沒有這道比對就會每次重造一批
   // resources 列，孤兒資料越積越多、id 也無謂地換掉
   const existing = await prisma.entity_resources.findMany({
     where: { entity_type: 'practice_template', entity_id: templateId, deleted_at: null },
-    select: { resources: { select: { name: true, url: true } } },
+    select: { note: true, resources: { select: { name: true, url: true } } },
     orderBy: { id: 'asc' }
   });
   const unchanged = existing.length === resources.length
     && existing.every((row, index) => row.resources.name === resources[index]?.name
-      && (row.resources.url ?? '') === (resources[index]?.url ?? ''));
+      && (row.resources.url ?? '') === (resources[index]?.url ?? '')
+      && parseResourceDay(row.note) === (resources[index]?.dayNumber ?? null));
   if (unchanged) return;
 
   await prisma.entity_resources.updateMany({ where: { entity_type: 'practice_template', entity_id: templateId, deleted_at: null }, data: { deleted_at: new Date() } });
   for (const resource of resources) {
     const created = await prisma.resources.create({ data: { name: resource.name, url: resource.url || '', description: '', type: 'other', cost: 'free', created_by: userId } });
-    await prisma.entity_resources.create({ data: { resource_id: created.id, entity_type: 'practice_template', entity_id: templateId, created_by: userId } });
+    await prisma.entity_resources.create({ data: { resource_id: created.id, entity_type: 'practice_template', entity_id: templateId, created_by: userId, note: encodeResourceDay(resource.dayNumber) } });
   }
 };
 const assertOrganization = async (organizationId: number, userId: number): Promise<void> => {

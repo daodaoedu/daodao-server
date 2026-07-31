@@ -27,6 +27,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import {
   INITIAL_PROGRESS
 } from '../utils/practice-progress';
@@ -366,19 +367,24 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       throw new NotFoundError('實踐不存在');
     }
 
-    // 隱私控制：依 visibility 欄位判斷存取權限
-    const visibility = practice.visibility ?? 'public';
-    if (visibility !== 'public') {
+    // 隱私控制：依 privacy_status 判斷存取權限
+    const privacyStatus = practice.privacy_status ?? 'public';
+    if (privacyStatus === 'delayed') {
+      // delayed + completed → 視為公開；delayed + 未完成 → 僅擁有者可見
+      if (practice.status !== 'completed' && userId !== practice.user_id) {
+        throw new ForbiddenError('此實踐尚未公開');
+      }
+    } else if (privacyStatus !== 'public') {
       const canAccess = await privacyService.canAccessContent(
         userId ?? null,
         practice.user_id,
-        visibility,
+        privacyStatus,
       );
       if (!canAccess) {
-        if (visibility === 'private') {
+        if (privacyStatus === 'private') {
           throw new ForbiddenError('此實踐為私人');
         }
-        throw new ForbiddenError('此實踐僅限夥伴可見');
+        throw new ForbiddenError('此實踐尚未公開');
       }
     }
 
@@ -1102,7 +1108,7 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
  * 創建資源記錄並建立 practice-resource 關聯
  * @returns 建立的資源列表（包含 external_id）
  */
-async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<PracticeResourceEntity[]> {
+async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<PracticeResourceEntity[]> {
   if (!resources.length) return [];
 
   const createdResources: PracticeResourceEntity[] = [];
@@ -1122,13 +1128,14 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
           }
         });
 
-        // 2. 建立 practice-resource 關聯
+        // 2. 建立 practice-resource 關聯（note 承載「第幾天使用」）
         await prismaClient.entity_resources.create({
           data: {
             resource_id: createdResource.id,
             entity_type: 'practice',
             entity_id: practiceId,
-            created_by: userId
+            created_by: userId,
+            note: encodeResourceDay(resource.dayNumber)
           }
         });
 
@@ -1136,7 +1143,8 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
         createdResources.push({
           id: createdResource.external_id || String(createdResource.id),
           name: createdResource.name,
-          url: createdResource.url || undefined
+          url: createdResource.url || undefined,
+          dayNumber: resource.dayNumber ?? null
         });
       } catch (error) {
         loggerService.warn('Failed to create resource', { practiceId, resource, error });
@@ -1180,7 +1188,7 @@ async function updateTags(practiceId: number, tagNames: string[]): Promise<void>
  * 更新資源
  * 軟刪除現有關聯並建立新的資源關聯
  */
-async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<void> {
+async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<void> {
   try {
     // 1. 取得現有的 practice-resource 關聯
     const existingRelations = await prismaClient.entity_resources.findMany({
@@ -1366,7 +1374,8 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
       acc[er.entity_id].push({
         id: er.resources.external_id || String(er.resources.id),
         name: er.resources.name,
-        url: er.resources.url || undefined
+        url: er.resources.url || undefined,
+        dayNumber: parseResourceDay(er.note)
       });
       return acc;
     }, {} as Record<number, PracticeResourceEntity[]>);
@@ -1719,8 +1728,9 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
 
     const isSelf = source.user_id === userId;
     if (!isSelf) {
-      const visibility = source.visibility ?? 'public';
-      if (visibility !== 'public') {
+      const ps = source.privacy_status ?? 'public';
+      const isAccessible = ps === 'public' || (ps === 'delayed' && source.status === 'completed');
+      if (!isAccessible) {
         throw new ForbiddenError('此實踐不公開，無法複製');
       }
     }

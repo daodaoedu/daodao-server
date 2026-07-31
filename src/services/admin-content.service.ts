@@ -142,7 +142,7 @@ export async function getContentPerformance(days?: number): Promise<ContentPerfo
       LEFT JOIN contacts c ON c.id = u.contact_id
       LEFT JOIN practices sp ON sp.id = p.source_practice_id
       LEFT JOIN entity_stats es ON es.entity_id = p.id AND es.entity_type = 'practice'
-      WHERE p.deleted_at IS NULL AND p.visibility = 'public'
+      WHERE p.deleted_at IS NULL AND (p.privacy_status = 'public' OR (p.privacy_status = 'delayed' AND p.status = 'completed'))
       ORDER BY COALESCE(es.view_count, 0) DESC
     `,
 
