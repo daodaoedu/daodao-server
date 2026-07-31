@@ -1023,15 +1023,19 @@ export class CommentService implements CommentServiceInterface {
     if (targetType === 'practice') {
       const practice = await prisma.practices.findUnique({
         where: { id: internalTargetId },
-        select: { user_id: true, visibility: true, privacy_status: true },
+        select: { user_id: true, status: true, privacy_status: true },
       });
       if (!practice) {
         throw new NotFoundError('practice not found');
       }
+      const ps = practice.privacy_status ?? 'public';
+      if (ps === 'delayed') {
+        return practice.status === 'completed' || currentUserId === practice.user_id;
+      }
       return privacyService.canAccessContent(
         currentUserId,
         practice.user_id,
-        practice.visibility ?? practice.privacy_status ?? 'public'
+        ps
       );
     }
 
@@ -1040,17 +1044,21 @@ export class CommentService implements CommentServiceInterface {
         where: { id: internalTargetId },
         select: {
           practices: {
-            select: { user_id: true, visibility: true, privacy_status: true },
+            select: { user_id: true, status: true, privacy_status: true },
           },
         },
       });
       if (!checkin?.practices) {
         throw new NotFoundError('checkin not found');
       }
+      const ps = checkin.practices.privacy_status ?? 'public';
+      if (ps === 'delayed') {
+        return checkin.practices.status === 'completed' || currentUserId === checkin.practices.user_id;
+      }
       return privacyService.canAccessContent(
         currentUserId,
         checkin.practices.user_id,
-        checkin.practices.visibility ?? checkin.practices.privacy_status ?? 'public'
+        ps
       );
     }
 

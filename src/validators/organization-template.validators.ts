@@ -22,7 +22,7 @@ export const organizationTemplateResponseSchema = z.object({
   durationDays: z.number().int().nullable(), frequencyMinDays: z.number().int().nullable(), frequencyMaxDays: z.number().int().nullable(),
   sessionDurationMinutes: z.number().int().nullable(), practiceTimePeriods: z.array(z.string()), boundCohortIds: z.array(z.number().int()),
   bindings: z.array(z.object({ cohortId: z.number().int(), startDate: z.date().nullable() })),
-  resources: z.array(z.object({ id: z.string(), name: z.string(), url: z.string().nullable() })),
+  resources: z.array(z.object({ id: z.string(), name: z.string(), url: z.string().nullable(), dayNumber: z.number().int().nullable() })),
   generatedDraftCount: z.number().int().nonnegative(),
   createdAt: z.date().nullable(), updatedAt: z.date().nullable()
 });

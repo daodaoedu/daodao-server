@@ -20,7 +20,7 @@ const count = (value: bigint | number | undefined): number => Number(value ?? 0)
 export const computeCohortMetrics = async (cohortId: number, periodStart: Date, periodEnd: Date): Promise<CohortMetrics> => {
   const [enrollmentRows, practiceRows, checkinRows, tagRows, hourRows, dailyRows, blockerRows, outcomeRows] = await Promise.all([
     prisma.$queryRaw<Array<{ enrolled: bigint; exited: bigint }>>`
-      SELECT COUNT(*) FILTER (WHERE status IN ('joined','exited','removed'))::bigint AS enrolled,
+      SELECT COUNT(*) FILTER (WHERE status IN ('joined','exited'))::bigint AS enrolled,
              COUNT(*) FILTER (WHERE status = 'exited')::bigint AS exited
       FROM cohort_enrollments WHERE cohort_id = ${cohortId}
     `,
