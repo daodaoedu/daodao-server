@@ -369,8 +369,12 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
 
     // 隱私控制：依 privacy_status 判斷存取權限
     const privacyStatus = practice.privacy_status ?? 'public';
-    const isDelayedAndCompleted = privacyStatus === 'delayed' && practice.status === 'completed';
-    if (privacyStatus !== 'public' && !isDelayedAndCompleted) {
+    if (privacyStatus === 'delayed') {
+      // delayed + completed → 視為公開；delayed + 未完成 → 僅擁有者可見
+      if (practice.status !== 'completed' && userId !== practice.user_id) {
+        throw new ForbiddenError('此實踐尚未公開');
+      }
+    } else if (privacyStatus !== 'public') {
       const canAccess = await privacyService.canAccessContent(
         userId ?? null,
         practice.user_id,

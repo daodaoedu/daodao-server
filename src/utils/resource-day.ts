@@ -3,7 +3,7 @@
  * DB 沒有專用欄位；note 目前無其他用途，用固定前綴避免與未來的自由文字備註混淆。
  */
 export const encodeResourceDay = (dayNumber: number | null | undefined): string | null =>
-  dayNumber ? `day:${dayNumber}` : null;
+  dayNumber != null ? `day:${dayNumber}` : null;
 
 export const parseResourceDay = (note: string | null | undefined): number | null => {
   const match = note?.match(/^day:(\d+)$/);
