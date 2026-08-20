@@ -11,7 +11,6 @@ jobs:
     permissions:
       pull-requests: write
       contents: read
-      models: read
 
     steps:
       - name: Checkout
@@ -53,15 +52,17 @@ jobs:
       - name: Review with GitHub Models
         id: review
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GitHub Models 已退役（2026-08 起 410），review 引擎改用 Cloudflare Workers AI
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_WORKERS_AI_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_API_TOKEN }}
           DIFF: ${{ steps.diff.outputs.DIFF }}
           STAT: ${{ steps.diff.outputs.STAT }}
           PACK: ${{ steps.pack.outputs.PACK }}
           BASE: ${{ github.event.pull_request.base.ref }}
           HEAD: ${{ github.event.pull_request.head.ref }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://models.inference.ai.azure.com/chat/completions" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
+          RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/ai/v1/chat/completions" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
               --arg diff "$DIFF" \
@@ -70,7 +71,7 @@ jobs:
               --arg base "$BASE" \
               --arg head "$HEAD" \
               '{
-                model: "gpt-4o-mini",
+                model: "@cf/openai/gpt-oss-120b",
                 messages: [
                   {
                     role: "system",
