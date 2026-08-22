@@ -6088,6 +6088,281 @@
           }
         ]
       },
+      "FutureLetter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "currentSelf": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "scheduled",
+              "delivered",
+              "deleted"
+            ]
+          },
+          "deliverAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "openedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "practiceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "practice": {
+            "$ref": "#/components/schemas/FutureLetterPractice"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "currentSelf",
+          "message",
+          "status",
+          "deliverAt",
+          "sentAt",
+          "deliveredAt",
+          "openedAt",
+          "practiceId",
+          "practice",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "FutureLetterPractice": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "FutureLetterApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FutureLetter"
+              },
+              {
+                "description": "The main response data"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "description": "Search query used for filtering results"
+              },
+              "searchTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Time taken to execute the search query in milliseconds"
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Applied filters for the request"
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Count of items per category"
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Aggregated statistical data"
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Unique identifier for request tracking"
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "description": "Whether the response was served from cache"
+              },
+              "processingTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Total processing time in milliseconds"
+              }
+            },
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Optional metadata about the response",
+            "examples": [
+              {
+                "searchQuery": "JavaScript教程",
+                "searchTime": 45,
+                "cacheHit": false,
+                "processingTime": 123.5,
+                "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+              },
+              {
+                "categoryCounts": {
+                  "前端開發": 25,
+                  "後端開發": 18,
+                  "資料科學": 12
+                },
+                "filters": {
+                  "difficulty": "intermediate",
+                  "language": "zh-TW"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "Standard success response format",
+        "examples": [
+          {
+            "success": true,
+            "data": {
+              "id": 123,
+              "_id": "550e8400-e29b-41d4-a716-446655440000",
+              "name": "JavaScript 基礎教程",
+              "description": "從零開始學習 JavaScript 程式設計",
+              "status": "published"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          },
+          {
+            "success": true,
+            "data": {
+              "userId": 456,
+              "username": "john_doe",
+              "email": "john@example.com",
+              "role": "student"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z",
+            "meta": {
+              "cacheHit": true,
+              "processingTime": 23.1
+            }
+          }
+        ]
+      },
+      "FutureLetterListApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FutureLetter"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "currentPage": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              },
+              "totalItems": {
+                "type": "number"
+              },
+              "itemsPerPage": {
+                "type": "number"
+              },
+              "hasNext": {
+                "type": "boolean"
+              },
+              "hasPrev": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "currentPage",
+              "totalPages",
+              "totalItems",
+              "itemsPerPage",
+              "hasNext",
+              "hasPrev"
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "pagination",
+          "timestamp"
+        ]
+      },
       "IdeaResource": {
         "type": "object",
         "properties": {
@@ -14357,6 +14632,144 @@
           "deletedCount": 5
         }
       },
+      "TimelineEntry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "check-in",
+              "milestone",
+              "letter",
+              "learning-dna"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "date": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "nullable": true
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "description",
+          "date",
+          "meta"
+        ]
+      },
+      "TimelineApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEntry"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "cursors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "end": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "start",
+                  "end"
+                ]
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "count": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "hasNext": {
+                "type": "boolean"
+              },
+              "hasPrev": {
+                "type": "boolean"
+              },
+              "nextCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "prevCursor": {
+                "type": "string",
+                "nullable": true
+              },
+              "totalEstimate": {
+                "type": "number",
+                "nullable": true
+              },
+              "parentTotalEstimate": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "required": [
+              "cursors",
+              "hasMore",
+              "count",
+              "limit",
+              "hasNext",
+              "hasPrev",
+              "nextCursor",
+              "prevCursor",
+              "totalEstimate",
+              "parentTotalEstimate"
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "pagination",
+          "timestamp"
+        ]
+      },
       "CustomIdRequest": {
         "type": "object",
         "properties": {
@@ -17600,6 +18013,75 @@
         },
         "required": [
           "action"
+        ]
+      },
+      "CreateFutureLetter": {
+        "type": "object",
+        "properties": {
+          "currentSelf": {
+            "type": "string",
+            "default": "",
+            "description": "寫信當下的自己，草稿可空",
+            "example": "我正在開始新的學習計畫"
+          },
+          "message": {
+            "type": "string",
+            "default": "",
+            "description": "想對未來的自己說的話，草稿可空",
+            "example": "希望你仍然享受學習"
+          },
+          "deliverAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "草稿預填的送達時間",
+            "example": "2026-09-01T08:00:00.000Z"
+          },
+          "practiceId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "關聯主題實踐的 UUID；null 表示清除關聯",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      },
+      "UpdateFutureLetter": {
+        "type": "object",
+        "properties": {
+          "currentSelf": {
+            "type": "string",
+            "description": "寫信當下的自己，草稿可空"
+          },
+          "message": {
+            "type": "string",
+            "description": "想對未來的自己說的話，草稿可空"
+          },
+          "deliverAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "草稿預填的送達時間"
+          },
+          "practiceId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "關聯主題實踐的 UUID；null 表示清除關聯",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      },
+      "SendFutureLetter": {
+        "type": "object",
+        "properties": {
+          "deliverAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "送達時間，必須介於現在 3 到 90 天後（含邊界）",
+            "example": "2026-09-01T08:00:00.000Z"
+          }
+        },
+        "required": [
+          "deliverAt"
         ]
       },
       "HealthResponse": {
@@ -29317,6 +29799,394 @@
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/me/future-letters": {
+      "post": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "建立未來信草稿",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFutureLetter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "草稿已建立",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureLetterApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "列出我的未來信",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "scheduled",
+                "delivered"
+              ],
+              "description": "信件狀態篩選",
+              "example": "draft"
+            },
+            "required": false,
+            "description": "信件狀態篩選",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "description": "頁碼",
+              "example": 1
+            },
+            "required": false,
+            "description": "頁碼",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "每頁筆數",
+              "example": 20
+            },
+            "required": false,
+            "description": "每頁筆數",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "信件列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureLetterListApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/me/future-letters/{id}": {
+      "get": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "取得單封未來信",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "信件 UUID",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "信件 UUID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "信件內容",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureLetterApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "更新未來信草稿",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "信件 UUID",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "信件 UUID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFutureLetter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "草稿已更新",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureLetterApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "刪除未來信",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "信件 UUID",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "信件 UUID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "信件已刪除"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/me/future-letters/{id}/send": {
+      "post": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "寄出並排程未來信",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "信件 UUID",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "信件 UUID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendFutureLetter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "信件已排程",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureLetterApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/me/future-letters/{id}/open": {
+      "post": {
+        "tags": [
+          "Future Letters"
+        ],
+        "summary": "開啟已送達的未來信",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "信件 UUID",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "信件 UUID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "信件已開啟並回傳 owner-only 內容",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FutureLetterApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -68769,6 +69639,67 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/me/timeline": {
+      "get": {
+        "tags": [
+          "Timeline"
+        ],
+        "summary": "取得我的學習時間軸",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "上一頁回傳的不透明複合游標；暫時相容舊版 ISO 時間游標",
+              "example": "eyJkYXRlIjoiMjAyNi0wOC0wMVQwODowMDowMC4wMDBaIiwia2V5IjoibGV0dGVyOjU1MGU4NDAwIn0"
+            },
+            "required": false,
+            "description": "上一頁回傳的不透明複合游標；暫時相容舊版 ISO 時間游標",
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "每頁筆數",
+              "example": 20
+            },
+            "required": false,
+            "description": "每頁筆數",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "混合學習事件流",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"

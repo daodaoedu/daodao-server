@@ -21,12 +21,13 @@ function generateRequestId(): string {
 /**
  * 判斷是否需要記錄請求體（排除敏感資料）
  */
-function shouldLogRequestBody(path: string, method: string): boolean {
+export function shouldLogRequestBody(path: string, method: string): boolean {
   const sensitivePatterns = [
     /\/auth\/login/,
     /\/auth\/register/,
     /\/auth\/password/,
     /\/email/,
+    /\/future-letters(?:\/|$)/,
   ];
   
   return !sensitivePatterns.some(pattern => pattern.test(path)) && 
@@ -49,6 +50,26 @@ function sanitizeData(data: unknown): unknown {
   }
   
   return sanitized;
+}
+
+export function sanitizeHeadersForLogging(headers: unknown): unknown {
+  if (!headers || typeof headers !== 'object') return headers;
+
+  const sanitized = sanitizeData(headers) as Record<string, unknown>;
+  for (const key of Object.keys(sanitized)) {
+    if (key.toLowerCase() === 'cookie' || key.toLowerCase() === 'set-cookie') {
+      sanitized[key] = '[REDACTED]';
+    }
+  }
+  return sanitized;
+}
+
+function isFutureLetterPath(path: string): boolean {
+  return /\/future-letters(?:\/|$)/.test(path);
+}
+
+export function sanitizeRequestBodyForLogging(path: string, data: unknown): unknown {
+  return isFutureLetterPath(path) ? '[REDACTED]' : sanitizeData(data);
 }
 
 /**
@@ -219,8 +240,8 @@ export const errorLogger = (
       message: error.message,
       stack: error.stack
     },
-    headers: sanitizeData(req.headers),
-    body: sanitizeData(req.body)
+    headers: sanitizeHeadersForLogging(req.headers),
+    body: sanitizeRequestBodyForLogging(req.originalUrl, req.body)
   });
 
   next(error);
