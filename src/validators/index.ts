@@ -44,4 +44,6 @@ export * from './cohort-outcome.validators';
 export * from './cohort-export.validators';
 export * from './cohort-feed.validators';
 export * from './cohort-encouragement.validators';
+export * from './future-letter.validators';
+export * from './timeline.validators';
 export { default as validate, validate as validateMiddleware } from '../middleware/validation.middleware';
