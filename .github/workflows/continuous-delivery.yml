@@ -209,33 +209,35 @@ jobs:
           trap 'docker rm -f test-container >/dev/null 2>&1 || true' EXIT
           
           # 測試映像是否可以啟動
-          docker run --rm -d --name test-container \
+          docker run -d --name test-container \
             -p 3001:3000 \
             -e NODE_ENV=${{ env.NODE_ENV }} \
+            -e SESSION_SECRET=future-letter-image-smoke-session-secret \
             -e FUTURE_LETTER_ACTIVE_KEY_VERSION=v1 \
             -e 'FUTURE_LETTER_ENCRYPTION_KEYS={"v1":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}' \
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
-          
-          # 等待容器啟動
-          sleep 10
-          
-          # 檢查容器是否在運行
-          if docker ps | grep test-container; then
-            echo "✅ Container started successfully"
-          else
-            echo "❌ Container failed to start"
-            docker logs test-container
-            exit 1
-          fi
-          
-          # 基本健康檢查 (如果應用有健康檢查端點)
-          if curl -f http://localhost:3001/api/v1/health > /dev/null 2>&1; then
-            echo "✅ Health check passed"
-          else
-            echo "❌ Health check failed"
-            docker logs test-container
-            exit 1
-          fi
+
+          # 最多等待 60 秒，避免固定 sleep 對啟動速度過度敏感
+          for attempt in $(seq 1 12); do
+            if [ "$(docker inspect -f '{{.State.Running}}' test-container 2>/dev/null || true)" != "true" ]; then
+              echo "❌ Container exited before becoming healthy"
+              docker logs test-container
+              exit 1
+            fi
+
+            if curl -f http://localhost:3001/api/v1/health > /dev/null 2>&1; then
+              echo "✅ Health check passed"
+              break
+            fi
+
+            if [ "$attempt" -eq 12 ]; then
+              echo "❌ Health check timed out after 60 seconds"
+              docker logs test-container
+              exit 1
+            fi
+
+            sleep 5
+          done
           
           # 清理測試容器
           docker stop test-container || true
