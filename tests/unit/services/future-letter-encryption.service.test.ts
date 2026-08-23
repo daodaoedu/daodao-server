@@ -51,4 +51,14 @@ describe('Future Letter authenticated encryption', () => {
     resetFutureLetterEncryptionConfigForTests();
     expect(() => getFutureLetterEncryptionConfig()).toThrow('active key version missing');
   });
+
+  it('defaults the active key version to v1', () => {
+    delete process.env.FUTURE_LETTER_ACTIVE_KEY_VERSION;
+    process.env.FUTURE_LETTER_ENCRYPTION_KEYS = JSON.stringify({
+      v1: Buffer.alloc(32).toString('base64'),
+    });
+    resetFutureLetterEncryptionConfigForTests();
+
+    expect(getFutureLetterEncryptionConfig().activeVersion).toBe('v1');
+  });
 });

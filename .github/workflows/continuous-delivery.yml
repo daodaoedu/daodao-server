@@ -206,11 +206,14 @@ jobs:
       - name: Verify Docker image
         run: |
           echo "🧪 Verifying Docker image..."
+          trap 'docker rm -f test-container >/dev/null 2>&1 || true' EXIT
           
           # 測試映像是否可以啟動
           docker run --rm -d --name test-container \
             -p 3001:3000 \
             -e NODE_ENV=${{ env.NODE_ENV }} \
+            -e FUTURE_LETTER_ACTIVE_KEY_VERSION=v1 \
+            -e 'FUTURE_LETTER_ENCRYPTION_KEYS={"v1":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}' \
             ${{ secrets.DOCKER_HUB_USERNAME }}/app:${{ env.IMAGE_TAG }}-${{ github.sha }}
           
           # 等待容器啟動
@@ -229,7 +232,9 @@ jobs:
           if curl -f http://localhost:3001/api/v1/health > /dev/null 2>&1; then
             echo "✅ Health check passed"
           else
-            echo "⚠️  Health check failed or endpoint not available"
+            echo "❌ Health check failed"
+            docker logs test-container
+            exit 1
           fi
           
           # 清理測試容器
@@ -290,9 +295,20 @@ jobs:
           APP_ENV: ${{ needs.build.outputs.image-tag == 'dev' && 'dev' || 'prod' }}
           APP_SERVICE: ${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || (needs.build.outputs.image-tag == 'production' && 'production_app' || 'dev_app') }}
           COMMIT_SHA: ${{ github.sha }}
+          FUTURE_LETTER_ENCRYPTION_KEYS: ${{ secrets.FUTURE_LETTER_ENCRYPTION_KEYS }}
         run: |
-          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=10 root@$LINODE_INSTANCE_IP << 'ENDSSH'
+          if [ -z "$FUTURE_LETTER_ENCRYPTION_KEYS" ]; then
+            echo "❌ FUTURE_LETTER_ENCRYPTION_KEYS is not configured for this GitHub environment"
+            exit 1
+          fi
+
+          FUTURE_LETTER_ENCRYPTION_KEYS_B64=$(printf '%s' "$FUTURE_LETTER_ENCRYPTION_KEYS" | base64 | tr -d '\n')
+          echo "::add-mask::$FUTURE_LETTER_ENCRYPTION_KEYS_B64"
+
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=10 \
+            root@$LINODE_INSTANCE_IP bash -s -- "$FUTURE_LETTER_ENCRYPTION_KEYS_B64" << 'ENDSSH'
             set -e
+            DEPLOY_FUTURE_LETTER_ENCRYPTION_KEYS=$(printf '%s' "$1" | base64 --decode)
             export APP_DIR=/root/daodao-server
             export COMPOSE_FILE=docker-compose.yaml
             export APP_ENV=${{ env.APP_ENV }}
@@ -390,6 +406,28 @@ jobs:
                 echo "Created .env.${env} from template"
               fi
             done
+
+            ENV_FILE=.env.${APP_ENV}
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "❌ Required environment file $ENV_FILE is missing"
+              exit 1
+            fi
+
+            persist_env_value() {
+              key="$1"
+              value="$2"
+              file="$3"
+              temp_file=$(mktemp)
+              grep -v "^${key}=" "$file" > "$temp_file" || true
+              printf "%s='%s'\n" "$key" "$value" >> "$temp_file"
+              chmod 600 "$temp_file"
+              mv "$temp_file" "$file"
+            }
+
+            persist_env_value "FUTURE_LETTER_ACTIVE_KEY_VERSION" "v1" "$ENV_FILE"
+            persist_env_value "FUTURE_LETTER_ENCRYPTION_KEYS" "$DEPLOY_FUTURE_LETTER_ENCRYPTION_KEYS" "$ENV_FILE"
+            unset DEPLOY_FUTURE_LETTER_ENCRYPTION_KEYS
+            echo "Future Letter encryption configuration persisted for $APP_ENV"
 
             # 載入環境變數
             set -o allexport && source .env.${APP_ENV} && set +o allexport
