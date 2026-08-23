@@ -20,10 +20,10 @@ function decodeKey(version: string, encoded: unknown): Buffer {
 export function getFutureLetterEncryptionConfig(): FutureLetterEncryptionConfig {
   if (cachedConfig) return cachedConfig;
 
-  const activeVersion = process.env.FUTURE_LETTER_ACTIVE_KEY_VERSION;
+  const activeVersion = process.env.FUTURE_LETTER_ACTIVE_KEY_VERSION || 'v1';
   const serializedKeys = process.env.FUTURE_LETTER_ENCRYPTION_KEYS;
-  if (!activeVersion || !serializedKeys) {
-    throw new Error('FUTURE_LETTER_ACTIVE_KEY_VERSION and FUTURE_LETTER_ENCRYPTION_KEYS are required');
+  if (!serializedKeys) {
+    throw new Error('FUTURE_LETTER_ENCRYPTION_KEYS is required');
   }
 
   let parsed: unknown;
