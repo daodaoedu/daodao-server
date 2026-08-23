@@ -12,6 +12,9 @@
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 
+// 實踐總天數只能是這 4 種選項
+export const PRACTICE_DURATION_DAYS_OPTIONS = [7, 14, 21, 30] as const;
+
 // 基礎枚舉定義
 export const practiceStatusSchema = z.enum(['draft', 'not_started', 'active', 'completed', 'archived']).openapi({
   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)',
@@ -143,11 +146,12 @@ export const createPracticeSchema = z.object({
     message: '持續天數必須是數字'
   })
     .int('持續天數必須是整數')
-    .min(7, '持續天數最少 7 天')
-    .max(90, '持續天數最多 90 天')
+    .refine((value) => PRACTICE_DURATION_DAYS_OPTIONS.includes(value as (typeof PRACTICE_DURATION_DAYS_OPTIONS)[number]), {
+      message: '持續天數只能是 7、14、21 或 30 天'
+    })
     .optional()
     .openapi({
-      description: '實踐持續天數',
+      description: '實踐持續天數（只能是 7/14/21/30 天）',
       example: 14,
       examples: [7, 14, 21, 30]
     }),
@@ -293,7 +297,11 @@ export const updatePracticeSchema = z.object({
   title: z.string().min(1, '標題不能為空').max(100, '標題不可超過100字').optional(),
   practiceAction: z.string().max(200, '實踐行動描述不可超過200字').optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD').optional(),
-  durationDays: z.number().int().min(7).max(90).optional(),
+  durationDays: z.number().int()
+    .refine((value) => PRACTICE_DURATION_DAYS_OPTIONS.includes(value as (typeof PRACTICE_DURATION_DAYS_OPTIONS)[number]), {
+      message: '持續天數只能是 7、14、21 或 30 天'
+    })
+    .optional(),
   frequencyMinDays: z.number().int().min(1).max(7).optional(),
   frequencyMaxDays: z.number().int().min(1).max(7).optional(),
   sessionDurationMinutes: z.number().int().min(5).max(240).optional(),
