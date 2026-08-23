@@ -397,6 +397,34 @@ model practice_checkins {
   @@index([user_id], map: "idx_practice_checkins_user_id")
 }
 
+/// Letters that users schedule for delivery to their future selves.
+/// The database CHECK constraint restricts status to draft, scheduled, delivered, or deleted.
+model future_letters {
+  id                      Int        @id @default(autoincrement())
+  external_id             String     @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                 Int
+  current_self            String?
+  message                 String?
+  content_ciphertext      Bytes?
+  encryption_iv           Bytes?
+  encryption_auth_tag     Bytes?
+  encryption_version      String?    @db.VarChar(32)
+  status                  String     @default("draft") @db.VarChar(20)
+  deliver_at              DateTime?  @db.Timestamptz(6)
+  sent_at                 DateTime?  @db.Timestamptz(6)
+  delivered_at            DateTime?  @db.Timestamptz(6)
+  opened_at               DateTime?  @db.Timestamptz(6)
+  practice_id             Int?
+  practice_title_snapshot String?
+  created_at              DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime   @default(now()) @db.Timestamptz(6)
+  practices               practices? @relation(fields: [practice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  users                   users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_future_letters_user_id")
+  @@index([status, deliver_at], map: "idx_future_letters_status_deliver_at")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model practices {
   id                       Int                       @id @default(autoincrement())
@@ -432,6 +460,7 @@ model practices {
   is_featured              Boolean                   @default(false)
   featured_start_at        DateTime?                 @db.Timestamptz(6)
   featured_end_at          DateTime?                 @db.Timestamptz(6)
+  future_letters           future_letters[]
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
@@ -835,6 +864,7 @@ model users {
   entity_resources                     entity_resources[]
   entity_tags                          entity_tags[]
   follows                              follows[]
+  future_letters                       future_letters[]
   groups                               groups[]
   ideas                                ideas[]
   interaction_counts_as_user_a         interaction_counts[]       @relation("interaction_counts_user_a_idTousers")
