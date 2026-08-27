@@ -245,7 +245,8 @@ async function getSpaceDetail(userId: number, externalId: string) {
     prisma.space_practices.count({ where: { space_id: space.id, practices: { deleted_at: null } } }),
     prisma.space_blocks.count({
       where: {
-        space_home_pages: { space_id: space.id },
+        // 首頁仍是草稿時公開連結不會露出任何區塊，計數須同步為 0
+        space_home_pages: { space_id: space.id, status: 'published' },
         OR: [
           { publish_status: 'published' },
           { publish_status: 'scheduled', scheduled_at: { lte: new Date() } },
@@ -438,7 +439,7 @@ async function createBlock(userId: number, externalId: string, input: CreateBloc
 
 /** Blur-save a block's content; child rows are replaced wholesale (FR-6.10). */
 async function updateBlock(userId: number, externalId: string, blockId: number, input: UpdateBlockInput) {
-  const { block } = await requireHostBlock(userId, externalId, blockId);
+  const { space, block } = await requireHostBlock(userId, externalId, blockId);
   if (input.body !== undefined && block.block_type !== 'text') throw new BadRequestError('僅自由文字區塊可編輯內文');
   if (input.links !== undefined && block.block_type !== 'resources') throw new BadRequestError('僅資源連結區塊可編輯連結');
   if (input.events !== undefined && block.block_type !== 'calendar') throw new BadRequestError('僅日曆區塊可編輯活動');
@@ -447,7 +448,12 @@ async function updateBlock(userId: number, externalId: string, blockId: number, 
   const practiceExternalIds = [...new Set((input.links ?? []).flatMap(link => link.practiceIds))];
   const practiceRows = practiceExternalIds.length > 0
     ? await prisma.practices.findMany({
-        where: { external_id: { in: practiceExternalIds }, deleted_at: null },
+        // 只允許標記本空間內的實踐，避免任意 UUID 讓成員/公開頁洩漏他處實踐標題
+        where: {
+          external_id: { in: practiceExternalIds },
+          deleted_at: null,
+          space_practices: { some: { space_id: space.id } },
+        },
         select: { id: true, external_id: true },
       })
     : [];
