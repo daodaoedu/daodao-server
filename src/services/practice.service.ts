@@ -41,6 +41,7 @@ import {
   stripLockedFields
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
+import { assertChallengePracticeCopyable, assertChallengePracticeUpdatable, isChallengeCohort } from './challenge-acl.service';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
@@ -715,6 +716,12 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       where: { practice_id: id }
     });
     const hasCheckIns = checkInCount > 0;
+
+    // 共同挑戰實踐：名稱、期間、隱私由挑戰統一設定，不可修改
+    assertChallengePracticeUpdatable(
+      await isChallengeCohort(existingPractice.cohort_id),
+      data as unknown as Record<string, unknown>
+    );
 
     // 有打卡記錄時，自動移除鎖定欄位，允許其餘欄位正常更新
     data = stripLockedFields(data, hasCheckIns);
@@ -1725,6 +1732,9 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
     if (!source || source.deleted_at !== null) {
       throw new NotFoundError('實踐不存在');
     }
+
+    // 共同挑戰實踐不可被複製（FR-CC-09），加入挑戰是唯一途徑
+    assertChallengePracticeCopyable(await isChallengeCohort(source.cohort_id));
 
     const isSelf = source.user_id === userId;
     if (!isSelf) {

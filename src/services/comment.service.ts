@@ -44,6 +44,7 @@ import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { loggerService } from './logging/logger.service';
 import { privacyService } from './privacy.service';
+import { challengeAclService } from './challenge-acl.service';
 
 /**
  * Comment Service Class
@@ -70,7 +71,10 @@ export class CommentService implements CommentServiceInterface {
         // Validate target entity exists and get internal ID
         const targetEntity = await idConverter.getTargetEntity(targetType as EntityType, targetId);
         const internalTargetId = targetEntity.id;
-        
+
+        // 共同挑戰內容僅參與者可留言（challenge-witnessing ACL）
+        await challengeAclService.assertChallengeCommentAllowed(targetType, internalTargetId, userId);
+
         // Validate parent comment if provided
         let parentComment: Awaited<ReturnType<typeof tx.comments.findUnique>> | null = null;
         if (parentId) {
