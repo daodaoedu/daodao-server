@@ -189,7 +189,8 @@ async function listMySpaces(userId: number) {
       kind: 'event_course' as const,
       id: space.external_id,
       name: space.name,
-      host: space.name,
+      // 活動課程卡的 host 顯示所屬單位/副標（無副標時退回空間名稱）
+      host: space.subtitle ?? space.name,
       memberCount: space._count.space_members,
       memberAvatars: toAvatars(space.space_members as unknown as MemberWithAvatar[]),
       hasActivePractice: space.space_practices.length > 0,

@@ -17,6 +17,7 @@ import {
   spaceListResponseSchema,
   spaceMembersResponseSchema,
   spacePracticesResponseSchema,
+  publicSpaceResponseSchema,
   spacePublicTokenParamSchema,
   updateBlockSchema,
 } from '../validators/space.validators';
@@ -38,7 +39,7 @@ registry.registerPath({
 registry.registerPath({
   method: 'get', path: '/api/v1/spaces/public/{token}', tags: ['Spaces'], summary: '公開連結的訪客視角空間頁',
   request: { params: spacePublicTokenParamSchema },
-  responses: { 200: { description: '空間公開內容（成員視角過濾）' }, ...errors },
+  responses: { 200: { description: '空間公開內容（成員視角過濾）', content: { 'application/json': { schema: publicSpaceResponseSchema } } }, ...errors },
 });
 registry.registerPath({
   method: 'get', path: '/api/v1/spaces/{id}', tags: ['Spaces'], summary: '活動課程空間標頭資訊',
