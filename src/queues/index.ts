@@ -51,6 +51,24 @@ export {
   type PracticeStatusJobData
 } from './practice-status.queue';
 
+// Challenge Email Queue（共同挑戰信件節點）
+export {
+  CHALLENGE_EMAIL_QUEUE_NAME,
+  createChallengeEmailQueue,
+  registerChallengeEmailScheduledJobs,
+  enqueueChallengeWelcomeEmail,
+  setChallengeEmailQueue,
+  getChallengeEmailQueue,
+  type ChallengeEmailJobData
+} from './challenge-email.queue';
+
+// Challenge Email Worker
+export {
+  createChallengeEmailWorker,
+  closeChallengeEmailWorker,
+  type ChallengeEmailWorkerOptions
+} from './challenge-email.worker';
+
 // Practice Status Worker
 export {
   createPracticeStatusWorker,

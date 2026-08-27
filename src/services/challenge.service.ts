@@ -1,4 +1,5 @@
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
+import { loggerService } from './logging/logger.service';
 import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
@@ -180,6 +181,18 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
     });
     return { enrollmentId: enrollment.id, cohortId: enrollment.cohort_id, practiceExternalId: practice?.external_id ?? null };
   });
+
+  // Welcome 信（CE01）：加入後立即寄送；enqueue 失敗不影響加入結果
+  try {
+    const { enqueueChallengeWelcomeEmail } = await import('../queues/challenge-email.queue');
+    await enqueueChallengeWelcomeEmail(result.cohortId, userId);
+  } catch (error) {
+    loggerService.error('Failed to enqueue challenge welcome email', {
+      cohortId: result.cohortId,
+      userId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 
   return {
     enrollmentId: result.enrollmentId,
