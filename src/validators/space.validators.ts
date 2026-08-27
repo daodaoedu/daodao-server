@@ -155,6 +155,19 @@ const blockSchema = z.object({
   })),
 }).openapi('SpaceBlock');
 
+export const publicSpaceResponseSchema = apiSuccessResponseSchema(z.object({
+  id: z.string(),
+  name: z.string(),
+  subtitle: z.string().nullable(),
+  memberCount: z.number().int(),
+  memberAvatars: z.array(z.object({ nickname: z.string().nullable(), avatar: z.string().nullable() })),
+  practiceCount: z.number().int(),
+  homePage: z.object({
+    status: z.enum(['draft', 'published']),
+    blocks: z.array(z.lazy(() => blockSchema)),
+  }).nullable(),
+}).openapi('PublicSpace'));
+
 export const homePageResponseSchema = apiSuccessResponseSchema(z.object({
   status: z.enum(['draft', 'published']),
   blocks: z.array(blockSchema).openapi({ description: '依檢視者過濾後的區塊；成員看不到草稿與未到時排程（FR-7.2）' }),
