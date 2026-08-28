@@ -29,12 +29,7 @@ import {
   GetMentionCandidatesParams,
   MentionCandidate
 } from '../types/comment.types';
-import {
-  NotFoundError,
-  ForbiddenError,
-  BadRequestError,
-  InternalServerError
-} from '../middleware/error.middleware';
+import { AppError, NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../middleware/error.middleware';
 import {
   ApiSuccessResponse
 } from '../types/api-response.types';
@@ -278,7 +273,8 @@ export class CommentService implements CommentServiceInterface {
         return createSuccessResponse(formattedComment);
         
       } catch (error) {
-        if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        // 業務錯誤（404／400／403 等 AppError）原樣往外拋，例如共同挑戰的留言 ACL（僅參與者可留言）
+        if (error instanceof AppError) {
           throw error;
         }
         throw new InternalServerError(`Failed to create comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
