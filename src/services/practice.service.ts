@@ -429,6 +429,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
     const practiceEntity: PracticeEntity = {
       id: practice.external_id || '',
       title: practice.title,
+      // 前端據此隱藏「我也想實踐」並鎖定名稱／期間／隱私（FR-CC-09、FR-CC-10）
+      isChallenge: await isChallengeCohort(practice.cohort_id),
       practiceAction: practice.practice_action || undefined,
       startDate: practice.start_date?.toISOString().split('T')[0],
       endDate: practice.end_date?.toISOString().split('T')[0],
