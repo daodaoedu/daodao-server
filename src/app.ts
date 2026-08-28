@@ -78,6 +78,7 @@ import organizationRoutes from './routes/organization.routes';
 import cohortJoinRoutes from './routes/cohort-join.routes';
 import challengeRoutes from './routes/challenge.routes';
 import adminInspirationRoutes from './routes/admin-inspiration.routes';
+import adminChallengeRoutes from './routes/admin-challenge.routes';
 import futureLetterRoutes from './routes/future-letter.routes';
 import timelineRoutes from './routes/timeline.routes';
 // 引入活動追蹤中間件
@@ -138,7 +139,7 @@ export function setupTypescriptRoutes(app: express.Application) {
     notificationRoutes, followRoutes, connectionRoutes,
     buddyRequestRouter, practiceBuddyRequestRouter,
     roadmapRoutes, wishRoutes, adminRoadmapRoutes, organizationRoutes, cohortJoinRoutes,
-    futureLetterRoutes, timelineRoutes, challengeRoutes, adminInspirationRoutes
+    futureLetterRoutes, timelineRoutes, challengeRoutes, adminInspirationRoutes, adminChallengeRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -336,6 +337,9 @@ export function setupTypescriptRoutes(app: express.Application) {
 
   app.use('/api/v1/admin/inspiration-decks', adminInspirationRoutes);
   console.log('🎴 v1 靈感卡管理路由已註冊 - 可在 /api/v1/admin/inspiration-decks 訪問');
+
+  app.use('/api/v1/admin/challenges', adminChallengeRoutes);
+  console.log('🛠️ v1 共同挑戰管理路由已註冊 - 可在 /api/v1/admin/challenges 訪問');
 
   app.use('/api/v1/me/future-letters', futureLetterRoutes);
   console.log('💌 v1 未來信路由已註冊 - 可在 /api/v1/me/future-letters 訪問');

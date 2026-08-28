@@ -1,6 +1,7 @@
 import type { CreateProgramInput, ProgramResponse, UpdateProgramInput } from '../validators/program.validators';
 import { ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
+import { PROGRAM_KINDS } from '../constants/program-kind';
 
 const select = {
   id: true, organization_id: true, name: true, description: true,
@@ -37,7 +38,8 @@ const getOwned = async (programId: number, userId: number) => {
 
 const list = async (organizationId: number, userId: number): Promise<ProgramResponse[]> => {
   await assertActiveOrganization(organizationId, userId);
-  const rows = await prisma.programs.findMany({ where: { organization_id: organizationId, deleted_at: null }, select, orderBy: { created_at: 'asc' } });
+  // 共同挑戰主題（kind='challenge'）由 admin 後台管理，不混入組織 owner 的燈塔介面
+  const rows = await prisma.programs.findMany({ where: { organization_id: organizationId, deleted_at: null, kind: PROGRAM_KINDS.LIGHTHOUSE }, select, orderBy: { created_at: 'asc' } });
   return rows.map(toResponse);
 };
 const create = async (input: CreateProgramInput, userId: number): Promise<ProgramResponse> => {
