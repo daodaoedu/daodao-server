@@ -33599,6 +33599,11 @@ export interface components {
              */
             title: string;
             /**
+             * @description 是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）
+             * @example false
+             */
+            isChallenge?: boolean;
+            /**
              * @description 實踐行動描述
              * @example 閱讀技術書籍或文章
              */
