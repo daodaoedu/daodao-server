@@ -152,6 +152,16 @@ export interface CreatePracticeRequest {
   creationMethod?: 'self_created' | 'copied' | 'action_generator';
 }
 
+/** 拆段批次建立請求（daodaoedu/daodao#141）：2–3 段依序、日期接續 */
+export interface BatchCreatePracticeRequest {
+  segments: CreatePracticeRequest[];
+}
+
+/** 拆段批次建立結果：與送出順序一致 */
+export interface BatchCreatePracticesResult {
+  practices: PracticeEntity[];
+}
+
 export interface UpdatePracticeRequest {
   title?: string;
   practiceAction?: string;

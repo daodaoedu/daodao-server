@@ -1357,6 +1357,9 @@ export const practiceTemplatesListApiResponseSchema = paginatedApiResponseSchema
 
 // 單一模板 API 回應
 export const practiceTemplateApiResponseSchema = apiSuccessResponseSchema(practiceTemplateResponseSchema.nullable());
+export const batchCreatePracticeTemplatesApiResponseSchema = apiSuccessResponseSchema(z.object({
+  templates: z.array(practiceTemplateResponseSchema).describe('依送出順序建立的模板')
+}).describe('拆段批次建立模板回應'));
 
 // 模板分類 API 回應
 export const templateCategoriesApiResponseSchema = apiSuccessResponseSchema(templateCategoriesResponseSchema);
@@ -1505,6 +1508,10 @@ export const userInteractionStatusApiResponseSchema = apiSuccessResponseSchema(u
 
 // 創建/操作回應
 export const createPracticeApiResponseSchema = apiSuccessResponseSchema(practiceEntityResponseSchema);
+export const batchCreatePracticesResponseSchema = z.object({
+  practices: z.array(practiceEntityResponseSchema).describe('依送出順序建立的實踐')
+}).describe('拆段批次建立回應');
+export const batchCreatePracticesApiResponseSchema = apiSuccessResponseSchema(batchCreatePracticesResponseSchema);
 export const updatePracticeApiResponseSchema = apiSuccessResponseSchema(practiceEntityResponseSchema);
 export const operationSuccessApiResponseSchema = apiSuccessResponseSchema(operationSuccessResponseSchema);
 
