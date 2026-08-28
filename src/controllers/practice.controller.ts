@@ -16,6 +16,7 @@ import { asyncHandler } from '../middleware/error.middleware';
 import { BadRequestError, UnauthorizedError } from '../middleware/error.middleware';
 import type {
   CreatePracticeRequest,
+  BatchCreatePracticeRequest,
   UpdatePracticeRequest,
   PracticeQueryParams,
   CheckInRequest,
@@ -42,6 +43,7 @@ import {
   interactionStatsApiResponseSchema,
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
+  batchCreatePracticesApiResponseSchema,
   createCheckInApiResponseSchema,
   updateCheckInApiResponseSchema,
   updatePracticeApiResponseSchema,
@@ -193,6 +195,23 @@ export class PracticeController {
 
     // 驗證響應格式
     const validatedResponse = createPracticeApiResponseSchema.parse(result);
+
+    res.status(201).json(validatedResponse);
+  });
+
+  /**
+   * 拆段批次建立實踐
+   * POST /api/v1/practices/batch
+   */
+  batchCreatePractices = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const body: BatchCreatePracticeRequest = req.body;
+    const result = await practiceService.batchCreate(body.segments, req.user.id);
+
+    const validatedResponse = batchCreatePracticesApiResponseSchema.parse(result);
 
     res.status(201).json(validatedResponse);
   });
@@ -694,6 +713,16 @@ export class PracticeController {
   createTemplate = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const input = req.body;
     const result = await practiceTemplateService.createTemplate(input);
+    res.status(201).json(result);
+  });
+
+  /**
+   * 拆段批次建立實踐模板
+   * POST /api/v1/practices/templates/batch
+   */
+  batchCreateTemplates = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { segments } = req.body;
+    const result = await practiceTemplateService.batchCreateTemplates(segments);
     res.status(201).json(result);
   });
 

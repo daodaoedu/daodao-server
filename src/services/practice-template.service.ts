@@ -7,6 +7,7 @@
  * @see docs/practice-mvp/backend-implementation-plan.md 2.3 節
  */
 
+import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
 import { NotFoundError } from '../middleware/error.middleware';
@@ -651,6 +652,41 @@ export interface UpdateTemplateInput {
 export async function createTemplate(
   input: CreateTemplateInput
 ): Promise<ApiSuccessResponse<PracticeTemplateEntity>> {
+  // 使用事務確保原子性
+  const entity = await prismaClient.$transaction(async (tx) => createTemplateCore(tx, input));
+
+  loggerService.info('Practice template created', { templateId: entity.id, title: entity.title });
+
+  return createSuccessResponse(entity);
+}
+
+/**
+ * 拆段批次建立模板（daodaoedu/daodao#141）
+ * 所有段落在同一交易內建立，任一失敗全部回滾；回傳順序與送出一致
+ */
+export async function batchCreateTemplates(
+  inputs: CreateTemplateInput[]
+): Promise<ApiSuccessResponse<{ templates: PracticeTemplateEntity[] }>> {
+  const templates = await prismaClient.$transaction(async (tx) => {
+    const results: PracticeTemplateEntity[] = [];
+    for (const input of inputs) {
+      results.push(await createTemplateCore(tx, input));
+    }
+    return results;
+  });
+
+  loggerService.info('Practice templates batch created', { count: templates.length, templateIds: templates.map(t => t.id) });
+
+  return createSuccessResponse({ templates });
+}
+
+/**
+ * 建立模板的核心（交易內執行）：模板 + 分類 + 標籤，使用 upsert 避免競爭條件
+ */
+async function createTemplateCore(
+  tx: Prisma.TransactionClient,
+  input: CreateTemplateInput
+): Promise<PracticeTemplateEntity> {
   const {
     title,
     practiceAction,
@@ -663,8 +699,7 @@ export async function createTemplate(
     suggestedTags = []
   } = input;
 
-  // 使用事務確保原子性
-  const template = await prismaClient.$transaction(async (tx) => {
+  const template = await (async () => {
     // 創建模板（讓資料庫自動生成 ID）
     const newTemplate = await tx.practice_templates.create({
       data: {
@@ -710,11 +745,9 @@ export async function createTemplate(
     }
 
     return newTemplate;
-  });
+  })();
 
-  loggerService.info('Practice template created', { templateId: template.id, title });
-
-  return createSuccessResponse({
+  return {
     id: template.external_id || String(template.id),
     title: template.title,
     practiceAction: template.practice_action || undefined,
@@ -727,7 +760,7 @@ export async function createTemplate(
     suggestedTags,
     answerCount: 0,
     createdAt: template.created_at?.toISOString() || new Date().toISOString()
-  });
+  };
 }
 
 /**
