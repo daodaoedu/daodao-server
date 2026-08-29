@@ -191,7 +191,12 @@ const updateDeck = async (deckId: number, name: string) => {
 /** 軟刪除卡組（既有抽卡記錄保留） */
 const deleteDeck = async (deckId: number): Promise<void> => {
   await getDeck(deckId);
-  await prisma.inspiration_decks.update({ where: { id: deckId }, data: { deleted_at: new Date() } });
+  const now = new Date();
+  // 軟刪同時解除仍生效的指派，避免探索頁顯示抽卡入口卻抽不到卡
+  await prisma.$transaction([
+    prisma.inspiration_deck_assignments.updateMany({ where: { deck_id: deckId, unassigned_at: null }, data: { unassigned_at: now } }),
+    prisma.inspiration_decks.update({ where: { id: deckId }, data: { deleted_at: now } })
+  ]);
 };
 
 /** 複製卡組（含卡片，不含指派） */

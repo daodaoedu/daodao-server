@@ -66,7 +66,8 @@ const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: 
         select: { cohort_id: true }
       }),
     prisma.inspiration_deck_assignments.findMany({
-      where: { cohort_id: { in: cohortIds }, unassigned_at: null },
+      // 卡組軟刪後指派可能仍在：與抽卡查詢一致，只算未刪除的卡組，避免顯示抽卡入口卻抽不到卡
+      where: { cohort_id: { in: cohortIds }, unassigned_at: null, deck: { deleted_at: null } },
       select: { cohort_id: true }
     })
   ]);

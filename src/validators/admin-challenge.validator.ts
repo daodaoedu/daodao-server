@@ -117,13 +117,17 @@ const templateFieldsSchema = z.object({
   frequencyMinDays: z.number().int().min(1).max(7).nullable().optional(),
   frequencyMaxDays: z.number().int().min(1).max(7).nullable().optional(),
   sessionDurationMinutes: sessionMinutesSchema.nullable().optional(),
-  practiceTimePeriods: z.array(practiceTimePeriodSchema).max(5).optional().default([]),
+  // 不在共用欄位放 .default([])：zod 的 .partial() 仍會套用 default，會讓 PATCH 未帶此欄位時把既有時段清空
+  practiceTimePeriods: z.array(practiceTimePeriodSchema).max(5).optional(),
   resources: z.array(practiceResourceInputSchema).max(5, '資源最多 5 個').optional()
 });
 const frequencyOrdered = (v: { frequencyMinDays?: number | null; frequencyMaxDays?: number | null }): boolean =>
   !v.frequencyMinDays || !v.frequencyMaxDays || v.frequencyMinDays <= v.frequencyMaxDays;
 export const adminCreateTemplateSchema = templateFieldsSchema
-  .extend({ organizationId: z.number().int().positive() })
+  .extend({
+    organizationId: z.number().int().positive(),
+    practiceTimePeriods: z.array(practiceTimePeriodSchema).max(5).default([])
+  })
   .refine(frequencyOrdered, { message: '最小頻率不可大於最大頻率' });
 export const adminUpdateTemplateSchema = templateFieldsSchema.partial()
   .refine(v => Object.keys(v).length > 0, { message: '至少提供一個欄位' })
