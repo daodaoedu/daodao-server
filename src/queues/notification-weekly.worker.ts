@@ -100,7 +100,9 @@ async function processNotificationWeeklyJob(job: Job<NotificationWeeklyJobData>)
         created_at: {
           gte: weekStart,
           lte: weekEnd
-        }
+        },
+        // 帶領人訊息走 in-app／今日焦點，不納入週報統計（避免只收到訊息的人拿到全零週報）
+        type: { not: NOTIFICATION_TYPES.COHORT_MESSAGE }
       },
       select: {
         recipient_id: true,
