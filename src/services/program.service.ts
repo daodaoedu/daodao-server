@@ -28,7 +28,8 @@ const assertActiveOrganization = async (organizationId: number, userId: number):
 
 const getOwned = async (programId: number, userId: number) => {
   const row = await prisma.programs.findFirst({
-    where: { id: programId, organization: { organization_members: { some: { user_id: userId } } } },
+    // 挑戰主題只能經 admin 後台管理，燈塔的 update/archive 不得觸及（與 list 的 kind 過濾一致）
+    where: { id: programId, kind: PROGRAM_KINDS.LIGHTHOUSE, organization: { organization_members: { some: { user_id: userId } } } },
     select: { ...select, organization: { select: { status: true } } }
   });
   if (!row) throw new ForbiddenError('無權限存取此系列');
