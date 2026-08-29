@@ -86,7 +86,7 @@ const getDashboard = async (programId: number, cohortId: number, actorId: number
              COUNT(DISTINCT user_id) FILTER (WHERE checkin_id IS NOT NULL)::bigint AS started,
              COUNT(checkin_id)::bigint AS checkins,
              COUNT(DISTINCT checkin_date)::bigint AS active_days,
-             COUNT(DISTINCT (checkin_user_id, checkin_date))::bigint AS participant_days,
+             COUNT(DISTINCT (checkin_user_id, checkin_date)) FILTER (WHERE checkin_id IS NOT NULL)::bigint AS participant_days,
              AVG(note_length) FILTER (WHERE checkin_id IS NOT NULL)::float AS avg_length
       FROM scoped GROUP BY title ORDER BY title
     `,
