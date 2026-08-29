@@ -464,6 +464,8 @@ model practices {
   practice_buddy_requests  practice_buddy_requests[]
   practice_checkins        practice_checkins[]
   practice_social_proofs   practice_social_proofs[]
+  space_practices          space_practices[]
+  space_block_link_practices space_block_link_practices[]
   cohorts                  cohorts?                  @relation(fields: [cohort_id], references: [id], onUpdate: NoAction, map: "fk_practices_cohort")
   source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   copied_practices         practices[]               @relation("PracticeCopies")
@@ -914,6 +916,9 @@ model users {
   persona_user_state                   persona_user_state?
   wishes                               wishes[]
   roadmap_item_supports                roadmap_item_supports[]
+  spaces_owned                         spaces[]
+  space_members                        space_members[]
+  space_home_pages_created             space_home_pages[]
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -2076,4 +2081,143 @@ model cohort_stat_snapshots {
   cohort       cohorts  @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_stat_snapshots_cohort")
 
   @@unique([cohort_id, kind, period_start], map: "uq_cohort_stat_snapshots_period")
+}
+
+/// Invite-based event-course spaces (issue #151 空間頁面).
+/// Personal-practice and platform-challenge spaces are virtual aggregates
+/// assembled at the API layer and have no rows here.
+model spaces {
+  id               Int                @id @default(autoincrement())
+  external_id      String             @unique(map: "uq_spaces_external_id") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_user_id    Int
+  name             String             @db.VarChar(100)
+  subtitle         String?            @db.VarChar(100)
+  public_token     String?            @unique(map: "uq_spaces_public_token") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status           String             @default("active") @db.VarChar(20)
+  last_activity_at DateTime           @default(now()) @db.Timestamptz(6)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @db.Timestamptz(6)
+  deleted_at       DateTime?          @db.Timestamptz(6)
+  users            users              @relation(fields: [owner_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_spaces_owner")
+  space_members    space_members[]
+  space_practices  space_practices[]
+  space_home_pages space_home_pages?
+
+  @@index([owner_user_id], map: "idx_spaces_owner_user_id")
+}
+
+/// Space membership roster; the host row marks the space initiator (FR-1.3).
+model space_members {
+  id         Int      @id @default(autoincrement())
+  space_id   Int
+  user_id    Int
+  role       String   @default("member") @db.VarChar(20)
+  joined_at  DateTime @default(now()) @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  spaces     spaces   @relation(fields: [space_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_members_space")
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_members_user")
+
+  @@unique([space_id, user_id], map: "uq_space_members_space_user")
+  @@index([user_id], map: "idx_space_members_user_id")
+  @@index([space_id], map: "idx_space_members_space_id")
+}
+
+/// Links theme practices into a space; source for the sub-page practice list (FR-4.2).
+model space_practices {
+  id          Int       @id @default(autoincrement())
+  space_id    Int
+  practice_id Int
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  spaces      spaces    @relation(fields: [space_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_practices_space")
+  practices   practices @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_practices_practice")
+
+  @@unique([space_id, practice_id], map: "uq_space_practices_space_practice")
+  @@index([space_id], map: "idx_space_practices_space_id")
+  @@index([practice_id], map: "idx_space_practices_practice_id")
+}
+
+/// Space home page; UNIQUE(space_id) enforces at most one page per space (FR-3.8).
+/// The database CHECK constraint restricts status to draft or published.
+model space_home_pages {
+  id           Int            @id @default(autoincrement())
+  space_id     Int            @unique(map: "uq_space_home_pages_space_id")
+  status       String         @default("draft") @db.VarChar(20)
+  published_at DateTime?      @db.Timestamptz(6)
+  created_by   Int
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?      @db.Timestamptz(6)
+  spaces       spaces         @relation(fields: [space_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_home_pages_space")
+  users        users          @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_home_pages_created_by")
+  space_blocks space_blocks[]
+}
+
+/// Home page content blocks (text / resources / calendar) with per-block
+/// draft / scheduled / published lifecycle (FR-7.x); body is text-type only.
+model space_blocks {
+  id                 Int                 @id @default(autoincrement())
+  page_id            Int
+  block_type         String              @db.VarChar(20)
+  title              String              @default("") @db.VarChar(200)
+  body               String?
+  position           Int                 @default(0)
+  is_pinned          Boolean             @default(false)
+  publish_status     String              @default("draft") @db.VarChar(20)
+  scheduled_at       DateTime?           @db.Timestamptz(6)
+  published_at       DateTime?           @db.Timestamptz(6)
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?           @db.Timestamptz(6)
+  space_home_pages   space_home_pages    @relation(fields: [page_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_blocks_page")
+  space_block_links  space_block_links[]
+  space_block_events space_block_events[]
+
+  @@index([page_id, position], map: "idx_space_blocks_page_position")
+}
+
+/// Resource-block link rows (name + url); auto-naming only overwrites
+/// names the host has not customized (FR-8.6).
+model space_block_links {
+  id                         Int                          @id @default(autoincrement())
+  block_id                   Int
+  name                       String                       @default("") @db.VarChar(200)
+  url                        String
+  is_name_customized         Boolean                      @default(false)
+  position                   Int                          @default(0)
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime?                    @db.Timestamptz(6)
+  space_blocks               space_blocks                 @relation(fields: [block_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_block_links_block")
+  space_block_link_practices space_block_link_practices[]
+
+  @@index([block_id, position], map: "idx_space_block_links_block_position")
+}
+
+/// Multi-select mapping between a resource link row and practices (FR-8.8);
+/// the mapping is annotation-only and never cascades edits (FR-8.12).
+model space_block_link_practices {
+  id                Int               @id @default(autoincrement())
+  link_id           Int
+  practice_id       Int
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  space_block_links space_block_links @relation(fields: [link_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_block_link_practices_link")
+  practices         practices         @relation(fields: [practice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_block_link_practices_practice")
+
+  @@unique([link_id, practice_id], map: "uq_space_block_link_practices_link_practice")
+  @@index([practice_id], map: "idx_space_block_link_practices_practice_id")
+}
+
+/// Calendar-block event rows; only the start date is required (FR-9.1).
+model space_block_events {
+  id           Int          @id @default(autoincrement())
+  block_id     Int
+  title        String       @default("") @db.VarChar(200)
+  start_date   DateTime     @db.Date
+  end_date     DateTime?    @db.Date
+  start_time   DateTime?    @db.Time(6)
+  end_time     DateTime?    @db.Time(6)
+  location     String?      @db.VarChar(200)
+  url          String?
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  space_blocks space_blocks @relation(fields: [block_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_block_events_block")
+
+  @@index([block_id, start_date], map: "idx_space_block_events_block_date")
 }
