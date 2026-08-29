@@ -9,6 +9,8 @@ import { generateCohortInvitationEmail } from './email/cohort-invitation-templat
 import { notificationEventService } from './notification-event.service';
 
 const emailSchema = z.string().trim().toLowerCase().email();
+/** 名單狀態（FR-RS-03 預覽結果）：new 新邀請、invited 已邀請、joined 已加入、rejoin 曾退出將重新邀請、invalid 格式錯誤 */
+type InviteItemState = 'new' | 'invited' | 'joined' | 'rejoin' | 'invalid';
 const collect = (input: InviteMembersInput): string[] => {
   const csvEmails = input.csv?.split(/\r?\n/).map(line => line.split(',')[0]?.trim()).filter(Boolean) ?? [];
   if (csvEmails[0]?.toLowerCase() === 'email') csvEmails.shift();
@@ -23,14 +25,29 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
   const emails = collect(input);
   const validated = emails.map(email => ({ email, valid: emailSchema.safeParse(email).success, reason: emailSchema.safeParse(email).success ? null : 'email 格式錯誤' }));
   const errors = validated.filter(item => !item.valid).length;
-  if (input.preview) return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: 0, items: validated.map(item => ({ ...item, enrollmentId: null })) };
+  if (input.preview) {
+    // 預覽要區分「新邀請／已邀請／已加入／曾退出」（FR-RS-03），只讀不寫
+    const existing = await prisma.cohort_enrollments.findMany({
+      where: { cohort_id: cohort.id, email: { in: validated.filter(item => item.valid).map(item => item.email) } },
+      select: { email: true, status: true }
+    });
+    const statusByEmail = new Map(existing.map(row => [row.email, row.status]));
+    const items = validated.map(item => {
+      const status = item.valid ? statusByEmail.get(item.email) : undefined;
+      const state: InviteItemState = !item.valid ? 'invalid' : status === 'joined' ? 'joined' : status === 'invited' ? 'invited' : status ? 'rejoin' : 'new';
+      const reasons = { invalid: item.reason, joined: '已加入', invited: '已邀請，將重寄邀請信', rejoin: '曾退出，將重新邀請', new: null } as const;
+      return { ...item, reason: reasons[state], state, enrollmentId: null };
+    });
+    return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: 0, items };
+  }
 
   const created = await prisma.$transaction(async tx => {
-    const items: Array<{ email: string; valid: boolean; reason: string | null; enrollmentId: number | null; inviteToken?: string }> = validated.map(item => ({ ...item, enrollmentId: null }));
+    const items: Array<{ email: string; valid: boolean; reason: string | null; enrollmentId: number | null; state: InviteItemState; inviteToken?: string }> = validated.map(item => ({ ...item, enrollmentId: null, state: item.valid ? 'new' : 'invalid' }));
     for (const item of items) {
       if (!item.valid) continue;
       const where = { cohort_id_email: { cohort_id: cohort.id, email: item.email } };
       const existing = await tx.cohort_enrollments.findUnique({ where, select: { id: true, invite_token: true, status: true } });
+      item.state = !existing ? 'new' : existing.status === 'joined' ? 'joined' : existing.status === 'invited' ? 'invited' : 'rejoin';
       const enrollment = !existing
         ? await tx.cohort_enrollments.create({ data: { cohort_id: cohort.id, email: item.email, status: 'invited', role: 'member' }, select: { id: true, invite_token: true } })
         : existing.status === 'joined'
