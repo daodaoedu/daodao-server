@@ -612,6 +612,7 @@ registry.registerPath({
  * 請求體：AppleSignInRequest - 包含 idToken, user (可選), nonce (可選)
  */
 router.post('/apple/token',
+  authLimiter,
   validate(appleSignInValidator, 'body'),
   authController.appleSignIn
 );
