@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
 import { prisma } from '../services/database/prisma.service';
 import { personaService } from '../services/persona.service';
-import { recordView as trackView } from '../services/view-tracking.service';
 import { createSuccessResponse } from '../utils/response-helper';
 import type { SubmitAnswerBody, SubmitSkipBody, CarouselStateQuery, ProfileUserQuery, QuestionAnswersParam, QuestionAnswersQuery, QuestionViewParam } from '../validators/persona.validators';
 
@@ -61,10 +60,8 @@ export const getQuestionAnswers = asyncHandler(async (req: Request, res: Respons
 export const recordQuestionView = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
   const { questionId } = req.params as unknown as QuestionViewParam;
-  const question = await prisma.persona_questions.findUnique({ where: { id: questionId }, select: { id: true } });
-  if (!question) throw new NotFoundError('找不到人物誌題目');
-  const viewCount = await trackView('persona_question', question.id, req.user.id);
-  res.json(createSuccessResponse({ viewCount }));
+  const result = await personaService.recordQuestionView(questionId, req.user.id);
+  res.json(result);
 });
 
 export const getProfileUser = asyncHandler(async (req: Request, res: Response) => {
