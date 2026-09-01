@@ -1282,6 +1282,12 @@
               "有收穫"
             ]
           },
+          "viewCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "累計瀏覽數（同一使用者 24h 內只計一次）",
+            "example": 24
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1303,6 +1309,7 @@
           "imageUrls",
           "ogImageUrl",
           "tags",
+          "viewCount",
           "createdAt"
         ],
         "description": "簽到記錄詳細資訊",
@@ -1319,6 +1326,7 @@
             "專注",
             "有收穫"
           ],
+          "viewCount": 24,
           "createdAt": "2024-01-20T15:45:00.000Z",
           "updatedAt": "2024-01-20T15:45:00.000Z"
         }
@@ -1825,6 +1833,7 @@
             "專注",
             "有收穫"
           ],
+          "viewCount": 24,
           "createdAt": "2024-01-20T15:45:00.000Z",
           "updatedAt": "2024-01-20T15:45:00.000Z"
         }
@@ -18191,6 +18200,144 @@
           "version"
         ]
       },
+      "RecordIdeaViewResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "viewCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "該想法目前的累計瀏覽數",
+                "example": 42
+              }
+            },
+            "required": [
+              "viewCount"
+            ],
+            "description": "The main response data"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "description": "Search query used for filtering results"
+              },
+              "searchTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Time taken to execute the search query in milliseconds"
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Applied filters for the request"
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Count of items per category"
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Aggregated statistical data"
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Unique identifier for request tracking"
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "description": "Whether the response was served from cache"
+              },
+              "processingTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Total processing time in milliseconds"
+              }
+            },
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Optional metadata about the response",
+            "examples": [
+              {
+                "searchQuery": "JavaScript教程",
+                "searchTime": 45,
+                "cacheHit": false,
+                "processingTime": 123.5,
+                "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+              },
+              {
+                "categoryCounts": {
+                  "前端開發": 25,
+                  "後端開發": 18,
+                  "資料科學": 12
+                },
+                "filters": {
+                  "difficulty": "intermediate",
+                  "language": "zh-TW"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "記錄想法瀏覽的成功回應",
+        "examples": [
+          {
+            "success": true,
+            "data": {
+              "id": 123,
+              "_id": "550e8400-e29b-41d4-a716-446655440000",
+              "name": "JavaScript 基礎教程",
+              "description": "從零開始學習 JavaScript 程式設計",
+              "status": "published"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          },
+          {
+            "success": true,
+            "data": {
+              "userId": 456,
+              "username": "john_doe",
+              "email": "john@example.com",
+              "role": "student"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z",
+            "meta": {
+              "cacheHit": true,
+              "processingTime": 23.1
+            }
+          }
+        ]
+      },
       "MyPracticeItem": {
         "type": "object",
         "properties": {
@@ -18339,6 +18486,18 @@
               "前端",
               "Hooks"
             ]
+          },
+          "viewCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "累計瀏覽數（同一使用者 24h 內只計一次）",
+            "example": 24
+          },
+          "commentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "留言數",
+            "example": 3
           }
         },
         "required": [
@@ -18349,7 +18508,9 @@
           "hasResources",
           "checkInCount",
           "createdAt",
-          "tags"
+          "tags",
+          "viewCount",
+          "commentCount"
         ],
         "description": "我的實踐項目"
       },
@@ -19617,6 +19778,146 @@
           "answeredAt",
           "isSelf"
         ]
+      },
+      "QuestionViewApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indicates successful API response"
+          },
+          "data": {
+            "$ref": "#/components/schemas/QuestionViewData"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "searchQuery": {
+                "type": "string",
+                "description": "Search query used for filtering results"
+              },
+              "searchTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Time taken to execute the search query in milliseconds"
+              },
+              "filters": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Applied filters for the request"
+              },
+              "categoryCounts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Count of items per category"
+              },
+              "aggregateData": {
+                "type": "object",
+                "additionalProperties": {
+                  "nullable": true
+                },
+                "description": "Aggregated statistical data"
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Unique identifier for request tracking"
+              },
+              "cacheHit": {
+                "type": "boolean",
+                "description": "Whether the response was served from cache"
+              },
+              "processingTime": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Total processing time in milliseconds"
+              }
+            },
+            "additionalProperties": {
+              "nullable": true
+            },
+            "description": "Optional metadata about the response",
+            "examples": [
+              {
+                "searchQuery": "JavaScript教程",
+                "searchTime": 45,
+                "cacheHit": false,
+                "processingTime": 123.5,
+                "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+              },
+              {
+                "categoryCounts": {
+                  "前端開發": 25,
+                  "後端開發": 18,
+                  "資料科學": 12
+                },
+                "filters": {
+                  "difficulty": "intermediate",
+                  "language": "zh-TW"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "timestamp"
+        ],
+        "description": "Standard success response format",
+        "examples": [
+          {
+            "success": true,
+            "data": {
+              "id": 123,
+              "_id": "550e8400-e29b-41d4-a716-446655440000",
+              "name": "JavaScript 基礎教程",
+              "description": "從零開始學習 JavaScript 程式設計",
+              "status": "published"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z"
+          },
+          {
+            "success": true,
+            "data": {
+              "userId": 456,
+              "username": "john_doe",
+              "email": "john@example.com",
+              "role": "student"
+            },
+            "timestamp": "2024-01-15T10:30:00.000Z",
+            "meta": {
+              "cacheHit": true,
+              "processingTime": 23.1
+            }
+          }
+        ]
+      },
+      "QuestionViewData": {
+        "type": "object",
+        "properties": {
+          "viewCount": {
+            "type": "number",
+            "description": "此題目目前的累計觀看數",
+            "example": 42
+          }
+        },
+        "required": [
+          "viewCount"
+        ],
+        "description": "The main response data"
       },
       "PersonaCarouselStateApiResponse": {
         "type": "object",
@@ -38516,6 +38817,55 @@
         }
       }
     },
+    "/api/v1/ideas/{id}/view": {
+      "post": {
+        "tags": [
+          "Ideas"
+        ],
+        "summary": "記錄想法瀏覽",
+        "description": "記錄登入使用者瀏覽指定想法的事件（同一使用者對同一想法 24h 內去重），回傳該想法目前的累計瀏覽數。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "想法的唯一識別 ID",
+              "example": "123e4567-e89b-12d3-a456-426614174000"
+            },
+            "required": true,
+            "description": "想法的唯一識別 ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "瀏覽事件記錄成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordIdeaViewResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/images/{filename}": {
       "get": {
         "tags": [
@@ -57154,6 +57504,53 @@
         }
       }
     },
+    "/api/v1/persona/questions/{questionId}/view": {
+      "post": {
+        "tags": [
+          "Persona"
+        ],
+        "summary": "記錄人物誌題目觀看",
+        "description": "記錄登入使用者觀看指定人物誌題目的事件（同一使用者對同一題 24h 內去重），回傳該題目前的累計觀看數。後台「人物誌填寫統計」以此計算曝光與回答轉換率。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "問題 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "問題 ID",
+            "name": "questionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "記錄成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionViewApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
     "/api/v1/persona/carousel-state": {
       "get": {
         "tags": [
@@ -62134,6 +62531,206 @@
                       "examples": [
                         {
                           "viewCount": 151
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/practices/{id}/checkins/{checkInId}/view": {
+      "post": {
+        "tags": [
+          "Practice Check-ins"
+        ],
+        "summary": "記錄打卡紀錄瀏覽",
+        "description": "記錄登入使用者瀏覽指定打卡紀錄的事件（同一使用者對同一筆打卡 24h 內去重），回傳該打卡目前的累計瀏覽數。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "實踐 ID（UUID 格式）",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "實踐 ID（UUID 格式）",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$",
+              "description": "簽到記錄 ID",
+              "example": "123"
+            },
+            "required": true,
+            "description": "簽到記錄 ID",
+            "name": "checkInId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "瀏覽事件記錄成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "viewCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "該打卡紀錄的總瀏覽數"
+                        }
+                      },
+                      "required": [
+                        "viewCount"
+                      ],
+                      "description": "The main response data",
+                      "examples": [
+                        {
+                          "viewCount": 24
                         }
                       ]
                     },

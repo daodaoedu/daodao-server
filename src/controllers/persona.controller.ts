@@ -3,7 +3,7 @@ import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/er
 import { prisma } from '../services/database/prisma.service';
 import { personaService } from '../services/persona.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import type { SubmitAnswerBody, SubmitSkipBody, CarouselStateQuery, ProfileUserQuery, QuestionAnswersParam, QuestionAnswersQuery } from '../validators/persona.validators';
+import type { SubmitAnswerBody, SubmitSkipBody, CarouselStateQuery, ProfileUserQuery, QuestionAnswersParam, QuestionAnswersQuery, QuestionViewParam } from '../validators/persona.validators';
 
 export const getQuestions = asyncHandler(async (req: Request, res: Response) => {
   const locale = (req.query.locale as string) || 'zh-TW';
@@ -50,6 +50,17 @@ export const getQuestionAnswers = asyncHandler(async (req: Request, res: Respons
   const { questionId } = req.params as unknown as QuestionAnswersParam;
   const { locale, limit, cursor } = req.query as unknown as QuestionAnswersQuery;
   const result = await personaService.getQuestionAnswers(questionId, req.user?.id, { locale, limit, cursor });
+  res.json(result);
+});
+
+/**
+ * 記錄一次人物誌題目的觀看事件（同一使用者對同一題 24h 內去重）。
+ * POST /api/v1/persona/questions/:questionId/view
+ */
+export const recordQuestionView = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user?.id) throw new UnauthorizedError('需要登入');
+  const { questionId } = req.params as unknown as QuestionViewParam;
+  const result = await personaService.recordQuestionView(questionId, req.user.id);
   res.json(result);
 });
 

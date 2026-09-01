@@ -1,7 +1,8 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import { BadRequestError } from '../middleware/error.middleware';
+import { BadRequestError, NotFoundError } from '../middleware/error.middleware';
+import { recordView as trackView } from './view-tracking.service';
 import type { ApiSuccessResponse } from '../types/api-response.types';
 import type {
   PersonaQuestionItem,
@@ -616,6 +617,24 @@ async function getQuestionAnswers(
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 
+/**
+ * 記錄一次人物誌題目的觀看事件（同一使用者對同一題 24h 內去重）。
+ */
+export async function recordQuestionView(questionId: number, userId: number): Promise<ApiSuccessResponse<{ viewCount: number }>> {
+  const question = await prisma.persona_questions.findUnique({
+    where: { id: questionId },
+    select: { id: true }
+  });
+
+  if (!question) {
+    throw new NotFoundError('找不到人物誌題目');
+  }
+
+  const viewCount = await trackView('persona_question', question.id, userId);
+
+  return createSuccessResponse({ viewCount });
+}
+
 export const personaService = {
   getQuestions,
   submitAnswer,
@@ -627,4 +646,5 @@ export const personaService = {
   getProfileMe,
   getProfileUser,
   getQuestionAnswers,
+  recordQuestionView,
 };

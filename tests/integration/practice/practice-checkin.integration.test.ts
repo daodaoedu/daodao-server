@@ -5,6 +5,7 @@
  * 涵蓋範圍：
  * - B-1 ~ B-5: 打卡 CRUD 和統計
  * - 日期位移、心情選項、進度計算
+ * - B-6: 打卡瀏覽記錄（401 / 404 / 200 / 24h 去重）
  */
 
 import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
@@ -35,6 +36,12 @@ jest.mock('@/queues/practice-email.queue', () => ({
 jest.mock('@/queues', () => ({
   enqueuePracticeEmail: jest.fn().mockResolvedValue(undefined)
 }));
+
+// Mock redis — view tracking 用它做 24h 去重（factory 不可引用外部變數，hoisting）
+jest.mock('@/services/database/redis.service', () => {
+  const redisMock = { set: jest.fn() };
+  return { __esModule: true, default: redisMock, redis: redisMock };
+});
 
 // 動態 import app 以確保 mock 生效
 let app: any;
@@ -339,6 +346,7 @@ describe('Practice Check-in API Integration Tests', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns as any);
       prismaMock.practice_checkins.count.mockResolvedValue(2);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.entity_stats.findMany.mockResolvedValue([]);
     });
 
     it('B-3-a: 無參數應返回所有打卡記錄', async () => {
@@ -467,6 +475,68 @@ describe('Practice Check-in API Integration Tests', () => {
       );
 
       expect(response.status).toBe(401);
+    });
+  });
+
+  // ==========================================================================
+  // B-6: 記錄打卡瀏覽
+  // ==========================================================================
+  describe('POST /api/v1/practices/:id/checkins/:checkInId/view - 記錄打卡瀏覽', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const redisMock = jest.requireMock('@/services/database/redis.service').default as { set: jest.Mock };
+
+    const mockPractice = {
+      id: 1,
+      external_id: practiceId,
+      user_id: userId,
+      title: '每日閱讀',
+      status: 'active',
+      deleted_at: null
+    };
+
+    beforeEach(() => {
+      prismaMock.practices.findUnique.mockResolvedValue(mockPractice as any);
+    });
+
+    it('B-6-a: 未登入應返回 401 錯誤', async () => {
+      const response = await request(app).post(`${API_BASE}/${practiceId}/checkins/1/view`);
+
+      expect(response.status).toBe(401);
+    });
+
+    it('B-6-b: 打卡紀錄不存在應返回 404 錯誤', async () => {
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins/999/view`, {}, userToken);
+
+      expect(response.status).toBe(404);
+    });
+
+    it('B-6-c: 首次瀏覽應記錄並回傳累計瀏覽數', async () => {
+      prismaMock.practice_checkins.findFirst.mockResolvedValue({ id: 1 } as any);
+      redisMock.set.mockResolvedValueOnce('OK');
+      prismaMock.entity_stats.upsert.mockResolvedValue({ view_count: 7 } as any);
+      prismaMock.interaction_events.create.mockResolvedValue({ id: 1 } as any);
+
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins/1/view`, {}, userToken);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.viewCount).toBe(7);
+      expect(prismaMock.interaction_events.create).toHaveBeenCalledWith({
+        data: { entity_type: 'practice_checkin', entity_id: 1, user_id: userId, event_type: 'view' }
+      });
+    });
+
+    it('B-6-d: 24h 內重複瀏覽不重複計數', async () => {
+      prismaMock.practice_checkins.findFirst.mockResolvedValue({ id: 1 } as any);
+      redisMock.set.mockResolvedValueOnce(null); // SETNX 失敗＝已存在
+      prismaMock.entity_stats.findUnique.mockResolvedValue({ view_count: 7 } as any);
+
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins/1/view`, {}, userToken);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.viewCount).toBe(7);
+      expect(prismaMock.entity_stats.upsert).not.toHaveBeenCalled();
     });
   });
 });

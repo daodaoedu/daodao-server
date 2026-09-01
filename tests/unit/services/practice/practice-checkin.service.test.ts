@@ -414,6 +414,7 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.entity_stats.findMany.mockResolvedValue([]);
 
       const result = await getCheckIns(1, params);
 
@@ -445,6 +446,7 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.entity_stats.findMany.mockResolvedValue([]);
 
       await getCheckIns(1, params);
 
@@ -469,6 +471,7 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.entity_stats.findMany.mockResolvedValue([]);
 
       await getCheckIns(1, params);
 
@@ -489,6 +492,7 @@ describe('Practice CheckIn Service', () => {
       prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
       prismaMock.practice_checkins.count.mockResolvedValue(1);
       prismaMock.entity_tags.findMany.mockResolvedValue([]);
+      prismaMock.entity_stats.findMany.mockResolvedValue([]);
 
       // 擁有者（requestUserId = 1 = practice.user_id）可以查看草稿打卡
       const result = await getCheckIns(1, params, 1);
