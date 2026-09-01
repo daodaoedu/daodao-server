@@ -6,7 +6,12 @@
 import { PracticeEntity } from './practice.types';
 
 // Practice response types - 共用 PracticeEntity，排除不需要的欄位
-export type MyPracticeItem = Omit<PracticeEntity, 'user' | 'stats' | 'checkIns'>;
+export type MyPracticeItem = Omit<PracticeEntity, 'user' | 'stats' | 'checkIns'> & {
+  /** 累計瀏覽數（同一使用者 24h 內只計一次） */
+  viewCount: number;
+  /** 留言數 */
+  commentCount: number;
+};
 
 export interface MyPracticesResponse {
   success: true;

@@ -29,6 +29,7 @@ import {
   ForbiddenError
 } from '@/middleware/error.middleware';
 import tagService from '@/services/tag.service';
+import { recordView as trackView } from '@/services/view-tracking.service';
 
 const prismaClient = prisma;
 
@@ -105,8 +106,8 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     throw new NotFoundError('想法不存在');
   }
 
-  // 批量查詢標籤、資源、評論數
-  const [tags, resources, commentCounts] = await Promise.all([
+  // 批量查詢標籤、資源、評論數、瀏覽數
+  const [tags, resources, commentCounts, viewStat] = await Promise.all([
     prisma.entity_tags.findMany({
       where: {
         entity_type: 'idea',
@@ -134,7 +135,11 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
         }
       }
     }),
-    getIdeaCommentCounts([idea.id])
+    getIdeaCommentCounts([idea.id]),
+    prisma.entity_stats.findUnique({
+      where: { entity_type_entity_id: { entity_type: 'idea', entity_id: idea.id } },
+      select: { view_count: true }
+    })
   ]);
 
   // 構建返回的想法實體
@@ -157,7 +162,7 @@ export async function getIdeaById(externalId: string, _userId?: number): Promise
     })),
     likeCount: 0, // reactions 尚未關聯 idea entity type
     commentCount: commentCounts[idea.id] || 0,
-    viewCount: 0, // entity_stats 尚無 idea 瀏覽記錄（未呼叫 recordView）
+    viewCount: viewStat?.view_count ?? 0,
     shareCount: 0, // 尚未實現 share 追蹤
     resourceCount: resources.length,
     isLiked: false, // 可以後續實現
@@ -306,9 +311,9 @@ export async function getIdeas(
     prisma.ideas.count({ where })
   ]);
 
-  // 批量查詢標籤、資源、評論數
+  // 批量查詢標籤、資源、評論數、瀏覽數
   const ideaIds = ideas.map(idea => idea.id);
-  const [allTags, allResources, commentCounts] = await Promise.all([
+  const [allTags, allResources, commentCounts, viewStats] = await Promise.all([
     prisma.entity_tags.findMany({
       where: {
         entity_type: 'idea',
@@ -336,8 +341,17 @@ export async function getIdeas(
         }
       }
     }),
-    getIdeaCommentCounts(ideaIds)
+    getIdeaCommentCounts(ideaIds),
+    prisma.entity_stats.findMany({
+      where: {
+        entity_type: 'idea',
+        entity_id: { in: ideaIds }
+      },
+      select: { entity_id: true, view_count: true }
+    })
   ]);
+
+  const viewCountByIdeaId = new Map(viewStats.map(stat => [stat.entity_id, stat.view_count]));
 
   // 將標籤按想法 ID 分組
   const tagsByIdeaId = allTags.reduce((acc, tag) => {
@@ -404,7 +418,7 @@ export async function getIdeas(
       resources: ideaResources,
       likeCount: 0, // reactions 尚未關聯 idea entity type
       commentCount: commentCounts[idea.id] || 0,
-      viewCount: 0, // entity_stats 尚無 idea 瀏覽記錄（未呼叫 recordView）
+      viewCount: viewCountByIdeaId.get(idea.id) ?? 0,
       shareCount: 0, // 尚未實現 share 追蹤
       resourceCount: ideaResources.length,
       isLiked: false,
@@ -546,7 +560,7 @@ export async function createIdea(data: CreateIdeaRequest, userId: number): Promi
       resources: createdResources,
       likeCount: 0,
       commentCount: 0,
-      viewCount: 0,
+      viewCount: 0, // 剛建立的想法尚無瀏覽紀錄
       shareCount: 0,
       resourceCount: createdResources.length,
       isLiked: false,
@@ -703,20 +717,28 @@ export async function getIdeaStats(userId?: number): Promise<ApiSuccessResponse<
     where.user_id = userId;
   }
 
-  const [/* totalCount */, /* activeCount */, withResourcesCount] = await Promise.all([
+  const [/* totalCount */, /* activeCount */, withResourcesCount, ideaRows] = await Promise.all([
     prisma.ideas.count({ where }),
     prisma.ideas.count({
       where: { ...where, status: 'active' }
     }),
     prisma.ideas.count({
       where: { ...where, has_resources: true }
-    })
+    }),
+    prisma.ideas.findMany({ where, select: { id: true } })
   ]);
+
+  const viewAggregate = ideaRows.length > 0
+    ? await prisma.entity_stats.aggregate({
+        where: { entity_type: 'idea', entity_id: { in: ideaRows.map(idea => idea.id) } },
+        _sum: { view_count: true }
+      })
+    : null;
 
   const stats: IdeaStats = {
     likeCount: 0,
     commentCount: 0,
-    viewCount: 0,
+    viewCount: viewAggregate?._sum.view_count ?? 0,
     shareCount: 0,
     resourceCount: withResourcesCount,
     hasResources: withResourcesCount > 0
@@ -727,6 +749,27 @@ export async function getIdeaStats(userId?: number): Promise<ApiSuccessResponse<
   });
 }
 
+/**
+ * 記錄一次想法的瀏覽事件（同一使用者對同一想法 24h 內去重）
+ * @param externalId - 想法 external_id
+ * @param userId - 瀏覽者 ID
+ * @returns 該想法目前的累計瀏覽數
+ */
+export async function recordIdeaView(externalId: string, userId: number): Promise<ApiSuccessResponse<{ viewCount: number }>> {
+  const idea = await prisma.ideas.findFirst({
+    where: { external_id: externalId, deleted_at: null },
+    select: { id: true }
+  });
+
+  if (!idea) {
+    throw new NotFoundError('想法不存在');
+  }
+
+  const viewCount = await trackView('idea', idea.id, userId);
+
+  return createSuccessResponse({ viewCount });
+}
+
 // 匯出所有函數
 export default {
   getIdeaById,
@@ -734,5 +777,6 @@ export default {
   createIdea,
   updateIdea,
   deleteIdea,
-  getIdeaStats
+  getIdeaStats,
+  recordIdeaView
 };

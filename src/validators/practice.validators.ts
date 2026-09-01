@@ -760,6 +760,7 @@ registry.register('PracticeResourceEntity', practiceResourceEntitySchema);
 export const practiceEntityResponseSchema = z.object({
   id: z.string().openapi({ description: '實踐活動外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   title: z.string().openapi({ description: '實踐活動標題', example: '每日閱讀 30 分鐘' }),
+  isChallenge: z.boolean().optional().openapi({ description: '是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）', example: false }),
   practiceAction: z.string().optional().openapi({ description: '實踐行動描述', example: '閱讀技術書籍或文章' }),
   startDate: z.string().optional().openapi({ description: '開始日期 (YYYY-MM-DD)', example: '2024-01-15', format: 'date' }),
   endDate: z.string().optional().openapi({ description: '結束日期 (YYYY-MM-DD)', example: '2024-01-29', format: 'date' }),
@@ -844,6 +845,7 @@ export const checkInEntityResponseSchema = z.object({
   imageUrls: z.array(z.string()).openapi({ description: '打卡圖片 URL（最多3張）', example: [] }),
   ogImageUrl: z.string().nullable().openapi({ description: 'OG 圖片 URL（用於社群分享）', example: null, format: 'uri' }),
   tags: z.array(z.string()).openapi({ description: '打卡標籤', example: ['專注', '有收穫'] }),
+  viewCount: z.number().int().min(0).openapi({ description: '累計瀏覽數（同一使用者 24h 內只計一次）', example: 24 }),
   createdAt: z.string().datetime().openapi({ description: '創建時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' }),
   updatedAt: z.string().datetime().optional().openapi({ description: '更新時間', example: '2024-01-20T15:45:00.000Z', format: 'date-time' })
 }).openapi('CheckInEntity', {
@@ -858,6 +860,7 @@ export const checkInEntityResponseSchema = z.object({
     imageUrls: [],
     ogImageUrl: null,
     tags: ['專注', '有收穫'],
+    viewCount: 24,
     createdAt: '2024-01-20T15:45:00.000Z',
     updatedAt: '2024-01-20T15:45:00.000Z'
   }
@@ -927,6 +930,15 @@ export const recordViewResponseSchema = z.object({
   title: "瀏覽記錄回應",
   examples: [{
     viewCount: 151
+  }]
+});
+
+export const recordCheckInViewResponseSchema = z.object({
+  viewCount: z.number().int().min(0).describe("該打卡紀錄的總瀏覽數")
+}).describe("打卡瀏覽記錄回應").meta({
+  title: "打卡瀏覽記錄回應",
+  examples: [{
+    viewCount: 24
   }]
 });
 
@@ -1503,6 +1515,7 @@ export const toggleLikeApiResponseSchema = apiSuccessResponseSchema(toggleLikeRe
 export const toggleFavoriteApiResponseSchema = apiSuccessResponseSchema(toggleFavoriteResponseSchema);
 export const recordShareApiResponseSchema = apiSuccessResponseSchema(recordShareResponseSchema);
 export const recordViewApiResponseSchema = apiSuccessResponseSchema(recordViewResponseSchema);
+export const recordCheckInViewApiResponseSchema = apiSuccessResponseSchema(recordCheckInViewResponseSchema);
 export const interactionStatsApiResponseSchema = apiSuccessResponseSchema(interactionStatsResponseSchema);
 export const userInteractionStatusApiResponseSchema = apiSuccessResponseSchema(userInteractionStatusResponseSchema);
 
@@ -1765,6 +1778,7 @@ export const practiceValidators = {
   toggleFavoriteResponseSchema,
   recordShareResponseSchema,
   recordViewResponseSchema,
+  recordCheckInViewResponseSchema,
   interactionStatsResponseSchema,
   userInteractionStatusResponseSchema,
   operationSuccessResponseSchema,
@@ -1783,6 +1797,7 @@ export const practiceValidators = {
   toggleFavoriteApiResponseSchema,
   recordShareApiResponseSchema,
   recordViewApiResponseSchema,
+  recordCheckInViewApiResponseSchema,
   interactionStatsApiResponseSchema,
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,

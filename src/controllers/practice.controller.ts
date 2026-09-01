@@ -40,6 +40,7 @@ import {
   toggleFavoriteApiResponseSchema,
   recordShareApiResponseSchema,
   recordViewApiResponseSchema,
+  recordCheckInViewApiResponseSchema,
   interactionStatsApiResponseSchema,
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
@@ -601,6 +602,29 @@ export class PracticeController {
 
     // 驗證響應格式
     const validatedResponse = recordViewApiResponseSchema.parse(result);
+
+    res.json(validatedResponse);
+  });
+
+  /**
+   * 記錄打卡紀錄瀏覽事件
+   * POST /api/v1/practices/:id/checkins/:checkInId/view
+   */
+  recordCheckInView = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || typeof req.user.id !== 'number') {
+      throw new UnauthorizedError('未授權存取');
+    }
+
+    const practiceId = await validateAndConvertPracticeId(req.params.id);
+    const checkInId = parseInt(req.params.checkInId, 10);
+
+    if (isNaN(checkInId) || checkInId <= 0) {
+      throw new BadRequestError('無效的簽到記錄 ID');
+    }
+
+    const result = await practiceCheckInService.recordCheckInView(practiceId, checkInId, req.user.id);
+
+    const validatedResponse = recordCheckInViewApiResponseSchema.parse(result);
 
     res.json(validatedResponse);
   });

@@ -76,6 +76,9 @@ import adminRoadmapRoutes from './routes/admin-roadmap.routes';
 import surveyRoutes from './routes/survey.routes';
 import organizationRoutes from './routes/organization.routes';
 import cohortJoinRoutes from './routes/cohort-join.routes';
+import challengeRoutes from './routes/challenge.routes';
+import adminInspirationRoutes from './routes/admin-inspiration.routes';
+import adminChallengeRoutes from './routes/admin-challenge.routes';
 import futureLetterRoutes from './routes/future-letter.routes';
 import timelineRoutes from './routes/timeline.routes';
 // 引入空間路由
@@ -138,7 +141,7 @@ export function setupTypescriptRoutes(app: express.Application) {
     notificationRoutes, followRoutes, connectionRoutes,
     buddyRequestRouter, practiceBuddyRequestRouter,
     roadmapRoutes, wishRoutes, adminRoadmapRoutes, organizationRoutes, cohortJoinRoutes,
-    futureLetterRoutes, timelineRoutes, spaceRoutes
+    futureLetterRoutes, timelineRoutes, spaceRoutes, challengeRoutes, adminInspirationRoutes, adminChallengeRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -330,6 +333,15 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('🗼 v1 燈塔組織路由已註冊 - 可在 /api/v1/lighthouse/organizations 訪問');
   app.use('/api/v1/cohorts', cohortJoinRoutes);
   console.log('🗼 v1 期參與者路由已註冊 - 可在 /api/v1/cohorts 訪問');
+
+  app.use('/api/v1/challenges', challengeRoutes);
+  console.log('🏝️ v1 共同挑戰路由已註冊 - 可在 /api/v1/challenges 訪問');
+
+  app.use('/api/v1/admin/inspiration-decks', adminInspirationRoutes);
+  console.log('🎴 v1 靈感卡管理路由已註冊 - 可在 /api/v1/admin/inspiration-decks 訪問');
+
+  app.use('/api/v1/admin/challenges', adminChallengeRoutes);
+  console.log('🛠️ v1 共同挑戰管理路由已註冊 - 可在 /api/v1/admin/challenges 訪問');
 
   app.use('/api/v1/me/future-letters', futureLetterRoutes);
   console.log('💌 v1 未來信路由已註冊 - 可在 /api/v1/me/future-letters 訪問');
