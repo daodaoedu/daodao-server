@@ -94,47 +94,49 @@ const listFlows = async (): Promise<OnboardingFlow[]> => {
  * @param input - 流程資料
  */
 const createFlow = async (input: { name: string; isEnabled?: boolean; steps: Array<{ questionText: string; questionType: 'single' | 'multi' | 'text'; options?: string[] }> }): Promise<OnboardingFlow> => {
-  const [flow] = await prisma.$queryRaw<Array<{
-    id: number;
-    name: string;
-    is_enabled: boolean;
-    created_at: Date;
-  }>>`
-    INSERT INTO onboarding_flows (name, is_enabled)
-    VALUES (${input.name}, ${input.isEnabled ?? true})
-    RETURNING *
-  `;
-
-  const insertedSteps = [];
-  for (let i = 0; i < input.steps.length; i++) {
-    const step = input.steps[i];
-    const [row] = await prisma.$queryRaw<Array<{
+  return prisma.$transaction(async (tx) => {
+    const [flow] = await tx.$queryRaw<Array<{
       id: number;
-      question_text: string;
-      question_type: string;
-      options: unknown;
+      name: string;
+      is_enabled: boolean;
+      created_at: Date;
     }>>`
-      INSERT INTO onboarding_steps (flow_id, question_text, question_type, options, sort_order)
-      VALUES (${flow.id}, ${step.questionText}, ${step.questionType}, ${JSON.stringify(step.options ?? [])}::jsonb, ${i + 1})
+      INSERT INTO onboarding_flows (name, is_enabled)
+      VALUES (${input.name}, ${input.isEnabled ?? true})
       RETURNING *
     `;
-    insertedSteps.push(row);
-  }
 
-  return {
-    id: flow.id,
-    name: flow.name,
-    isEnabled: flow.is_enabled,
-    steps: insertedSteps.map((s) => ({
-      id: s.id,
-      questionText: s.question_text,
-      questionType: s.question_type as 'single' | 'multi' | 'text',
-      options: Array.isArray(s.options) ? (s.options as string[]) : undefined,
+    const insertedSteps = [];
+    for (let i = 0; i < input.steps.length; i++) {
+      const step = input.steps[i];
+      const [row] = await tx.$queryRaw<Array<{
+        id: number;
+        question_text: string;
+        question_type: string;
+        options: unknown;
+      }>>`
+        INSERT INTO onboarding_steps (flow_id, question_text, question_type, options, sort_order)
+        VALUES (${flow.id}, ${step.questionText}, ${step.questionType}, ${JSON.stringify(step.options ?? [])}::jsonb, ${i + 1})
+        RETURNING *
+      `;
+      insertedSteps.push(row);
+    }
+
+    return {
+      id: flow.id,
+      name: flow.name,
+      isEnabled: flow.is_enabled,
+      steps: insertedSteps.map((s) => ({
+        id: s.id,
+        questionText: s.question_text,
+        questionType: s.question_type as 'single' | 'multi' | 'text',
+        options: Array.isArray(s.options) ? (s.options as string[]) : undefined,
+        completionRate: 0,
+      })),
       completionRate: 0,
-    })),
-    completionRate: 0,
-    createdAt: flow.created_at.toISOString(),
-  };
+      createdAt: flow.created_at.toISOString(),
+    };
+  });
 };
 
 /**
@@ -143,63 +145,65 @@ const createFlow = async (input: { name: string; isEnabled?: boolean; steps: Arr
  * @param input - 更新資料
  */
 const updateFlow = async (flowId: number, input: { name?: string; isEnabled?: boolean; steps?: Array<{ questionText: string; questionType: 'single' | 'multi' | 'text'; options?: string[] }> }): Promise<OnboardingFlow> => {
-  // Update flow metadata
-  if (input.name !== undefined || input.isEnabled !== undefined) {
-    await prisma.$executeRaw`
-      UPDATE onboarding_flows
-      SET
-        name = COALESCE(${input.name ?? null}, name),
-        is_enabled = COALESCE(${input.isEnabled ?? null}, is_enabled),
-        updated_at = NOW()
-      WHERE id = ${flowId}
-    `;
-  }
-
-  // Replace steps if provided
-  if (input.steps !== undefined) {
-    await prisma.$executeRaw`DELETE FROM onboarding_steps WHERE flow_id = ${flowId}`;
-    for (let i = 0; i < input.steps.length; i++) {
-      const step = input.steps[i];
-      await prisma.$executeRaw`
-        INSERT INTO onboarding_steps (flow_id, question_text, question_type, options, sort_order)
-        VALUES (${flowId}, ${step.questionText}, ${step.questionType}, ${JSON.stringify(step.options ?? [])}::jsonb, ${i + 1})
+  return prisma.$transaction(async (tx) => {
+    // Update flow metadata
+    if (input.name !== undefined || input.isEnabled !== undefined) {
+      await tx.$executeRaw`
+        UPDATE onboarding_flows
+        SET
+          name = COALESCE(${input.name ?? null}, name),
+          is_enabled = COALESCE(${input.isEnabled ?? null}, is_enabled),
+          updated_at = NOW()
+        WHERE id = ${flowId}
       `;
     }
-  }
 
-  // Fetch updated flow
-  const [flow] = await prisma.$queryRaw<Array<{
-    id: number;
-    name: string;
-    is_enabled: boolean;
-    created_at: Date;
-  }>>`
-    SELECT * FROM onboarding_flows WHERE id = ${flowId}
-  `;
+    // Replace steps if provided
+    if (input.steps !== undefined) {
+      await tx.$executeRaw`DELETE FROM onboarding_steps WHERE flow_id = ${flowId}`;
+      for (let i = 0; i < input.steps.length; i++) {
+        const step = input.steps[i];
+        await tx.$executeRaw`
+          INSERT INTO onboarding_steps (flow_id, question_text, question_type, options, sort_order)
+          VALUES (${flowId}, ${step.questionText}, ${step.questionType}, ${JSON.stringify(step.options ?? [])}::jsonb, ${i + 1})
+        `;
+      }
+    }
 
-  const steps = await prisma.$queryRaw<Array<{
-    id: number;
-    question_text: string;
-    question_type: string;
-    options: unknown;
-  }>>`
-    SELECT * FROM onboarding_steps WHERE flow_id = ${flowId} ORDER BY sort_order
-  `;
+    // Fetch updated flow
+    const [flow] = await tx.$queryRaw<Array<{
+      id: number;
+      name: string;
+      is_enabled: boolean;
+      created_at: Date;
+    }>>`
+      SELECT * FROM onboarding_flows WHERE id = ${flowId}
+    `;
 
-  return {
-    id: flow.id,
-    name: flow.name,
-    isEnabled: flow.is_enabled,
-    steps: steps.map((s) => ({
-      id: s.id,
-      questionText: s.question_text,
-      questionType: s.question_type as 'single' | 'multi' | 'text',
-      options: Array.isArray(s.options) ? (s.options as string[]) : undefined,
+    const steps = await tx.$queryRaw<Array<{
+      id: number;
+      question_text: string;
+      question_type: string;
+      options: unknown;
+    }>>`
+      SELECT * FROM onboarding_steps WHERE flow_id = ${flowId} ORDER BY sort_order
+    `;
+
+    return {
+      id: flow.id,
+      name: flow.name,
+      isEnabled: flow.is_enabled,
+      steps: steps.map((s) => ({
+        id: s.id,
+        questionText: s.question_text,
+        questionType: s.question_type as 'single' | 'multi' | 'text',
+        options: Array.isArray(s.options) ? (s.options as string[]) : undefined,
+        completionRate: 0,
+      })),
       completionRate: 0,
-    })),
-    completionRate: 0,
-    createdAt: flow.created_at.toISOString(),
-  };
+      createdAt: flow.created_at.toISOString(),
+    };
+  });
 };
 
 /**

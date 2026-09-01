@@ -53,6 +53,7 @@ export interface UserQueryParams {
   positionList?: string;
   location?: string;
   search?: string;
+  hasPractices?: string;
 }
 
 // 用戶創建請求介面
@@ -88,6 +89,7 @@ export interface CreateUserRequest {
   professionalField?: ProfessionalField[]; // 支援多選
   personalSlogan?: string;
   referralSource?: ReferralSource | string; // 允許自定義輸入
+  registrationFlow?: 'quiz' | 'action_maker' | 'landing_page';
   customId: string; // 自訂 ID
 }
 
@@ -277,9 +279,10 @@ export interface UserActivityStats {
 
 export interface ActivityTimelineEvent {
   id: string;
-  type: 'login' | 'checkin' | 'post';
+  type: 'login' | 'checkin' | 'post' | 'practice' | 'persona' | 'view' | 'reaction' | 'comment';
   description: string;
   timestamp: string;
+  url?: string;
 }
 
 // 裝置資訊介面

@@ -101,7 +101,12 @@ async function getEffectiveTaskStates(
  * 建立 onboarding 記錄（新用戶註冊後呼叫）。
  * S2 用戶：task_states.A 預設為 'done'。
  */
-async function createOnboarding(userId: number, userSource: UserSource, registrationFlow?: string): Promise<void> {
+async function createOnboarding(
+  userId: number,
+  userSource: UserSource,
+  registrationFlow?: string,
+  opts?: { skipL0Email?: boolean },
+): Promise<void> {
   const initialTaskStates: TaskStates =
     userSource === UserSource.S2 ? { [OnboardingTask.A]: 'done' } : {};
 
@@ -122,15 +127,28 @@ async function createOnboarding(userId: number, userSource: UserSource, registra
 
   loggerService.info('Onboarding record created', { userId, userSource });
 
-  // 觸發 L0 歡迎信
-  try {
-    const { enqueueOnboardingL0Email } = await import('../queues/onboarding-email.queue');
-    await enqueueOnboardingL0Email(userId, userSource);
-  } catch (err) {
-    loggerService.warn('Failed to enqueue onboarding L0 email', {
-      userId,
-      error: err instanceof Error ? err.message : String(err),
-    });
+  // 觸發 L0 歡迎信（skipL0Email 為 true 時跳過，例如 email 尚未驗證的用戶）
+  if (!opts?.skipL0Email) {
+    try {
+      const { enqueueOnboardingL0Email } = await import('../queues/onboarding-email.queue');
+      await enqueueOnboardingL0Email(userId, userSource);
+    } catch (err) {
+      loggerService.warn('Failed to enqueue onboarding L0 email', {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // 歡迎信後 3 分鐘排程序列第一封提醒信（依 user_source 的 task order）
+    try {
+      const { enqueueNextSequenceEmail } = await import('../queues/onboarding-email.queue');
+      await enqueueNextSequenceEmail(userId, userSource, 3 * 60 * 1000);
+    } catch (err) {
+      loggerService.warn('Failed to enqueue onboarding sequence email', {
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 }
 
@@ -148,7 +166,7 @@ async function getStatus(userId: number): Promise<OnboardingStatusResponse | nul
     });
     if (!user) return null;
     const userSource = deriveUserSource(user.referral_source ?? null, false);
-    await createOnboarding(userId, userSource);
+    await createOnboarding(userId, userSource, undefined, { skipL0Email: true });
     row = await findByUserId(userId);
     if (!row) return null;
   }
@@ -236,18 +254,6 @@ async function checkAndAdvance(
   if (allCompleted && !updatedRow.badge_granted) {
     await grantBadge(userId, updatedRow.created_at);
     onboardingCompletionCache.markCompleted(userId);
-  }
-
-  // 觸發 email（lazy import 避免循環依賴）
-  try {
-    const { enqueueOnboardingEmail } = await import('../queues/onboarding-email.queue');
-    await enqueueOnboardingEmail(taskKey, userId, source);
-  } catch (err) {
-    loggerService.warn('Failed to enqueue onboarding email', {
-      userId,
-      taskKey,
-      error: err instanceof Error ? err.message : String(err),
-    });
   }
 
   return { taskKey, allCompleted };

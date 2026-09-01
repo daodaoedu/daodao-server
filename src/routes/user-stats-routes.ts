@@ -586,6 +586,17 @@ router.get('/segmentation', ...adminOnly, userStatsController.getUserActivitySeg
 router.get('/active-users/trend', ...adminOnly, userStatsController.getActiveUsersTrend);
 
 /**
+ * GET /api/v1/admin/user-stats/active-users/list
+ * 取得活躍用戶名單（DAU/WAU/MAU drill-down）
+ *
+ * @query {string} [date] - 基準日期 YYYY-MM-DD（預設今天）
+ * @query {string} [period] - day | week | month（預設 day）
+ *
+ * @returns {ActiveUserListItem[]} 用戶清單
+ */
+router.get('/active-users/list', ...adminOnly, userStatsController.getActiveUsersList);
+
+/**
  * GET /api/v1/admin/user-stats/funnel
  * 獲取用戶參與漏斗
  *

@@ -25,6 +25,7 @@ import adminCommunityController from '@/controllers/admin-community.controller';
 import adminEventsController from '@/controllers/admin-events.controller';
 import adminTrackingController from '@/controllers/admin-tracking.controller';
 import adminContentController from '@/controllers/admin-content.controller';
+import adminPracticeController from '@/controllers/admin-practice.controller';
 import { adminSurveyController } from '@/controllers/admin-survey.controller';
 import { validate } from '@/middleware/validation.middleware';
 import { authenticateAny } from '@/middleware/auth';
@@ -1039,6 +1040,30 @@ router.put('/users/:userId/status',
   adminUserController.updateStatus as RequestHandler
 );
 
+// ===== Admin 實踐管理路由 =====
+
+/**
+ * GET /admin/practices
+ * 取得實踐列表（含 private 與未完成的 delayed）
+ * 需要：Admin 或 SuperAdmin
+ */
+router.get('/practices',
+  authenticateAny,
+  requireAdmin,
+  adminPracticeController.listPractices as RequestHandler
+);
+
+/**
+ * PATCH /admin/practices/:id/status
+ * 更新實踐狀態
+ * 需要：Admin 或 SuperAdmin
+ */
+router.patch('/practices/:id/status',
+  authenticateAny,
+  requireAdmin,
+  adminPracticeController.updateStatus as RequestHandler
+);
+
 // ===== Admin 統計路由 =====
 
 /**
@@ -1077,6 +1102,16 @@ router.get('/email/history',
 );
 
 // ===== Persona 題目管理路由 =====
+
+/**
+ * GET /admin/persona/users
+ * 列出已回答 persona 題目的使用者（搜尋、排序、分頁）
+ */
+router.get('/persona/users',
+  authenticateAny,
+  requireAdmin,
+  adminPersonaController.listPersonaUsers as RequestHandler
+);
 
 /**
  * GET /admin/persona/questions
@@ -1214,6 +1249,17 @@ router.post('/tag-rules',
   authenticateAny,
   requireAdmin,
   adminTagsController.createTagRule as RequestHandler
+);
+
+/**
+ * PATCH /admin/tag-rules/:id
+ * 更新標籤規則
+ * 需要：Admin 或 SuperAdmin
+ */
+router.patch('/tag-rules/:id',
+  authenticateAny,
+  requireAdmin,
+  adminTagsController.updateTagRule as RequestHandler
 );
 
 /**
@@ -1450,7 +1496,18 @@ router.get('/surveys/:id/analytics', authenticateAny, requireAdmin, adminSurveyC
 
 // ─── Content Performance ──────────────────────────────────────────────────────
 router.get('/content/performance', authenticateAny, requireAdmin, adminContentController.getPerformance as RequestHandler);
+router.get('/content/checkins', authenticateAny, requireAdmin, adminContentController.getCheckins as RequestHandler);
 router.patch('/content/:id/featured', authenticateAny, requireAdmin, adminContentController.updateFeatured as RequestHandler);
+
+// ─── Content Curation Collections（策展合輯）──────────────────────────────────
+router.get('/content/collections', authenticateAny, requireAdmin, adminContentController.listCollections as RequestHandler);
+router.post('/content/collections', authenticateAny, requireAdmin, adminContentController.createCollection as RequestHandler);
+router.get('/content/collections/:id', authenticateAny, requireAdmin, adminContentController.getCollection as RequestHandler);
+router.patch('/content/collections/:id', authenticateAny, requireAdmin, adminContentController.updateCollection as RequestHandler);
+router.delete('/content/collections/:id', authenticateAny, requireAdmin, adminContentController.deleteCollection as RequestHandler);
+router.post('/content/collections/:id/items', authenticateAny, requireAdmin, adminContentController.addCollectionItem as RequestHandler);
+router.put('/content/collections/:id/items/order', authenticateAny, requireAdmin, adminContentController.reorderCollectionItems as RequestHandler);
+router.delete('/content/collections/:id/items/:itemId', authenticateAny, requireAdmin, adminContentController.removeCollectionItem as RequestHandler);
 
 // ─── Tracking & Analytics ─────────────────────────────────────────────────────
 router.get('/onboarding/stats', authenticateAny, requireAdmin, adminTrackingController.getOnboardingStats as RequestHandler);
@@ -1459,5 +1516,6 @@ router.get('/quiz/stats', authenticateAny, requireAdmin, adminTrackingController
 router.get('/persona/stats', authenticateAny, requireAdmin, adminTrackingController.getPersonaStats as RequestHandler);
 router.get('/email/onboarding-stats', authenticateAny, requireAdmin, adminTrackingController.getEmailOnboardingStats as RequestHandler);
 router.get('/engagement/stats', authenticateAny, requireAdmin, adminTrackingController.getEngagementStats as RequestHandler);
+router.get('/metrics/drilldown', authenticateAny, requireAdmin, adminTrackingController.getMetricDrillDown as RequestHandler);
 
 export default router;

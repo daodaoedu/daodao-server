@@ -905,7 +905,7 @@ export async function getPopularProfiles(query: PopularProfilesQuery): Promise<P
       nickname: p.nickname,
       photoUrl: p.contacts?.photo_url || null,
       profileViews: p.user_activity_stats?.profile_views || 0,
-      lastActiveAt: p.user_activity_stats?.last_active_at ? formatDate(p.user_activity_stats.last_active_at) : null
+      lastActiveAt: p.user_activity_stats?.last_active_at ? p.user_activity_stats.last_active_at.toISOString() : null
     })),
     totalCount
   };
@@ -1056,7 +1056,7 @@ export async function getActiveUsersTrend(query: {
   const endDate = query.endDate ? new Date(query.endDate) : new Date();
   const startDate = query.startDate ? new Date(query.startDate) : getDaysAgo(days - 1);
 
-  // 每日 DAU/WAU/MAU — 用 raw SQL + generate_series 一次取完
+  // 每日 DAU/WAU/MAU — 僅用 login_history（activity_stats 只存最後一筆，無法還原歷史）
   const rows = await prisma.$queryRaw<Array<{
     date: Date;
     dau: bigint;
@@ -1067,22 +1067,22 @@ export async function getActiveUsersTrend(query: {
       SELECT generate_series(${startDate}::date, ${endDate}::date, '1 day'::interval)::date AS d
     ),
     raw_data AS (
-      SELECT DATE(login_at) AS login_date, user_id
+      SELECT DATE(login_at) AS active_date, user_id
       FROM user_login_history
       WHERE login_at::date BETWEEN (${startDate}::date - 29) AND ${endDate}::date
     )
     SELECT
       ds.d AS date,
-      COUNT(DISTINCT CASE WHEN rd.login_date = ds.d THEN rd.user_id END) AS dau,
-      COUNT(DISTINCT CASE WHEN rd.login_date BETWEEN ds.d - 6 AND ds.d THEN rd.user_id END) AS wau,
-      COUNT(DISTINCT CASE WHEN rd.login_date BETWEEN ds.d - 29 AND ds.d THEN rd.user_id END) AS mau
+      COUNT(DISTINCT CASE WHEN rd.active_date = ds.d THEN rd.user_id END) AS dau,
+      COUNT(DISTINCT CASE WHEN rd.active_date BETWEEN ds.d - 6 AND ds.d THEN rd.user_id END) AS wau,
+      COUNT(DISTINCT CASE WHEN rd.active_date BETWEEN ds.d - 29 AND ds.d THEN rd.user_id END) AS mau
     FROM date_series ds
-    LEFT JOIN raw_data rd ON rd.login_date BETWEEN ds.d - 29 AND ds.d
+    LEFT JOIN raw_data rd ON rd.active_date BETWEEN ds.d - 29 AND ds.d
     GROUP BY ds.d
     ORDER BY ds.d
   `;
 
-  // 摘要：目前 DAU/WAU/MAU 及與前期比較
+  // 摘要：目前 DAU/WAU/MAU 及與前期比較（合併登入 + 操作）
   const oneDayAgo = getDaysAgo(1);
   const oneWeekAgo = getDaysAgo(7);
   const oneMonthAgo = getDaysAgo(30);
@@ -1090,13 +1090,34 @@ export async function getActiveUsersTrend(query: {
   const twoWeeksAgo = getDaysAgo(14);
   const twoMonthsAgo = getDaysAgo(60);
 
+  const countActive = (since: Date, until?: Date) => {
+    if (until) {
+      // 歷史區間：只用 login_history（activity_stats 只存最後一筆，會低估歷史）
+      return prisma.user_login_history.groupBy({
+        by: ['user_id'],
+        where: { login_at: { gte: since, lt: until } },
+      }).then(r => r.length);
+    }
+    // 當前區間：合併 login_history + activity_stats
+    return prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(DISTINCT user_id) AS count FROM (
+        SELECT user_id FROM user_login_history WHERE login_at >= ${since}
+        UNION
+        SELECT u.id AS user_id
+        FROM user_activity_stats uas
+        JOIN users u ON u.activity_stats_id = uas.id
+        WHERE uas.last_active_at >= ${since}
+      ) combined
+    `.then(r => Number(r[0].count));
+  };
+
   const [currentDau, currentWau, currentMau, prevDau, prevWau, prevMau] = await Promise.all([
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneDayAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneWeekAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneMonthAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: twoDaysAgo, lt: oneDayAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: twoWeeksAgo, lt: oneWeekAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: twoMonthsAgo, lt: oneMonthAgo } } }).then(r => r.length),
+    countActive(oneDayAgo),
+    countActive(oneWeekAgo),
+    countActive(oneMonthAgo),
+    countActive(twoDaysAgo, oneDayAgo),
+    countActive(twoWeeksAgo, oneWeekAgo),
+    countActive(twoMonthsAgo, oneMonthAgo),
   ]);
 
   const calcPct = (cur: number, prev: number) =>
@@ -1121,6 +1142,76 @@ export async function getActiveUsersTrend(query: {
 }
 
 /**
+ * 取得活躍用戶名單
+ * 回傳指定日期的 DAU / WAU / MAU 對應的實際用戶清單
+ */
+export async function getActiveUsersList(query: {
+  date: string;
+  period: 'day' | 'week' | 'month';
+}): Promise<Array<{
+  id: string;
+  name: string | null;
+  email: string | null;
+  photoURL: string | null;
+  lastActiveAt: string | null;
+}>> {
+  const periodDays = query.period === 'day' ? 1 : query.period === 'week' ? 7 : 30;
+  const since = getDaysAgo(periodDays);
+
+  const loginRecords = await prisma.user_login_history.groupBy({
+    by: ['user_id'],
+    where: {
+      login_at: { gte: since },
+    },
+  });
+
+  const loginUserIds = loginRecords.map((r) => r.user_id);
+
+  const activityUsers = await prisma.users.findMany({
+    where: {
+      user_activity_stats: {
+        last_active_at: { gte: since },
+      },
+    },
+    select: { id: true },
+  });
+
+  const activityUserIds = activityUsers.map((u) => u.id);
+  const userIds = [...new Set([...loginUserIds, ...activityUserIds])];
+  if (userIds.length === 0) return [];
+
+  const users = await prisma.users.findMany({
+    where: { id: { in: userIds } },
+    select: {
+      id: true,
+      external_id: true,
+      nickname: true,
+      contacts: {
+        select: {
+          email: true,
+          photo_url: true,
+        },
+      },
+      user_activity_stats: {
+        select: {
+          last_active_at: true,
+        },
+      },
+    },
+  });
+
+  return users.map((u) => ({
+    id: u.external_id || String(u.id),
+    name: u.nickname,
+    email: u.contacts?.email || null,
+    photoURL: u.contacts?.photo_url || null,
+    lastActiveAt: u.user_activity_stats?.last_active_at
+      ? u.user_activity_stats.last_active_at.toISOString()
+      : null,
+  }));
+}
+
+/**
  * 獲取用戶參與漏斗
  * 步驟：總用戶 → 30天活躍 → 7天活躍 → 今日活躍
  */
@@ -1132,11 +1223,23 @@ export async function getActiveUsersFunnel(_query: {
   const oneWeekAgo = getDaysAgo(7);
   const oneMonthAgo = getDaysAgo(30);
 
+  const countActive = (since: Date) =>
+    prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(DISTINCT user_id) AS count FROM (
+        SELECT user_id FROM user_login_history WHERE login_at >= ${since}
+        UNION
+        SELECT u.id AS user_id
+        FROM user_activity_stats uas
+        JOIN users u ON u.activity_stats_id = uas.id
+        WHERE uas.last_active_at >= ${since}
+      ) combined
+    `.then(r => Number(r[0].count));
+
   const [totalUsers, mau, wau, dau] = await Promise.all([
     prisma.users.count(),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneMonthAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneWeekAgo } } }).then(r => r.length),
-    prisma.user_login_history.groupBy({ by: ['user_id'], where: { login_at: { gte: oneDayAgo } } }).then(r => r.length),
+    countActive(oneMonthAgo),
+    countActive(oneWeekAgo),
+    countActive(oneDayAgo),
   ]);
 
   return {
@@ -1263,6 +1366,7 @@ export default {
   getPopularProfiles,
   getUserActivitySegmentation,
   getActiveUsersTrend,
+  getActiveUsersList,
   getActiveUsersFunnel,
   getUserCohortRetention,
 };

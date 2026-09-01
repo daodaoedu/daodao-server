@@ -84,7 +84,7 @@ const makeJob = (id = 'job-email-1') => ({ id });
 
 const makeEvent = (overrides: Record<string, unknown> = {}) => ({
   id: Math.floor(Math.random() * 100_000),
-  type: 'comment',
+  type: 'Comment',
   actor_id: 10,
   recipient_id: 1,
   entity_type: 'practice',
@@ -119,7 +119,7 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
     // 09:15 留言事件（P1 comment）
     const commentEvent = makeEvent({
       id: 1001,
-      type: 'comment',
+      type: 'Comment',
       priority: 'P1',
       created_at: new Date('2025-01-01T09:15:00Z'),
     });
@@ -164,7 +164,7 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
   });
 
   it('批次中 P1 事件在 digest 中屬於 p1Events，P2 事件屬於 p2Events', async () => {
-    const p1Event = makeEvent({ id: 2001, type: 'comment', priority: 'P1' });
+    const p1Event = makeEvent({ id: 2001, type: 'Comment', priority: 'P1' });
     const p2Event = makeEvent({ id: 2002, type: 'Reaction', priority: 'P2' });
 
     prismaMock.notification_events.findMany.mockResolvedValue([p1Event, p2Event] as any);
@@ -179,8 +179,8 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
     await capturedEmailProcessor!(makeJob());
 
     const digestData = generateNotificationDigestHtml.mock.calls[0][0] as any;
-    expect(digestData.p1Events).toHaveLength(1);
-    expect(digestData.p1Events[0].type).toBe('comment');
+    expect(digestData.interactionEvents).toHaveLength(1);
+    expect(digestData.interactionEvents[0].type).toBe('Comment');
     expect(digestData.p2Events).toHaveLength(1);
     expect(digestData.p2Events[0].type).toBe('Reaction');
   });
@@ -259,7 +259,7 @@ describe('EmailWorker — 12.4 偏好設定即時生效', () => {
 
   it('關閉 Reaction Email 後，同批次的其他事件（comment P1）仍正常發送', async () => {
     const reactionEvent = makeEvent({ id: 6001, type: 'Reaction', priority: 'P2' });
-    const commentEvent  = makeEvent({ id: 6002, type: 'comment',  priority: 'P1' });
+    const commentEvent  = makeEvent({ id: 6002, type: 'Comment',  priority: 'P1' });
 
     prismaMock.notification_events.findMany.mockResolvedValue([reactionEvent, commentEvent] as any);
     prismaMock.notification_preferences.findMany.mockResolvedValue([
@@ -279,7 +279,7 @@ describe('EmailWorker — 12.4 偏好設定即時生效', () => {
     };
     const digestData = generateNotificationDigestHtml.mock.calls[0][0] as any;
     expect(digestData.p2Events).toHaveLength(0); // Reaction 已被過濾
-    expect(digestData.p1Events).toHaveLength(1); // comment 仍在
+    expect(digestData.interactionEvents).toHaveLength(1); // comment 仍在
   });
 
   it('偏好設定 is_enabled=true 的事件通過過濾，正常發送', async () => {

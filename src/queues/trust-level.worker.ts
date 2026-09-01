@@ -130,7 +130,7 @@ async function processTrustLevelJob(job: Job<TrustLevelJobData>): Promise<void> 
         ), 0)::int AS likes_given,
         COALESCE((
           SELECT COUNT(*) FROM reactions re
-          JOIN resources r ON re.resource_id = r.id
+          JOIN resources r ON re.target_id = r.id AND re.target_type = 'resource'
           WHERE r.user_id = u.id
         ), 0)::int AS likes_received
       FROM users u

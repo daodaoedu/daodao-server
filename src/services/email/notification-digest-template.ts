@@ -17,6 +17,7 @@ import {
   generateCtaButton,
 } from './base-template';
 import { escapeHtml, sanitizeUrl } from '../../utils/sanitize';
+import { NOTIFICATION_TYPES } from '../../constants/notification-type';
 
 // ─── 型別定義 ──────────────────────────────────────────────────────────────────
 
@@ -56,29 +57,27 @@ export interface NotificationDigestData {
 
 function getEventLabel(type: string): string {
   const labels: Record<string, string> = {
-    Connect:                   '想與你連結',
-    ConnectAccepted:           '接受了你的連結邀請',
-    UserFollowed:              '開始追蹤你',
-    PracticeFollowed:          '追蹤了你的主題實踐',
-    comment:                   '在你的內容留言',
-    comment_reply:             '回覆了你的留言',
-    reaction:                  '對你的內容按了共鳴',
-    BuddyRequest:              '想成為你的學習夥伴',
-    BuddyRequestFollower:      '想成為學習夥伴',
-    BuddyAccepted:             '接受了你的夥伴邀請',
-    'wish.linked':             '採納了你的許願，已納入路線圖',
-    'roadmap.shipped':         '完成了你支持的項目',
+    [NOTIFICATION_TYPES.CONNECT]:                   '想與你連結',
+    [NOTIFICATION_TYPES.CONNECT_ACCEPTED]:          '接受了你的連結邀請',
+    [NOTIFICATION_TYPES.USER_FOLLOWED]:             '開始追蹤你',
+    [NOTIFICATION_TYPES.PRACTICE_FOLLOWED]:         '追蹤了你的主題實踐',
+    [NOTIFICATION_TYPES.COMMENT]:                   '在你的內容留言',
+    [NOTIFICATION_TYPES.COMMENT_REPLY]:             '回覆了你的留言',
+    [NOTIFICATION_TYPES.MENTION]:                   '在內容中提及了你',
+    [NOTIFICATION_TYPES.REACTION]:                  '對你的內容按了共鳴',
+    [NOTIFICATION_TYPES.BUDDY_REQUEST]:             '想成為你的學習夥伴',
+    [NOTIFICATION_TYPES.BUDDY_REQUEST_FOLLOWER]:    '想成為學習夥伴',
+    [NOTIFICATION_TYPES.BUDDY_ACCEPTED]:            '接受了你的夥伴邀請',
+    [NOTIFICATION_TYPES.WISH_LINKED]:               '採納了你的許願，已納入路線圖',
+    [NOTIFICATION_TYPES.ROADMAP_SHIPPED]:           '完成了你支持的項目',
     // 學習夥伴動態
-    PartnerCheckinActivity:    '完成了一次打卡',
-    PartnerUpdateActivity:     '更新了主題實踐',
+    [NOTIFICATION_TYPES.PARTNER_CHECKIN_ACTIVITY]:  '完成了一次打卡',
+    [NOTIFICATION_TYPES.PARTNER_UPDATE_ACTIVITY]:   '更新了主題實踐',
     // 一般追蹤動態
-    PracticeCreated:           '建立了新的主題實踐',
-    UserFollowActivity:        '關注了新的對象',
-    PracticeCheckinActivity:   '更新了實踐打卡',
-    PracticeUpdateActivity:    '更新了主題實踐',
-    ConnectRequestActivity:    '向他人發出連結邀請',
-    'update-practice-checkin': '更新了實踐打卡',
-    'update-practice-finish':  '完成了主題實踐',
+    [NOTIFICATION_TYPES.PRACTICE_CREATED]:          '建立了新的主題實踐',
+    [NOTIFICATION_TYPES.PRACTICE_CHECKIN_ACTIVITY]: '更新了實踐打卡',
+    [NOTIFICATION_TYPES.PRACTICE_UPDATE_ACTIVITY]:  '更新了主題實踐',
+    [NOTIFICATION_TYPES.PRACTICE_FINISHED]:         '完成了主題實踐',
   };
   return labels[type] ?? type;
 }
@@ -178,7 +177,7 @@ function generateP2Summary(events: NotificationDigestP2Event[]): string {
     const countPart = e.count > 1 ? `等 <strong>${e.count}</strong> 人` : '';
 
     let description: string;
-    if (e.type === 'reaction' && safeTitle) {
+    if (e.type === NOTIFICATION_TYPES.REACTION && safeTitle) {
       description = `對《${safeTitle}》按了共鳴`;
     } else {
       const label     = getEventLabel(e.type);

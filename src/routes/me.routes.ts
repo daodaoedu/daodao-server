@@ -27,6 +27,9 @@ import ideaController from '@/controllers/idea.controller';
 import meController from '@/controllers/me.controller';
 import authController from '@/controllers/auth.controller';
 import userController from '@/controllers/user.controller';
+import { cohortJoinController } from '@/controllers/cohort-join.controller';
+import { myCohortsResponseSchema } from '@/validators/cohort-join.validators';
+import { apiSuccessResponseSchema } from '@/validators/api-response.validators';
 
 const router = Router();
 
@@ -304,6 +307,30 @@ registry.registerPath({
   security: [{ bearerAuth: [] }]
 });
 
+/**
+ * GET /api/v1/me/cohorts - 取得我加入的期列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/me/cohorts',
+  tags: ['Me'],
+  summary: '取得我加入的期列表',
+  description: '取得當前用戶已加入且尚未退出的所有期，包含計畫與組織名稱',
+  responses: {
+    200: {
+      description: '成功獲取我的期列表',
+      content: {
+        'application/json': {
+          schema: apiSuccessResponseSchema(myCohortsResponseSchema)
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
 // ============================================================================
 // Express 路由定義
 // ============================================================================
@@ -411,6 +438,16 @@ router.get('/footprints',
   authenticate,
   validate(myFootprintsQuerySchema, 'query'),
   meController.getMyLearningFootprints as RequestHandler
+);
+
+/**
+ * GET /me/cohorts
+ * 獲取我加入的期列表
+ * 需要身份驗證
+ */
+router.get('/cohorts',
+  authenticate,
+  cohortJoinController.listMyCohorts as RequestHandler
 );
 
 export default router;

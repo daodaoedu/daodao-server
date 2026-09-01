@@ -167,64 +167,26 @@ async function getPassportState(userId: number): Promise<{ isLocked: boolean; an
   };
 }
 
-interface CarouselInitRow {
-  is_new_user: boolean;
-  session_count: number;
-  prompted_today: boolean;
-  dismissed_today: boolean;
-  unanswered: number;
-}
-
 async function getCarouselState(userId: number, replace?: number, locale = 'zh-TW'): Promise<ApiSuccessResponse<{
   shouldShow: boolean;
   allAnswered: boolean;
   questions: PersonaQuestionItem[];
 }>> {
-  // Combine user check, state, dismissed-today flag, and unanswered count into one round-trip
-  const [init] = await prisma.$queryRaw<CarouselInitRow[]>(Prisma.sql`
-    WITH user_data AS (
-      SELECT (created_at + interval '5 days' > NOW()) AS is_new_user
-      FROM users WHERE id = ${userId} LIMIT 1
-    ),
-    state_data AS (
-      SELECT
-        session_count_since_last_prompt,
-        (last_prompt_timestamp IS NOT NULL AND last_prompt_timestamp::date = CURRENT_DATE) AS prompted_today,
-        (last_dismissed_at IS NOT NULL AND last_dismissed_at::date = CURRENT_DATE) AS dismissed_today
-      FROM persona_user_state WHERE user_id = ${userId} LIMIT 1
-    ),
-    unanswered_data AS (
-      SELECT COUNT(*) AS unanswered
-      FROM persona_questions q
-      LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
-      LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
-      WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
-    )
-    SELECT
-      COALESCE((SELECT is_new_user FROM user_data), FALSE)                          AS is_new_user,
-      COALESCE((SELECT session_count_since_last_prompt FROM state_data), 0)         AS session_count,
-      COALESCE((SELECT prompted_today FROM state_data), FALSE)                      AS prompted_today,
-      COALESCE((SELECT dismissed_today FROM state_data), FALSE)                     AS dismissed_today,
-      (SELECT unanswered FROM unanswered_data)                                      AS unanswered
+  // 同一 UTC 日內 dismiss 過就不再顯示（呼應 persona_user_state.last_dismissed_at 的設計；
+  // 先前 getCarouselState 沒有讀這個欄位，導致「今天不再顯示」按鈕實際上不生效）。
+  const [dismissState] = await prisma.$queryRaw<{ dismissed_today: boolean | null }[]>(Prisma.sql`
+    SELECT (last_dismissed_at AT TIME ZONE 'UTC')::date = (NOW() AT TIME ZONE 'UTC')::date AS dismissed_today
+    FROM persona_user_state
+    WHERE user_id = ${userId}
   `);
-
-  const allAnswered = Number(init.unanswered) === 0;
-
-  if (allAnswered) {
-    return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
-  }
-
-  const shouldShow = !init.dismissed_today;
-
-  if (!shouldShow) {
+  if (dismissState?.dismissed_today === true) {
     return createSuccessResponse({ shouldShow: false, allAnswered: false, questions: [] });
   }
 
-  const baseCondition = replace != null
-    ? Prisma.sql`a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE AND q.id != ${replace}`
-    : Prisma.sql`a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE`;
-
-  const questions = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
+  // Fetch all unanswered, non-suppressed questions in a single query.
+  // 移除 LIMIT 後第二段查詢本來就會抓回全部可顯示題目，因此不再需要額外的 count 查詢，
+  // allAnswered 直接由結果推得，省去一次 DB round-trip。
+  const allQuestions = await prisma.$queryRaw<QuestionRow[]>(Prisma.sql`
     SELECT q.id, q.question_type, q.is_new_user_priority,
            t.prompt, t.options,
            FALSE AS answered,
@@ -235,10 +197,20 @@ async function getCarouselState(userId: number, replace?: number, locale = 'zh-T
       ON t.question_id = q.id AND t.locale = ${locale}
     LEFT JOIN persona_answers a ON a.question_id = q.id AND a.user_id = ${userId}
     LEFT JOIN persona_skips s ON s.question_id = q.id AND s.user_id = ${userId}
-    WHERE ${baseCondition}
+    WHERE a.id IS NULL AND COALESCE(s.suppressed, FALSE) = FALSE
     ORDER BY RANDOM()
-    LIMIT 5
   `);
+
+  const allAnswered = allQuestions.length === 0;
+
+  if (allAnswered) {
+    return createSuccessResponse({ shouldShow: false, allAnswered: true, questions: [] });
+  }
+
+  // replace 僅影響本次回傳清單，不影響 allAnswered 判定，故於記憶體中過濾
+  const questions = replace != null
+    ? allQuestions.filter((q) => q.id !== replace)
+    : allQuestions;
 
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO persona_user_state (user_id, session_count_since_last_prompt, last_prompt_timestamp, created_at)
@@ -420,12 +392,14 @@ interface QuestionSummaryRow {
   question_type: 'choice' | 'sentence_completion' | 'scenario';
   options: string[] | null;
   total_answer_count: number;
+  option_counts: Record<string, number>;
 }
 
 interface AnswerWithUserRow {
   answer_id: number;
   user_internal_id: number;
   user_external_id: string | null;
+  custom_id: string | null;
   nickname: string | null;
   photo_url: string | null;
   is_open_profile: boolean | null;
@@ -445,6 +419,7 @@ export interface QuestionAnswerItem {
   userId: string | null;
   name: string | null;
   photoURL: string | null;
+  customId: string | null;
   selectedValue: string | null;
   textAnswer: string | null;
   resonanceCount: number;
@@ -460,7 +435,14 @@ async function getQuestionAnswers(
   viewerId: number | undefined,
   params: { locale?: string; limit?: number; cursor?: number }
 ): Promise<ApiSuccessResponse<{
-  question: { id: number; prompt: string; questionType: string; options: string[] | null; totalAnswerCount: number };
+  question: {
+    id: number;
+    prompt: string;
+    questionType: string;
+    options: string[] | null;
+    totalAnswerCount: number;
+    optionCounts: Record<string, number>;
+  };
   answers: QuestionAnswerItem[];
   hasMore: boolean;
   nextCursor: number | null;
@@ -476,13 +458,27 @@ async function getQuestionAnswers(
       t.prompt,
       q.question_type,
       t.options,
-      COUNT(a.id)::int AS total_answer_count
+      stats.total_answer_count,
+      stats.option_counts
     FROM persona_questions q
     JOIN persona_question_translations t
       ON t.question_id = q.id AND t.locale = ${locale}
-    LEFT JOIN persona_answers a ON a.question_id = q.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(grouped.answer_count), 0)::int AS total_answer_count,
+        COALESCE(
+          jsonb_object_agg(grouped.selected_value, grouped.answer_count)
+            FILTER (WHERE grouped.selected_value IS NOT NULL),
+          '{}'::jsonb
+        ) AS option_counts
+      FROM (
+        SELECT a.selected_value, COUNT(*)::int AS answer_count
+        FROM persona_answers a
+        WHERE a.question_id = q.id
+        GROUP BY a.selected_value
+      ) grouped
+    ) stats ON TRUE
     WHERE q.id = ${questionId}
-    GROUP BY q.id, t.prompt, q.question_type, t.options
   `);
 
   if (!questionRow) throw new BadRequestError('找不到此題目');
@@ -507,6 +503,7 @@ async function getQuestionAnswers(
       a.id              AS answer_id,
       u.id              AS user_internal_id,
       u.external_id     AS user_external_id,
+      u.custom_id,
       u.nickname,
       c.photo_url,
       u.is_open_profile,
@@ -541,6 +538,7 @@ async function getQuestionAnswers(
         questionType: questionRow.question_type,
         options: questionRow.options,
         totalAnswerCount: Number(questionRow.total_answer_count),
+        optionCounts: questionRow.option_counts ?? {},
       },
       answers: [],
       hasMore: false,
@@ -588,6 +586,7 @@ async function getQuestionAnswers(
       userId: reveal ? (row.user_external_id ?? null) : null,
       name: reveal ? (row.nickname ?? null) : null,
       photoURL: reveal ? (row.photo_url ?? null) : null,
+      customId: reveal ? (row.custom_id ?? null) : null,
       selectedValue: row.selected_value,
       textAnswer: row.text_answer,
       resonanceCount: Number(row.resonance_count),
@@ -606,6 +605,7 @@ async function getQuestionAnswers(
       questionType: questionRow.question_type,
       options: questionRow.options,
       totalAnswerCount: Number(questionRow.total_answer_count),
+      optionCounts: questionRow.option_counts ?? {},
     },
     answers,
     hasMore,

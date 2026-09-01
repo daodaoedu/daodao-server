@@ -23,6 +23,7 @@ import { prismaService } from './services/database/prisma.service';
 import { emailService } from './services/email/email.service';
 import redis from './services/database/redis.service';
 import { loggerService } from './services/logging/logger.service';
+import { validateFutureLetterEncryptionConfig } from './config/future-letter-encryption.config';
 // BullMQ
 import {
   getRawConnection,
@@ -69,6 +70,22 @@ import {
   closeEmailWorker,
   registerEmailRetryScheduledJob,
   type EmailJobData,
+  // Tag Rule Evaluation Queue
+  createTagRuleQueue,
+  setTagRuleQueue,
+  createTagRuleWorker,
+  closeTagRuleWorker,
+  registerTagRuleScheduledJobs,
+  type TagRuleJobData,
+  createCohortStatQueue,
+  createCohortStatWorker,
+  registerCohortStatJobs,
+  type CohortStatJobData,
+  createFutureLetterQueue,
+  setFutureLetterQueue,
+  createFutureLetterWorker,
+  closeFutureLetterWorker,
+  type FutureLetterJobData,
 } from './queues';
 import type { OnboardingEmailJobData } from './types/email/onboarding.types';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
@@ -91,10 +108,19 @@ let onboardingEmailQueue: Queue<OnboardingEmailJobData> | null = null;
 let onboardingEmailWorker: Worker<OnboardingEmailJobData> | null = null;
 let emailQueue: Queue<EmailJobData> | null = null;
 let emailWorker: Worker<EmailJobData> | null = null;
+let tagRuleQueue: Queue<TagRuleJobData> | null = null;
+let tagRuleWorker: Worker<TagRuleJobData> | null = null;
+let cohortStatQueue: Queue<CohortStatJobData> | null = null;
+let cohortStatWorker: Worker<CohortStatJobData> | null = null;
+let futureLetterQueue: Queue<FutureLetterJobData> | null = null;
+let futureLetterWorker: Worker<FutureLetterJobData> | null = null;
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Private letter data must never fall back to an implicit or development key.
+validateFutureLetterEncryptionConfig();
 
 // 安全中間件
 app.use(helmet({
@@ -196,7 +222,7 @@ const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
   throw new Error('SESSION_SECRET environment variable is required');
 }
-if (process.env.NODE_ENV === 'prod' && sessionSecret.length < 32) {
+if ((process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production') && sessionSecret.length < 32) {
   throw new Error('SESSION_SECRET must be at least 32 characters in production');
 }
 const hasDeployedDomain = !!process.env.COOKIE_DOMAIN;
@@ -316,6 +342,14 @@ async function initializeBullMQ(): Promise<void> {
     await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
     console.log('🔔 通知排程任務已註冊');
 
+    // ===== Future Letter Queue =====
+    futureLetterQueue = createFutureLetterQueue();
+    setFutureLetterQueue(futureLetterQueue);
+    futureLetterWorker = createFutureLetterWorker();
+    const { futureLetterService } = await import('./services/future-letter.service');
+    const recoveredFutureLetters = await futureLetterService.recoverOverdueDeliveries();
+    console.log(`💌 Future Letter Queue 已建立，補送 ${recoveredFutureLetters} 封逾期信件`);
+
     // ===== Social Notification Queue（關注/連結 fan-out）=====
     socialNotificationQueue = createSocialNotificationQueue();
     setSocialNotificationQueue(socialNotificationQueue);
@@ -342,6 +376,22 @@ async function initializeBullMQ(): Promise<void> {
 
     await registerEmailRetryScheduledJob(emailQueue);
     console.log('📧 Email 失敗重試排程已註冊（每小時 30 分）');
+
+    // ===== Tag Rule Evaluation Queue（自動標籤規則評估）=====
+    tagRuleQueue = createTagRuleQueue();
+    setTagRuleQueue(tagRuleQueue);
+    console.log('🏷️ Tag Rule Queue 已建立');
+
+    tagRuleWorker = createTagRuleWorker({ concurrency: 1 });
+    console.log('🏷️ Tag Rule Worker 已啟動');
+
+    await registerTagRuleScheduledJobs(tagRuleQueue);
+    console.log('🏷️ 標籤規則排程任務已註冊（每小時檢查）');
+
+    cohortStatQueue = createCohortStatQueue();
+    cohortStatWorker = createCohortStatWorker();
+    await registerCohortStatJobs(cohortStatQueue);
+    console.log('🗼 燈塔每週統計快照排程已註冊');
 
     console.log('✅ BullMQ 系統初始化完成');
   } catch (error) {
@@ -415,6 +465,18 @@ async function gracefulShutdown(signal: string) {
       await emailQueue.close();
       console.log('✅ Email Queue 已關閉');
     }
+    if (tagRuleWorker) {
+      await closeTagRuleWorker(tagRuleWorker);
+      console.log('✅ Tag Rule Worker 已關閉');
+    }
+    if (tagRuleQueue) {
+      await tagRuleQueue.close();
+      console.log('✅ Tag Rule Queue 已關閉');
+    }
+    if (cohortStatWorker) await cohortStatWorker.close();
+    if (cohortStatQueue) await cohortStatQueue.close();
+    if (futureLetterWorker) await closeFutureLetterWorker(futureLetterWorker);
+    if (futureLetterQueue) await futureLetterQueue.close();
 
     // 關閉 BullMQ Redis 連線
     await closeQueueConnection();

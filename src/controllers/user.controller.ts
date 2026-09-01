@@ -4,6 +4,8 @@
  */
 
 import { Request, Response } from 'express';
+import { validate as isUuid } from 'uuid';
+import type { Prisma } from '../../generated/prisma';
 import { userService, getCommonCirclesCount, getUserConnectionsCount } from '../services/user.service';
 import { getRecentPracticeCount } from '../services/practice.service';
 import {
@@ -31,15 +33,16 @@ import {
   availablePreferencesResponseSchema,
   loginHistoryResponseSchema,
   userActivityStatsResponseSchema,
-  updateUserSchema,
-  createUserSchema
+  updateUserSchema
 } from '../validators/user.validators';
 import {
   NotFoundError,
   BadRequestError
 } from '../middleware/error.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
-import { setAuthCookie, clearAuthCookie } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, QUIZ_CLAIM_COOKIE_NAME, clearQuizClaimCookie } from '../utils/cookie-config';
+import { createSuccessResponse } from '../utils/response-helper';
+import { getUserIslandData } from '../services/user-island.service';
 import { permissionService } from '../services/auth/permission.service';
 
 /**
@@ -56,7 +59,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
     result.data = result.data.map(user => ({
       ...user,
       email: null,
-      birthDay: null,
+      birthDate: null,
       isSubscribeEmail: false,
       loginCount: 0,
       lastLoginAt: null,
@@ -132,14 +135,13 @@ export const getOneUser = asyncHandler(async (req: Request, res: Response) => {
 
 /**
  * 創建用戶
- * POST /api/users
+ * POST /api/users/me
  * 此端點用於將臨時用戶轉換為正式用戶
+ * req.body 已由 parseFormData + validate middleware 處理完畢
  */
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const currentUser = req.user;
 
-  // 檢查用戶是否為臨時用戶
-  // 臨時用戶有 id (數字) 和 isTemp=true，但沒有 _id (UUID)
   if (!currentUser || !currentUser.id) {
     throw new NotFoundError('用戶資訊不存在');
   }
@@ -148,78 +150,23 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('此端點僅供臨時用戶完成註冊使用');
   }
 
-  // FormData 需要先解析 JSON 欄位再驗證（與 updateMe 相同處理方式）
-  const contentType = req.headers['content-type'] || '';
-  const isFormData = contentType.includes('multipart/form-data');
-  const parsedBody = isFormData
-    ? parseFormDataBody(req.body)
-    : req.body as CreateUserRequest;
+  // req.body 已由 parseFormData + validate(createUserSchema) middleware 解析並驗證
+  const requestData = req.body as CreateUserRequest;
+  const quizClaimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
+  const result = await userService.createUser(requestData, currentUser.id.toString(), { quizClaimToken });
 
-  const validation = createUserSchema.safeParse(parsedBody);
-  if (!validation.success) {
-    const errorMessage = validation.error.issues
-      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
-      .join('; ');
-    throw new BadRequestError(`驗證失敗: ${errorMessage}`);
-  }
-
-  const requestData = validation.data as CreateUserRequest;
-
-  // 將數字 id 轉換為字串傳遞給 service
-  const result = await userService.createUser(requestData, currentUser.id.toString());
-
-  // 設置新的 auth cookie
   if (result.data?.token) {
     setAuthCookie(res, result.data.token);
   }
 
-  // 驗證響應格式確保符合 OpenAPI schema
-  const validatedResponse = createUserResponseSchema.parse(result);
-
-  res.status(201).json(validatedResponse);
-});
-
-/**
- * 解析 FormData 中的 JSON 欄位
- * FormData 會將所有值轉為字串，需要解析 JSON 欄位
- */
-const parseFormDataBody = (body: Record<string, unknown>): UpdateUserRequest => {
-  const result: Record<string, unknown> = {};
-
-  // 需要解析為 JSON 的欄位
-  const jsonFields = ['wantToDoList', 'tagList', 'positionList', 'interestList', 'preferences', 'contactList', 'professionalField'];
-
-  // 需要解析為 boolean 的欄位
-  const booleanFields = ['isOpenLocation', 'isOpenProfile', 'isSubscribeEmail', 'hideConnectionsCount'];
-
-  for (const [key, value] of Object.entries(body)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-
-    if (jsonFields.includes(key) && typeof value === 'string') {
-      // 空字串代表未提供 JSON 欄位，跳過
-      if (value === '') {
-        continue;
-      }
-      try {
-        result[key] = JSON.parse(value);
-      } catch {
-        // 如果解析失敗，保留原始值
-        result[key] = value;
-      }
-    } else if (booleanFields.includes(key)) {
-      result[key] = value === 'true' || value === true;
-    } else if (value === '') {
-      // 非 JSON 欄位的空字串，保留為空字串以便清除欄位
-      result[key] = '';
-    } else {
-      result[key] = value;
-    }
+  if (result.quizClaimed) {
+    clearQuizClaimCookie(res);
   }
 
-  return result as UpdateUserRequest;
-};
+
+  const validatedResponse = createUserResponseSchema.parse(result);
+  res.status(201).json(validatedResponse);
+});
 
 /**
  * 更新當前用戶
@@ -233,19 +180,8 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('User information not found');
   }
 
-  // 檢查是否為 multipart/form-data（有檔案上傳）
-  const avatarFile = req.file;
-
-  // 解析表單資料（FormData 會將值轉為字串）
-  const contentType = req.headers['content-type'] || '';
-  const isFormData = contentType.includes('multipart/form-data');
-
-  const parsedBody = isFormData
-    ? parseFormDataBody(req.body)
-    : req.body as UpdateUserRequest;
-
-  // 驗證請求資料
-  const validation = updateUserSchema.safeParse(parsedBody);
+  // 驗證請求資料（req.body 已由 parseFormData middleware 解析）
+  const validation = updateUserSchema.safeParse(req.body);
   if (!validation.success) {
     const errorMessage = validation.error.issues
       .map(issue => `${issue.path.join('.')}: ${issue.message}`)
@@ -255,7 +191,7 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
 
   const requestData: UpdateUserWithAvatarRequest = {
     ...validation.data,
-    avatarFile
+    avatarFile: req.file
   };
 
   const result = await userService.updateUserWithAvatar(currentUser._id, requestData);
@@ -515,12 +451,16 @@ export const getUserProfile = asyncHandler(async (req: Request, res: Response) =
   // 嘗試用 custom_id 或 external_id 查詢用戶
   const { prisma } = await import('../services/database/prisma.service');
 
+  // external_id 為 UUID 欄位，identifier 非 UUID 時不可納入比對，
+  // 否則 Prisma 會嘗試將 custom_id 字串 parse 成 UUID 而丟出例外（回傳 500）
+  const orConditions: Prisma.usersWhereInput[] = [{ custom_id: identifier }];
+  if (isUuid(identifier)) {
+    orConditions.push({ external_id: identifier });
+  }
+
   const user = await prisma.users.findFirst({
     where: {
-      OR: [
-        { custom_id: identifier },
-        { external_id: identifier }
-      ]
+      OR: orConditions
     },
     include: {
       contacts: true,
@@ -575,6 +515,48 @@ export const getUserProfile = asyncHandler(async (req: Request, res: Response) =
   });
 });
 
+/**
+ * 取得 3D 島嶼頁 islandData 聚合資料
+ * GET /api/v1/users/:identifier/island
+ * identifier 可為 custom_id（字母數字）或 external_id（UUID）
+ * 無需強制登入；帶 JWT 則解析 viewerId 以計算 viewerRelation 與隱私過濾
+ */
+export const getUserIsland = asyncHandler(async (req: Request, res: Response) => {
+  const { identifier } = req.params;
+  const currentUser = req.user;
+
+  const { prisma } = await import('../services/database/prisma.service');
+
+  // external_id 為 UUID 欄位，identifier 非 UUID 時不可納入比對，
+  // 否則 Prisma 會嘗試將 custom_id 字串 parse 成 UUID 而丟出例外（回傳 500）
+  const orConditions: Prisma.usersWhereInput[] = [{ custom_id: identifier }];
+  if (isUuid(identifier)) {
+    orConditions.push({ external_id: identifier });
+  }
+
+  const user = await prisma.users.findFirst({
+    where: { OR: orConditions },
+    include: { contacts: true }
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const islandData = await getUserIslandData(
+    {
+      id: user.id,
+      external_id: user.external_id,
+      custom_id: user.custom_id,
+      nickname: user.nickname,
+      photoUrl: user.contacts?.photo_url ?? null
+    },
+    currentUser?.id ?? null
+  );
+
+  res.json(createSuccessResponse(islandData));
+});
+
 export const userController = {
   getAllUsers,
   getMe,
@@ -594,7 +576,8 @@ export const userController = {
   getLoginHistory,
   getActivityStats,
   getSettingsSummary,
-  getUserProfile
+  getUserProfile,
+  getUserIsland
 };
 
 export default userController;

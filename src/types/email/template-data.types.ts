@@ -5,23 +5,16 @@
 
 /**
  * 歡迎信資料
- * 根據 referralGroup 決定使用哪個版本：
- * - 'social-media': 社群媒體來源版本（強調學習社群）
- * - 'community': 社群/朋友介紹版本（強調學習夥伴）
- * - 'default': 預設版本（詳細引導）
  */
 export interface WelcomeEmailData {
   /** 使用者名稱 */
   name: string;
 
-  /** 來源管道群組（由 referral_source 決定） */
-  referralGroup: 'social-media' | 'community' | 'default';
+  /** 來源管道群組，決定歡迎信文案版本 */
+  referralGroup?: 'social-media' | 'community' | 'default';
 
-  /** 主題實踐連結 */
+  /** CTA 連結（預設為前台首頁） */
   practiceUrl?: string;
-
-  /** 海星插圖 URL */
-  illustrationUrl?: string;
 
   /** 取消訂閱連結 */
   unsubscribeUrl?: string;

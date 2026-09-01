@@ -250,6 +250,12 @@ export const createUserSchema = z.object({
   professionalField: professionalFieldSchema,
   personalSlogan: personalSloganSchema,
   referralSource: referralSourceSchema,
+  registrationFlow: z.enum(['quiz', 'action_maker', 'landing_page'])
+    .optional()
+    .openapi({
+      description: '註冊流程來源（quiz=從測驗註冊, action_maker=從工具註冊, landing_page=一般註冊）',
+      example: 'landing_page',
+    }),
   customId: z.string()
     .trim()
     .min(3, 'Custom ID 至少 3 個字元')
@@ -462,6 +468,13 @@ export const getUserQuerySchema = z.object({
       description: '搜尋關鍵字',
       example: '小明',
       examples: ['小明', 'john', 'test']
+    }),
+  hasPractices: z.string()
+    .optional()
+    .openapi({
+      description: '是否只顯示有主題實踐的用戶',
+      example: 'true',
+      examples: ['true']
     })
 }).openapi({
   description: '獲取用戶列表的查詢參數'

@@ -4,9 +4,11 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { anonymizeCohortEnrollments } from './cohort-anonymization.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
 import { onboardingService } from './onboarding.service';
+import { quizService } from './quiz.service';
 import { deriveUserSource } from '../utils/onboarding-source';
 import { cityService } from './city.service';
 import {
@@ -461,7 +463,8 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
     educationStage,
     positionList,
     location,
-    search
+    search,
+    hasPractices
   } = params;
 
   const currentPage = parseInt(String(page));
@@ -513,98 +516,200 @@ const getAllUsers = async (params: UserQueryParams): Promise<PaginatedApiRespons
     };
   }
 
-  // 查詢用戶
-  const users = await prisma.users.findMany({
-    where: whereConditions,
-    include: {
-      roles: true,
-      location: {
-        include: {
-          city: true,
-          country: true
-        }
+  // 只顯示有主題實踐的用戶
+  if (hasPractices === 'true') {
+    whereConditions.practices = {
+      some: {
+        deleted_at: null,
+        status: { notIn: ['draft', 'archived'] }
+      }
+    };
+  }
+
+  const userInclude = {
+    roles: true,
+    location: {
+      include: {
+        city: true,
+        country: true
+      }
+    },
+    contacts: true,
+    basic_info: true,
+    user_positions: {
+      include: {
+        position: true
+      }
+    },
+    user_preferences: {
+      where: {
+        is_selected: true
       },
-      contacts: true,
-      basic_info: true,
-      user_positions: {
-        include: {
-          position: true
-        }
-      },
-      user_preferences: {
-        where: {
-          is_selected: true
-        },
-        include: {
-          preference_options: {
-            include: {
-              preference_types: true
-            }
+      include: {
+        preference_options: {
+          include: {
+            preference_types: true
           }
         }
       }
-    },
+    }
+  };
+
+  // hasPractices 模式：額外 include practices + checkins 用於排序
+  if (hasPractices === 'true') {
+    Object.assign(userInclude, {
+      practices: {
+        where: {
+          deleted_at: null,
+          status: { notIn: ['draft', 'archived'] }
+        },
+        select: {
+          id: true,
+          created_at: true,
+          first_checkin_at: true,
+          practice_checkins: {
+            select: { checkin_date: true },
+            orderBy: { checkin_date: 'desc' as const },
+            take: 1
+          }
+        }
+      }
+    });
+  }
+
+  // 查詢用戶
+  const users = await prisma.users.findMany({
+    where: whereConditions,
+    include: userInclude,
     orderBy: {
       created_at: 'desc'
     }
   });
 
-  // 計算完整度並排序
-  const completenessWeights: CompletenessWeights = {
-    self_introduction: { base: 2, levels: [50, 100, 200, 300] },
-    share_list: { base: 2, levels: [50, 100, 200, 300] },
-    tag_list: { tagWeight: 0.5, maxScore: 4 },
-    contact: 1,
-    location: 1,
-    positions: 1,
-  };
+  let paginatedUsers;
 
-  const usersWithCompleteness = await Promise.all(users.map(async (user) => {
-    let completenessScore = 0;
+  if (hasPractices === 'true') {
+    // 依實踐活躍度排序：最近 checkin 時間 + 實踐數量 + 最近建立實踐時間
+    const now = Date.now();
+    const DAY_MS = 86400000;
 
-    if (user.basic_info) {
-      if (user.basic_info.self_introduction) {
-        const introLength = user.basic_info.self_introduction.length;
-        completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
+    const usersWithActivity = (users as (typeof users[number] & {
+      practices: {
+        id: number;
+        created_at: Date;
+        first_checkin_at: Date | null;
+        practice_checkins: { checkin_date: Date }[];
+      }[];
+    })[]).map(user => {
+      const practices = user.practices ?? [];
+      const practiceCount = practices.length;
+
+      let latestCheckinTime = 0;
+      let latestPracticeCreatedTime = 0;
+
+      for (const p of practices) {
+        const createdAt = new Date(p.created_at).getTime();
+        if (createdAt > latestPracticeCreatedTime) {
+          latestPracticeCreatedTime = createdAt;
+        }
+        if (p.practice_checkins.length > 0) {
+          const checkinTime = new Date(p.practice_checkins[0].checkin_date).getTime();
+          if (checkinTime > latestCheckinTime) {
+            latestCheckinTime = checkinTime;
+          }
+        }
       }
 
-      if (user.basic_info.share_list) {
-        const shareLength = typeof user.basic_info.share_list === 'string'
-          ? user.basic_info.share_list.length
-          : JSON.stringify(user.basic_info.share_list).length;
-        completenessScore += calculateScore(shareLength, completenessWeights.share_list);
+      // 最近 checkin 的天數差（越小越好），沒有 checkin 給極大值
+      const checkinDaysAgo = latestCheckinTime > 0
+        ? (now - latestCheckinTime) / DAY_MS
+        : 9999;
+      // 最近建立實踐的天數差
+      const practiceCreatedDaysAgo = latestPracticeCreatedTime > 0
+        ? (now - latestPracticeCreatedTime) / DAY_MS
+        : 9999;
+
+      // 加權分數：checkin 活躍度（權重 50%）+ 實踐數量（權重 25%）+ 最近建立（權重 25%）
+      const checkinScore = checkinDaysAgo < 9999 ? Math.min(100, Math.max(0, 100 - checkinDaysAgo)) : 0;
+      const countScore = Math.min(practiceCount * 10, 100);
+      const createdScore = practiceCreatedDaysAgo < 9999 ? Math.min(100, Math.max(0, 100 - practiceCreatedDaysAgo)) : 0;
+
+      const activityScore = checkinScore * 0.5 + countScore * 0.25 + createdScore * 0.25;
+
+      return { user, activityScore };
+    });
+
+    usersWithActivity.sort((a, b) => b.activityScore - a.activityScore);
+
+    paginatedUsers = usersWithActivity
+      .slice(offset, offset + currentPageSize)
+      .map(item => item.user);
+  } else {
+    // 原有邏輯：按 profile 完整度排序
+    const completenessWeights: CompletenessWeights = {
+      self_introduction: { base: 2, levels: [50, 100, 200, 300] },
+      share_list: { base: 2, levels: [50, 100, 200, 300] },
+      tag_list: { tagWeight: 0.5, maxScore: 4 },
+      contact: 1,
+      location: 1,
+      positions: 1,
+    };
+
+    const userIds = users.map(u => u.id);
+    const allEntityTags = await prisma.entity_tags.findMany({
+      where: { entity_type: 'user', entity_id: { in: userIds } },
+      include: { tags: true }
+    });
+    const tagCountByUserId: Record<number, number> = {};
+    for (const et of allEntityTags) {
+      tagCountByUserId[et.entity_id] = (tagCountByUserId[et.entity_id] ?? 0) + 1;
+    }
+
+    const usersWithCompleteness = users.map((user) => {
+      let completenessScore = 0;
+
+      if (user.basic_info) {
+        if (user.basic_info.self_introduction) {
+          const introLength = user.basic_info.self_introduction.length;
+          completenessScore += calculateScore(introLength, completenessWeights.self_introduction);
+        }
+
+        if (user.basic_info.share_list) {
+          const shareLength = typeof user.basic_info.share_list === 'string'
+            ? user.basic_info.share_list.length
+            : JSON.stringify(user.basic_info.share_list).length;
+          completenessScore += calculateScore(shareLength, completenessWeights.share_list);
+        }
       }
-    }
 
-    const userTags = await getUserTags(user.id);
-    if (userTags && userTags.length > 0) {
-      const tagScore = Math.min(
-        userTags.length * completenessWeights.tag_list.tagWeight,
-        completenessWeights.tag_list.maxScore
-      );
-      completenessScore += tagScore;
-    }
+      const tagCount = tagCountByUserId[user.id] ?? 0;
+      if (tagCount > 0) {
+        const tagScore = Math.min(
+          tagCount * completenessWeights.tag_list.tagWeight,
+          completenessWeights.tag_list.maxScore
+        );
+        completenessScore += tagScore;
+      }
 
-    if (user.contacts && Object.keys(user.contacts).length > 1) {
-      completenessScore += completenessWeights.contact;
-    }
-    if (user.location?.city) {
-      completenessScore += completenessWeights.location;
-    }
-    if (user.user_positions && user.user_positions.length > 0) {
-      completenessScore += completenessWeights.positions;
-    }
+      if (user.contacts && Object.keys(user.contacts).length > 1) {
+        completenessScore += completenessWeights.contact;
+      }
+      if (user.location?.city) {
+        completenessScore += completenessWeights.location;
+      }
+      if (user.user_positions && user.user_positions.length > 0) {
+        completenessScore += completenessWeights.positions;
+      }
 
-    return { user, completenessScore };
-  }));
+      return { user, completenessScore };
+    });
 
-  // 按完整度排序
-  usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
+    usersWithCompleteness.sort((a, b) => b.completenessScore - a.completenessScore);
 
-  // 分頁
-  const paginatedUsers = usersWithCompleteness
-    .slice(offset, offset + currentPageSize)
-    .map(item => item.user);
+    paginatedUsers = usersWithCompleteness
+      .slice(offset, offset + currentPageSize)
+      .map(item => item.user);
+  }
 
   const formattedData = await Promise.all(paginatedUsers.map(user => formatUserResponse(user)));
 
@@ -743,7 +848,11 @@ const getOneUser = async (
 /**
  * 創建用戶
  */
-const createUser = async (userData: CreateUserRequest, tempUserId: string): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }>> => {
+const createUser = async (
+  userData: CreateUserRequest,
+  tempUserId: string,
+  opts?: { quizClaimToken?: string }
+): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }> & { quizClaimed?: boolean }> => {
   // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
   // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
   const { response, emailData, onboardingData } = await prisma.$transaction(async (tx) => {
@@ -767,6 +876,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       professionalField,
       personalSlogan,
       referralSource,
+      registrationFlow,
       interestList,
       customId,
       name: nickname
@@ -873,6 +983,17 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
       }
     });
 
+    // 處理追蹤標籤（來自 ?ref= URL 參數）
+    if (referralSource) {
+      await tx.$executeRaw`
+        INSERT INTO user_tag_assignments (user_id, tag_id, assigned_by, assigned_at)
+        SELECT ${newUser.id}, id, 'system', NOW()
+        FROM user_tags
+        WHERE tracking_slug = ${referralSource}
+        ON CONFLICT (user_id, tag_id) DO NOTHING
+      `;
+    }
+
     // 處理職位關聯
     if (positionList && positionList.length > 0) {
       const positions = await tx.position.findMany({
@@ -968,7 +1089,7 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     return {
       response: createSuccessResponse(result),
       emailData: pendingEmail,
-      onboardingData: { userId: newUser.id, referralSource: referralSource ?? null },
+      onboardingData: { userId: newUser.id, referralSource: referralSource ?? null, registrationFlow: registrationFlow ?? null },
     };
   });
 
@@ -982,17 +1103,41 @@ const createUser = async (userData: CreateUserRequest, tempUserId: string): Prom
     );
   }
 
-  // 建立 Onboarding 記錄（非阻塞，失敗不影響用戶建立流程）
-  onboardingService
-    .createOnboarding(onboardingData.userId, deriveUserSource(onboardingData.referralSource, false))
-    .catch((err: unknown) =>
-      loggerService.warn('Failed to create onboarding record', {
+  // 建立 Onboarding 記錄（await 確保後續 quiz hook 能找到記錄）
+  // skipL0Email: email 尚未驗證，歡迎信延後到驗證成功再寄
+  try {
+    const fromQuiz = onboardingData.registrationFlow === 'quiz';
+    await onboardingService.createOnboarding(
+      onboardingData.userId,
+      deriveUserSource(onboardingData.referralSource, fromQuiz),
+      onboardingData.registrationFlow ?? undefined,
+      { skipL0Email: true },
+    );
+  } catch (err: unknown) {
+    loggerService.warn('Failed to create onboarding record', {
+      userId: onboardingData.userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 認領匿名測驗結果（臨時用戶轉正式用戶時，用正式的 users.id 認領）
+  let quizClaimed = false;
+  if (opts?.quizClaimToken) {
+    try {
+      const claimed = await quizService.claimByToken(onboardingData.userId, opts.quizClaimToken);
+      if (claimed) {
+        quizClaimed = true;
+        loggerService.info('Claimed pending quiz result during registration', { userId: onboardingData.userId });
+      }
+    } catch (err: unknown) {
+      loggerService.warn('Failed to claim quiz result during registration', {
         userId: onboardingData.userId,
         error: err instanceof Error ? err.message : String(err),
-      })
-    );
+      });
+    }
+  }
 
-  return response;
+  return { ...response, quizClaimed };
 };
 
 /**
@@ -1422,6 +1567,9 @@ const deleteMe = async (externalId: string): Promise<ApiSuccessResponse<{ messag
     const appleId = user.contacts?.apple_id;
     const email = user.contacts?.email;
 
+    // 保留 Lighthouse 名冊與快照，但移除可識別欄位。
+    await anonymizeCohortEnrollments(tx, userId);
+
     // --- 3. 刪除用戶（其餘 onDelete: Cascade 的關聯會由 DB 自動處理） ---
     await tx.users.delete({ where: { id: userId } });
 
@@ -1488,6 +1636,9 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
     // 保存關聯資料以便稍後刪除
     const contacts = user.contacts;
     const basicInfo = user.basic_info;
+
+    // 保留 Lighthouse 名冊與快照，但移除可識別欄位。
+    await anonymizeCohortEnrollments(tx, userId);
 
     // 先刪除用戶（解除外鍵引用）
     await tx.users.delete({

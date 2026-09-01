@@ -7,6 +7,7 @@
 import { prisma } from './database/prisma.service';
 import { externalToInternalId } from './id-converter.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import {
   BadRequestError,
   NotFoundError,
@@ -93,7 +94,7 @@ const followUser = async (
   // Fire-and-forget: P2 UserFollowed event
   prisma.users.findUnique({ where: { id: followerId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'UserFollowed',
+      type: NOTIFICATION_TYPES.USER_FOLLOWED,
       actorId: followerId,
       recipientId: targetId,
       entityType: 'user',
@@ -103,22 +104,6 @@ const followUser = async (
     }))
     .catch(() => {});
 
-  // Fire-and-forget: fan-out follow.user to actor's followers
-  prisma.follows.findMany({
-    where: { target_type: 'user', target_id: followerId },
-    select: { follower_id: true },
-  }).then(async (followers) => {
-    const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-    for (const follower of followers) {
-      if (follower.follower_id === targetId) continue;
-      await enqueueSocialNotification({
-        event: 'follow.user',
-        actorId: followerId,
-        recipientId: follower.follower_id,
-        payload: { targetId },
-      });
-    }
-  }).catch(() => {});
 
   return createSuccessResponse({ message: '關注成功' });
 };
@@ -186,7 +171,7 @@ const followPractice = async (
   // Fire-and-forget: P2 PracticeFollowed event to practice owner
   prisma.users.findUnique({ where: { id: followerId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'PracticeFollowed',
+      type: NOTIFICATION_TYPES.PRACTICE_FOLLOWED,
       actorId: followerId,
       recipientId: practice.user_id,
       entityType: 'practice',

@@ -3,6 +3,8 @@
  */
 
 // 連線
+export { COHORT_STAT_QUEUE_NAME, createCohortStatQueue, registerCohortStatJobs, type CohortStatJobData } from './cohort-stat.queue';
+export { createCohortStatWorker, processCohortStatJob } from './cohort-stat.worker';
 export {
   createQueueConnection,
   getQueueConnection,
@@ -117,6 +119,7 @@ export {
   getOnboardingEmailQueue,
   enqueueOnboardingEmail,
   enqueueOnboardingL0Email,
+  enqueueNextSequenceEmail,
 } from './onboarding-email.queue';
 
 // Onboarding Email Worker
@@ -205,6 +208,23 @@ export {
   closeBadgeAwardWorker,
 } from './badge-award.worker';
 
+// Tag Rule Evaluation Queue（自動標籤規則評估器）
+export {
+  TAG_RULE_QUEUE_NAME,
+  createTagRuleQueue,
+  setTagRuleQueue,
+  getTagRuleQueue,
+  registerTagRuleScheduledJobs,
+  type TagRuleJobData,
+} from './tag-rule.queue';
+
+// Tag Rule Evaluation Worker
+export {
+  createTagRuleWorker,
+  closeTagRuleWorker,
+  type TagRuleWorkerOptions,
+} from './tag-rule.worker';
+
 // Email Queue（通用郵件發送佇列）
 export {
   EMAIL_QUEUE_NAME,
@@ -225,3 +245,19 @@ export {
   closeEmailWorker,
   type EmailWorkerOptions,
 } from './email.worker';
+
+export {
+  FUTURE_LETTER_QUEUE_NAME,
+  createFutureLetterQueue,
+  setFutureLetterQueue,
+  getFutureLetterQueue,
+  scheduleFutureLetterDelivery,
+  removeFutureLetterJob,
+  type FutureLetterJobData,
+} from './future-letter.queue';
+
+export {
+  createFutureLetterWorker,
+  closeFutureLetterWorker,
+  processFutureLetterJob,
+} from './future-letter.worker';

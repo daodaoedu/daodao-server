@@ -27,6 +27,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import {
   INITIAL_PROGRESS
 } from '../utils/practice-progress';
@@ -43,6 +44,7 @@ import { enqueuePracticeEmail } from '../queues';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
 let _fanoutModule: Promise<typeof import('./social-notification-fanout.service')> | null = null;
@@ -95,7 +97,7 @@ async function notifyPracticeCreatedAudience(params: {
 
   await Promise.all([...recipientIds].map(recipientId =>
     notificationEventService.createEvent({
-      type: 'PracticeCreated',
+      type: NOTIFICATION_TYPES.PRACTICE_CREATED,
       actorId,
       recipientId,
       entityType: 'practice',
@@ -120,7 +122,10 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       sortBy = 'createdAt',
       sortOrder = 'desc',
       userId,
-      excludePrivate
+      excludePrivate,
+      excludeNonPublic,
+      privacyStatus,
+      includeArchived
     } = params;
 
     const skip = (page - 1) * limit;
@@ -128,35 +133,55 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 建構查詢條件
     // 預設排除 archived 狀態，除非明確指定 status=archived
-    const where: Prisma.practicesWhereInput = {
-      ...(search && {
+    const andConditions: Prisma.practicesWhereInput[] = [];
+
+    if (search) {
+      andConditions.push({
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
           { practice_action: { contains: search, mode: 'insensitive' } }
         ]
-      }),
+      });
+    }
+
+    // 公開存取：排除 private，且排除未完成的 delayed（完成後才公開）
+    if (excludeNonPublic) {
+      andConditions.push({
+        OR: [
+          { privacy_status: 'public' },
+          { privacy_status: 'delayed', status: 'completed' },
+        ],
+      });
+    }
+
+    const where: Prisma.practicesWhereInput = {
+      ...(andConditions.length > 0 && { AND: andConditions }),
       // status 過濾邏輯：
       // - 'archived': 只顯示 archived（需明確指定）
       // - 其他具體狀態: 只顯示該狀態
-      // - 'all' 或無指定: 排除 archived
+      // - 'all' 或無指定: 排除 archived（admin 帶 includeArchived 時不排除）
       ...(status === 'archived'
         ? { status: 'archived' }
         : status && status !== 'all'
           ? { status }
-          : { status: { not: 'archived' } }),
+          : includeArchived
+            ? {}
+            : { status: { not: 'archived' } }),
       ...(userId && { user_id: userId }),
-      // 公開存取時排除私人練習
-      ...(excludePrivate && { privacy_status: { not: 'private' } }),
+      // 依隱私狀態篩選（admin 用；與 excludeNonPublic 互斥使用）
+      ...(!excludeNonPublic && privacyStatus && privacyStatus !== 'all' && { privacy_status: privacyStatus }),
+      // 向後相容：僅排除 private
+      ...(!excludeNonPublic && !privacyStatus && excludePrivate && { privacy_status: { not: 'private' } }),
       // 排除已刪除的實踐（deleted_at 不為 null 表示已刪除）
       deleted_at: null
     };
 
-    // 建構排序條件
+    // 建構排序條件（其餘 sortBy 值 fallback 到 created_at，避免無排序造成分頁不穩定）
     const orderBy: Prisma.practicesOrderByWithRelationInput = {};
-    if (sortBy === 'createdAt') {
-      orderBy.created_at = sortOrder;
-    } else if (sortBy === 'updatedAt') {
+    if (sortBy === 'updatedAt') {
       orderBy.updated_at = sortOrder;
+    } else {
+      orderBy.created_at = sortOrder;
     }
 
     // 執行查詢
@@ -172,6 +197,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
               id: true,
               external_id: true,
               nickname: true,
+              custom_id: true,
               contacts: {
                 select: {
                   photo_url: true
@@ -265,7 +291,8 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: tagsByPracticeId[practice.id]?.map(tag => tag.name) || [],
       stats: {
@@ -315,6 +342,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -339,19 +367,24 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       throw new NotFoundError('實踐不存在');
     }
 
-    // 隱私控制：依 visibility 欄位判斷存取權限
-    const visibility = practice.visibility ?? 'public';
-    if (visibility !== 'public') {
+    // 隱私控制：依 privacy_status 判斷存取權限
+    const privacyStatus = practice.privacy_status ?? 'public';
+    if (privacyStatus === 'delayed') {
+      // delayed + completed → 視為公開；delayed + 未完成 → 僅擁有者可見
+      if (practice.status !== 'completed' && userId !== practice.user_id) {
+        throw new ForbiddenError('此實踐尚未公開');
+      }
+    } else if (privacyStatus !== 'public') {
       const canAccess = await privacyService.canAccessContent(
         userId ?? null,
         practice.user_id,
-        visibility,
+        privacyStatus,
       );
       if (!canAccess) {
-        if (visibility === 'private') {
+        if (privacyStatus === 'private') {
           throw new ForbiddenError('此實踐為私人');
         }
-        throw new ForbiddenError('此實踐僅限夥伴可見');
+        throw new ForbiddenError('此實踐尚未公開');
       }
     }
 
@@ -419,7 +452,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: tags.map(tag => tag.tags.name),
       stats: {
@@ -549,6 +583,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -606,7 +641,8 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: data.tags || [],
       stats: {
@@ -743,6 +779,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -835,7 +872,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
         id: practice.users.external_id || '',
         name: practice.users.nickname || 'Unknown User',
         photoURL: practice.users.contacts?.photo_url || null,
-        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: practice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: practice.users.custom_id ?? null
       },
       tags: updatedTags.map(tag => tag.tags.name),
       stats: {
@@ -926,9 +964,41 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
 
 /**
  * 取得使用者的實踐列表
+ * @param viewerIsOwner 觀看者是否為該使用者本人；非本人時排除 private 及未完成的 delayed
  */
-export async function findUserPractices(userId: number, params: PracticeQueryParams): Promise<PaginatedApiResponse<PracticeEntity>> {
-  return findAll({ ...params, userId, excludePrivate: false });
+export async function findUserPractices(userId: number, params: PracticeQueryParams, viewerIsOwner = true): Promise<PaginatedApiResponse<PracticeEntity>> {
+  return findAll({ ...params, userId, excludeNonPublic: !viewerIsOwner });
+}
+
+/**
+ * Admin 直接更新實踐狀態（不受擁有者與可編輯狀態限制）
+ */
+export async function adminUpdateStatus(
+  id: number,
+  status: PracticeStatus
+): Promise<ApiSuccessResponse<{ id: string; status: PracticeStatus; privacyStatus: string; updatedAt?: string }>> {
+  const existing = await prismaClient.practices.findFirst({
+    where: { id, deleted_at: null },
+    select: { id: true }
+  });
+
+  if (!existing) {
+    throw new NotFoundError('實踐不存在');
+  }
+
+  const updated = await prismaClient.practices.update({
+    where: { id },
+    data: { status, updated_at: new Date() }
+  });
+
+  loggerService.info('Admin updated practice status', { practiceId: id, status });
+
+  return createSuccessResponse({
+    id: updated.external_id || '',
+    status: updated.status as PracticeStatus,
+    privacyStatus: updated.privacy_status || 'public',
+    updatedAt: updated.updated_at?.toISOString()
+  });
 }
 
 /**
@@ -1038,7 +1108,7 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
  * 創建資源記錄並建立 practice-resource 關聯
  * @returns 建立的資源列表（包含 external_id）
  */
-async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<PracticeResourceEntity[]> {
+async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<PracticeResourceEntity[]> {
   if (!resources.length) return [];
 
   const createdResources: PracticeResourceEntity[] = [];
@@ -1058,13 +1128,14 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
           }
         });
 
-        // 2. 建立 practice-resource 關聯
+        // 2. 建立 practice-resource 關聯（note 承載「第幾天使用」）
         await prismaClient.entity_resources.create({
           data: {
             resource_id: createdResource.id,
             entity_type: 'practice',
             entity_id: practiceId,
-            created_by: userId
+            created_by: userId,
+            note: encodeResourceDay(resource.dayNumber)
           }
         });
 
@@ -1072,7 +1143,8 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
         createdResources.push({
           id: createdResource.external_id || String(createdResource.id),
           name: createdResource.name,
-          url: createdResource.url || undefined
+          url: createdResource.url || undefined,
+          dayNumber: resource.dayNumber ?? null
         });
       } catch (error) {
         loggerService.warn('Failed to create resource', { practiceId, resource, error });
@@ -1116,7 +1188,7 @@ async function updateTags(practiceId: number, tagNames: string[]): Promise<void>
  * 更新資源
  * 軟刪除現有關聯並建立新的資源關聯
  */
-async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string }>, userId: number): Promise<void> {
+async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<void> {
   try {
     // 1. 取得現有的 practice-resource 關聯
     const existingRelations = await prismaClient.entity_resources.findMany({
@@ -1302,7 +1374,8 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
       acc[er.entity_id].push({
         id: er.resources.external_id || String(er.resources.id),
         name: er.resources.name,
-        url: er.resources.url || undefined
+        url: er.resources.url || undefined,
+        dayNumber: parseResourceDay(er.note)
       });
       return acc;
     }, {} as Record<number, PracticeResourceEntity[]>);
@@ -1370,6 +1443,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -1435,6 +1509,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
             id: true,
             external_id: true,
             nickname: true,
+            custom_id: true,
             contacts: {
               select: {
                 photo_url: true
@@ -1504,7 +1579,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
         id: updatedPractice.users.external_id || '',
         name: updatedPractice.users.nickname || 'Unknown User',
         photoURL: updatedPractice.users.contacts?.photo_url || null,
-        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || []
+        roleList: updatedPractice.users.user_positions?.map((up: { position: { name: string } }) => up.position.name) || [],
+        customId: updatedPractice.users.custom_id ?? null
       },
       tags: tags.map(tag => tag.tags.name),
       stats: {
@@ -1652,8 +1728,9 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
 
     const isSelf = source.user_id === userId;
     if (!isSelf) {
-      const visibility = source.visibility ?? 'public';
-      if (visibility !== 'public') {
+      const ps = source.privacy_status ?? 'public';
+      const isAccessible = ps === 'public' || (ps === 'delayed' && source.status === 'completed');
+      if (!isAccessible) {
         throw new ForbiddenError('此實踐不公開，無法複製');
       }
     }

@@ -9,10 +9,10 @@
  */
 
 import { prisma } from './database/prisma.service';
-import { loggerService } from './logging/logger.service';
 import { externalToInternalId } from './id-converter.service';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import {
   BadRequestError,
   NotFoundError,
@@ -161,42 +161,15 @@ const sendRequest = async (
     },
   });
 
-  // Enqueue connect.request notification to followers of requester
-  // Only for new requests (created_at equals updated_at), not re-sends
-  const isNewRequest =
-    upsertedRequest.created_at !== null &&
-    upsertedRequest.updated_at !== null &&
-    upsertedRequest.created_at.getTime() === upsertedRequest.updated_at.getTime();
-  if (isNewRequest) {
-    try {
-      const { enqueueSocialNotification } = await import('../queues/social-notification.queue');
-      const followers = await prisma.follows.findMany({
-        where: { target_type: 'user', target_id: requesterId },
-        select: { follower_id: true }
-      });
-      for (const follower of followers) {
-        if (follower.follower_id === requesterId) continue;
-        await enqueueSocialNotification({
-          event: 'connect.request',
-          actorId: requesterId,
-          recipientId: follower.follower_id,
-          payload: { receiverId }
-        });
-      }
-    } catch (e) {
-      loggerService.warn('Failed to enqueue connect.request notification', { requesterId, receiverId, error: e });
-    }
-  }
-
   // Fire-and-forget: P1 Connect event
   prisma.users.findUnique({ where: { id: requesterId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'Connect',
+      type: NOTIFICATION_TYPES.CONNECT,
       actorId: requesterId,
       recipientId: receiverId,
       entityType: 'connection',
       entityId: upsertedRequest.id,
-      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      payload: { actorName: actor?.nickname ?? null, intent: intent?.trim() ?? null, connection_request_id: upsertedRequest.id, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/settings/connections` },
       priority: 'P1',
     }))
     .catch(() => {});
@@ -236,20 +209,20 @@ const acceptRequest = async (
   // Fire-and-forget: P1 ConnectAccepted event — notify the original requester
   prisma.users.findUnique({ where: { id: currentUserId }, select: { nickname: true } })
     .then(actor => notificationEventService.createEvent({
-      type: 'ConnectAccepted',
+      type: NOTIFICATION_TYPES.CONNECT_ACCEPTED,
       actorId: currentUserId,
       recipientId: request.requester_id,
       entityType: 'connection',
       entityId: requestId,
-      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/connections` },
+      payload: { actorName: actor?.nickname ?? null, url: `${process.env.FRONTEND_URL ?? 'https://app.daodao.so'}/settings/connections` },
       priority: 'P1',
     }))
     .catch(() => {});
 
   // 更新接收者的 Connect 通知狀態，讓重整後仍顯示「已同意」
   prisma.notifications.updateMany({
-    where: { recipient_id: currentUserId, type: 'Connect', entity_id: requestId },
-    data:  { type: 'connect-agree' },
+    where: { recipient_id: currentUserId, type: NOTIFICATION_TYPES.CONNECT, entity_id: requestId },
+    data:  { type: NOTIFICATION_TYPES.CONNECT_AGREED },
   }).catch(() => {});
 
   return createSuccessResponse({ message: '已接受連結請求' });
@@ -277,8 +250,8 @@ const rejectRequest = async (
 
   // 更新接收者的 Connect 通知狀態，讓重整後仍顯示「已忽略」
   prisma.notifications.updateMany({
-    where: { recipient_id: currentUserId, type: 'Connect', entity_id: requestId },
-    data:  { type: 'connect-rejected' },
+    where: { recipient_id: currentUserId, type: NOTIFICATION_TYPES.CONNECT, entity_id: requestId },
+    data:  { type: NOTIFICATION_TYPES.CONNECT_REJECTED },
   }).catch(() => {});
 
   return createSuccessResponse({ message: '已忽略連結請求' });

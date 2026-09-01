@@ -104,6 +104,7 @@ describe('Practice CheckIn Service', () => {
     external_id: 'practice-uuid',
     user_id: 1,
     template_id: null,
+    cohort_id: null,
     title: 'TypeScript 學習',
     practice_action: '閱讀技術書籍',
     start_date: futureStart,
@@ -127,6 +128,8 @@ describe('Practice CheckIn Service', () => {
     copy_count: 0,
     creation_source: null,
     is_featured: false,
+    featured_start_at: null,
+    featured_end_at: null,
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
@@ -350,7 +353,7 @@ describe('Practice CheckIn Service', () => {
 
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'update-practice-finish',
+          type: 'PracticeFinished',
           actorId: 1,
           recipientId: 2,
           entityType: 'practice',
@@ -384,7 +387,7 @@ describe('Practice CheckIn Service', () => {
         await Promise.resolve();
 
         expect(mockCreateEvent).not.toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'update-practice-finish' })
+          expect.objectContaining({ type: 'PracticeFinished' })
         );
       }
     );

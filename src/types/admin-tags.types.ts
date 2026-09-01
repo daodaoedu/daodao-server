@@ -14,6 +14,10 @@ export interface UserTag {
   description: string | null;
   /** 標籤類型：手動 / 自動 */
   type: 'manual' | 'auto';
+  /** 標籤分類：來源 / 特徵 / 事件 */
+  category: 'source' | 'characteristic' | 'event' | null;
+  /** 追蹤短網址識別碼（對應 ?ref= URL 參數） */
+  trackingSlug: string | null;
   /** 已指派用戶數 */
   userCount: number;
   /** 建立時間 */
@@ -50,6 +54,10 @@ export interface CreateTagInput {
   color?: string;
   description?: string;
   type?: 'manual' | 'auto';
+  /** 標籤分類 */
+  category?: 'source' | 'characteristic' | 'event';
+  /** 追蹤短網址識別碼 */
+  trackingSlug?: string;
 }
 
 /** 更新標籤輸入 */
@@ -57,6 +65,10 @@ export interface UpdateTagInput {
   name?: string;
   color?: string;
   description?: string;
+  /** 標籤分類 */
+  category?: 'source' | 'characteristic' | 'event';
+  /** 追蹤短網址識別碼 */
+  trackingSlug?: string;
 }
 
 /** 建立標籤規則輸入 */
@@ -65,6 +77,15 @@ export interface CreateTagRuleInput {
   conditionType: string;
   conditionOperator?: string;
   conditionValue: string;
+  logicOperator?: 'AND' | 'OR';
+  isEnabled?: boolean;
+}
+
+/** 更新標籤規則輸入 */
+export interface UpdateTagRuleInput {
+  conditionType?: string;
+  conditionOperator?: string;
+  conditionValue?: string;
   logicOperator?: 'AND' | 'OR';
   isEnabled?: boolean;
 }

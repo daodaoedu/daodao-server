@@ -45,12 +45,23 @@ export const practiceResourceInputSchema = z.object({
       example: 'https://react.dev/',
       examples: ['https://react.dev/', 'https://javascript.info/', 'https://vuejs.org/guide/'],
       format: 'uri'
+    }),
+  dayNumber: z.number()
+    .int('使用天數必須是整數')
+    .min(1, '使用天數最少為第 1 天')
+    .max(30, '使用天數最多為第 30 天')
+    .nullable()
+    .optional()
+    .openapi({
+      description: '指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）',
+      example: 3
     })
 }).openapi('PracticeResourceInput', {
   description: '實踐資源輸入資料',
   example: {
     name: 'React 官方文檔',
-    url: 'https://react.dev/'
+    url: 'https://react.dev/',
+    dayNumber: 3
   }
 });
 
@@ -79,13 +90,22 @@ export const practiceResourceSchema = z.object({
       example: 'https://react.dev/',
       examples: ['https://react.dev/', 'https://javascript.info/'],
       format: 'uri'
+    }),
+  dayNumber: z.number()
+    .int()
+    .nullable()
+    .optional()
+    .openapi({
+      description: '指定第幾天使用此資源（null 代表整段實踐期間皆可使用）',
+      example: 3
     })
 }).openapi('PracticeResource', {
   description: '實踐資源回應資料',
   example: {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'React 官方文檔',
-    url: 'https://react.dev/'
+    url: 'https://react.dev/',
+    dayNumber: 3
   }
 });
 
@@ -313,10 +333,10 @@ export const checkInSchema = z.object({
       examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(300, '詳細描述不可超過300字')
+    .max(600, '詳細描述不可超過600字')
     .optional()
     .openapi({
-      description: '詳細描述（最多300字）',
+      description: '詳細描述（最多600字）',
       example: '今天閱讀了第三章，學到了很多新概念',
       examples: ['今天閱讀了第三章，學到了很多新概念', '完成了 30 分鐘的練習']
     }),
@@ -339,12 +359,12 @@ export const checkInSchema = z.object({
       format: 'uri'
     }),
   tags: z.array(z.string().max(50, '標籤名稱不可超過50字'))
+    .min(1, '請至少選擇一個標籤')
     .max(10, '標籤最多10個')
-    .default([])
     .openapi({
-      description: '打卡標籤（最多10個）',
+      description: '打卡標籤（必填，至少1個，最多10個）',
       example: ['專注', '有收穫'],
-      examples: [[], ['專注', '有收穫'], ['閱讀', '冥想', '運動']]
+      examples: [['專注', '有收穫'], ['閱讀', '冥想', '運動']]
     })
 }).openapi('CheckInRequest', {
   description: '實踐活動簽到記錄',
@@ -476,10 +496,10 @@ export const updateCheckInSchema = z.object({
       examples: ['give_up', 'frustrated', 'bored', 'neutral', 'good', 'happy']
     }),
   note: z.string()
-    .max(300, '詳細描述不可超過300字')
+    .max(600, '詳細描述不可超過600字')
     .optional()
     .openapi({
-      description: '詳細描述（最多300字）',
+      description: '詳細描述（最多600字）',
       example: '今天閱讀了第三章，學到了很多新概念'
     }),
   imageUrls: z.array(z.string().url('請輸入有效的圖片網址'))
@@ -583,7 +603,8 @@ export const userBasicInfoResponseSchema = z.object({
   roleList: z.array(z.string()).optional().openapi({ description: '用戶角色列表', example: ['normal_student', 'educator'] }),
   educationStage: z.string().nullable().optional().openapi({ description: '教育階段', example: 'university' }),
   tagList: z.array(z.string()).optional().openapi({ description: '用戶標籤列表', example: ['前端', 'React'] }),
-  selfIntroduction: z.string().nullable().optional().openapi({ description: '自我介紹', example: '熱愛學習的開發者' })
+  selfIntroduction: z.string().nullable().optional().openapi({ description: '自我介紹', example: '熱愛學習的開發者' }),
+  customId: z.string().nullable().optional().openapi({ description: '用戶自訂 ID（用於個人頁面網址）', example: 'xiaoming' })
 }).openapi('UserBasicInfo', {
   description: '用戶基本資訊',
   example: {
@@ -593,7 +614,8 @@ export const userBasicInfoResponseSchema = z.object({
     roleList: ['normal_student', 'educator'],
     educationStage: 'university',
     tagList: ['前端', 'React'],
-    selfIntroduction: '熱愛學習的開發者'
+    selfIntroduction: '熱愛學習的開發者',
+    customId: 'xiaoming'
   }
 });
 
@@ -625,13 +647,15 @@ registry.register('PracticeStats', practiceStatsResponseSchema);
 export const practiceResourceEntitySchema = z.object({
   id: z.string().openapi({ description: '資源外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   name: z.string().openapi({ description: '資源名稱', example: 'React 官方文檔' }),
-  url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' })
+  url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' }),
+  dayNumber: z.number().int().nullable().optional().openapi({ description: '指定第幾天使用此資源（null 代表整段實踐期間皆可使用）', example: 3 })
 }).openapi('PracticeResourceEntity', {
   description: '實踐使用的資源',
   example: {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'React 官方文檔',
-    url: 'https://react.dev/'
+    url: 'https://react.dev/',
+    dayNumber: 3
   }
 });
 
@@ -971,6 +995,16 @@ export const practiceTemplateResponseSchema = z.object({
       { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev' }
     ]
   }),
+  organization: z.object({
+    id: z.number().int(),
+    name: z.string(),
+    bio: z.string().nullable(),
+    externalLink: z.string().url().nullable()
+  }).optional().openapi({ description: '模板所屬組織；官方模板不提供此欄位' }),
+  answerCount: z.number().int().openapi({
+    description: '使用此模板建立實踐的總人次',
+    example: 42
+  }),
   createdAt: z.string().openapi({
     description: '建立時間',
     example: '2024-01-15T10:30:00.000Z'
@@ -991,6 +1025,7 @@ export const practiceTemplateResponseSchema = z.object({
     resources: [
       { id: '123e4567-e89b-12d3-a456-426614174000', name: 'React 官方文檔', url: 'https://react.dev' }
     ],
+    answerCount: 42,
     createdAt: '2024-01-15T10:30:00.000Z'
   }
 });
@@ -1368,6 +1403,38 @@ export const copyPracticeResponseSchema = z.object({
 });
 export const copyPracticeApiResponseSchema = apiSuccessResponseSchema(copyPracticeResponseSchema);
 export type CopyPracticeResponse = z.infer<typeof copyPracticeResponseSchema>;
+
+// ===== Admin Practice Schemas =====
+
+// Admin 實踐列表查詢參數（不排除 private / 未完成的 delayed）
+export const adminPracticeListQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1).openapi({ description: '頁碼', example: 1 }),
+  limit: z.coerce.number().min(1).max(100).default(20).openapi({ description: '每頁筆數', example: 20 }),
+  query: z.string().optional().openapi({ description: '搜尋關鍵字（標題、實踐目標）' }),
+  status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived', 'all'])
+    .default('all')
+    .openapi({ description: '實踐狀態篩選；all 包含 archived', example: 'all' }),
+  privacyStatus: z.enum(['private', 'public', 'delayed', 'all'])
+    .default('all')
+    .openapi({ description: '隱私狀態篩選（private: 私密, public: 公開, delayed: 完成後公開）', example: 'all' }),
+  sort: z.enum(['createdAt', 'updatedAt', 'likeCount']).default('createdAt').openapi({ description: '排序欄位' }),
+  order: z.enum(['asc', 'desc']).default('desc').openapi({ description: '排序方向' })
+});
+export type AdminPracticeListQuery = z.infer<typeof adminPracticeListQuerySchema>;
+
+// Admin 更新實踐狀態
+export const adminPracticeStatusUpdateSchema = z.object({
+  status: practiceStatusSchema
+});
+export type AdminPracticeStatusUpdate = z.infer<typeof adminPracticeStatusUpdateSchema>;
+
+export const adminPracticeStatusResponseSchema = z.object({
+  id: z.string().openapi({ description: '實踐 external ID（UUID）' }),
+  status: practiceStatusSchema,
+  privacyStatus: z.string().openapi({ description: '隱私狀態', example: 'public' }),
+  updatedAt: z.string().optional().openapi({ description: '更新時間（ISO 8601）' })
+});
+export const adminPracticeStatusApiResponseSchema = apiSuccessResponseSchema(adminPracticeStatusResponseSchema);
 
 // 統一導出對象，遵循專案模式
 export const practiceValidators = {

@@ -41,6 +41,7 @@ import {
 import { createSuccessResponse } from '../utils/response-helper';
 import { interactionCountService } from './interaction-count.service';
 import { notificationEventService } from './notification-event.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { loggerService } from './logging/logger.service';
 import { privacyService } from './privacy.service';
 
@@ -176,7 +177,7 @@ export class CommentService implements CommentServiceInterface {
         // Fire-and-forget: Comment 通知給內容擁有者
         if (targetEntity.user_id) {
           notificationEventService.createEvent({
-            type:        'comment',
+            type:        NOTIFICATION_TYPES.COMMENT,
             actorId:     userId,
             recipientId: targetEntity.user_id,
             entityType:  'comment',
@@ -189,7 +190,7 @@ export class CommentService implements CommentServiceInterface {
         // Fire-and-forget: comment_reply 通知給被回覆的留言作者
         if (parentId && parentComment) {
           notificationEventService.createEvent({
-            type:        'comment_reply',
+            type:        NOTIFICATION_TYPES.COMMENT_REPLY,
             actorId:     userId,
             recipientId: parentComment.user_id,
             entityType:  'comment',
@@ -250,7 +251,7 @@ export class CommentService implements CommentServiceInterface {
 
               for (const recipientId of validIds) {
                 notificationEventService.createEvent({
-                  type:        'mention',
+                  type:        NOTIFICATION_TYPES.MENTION,
                   actorId:     userId,
                   recipientId,
                   entityType:  'comment',
@@ -540,7 +541,7 @@ export class CommentService implements CommentServiceInterface {
           // Find users already notified for this comment to avoid duplicate notifications
           const alreadyNotified = await tx.notification_events.findMany({
             where: {
-              type: 'mention',
+              type: NOTIFICATION_TYPES.MENTION,
               entity_type: 'comment',
               entity_id: commentId,
             },
@@ -567,7 +568,7 @@ export class CommentService implements CommentServiceInterface {
 
               for (const recipientId of validIds) {
                 notificationEventService.createEvent({
-                  type:        'mention',
+                  type:        NOTIFICATION_TYPES.MENTION,
                   actorId:     userId,
                   recipientId,
                   entityType:  'comment',
@@ -746,6 +747,17 @@ export class CommentService implements CommentServiceInterface {
         });
         if (checkin) {
           entity = { id: checkin.id, user_id: checkin.user_id };
+        }
+        break;
+      }
+
+      case 'persona_answer': {
+        const answer = await prisma.persona_answers.findUnique({
+          where: { id: internalId },
+          select: { id: true, user_id: true }
+        });
+        if (answer) {
+          entity = { id: answer.id, user_id: answer.user_id };
         }
         break;
       }
@@ -1011,15 +1023,19 @@ export class CommentService implements CommentServiceInterface {
     if (targetType === 'practice') {
       const practice = await prisma.practices.findUnique({
         where: { id: internalTargetId },
-        select: { user_id: true, visibility: true, privacy_status: true },
+        select: { user_id: true, status: true, privacy_status: true },
       });
       if (!practice) {
         throw new NotFoundError('practice not found');
       }
+      const ps = practice.privacy_status ?? 'public';
+      if (ps === 'delayed') {
+        return practice.status === 'completed' || currentUserId === practice.user_id;
+      }
       return privacyService.canAccessContent(
         currentUserId,
         practice.user_id,
-        practice.visibility ?? practice.privacy_status ?? 'public'
+        ps
       );
     }
 
@@ -1028,17 +1044,21 @@ export class CommentService implements CommentServiceInterface {
         where: { id: internalTargetId },
         select: {
           practices: {
-            select: { user_id: true, visibility: true, privacy_status: true },
+            select: { user_id: true, status: true, privacy_status: true },
           },
         },
       });
       if (!checkin?.practices) {
         throw new NotFoundError('checkin not found');
       }
+      const ps = checkin.practices.privacy_status ?? 'public';
+      if (ps === 'delayed') {
+        return checkin.practices.status === 'completed' || currentUserId === checkin.practices.user_id;
+      }
       return privacyService.canAccessContent(
         currentUserId,
         checkin.practices.user_id,
-        checkin.practices.visibility ?? checkin.practices.privacy_status ?? 'public'
+        ps
       );
     }
 

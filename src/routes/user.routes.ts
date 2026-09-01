@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { userController } from '../controllers/user.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
+import { parseFormData } from '../middleware/parse-formdata.middleware';
 import {
   canUpdateUser,
   // canDeleteUser,
@@ -39,6 +40,10 @@ import {
   customIdSchema,
   customIdParamsSchema
 } from '../validators/user-custom-id.validators';
+import {
+  userIslandParamsSchema,
+  userIslandResponseSchema
+} from '../validators/user-island.validators';
 import {
   preferencesQuerySchema,
   updatePreferencesSchema
@@ -169,6 +174,8 @@ registry.registerPath({
 router.post('/me',
   authenticate,
   upload.single('avatar'),
+  parseFormData,
+  validate(createUserSchema, 'body'),
   userController.createUser as RequestHandler
 );
 
@@ -248,6 +255,7 @@ registry.registerPath({
 router.put('/me',
   authenticate,
   upload.single('avatar'),
+  parseFormData,
   withOnboardingHook(OnboardingTask.B, userController.updateMe as RequestHandler, {
     shouldAdvance: (req) => {
       const userId = req.user?.id;
@@ -747,6 +755,47 @@ registry.registerPath({
 router.get('/profile/:identifier',
   optionalAuth,
   userController.getUserProfile as RequestHandler
+);
+
+/**
+ * GET /api/v1/users/{identifier}/island - 取得 3D 島嶼頁 islandData 聚合資料
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/{identifier}/island',
+  tags: ['Users'],
+  summary: '取得 3D 島嶼頁 islandData 聚合資料',
+  description:
+    '根據 custom_id 或 external_id 聚合島主 profile、quiz 人格、可見實踐（含打卡統計與 checkin id 種子）、近 30 天打卡總量與 viewerRelation。' +
+    '實踐可見性於 server 端依觀看者關係過濾（public / connections_only / private），私有實踐不進 payload。無需登入，帶 JWT 可判斷 self/connection 關係。',
+  request: {
+    params: userIslandParamsSchema
+  },
+  responses: {
+    200: {
+      description: '成功取得 islandData',
+      content: {
+        'application/json': {
+          schema: userIslandResponseSchema
+        }
+      }
+    },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+/**
+ * GET /users/:identifier/island
+ * 取得 3D 島嶼頁 islandData 聚合資料
+ * 路徑參數：identifier - 用戶 custom_id 或 external_id
+ * 無需強制登入，但若帶 JWT 則解析 viewerId 計算 viewerRelation 與隱私過濾
+ * 注意：必須註冊在 /:id 之前，否則會被 catch-all 路由攔截
+ */
+router.get('/:identifier/island',
+  optionalAuth,
+  validate(userIslandParamsSchema, 'params'),
+  userController.getUserIsland as RequestHandler
 );
 
 /**

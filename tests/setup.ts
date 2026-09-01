@@ -10,6 +10,10 @@ process.env.SESSION_SECRET = 'test-session-secret';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/daodao_test';
 process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/daodao_test';
 process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379/1';
+process.env.FUTURE_LETTER_ACTIVE_KEY_VERSION = 'test-v1';
+process.env.FUTURE_LETTER_ENCRYPTION_KEYS = JSON.stringify({
+  'test-v1': Buffer.alloc(32, 7).toString('base64'),
+});
 
 // Disable console logs during tests unless explicitly needed
 if (process.env.DEBUG_TESTS !== 'true') {

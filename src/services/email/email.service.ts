@@ -253,7 +253,7 @@ export class EmailService {
       throw new Error(result.error || '發送歡迎郵件失敗');
     }
 
-    const templateVersion = `welcome-${data.referralGroup}`;
+    const templateVersion = 'welcome';
 
     return createSuccessResponse({
       messageId: result.messageId
@@ -472,7 +472,13 @@ export class EmailService {
     emailType?: string;
     userId?: number;
   }): Promise<EmailSendResult> {
-    const jobId = await enqueueEmail(params);
+    let jobId: string | null = null;
+    try {
+      jobId = await enqueueEmail(params);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger?.error(`Enqueue email 失敗，改為直接發送 - 收件人: ${params.to}, 錯誤: ${errorMessage}`);
+    }
 
     if (jobId) {
       return { success: true };

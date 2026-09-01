@@ -59,7 +59,16 @@ export const adminUserListQuerySchema = z.object({
       description: '每頁數量',
       example: '20'
     }),
-  sortBy: z.enum(['createdAt', 'lastLoginAt', 'name', 'email'])
+  sortBy: z.enum([
+    'createdAt',
+    'lastLoginAt',
+    'lastActiveAt',
+    'name',
+    'email',
+    'registrationFlow',
+    'creationMethod',
+    'daysToComplete'
+  ])
     .optional()
     .default('createdAt')
     .openapi({
@@ -91,7 +100,96 @@ export const adminUserListQuerySchema = z.object({
     .openapi({
       description: '篩選用戶來源',
       example: 'S1'
+    }),
+  registrationFlow: z.enum(['landing_page', 'quiz', 'action_maker'])
+    .meta({
+      enumDescriptions: {
+        'landing_page': '由註冊頁面進入',
+        'quiz': '由測驗流程進入',
+        'action_maker': '由工具進入'
+      }
     })
+    .optional()
+    .openapi({
+      description: '篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。',
+      example: 'landing_page'
+    }),
+  creationMethod: z.enum(['self_created', 'copied', 'action_generator'])
+    .meta({
+      enumDescriptions: {
+        'self_created': '使用者自行建立',
+        'copied': '複製既有任務',
+        'action_generator': '工具產生建立'
+      }
+    })
+    .optional()
+    .openapi({
+      description: '篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。',
+      example: 'self_created'
+    }),
+  createdFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選註冊起始日期（含）',
+      example: '2024-01-01'
+    }),
+  createdTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選註冊結束日期（含）',
+      example: '2024-12-31'
+    }),
+  lastLoginFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後登入起始日期（含，YYYY-MM-DD，不可晚於 lastLoginTo 或今天）',
+      example: '2024-01-01'
+    }),
+  lastLoginTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後登入結束日期（含，YYYY-MM-DD，不可早於 lastLoginFrom）',
+      example: '2024-12-31'
+    }),
+  lastActivityFrom: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後操作起始日期（含，YYYY-MM-DD，不可晚於 lastActivityTo 或今天）',
+      example: '2024-01-01'
+    }),
+  lastActivityTo: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD')
+    .optional()
+    .openapi({
+      description: '篩選最後操作結束日期（含，YYYY-MM-DD，不可早於 lastActivityFrom）',
+      example: '2024-12-31'
+    })
+}).superRefine((data, ctx) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const ranges: Array<[string, string, string, string]> = [
+    ['lastLoginFrom', 'lastLoginTo', 'lastLoginFrom', 'lastLoginTo'],
+    ['lastActivityFrom', 'lastActivityTo', 'lastActivityFrom', 'lastActivityTo'],
+  ];
+
+  for (const [fromKey, toKey] of ranges) {
+    const from = data[fromKey as keyof typeof data] as string | undefined;
+    const to = data[toKey as keyof typeof data] as string | undefined;
+
+    if (from && from > today) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '起始日期不可晚於今天', path: [fromKey] });
+    }
+    if (to && to > today) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '結束日期不可晚於今天', path: [toKey] });
+    }
+    if (from && to && from > to) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '起始日期不可晚於結束日期', path: [fromKey] });
+    }
+  }
 }).openapi('AdminUserListQuery');
 
 registry.register('AdminUserListQuery', adminUserListQuerySchema);
@@ -101,10 +199,8 @@ registry.register('AdminUserListQuery', adminUserListQuerySchema);
  */
 export const adminUserIdParamSchema = z.object({
   userId: z.string()
-    .regex(/^\d+$/, '用戶 ID 必須為正整數')
-    .transform(Number)
     .openapi({
-      description: '用戶內部 ID',
+      description: '用戶內部 ID（數字）或外部 ID（UUID）',
       example: '123'
     })
 }).openapi('AdminUserIdParam');
@@ -198,6 +294,10 @@ const adminUserListItemSchema = z.object({
     description: '用戶內部 ID',
     example: 123
   }),
+  customId: z.string().nullable().openapi({
+    description: '使用者自訂唯一識別碼（@username）',
+    example: 'my_username'
+  }),
   name: z.string().nullable().openapi({
     description: '用戶名稱',
     example: '王小明'
@@ -237,6 +337,10 @@ const adminUserListItemSchema = z.object({
     description: '最後登入時間',
     example: '2024-01-20T08:30:00.000Z'
   }),
+  lastActiveAt: z.string().nullable().openapi({
+    description: '最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）',
+    example: '2024-01-22T14:00:00.000Z'
+  }),
   personaType: z.enum(['L', 'C', 'A', 'D', 'O']).nullable().openapi({
     description: '最新一次學習風格測驗結果',
     example: 'D'
@@ -248,6 +352,45 @@ const adminUserListItemSchema = z.object({
   userSource: z.string().nullable().openapi({
     description: '用戶來源（S1/S2/S3）',
     example: 'S1'
+  }),
+  registrationFlow: z
+    .enum(['landing_page', 'quiz', 'action_maker'])
+    .nullable()
+    .meta({
+      enumDescriptions: {
+        'landing_page': '由註冊頁面進入',
+        'quiz': '由測驗流程進入',
+        'action_maker': '由工具進入'
+      }
+    })
+    .openapi({
+      description: '註冊來源。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。',
+      example: 'landing_page'
+    }),
+  creationMethod: z
+    .enum(['self_created', 'copied', 'action_generator'])
+    .nullable()
+    .meta({
+      enumDescriptions: {
+        'self_created': '使用者自行建立',
+        'copied': '複製既有任務',
+        'action_generator': '工具產生建立'
+      }
+    })
+    .openapi({
+      description: '任務建立方式。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。',
+      example: 'self_created'
+    }),
+  daysToComplete: z.number().nullable().openapi({
+    description: '完成天數',
+    example: 7
+  }),
+  tags: z.array(z.object({
+    id: z.number().int(),
+    name: z.string(),
+  })).openapi({
+    maxItems: 20,
+    description: '用戶標籤列表'
   })
 }).openapi('AdminUserListItem');
 
@@ -300,7 +443,7 @@ const userActivityStatsSchema = z.object({
     description: '最後登入時間'
   }),
   lastActiveAt: z.string().nullable().openapi({
-    description: '最後活動時間'
+    description: '最後操作時間（依 user_activity_stats 記錄的最後互動時間，非最後登入時間）'
   }),
   loginCount: z.number().int().openapi({
     description: '總登入次數',

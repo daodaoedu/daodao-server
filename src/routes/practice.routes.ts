@@ -11,6 +11,7 @@ import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
 import upload from '../middleware/multer.middleware';
 import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
+import { enforcePracticeCohortContentLifecycle } from '../middleware/cohort-content-lifecycle.middleware';
 import { OnboardingTask } from '../types/onboarding.types';
 import type { CreationMethod } from '../types/onboarding.types';
 import {
@@ -62,7 +63,11 @@ import {
   deletePracticeTemplateApiResponseSchema,
   // Random Template
   randomTemplateQuerySchema,
-  randomTemplatesApiResponseSchema
+  randomTemplatesApiResponseSchema,
+  // Admin Practice
+  adminPracticeListQuerySchema,
+  adminPracticeStatusUpdateSchema,
+  adminPracticeStatusApiResponseSchema
 } from '../validators/practice.validators';
 
 // 月度日曆參數 schema
@@ -1030,6 +1035,74 @@ registry.registerPath({
   security: [{ bearerAuth: [] }]
 });
 
+// ===== Admin 實踐管理（express 路由掛在 admin.routes.ts；OpenAPI 定義集中於此以維持 schema 註冊順序） =====
+
+/**
+ * GET /api/v1/admin/practices - 取得 Admin 實踐列表
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/practices',
+  tags: ['Admin - Practices'],
+  summary: '取得 Admin 實踐列表',
+  description:
+    '取得全站實踐列表，包含私密（private）與尚未完成的「完成後公開」（delayed）實踐；支援狀態、隱私狀態篩選與搜尋。需要管理員權限。',
+  request: {
+    query: adminPracticeListQuerySchema
+  },
+  responses: {
+    200: {
+      description: '成功取得實踐列表',
+      content: {
+        'application/json': {
+          schema: practicesListApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * PATCH /api/v1/admin/practices/:id/status - 更新實踐狀態
+ */
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/admin/practices/{id}/status',
+  tags: ['Admin - Practices'],
+  summary: '更新實踐狀態',
+  description: '由管理員直接更新實踐狀態（不受擁有者限制）。需要管理員權限。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: adminPracticeStatusUpdateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: '成功更新實踐狀態',
+      content: {
+        'application/json': {
+          schema: adminPracticeStatusApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
 // ============================================================================
 // Express 路由定義
 // ============================================================================
@@ -1183,6 +1256,7 @@ router.put('/:id',
   authenticate,
   validate(practiceParamsSchema, 'params'),
   validate(updatePracticeSchema, 'body'),
+  enforcePracticeCohortContentLifecycle,
   // TODO: requirePracticeOwnership middleware
   practiceController.updatePractice as RequestHandler);
 
@@ -1195,6 +1269,7 @@ router.put('/:id',
 router.delete('/:id',
   authenticate,
   validate(practiceParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
   // TODO: requirePracticeOwnership middleware
   practiceController.deletePractice as RequestHandler);
 
@@ -1207,8 +1282,9 @@ router.delete('/:id',
  */
 router.post('/:id/checkins',
   authenticate,
-  upload.array('images', 3),
   validate(practiceParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
+  upload.array('images', 3),
   // TODO: requirePracticeOwnership middleware
   withOnboardingHook(OnboardingTask.D, practiceController.createCheckIn as RequestHandler, {
     shouldAdvance: (_req, body) => isFirstCheckInResponse(body),
@@ -1223,8 +1299,9 @@ router.post('/:id/checkins',
  */
 router.put('/:id/checkins/:checkInId',
   authenticate,
-  upload.array('images', 3),
   validate(updateCheckInParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
+  upload.array('images', 3),
   practiceController.updateCheckIn as RequestHandler);
 
 /**
@@ -1236,6 +1313,7 @@ router.put('/:id/checkins/:checkInId',
 router.delete('/:id/checkins/:checkInId',
   authenticate,
   validate(deleteCheckInParamsSchema, 'params'),
+  enforcePracticeCohortContentLifecycle,
   practiceController.deleteCheckIn as RequestHandler);
 
 /**

@@ -27,6 +27,7 @@ export interface EmailJobData {
   emailLogId?: number;
   emailType?: string;
   userId?: number;
+  priority?: 'P1' | 'P2' | 'P3';
 }
 
 /**
