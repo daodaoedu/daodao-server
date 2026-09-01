@@ -238,21 +238,12 @@ export class PermissionService {
         throw new Error('Default user role not found in database');
       }
 
-      const user = await prisma.users.findUnique({
-        where: { id: userId },
-        select: { role_id: true }
-      });
-
-      if (user?.role_id !== roleId) {
-        return false;
-      }
-
-      await prisma.users.update({
-        where: { id: userId },
+      const updateResult = await prisma.users.updateMany({
+        where: { id: userId, role_id: roleId },
         data: { role_id: defaultRole.id }
       });
 
-      return true;
+      return updateResult.count > 0;
     } catch (error) {
       console.error('Error removing role:', error);
       return false;
