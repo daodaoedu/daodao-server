@@ -15,7 +15,7 @@ import {
   authenticateGoogleCallback
 } from '../services/auth/oauth.service';
 import { validate } from '../middleware/validation.middleware';
-import { strictLimiter } from '../middleware/rate-limit.middleware';
+import { strictLimiter, authLimiter } from '../middleware/rate-limit.middleware';
 import {
   loginValidator,
   registerValidator,
