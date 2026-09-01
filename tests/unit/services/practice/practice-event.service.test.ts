@@ -37,7 +37,6 @@ import {
   recordFavoriteEvent,
   removeFavoriteEvent,
   recordBatchEvents,
-  getEventStats,
   getUserEventHistory
 } from '@/services/practice-event.service';
 import {
@@ -494,68 +493,6 @@ describe('Practice Event Service', () => {
       expect(result.success).toBe(true);
       expect(result.data.successCount).toBe(0);
       expect(result.data.errorCount).toBe(0);
-    });
-  });
-
-  describe('getEventStats', () => {
-    it('should return default stats structure', async () => {
-      // Act
-      const result = await getEventStats(1, 'practice');
-
-      // Assert
-      expect(mockLoggerService.info).toHaveBeenCalledWith('Event stats retrieved', {
-        entityId: 1,
-        entityType: 'practice',
-        stats: {
-          viewCount: 0,
-          uniqueViewCount: 0,
-          shareCount: 0,
-          favoriteCount: 0
-        }
-      });
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual({
-        viewCount: 0,
-        uniqueViewCount: 0,
-        clickCount: 0,
-        shareCount: 0,
-        favoriteCount: 0,
-        totalViewDuration: 0,
-        averageViewDuration: 0,
-        topReferrers: [],
-        topPlatforms: []
-      });
-    });
-
-    it('should handle default entity type', async () => {
-      // Act
-      const result = await getEventStats(1);
-
-      // Assert
-      expect(mockLoggerService.info).toHaveBeenCalledWith('Event stats retrieved', {
-        entityId: 1,
-        entityType: 'practice',
-        stats: expect.any(Object)
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should handle error gracefully', async () => {
-      // Arrange
-      const error = new Error('Database error');
-      jest.spyOn(Promise, 'all').mockRejectedValueOnce(error);
-
-      // Act & Assert
-      await expect(getEventStats(1, 'practice'))
-        .rejects.toThrow('取得事件統計失敗');
-      expect(mockLoggerService.error).toHaveBeenCalledWith(
-        'Failed to get event stats',
-        expect.objectContaining({
-          entityId: 1,
-          entityType: 'practice',
-          error
-        })
-      );
     });
   });
 

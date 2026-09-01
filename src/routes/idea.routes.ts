@@ -13,6 +13,7 @@ import {
   ideaQuerySchema,
   ideaParamsSchema,
   ideaSuccessResponseSchema,
+  recordIdeaViewResponseSchema,
   ideasListResponseSchema,
   createIdeaResponseSchema,
   updateIdeaResponseSchema,
@@ -76,6 +77,34 @@ registry.registerPath({
     404: { $ref: '#/components/responses/NotFoundError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
+});
+
+/**
+ * POST /api/v1/ideas/{id}/view - 記錄想法瀏覽
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/ideas/{id}/view',
+  tags: ['Ideas'],
+  summary: '記錄想法瀏覽',
+  description: '記錄登入使用者瀏覽指定想法的事件（同一使用者對同一想法 24h 內去重），回傳該想法目前的累計瀏覽數。',
+  request: {
+    params: ideaParamsSchema
+  },
+  responses: {
+    200: {
+      description: '瀏覽事件記錄成功',
+      content: {
+        'application/json': {
+          schema: recordIdeaViewResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
 });
 
 /**
@@ -246,6 +275,18 @@ router.get('/:id',
   optionalAuth,
   validate(ideaParamsSchema, 'params'),
   ideaController.getIdeaById as RequestHandler
+);
+
+/**
+ * POST /ideas/:id/view
+ * 記錄想法瀏覽（24h 去重）
+ * 路徑參數：id - 想法 ID
+ * 需要身份驗證
+ */
+router.post('/:id/view',
+  authenticate,
+  validate(ideaParamsSchema, 'params'),
+  ideaController.recordIdeaView as RequestHandler
 );
 
 /**
