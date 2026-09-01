@@ -15,6 +15,7 @@ const cohortSelect = {
   capacity: true,
   invite_message: true,
   status: true,
+  join_paused: true,
   program: { select: { organization: { select: { name: true, bio: true, external_link: true } } } }
 } as const;
 const day = (value: Date): string => value.toISOString().slice(0, 10);
@@ -38,9 +39,11 @@ const getJoinInfoForTarget = async (target: Awaited<ReturnType<typeof resolveJoi
   const { cohort } = target;
   const deadline = cohort.join_deadline ?? cohort.end_date;
   const joined = cohort.capacity === null ? 0 : await prisma.cohort_enrollments.count({ where: { cohort_id: cohort.id, status: 'joined' } });
+  // 暫停加入只擋「公開加入連結」；帶邀請 token 的受邀者仍可加入（FR-RS-02：新成員需要邀請信才能加入）
   const unavailableReason = cohort.status !== 'published' ? 'not_published' as const
     : day(now) > day(deadline) ? 'expired' as const
-      : cohort.capacity !== null && joined >= cohort.capacity ? 'full' as const : null;
+      : cohort.capacity !== null && joined >= cohort.capacity ? 'full' as const
+        : target.invitation === null && cohort.join_paused ? 'paused' as const : null;
   return {
     cohortId: cohort.id, displayName: cohort.display_name, startDate: cohort.start_date, endDate: cohort.end_date,
     inviteMessage: cohort.invite_message, canJoin: unavailableReason === null, unavailableReason, visibilityNotice,
@@ -54,7 +57,7 @@ const join = async (token: string, userId: number, consent: boolean, now = new D
   const target = await resolveJoinTarget(token);
   const info = await getJoinInfoForTarget(target, now);
   if (!info.canJoin) {
-    const messages = { not_published: '此期尚未發布', expired: '邀請連結已過期', full: '此期已額滿' } as const;
+    const messages = { not_published: '此場次尚未發布', expired: '邀請連結已過期', full: '此場次已額滿', paused: '此場次目前已暫停加入，請透過邀請信加入' } as const;
     throw new ConflictError(messages[info.unavailableReason!]);
   }
   let email: string | undefined;
