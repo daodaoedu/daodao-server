@@ -7,7 +7,10 @@ export const LIGHTHOUSE_AUDIT_ACTIONS = {
   COHORT_MEMBER_REMOVED: 'lighthouse.cohort_member_removed',
   COHORT_OUTCOME_EXPORTED: 'lighthouse.cohort_outcome_exported',
   COHORT_JOIN_TOKEN_ROTATED: 'lighthouse.cohort_join_token_rotated',
-  COHORT_JOIN_PAUSED: 'lighthouse.cohort_join_paused'
+  COHORT_JOIN_PAUSED: 'lighthouse.cohort_join_paused',
+  COHORT_JOIN_RESUMED: 'lighthouse.cohort_join_resumed',
+  COHORT_DUPLICATED: 'lighthouse.cohort_duplicated',
+  COHORT_MESSAGE_SENT: 'lighthouse.cohort_message_sent'
 } as const;
 
 export type LighthouseAuditAction = (typeof LIGHTHOUSE_AUDIT_ACTIONS)[keyof typeof LIGHTHOUSE_AUDIT_ACTIONS];
