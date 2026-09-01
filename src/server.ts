@@ -23,6 +23,7 @@ import { prismaService } from './services/database/prisma.service';
 import { emailService } from './services/email/email.service';
 import redis from './services/database/redis.service';
 import { loggerService } from './services/logging/logger.service';
+import { validateFutureLetterEncryptionConfig } from './config/future-letter-encryption.config';
 // BullMQ
 import {
   getRawConnection,
@@ -80,6 +81,11 @@ import {
   createCohortStatWorker,
   registerCohortStatJobs,
   type CohortStatJobData,
+  createFutureLetterQueue,
+  setFutureLetterQueue,
+  createFutureLetterWorker,
+  closeFutureLetterWorker,
+  type FutureLetterJobData,
 } from './queues';
 import type { OnboardingEmailJobData } from './types/email/onboarding.types';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
@@ -106,10 +112,15 @@ let tagRuleQueue: Queue<TagRuleJobData> | null = null;
 let tagRuleWorker: Worker<TagRuleJobData> | null = null;
 let cohortStatQueue: Queue<CohortStatJobData> | null = null;
 let cohortStatWorker: Worker<CohortStatJobData> | null = null;
+let futureLetterQueue: Queue<FutureLetterJobData> | null = null;
+let futureLetterWorker: Worker<FutureLetterJobData> | null = null;
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Private letter data must never fall back to an implicit or development key.
+validateFutureLetterEncryptionConfig();
 
 // 安全中間件
 app.use(helmet({
@@ -331,6 +342,14 @@ async function initializeBullMQ(): Promise<void> {
     await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
     console.log('🔔 通知排程任務已註冊');
 
+    // ===== Future Letter Queue =====
+    futureLetterQueue = createFutureLetterQueue();
+    setFutureLetterQueue(futureLetterQueue);
+    futureLetterWorker = createFutureLetterWorker();
+    const { futureLetterService } = await import('./services/future-letter.service');
+    const recoveredFutureLetters = await futureLetterService.recoverOverdueDeliveries();
+    console.log(`💌 Future Letter Queue 已建立，補送 ${recoveredFutureLetters} 封逾期信件`);
+
     // ===== Social Notification Queue（關注/連結 fan-out）=====
     socialNotificationQueue = createSocialNotificationQueue();
     setSocialNotificationQueue(socialNotificationQueue);
@@ -456,6 +475,8 @@ async function gracefulShutdown(signal: string) {
     }
     if (cohortStatWorker) await cohortStatWorker.close();
     if (cohortStatQueue) await cohortStatQueue.close();
+    if (futureLetterWorker) await closeFutureLetterWorker(futureLetterWorker);
+    if (futureLetterQueue) await futureLetterQueue.close();
 
     // 關閉 BullMQ Redis 連線
     await closeQueueConnection();
