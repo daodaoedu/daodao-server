@@ -4398,6 +4398,190 @@ components:
           meta:
             cacheHit: true
             processingTime: 23.1
+    FutureLetter:
+      type: object
+      properties:
+        id:
+          type: string
+        currentSelf:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - draft
+            - scheduled
+            - delivered
+            - deleted
+        deliverAt:
+          type: string
+          nullable: true
+        sentAt:
+          type: string
+          nullable: true
+        deliveredAt:
+          type: string
+          nullable: true
+        openedAt:
+          type: string
+          nullable: true
+        practiceId:
+          type: string
+          nullable: true
+        practice:
+          $ref: '#/components/schemas/FutureLetterPractice'
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - currentSelf
+        - message
+        - status
+        - deliverAt
+        - sentAt
+        - deliveredAt
+        - openedAt
+        - practiceId
+        - practice
+        - createdAt
+        - updatedAt
+    FutureLetterPractice:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+          nullable: true
+        title:
+          type: string
+      required:
+        - id
+        - title
+    FutureLetterApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          allOf:
+            - $ref: '#/components/schemas/FutureLetter'
+            - description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_0
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
+    FutureLetterListApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FutureLetter'
+        pagination:
+          type: object
+          properties:
+            currentPage:
+              type: number
+            totalPages:
+              type: number
+            totalItems:
+              type: number
+            itemsPerPage:
+              type: number
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+          required:
+            - currentPage
+            - totalPages
+            - totalItems
+            - itemsPerPage
+            - hasNext
+            - hasPrev
+        timestamp:
+          type: string
+      required:
+        - success
+        - data
+        - pagination
+        - timestamp
     IdeaResource:
       type: object
       properties:
@@ -4546,7 +4730,7 @@ components:
           default: 1
           description: 分頁頁碼，從 1 開始
           example: 1
-          examples: &ref_40
+          examples: &ref_44
             - 1
             - 2
             - 5
@@ -4557,7 +4741,7 @@ components:
           default: 20
           description: 每頁顯示的想法數量（1-100）
           example: 20
-          examples: &ref_41
+          examples: &ref_45
             - 10
             - 20
             - 50
@@ -4565,7 +4749,7 @@ components:
           type: string
           description: 搜尋關鍵詞，用於內容搜尋
           example: React
-          examples: &ref_42
+          examples: &ref_46
             - React
             - 學習
             - 開源專案
@@ -4573,7 +4757,7 @@ components:
           type: string
           description: 標籤篩選條件，多個標籤用逗號分隔
           example: 前端,React
-          examples: &ref_43
+          examples: &ref_47
             - 前端,React
             - 學習,教育
             - 開源
@@ -4581,7 +4765,7 @@ components:
           type: string
           description: 篩選特定使用者的想法
           example: 123e4567-e89b-12d3-a456-426614174000
-          examples: &ref_44
+          examples: &ref_48
             - 123e4567-e89b-12d3-a456-426614174000
             - user123
         status:
@@ -4593,7 +4777,7 @@ components:
             - all
           description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
           example: active
-          examples: &ref_45
+          examples: &ref_49
             - active
             - draft
             - archived
@@ -4607,7 +4791,7 @@ components:
           default: createdAt
           description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
           example: createdAt
-          examples: &ref_46
+          examples: &ref_50
             - createdAt
             - updatedAt
             - likeCount
@@ -4619,7 +4803,7 @@ components:
           default: desc
           description: 排序方向：asc (升序)、desc (降序)
           example: desc
-          examples: &ref_47
+          examples: &ref_51
             - asc
             - desc
       description: 想法列表查詢參數
@@ -5027,7 +5211,7 @@ components:
             - hasNext
             - hasPrev
           description: Pagination information
-          examples: &ref_49
+          examples: &ref_53
             - currentPage: 1
               totalPages: 5
               totalItems: 50
@@ -5420,7 +5604,7 @@ components:
           pattern: ^[a-zA-Z0-9._-]+$
           description: 圖片檔案名稱
           example: image_123.jpg
-          examples: &ref_48
+          examples: &ref_52
             - image_123.jpg
             - user-avatar.png
             - banner.webp
@@ -10544,6 +10728,102 @@ components:
       description: 標籤清理結果
       example:
         deletedCount: 5
+    TimelineEntry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - check-in
+            - milestone
+            - letter
+            - learning-dna
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        date:
+          type: string
+        meta:
+          type: object
+          additionalProperties:
+            anyOf:
+              - type: string
+              - type: number
+              - nullable: true
+      required:
+        - type
+        - title
+        - description
+        - date
+        - meta
+    TimelineApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEntry'
+        pagination:
+          type: object
+          properties:
+            cursors:
+              type: object
+              properties:
+                start:
+                  type: string
+                  nullable: true
+                end:
+                  type: string
+                  nullable: true
+              required:
+                - start
+                - end
+            hasMore:
+              type: boolean
+            count:
+              type: number
+            limit:
+              type: number
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+            nextCursor:
+              type: string
+              nullable: true
+            prevCursor:
+              type: string
+              nullable: true
+            totalEstimate:
+              type: number
+              nullable: true
+            parentTotalEstimate:
+              type: number
+              nullable: true
+          required:
+            - cursors
+            - hasMore
+            - count
+            - limit
+            - hasNext
+            - hasPrev
+            - nextCursor
+            - prevCursor
+            - totalEstimate
+            - parentTotalEstimate
+        timestamp:
+          type: string
+      required:
+        - success
+        - data
+        - pagination
+        - timestamp
     CustomIdRequest:
       type: object
       properties:
@@ -10795,7 +11075,7 @@ components:
         - data
         - timestamp
       description: Standard success response format
-      examples: &ref_106
+      examples: &ref_117
         - success: true
           data:
             id: 123
@@ -12795,6 +13075,59 @@ components:
           example: accept
       required:
         - action
+    CreateFutureLetter:
+      type: object
+      properties:
+        currentSelf:
+          type: string
+          default: ''
+          description: 寫信當下的自己，草稿可空
+          example: 我正在開始新的學習計畫
+        message:
+          type: string
+          default: ''
+          description: 想對未來的自己說的話，草稿可空
+          example: 希望你仍然享受學習
+        deliverAt:
+          type: string
+          format: date-time
+          description: 草稿預填的送達時間
+          example: '2026-09-01T08:00:00.000Z'
+        practiceId:
+          type: string
+          nullable: true
+          format: uuid
+          description: 關聯主題實踐的 UUID；null 表示清除關聯
+          example: 550e8400-e29b-41d4-a716-446655440000
+    UpdateFutureLetter:
+      type: object
+      properties:
+        currentSelf:
+          type: string
+          description: 寫信當下的自己，草稿可空
+        message:
+          type: string
+          description: 想對未來的自己說的話，草稿可空
+        deliverAt:
+          type: string
+          format: date-time
+          description: 草稿預填的送達時間
+        practiceId:
+          type: string
+          nullable: true
+          format: uuid
+          description: 關聯主題實踐的 UUID；null 表示清除關聯
+          example: 550e8400-e29b-41d4-a716-446655440000
+    SendFutureLetter:
+      type: object
+      properties:
+        deliverAt:
+          type: string
+          format: date-time
+          description: 送達時間，必須介於現在 3 到 90 天後（含邊界）
+          example: '2026-09-01T08:00:00.000Z'
+      required:
+        - deliverAt
     HealthResponse:
       type: object
       properties:
@@ -14165,6 +14498,530 @@ components:
       required:
         - deleted
       description: The main response data
+    SpaceListItem:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - personal
+            - challenge
+            - event_course
+          description: 空間類型
+          example: event_course
+        id:
+          type: string
+          nullable: true
+          description: 空間 UUID；虛擬空間（personal/challenge）為 null
+          example: 550e8400-e29b-41d4-a716-446655440000
+        name:
+          type: string
+          description: 空間名稱
+          example: 自我覺察練習
+        host:
+          type: string
+          description: 卡片 host 顯示名（FR-2.2/2.3）
+          example: 我的島
+        memberCount:
+          type: integer
+          description: 成員數
+          example: 12
+        memberAvatars:
+          type: array
+          items:
+            type: object
+            properties:
+              nickname:
+                type: string
+                nullable: true
+                description: 成員暱稱
+              avatar:
+                type: string
+                nullable: true
+                description: 頭像 URL
+            required:
+              - nickname
+              - avatar
+          description: 疊加頭像（最多 3 位）
+        hasActivePractice:
+          type: boolean
+          description: 是否有進行中的實踐（FR-2.4）
+          example: true
+        practiceCount:
+          type: integer
+          description: 空間內實踐數
+          example: 3
+        isHost:
+          type: boolean
+          description: 目前使用者是否為發起人
+          example: false
+        lastActivityAt:
+          type: string
+          nullable: true
+          description: 最近活動時間（排序依據）
+      required:
+        - kind
+        - id
+        - name
+        - host
+        - memberCount
+        - memberAvatars
+        - hasActivePractice
+        - practiceCount
+        - isHost
+        - lastActivityAt
+    PublicSpace:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        memberCount:
+          type: integer
+        memberAvatars:
+          type: array
+          items:
+            type: object
+            properties:
+              nickname:
+                type: string
+                nullable: true
+              avatar:
+                type: string
+                nullable: true
+            required:
+              - nickname
+              - avatar
+        practiceCount:
+          type: integer
+        homePage:
+          type: object
+          nullable: true
+          properties:
+            status:
+              type: string
+              enum:
+                - draft
+                - published
+            blocks:
+              type: array
+              items:
+                $ref: '#/components/schemas/SpaceBlock'
+          required:
+            - status
+            - blocks
+      required:
+        - id
+        - name
+        - subtitle
+        - memberCount
+        - memberAvatars
+        - practiceCount
+        - homePage
+      description: The main response data
+    SpaceBlock:
+      type: object
+      properties:
+        id:
+          type: integer
+        blockType:
+          type: string
+          enum:
+            - text
+            - resources
+            - calendar
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        position:
+          type: integer
+        isPinned:
+          type: boolean
+        publishStatus:
+          type: string
+          enum:
+            - draft
+            - scheduled
+            - published
+          description: 有效發佈狀態（排程時間已到視同 published，FR-7.6）
+        scheduledAt:
+          type: string
+          nullable: true
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              url:
+                type: string
+              isNameCustomized:
+                type: boolean
+              practices:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    title:
+                      type: string
+                  required:
+                    - id
+                    - title
+                description: 對應實踐（FR-8.9 浮層顯示名稱）
+            required:
+              - id
+              - name
+              - url
+              - isNameCustomized
+              - practices
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              title:
+                type: string
+              startDate:
+                type: string
+              endDate:
+                type: string
+                nullable: true
+              startTime:
+                type: string
+                nullable: true
+              endTime:
+                type: string
+                nullable: true
+              location:
+                type: string
+                nullable: true
+              url:
+                type: string
+                nullable: true
+            required:
+              - id
+              - title
+              - startDate
+              - endDate
+              - startTime
+              - endTime
+              - location
+              - url
+      required:
+        - id
+        - blockType
+        - title
+        - body
+        - position
+        - isPinned
+        - publishStatus
+        - scheduledAt
+        - links
+        - events
+    SpaceDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        memberCount:
+          type: integer
+        memberAvatars:
+          type: array
+          items:
+            type: object
+            properties:
+              nickname:
+                type: string
+                nullable: true
+              avatar:
+                type: string
+                nullable: true
+            required:
+              - nickname
+              - avatar
+        practiceCount:
+          type: integer
+        viewerRole:
+          type: string
+          enum:
+            - host
+            - member
+        homePage:
+          type: object
+          nullable: true
+          properties:
+            status:
+              type: string
+              enum:
+                - draft
+                - published
+          required:
+            - status
+        publicToken:
+          type: string
+          nullable: true
+          description: 公開連結 token；僅發起人可見
+        publicBlockCount:
+          type: integer
+          nullable: true
+          description: 對外公開（已發佈）區塊數；僅發起人可見（FR-1.4）
+      required:
+        - id
+        - name
+        - subtitle
+        - memberCount
+        - memberAvatars
+        - practiceCount
+        - viewerRole
+        - homePage
+        - publicToken
+        - publicBlockCount
+      description: The main response data
+    SpaceMember:
+      type: object
+      properties:
+        userId:
+          type: integer
+        nickname:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          nullable: true
+        isHost:
+          type: boolean
+          description: 發起人標示（成員彈窗 user-star，FR-1.3）
+      required:
+        - userId
+        - nickname
+        - avatar
+        - isHost
+    SpacePracticeCard:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 實踐 UUID
+        title:
+          type: string
+        status:
+          type: string
+          description: 實踐狀態：draft/not_started/active/completed/archived
+        progressPercentage:
+          type: number
+          nullable: true
+        themeColor:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        ownerNickname:
+          type: string
+          nullable: true
+      required:
+        - id
+        - title
+        - status
+        - progressPercentage
+        - themeColor
+        - startDate
+        - endDate
+        - durationDays
+        - ownerNickname
+    SpaceHomePage:
+      type: object
+      nullable: true
+      properties:
+        status:
+          type: string
+          enum:
+            - draft
+            - published
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpaceBlock'
+          description: 依檢視者過濾後的區塊；成員看不到草稿與未到時排程（FR-7.2）
+      required:
+        - status
+        - blocks
+      description: The main response data
+    CreateSpaceHomePage:
+      type: object
+      properties:
+        template:
+          type: string
+          enum:
+            - example
+            - blank
+          description: 起始方式：example（帶範例區塊）或 blank（空白頁）
+          example: example
+      required:
+        - template
+    CreateSpaceBlock:
+      type: object
+      properties:
+        blockType:
+          type: string
+          enum:
+            - text
+            - resources
+            - calendar
+          description: 區塊型別：text（自由文字）、resources（資源連結）、calendar（日曆）
+          example: text
+      required:
+        - blockType
+    UpdateSpaceBlock:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          description: 區塊標題
+        body:
+          type: string
+          nullable: true
+          description: 自由文字內文（僅 text 型別）
+        isPinned:
+          type: boolean
+          enum:
+            - false
+          description: 解除公告釘選；單向操作，只接受 false（FR-6.7）
+          example: false
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpaceBlockLinkInput'
+          maxItems: 100
+          description: 資源連結列（全量覆寫，僅 resources 型別）
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpaceBlockEventInput'
+          maxItems: 100
+          description: 日曆活動列（全量覆寫，僅 calendar 型別）
+    SpaceBlockLinkInput:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          default: ''
+          description: 連結名稱
+          example: Google 文件
+        url:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: 連結網址
+          example: https://docs.google.com/document/d/abc
+        isNameCustomized:
+          type: boolean
+          default: false
+          description: 發起人是否自訂過名稱（FR-8.6）
+          example: false
+        practiceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 50
+          default: []
+          description: 對應實踐的 UUID 多選（FR-8.8）
+          example: []
+      required:
+        - url
+    SpaceBlockEventInput:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          default: ''
+          description: 活動標題
+          example: 第一次線上聚會
+        startDate:
+          type: string
+          format: date
+          description: 開始日期（必填）
+          example: '2026-09-01'
+        endDate:
+          type: string
+          nullable: true
+          format: date
+          description: 結束日期（選填）
+          example: '2026-09-02'
+        startTime:
+          type: string
+          nullable: true
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          description: 開始時間 HH:MM（選填）
+          example: '19:30'
+        endTime:
+          type: string
+          nullable: true
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+          description: 結束時間 HH:MM（選填）
+          example: '21:00'
+        location:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: 地點（選填）
+          example: 線上
+        url:
+          type: string
+          nullable: true
+          maxLength: 2048
+          description: 連結（選填）
+          example: https://meet.google.com/abc-defg-hij
+      required:
+        - startDate
+    MoveSpaceBlock:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum:
+            - up
+            - down
+          description: 移動方向，一次一個位置
+          example: up
+      required:
+        - direction
+    PublishSpaceBlock:
+      type: object
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+          description: 預定發佈時間；省略表示立即發佈，過去時間視同立即發佈（FR-7.6）
+          example: '2026-09-01T08:00:00.000Z'
     CustomIdAvailabilityResponse:
       type: object
       properties:
@@ -20426,6 +21283,228 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/me/future-letters:
+    post:
+      tags:
+        - Future Letters
+      summary: 建立未來信草稿
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFutureLetter'
+      responses:
+        '201':
+          description: 草稿已建立
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FutureLetterApiResponse'
+        '400': &ref_40
+          $ref: '#/components/responses/BadRequestError'
+        '401': &ref_41
+          $ref: '#/components/responses/UnauthorizedError'
+        '404': &ref_42
+          $ref: '#/components/responses/NotFoundError'
+        '500': &ref_43
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+        - Future Letters
+      summary: 列出我的未來信
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - draft
+              - scheduled
+              - delivered
+            description: 信件狀態篩選
+            example: draft
+          required: false
+          description: 信件狀態篩選
+          name: status
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+            description: 頁碼
+            example: 1
+          required: false
+          description: 頁碼
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            description: 每頁筆數
+            example: 20
+          required: false
+          description: 每頁筆數
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 信件列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FutureLetterListApiResponse'
+        '400': *ref_40
+        '401': *ref_41
+        '404': *ref_42
+        '500': *ref_43
+  /api/v1/me/future-letters/{id}:
+    get:
+      tags:
+        - Future Letters
+      summary: 取得單封未來信
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 信件 UUID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 信件 UUID
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 信件內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FutureLetterApiResponse'
+        '400': *ref_40
+        '401': *ref_41
+        '404': *ref_42
+        '500': *ref_43
+    patch:
+      tags:
+        - Future Letters
+      summary: 更新未來信草稿
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 信件 UUID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 信件 UUID
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFutureLetter'
+      responses:
+        '200':
+          description: 草稿已更新
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FutureLetterApiResponse'
+        '400': *ref_40
+        '401': *ref_41
+        '404': *ref_42
+        '500': *ref_43
+    delete:
+      tags:
+        - Future Letters
+      summary: 刪除未來信
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 信件 UUID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 信件 UUID
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 信件已刪除
+        '400': *ref_40
+        '401': *ref_41
+        '404': *ref_42
+        '500': *ref_43
+  /api/v1/me/future-letters/{id}/send:
+    post:
+      tags:
+        - Future Letters
+      summary: 寄出並排程未來信
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 信件 UUID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 信件 UUID
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendFutureLetter'
+      responses:
+        '200':
+          description: 信件已排程
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FutureLetterApiResponse'
+        '400': *ref_40
+        '401': *ref_41
+        '404': *ref_42
+        '500': *ref_43
+  /api/v1/me/future-letters/{id}/open:
+    post:
+      tags:
+        - Future Letters
+      summary: 開啟已送達的未來信
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 信件 UUID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 信件 UUID
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 信件已開啟並回傳 owner-only 內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FutureLetterApiResponse'
+        '400': *ref_40
+        '401': *ref_41
+        '404': *ref_42
+        '500': *ref_43
   /api/v1/health:
     get:
       tags:
@@ -20452,7 +21531,7 @@ paths:
             default: 1
             description: 分頁頁碼，從 1 開始
             example: 1
-            examples: *ref_40
+            examples: *ref_44
           required: false
           description: 分頁頁碼，從 1 開始
           name: page
@@ -20464,7 +21543,7 @@ paths:
             default: 20
             description: 每頁顯示的想法數量（1-100）
             example: 20
-            examples: *ref_41
+            examples: *ref_45
           required: false
           description: 每頁顯示的想法數量（1-100）
           name: limit
@@ -20473,7 +21552,7 @@ paths:
             type: string
             description: 搜尋關鍵詞，用於內容搜尋
             example: React
-            examples: *ref_42
+            examples: *ref_46
           required: false
           description: 搜尋關鍵詞，用於內容搜尋
           name: query
@@ -20482,7 +21561,7 @@ paths:
             type: string
             description: 標籤篩選條件，多個標籤用逗號分隔
             example: 前端,React
-            examples: *ref_43
+            examples: *ref_47
           required: false
           description: 標籤篩選條件，多個標籤用逗號分隔
           name: tags
@@ -20491,7 +21570,7 @@ paths:
             type: string
             description: 篩選特定使用者的想法
             example: 123e4567-e89b-12d3-a456-426614174000
-            examples: *ref_44
+            examples: *ref_48
           required: false
           description: 篩選特定使用者的想法
           name: userId
@@ -20505,7 +21584,7 @@ paths:
               - all
             description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
             example: active
-            examples: *ref_45
+            examples: *ref_49
           required: false
           description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
           name: status
@@ -20519,7 +21598,7 @@ paths:
             default: createdAt
             description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
             example: createdAt
-            examples: *ref_46
+            examples: *ref_50
           required: false
           description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
           name: sort
@@ -20532,7 +21611,7 @@ paths:
             default: desc
             description: 排序方向：asc (升序)、desc (降序)
             example: desc
-            examples: *ref_47
+            examples: *ref_51
           required: false
           description: 排序方向：asc (升序)、desc (降序)
           name: order
@@ -20760,7 +21839,7 @@ paths:
             pattern: ^[a-zA-Z0-9._-]+$
             description: 圖片檔案名稱
             example: image_123.jpg
-            examples: *ref_48
+            examples: *ref_52
           required: true
           description: 圖片檔案名稱
           name: filename
@@ -20813,7 +21892,7 @@ paths:
             pattern: ^[a-zA-Z0-9._-]+$
             description: 圖片檔案名稱
             example: image_123.jpg
-            examples: *ref_48
+            examples: *ref_52
           required: true
           description: 圖片檔案名稱
           name: filename
@@ -21157,7 +22236,7 @@ paths:
             default: 1
             description: 分頁頁碼，從 1 開始
             example: 1
-            examples: *ref_40
+            examples: *ref_44
           required: false
           description: 分頁頁碼，從 1 開始
           name: page
@@ -21169,7 +22248,7 @@ paths:
             default: 20
             description: 每頁顯示的想法數量（1-100）
             example: 20
-            examples: *ref_41
+            examples: *ref_45
           required: false
           description: 每頁顯示的想法數量（1-100）
           name: limit
@@ -21178,7 +22257,7 @@ paths:
             type: string
             description: 搜尋關鍵詞，用於內容搜尋
             example: React
-            examples: *ref_42
+            examples: *ref_46
           required: false
           description: 搜尋關鍵詞，用於內容搜尋
           name: query
@@ -21187,7 +22266,7 @@ paths:
             type: string
             description: 標籤篩選條件，多個標籤用逗號分隔
             example: 前端,React
-            examples: *ref_43
+            examples: *ref_47
           required: false
           description: 標籤篩選條件，多個標籤用逗號分隔
           name: tags
@@ -21196,7 +22275,7 @@ paths:
             type: string
             description: 篩選特定使用者的想法
             example: 123e4567-e89b-12d3-a456-426614174000
-            examples: *ref_44
+            examples: *ref_48
           required: false
           description: 篩選特定使用者的想法
           name: userId
@@ -21210,7 +22289,7 @@ paths:
               - all
             description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
             example: active
-            examples: *ref_45
+            examples: *ref_49
           required: false
           description: 想法狀態篩選：active (僅顯示活躍想法)、draft (僅顯示草稿想法)、archived (僅顯示歸檔想法)、all (顯示所有狀態)
           name: status
@@ -21224,7 +22303,7 @@ paths:
             default: createdAt
             description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
             example: createdAt
-            examples: *ref_46
+            examples: *ref_50
           required: false
           description: 排序欄位：createdAt (按創建時間)、updatedAt (按更新時間)、likeCount (按點讚數)
           name: sort
@@ -21237,7 +22316,7 @@ paths:
             default: desc
             description: 排序方向：asc (升序)、desc (降序)
             example: desc
-            examples: *ref_47
+            examples: *ref_51
           required: false
           description: 排序方向：asc (升序)、desc (降序)
           name: order
@@ -21433,7 +22512,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -22132,7 +23211,7 @@ paths:
             maxLength: 50
             description: 按偏好設定分類篩選
             example: 學習偏好
-            examples: &ref_104
+            examples: &ref_115
               - 學習偏好
               - 通知設定
               - 隱私設定
@@ -22147,7 +23226,7 @@ paths:
             default: false
             description: 是否包含系統層級的偏好設定
             example: false
-            examples: &ref_105
+            examples: &ref_116
               - true
               - false
           required: false
@@ -22523,7 +23602,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -22850,7 +23929,7 @@ paths:
             pattern: ^\d+$
             description: 導師指派記錄的唯一識別 ID
             example: '123'
-            examples: &ref_50
+            examples: &ref_54
               - '123'
               - '456'
               - '789'
@@ -22969,7 +24048,7 @@ paths:
             pattern: ^\d+$
             description: 導師指派記錄的唯一識別 ID
             example: '123'
-            examples: *ref_50
+            examples: *ref_54
           required: true
           description: 導師指派記錄的唯一識別 ID
           name: assignmentId
@@ -23307,7 +24386,7 @@ paths:
             pattern: ^\d+$
             description: 學習參與者的唯一識別 ID
             example: '1001'
-            examples: &ref_52
+            examples: &ref_56
               - '1001'
               - '2045'
               - '3078'
@@ -23380,7 +24459,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_51
+                examples: &ref_55
                   - success: true
                     data:
                       id: 123
@@ -23469,7 +24548,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_51
+                examples: *ref_55
     delete:
       tags:
         - Mentor
@@ -23483,7 +24562,7 @@ paths:
             pattern: ^\d+$
             description: 學習參與者的唯一識別 ID
             example: '1001'
-            examples: *ref_52
+            examples: *ref_56
           required: true
           description: 學習參與者的唯一識別 ID
           name: participantId
@@ -23592,7 +24671,7 @@ paths:
             minLength: 1
             description: 學習活動或馬拉松的唯一識別 ID
             example: marathon_2024_spring
-            examples: &ref_53
+            examples: &ref_57
               - marathon_2024_spring
               - bootcamp_react_2024
               - workshop_nodejs_basics
@@ -23705,7 +24784,7 @@ paths:
             minLength: 1
             description: 學習活動或馬拉松的唯一識別 ID
             example: marathon_2024_spring
-            examples: *ref_53
+            examples: *ref_57
           required: true
           description: 學習活動或馬拉松的唯一識別 ID
           name: eventId
@@ -24288,9 +25367,9 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': &ref_54
+        '401': &ref_58
           $ref: '#/components/responses/UnauthorizedError'
-        '403': &ref_55
+        '403': &ref_59
           $ref: '#/components/responses/ForbiddenError'
     post:
       tags:
@@ -24446,8 +25525,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/admin/organizations:
     get:
       tags:
@@ -24576,8 +25655,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/admin/organizations/{organizationId}:
     patch:
       tags:
@@ -24736,8 +25815,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/admin/organizations/{organizationId}/members:
     get:
       tags:
@@ -24865,8 +25944,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     post:
       tags:
         - Lighthouse Organizations
@@ -25006,8 +26085,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/admin/organizations/{organizationId}/members/{userId}:
     delete:
       tags:
@@ -25035,8 +26114,8 @@ paths:
       responses:
         '204':
           description: 成員已移除
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs:
     get:
       tags:
@@ -25168,8 +26247,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     post:
       tags:
         - Lighthouse Programs
@@ -25312,8 +26391,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}:
     patch:
       tags:
@@ -25457,8 +26536,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     delete:
       tags:
         - Lighthouse Programs
@@ -25477,8 +26556,8 @@ paths:
       responses:
         '204':
           description: 系列已封存
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/programs/{programId}/cohorts:
@@ -25639,8 +26718,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     post:
       tags:
         - Lighthouse Cohorts
@@ -25844,8 +26923,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}:
@@ -26012,8 +27091,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     patch:
       tags:
         - Lighthouse Cohorts
@@ -26217,8 +27296,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '409':
           $ref: '#/components/responses/ConflictError'
     delete:
@@ -26247,8 +27326,8 @@ paths:
       responses:
         '204':
           description: 期已封存
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/invitations:
     post:
       tags:
@@ -26527,8 +27606,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/invitations/{enrollmentId}/resend:
     post:
       tags:
@@ -26650,8 +27729,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/members/{enrollmentId}:
     delete:
       tags:
@@ -26684,8 +27763,8 @@ paths:
       responses:
         '204':
           description: 成員已移除
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/members:
@@ -26815,8 +27894,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/enrollments:
     get:
       tags:
@@ -26977,8 +28056,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/join-token/rotate:
     post:
       tags:
@@ -27097,8 +28176,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/join-token:
     delete:
       tags:
@@ -27217,8 +28296,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/organizations/{organizationId}/templates:
     get:
       tags:
@@ -27416,8 +28495,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     post:
       tags:
         - Lighthouse Templates
@@ -27501,7 +28580,7 @@ paths:
                     example: morning
                     examples: *ref_3
                   maxItems: 5
-                  default: &ref_56 []
+                  default: &ref_60 []
                 resources:
                   type: array
                   items:
@@ -27688,8 +28767,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}:
     patch:
       tags:
@@ -27780,7 +28859,7 @@ paths:
                     example: morning
                     examples: *ref_3
                   maxItems: 5
-                  default: *ref_56
+                  default: *ref_60
                 resources:
                   type: array
                   items:
@@ -27965,8 +29044,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     delete:
       tags:
         - Lighthouse Templates
@@ -27991,8 +29070,8 @@ paths:
       responses:
         '204':
           description: 模板已刪除
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}:
@@ -28134,8 +29213,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     delete:
       tags:
         - Lighthouse Templates
@@ -28264,8 +29343,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/dashboard:
     get:
       tags:
@@ -28434,8 +29513,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/focus:
     get:
       tags:
@@ -28605,8 +29684,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome:
     get:
       tags:
@@ -28741,8 +29820,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '404':
           $ref: '#/components/responses/NotFoundError'
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome/export:
@@ -28892,8 +29971,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/feed:
     get:
       tags:
@@ -29135,8 +30214,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '410':
           description: 本期內容已超過保留期限
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/checkins/{checkinId}/encouragement-draft:
@@ -29263,8 +30342,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '410':
           description: 本期內容已超過保留期限
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/checkins/{checkinId}/encouragement:
@@ -29412,8 +30491,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '410':
           description: 本期內容已超過保留期限
   /api/v1/lighthouse/organizations/{organizationId}:
@@ -29551,8 +30630,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     patch:
       tags:
         - Lighthouse Organizations
@@ -29708,8 +30787,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
   /api/v1/lighthouse/organizations/{organizationId}/members:
     get:
       tags:
@@ -29833,8 +30912,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
     post:
       tags:
         - Lighthouse Organizations
@@ -29974,8 +31053,8 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/organizations/{organizationId}/members/{userId}:
@@ -30005,8 +31084,8 @@ paths:
       responses:
         '204':
           description: 成員已移除
-        '401': *ref_54
-        '403': *ref_55
+        '401': *ref_58
+        '403': *ref_59
         '404':
           $ref: '#/components/responses/NotFoundError'
         '409':
@@ -30111,7 +31190,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_57
+                examples: &ref_61
                   - success: true
                     data:
                       id: 123
@@ -30209,7 +31288,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_57
+                examples: *ref_61
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -30228,7 +31307,7 @@ paths:
             minLength: 1
             description: 查詢成果所屬的專案唯一識別ID
             example: project_123
-            examples: &ref_58
+            examples: &ref_62
               - project_123
               - my-learning-journey
               - bootcamp-2024
@@ -30307,7 +31386,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_59
+                examples: &ref_63
                   - success: true
                     data:
                       id: 123
@@ -30343,7 +31422,7 @@ paths:
             minLength: 1
             description: 查詢成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_58
+            examples: *ref_62
           required: true
           description: 查詢成果所屬的專案唯一識別ID
           name: projectId
@@ -30415,7 +31494,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_57
+                examples: *ref_61
         '400':
           $ref: '#/components/responses/BadRequestError'
         '404':
@@ -30434,7 +31513,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: &ref_60
+            examples: &ref_64
               - project_123
               - my-learning-journey
               - bootcamp-2024
@@ -30447,7 +31526,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: &ref_61
+            examples: &ref_65
               - '123'
               - '456'
               - '789'
@@ -30521,7 +31600,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_59
+                examples: *ref_63
         '400':
           $ref: '#/components/responses/BadRequestError'
         '404':
@@ -30541,7 +31620,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_60
+            examples: *ref_64
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -30551,7 +31630,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_61
+            examples: *ref_65
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -30627,7 +31706,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_59
+                examples: *ref_63
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -30651,7 +31730,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_60
+            examples: *ref_64
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -30661,7 +31740,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_61
+            examples: *ref_65
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -30731,7 +31810,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_83
+                examples: &ref_87
                   - success: true
                     data:
                       id: 123
@@ -31376,7 +32455,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -31427,7 +32506,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_62
+                examples: &ref_66
                   - success: true
                     data:
                       - id: 1
@@ -31554,7 +32633,7 @@ paths:
                       - commute
                     description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
-                    examples: &ref_63
+                    examples: &ref_67
                       - morning
                       - afternoon
                       - evening
@@ -31852,7 +32931,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -31903,7 +32982,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_62
+                examples: *ref_66
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -32150,7 +33229,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -32201,7 +33280,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_62
+                examples: *ref_66
         '400':
           $ref: '#/components/responses/BadRequestError'
         '404':
@@ -32287,7 +33366,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_66
+                examples: &ref_70
                   - success: true
                     data:
                       id: 123
@@ -32368,7 +33447,7 @@ paths:
                       - commute
                     description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
-                    examples: *ref_63
+                    examples: *ref_67
                   maxItems: 4
                 otherContext:
                   type: string
@@ -32395,7 +33474,7 @@ paths:
                     - archived
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
-                  examples: &ref_67
+                  examples: &ref_71
                     - draft
                     - not_started
                     - active
@@ -32542,7 +33621,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: &ref_64
+                    examples: &ref_68
                       - success: true
                   timestamp:
                     type: string
@@ -32593,7 +33672,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_65
+                examples: &ref_69
                   - success: true
                     data:
                       id: 123
@@ -32865,7 +33944,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -33151,7 +34230,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: *ref_64
+                    examples: *ref_68
                   timestamp:
                     type: string
                     format: date-time
@@ -33201,7 +34280,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_65
+                examples: *ref_69
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -34541,7 +35620,7 @@ paths:
                     required:
                       - success
                     description: The main response data
-                    examples: *ref_64
+                    examples: *ref_68
                   timestamp:
                     type: string
                     format: date-time
@@ -34591,7 +35670,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_65
+                examples: *ref_69
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -34683,7 +35762,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_66
+                examples: *ref_70
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -34797,7 +35876,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -35395,7 +36474,7 @@ paths:
                       - commute
                     description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)'
                     example: morning
-                    examples: *ref_63
+                    examples: *ref_67
                   maxItems: 4
                   description: 建議實踐時段
                   example:
@@ -35758,7 +36837,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -35809,7 +36888,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_62
+                examples: *ref_66
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -35842,7 +36921,7 @@ paths:
                     - archived
                   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                   example: not_started
-                  examples: *ref_67
+                  examples: *ref_71
               required:
                 - status
       responses:
@@ -35874,7 +36953,7 @@ paths:
                           - archived
                         description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)'
                         example: not_started
-                        examples: *ref_67
+                        examples: *ref_71
                       privacyStatus:
                         type: string
                         description: 隱私狀態
@@ -35977,7 +37056,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: &ref_68
+            examples: &ref_72
               - '1'
               - '2'
               - '10'
@@ -35990,7 +37069,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: &ref_69
+            examples: &ref_73
               - '10'
               - '20'
               - '50'
@@ -36016,7 +37095,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: &ref_70
+            examples: &ref_74
               - 'true'
               - 'false'
           required: false
@@ -36028,7 +37107,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: &ref_71
+            examples: &ref_75
               - '123'
               - '456'
               - '789'
@@ -36041,7 +37120,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: &ref_72
+            examples: &ref_76
               - React
               - 網站開發
               - 機器學習
@@ -36059,7 +37138,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: &ref_73
+            examples: &ref_77
               - createdAt
               - updatedAt
               - title
@@ -36076,7 +37155,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: &ref_74
+            examples: &ref_78
               - asc
               - desc
           required: false
@@ -36134,7 +37213,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -36185,7 +37264,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: &ref_75
+                examples: &ref_79
                   - success: true
                     data:
                       - id: 1
@@ -36293,7 +37372,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_76
+                examples: &ref_80
                   - success: true
                     data:
                       id: 123
@@ -36332,7 +37411,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: *ref_68
+            examples: *ref_72
           required: false
           description: 頁碼
           name: page
@@ -36342,7 +37421,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: *ref_69
+            examples: *ref_73
           required: false
           description: 每頁項目數
           name: limit
@@ -36365,7 +37444,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: *ref_70
+            examples: *ref_74
           required: false
           description: 是否只查詢公開專案
           name: isPublic
@@ -36375,7 +37454,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: *ref_71
+            examples: *ref_75
           required: false
           description: 指定用戶ID篩選
           name: userId
@@ -36385,7 +37464,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: *ref_72
+            examples: *ref_76
           required: false
           description: 搜尋關鍵字
           name: search
@@ -36400,7 +37479,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: *ref_73
+            examples: *ref_77
           required: false
           description: 排序欄位
           name: sortBy
@@ -36412,7 +37491,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: *ref_74
+            examples: *ref_78
           required: false
           description: 排序順序
           name: sortOrder
@@ -36468,7 +37547,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -36519,7 +37598,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_75
+                examples: *ref_79
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -36538,7 +37617,7 @@ paths:
             pattern: ^\d+$
             description: 頁碼
             example: '1'
-            examples: *ref_68
+            examples: *ref_72
           required: false
           description: 頁碼
           name: page
@@ -36548,7 +37627,7 @@ paths:
             pattern: ^\d+$
             description: 每頁項目數
             example: '10'
-            examples: *ref_69
+            examples: *ref_73
           required: false
           description: 每頁項目數
           name: limit
@@ -36571,7 +37650,7 @@ paths:
             type: string
             description: 是否只查詢公開專案
             example: 'true'
-            examples: *ref_70
+            examples: *ref_74
           required: false
           description: 是否只查詢公開專案
           name: isPublic
@@ -36581,7 +37660,7 @@ paths:
             pattern: ^\d+$
             description: 指定用戶ID篩選
             example: '123'
-            examples: *ref_71
+            examples: *ref_75
           required: false
           description: 指定用戶ID篩選
           name: userId
@@ -36591,7 +37670,7 @@ paths:
             maxLength: 100
             description: 搜尋關鍵字
             example: React
-            examples: *ref_72
+            examples: *ref_76
           required: false
           description: 搜尋關鍵字
           name: search
@@ -36606,7 +37685,7 @@ paths:
               - endDate
             description: 排序欄位
             example: createdAt
-            examples: *ref_73
+            examples: *ref_77
           required: false
           description: 排序欄位
           name: sortBy
@@ -36618,7 +37697,7 @@ paths:
               - desc
             description: 排序順序
             example: desc
-            examples: *ref_74
+            examples: *ref_78
           required: false
           description: 排序順序
           name: sortOrder
@@ -36674,7 +37753,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -36725,7 +37804,7 @@ paths:
                   - pagination
                   - timestamp
                 description: Paginated response format for page-based pagination
-                examples: *ref_75
+                examples: *ref_79
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -36917,7 +37996,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_76
+                examples: *ref_80
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -37010,7 +38089,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_76
+                examples: *ref_80
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -37226,7 +38305,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_76
+                examples: *ref_80
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -37248,7 +38327,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: &ref_77
+            examples: &ref_81
               - project_123
               - my-study-notes
               - learning-journey-2024
@@ -37438,7 +38517,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -37569,7 +38648,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 里程碑唯一識別碼
-            examples: &ref_78
+            examples: &ref_82
               - '1'
               - '2'
               - '123'
@@ -37756,7 +38835,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 里程碑唯一識別碼
-            examples: *ref_78
+            examples: *ref_82
           required: true
           description: 里程碑唯一識別碼
           name: milestoneId
@@ -37844,7 +38923,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -37924,10 +39003,10 @@ paths:
                     - public
                   default: private
                   description: 便利貼的可見性設定
-                  examples: &ref_81
+                  examples: &ref_85
                     - private
                     - public
-                  enumDescriptions: &ref_82
+                  enumDescriptions: &ref_86
                     private: 私人可見，僅作者可查看
                     public: 公開可見，所有人可查看
               required:
@@ -38063,7 +39142,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38186,7 +39265,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: &ref_79
+            examples: &ref_83
               - project_123
               - my-study-notes
               - learning-journey-2024
@@ -38198,7 +39277,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: &ref_80
+            examples: &ref_84
               - '123'
               - '456'
               - '789'
@@ -38323,7 +39402,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: *ref_79
+            examples: *ref_83
           required: true
           description: 便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38332,7 +39411,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: *ref_80
+            examples: *ref_84
           required: true
           description: 便利貼的唯一識別ID
           name: noteId
@@ -38406,8 +39485,8 @@ paths:
                     - private
                     - public
                   description: 便利貼的可見性設定
-                  examples: *ref_81
-                  enumDescriptions: *ref_82
+                  examples: *ref_85
+                  enumDescriptions: *ref_86
               description: 更新現有便利貼筆記的請求資料
               examples:
                 - title: React 學習筆記 - 更新
@@ -38534,7 +39613,7 @@ paths:
             type: string
             minLength: 1
             description: 便利貼所屬的專案唯一識別ID
-            examples: *ref_79
+            examples: *ref_83
           required: true
           description: 便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38543,7 +39622,7 @@ paths:
             type: string
             pattern: ^\d+$
             description: 便利貼的唯一識別ID
-            examples: *ref_80
+            examples: *ref_84
           required: true
           description: 便利貼的唯一識別ID
           name: noteId
@@ -38882,7 +39961,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -38958,7 +40037,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_59
+                examples: *ref_63
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -38977,7 +40056,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -39049,7 +40128,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_57
+                examples: *ref_61
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -39066,7 +40145,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_60
+            examples: *ref_64
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -39076,7 +40155,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_61
+            examples: *ref_65
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -39147,7 +40226,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_59
+                examples: *ref_63
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -39165,7 +40244,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_60
+            examples: *ref_64
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -39175,7 +40254,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_61
+            examples: *ref_65
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -39251,7 +40330,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_59
+                examples: *ref_63
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -39273,7 +40352,7 @@ paths:
             minLength: 1
             description: 成果所屬的專案唯一識別ID
             example: project_123
-            examples: *ref_60
+            examples: *ref_64
           required: true
           description: 成果所屬的專案唯一識別ID
           name: projectId
@@ -39283,7 +40362,7 @@ paths:
             pattern: ^\d+$
             description: 成果的唯一識別ID
             example: '123'
-            examples: *ref_61
+            examples: *ref_65
           required: true
           description: 成果的唯一識別ID
           name: outcomeId
@@ -39353,7 +40432,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_83
+                examples: *ref_87
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -39435,7 +40514,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_57
+                examples: *ref_61
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '500':
@@ -39453,7 +40532,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -39469,7 +40548,7 @@ paths:
                   minimum: 1
                   maximum: 52
                   description: 覆盤週數
-                  examples: &ref_84
+                  examples: &ref_88
                     - 1
                     - 12
                     - 24
@@ -39493,13 +40572,13 @@ paths:
                     - tired
                     - frustrated
                   description: 心情評估等級
-                  examples: &ref_85
+                  examples: &ref_89
                     - happy
                     - calm
                     - anxious
                     - tired
                     - frustrated
-                  enumDescriptions: &ref_86
+                  enumDescriptions: &ref_90
                     happy: 開心
                     calm: 平靜
                     anxious: 焦慮
@@ -39510,7 +40589,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 壓力等級評估
-                  examples: &ref_87
+                  examples: &ref_91
                     - 1
                     - 3
                     - 5
@@ -39529,7 +40608,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 學習效果評估等級
-                  examples: &ref_90
+                  examples: &ref_94
                     - 1
                     - 4
                     - 6
@@ -39688,7 +40767,7 @@ paths:
             type: string
             minLength: 1
             description: 查詢便利貼所屬的專案唯一識別ID
-            examples: *ref_77
+            examples: *ref_81
           required: true
           description: 查詢便利貼所屬的專案唯一識別ID
           name: projectId
@@ -39698,7 +40777,7 @@ paths:
             minimum: 1
             maximum: 52
             description: 覆盤週數
-            examples: *ref_84
+            examples: *ref_88
           required: false
           description: 覆盤週數
           name: week
@@ -39712,8 +40791,8 @@ paths:
               - tired
               - frustrated
             description: 心情評估等級
-            examples: *ref_85
-            enumDescriptions: *ref_86
+            examples: *ref_89
+            enumDescriptions: *ref_90
           required: false
           description: 心情評估等級
           name: mood
@@ -39723,7 +40802,7 @@ paths:
             minimum: 1
             maximum: 10
             description: 壓力等級評估
-            examples: *ref_87
+            examples: *ref_91
           required: false
           description: 壓力等級評估
           name: stressLevel
@@ -39861,7 +40940,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: &ref_88
+            examples: &ref_92
               - 123e4567-e89b-12d3-a456-426614174000
               - proj_abc123
               - project-001
@@ -39872,7 +40951,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: &ref_89
+            examples: &ref_93
               - '1'
               - '123'
               - '456'
@@ -39986,7 +41065,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: *ref_88
+            examples: *ref_92
           required: true
           description: 專案識別碼
           name: projectId
@@ -39994,7 +41073,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: *ref_89
+            examples: *ref_93
           required: true
           description: 覆盤識別碼
           name: reviewId
@@ -40022,14 +41101,14 @@ paths:
                     - tired
                     - frustrated
                   description: 心情評估等級
-                  examples: *ref_85
-                  enumDescriptions: *ref_86
+                  examples: *ref_89
+                  enumDescriptions: *ref_90
                 stressLevel:
                   type: integer
                   minimum: 1
                   maximum: 10
                   description: 壓力等級評估
-                  examples: *ref_87
+                  examples: *ref_91
                 moodDescription:
                   type: string
                   maxLength: 1000
@@ -40042,7 +41121,7 @@ paths:
                   minimum: 1
                   maximum: 10
                   description: 學習效果評估等級
-                  examples: *ref_90
+                  examples: *ref_94
                 learningFeedback:
                   type: string
                   maxLength: 2000
@@ -40174,7 +41253,7 @@ paths:
             type: string
             minLength: 1
             description: 專案識別碼
-            examples: *ref_88
+            examples: *ref_92
           required: true
           description: 專案識別碼
           name: projectId
@@ -40182,7 +41261,7 @@ paths:
         - schema:
             type: string
             description: 覆盤識別碼
-            examples: *ref_89
+            examples: *ref_93
           required: true
           description: 覆盤識別碼
           name: reviewId
@@ -40456,7 +41535,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_91
+                examples: &ref_95
                   - success: true
                     data:
                       id: 123
@@ -40559,7 +41638,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_91
+                examples: *ref_95
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -40660,7 +41739,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_91
+                examples: *ref_95
         '400':
           $ref: '#/components/responses/BadRequestError'
         '500':
@@ -41042,7 +42121,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: &ref_95
+                    examples: &ref_99
                       - cursors:
                           start: eyJpZCI6ODUzLCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjcwMFoifQ==
                           end: eyJpZCI6ODQ5LCJ0aW1lc3RhbXAiOiIyMDI1LTA2LTIxVDE3OjM3OjE3LjY5N1oifQ==
@@ -41086,7 +42165,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: &ref_92
+                          examples: &ref_96
                             - value: education_learning
                               count: 45
                             - value: physics
@@ -41108,7 +42187,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_92
+                          examples: *ref_96
                         description: Sub category facet values (parent_id is NOT NULL)
                     additionalProperties:
                       type: array
@@ -41126,9 +42205,9 @@ paths:
                           - value
                           - count
                         description: Single facet value with count
-                        examples: *ref_92
+                        examples: *ref_96
                     description: Faceted search aggregations for filtering
-                    examples: &ref_96
+                    examples: &ref_100
                       - majorCategory:
                           - value: education_learning
                             count: 45
@@ -41561,7 +42640,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_93
+                examples: &ref_97
                   - success: true
                     data:
                       id: 123
@@ -41813,7 +42892,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_93
+                examples: *ref_97
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -41929,7 +43008,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_94
+                examples: &ref_98
                   - success: true
                     data:
                       id: 123
@@ -42058,7 +43137,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_94
+                examples: *ref_98
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -42222,7 +43301,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: *ref_95
+                    examples: *ref_99
                   facets:
                     type: object
                     properties:
@@ -42242,7 +43321,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_92
+                          examples: *ref_96
                         description: Major category facet values (parent_id is NULL)
                       subCategory:
                         type: array
@@ -42260,7 +43339,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_92
+                          examples: *ref_96
                         description: Sub category facet values (parent_id is NOT NULL)
                     additionalProperties:
                       type: array
@@ -42278,9 +43357,9 @@ paths:
                           - value
                           - count
                         description: Single facet value with count
-                        examples: *ref_92
+                        examples: *ref_96
                     description: Faceted search aggregations for filtering
-                    examples: *ref_96
+                    examples: *ref_100
                   timestamp:
                     type: string
                     format: date-time
@@ -42758,7 +43837,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_97
+                examples: &ref_101
                   - success: true
                     data:
                       id: 123
@@ -43036,7 +44115,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_97
+                examples: *ref_101
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -43430,7 +44509,7 @@ paths:
                       - totalEstimate
                       - parentTotalEstimate
                     description: Cursor-based pagination information
-                    examples: *ref_95
+                    examples: *ref_99
                   facets:
                     type: object
                     properties:
@@ -43450,7 +44529,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_92
+                          examples: *ref_96
                         description: Major category facet values (parent_id is NULL)
                       subCategory:
                         type: array
@@ -43468,7 +44547,7 @@ paths:
                             - value
                             - count
                           description: Single facet value with count
-                          examples: *ref_92
+                          examples: *ref_96
                         description: Sub category facet values (parent_id is NOT NULL)
                     additionalProperties:
                       type: array
@@ -43486,9 +44565,9 @@ paths:
                           - value
                           - count
                         description: Single facet value with count
-                        examples: *ref_92
+                        examples: *ref_96
                     description: Faceted search aggregations for filtering
-                    examples: *ref_96
+                    examples: *ref_100
                   timestamp:
                     type: string
                     format: date-time
@@ -43755,7 +44834,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_98
+                examples: &ref_102
                   - success: true
                     data:
                       id: 123
@@ -43862,13 +44941,1390 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_98
+                examples: *ref_102
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/spaces:
+    get:
+      tags:
+        - Spaces
+      summary: 你的空間清單（個人實踐/共同挑戰/活動課程聚合）
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 空間清單
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: 空間總數（含虛擬空間）
+                        example: 3
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SpaceListItem'
+                    required:
+                      - total
+                      - items
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': &ref_103
+          $ref: '#/components/responses/BadRequestError'
+        '401': &ref_104
+          $ref: '#/components/responses/UnauthorizedError'
+        '403': &ref_105
+          $ref: '#/components/responses/ForbiddenError'
+        '404': &ref_106
+          $ref: '#/components/responses/NotFoundError'
+        '500': &ref_107
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/spaces/public/{token}:
+    get:
+      tags:
+        - Spaces
+      summary: 公開連結的訪客視角空間頁
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間公開連結 token
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間公開連結 token
+          name: token
+          in: path
+      responses:
+        '200':
+          description: 空間公開內容（成員視角過濾）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    $ref: '#/components/schemas/PublicSpace'
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}:
+    get:
+      tags:
+        - Spaces
+      summary: 活動課程空間標頭資訊
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 空間標頭
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    $ref: '#/components/schemas/SpaceDetail'
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/members:
+    get:
+      tags:
+        - Spaces
+      summary: 空間成員名單
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 成員名單
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SpaceMember'
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/practices:
+    get:
+      tags:
+        - Spaces
+      summary: 空間內主題實踐清單
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 實踐卡片清單
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SpacePracticeCard'
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/home-page:
+    get:
+      tags:
+        - Spaces
+      summary: 空間首頁（依檢視者過濾區塊）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 空間首頁；不存在或對檢視者隱藏時回 null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    $ref: '#/components/schemas/SpaceHomePage'
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: &ref_108
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+    post:
+      tags:
+        - Spaces
+      summary: 建立空間首頁（範例/空白，發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpaceHomePage'
+      responses:
+        '201':
+          description: 首頁已建立（草稿）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    $ref: '#/components/schemas/SpaceHomePage'
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_108
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/home-page/publish:
+    post:
+      tags:
+        - Spaces
+      summary: 發佈空間首頁（發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      responses:
+        '200':
+          description: 頁面已發佈
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    $ref: '#/components/schemas/SpaceHomePage'
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_108
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/blocks:
+    post:
+      tags:
+        - Spaces
+      summary: 新增區塊（發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpaceBlock'
+      responses:
+        '201':
+          description: 區塊已建立（草稿、附加於最後）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SpaceBlock'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: &ref_109
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/blocks/{blockId}:
+    patch:
+      tags:
+        - Spaces
+      summary: 更新區塊內容（blur 儲存，發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 區塊 ID
+            example: 12
+          required: true
+          description: 區塊 ID
+          name: blockId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSpaceBlock'
+      responses:
+        '200':
+          description: 區塊已更新
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SpaceBlock'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_109
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+    delete:
+      tags:
+        - Spaces
+      summary: 刪除區塊（發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 區塊 ID
+            example: 12
+          required: true
+          description: 區塊 ID
+          name: blockId
+          in: path
+      responses:
+        '200':
+          description: 區塊已刪除
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/blocks/{blockId}/move:
+    post:
+      tags:
+        - Spaces
+      summary: 上移/下移區塊（發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 區塊 ID
+            example: 12
+          required: true
+          description: 區塊 ID
+          name: blockId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveSpaceBlock'
+      responses:
+        '200':
+          description: 區塊已移動
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SpaceBlock'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_109
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/blocks/{blockId}/publish:
+    post:
+      tags:
+        - Spaces
+      summary: 發佈或排程區塊（發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 區塊 ID
+            example: 12
+          required: true
+          description: 區塊 ID
+          name: blockId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishSpaceBlock'
+      responses:
+        '200':
+          description: 區塊已發佈或排程
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SpaceBlock'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_109
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
+  /api/v1/spaces/{id}/blocks/{blockId}/draft:
+    post:
+      tags:
+        - Spaces
+      summary: 將區塊存成草稿（已發佈不可退回，發起人限定）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: 空間 UUID（external_id）
+            example: 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          description: 空間 UUID（external_id）
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 區塊 ID
+            example: 12
+          required: true
+          description: 區塊 ID
+          name: blockId
+          in: path
+      responses:
+        '200':
+          description: 區塊已存成草稿
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/SpaceBlock'
+                      - description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples: *ref_109
+        '400': *ref_103
+        '401': *ref_104
+        '403': *ref_105
+        '404': *ref_106
+        '500': *ref_107
   /api/v1/surveys:
     post:
       tags:
@@ -44660,7 +47116,7 @@ paths:
                     - user
                     - review
                   description: 實體類型
-                  examples: &ref_99
+                  examples: &ref_110
                     - resource
                     - project
                     - idea
@@ -44669,7 +47125,7 @@ paths:
                     - circle
                     - user
                     - review
-                  enumDescriptions: &ref_100
+                  enumDescriptions: &ref_111
                     resource: 學習資源
                     project: 專案計畫
                     idea: 創意想法
@@ -44684,7 +47140,7 @@ paths:
                   maxLength: 50
                   pattern: ^[a-zA-Z0-9\u4e00-\u9fa5_-]+$
                   description: 標籤名稱
-                  examples: &ref_101
+                  examples: &ref_112
                     - React
                     - JavaScript
                     - 前端開發
@@ -44825,15 +47281,15 @@ paths:
                     - user
                     - review
                   description: 實體類型
-                  examples: *ref_99
-                  enumDescriptions: *ref_100
+                  examples: *ref_110
+                  enumDescriptions: *ref_111
                 tagName:
                   type: string
                   minLength: 1
                   maxLength: 50
                   pattern: ^[a-zA-Z0-9\u4e00-\u9fa5_-]+$
                   description: 標籤名稱
-                  examples: *ref_101
+                  examples: *ref_112
               required:
                 - entityId
                 - entityType
@@ -44967,8 +47423,8 @@ paths:
               - user
               - review
             description: 實體類型
-            examples: *ref_99
-            enumDescriptions: *ref_100
+            examples: *ref_110
+            enumDescriptions: *ref_111
           required: true
           description: 實體類型
           name: entityType
@@ -45063,6 +47519,46 @@ paths:
           $ref: '#/components/responses/BadRequestError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/me/timeline:
+    get:
+      tags:
+        - Timeline
+      summary: 取得我的學習時間軸
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: 上一頁回傳的不透明複合游標；暫時相容舊版 ISO 時間游標
+            example: eyJkYXRlIjoiMjAyNi0wOC0wMVQwODowMDowMC4wMDBaIiwia2V5IjoibGV0dGVyOjU1MGU4NDAwIn0
+          required: false
+          description: 上一頁回傳的不透明複合游標；暫時相容舊版 ISO 時間游標
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            description: 每頁筆數
+            example: 20
+          required: false
+          description: 每頁筆數
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: 混合學習事件流
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/admin/user-stats/overview:
@@ -46046,7 +48542,7 @@ paths:
                       - hasNext
                       - hasPrev
                     description: Pagination information
-                    examples: *ref_49
+                    examples: *ref_53
                   timestamp:
                     type: string
                     format: date-time
@@ -46214,7 +48710,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_102
+                examples: &ref_113
                   - success: true
                     data:
                       id: 123
@@ -46313,7 +48809,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_103
+                examples: &ref_114
                   - success: true
                     data:
                       id: 123
@@ -46423,7 +48919,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_102
+                examples: *ref_113
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -46580,7 +49076,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_107
+                examples: &ref_118
                   - success: true
                     data:
                       id: 123
@@ -46684,7 +49180,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: &ref_108
+                examples: &ref_119
                   - success: true
                     data:
                       id: 123
@@ -46814,7 +49310,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_103
+                examples: *ref_114
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -46903,7 +49399,7 @@ paths:
             maxLength: 50
             description: 按偏好設定分類篩選
             example: 學習偏好
-            examples: *ref_104
+            examples: *ref_115
           required: false
           description: 按偏好設定分類篩選
           name: category
@@ -46914,7 +49410,7 @@ paths:
             default: false
             description: 是否包含系統層級的偏好設定
             example: false
-            examples: *ref_105
+            examples: *ref_116
           required: false
           description: 是否包含系統層級的偏好設定
           name: includeSystem
@@ -47704,7 +50200,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_106
+                examples: *ref_117
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -47791,7 +50287,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_103
+                examples: *ref_114
         '404':
           $ref: '#/components/responses/NotFoundError'
         '500':
@@ -47884,7 +50380,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_107
+                examples: *ref_118
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -47983,7 +50479,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_108
+                examples: *ref_119
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -48238,7 +50734,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_98
+                examples: *ref_102
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -48330,7 +50826,7 @@ paths:
                   - data
                   - timestamp
                 description: Standard success response format
-                examples: *ref_98
+                examples: *ref_102
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':

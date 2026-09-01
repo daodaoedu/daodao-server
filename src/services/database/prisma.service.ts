@@ -51,7 +51,8 @@ export class PrismaService {
       if (process.env.NODE_ENV === 'dev') {
         loggerService.debug('Prisma Query', {
           query: event.query,
-          params: event.params,
+          // Query parameters can contain private letter text and other secrets.
+          params: '[REDACTED]',
           duration: `${event.duration}ms`,
         });
       }

@@ -245,3 +245,19 @@ export {
   closeEmailWorker,
   type EmailWorkerOptions,
 } from './email.worker';
+
+export {
+  FUTURE_LETTER_QUEUE_NAME,
+  createFutureLetterQueue,
+  setFutureLetterQueue,
+  getFutureLetterQueue,
+  scheduleFutureLetterDelivery,
+  removeFutureLetterJob,
+  type FutureLetterJobData,
+} from './future-letter.queue';
+
+export {
+  createFutureLetterWorker,
+  closeFutureLetterWorker,
+  processFutureLetterJob,
+} from './future-letter.worker';

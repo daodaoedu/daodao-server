@@ -76,6 +76,10 @@ import adminRoadmapRoutes from './routes/admin-roadmap.routes';
 import surveyRoutes from './routes/survey.routes';
 import organizationRoutes from './routes/organization.routes';
 import cohortJoinRoutes from './routes/cohort-join.routes';
+import futureLetterRoutes from './routes/future-letter.routes';
+import timelineRoutes from './routes/timeline.routes';
+// 引入空間路由
+import spaceRoutes from './routes/space.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
@@ -133,7 +137,8 @@ export function setupTypescriptRoutes(app: express.Application) {
     onboardingRoutes, quizRoutes, userStatsRoutes, dbInfoRoutes, monitorRoutes, adminRoutes,
     notificationRoutes, followRoutes, connectionRoutes,
     buddyRequestRouter, practiceBuddyRequestRouter,
-    roadmapRoutes, wishRoutes, adminRoadmapRoutes, organizationRoutes, cohortJoinRoutes
+    roadmapRoutes, wishRoutes, adminRoadmapRoutes, organizationRoutes, cohortJoinRoutes,
+    futureLetterRoutes, timelineRoutes, spaceRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -325,6 +330,15 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('🗼 v1 燈塔組織路由已註冊 - 可在 /api/v1/lighthouse/organizations 訪問');
   app.use('/api/v1/cohorts', cohortJoinRoutes);
   console.log('🗼 v1 期參與者路由已註冊 - 可在 /api/v1/cohorts 訪問');
+
+  app.use('/api/v1/me/future-letters', futureLetterRoutes);
+  console.log('💌 v1 未來信路由已註冊 - 可在 /api/v1/me/future-letters 訪問');
+
+  app.use('/api/v1/me/timeline', timelineRoutes);
+  console.log('🕰️ v1 學習時間軸路由已註冊 - 可在 /api/v1/me/timeline 訪問');
+
+  app.use('/api/v1/spaces', spaceRoutes);
+  console.log('🏝️ v1 空間路由已註冊 - 可在 /api/v1/spaces 訪問');
 
   // 監控 HTML 頁面的直接路由
   app.get('/api/v1/monitor.html', (req, res) => {
