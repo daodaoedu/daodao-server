@@ -97,3 +97,6 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
   return { templateId, cohortId, bound, startDate: null };
 };
 export const organizationTemplateService = { list, create, update, remove, bind };
+
+/** 供 admin 共同挑戰管理重用（跳過組織成員檢查，由 requireAdmin 把關） */
+export const organizationTemplateInternals = { select, map, loadResources, replaceResources };

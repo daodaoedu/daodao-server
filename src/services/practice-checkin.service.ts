@@ -41,7 +41,9 @@ import {
 } from '../utils/practice-status';
 import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
+import { recordView as trackView } from './view-tracking.service';
 import { MS_PER_DAY } from '../utils/date-utils';
+import { assertChallengeCheckinAllowed, isChallengeCohort } from './challenge-acl.service';
 import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
@@ -95,6 +97,9 @@ export async function createCheckIn(
     // 用於日期位移與 checkin_date（UTC 零點）
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
+
+    // 共同挑戰為固定時段：開始日前不可打卡，也不做提早打卡的日期位移
+    assertChallengeCheckinAllowed(await isChallengeCohort(practice.cohort_id), practice.start_date, today);
 
     // 取得實踐配置用於進度計算
     const durationDays = (practice as { duration_days?: number }).duration_days || 14;
@@ -230,6 +235,7 @@ export async function createCheckIn(
       imageUrls: checkIn.image_urls || [],
       ogImageUrl: checkIn.og_image_url ?? null,
       tags,
+      viewCount: 0, // 剛建立的打卡尚無瀏覽紀錄
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString(),
       // 擴展欄位
@@ -521,26 +527,40 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       prismaClient.practice_checkins.count({ where })
     ]);
 
-    // 批量獲取所有打卡記錄的標籤
+    // 批量獲取所有打卡記錄的標籤與瀏覽數
     const checkInIds = checkIns.map(c => c.id);
     const entityTagsMap = new Map<number, string[]>();
+    const viewCountMap = new Map<number, number>();
 
     if (checkInIds.length > 0) {
-      const entityTags = await prismaClient.entity_tags.findMany({
-        where: {
-          entity_type: CHECKIN_ENTITY_TYPE,
-          entity_id: { in: checkInIds }
-        },
-        include: {
-          tags: true
-        }
-      });
+      const [entityTags, viewStats] = await Promise.all([
+        prismaClient.entity_tags.findMany({
+          where: {
+            entity_type: CHECKIN_ENTITY_TYPE,
+            entity_id: { in: checkInIds }
+          },
+          include: {
+            tags: true
+          }
+        }),
+        prismaClient.entity_stats.findMany({
+          where: {
+            entity_type: CHECKIN_ENTITY_TYPE,
+            entity_id: { in: checkInIds }
+          },
+          select: { entity_id: true, view_count: true }
+        })
+      ]);
 
       // 建立 checkInId -> tags[] 的映射
       for (const et of entityTags) {
         const existing = entityTagsMap.get(et.entity_id) || [];
         existing.push(et.tags.name);
         entityTagsMap.set(et.entity_id, existing);
+      }
+
+      for (const stat of viewStats) {
+        viewCountMap.set(stat.entity_id, stat.view_count);
       }
     }
 
@@ -554,6 +574,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       imageUrls: checkIn.image_urls || [],
       ogImageUrl: checkIn.og_image_url ?? null,
       tags: entityTagsMap.get(checkIn.id) || [],
+      viewCount: viewCountMap.get(checkIn.id) ?? 0,
       createdAt: checkIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: checkIn.updated_at?.toISOString()
     }));
@@ -579,6 +600,29 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
     loggerService.error('Failed to retrieve check-ins', { practiceId, error });
     throw new InternalServerError('取得簽到記錄失敗');
   }
+}
+
+/**
+ * 記錄一次打卡紀錄的瀏覽事件（同一使用者對同一筆打卡 24h 內去重）。
+ *
+ * @param practiceId 打卡所屬的實踐 ID
+ * @param checkInId  打卡紀錄 ID
+ * @param userId     瀏覽者 ID
+ * @returns 該打卡目前的累計瀏覽數
+ */
+export async function recordCheckInView(practiceId: number, checkInId: number, userId: number): Promise<ApiSuccessResponse<{ viewCount: number }>> {
+  const checkIn = await prismaClient.practice_checkins.findFirst({
+    where: { id: checkInId, practice_id: practiceId },
+    select: { id: true }
+  });
+
+  if (!checkIn) {
+    throw new NotFoundError('打卡紀錄不存在');
+  }
+
+  const viewCount = await trackView(CHECKIN_ENTITY_TYPE, checkIn.id, userId);
+
+  return createSuccessResponse({ viewCount });
 }
 
 /**
@@ -921,6 +965,11 @@ export async function updateCheckIn(
       tags = entityTags.map(et => et.tags.name);
     }
 
+    const viewStat = await prismaClient.entity_stats.findUnique({
+      where: { entity_type_entity_id: { entity_type: CHECKIN_ENTITY_TYPE, entity_id: updatedCheckIn.id } },
+      select: { view_count: true }
+    });
+
     const response: CheckInEntity = {
       id: updatedCheckIn.id,
       practiceId: updatedCheckIn.practice_id,
@@ -931,6 +980,7 @@ export async function updateCheckIn(
       imageUrls: updatedCheckIn.image_urls || [],
       ogImageUrl: updatedCheckIn.og_image_url ?? null,
       tags,
+      viewCount: viewStat?.view_count ?? 0,
       createdAt: updatedCheckIn.created_at?.toISOString() || new Date().toISOString(),
       updatedAt: updatedCheckIn.updated_at?.toISOString()
     };

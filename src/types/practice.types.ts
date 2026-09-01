@@ -57,6 +57,8 @@ export interface PracticeResourceEntity {
 export interface PracticeEntity {
   id: string;
   title: string;
+  /** 是否為共同挑戰實踐（名稱／期間／隱私鎖定、不可複製；只在詳情回傳） */
+  isChallenge?: boolean;
   practiceAction?: string;
   startDate?: string;
   endDate?: string;
@@ -110,6 +112,8 @@ export interface CheckInEntity {
   imageUrls: string[];
   ogImageUrl: string | null;
   tags: string[];
+  /** 累計瀏覽數（同一使用者 24h 內只計一次） */
+  viewCount: number;
   createdAt: string;
   updatedAt?: string;
 }

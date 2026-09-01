@@ -29,12 +29,7 @@ import {
   GetMentionCandidatesParams,
   MentionCandidate
 } from '../types/comment.types';
-import {
-  NotFoundError,
-  ForbiddenError,
-  BadRequestError,
-  InternalServerError
-} from '../middleware/error.middleware';
+import { AppError, NotFoundError, ForbiddenError, BadRequestError, InternalServerError } from '../middleware/error.middleware';
 import {
   ApiSuccessResponse
 } from '../types/api-response.types';
@@ -44,6 +39,7 @@ import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { loggerService } from './logging/logger.service';
 import { privacyService } from './privacy.service';
+import { challengeAclService } from './challenge-acl.service';
 
 /**
  * Comment Service Class
@@ -70,7 +66,10 @@ export class CommentService implements CommentServiceInterface {
         // Validate target entity exists and get internal ID
         const targetEntity = await idConverter.getTargetEntity(targetType as EntityType, targetId);
         const internalTargetId = targetEntity.id;
-        
+
+        // 共同挑戰內容僅參與者可留言（challenge-witnessing ACL）
+        await challengeAclService.assertChallengeCommentAllowed(targetType, internalTargetId, userId);
+
         // Validate parent comment if provided
         let parentComment: Awaited<ReturnType<typeof tx.comments.findUnique>> | null = null;
         if (parentId) {
@@ -274,7 +273,8 @@ export class CommentService implements CommentServiceInterface {
         return createSuccessResponse(formattedComment);
         
       } catch (error) {
-        if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        // 業務錯誤（404／400／403 等 AppError）原樣往外拋，例如共同挑戰的留言 ACL（僅參與者可留言）
+        if (error instanceof AppError) {
           throw error;
         }
         throw new InternalServerError(`Failed to create comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
