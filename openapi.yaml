@@ -204,7 +204,7 @@ components:
           type: integer
           nullable: true
           minimum: 1
-          maximum: 30
+          maximum: 90
           description: 指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）
           example: 3
       required:
@@ -266,13 +266,18 @@ components:
             - 每天運動 20 分鐘
         practiceAction:
           type: string
-          maxLength: 200
-          description: 具體的實踐行動描述
+          maxLength: 50
+          description: 具體的實踐行動描述（建立流程 Step 1，上限 50 字）
           example: 閱讀技術書籍或文章
           examples:
             - 閱讀技術書籍或文章
             - 完成線上課程一個章節
             - 跑步或健身
+        templateId:
+          type: string
+          format: uuid
+          description: 來源模版的 external_id（從模版建立實踐時帶入，用於追蹤模版使用情況）
+          example: 123e4567-e89b-12d3-a456-426614174000
         startDate:
           type: string
           format: date
@@ -285,15 +290,17 @@ components:
             - '2024-06-01'
         durationDays:
           type: integer
-          minimum: 7
+          minimum: 1
           maximum: 90
-          description: 實踐持續天數
+          description: 實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）
           example: 14
           examples:
             - 7
             - 14
             - 21
             - 30
+            - 45
+            - 90
         frequencyMinDays:
           type: integer
           minimum: 1
@@ -317,9 +324,9 @@ components:
             - 7
         sessionDurationMinutes:
           type: integer
-          minimum: 5
-          maximum: 240
-          description: 每次實踐時長（分鐘）
+          minimum: 1
+          maximum: 999
+          description: 每次實踐時長（分鐘，1–999；預設選項 15/30/45/60，可自訂）
           example: 30
           examples:
             - 15
@@ -385,8 +392,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PracticeResourceInput'
-          maxItems: 5
-          description: 相關學習資源（最多 5 個）
+          maxItems: 10
+          description: 相關學習資源（最多 10 個；可只有名稱不帶連結）
           example:
             - name: React 官方文檔
               url: https://react.dev/
@@ -413,6 +420,36 @@ components:
           example: self_created
       required:
         - title
+    BatchCreatePracticeRequest:
+      type: object
+      properties:
+        segments:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/CreatePracticeRequest'
+              - description: 創建實踐活動的請求資料
+                example:
+                  title: 每日閱讀 30 分鐘
+                  practiceAction: 閱讀技術書籍或文章
+                  startDate: '2024-01-15'
+                  durationDays: 14
+                  frequencyMinDays: 4
+                  frequencyMaxDays: 7
+                  sessionDurationMinutes: 30
+                  practiceTimePeriods:
+                    - morning
+                    - evening
+                  tags:
+                    - 閱讀
+                    - 學習
+                  resources: []
+                  isDraft: false
+          minItems: 2
+          maxItems: 3
+          description: 依序的各段實踐（2–3 段）。標籤由前端複製到每段；資源依段落指派複製到對應段
+      required:
+        - segments
     CheckInRequest:
       type: object
       properties:
@@ -1158,8 +1195,8 @@ components:
           example: 每日閱讀 30 分鐘
         practiceAction:
           type: string
-          maxLength: 200
-          description: 具體實踐行動描述
+          maxLength: 50
+          description: 具體實踐行動描述（上限 50 字，與個人實踐建立流程一致）
           example: 閱讀
         categories:
           type: array
@@ -1187,14 +1224,14 @@ components:
         durationDays:
           type: integer
           minimum: 1
-          maximum: 365
-          description: 建議持續天數
+          maximum: 90
+          description: 建議持續天數（1–90，與個人實踐統一上限）
           example: 30
         sessionDurationMinutes:
           type: integer
           minimum: 1
-          maximum: 480
-          description: 每次實踐時長（分鐘）
+          maximum: 999
+          description: 每次實踐時長（分鐘，1–999）
           example: 30
         practiceTimePeriods:
           type: array
@@ -1247,6 +1284,18 @@ components:
           - 閱讀
           - 習慣養成
           - 自我成長
+    BatchCreatePracticeTemplateRequest:
+      type: object
+      properties:
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreatePracticeTemplateRequest'
+          minItems: 2
+          maxItems: 3
+          description: 依序的各段模版（2–3 段）
+      required:
+        - segments
     Encouragement:
       type: object
       properties:
@@ -13176,9 +13225,9 @@ components:
           example: '2024-02-15'
         durationDays:
           type: integer
-          minimum: 7
+          minimum: 1
           maximum: 90
-          description: 持續天數 (7-90天)
+          description: 持續天數 (1-90天)
           example: 30
         frequencyMinDays:
           type: integer
@@ -13194,8 +13243,8 @@ components:
           example: 7
         sessionDurationMinutes:
           type: integer
-          minimum: 5
-          maximum: 240
+          minimum: 1
+          maximum: 999
           description: 每次練習時長 (分鐘)
           example: 30
         practiceTimePeriods:
@@ -23341,6 +23390,7 @@ paths:
                           - not_published
                           - expired
                           - full
+                          - paused
                           - null
                       visibilityNotice:
                         type: string
@@ -31005,6 +31055,9 @@ paths:
                           type: string
                           nullable: true
                           format: uuid
+                        joinPaused:
+                          type: boolean
+                          description: 是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）
                         joinDeadline:
                           type: string
                           nullable: true
@@ -31036,6 +31089,7 @@ paths:
                         - startDate
                         - endDate
                         - joinToken
+                        - joinPaused
                         - joinDeadline
                         - capacity
                         - inviteMessage
@@ -31210,6 +31264,9 @@ paths:
                         type: string
                         nullable: true
                         format: uuid
+                      joinPaused:
+                        type: boolean
+                        description: 是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）
                       joinDeadline:
                         type: string
                         nullable: true
@@ -31241,6 +31298,7 @@ paths:
                       - startDate
                       - endDate
                       - joinToken
+                      - joinPaused
                       - joinDeadline
                       - capacity
                       - inviteMessage
@@ -31378,6 +31436,9 @@ paths:
                         type: string
                         nullable: true
                         format: uuid
+                      joinPaused:
+                        type: boolean
+                        description: 是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）
                       joinDeadline:
                         type: string
                         nullable: true
@@ -31409,6 +31470,7 @@ paths:
                       - startDate
                       - endDate
                       - joinToken
+                      - joinPaused
                       - joinDeadline
                       - capacity
                       - inviteMessage
@@ -31583,6 +31645,9 @@ paths:
                         type: string
                         nullable: true
                         format: uuid
+                      joinPaused:
+                        type: boolean
+                        description: 是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）
                       joinDeadline:
                         type: string
                         nullable: true
@@ -31614,6 +31679,7 @@ paths:
                       - startDate
                       - endDate
                       - joinToken
+                      - joinPaused
                       - joinDeadline
                       - capacity
                       - inviteMessage
@@ -31801,6 +31867,15 @@ paths:
                             enrollmentId:
                               type: integer
                               nullable: true
+                            state:
+                              type: string
+                              enum:
+                                - new
+                                - invited
+                                - joined
+                                - rejoin
+                                - invalid
+                              description: 預覽時的名單狀態：new 新邀請、invited 已邀請、joined 已加入、rejoin 曾退出將重新邀請、invalid 格式錯誤
                           required:
                             - email
                             - valid
@@ -31919,6 +31994,15 @@ paths:
                             enrollmentId:
                               type: integer
                               nullable: true
+                            state:
+                              type: string
+                              enum:
+                                - new
+                                - invited
+                                - joined
+                                - rejoin
+                                - invalid
+                              description: 預覽時的名單狀態：new 新邀請、invited 已邀請、joined 已加入、rejoin 曾退出將重新邀請、invalid 格式錯誤
                           required:
                             - email
                             - valid
@@ -32497,9 +32581,12 @@ paths:
                         type: string
                         nullable: true
                         format: uuid
+                      joinPaused:
+                        type: boolean
                     required:
                       - cohortId
                       - joinToken
+                      - joinPaused
                     description: The main response data
                   timestamp:
                     type: string
@@ -32617,9 +32704,480 @@ paths:
                         type: string
                         nullable: true
                         format: uuid
+                      joinPaused:
+                        type: boolean
                     required:
                       - cohortId
                       - joinToken
+                      - joinPaused
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+  /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/join-token/resume:
+    post:
+      tags:
+        - Lighthouse Cohorts
+      summary: 重新開放連結加入（沿用原連結）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: programId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: cohortId
+          in: path
+      responses:
+        '200':
+          description: 已重新開放
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      cohortId:
+                        type: integer
+                      joinToken:
+                        type: string
+                        nullable: true
+                        format: uuid
+                      joinPaused:
+                        type: boolean
+                    required:
+                      - cohortId
+                      - joinToken
+                      - joinPaused
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+  /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/duplicate:
+    post:
+      tags:
+        - Lighthouse Cohorts
+      summary: 複製場次為草稿（含模板綁定，不含名單）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: programId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: cohortId
+          in: path
+      responses:
+        '201':
+          description: 副本已建立
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      programId:
+                        type: integer
+                      slug:
+                        type: string
+                      displayName:
+                        type: string
+                      startDate:
+                        type: string
+                        format: date-time
+                      endDate:
+                        type: string
+                        format: date-time
+                      joinToken:
+                        type: string
+                        nullable: true
+                        format: uuid
+                      joinPaused:
+                        type: boolean
+                        description: 是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）
+                      joinDeadline:
+                        type: string
+                        nullable: true
+                        format: date-time
+                      capacity:
+                        type: integer
+                        nullable: true
+                      inviteMessage:
+                        type: string
+                        nullable: true
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - published
+                          - archived
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        nullable: true
+                        format: date-time
+                    required:
+                      - id
+                      - programId
+                      - slug
+                      - displayName
+                      - startDate
+                      - endDate
+                      - joinToken
+                      - joinPaused
+                      - joinDeadline
+                      - capacity
+                      - inviteMessage
+                      - status
+                      - createdAt
+                      - updatedAt
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/lighthouse/organizations/{organizationId}/cohorts:
+    get:
+      tags:
+        - Lighthouse Cohorts
+      summary: 取得組織底下所有系列的全部場次（總覽用，含草稿與封存）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: organizationId
+          in: path
+      responses:
+        '200':
+          description: 場次列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        programId:
+                          type: integer
+                        slug:
+                          type: string
+                        displayName:
+                          type: string
+                        startDate:
+                          type: string
+                          format: date-time
+                        endDate:
+                          type: string
+                          format: date-time
+                        joinToken:
+                          type: string
+                          nullable: true
+                          format: uuid
+                        joinPaused:
+                          type: boolean
+                          description: 是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）
+                        joinDeadline:
+                          type: string
+                          nullable: true
+                          format: date-time
+                        capacity:
+                          type: integer
+                          nullable: true
+                        inviteMessage:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - published
+                            - archived
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          nullable: true
+                          format: date-time
+                        programName:
+                          type: string
+                          description: 所屬系列名稱
+                        joinedCount:
+                          type: integer
+                          minimum: 0
+                          description: 已加入的參與者人數（不含帶領人）
+                      required:
+                        - id
+                        - programId
+                        - slug
+                        - displayName
+                        - startDate
+                        - endDate
+                        - joinToken
+                        - joinPaused
+                        - joinDeadline
+                        - capacity
+                        - inviteMessage
+                        - status
+                        - createdAt
+                        - updatedAt
+                        - programName
+                        - joinedCount
                     description: The main response data
                   timestamp:
                     type: string
@@ -32920,20 +33478,10 @@ paths:
                   nullable: true
                   maxLength: 2000
                 durationDays:
-                  anyOf:
-                    - type: number
-                      enum:
-                        - 7
-                    - type: number
-                      enum:
-                        - 14
-                    - type: number
-                      enum:
-                        - 21
-                    - type: number
-                      enum:
-                        - 30
-                    - nullable: true
+                  type: integer
+                  nullable: true
+                  minimum: 1
+                  maximum: 90
                 frequencyMinDays:
                   type: integer
                   nullable: true
@@ -32945,20 +33493,10 @@ paths:
                   minimum: 1
                   maximum: 7
                 sessionDurationMinutes:
-                  anyOf:
-                    - type: number
-                      enum:
-                        - 15
-                    - type: number
-                      enum:
-                        - 30
-                    - type: number
-                      enum:
-                        - 45
-                    - type: number
-                      enum:
-                        - 60
-                    - nullable: true
+                  type: integer
+                  nullable: true
+                  minimum: 1
+                  maximum: 999
                 practiceTimePeriods:
                   type: array
                   items:
@@ -33199,20 +33737,10 @@ paths:
                   nullable: true
                   maxLength: 2000
                 durationDays:
-                  anyOf:
-                    - type: number
-                      enum:
-                        - 7
-                    - type: number
-                      enum:
-                        - 14
-                    - type: number
-                      enum:
-                        - 21
-                    - type: number
-                      enum:
-                        - 30
-                    - nullable: true
+                  type: integer
+                  nullable: true
+                  minimum: 1
+                  maximum: 90
                 frequencyMinDays:
                   type: integer
                   nullable: true
@@ -33224,20 +33752,10 @@ paths:
                   minimum: 1
                   maximum: 7
                 sessionDurationMinutes:
-                  anyOf:
-                    - type: number
-                      enum:
-                        - 15
-                    - type: number
-                      enum:
-                        - 30
-                    - type: number
-                      enum:
-                        - 45
-                    - type: number
-                      enum:
-                        - 60
-                    - nullable: true
+                  type: integer
+                  nullable: true
+                  minimum: 1
+                  maximum: 999
                 practiceTimePeriods:
                   type: array
                   items:
@@ -33742,7 +34260,7 @@ paths:
     get:
       tags:
         - Lighthouse Dashboard
-      summary: 取得期儀表板統計
+      summary: 取得場次儀表板統計（可依實踐與日期範圍篩選）
       security:
         - bearerAuth: []
       parameters:
@@ -33762,6 +34280,34 @@ paths:
           required: true
           name: cohortId
           in: path
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            description: 只看這個實踐（以實踐名稱分組）；不帶＝全部實踐
+            example: 每天寫下一件小事
+          required: false
+          description: 只看這個實踐（以實踐名稱分組）；不帶＝全部實踐
+          name: practiceTitle
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 打卡日期範圍起（含），預設場次開始日
+            example: '2026-02-10'
+          required: false
+          description: 打卡日期範圍起（含），預設場次開始日
+          name: from
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 打卡日期範圍迄（含），預設今天或場次結束日
+            example: '2026-03-11'
+          required: false
+          description: 打卡日期範圍迄（含），預設今天或場次結束日
+          name: to
+          in: query
       responses:
         '200':
           description: 儀表板統計
@@ -33778,18 +34324,112 @@ paths:
                   data:
                     type: object
                     properties:
-                      snapshotKind:
-                        type: string
-                        enum:
-                          - weekly
-                          - realtime
                       computedAt:
                         type: string
                         format: date-time
-                      rhythmHeatmap:
+                      range:
+                        type: object
+                        properties:
+                          from:
+                            type: string
+                            pattern: ^\d{4}-\d{2}-\d{2}$
+                          to:
+                            type: string
+                            pattern: ^\d{4}-\d{2}-\d{2}$
+                        required:
+                          - from
+                          - to
+                      practiceTitle:
+                        type: string
+                        nullable: true
+                        description: 目前套用的實踐篩選；null＝全部實踐
+                      practices:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            title:
+                              type: string
+                            startDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            endDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                          required:
+                            - title
+                            - startDate
+                            - endDate
+                        description: 實踐篩選 chip 列（FR-DB-01）
+                      kpi:
+                        type: object
+                        properties:
+                          enrolled:
+                            type: integer
+                            minimum: 0
+                            description: 已加入
+                          activated:
+                            type: integer
+                            minimum: 0
+                            description: 已開始：至少一則打卡的參與者數
+                          activeThisWeek:
+                            type: integer
+                            minimum: 0
+                            description: 持續行動中（本週）
+                        required:
+                          - enrolled
+                          - activated
+                          - activeThisWeek
+                      checkins:
+                        type: integer
+                        minimum: 0
+                        description: 範圍內打卡總數
+                      practiceOverview:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            title:
+                              type: string
+                            startDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            endDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            startedCount:
+                              type: integer
+                              minimum: 0
+                            checkinCount:
+                              type: integer
+                              minimum: 0
+                            avgCheckinPeople:
+                              type: number
+                              minimum: 0
+                              description: 有打卡的日子裡，平均每天打卡人數
+                            avgCheckinLength:
+                              type: integer
+                              minimum: 0
+                              description: 平均打卡字數
+                          required:
+                            - title
+                            - startDate
+                            - endDate
+                            - startedCount
+                            - checkinCount
+                            - avgCheckinPeople
+                            - avgCheckinLength
+                        description: 實踐總覽表（FR-DB-03），不受 practiceTitle 影響
+                      heatmap:
                         type: object
                         additionalProperties:
-                          type: number
+                          type: integer
+                          minimum: 0
+                        description: 每日打卡數（FR-DB-04），key 為 YYYY-MM-DD
                       tagDistribution:
                         type: array
                         items:
@@ -33798,45 +34438,316 @@ paths:
                             tag:
                               type: string
                             count:
-                              type: number
+                              type: integer
+                              minimum: 0
                           required:
                             - tag
                             - count
-                      commonBlockers:
-                        type: object
-                        additionalProperties:
-                          type: number
-                      funnel:
+                      moodDistribution:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            mood:
+                              type: string
+                              enum:
+                                - happy
+                                - good
+                                - neutral
+                                - bored
+                                - frustrated
+                                - give_up
+                            count:
+                              type: integer
+                              minimum: 0
+                          required:
+                            - mood
+                            - count
+                      trend:
                         type: object
                         properties:
-                          enrolled:
-                            type: number
-                          activated:
-                            type: number
-                          activeMembers:
-                            type: number
+                          days:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                date:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                count:
+                                  type: integer
+                                  minimum: 0
+                              required:
+                                - date
+                                - count
+                            description: 近 14 天逐日打卡數
+                          thisWeek:
+                            type: integer
+                            minimum: 0
+                          lastWeek:
+                            type: integer
+                            minimum: 0
+                          delta:
+                            type: integer
                         required:
-                          - enrolled
-                          - activated
-                          - activeMembers
-                      timeRhythm:
+                          - days
+                          - thisWeek
+                          - lastWeek
+                          - delta
+                      hourHistogram:
                         type: object
                         additionalProperties:
-                          type: number
-                      checkins:
-                        type: number
-                      exited:
-                        type: number
+                          type: integer
+                          minimum: 0
+                        description: 24 小時制打卡時段（Asia/Taipei）
                     required:
-                      - snapshotKind
                       - computedAt
-                      - rhythmHeatmap
-                      - tagDistribution
-                      - commonBlockers
-                      - funnel
-                      - timeRhythm
+                      - range
+                      - practiceTitle
+                      - practices
+                      - kpi
                       - checkins
-                      - exited
+                      - practiceOverview
+                      - heatmap
+                      - tagDistribution
+                      - moodDistribution
+                      - trend
+                      - hourHistogram
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+  /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/participants:
+    get:
+      tags:
+        - Lighthouse Dashboard
+      summary: 取得參與者明細表（參與者 × 實踐，含打卡／留言／瀏覽／迴響數）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: programId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: cohortId
+          in: path
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            description: 只看這個實踐（以實踐名稱分組）；不帶＝全部實踐
+            example: 每天寫下一件小事
+          required: false
+          description: 只看這個實踐（以實踐名稱分組）；不帶＝全部實踐
+          name: practiceTitle
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 打卡日期範圍起（含），預設場次開始日
+            example: '2026-02-10'
+          required: false
+          description: 打卡日期範圍起（含），預設場次開始日
+          name: from
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: 打卡日期範圍迄（含），預設今天或場次結束日
+            example: '2026-03-11'
+          required: false
+          description: 打卡日期範圍迄（含），預設今天或場次結束日
+          name: to
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+            description: 姓名或 email 模糊搜尋
+            example: 林
+          required: false
+          description: 姓名或 email 模糊搜尋
+          name: search
+          in: query
+        - schema:
+            type: string
+            enum:
+              - nickname
+              - startDate
+              - checkinCount
+              - commentCount
+              - viewCount
+              - reactionCount
+            default: nickname
+            description: 排序欄位
+          required: false
+          description: 排序欄位
+          name: sort
+          in: query
+        - schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          required: false
+          name: order
+          in: query
+      responses:
+        '200':
+          description: 參與者明細
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      range:
+                        type: object
+                        properties:
+                          from:
+                            type: string
+                            pattern: ^\d{4}-\d{2}-\d{2}$
+                          to:
+                            type: string
+                            pattern: ^\d{4}-\d{2}-\d{2}$
+                        required:
+                          - from
+                          - to
+                      total:
+                        type: integer
+                        minimum: 0
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            userId:
+                              type: integer
+                            nickname:
+                              type: string
+                              nullable: true
+                            email:
+                              type: string
+                              nullable: true
+                            practiceId:
+                              type: integer
+                            practiceTitle:
+                              type: string
+                            startDate:
+                              type: string
+                              nullable: true
+                              format: date-time
+                            checkinCount:
+                              type: integer
+                              minimum: 0
+                            commentCount:
+                              type: integer
+                              minimum: 0
+                            viewCount:
+                              type: integer
+                              minimum: 0
+                            reactionCount:
+                              type: integer
+                              minimum: 0
+                          required:
+                            - userId
+                            - nickname
+                            - email
+                            - practiceId
+                            - practiceTitle
+                            - startDate
+                            - checkinCount
+                            - commentCount
+                            - viewCount
+                            - reactionCount
+                    required:
+                      - range
+                      - total
+                      - items
                     description: The main response data
                   timestamp:
                     type: string
@@ -33961,20 +34872,38 @@ paths:
                             avatar:
                               type: string
                               nullable: true
+                            practiceId:
+                              type: integer
+                              description: 該參與者在本場次的實踐；點擊可開打卡紀錄抽屜
+                            practiceTitle:
+                              type: string
+                            messageCount:
+                              type: integer
+                              minimum: 0
+                              description: 帶領人已對此參與者送出的訊息數；0 顯示「尚未送出」
                             lastCheckinAt:
                               type: string
                               format: date-time
+                            lastCheckinDate:
+                              type: string
+                              format: date-time
+                              description: 最後打卡日（checkin_date）
                             lastCheckinPreview:
                               type: string
                               nullable: true
                             interruptedDays:
                               type: integer
                               minimum: 0
+                              description: 距離上次打卡的天數，純事實不帶警示
                           required:
                             - userId
                             - nickname
                             - avatar
+                            - practiceId
+                            - practiceTitle
+                            - messageCount
                             - lastCheckinAt
+                            - lastCheckinDate
                             - lastCheckinPreview
                             - interruptedDays
                       celebrations:
@@ -33990,21 +34919,42 @@ paths:
                             avatar:
                               type: string
                               nullable: true
+                            practiceId:
+                              type: integer
+                              description: 該參與者在本場次的實踐；點擊可開打卡紀錄抽屜
+                            practiceTitle:
+                              type: string
+                            messageCount:
+                              type: integer
+                              minimum: 0
+                              description: 帶領人已對此參與者送出的訊息數；0 顯示「尚未送出」
                             moment:
                               type: string
                               enum:
                                 - first_checkin
                                 - return_after_break
                                 - month_milestone
+                            momentDescription:
+                              type: string
+                              description: 值得慶祝的時刻文案
                             occurredAt:
                               type: string
                               format: date-time
+                            firstCheckinAt:
+                              type: string
+                              format: date-time
+                              description: 首次打卡日
                           required:
                             - userId
                             - nickname
                             - avatar
+                            - practiceId
+                            - practiceTitle
+                            - messageCount
                             - moment
+                            - momentDescription
                             - occurredAt
+                            - firstCheckinAt
                     required:
                       - needsEncouragement
                       - celebrations
@@ -34079,6 +35029,945 @@ paths:
                       processingTime: 23.1
         '401': *ref_62
         '403': *ref_63
+  /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/participants/{userId}/practices/{practiceId}/checkins:
+    get:
+      tags:
+        - Lighthouse Focus
+      summary: 打卡紀錄抽屜：某參與者某實踐的所有打卡
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: programId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: cohortId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 參與者 users.id
+          required: true
+          description: 參與者 users.id
+          name: userId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 該參與者在本場次的 practices.id
+          required: true
+          description: 該參與者在本場次的 practices.id
+          name: practiceId
+          in: path
+      responses:
+        '200':
+          description: 打卡紀錄
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      participant:
+                        type: object
+                        properties:
+                          userId:
+                            type: integer
+                          nickname:
+                            type: string
+                            nullable: true
+                          avatar:
+                            type: string
+                            nullable: true
+                        required:
+                          - userId
+                          - nickname
+                          - avatar
+                      practice:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          title:
+                            type: string
+                          startDate:
+                            type: string
+                            nullable: true
+                            format: date-time
+                          endDate:
+                            type: string
+                            nullable: true
+                            format: date-time
+                        required:
+                          - id
+                          - title
+                          - startDate
+                          - endDate
+                      total:
+                        type: integer
+                        minimum: 0
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            checkinDate:
+                              type: string
+                              format: date-time
+                            mood:
+                              type: string
+                              nullable: true
+                            note:
+                              type: string
+                              nullable: true
+                            imageUrls:
+                              type: array
+                              items:
+                                type: string
+                            createdAt:
+                              type: string
+                              nullable: true
+                              format: date-time
+                          required:
+                            - id
+                            - checkinDate
+                            - mood
+                            - note
+                            - imageUrls
+                            - createdAt
+                    required:
+                      - participant
+                      - practice
+                      - total
+                      - items
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/participants/{userId}/messages:
+    get:
+      tags:
+        - Lighthouse Focus
+      summary: 訊息紀錄：帶領人與某參與者的往來
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: programId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: cohortId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 參與者 users.id
+          required: true
+          description: 參與者 users.id
+          name: userId
+          in: path
+      responses:
+        '200':
+          description: 訊息紀錄
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      participant:
+                        type: object
+                        properties:
+                          userId:
+                            type: integer
+                          nickname:
+                            type: string
+                            nullable: true
+                          avatar:
+                            type: string
+                            nullable: true
+                        required:
+                          - userId
+                          - nickname
+                          - avatar
+                      total:
+                        type: integer
+                        minimum: 0
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            cohortId:
+                              type: integer
+                            recipientUserId:
+                              type: integer
+                              nullable: true
+                            senderUserId:
+                              type: integer
+                              nullable: true
+                            senderNickname:
+                              type: string
+                              nullable: true
+                            practiceId:
+                              type: integer
+                              nullable: true
+                            practiceTitle:
+                              type: string
+                              nullable: true
+                            templateId:
+                              type: integer
+                              nullable: true
+                            category:
+                              type: string
+                              enum:
+                                - encourage
+                                - celebrate
+                              description: encourage 鼓勵、celebrate 慶祝
+                              example: encourage
+                            body:
+                              type: string
+                            sentAt:
+                              type: string
+                              format: date-time
+                          required:
+                            - id
+                            - cohortId
+                            - recipientUserId
+                            - senderUserId
+                            - senderNickname
+                            - practiceId
+                            - practiceTitle
+                            - templateId
+                            - category
+                            - body
+                            - sentAt
+                    required:
+                      - participant
+                      - total
+                      - items
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    post:
+      tags:
+        - Lighthouse Focus
+      summary: 送出鼓勵／慶祝訊息給參與者
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: programId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: cohortId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 參與者 users.id
+          required: true
+          description: 參與者 users.id
+          name: userId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  type: string
+                  enum:
+                    - encourage
+                    - celebrate
+                  description: encourage 鼓勵、celebrate 慶祝
+                  example: encourage
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                  description: 訊息內容
+                  example: 看到你這週又回來打卡了，真好。
+                practiceId:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  exclusiveMinimum: true
+                  description: 訊息來源列對應的實踐；可不帶
+                templateId:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  exclusiveMinimum: true
+                  description: 若由範本帶入，記錄範本 id
+              required:
+                - category
+                - body
+      responses:
+        '201':
+          description: 訊息已送出
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      cohortId:
+                        type: integer
+                      recipientUserId:
+                        type: integer
+                        nullable: true
+                      senderUserId:
+                        type: integer
+                        nullable: true
+                      senderNickname:
+                        type: string
+                        nullable: true
+                      practiceId:
+                        type: integer
+                        nullable: true
+                      practiceTitle:
+                        type: string
+                        nullable: true
+                      templateId:
+                        type: integer
+                        nullable: true
+                      category:
+                        type: string
+                        enum:
+                          - encourage
+                          - celebrate
+                        description: encourage 鼓勵、celebrate 慶祝
+                        example: encourage
+                      body:
+                        type: string
+                      sentAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - id
+                      - cohortId
+                      - recipientUserId
+                      - senderUserId
+                      - senderNickname
+                      - practiceId
+                      - practiceTitle
+                      - templateId
+                      - category
+                      - body
+                      - sentAt
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/lighthouse/organizations/{organizationId}/message-templates:
+    get:
+      tags:
+        - Lighthouse Focus
+      summary: 取得組織的訊息範本
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: organizationId
+          in: path
+        - schema:
+            type: string
+            enum:
+              - encourage
+              - celebrate
+            description: encourage 鼓勵、celebrate 慶祝
+            example: encourage
+          required: false
+          description: encourage 鼓勵、celebrate 慶祝
+          name: category
+          in: query
+      responses:
+        '200':
+          description: 範本列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        organizationId:
+                          type: integer
+                        createdBy:
+                          type: integer
+                          nullable: true
+                        category:
+                          type: string
+                          enum:
+                            - encourage
+                            - celebrate
+                          description: encourage 鼓勵、celebrate 慶祝
+                          example: encourage
+                        title:
+                          type: string
+                        body:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          nullable: true
+                          format: date-time
+                      required:
+                        - id
+                        - organizationId
+                        - createdBy
+                        - category
+                        - title
+                        - body
+                        - createdAt
+                        - updatedAt
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+    post:
+      tags:
+        - Lighthouse Focus
+      summary: 存成訊息範本
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: organizationId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  type: string
+                  enum:
+                    - encourage
+                    - celebrate
+                  description: encourage 鼓勵、celebrate 慶祝
+                  example: encourage
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: 範本名稱（下拉選單顯示）
+                  example: 節奏很穩
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                  description: 範本內容
+                  example: 看到你連續打卡一週了，節奏抓得很穩，繼續加油！
+              required:
+                - category
+                - title
+                - body
+      responses:
+        '201':
+          description: 範本已建立
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      organizationId:
+                        type: integer
+                      createdBy:
+                        type: integer
+                        nullable: true
+                      category:
+                        type: string
+                        enum:
+                          - encourage
+                          - celebrate
+                        description: encourage 鼓勵、celebrate 慶祝
+                        example: encourage
+                      title:
+                        type: string
+                      body:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        nullable: true
+                        format: date-time
+                    required:
+                      - id
+                      - organizationId
+                      - createdBy
+                      - category
+                      - title
+                      - body
+                      - createdAt
+                      - updatedAt
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_62
+        '403': *ref_63
+  /api/v1/lighthouse/organizations/{organizationId}/message-templates/{templateId}:
+    delete:
+      tags:
+        - Lighthouse Focus
+      summary: 刪除訊息範本（軟刪）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: organizationId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: true
+          name: templateId
+          in: path
+      responses:
+        '204':
+          description: 範本已刪除
+        '401': *ref_62
+        '403': *ref_63
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome:
     get:
       tags:
@@ -36924,13 +38813,18 @@ paths:
                     - 每天運動 20 分鐘
                 practiceAction:
                   type: string
-                  maxLength: 200
-                  description: 具體的實踐行動描述
+                  maxLength: 50
+                  description: 具體的實踐行動描述（建立流程 Step 1，上限 50 字）
                   example: 閱讀技術書籍或文章
                   examples:
                     - 閱讀技術書籍或文章
                     - 完成線上課程一個章節
                     - 跑步或健身
+                templateId:
+                  type: string
+                  format: uuid
+                  description: 來源模版的 external_id（從模版建立實踐時帶入，用於追蹤模版使用情況）
+                  example: 123e4567-e89b-12d3-a456-426614174000
                 startDate:
                   type: string
                   format: date
@@ -36943,15 +38837,17 @@ paths:
                     - '2024-06-01'
                 durationDays:
                   type: integer
-                  minimum: 7
+                  minimum: 1
                   maximum: 90
-                  description: 實踐持續天數
+                  description: 實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）
                   example: 14
                   examples:
                     - 7
                     - 14
                     - 21
                     - 30
+                    - 45
+                    - 90
                 frequencyMinDays:
                   type: integer
                   minimum: 1
@@ -36975,9 +38871,9 @@ paths:
                     - 7
                 sessionDurationMinutes:
                   type: integer
-                  minimum: 5
-                  maximum: 240
-                  description: 每次實踐時長（分鐘）
+                  minimum: 1
+                  maximum: 999
+                  description: 每次實踐時長（分鐘，1–999；預設選項 15/30/45/60，可自訂）
                   example: 30
                   examples:
                     - 15
@@ -37043,8 +38939,8 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/PracticeResourceInput'
-                  maxItems: 5
-                  description: 相關學習資源（最多 5 個）
+                  maxItems: 10
+                  description: 相關學習資源（最多 10 個；可只有名稱不帶連結）
                   example:
                     - name: React 官方文檔
                       url: https://react.dev/
@@ -37784,7 +39680,7 @@ paths:
                   pattern: ^\d{4}-\d{2}-\d{2}$
                 durationDays:
                   type: integer
-                  minimum: 7
+                  minimum: 1
                   maximum: 90
                 frequencyMinDays:
                   type: integer
@@ -37796,8 +39692,8 @@ paths:
                   maximum: 7
                 sessionDurationMinutes:
                   type: integer
-                  minimum: 5
-                  maximum: 240
+                  minimum: 1
+                  maximum: 999
                 practiceTimePeriods:
                   type: array
                   items:
@@ -37826,7 +39722,7 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/PracticeResourceInput'
-                  maxItems: 5
+                  maxItems: 10
                 status:
                   type: string
                   enum:
@@ -38060,6 +39956,145 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/practices/batch:
+    post:
+      tags:
+        - Practice
+      summary: 拆段批次建立實踐
+      description: 長天數實踐拆成 2–3 段，一次 request 在同一交易內建立多筆實踐；任一段驗證失敗整批回滾。各段開始日須接續（後段 = 前段結束日隔日），14 天開始日限制只套用於第一段。
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                segments:
+                  type: array
+                  items:
+                    allOf:
+                      - $ref: '#/components/schemas/CreatePracticeRequest'
+                      - description: 創建實踐活動的請求資料
+                        example:
+                          title: 每日閱讀 30 分鐘
+                          practiceAction: 閱讀技術書籍或文章
+                          startDate: '2024-01-15'
+                          durationDays: 14
+                          frequencyMinDays: 4
+                          frequencyMaxDays: 7
+                          sessionDurationMinutes: 30
+                          practiceTimePeriods:
+                            - morning
+                            - evening
+                          tags:
+                            - 閱讀
+                            - 學習
+                          resources: []
+                          isDraft: false
+                  minItems: 2
+                  maxItems: 3
+                  description: 依序的各段實踐（2–3 段）。標籤由前端複製到每段；資源依段落指派複製到對應段
+              required:
+                - segments
+      responses:
+        '201':
+          description: 全部段落建立成功，回傳順序與送出一致
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      practices:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PracticeEntity'
+                        description: 依送出順序建立的實踐
+                    required:
+                      - practices
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/practices/{id}/checkins:
@@ -40662,8 +42697,8 @@ paths:
                   example: 每日閱讀 30 分鐘
                 practiceAction:
                   type: string
-                  maxLength: 200
-                  description: 具體實踐行動描述
+                  maxLength: 50
+                  description: 具體實踐行動描述（上限 50 字，與個人實踐建立流程一致）
                   example: 閱讀
                 categories:
                   type: array
@@ -40690,13 +42725,13 @@ paths:
                 durationDays:
                   type: integer
                   minimum: 1
-                  maximum: 365
+                  maximum: 90
                   description: 建議持續天數
                   example: 30
                 sessionDurationMinutes:
                   type: integer
                   minimum: 1
-                  maximum: 480
+                  maximum: 999
                   description: 每次實踐時長（分鐘）
                   example: 30
                 practiceTimePeriods:
@@ -40931,6 +42966,127 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/practices/templates/batch:
+    post:
+      tags:
+        - Practice Templates
+      summary: 拆段批次建立實踐模板
+      description: 長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                segments:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CreatePracticeTemplateRequest'
+                  minItems: 2
+                  maxItems: 3
+                  description: 依序的各段模版（2–3 段）
+              required:
+                - segments
+      responses:
+        '201':
+          description: 全部段落建立成功，回傳順序與送出一致
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      templates:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PracticeTemplate'
+                        description: 依送出順序建立的模板
+                    required:
+                      - templates
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/admin/practices:

@@ -16,11 +16,27 @@ describe('cohortInvitationService', () => {
 
   it('previews CSV and reports invalid rows without writing', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([] as never);
     const result = await cohortInvitationService.invite(2, 8, 42, { csv: 'email\nGOOD@example.com\nbad', preview: true });
     expect(result).toEqual(expect.objectContaining({ total: 2, validCount: 1, errorCount: 1, queuedCount: 0 }));
+    expect(result.items).toEqual([
+      expect.objectContaining({ email: 'good@example.com', state: 'new', reason: null }),
+      expect.objectContaining({ email: 'bad', state: 'invalid', valid: false })
+    ]);
     expect(prismaMock.cohort_enrollments.findUnique).not.toHaveBeenCalled();
     expect(prismaMock.cohort_enrollments.create).not.toHaveBeenCalled();
     expect(bulkEnqueueEmails).not.toHaveBeenCalled();
+  });
+
+  it('marks already-joined, invited and exited emails in the preview', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      { email: 'joined@example.com', status: 'joined' }, { email: 'invited@example.com', status: 'invited' }, { email: 'left@example.com', status: 'exited' }
+    ] as never);
+    const result = await cohortInvitationService.invite(2, 8, 42, { emails: ['joined@example.com', 'invited@example.com', 'left@example.com', 'new@example.com'], preview: true });
+    expect(result.items.map(item => item.state)).toEqual(['joined', 'invited', 'rejoin', 'new']);
+    expect(result.items[0].reason).toBe('已加入');
+    expect(prismaMock.cohort_enrollments.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ cohort_id: 8 }) }));
   });
 
   it('creates invited enrollments, writes audit counts, and enqueues templated email jobs', async () => {

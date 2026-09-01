@@ -15,7 +15,7 @@ import {
   authenticateGoogleCallback
 } from '../services/auth/oauth.service';
 import { validate } from '../middleware/validation.middleware';
-import { strictLimiter } from '../middleware/rate-limit.middleware';
+import { strictLimiter, authLimiter } from '../middleware/rate-limit.middleware';
 import {
   loginValidator,
   registerValidator,
@@ -612,6 +612,7 @@ registry.registerPath({
  * 請求體：AppleSignInRequest - 包含 idToken, user (可選), nonce (可選)
  */
 router.post('/apple/token',
+  authLimiter,
   validate(appleSignInValidator, 'body'),
   authController.appleSignIn
 );
