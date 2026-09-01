@@ -4,7 +4,7 @@ export const joinTokenParamsSchema = z.object({ joinToken: z.string().uuid() });
 export const joinCohortSchema = z.object({ consent: z.literal(true).openapi({ description: '同意打卡內容對教練與同期學員可見' }) });
 export const cohortJoinInfoResponseSchema = z.object({
   cohortId: z.number().int(), displayName: z.string(), startDate: z.date(), endDate: z.date(),
-  inviteMessage: z.string().nullable(), canJoin: z.boolean(), unavailableReason: z.enum(['not_published', 'expired', 'full']).nullable(),
+  inviteMessage: z.string().nullable(), canJoin: z.boolean(), unavailableReason: z.enum(['not_published', 'expired', 'full', 'paused']).nullable(),
   visibilityNotice: z.string(), organization: z.object({ name: z.string(), bio: z.string().nullable(), externalLink: z.string().nullable() })
 });
 export const cohortJoinResultResponseSchema = z.object({ enrollmentId: z.number().int(), cohortId: z.number().int(), status: z.literal('joined') });

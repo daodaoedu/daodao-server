@@ -466,6 +466,7 @@ model practices {
   practice_social_proofs   practice_social_proofs[]
   space_practices          space_practices[]
   space_block_link_practices space_block_link_practices[]
+  cohort_messages          cohort_messages[]
   cohorts                  cohorts?                  @relation(fields: [cohort_id], references: [id], onUpdate: NoAction, map: "fk_practices_cohort")
   source_practice          practices?                @relation("PracticeCopies", fields: [source_practice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   copied_practices         practices[]               @relation("PracticeCopies")
@@ -859,6 +860,9 @@ model users {
   cohort_enrollments                   cohort_enrollments[]
   inspiration_decks                    inspiration_decks[]
   inspiration_draws                    inspiration_draws[]
+  cohort_message_templates             cohort_message_templates[]
+  cohort_messages_sent                 cohort_messages[]          @relation("CohortMessageSender")
+  cohort_messages_received             cohort_messages[]          @relation("CohortMessageRecipient")
   comments                             comments[]
   received_connection_requests         connection_requests[]      @relation("connection_requests_receiver_idTousers")
   sent_connection_requests             connection_requests[]      @relation("connection_requests_requester_idTousers")
@@ -1976,9 +1980,48 @@ model organization {
   approved_at          DateTime?              @db.Timestamptz(6)
   created_at           DateTime               @default(now()) @db.Timestamptz(6)
   approver             users?                 @relation(fields: [approved_by], references: [id], onUpdate: NoAction, map: "fk_organization_approved_by")
+  cohort_message_templates cohort_message_templates[]
   organization_members organization_members[]
   practice_templates   practice_templates[]
   programs             programs[]
+}
+
+/// 帶領人訊息範本；組織內共享，分「鼓勵 encourage」「慶祝 celebrate」兩類（FR-TF-06）
+model cohort_message_templates {
+  id              Int               @id @default(autoincrement())
+  organization_id Int
+  created_by      Int?
+  category        String            @db.VarChar(20)
+  title           String            @db.VarChar(100)
+  body            String
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @db.Timestamptz(6)
+  deleted_at      DateTime?         @db.Timestamptz(6)
+  cohort_messages cohort_messages[]
+  creator         users?            @relation(fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_cohort_message_templates_created_by")
+  organization    organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cohort_message_templates_organization")
+
+  @@index([organization_id, category], map: "idx_cohort_message_templates_org_category")
+}
+
+/// 帶領人對參與者送出的訊息（鼓勵／慶祝）；以參與者為軸，不綁單則打卡（FR-TF-05/06）
+model cohort_messages {
+  id                Int                       @id @default(autoincrement())
+  cohort_id         Int
+  sender_user_id    Int?
+  recipient_user_id Int?
+  practice_id       Int?
+  template_id       Int?
+  category          String                    @db.VarChar(20)
+  body              String
+  sent_at           DateTime                  @default(now()) @db.Timestamptz(6)
+  cohort            cohorts                   @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cohort_messages_cohort")
+  practice          practices?                @relation(fields: [practice_id], references: [id], onUpdate: NoAction, map: "fk_cohort_messages_practice")
+  recipient         users?                    @relation("CohortMessageRecipient", fields: [recipient_user_id], references: [id], onUpdate: NoAction, map: "fk_cohort_messages_recipient")
+  sender            users?                    @relation("CohortMessageSender", fields: [sender_user_id], references: [id], onUpdate: NoAction, map: "fk_cohort_messages_sender")
+  template          cohort_message_templates? @relation(fields: [template_id], references: [id], onUpdate: NoAction, map: "fk_cohort_messages_template")
+
+  @@index([cohort_id, recipient_user_id, sent_at(sort: Desc)], map: "idx_cohort_messages_cohort_recipient_sent")
 }
 
 /// 組織成員；是否存在此關係即為燈塔登入門檻。
@@ -2020,6 +2063,8 @@ model cohorts {
   start_date            DateTime                @db.Date
   end_date              DateTime                @db.Date
   join_token            String?                 @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 暫停透過邀請連結加入；TRUE 時連結暫時無效但 token 保留，重新開放沿用原連結
+  join_paused           Boolean                 @default(false)
   join_deadline         DateTime?               @db.Date
   capacity              Int?
   invite_message        String?
@@ -2027,6 +2072,7 @@ model cohorts {
   created_at            DateTime                @default(now()) @db.Timestamptz(6)
   updated_at            DateTime?               @db.Timestamptz(6)
   cohort_enrollments    cohort_enrollments[]
+  cohort_messages       cohort_messages[]
   cohort_stat_snapshots cohort_stat_snapshots[]
   cohort_templates      cohort_templates[]
   inspiration_deck_assignments inspiration_deck_assignments[]

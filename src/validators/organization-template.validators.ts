@@ -1,11 +1,12 @@
 import { z } from 'zod';
-import { practiceResourceInputSchema, practiceTimePeriodSchema } from './practice.validators';
+import {
+  DURATION_DAYS_MAX, DURATION_DAYS_MIN, SESSION_MINUTES_MAX, SESSION_MINUTES_MIN,
+  practiceResourceInputSchema, practiceTimePeriodSchema
+} from './practice.validators';
 
-// 以下三個列舉必須與 practice_templates 的 CHECK 約束一致，否則會在寫入時炸成 500
-export const TEMPLATE_DURATION_DAYS = [7, 14, 21, 30] as const;
-export const TEMPLATE_SESSION_MINUTES = [15, 30, 45, 60] as const;
-const durationDaysSchema = z.union([z.literal(7), z.literal(14), z.literal(21), z.literal(30)], { message: '持續天數只能是 7 / 14 / 21 / 30 天' });
-const sessionMinutesSchema = z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60)], { message: '每次時長只能是 15 / 30 / 45 / 60 分鐘' });
+// 數值範圍必須與 practice_templates 的 CHECK 約束一致（daodao-storage migration 083：1–90 天／1–999 分鐘），否則會在寫入時炸成 500
+const durationDaysSchema = z.number().int().min(DURATION_DAYS_MIN, `持續天數最少 ${DURATION_DAYS_MIN} 天`).max(DURATION_DAYS_MAX, `持續天數最多 ${DURATION_DAYS_MAX} 天`);
+const sessionMinutesSchema = z.number().int().min(SESSION_MINUTES_MIN, `每次時長最少 ${SESSION_MINUTES_MIN} 分鐘`).max(SESSION_MINUTES_MAX, `每次時長最多 ${SESSION_MINUTES_MAX} 分鐘`);
 
 export const organizationTemplateParamsSchema = z.object({ organizationId: z.coerce.number().int().positive(), templateId: z.coerce.number().int().positive() });
 export const organizationTemplateBindingParamsSchema = organizationTemplateParamsSchema.extend({ cohortId: z.coerce.number().int().positive() });

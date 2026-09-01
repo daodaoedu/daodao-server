@@ -8,7 +8,7 @@ import { cohortJoinService } from '@/services/cohort-join.service';
 import { ConflictError } from '@/middleware/error.middleware';
 
 const token = '123e4567-e89b-12d3-a456-426614174000';
-const cohort = { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), join_deadline: null, capacity: 2, invite_message: '一起行動', status: 'published', program: { organization: { name: '島島', bio: '社群', external_link: 'https://example.com' } } };
+const cohort = { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), join_deadline: null, capacity: 2, invite_message: '一起行動', status: 'published', join_paused: false, program: { organization: { name: '島島', bio: '社群', external_link: 'https://example.com' } } };
 
 describe('cohortJoinService', () => {
   beforeEach(() => {
@@ -24,6 +24,19 @@ describe('cohortJoinService', () => {
     expect(info.canJoin).toBe(true);
     expect(info.visibilityNotice).toContain('教練與同期學員可見');
     expect(info.organization.name).toBe('島島');
+  });
+
+  it('blocks the public join link while joining is paused but still lets invited users in', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ ...cohort, join_paused: true } as never);
+    prismaMock.cohort_enrollments.count.mockResolvedValue(0);
+    const info = await cohortJoinService.getJoinInfo(token, new Date('2026-08-30T12:00:00Z'));
+    expect(info).toEqual(expect.objectContaining({ canJoin: false, unavailableReason: 'paused' }));
+    await expect(cohortJoinService.join(token, 7, true, new Date('2026-08-30T12:00:00Z'))).rejects.toBeInstanceOf(ConflictError);
+
+    prismaMock.cohorts.findUnique.mockResolvedValue(null);
+    prismaMock.cohort_enrollments.findUnique.mockResolvedValue({ id: 55, user_id: null, status: 'invited', cohort: { ...cohort, join_paused: true } } as never);
+    const invited = await cohortJoinService.getJoinInfo(token, new Date('2026-08-30T12:00:00Z'));
+    expect(invited.canJoin).toBe(true);
   });
 
   it('rejects joining after the deadline', async () => {

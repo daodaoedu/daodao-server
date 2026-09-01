@@ -28,7 +28,7 @@ export const globalLimiter = rateLimit({
       success: false,
       message: '請求過於頻繁，請稍後再試',
       error: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.round(60 / 1000) // 重試等待時間（秒）
+      retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
   },
 });
@@ -55,7 +55,7 @@ export const strictLimiter = rateLimit({
       success: false,
       message: '操作過於頻繁，請稍後再試',
       error: 'STRICT_RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.round(60 / 60) // 重試等待時間（秒）
+      retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
   },
 });
@@ -109,7 +109,7 @@ export const createLimiter = rateLimit({
       success: false,
       message: '創建操作過於頻繁，請稍後再試',
       error: 'CREATE_RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.round(60 / 30) // 重試等待時間（秒）
+      retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
   },
 });
@@ -135,7 +135,7 @@ export const uploadLimiter = rateLimit({
       success: false,
       message: '檔案上傳過於頻繁，請稍後再試',
       error: 'UPLOAD_RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.round(60 / 10) // 重試等待時間（秒）
+      retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
   },
 });
