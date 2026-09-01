@@ -13,6 +13,7 @@ import {
   PracticeEntity,
   PracticeStats,
   CreatePracticeRequest,
+  BatchCreatePracticesResult,
   UpdatePracticeRequest,
   PracticeQueryParams,
   PracticeStatus,
@@ -483,33 +484,71 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
  * - 設定初始狀態 status: 'draft' 或 'not_started'（依據 isDraft 參數）
  * - 支援 templateId 參數追蹤模版使用情況
  */
-export async function create(data: CreatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
-  try {
-    // 計算結束日期
+/** Prisma client 或交易中的 client，讓建立核心邏輯可在 $transaction 內外共用 */
+type Db = Prisma.TransactionClient | typeof prismaClient;
+
+type ThemeColor = typeof THEME_COLORS[number];
+
+/**
+ * 查詢使用者最後一個實踐的主題色 index（-1 代表沒有實踐）
+ * 單筆與批次建立都以此為基準往後輪替，批次時各段連續取色避免同色
+ */
+async function getLastThemeColorIndex(userId: number): Promise<number> {
+  const lastPractice = await prismaClient.practices.findFirst({
+    where: { user_id: userId, deleted_at: null },
+    orderBy: { created_at: 'desc' },
+    select: { theme_color: true }
+  });
+  return lastPractice?.theme_color
+    ? THEME_COLORS.indexOf(lastPractice.theme_color as ThemeColor)
+    : -1;
+}
+
+/** 依基準 index 往後第 offset 個主題色 */
+const pickThemeColor = (lastColorIndex: number, offset: number): ThemeColor =>
+  THEME_COLORS[(lastColorIndex + 1 + offset) % THEME_COLORS.length];
+
+/**
+ * 建立成功後的非阻塞副作用（PE01 郵件、關注者通知）；草稿不觸發
+ */
+function emitPracticeCreatedSideEffects(
+  practice: { id: number; title: string; privacy_status: string | null },
+  userId: number,
+  isDraft: boolean | undefined
+): void {
+  if (isDraft) return;
+
+  enqueuePracticeEmail('PE01', practice.id, userId).catch(err => {
+    loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
+  });
+
+  notifyPracticeCreatedAudience({
+    actorId: userId,
+    practiceId: practice.id,
+    practiceTitle: practice.title,
+    privacyStatus: practice.privacy_status,
+  }).catch(err => {
+    loggerService.error('Failed to notify practice created audience', { practiceId: practice.id, error: err });
+  });
+}
+
+/**
+ * 建立實踐的核心（不含副作用），可在交易內執行
+ *
+ * @param db - prisma client 或交易 client
+ * @param themeColor - 由呼叫端決定的主題色（單筆：上一筆的下一色；批次：依段序連續）
+ */
+async function createPracticeCore(
+  db: Db,
+  data: CreatePracticeRequest,
+  userId: number,
+  themeColor: ThemeColor
+): Promise<{ practice: { id: number; title: string; privacy_status: string | null }; entity: PracticeEntity }> {
+    // 計算結束日期（含首日：結束日 = 開始日 + 天數 − 1）
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
     const durationDays = data.durationDays || 14;
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + durationDays - 1);
-
-    // 查詢用戶最後一個實踐的顏色，用於分配下一個主題色
-    const lastPractice = await prismaClient.practices.findFirst({
-      where: { user_id: userId, deleted_at: null },
-      orderBy: { created_at: 'desc' },
-      select: { theme_color: true }
-    });
-
-    // 根據最後一個實踐的顏色，選擇下一個顏色
-    const lastColorIndex = lastPractice?.theme_color
-      ? THEME_COLORS.indexOf(lastPractice.theme_color as typeof THEME_COLORS[number])
-      : -1;
-    const themeColor = THEME_COLORS[(lastColorIndex + 1) % THEME_COLORS.length];
-
-    loggerService.info('Theme color assigned for new practice', {
-      userId,
-      lastPracticeColor: lastPractice?.theme_color || 'none',
-      lastColorIndex,
-      assignedColor: themeColor
-    });
 
     // 根據 isDraft 決定初始狀態
     const initialStatus = data.isDraft ? 'draft' : 'not_started';
@@ -517,7 +556,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
     // 如果有 templateId，查詢模版的內部 ID
     let templateInternalId: number | null = null;
     if (data.templateId) {
-      const template = await prismaClient.practice_templates.findFirst({
+      const template = await db.practice_templates.findFirst({
         where: {
           OR: [
             { external_id: data.templateId },
@@ -536,7 +575,7 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
       }
     }
 
-    const practice = await prismaClient.practices.create({
+    const practice = await db.practices.create({
       data: {
         user_id: userId,
         template_id: templateInternalId,
@@ -605,13 +644,13 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
 
     // 處理標籤關聯（如果有提供）
     if (data.tags && data.tags.length > 0) {
-      await linkTags(practice.id, data.tags);
+      await linkTags(practice.id, data.tags, db);
     }
 
     // 處理資源關聯（如果有提供）
     let createdResources: PracticeResourceEntity[] = [];
     if (data.resources && data.resources.length > 0) {
-      createdResources = await linkResources(practice.id, data.resources, userId);
+      createdResources = await linkResources(practice.id, data.resources, userId, db);
     }
 
     const practiceEntity: PracticeEntity = {
@@ -656,27 +695,76 @@ export async function create(data: CreatePracticeRequest, userId: number): Promi
 
     loggerService.info('Practice created', { practiceId: practice.id, userId, isDraft: data.isDraft, resourceCount: createdResources.length });
 
-    // 只有非草稿才觸發 PE01 實踐建立郵件（非阻塞）
-    if (!data.isDraft) {
-      enqueuePracticeEmail('PE01', practice.id, userId).catch(err => {
-        loggerService.error('Failed to enqueue PE01 email', { practiceId: practice.id, error: err });
-      });
+    return {
+      practice: { id: practice.id, title: practice.title, privacy_status: practice.privacy_status },
+      entity: practiceEntity
+    };
+}
 
-      // 通知關注此用戶的 followers 與 connected partners（非阻塞）
-      notifyPracticeCreatedAudience({
-        actorId: userId,
-        practiceId: practice.id,
-        practiceTitle: practice.title,
-        privacyStatus: practice.privacy_status,
-      }).catch(err => {
-        loggerService.error('Failed to notify practice created audience', { practiceId: practice.id, error: err });
-      });
-    }
+/**
+ * 建立實踐（包含資源關聯）
+ *
+ * - 主題色：依使用者上一筆實踐往後輪替
+ * - 實踐 + 標籤 + 資源在同一交易內建立
+ * - 非草稿建立後觸發 PE01 郵件與關注者通知（非阻塞）
+ */
+export async function create(data: CreatePracticeRequest, userId: number): Promise<ApiSuccessResponse<PracticeEntity>> {
+  try {
+    const lastColorIndex = await getLastThemeColorIndex(userId);
+    const themeColor = pickThemeColor(lastColorIndex, 0);
+    loggerService.info('Theme color assigned for new practice', { userId, lastColorIndex, assignedColor: themeColor });
 
-    return createSuccessResponse(practiceEntity);
+    const { practice, entity } = await prismaClient.$transaction(tx =>
+      createPracticeCore(tx, data, userId, themeColor)
+    );
+
+    emitPracticeCreatedSideEffects(practice, userId, data.isDraft);
+
+    return createSuccessResponse(entity);
 
   } catch (error) {
     loggerService.error('Failed to create practice', { userId, error });
+    throw error;
+  }
+}
+
+/**
+ * 拆段批次建立實踐（daodaoedu/daodao#141 長天數拆段）
+ *
+ * - 所有段落在同一交易內建立，任一失敗全部回滾
+ * - 主題色依段序連續取色，避免交易內讀「上一筆」拿到同色
+ * - 副作用（PE01 郵件、關注者通知）只以第一段觸發一次，避免一次拆 3 段寄 3 封信
+ * - 段數、日期接續、每段必填欄位由 batchCreatePracticeSchema 在 route 層驗證
+ */
+export async function batchCreate(
+  segments: CreatePracticeRequest[],
+  userId: number
+): Promise<ApiSuccessResponse<BatchCreatePracticesResult>> {
+  try {
+    const lastColorIndex = await getLastThemeColorIndex(userId);
+
+    const created = await prismaClient.$transaction(async (tx) => {
+      const results: Array<{ practice: { id: number; title: string; privacy_status: string | null }; entity: PracticeEntity }> = [];
+      for (let i = 0; i < segments.length; i++) {
+        results.push(await createPracticeCore(tx, segments[i], userId, pickThemeColor(lastColorIndex, i)));
+      }
+      return results;
+    });
+
+    loggerService.info('Practices batch created', {
+      userId,
+      count: created.length,
+      practiceIds: created.map(c => c.practice.id)
+    });
+
+    if (created.length > 0) {
+      emitPracticeCreatedSideEffects(created[0].practice, userId, segments[0].isDraft);
+    }
+
+    return createSuccessResponse({ practices: created.map(c => c.entity) });
+
+  } catch (error) {
+    loggerService.error('Failed to batch create practices', { userId, segmentCount: segments.length, error });
     throw error;
   }
 }
@@ -1063,14 +1151,14 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
 /**
  * 連結標籤
  */
-async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
+async function linkTags(practiceId: number, tagNames: string[], db: Db = prismaClient): Promise<void> {
   if (!tagNames.length) return;
 
   try {
     // 取得或建立標籤
     const tags = await Promise.all(
       tagNames.map(name =>
-        prismaClient.tags.upsert({
+        db.tags.upsert({
           where: { name },
           update: {},
           create: { name }
@@ -1081,7 +1169,7 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
     // 建立關聯
     await Promise.all(
       tags.map(tag =>
-        prismaClient.entity_tags.upsert({
+        db.entity_tags.upsert({
           where: {
             entity_type_entity_id_tag_id: {
               entity_type: 'practice',
@@ -1108,7 +1196,12 @@ async function linkTags(practiceId: number, tagNames: string[]): Promise<void> {
  * 創建資源記錄並建立 practice-resource 關聯
  * @returns 建立的資源列表（包含 external_id）
  */
-async function linkResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<PracticeResourceEntity[]> {
+async function linkResources(
+  practiceId: number,
+  resources: Array<{ name: string; url?: string; dayNumber?: number | null }>,
+  userId: number,
+  db: Db = prismaClient
+): Promise<PracticeResourceEntity[]> {
   if (!resources.length) return [];
 
   const createdResources: PracticeResourceEntity[] = [];
@@ -1116,8 +1209,8 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
   try {
     for (const resource of resources) {
       try {
-        // 1. 創建資源記錄
-        const createdResource = await prismaClient.resources.create({
+        // 1. 創建資源記錄（純名稱資源沿用 url: '' 慣例，resources.url NOT NULL）
+        const createdResource = await db.resources.create({
           data: {
             name: resource.name,
             url: resource.url || '',
@@ -1129,7 +1222,7 @@ async function linkResources(practiceId: number, resources: Array<{ name: string
         });
 
         // 2. 建立 practice-resource 關聯（note 承載「第幾天使用」）
-        await prismaClient.entity_resources.create({
+        await db.entity_resources.create({
           data: {
             resource_id: createdResource.id,
             entity_type: 'practice',

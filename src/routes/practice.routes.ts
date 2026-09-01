@@ -16,6 +16,7 @@ import { OnboardingTask } from '../types/onboarding.types';
 import type { CreationMethod } from '../types/onboarding.types';
 import {
   isCreatedPracticeResponse,
+  isBatchCreatedPracticeResponse,
   isFirstCheckInResponse,
 } from '../utils/onboarding-task-completion';
 import {
@@ -28,6 +29,10 @@ import {
   updateCheckInSchema,
   updateCheckInApiResponseSchema,
   createPracticeSchema,
+  batchCreatePracticeSchema,
+  batchCreatePracticesApiResponseSchema,
+  batchCreatePracticeTemplateSchema,
+  batchCreatePracticeTemplatesApiResponseSchema,
   updatePracticeSchema,
   checkInSchema,
   checkInQuerySchema,
@@ -246,6 +251,40 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: createPracticeApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/batch - 拆段批次建立實踐
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/batch',
+  tags: ['Practice'],
+  summary: '拆段批次建立實踐',
+  description: '長天數實踐拆成 2–3 段，一次 request 在同一交易內建立多筆實踐；任一段驗證失敗整批回滾。各段開始日須接續（後段 = 前段結束日隔日），14 天開始日限制只套用於第一段。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: batchCreatePracticeSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '全部段落建立成功，回傳順序與送出一致',
+      content: {
+        'application/json': {
+          schema: batchCreatePracticesApiResponseSchema
         }
       }
     },
@@ -935,6 +974,40 @@ registry.registerPath({
 });
 
 /**
+ * POST /api/v1/practices/templates/batch - 拆段批次建立實踐模板
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/templates/batch',
+  tags: ['Practice Templates'],
+  summary: '拆段批次建立實踐模板',
+  description: '長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: batchCreatePracticeTemplateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: '全部段落建立成功，回傳順序與送出一致',
+      content: {
+        'application/json': {
+          schema: batchCreatePracticeTemplatesApiResponseSchema
+        }
+      }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * POST /api/v1/practices/templates - 創建實踐模板
  */
 registry.registerPath({
@@ -1187,6 +1260,15 @@ router.post('/templates',
   practiceController.createTemplate as RequestHandler);
 
 /**
+ * POST /practices/templates/batch
+ * 拆段批次建立實踐模板（同一交易）
+ */
+router.post('/templates/batch',
+  authenticate,
+  validate(batchCreatePracticeTemplateSchema, 'body'),
+  practiceController.batchCreateTemplates as RequestHandler);
+
+/**
  * PUT /practices/templates/:id
  * 更新實踐模板
  * 需要身份驗證（管理員權限）
@@ -1243,6 +1325,19 @@ router.post('/',
   withOnboardingHook(OnboardingTask.C, practiceController.createPractice as RequestHandler, {
     resolveCreationMethod: (req) => req.body.creationMethod,
     shouldAdvance: (_req, body) => isCreatedPracticeResponse(body),
+  }) as RequestHandler);
+
+/**
+ * POST /practices/batch
+ * 拆段批次建立實踐（2–3 段、同一交易）
+ * Onboarding hook 只掛一次，以第一段判定
+ */
+router.post('/batch',
+  authenticate,
+  validate(batchCreatePracticeSchema, 'body'),
+  withOnboardingHook(OnboardingTask.C, practiceController.batchCreatePractices as RequestHandler, {
+    resolveCreationMethod: (req) => req.body.segments?.[0]?.creationMethod,
+    shouldAdvance: (_req, body) => isBatchCreatedPracticeResponse(body),
   }) as RequestHandler);
 
 /**

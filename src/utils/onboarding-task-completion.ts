@@ -9,6 +9,15 @@ export const isCreatedPracticeResponse = (body: unknown): boolean => {
   return data?.status === 'not_started' || data?.status === 'active';
 };
 
+/** 拆段批次建立：第一段為非草稿即視為完成「建立實踐」任務 */
+export const isBatchCreatedPracticeResponse = (body: unknown): boolean => {
+  const data = getResponseData(body);
+  const practices = data?.practices;
+  if (!Array.isArray(practices) || practices.length === 0) return false;
+  const first = practices[0] as Record<string, unknown> | undefined;
+  return first?.status === 'not_started' || first?.status === 'active';
+};
+
 export const isFirstCheckInResponse = (body: unknown): boolean => {
   const data = getResponseData(body);
   return data?.isFirstCheckIn === true;
