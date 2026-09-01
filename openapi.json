@@ -1838,6 +1838,113 @@
           "updatedAt": "2024-01-20T15:45:00.000Z"
         }
       },
+      "PatchReflectionRequest": {
+        "type": "object",
+        "properties": {
+          "reflection": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "使用者的實踐反思文字",
+            "example": "這次實踐讓我學到了很多，也培養了持續的習慣"
+          }
+        },
+        "required": [
+          "reflection"
+        ],
+        "description": "更新實踐反思請求",
+        "example": {
+          "reflection": "這次實踐讓我學到了很多，也培養了持續的習慣"
+        }
+      },
+      "PatchNextIntentRequest": {
+        "type": "object",
+        "properties": {
+          "nextIntent": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "完成實踐後，接下來想做的事",
+            "example": "我想繼續保持每天閱讀的習慣，並嘗試更難的書籍"
+          },
+          "saveDraft": {
+            "type": "boolean",
+            "description": "是否同時複製此實踐建立草稿",
+            "example": false
+          }
+        },
+        "required": [
+          "nextIntent"
+        ],
+        "description": "更新「接下來我想」請求",
+        "example": {
+          "nextIntent": "我想繼續保持每天閱讀的習慣，並嘗試更難的書籍",
+          "saveDraft": true
+        }
+      },
+      "PatchSelectedCheckinsRequest": {
+        "type": "object",
+        "properties": {
+          "checkinIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "description": "精選打卡 ID 列表（整數 ID 字串，最多 3 筆）",
+            "example": [
+              "456"
+            ]
+          }
+        },
+        "required": [
+          "checkinIds"
+        ],
+        "description": "更新精選打卡列表請求",
+        "example": {
+          "checkinIds": [
+            "456"
+          ]
+        }
+      },
+      "CreateInsightFeedbackRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative"
+            ],
+            "description": "洞察回饋類型 (positive: 正面, negative: 負面)",
+            "example": "positive"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "maxItems": 10,
+            "description": "回饋原因（選填，通常用於負面回饋）",
+            "example": [
+              "內容不準確",
+              "與我的實踐無關"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "建立 AI 洞察回饋請求",
+        "example": {
+          "type": "positive",
+          "reasons": []
+        }
+      },
       "PracticeStatsQuery": {
         "type": "object",
         "properties": {
