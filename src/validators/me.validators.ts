@@ -323,6 +323,14 @@ export const myPracticeItemSchema = z.object({
   tags: z.array(z.string()).openapi({
     description: "相關標籤",
     example: ["React", "前端", "Hooks"]
+  }),
+  viewCount: z.number().int().min(0).openapi({
+    description: "累計瀏覽數（同一使用者 24h 內只計一次）",
+    example: 24
+  }),
+  commentCount: z.number().int().min(0).openapi({
+    description: "留言數",
+    example: 3
   })
 }).openapi('MyPracticeItem', {
   description: "我的實踐項目"

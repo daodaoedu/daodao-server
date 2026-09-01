@@ -142,6 +142,16 @@ export const questionAnswersDataSchema = z.object({
 
 export const questionAnswersApiResponseSchema = apiSuccessResponseSchema(questionAnswersDataSchema).openapi('QuestionAnswersApiResponse');
 
+export const questionViewParamSchema = z.object({
+  questionId: z.coerce.number().int().positive().openapi({ description: '問題 ID', example: 1 }),
+}).openapi('QuestionViewParam');
+
+export const questionViewDataSchema = z.object({
+  viewCount: z.number().openapi({ description: '此題目目前的累計觀看數', example: 42 }),
+}).openapi('QuestionViewData');
+
+export const questionViewApiResponseSchema = apiSuccessResponseSchema(questionViewDataSchema).openapi('QuestionViewApiResponse');
+
 export const carouselStateQuerySchema = z.object({
   replace: z.coerce.number().int().positive().optional().openapi({ description: '要替換的問題 ID', example: 3 }),
   locale: z.enum(['zh-TW', 'en']).optional().default('zh-TW').openapi({ description: '語系代碼（預設 zh-TW）', example: 'zh-TW' }),
@@ -179,3 +189,4 @@ export type LocaleQuery = z.infer<typeof localeQuerySchema>;
 export type QuestionAnswersParam = z.infer<typeof questionAnswersParamSchema>;
 export type QuestionAnswersQuery = z.infer<typeof questionAnswersQuerySchema>;
 export type QuestionAnswerItem = z.infer<typeof questionAnswerItemSchema>;
+export type QuestionViewParam = z.infer<typeof questionViewParamSchema>;

@@ -100,6 +100,8 @@ export interface CheckInEntity {
   imageUrls: string[];
   ogImageUrl: string | null;
   tags: string[];
+  /** 累計瀏覽數（同一使用者 24h 內只計一次） */
+  viewCount: number;
   createdAt: string;
   updatedAt?: string;
 }
