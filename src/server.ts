@@ -39,6 +39,12 @@ import {
   registerPracticeStatusScheduledJobs,
   closePracticeStatusWorker,
   setPracticeStatusQueue,
+  // Challenge Email Queue
+  createChallengeEmailQueue,
+  createChallengeEmailWorker,
+  registerChallengeEmailScheduledJobs,
+  closeChallengeEmailWorker,
+  setChallengeEmailQueue,
   // Notification Queues
   createNotificationInAppQueue,
   createNotificationEmailQueue,
@@ -91,7 +97,7 @@ import type { OnboardingEmailJobData } from './types/email/onboarding.types';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
 import type { PracticeEmailJobData } from './types/email/practice.types';
-import type { PracticeStatusJobData } from './queues';
+import type { ChallengeEmailJobData, PracticeStatusJobData } from './queues';
 import type { SocialNotificationJob } from './types/social.types';
 
 // BullMQ 全域實例
@@ -99,6 +105,8 @@ let practiceEmailQueue: Queue<PracticeEmailJobData> | null = null;
 let practiceEmailWorker: Worker<PracticeEmailJobData> | null = null;
 let practiceStatusQueue: Queue<PracticeStatusJobData> | null = null;
 let practiceStatusWorker: Worker<PracticeStatusJobData> | null = null;
+let challengeEmailQueue: Queue<ChallengeEmailJobData> | null = null;
+let challengeEmailWorker: Worker<ChallengeEmailJobData> | null = null;
 let notificationInAppWorker: Worker | null = null;
 let notificationEmailWorker: Worker | null = null;
 let notificationWeeklyWorker: Worker | null = null;
@@ -325,6 +333,17 @@ async function initializeBullMQ(): Promise<void> {
     await registerPracticeStatusScheduledJobs(practiceStatusQueue);
     console.log('⏰ 實踐狀態排程任務已註冊（每小時檢查到期實踐）');
 
+    // ===== Challenge Email Queue（共同挑戰信件節點）=====
+    challengeEmailQueue = createChallengeEmailQueue();
+    setChallengeEmailQueue(challengeEmailQueue);
+    console.log('🏝️ Challenge Email Queue 已建立');
+
+    challengeEmailWorker = createChallengeEmailWorker({ concurrency: 1 });
+    console.log('🏝️ Challenge Email Worker 已啟動');
+
+    await registerChallengeEmailScheduledJobs(challengeEmailQueue);
+    console.log('🏝️ 挑戰信件排程任務已註冊（每小時掃描補寄節點）');
+
     // ===== Notification Queues =====
     const notificationInAppQueue = createNotificationInAppQueue();
     setNotificationInAppQueue(notificationInAppQueue);
@@ -426,6 +445,17 @@ async function gracefulShutdown(signal: string) {
     if (practiceStatusQueue) {
       await practiceStatusQueue.close();
       console.log('✅ Practice Status Queue 已關閉');
+    }
+
+    // 關閉 Challenge Email Worker 與 Queue
+    if (challengeEmailWorker) {
+      await closeChallengeEmailWorker();
+      console.log('✅ Challenge Email Worker 已關閉');
+    }
+    if (challengeEmailQueue) {
+      await challengeEmailQueue.close();
+      setChallengeEmailQueue(null);
+      console.log('✅ Challenge Email Queue 已關閉');
     }
 
     // 關閉 Notification Workers

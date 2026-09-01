@@ -12,6 +12,13 @@ describe('programService', () => {
     expect(prismaMock.programs.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organization_id: 3 }) }));
   });
 
+  it('lists only lighthouse programs（challenge 主題由 admin 後台管理，不混入燈塔介面）', async () => {
+    prismaMock.organization_members.findUnique.mockResolvedValue({ organization: { status: 'active' } } as never);
+    prismaMock.programs.findMany.mockResolvedValue([] as never);
+    await programService.list(3, 42);
+    expect(prismaMock.programs.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organization_id: 3, kind: 'lighthouse' }) }));
+  });
+
   it('rejects cross-organization update attempts', async () => {
     prismaMock.programs.findFirst.mockResolvedValue(null);
     await expect(programService.update(9, { name: '越權' }, 42)).rejects.toBeInstanceOf(ForbiddenError);

@@ -57,6 +57,8 @@ export interface PracticeResourceEntity {
 export interface PracticeEntity {
   id: string;
   title: string;
+  /** 是否為共同挑戰實踐（名稱／期間／隱私鎖定、不可複製；只在詳情回傳） */
+  isChallenge?: boolean;
   practiceAction?: string;
   startDate?: string;
   endDate?: string;
