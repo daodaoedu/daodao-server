@@ -49,6 +49,7 @@ import {
   toggleFavoriteApiResponseSchema,
   recordShareApiResponseSchema,
   recordViewApiResponseSchema,
+  recordCheckInViewApiResponseSchema,
   interactionStatsApiResponseSchema,
   userInteractionStatusApiResponseSchema,
   createPracticeApiResponseSchema,
@@ -709,6 +710,34 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: recordViewApiResponseSchema
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
+ * POST /api/v1/practices/{id}/checkins/{checkInId}/view - 記錄打卡瀏覽
+ */
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/practices/{id}/checkins/{checkInId}/view',
+  tags: ['Practice Check-ins'],
+  summary: '記錄打卡紀錄瀏覽',
+  description: '記錄登入使用者瀏覽指定打卡紀錄的事件（同一使用者對同一筆打卡 24h 內去重），回傳該打卡目前的累計瀏覽數。',
+  request: {
+    params: updateCheckInParamsSchema
+  },
+  responses: {
+    200: {
+      description: '瀏覽事件記錄成功',
+      content: {
+        'application/json': {
+          schema: recordCheckInViewApiResponseSchema
         }
       }
     },
@@ -1410,6 +1439,17 @@ router.delete('/:id/checkins/:checkInId',
   validate(deleteCheckInParamsSchema, 'params'),
   enforcePracticeCohortContentLifecycle,
   practiceController.deleteCheckIn as RequestHandler);
+
+/**
+ * POST /practices/:id/checkins/:checkInId/view
+ * 記錄打卡紀錄瀏覽（24h 去重）
+ * 路徑參數：id - 實踐 ID, checkInId - 簽到記錄 ID
+ * 需要身份驗證
+ */
+router.post('/:id/checkins/:checkInId/view',
+  authenticate,
+  validate(updateCheckInParamsSchema, 'params'),
+  practiceController.recordCheckInView as RequestHandler);
 
 /**
  * GET /practices/:id/checkins

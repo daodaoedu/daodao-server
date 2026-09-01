@@ -705,6 +705,7 @@ const getActivityTimeline = async (userId: number, limit = 50): Promise<Activity
 
   const ENTITY_LABEL: Record<string, string> = {
     practice: '實踐', resource: '資源', group: '社群',
+    persona_question: '人物誌題目', practice_checkin: '打卡', idea: '想法',
   };
 
   const entityName = (type: string, id: number) => {
