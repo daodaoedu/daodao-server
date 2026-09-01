@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { DURATION_DAYS_MAX, DURATION_DAYS_MIN, SESSION_MINUTES_MAX, SESSION_MINUTES_MIN } from './practice.validators';
 
 // Practice query parameters schema (for ME endpoints)
 // 基於新的 Prisma schema，移除已棄用的 contentType 欄位
@@ -246,11 +247,11 @@ export const myPracticeItemSchema = z.object({
     description: "結束日期 (YYYY-MM-DD)",
     example: "2024-02-15"
   }),
-  durationDays: z.number().int().min(7).max(90).optional().openapi({
-    description: "持續天數 (7-90天)",
+  durationDays: z.number().int().min(DURATION_DAYS_MIN).max(DURATION_DAYS_MAX).optional().openapi({
+    description: `持續天數 (${DURATION_DAYS_MIN}-${DURATION_DAYS_MAX}天)`,
     example: 30,
-    minimum: 7,
-    maximum: 90
+    minimum: DURATION_DAYS_MIN,
+    maximum: DURATION_DAYS_MAX
   }),
   frequencyMinDays: z.number().int().min(1).max(7).optional().openapi({
     description: "最小頻率天數",
@@ -264,11 +265,11 @@ export const myPracticeItemSchema = z.object({
     minimum: 1,
     maximum: 7
   }),
-  sessionDurationMinutes: z.number().int().min(5).max(240).optional().openapi({
+  sessionDurationMinutes: z.number().int().min(SESSION_MINUTES_MIN).max(SESSION_MINUTES_MAX).optional().openapi({
     description: "每次練習時長 (分鐘)",
     example: 30,
-    minimum: 5,
-    maximum: 240
+    minimum: SESSION_MINUTES_MIN,
+    maximum: SESSION_MINUTES_MAX
   }),
   practiceTimePeriods: z.array(z.enum(['morning', 'afternoon', 'evening', 'night', 'commute'])).openapi({
     description: "練習時段",

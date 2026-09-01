@@ -11884,10 +11884,10 @@ export interface paths {
                     "application/json": {
                         title: string;
                         practiceAction?: string | null;
-                        durationDays?: 7 | 14 | 21 | 30 | unknown;
+                        durationDays?: number | null;
                         frequencyMinDays?: number | null;
                         frequencyMaxDays?: number | null;
-                        sessionDurationMinutes?: 15 | 30 | 45 | 60 | unknown;
+                        sessionDurationMinutes?: number | null;
                         /** @default [] */
                         practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         resources?: components["schemas"]["PracticeResourceInput"][];
@@ -12056,10 +12056,10 @@ export interface paths {
                     "application/json": {
                         title?: string;
                         practiceAction?: string | null;
-                        durationDays?: 7 | 14 | 21 | 30 | unknown;
+                        durationDays?: number | null;
                         frequencyMinDays?: number | null;
                         frequencyMaxDays?: number | null;
-                        sessionDurationMinutes?: 15 | 30 | 45 | 60 | unknown;
+                        sessionDurationMinutes?: number | null;
                         /** @default [] */
                         practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         resources?: components["schemas"]["PracticeResourceInput"][];
@@ -15994,13 +15994,19 @@ export interface paths {
                          */
                         title: string;
                         /**
-                         * @description 具體的實踐行動描述
+                         * @description 具體的實踐行動描述（建立流程 Step 1，上限 50 字）
                          * @example 閱讀技術書籍或文章
                          * @example 閱讀技術書籍或文章
                          * @example 完成線上課程一個章節
                          * @example 跑步或健身
                          */
                         practiceAction?: string;
+                        /**
+                         * Format: uuid
+                         * @description 來源模版的 external_id（從模版建立實踐時帶入，用於追蹤模版使用情況）
+                         * @example 123e4567-e89b-12d3-a456-426614174000
+                         */
+                        templateId?: string;
                         /**
                          * Format: date
                          * @description 實踐開始日期（不可超過 14 天後）
@@ -16011,12 +16017,14 @@ export interface paths {
                          */
                         startDate?: string;
                         /**
-                         * @description 實踐持續天數
+                         * @description 實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）
                          * @example 14
                          * @example 7
                          * @example 14
                          * @example 21
                          * @example 30
+                         * @example 45
+                         * @example 90
                          */
                         durationDays?: number;
                         /**
@@ -16037,7 +16045,7 @@ export interface paths {
                          */
                         frequencyMaxDays?: number;
                         /**
-                         * @description 每次實踐時長（分鐘）
+                         * @description 每次實踐時長（分鐘，1–999；預設選項 15/30/45/60，可自訂）
                          * @example 30
                          * @example 15
                          * @example 30
@@ -16093,7 +16101,7 @@ export interface paths {
                          */
                         tags?: string[];
                         /**
-                         * @description 相關學習資源（最多 5 個）
+                         * @description 相關學習資源（最多 10 個；可只有名稱不帶連結）
                          * @example [
                          *       {
                          *         "name": "React 官方文檔",
@@ -16916,6 +16924,118 @@ export interface paths {
                 500: components["responses"]["InternalServerError"];
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/practices/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 拆段批次建立實踐
+         * @description 長天數實踐拆成 2–3 段，一次 request 在同一交易內建立多筆實踐；任一段驗證失敗整批回滾。各段開始日須接續（後段 = 前段結束日隔日），14 天開始日限制只套用於第一段。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description 依序的各段實踐（2–3 段）。標籤由前端複製到每段；資源依段落指派複製到對應段 */
+                        segments: (components["schemas"]["CreatePracticeRequest"] & unknown)[];
+                    };
+                };
+            };
+            responses: {
+                /** @description 全部段落建立成功，回傳順序與送出一致 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /** @description 依送出順序建立的實踐 */
+                                practices: components["schemas"]["PracticeEntity"][];
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -19275,7 +19395,7 @@ export interface paths {
                          */
                         title?: string;
                         /**
-                         * @description 具體實踐行動描述
+                         * @description 具體實踐行動描述（上限 50 字，與個人實踐建立流程一致）
                          * @example 閱讀
                          */
                         practiceAction?: string;
@@ -19493,6 +19613,118 @@ export interface paths {
                 500: components["responses"]["InternalServerError"];
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/practices/templates/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 拆段批次建立實踐模板
+         * @description 長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description 依序的各段模版（2–3 段） */
+                        segments: components["schemas"]["CreatePracticeTemplateRequest"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 全部段落建立成功，回傳順序與送出一致 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /** @description 依送出順序建立的模板 */
+                                templates: components["schemas"]["PracticeTemplate"][];
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -37498,612 +37730,6 @@ export interface components {
         };
         /** @description 增強安全性的多個圖片檔案批量驗證 */
         EnhancedImageFiles: components["schemas"]["EnhancedImageFile"][];
-        /** @description 指定導師參與特定馬拉松活動的請求資料 */
-        AssignMentorToMarathonRequest: {
-            /**
-             * @description 導師的唯一識別 ID
-             * @example 123
-             * @example 1
-             * @example 123
-             * @example 456
-             */
-            mentorId: number;
-            /**
-             * @description 馬拉松活動的唯一識別 ID
-             * @example marathon_2024_spring
-             * @example marathon_2024_spring
-             * @example hackathon_web3_2024
-             * @example coding_bootcamp_js
-             */
-            eventId: string;
-        };
-        /** @description 更新導師與馬拉松活動關聯的請求資料 */
-        UpdateMentorMarathonRequest: {
-            /**
-             * @description 要更新關聯的馬拉松活動 ID
-             * @example marathon_2024_spring
-             * @example marathon_2024_spring
-             * @example web_dev_marathon_2024
-             * @example ai_learning_marathon
-             */
-            marathonId?: string;
-        };
-        /** @description 將特定參與者指派給導師的請求資料 */
-        AssignParticipantToMentorRequest: {
-            /**
-             * @description 要指派給導師的參與者唯一識別 ID
-             * @example 1001
-             * @example 1001
-             * @example 2045
-             * @example 3078
-             */
-            participantId: number;
-        };
-        /** @description 導師馬拉松指派記錄 */
-        MentorMarathonAssignment: {
-            /**
-             * @description 指派記錄 ID
-             * @example 1
-             */
-            id: number;
-            /**
-             * @description 導師 ID
-             * @example 123
-             */
-            mentorId: number;
-            /**
-             * @description 馬拉松 ID
-             * @example 456
-             */
-            marathonId: number;
-            /**
-             * @description 活動外部 ID
-             * @example marathon_2024_spring
-             */
-            eventId: string;
-            /**
-             * Format: date-time
-             * @description 指派時間
-             * @example 2024-01-15T10:30:00.000Z
-             */
-            assignedAt: string;
-        };
-        /** @description 導師參與者關聯記錄 */
-        MentorParticipant: {
-            /**
-             * @description 導師 ID
-             * @example 123
-             */
-            mentorId: number;
-            /**
-             * @description 參與者 ID
-             * @example 1001
-             */
-            participantId: number;
-            /**
-             * Format: date-time
-             * @description 指派時間
-             * @example 2024-01-15T10:30:00.000Z
-             */
-            assignedAt: string;
-        };
-        /** @description 導師馬拉松資訊 */
-        MentorMarathon: {
-            /**
-             * @description 馬拉松 ID
-             * @example 456
-             */
-            id: number;
-            /**
-             * @description 活動外部 ID
-             * @example marathon_2024_spring
-             */
-            eventId: string;
-            /**
-             * @description 馬拉松標題
-             * @example 2024 春季學習馬拉松
-             */
-            title: string;
-            /**
-             * Format: date-time
-             * @description 開始日期
-             * @example 2024-01-15T00:00:00.000Z
-             */
-            startDate: string;
-            /**
-             * Format: date-time
-             * @description 結束日期
-             * @example 2024-03-15T00:00:00.000Z
-             */
-            endDate: string;
-            /**
-             * @description 參與者數量
-             * @example 25
-             */
-            participantCount: number;
-        };
-        /** @description 參與者詳細資訊 */
-        ParticipantDetail: {
-            /**
-             * @description 參與者 ID
-             * @example 1001
-             */
-            id: number;
-            /**
-             * @description 參與者姓名
-             * @example 王小明
-             */
-            name: string;
-            /**
-             * Format: uuid
-             * @description 參與者外部 ID（UUID）
-             * @example 123e4567-e89b-12d3-a456-426614174000
-             */
-            _id: string;
-            /**
-             * @description 角色列表
-             * @example [
-             *       "normal_student",
-             *       "educator"
-             *     ]
-             */
-            roleList?: string[];
-            /**
-             * Format: uri
-             * @description 頭像 URL
-             * @example https://example.com/avatar/wang.jpg
-             */
-            photoURL: string | null;
-            /**
-             * @description 教育階段
-             * @example university
-             */
-            educationStage?: string | null;
-            /**
-             * @description 標籤列表
-             * @example [
-             *       "JavaScript",
-             *       "React"
-             *     ]
-             */
-            tagList?: string[];
-            /**
-             * @description 自我介紹
-             * @example 我是一名前端工程師
-             */
-            selfIntroduction?: string | null;
-            /**
-             * @description 地理位置
-             * @example taipei
-             */
-            location: string;
-            /**
-             * @description 想做的事情列表
-             * @example [
-             *       "學習 React",
-             *       "開發 APP"
-             *     ]
-             */
-            wantToDoList: string[];
-            /**
-             * @description 分享內容
-             * @example 我的學習筆記
-             */
-            share: string;
-            /**
-             * Format: date-time
-             * @description 更新日期
-             * @example 2024-01-20T14:25:00.000Z
-             */
-            updatedDate: string;
-            /**
-             * @description 專案外部 ID
-             * @example project_123
-             */
-            projectId: string;
-            /**
-             * @description 專案標題
-             * @example 我的學習專案
-             */
-            projectTitle: string;
-        };
-        /** @description 導師馬拉松參與者資訊 */
-        MentorMarathonParticipants: {
-            /**
-             * @description 馬拉松 ID
-             * @example 456
-             */
-            id: number;
-            /**
-             * @description 活動外部 ID
-             * @example marathon_2024_spring
-             */
-            eventId: string;
-            /**
-             * @description 馬拉松標題
-             * @example 2024 春季學習馬拉松
-             */
-            title: string;
-            /**
-             * Format: date-time
-             * @description 開始日期
-             * @example 2024-01-15T00:00:00.000Z
-             */
-            startDate: string;
-            /**
-             * Format: date-time
-             * @description 結束日期
-             * @example 2024-03-15T00:00:00.000Z
-             */
-            endDate: string;
-            /** @description 參與者列表 */
-            participants: components["schemas"]["ParticipantDetail"][];
-        };
-        /** @description 導師覆盤記錄 */
-        MentorReview: {
-            /**
-             * @description 覆盤 ID
-             * @example 789
-             */
-            id: number;
-            /**
-             * @description 週次
-             * @example 1
-             */
-            week: number;
-            /**
-             * @description 覆盤標題
-             * @example 第一週學習回顧
-             */
-            title: string;
-            /**
-             * @description 心情評分（1-10）
-             * @example 8
-             */
-            mood: number;
-            /**
-             * @description 壓力等級（1-10）
-             * @example 5
-             */
-            stressLevel: number;
-            /**
-             * @description 心情描述
-             * @example 這週學習很順利
-             */
-            moodDescription?: string;
-            /**
-             * @description 學習反思
-             * @example 掌握了 React 基礎
-             */
-            learningReview?: string;
-            /**
-             * @description 學習回饋
-             * @example 需要加強實作練習
-             */
-            learningFeedback?: string;
-            /**
-             * @description 調整計畫
-             * @example 下週增加練習時間
-             */
-            adjustmentPlan?: string;
-            /**
-             * Format: date-time
-             * @description 創建日期
-             * @example 2024-01-22T10:00:00.000Z
-             */
-            createdAt: string;
-            /**
-             * Format: date-time
-             * @description 更新日期
-             * @example 2024-01-23T15:30:00.000Z
-             */
-            updatedAt?: string;
-        };
-        /** @description 馬拉松基本資訊 */
-        MarathonInfo: {
-            /**
-             * @description 馬拉松 ID
-             * @example 456
-             */
-            id: number;
-            /**
-             * @description 活動外部 ID
-             * @example marathon_2024_spring
-             */
-            eventId: string;
-            /**
-             * @description 馬拉松標題
-             * @example 2024 春季學習馬拉松
-             */
-            title: string;
-            /**
-             * Format: date-time
-             * @description 開始日期
-             * @example 2024-01-15T00:00:00.000Z
-             */
-            startDate: string;
-            /**
-             * Format: date-time
-             * @description 結束日期
-             * @example 2024-03-15T00:00:00.000Z
-             */
-            endDate: string;
-        };
-        /** @description 導師參與者覆盤資訊 */
-        MentorParticipantReviews: {
-            marathon: components["schemas"]["MarathonInfo"] & unknown;
-            /** @description 覆盤列表 */
-            reviews: components["schemas"]["MentorReview"][];
-        };
-        NotificationItem: {
-            /**
-             * @description 通知 ID
-             * @example 1
-             */
-            id: number;
-            /**
-             * @description 通知類型
-             * @example buddy_request
-             */
-            type: string;
-            /**
-             * @description 關聯實體類型
-             * @example practice
-             */
-            entity_type: string | null;
-            /**
-             * @description 關聯實體 ID
-             * @example 550e8400
-             */
-            entity_id: string | null;
-            /**
-             * @description 優先級
-             * @example normal
-             */
-            priority: string;
-            /**
-             * @description 是否已讀
-             * @example false
-             */
-            is_read: boolean;
-            /**
-             * @description 聚合鍵
-             * @example null
-             */
-            aggregation_key: string | null;
-            /**
-             * @description 聚合數量
-             * @example 1
-             */
-            aggregation_count: number;
-            /**
-             * @description 建立時間（ISO 8601）
-             * @example 2024-01-15T10:30:00.000Z
-             */
-            created_at: string;
-            actor: components["schemas"]["NotificationActor"];
-        };
-        /** @description 發送者資訊 */
-        NotificationActor: {
-            /**
-             * @description 發送者 ID
-             * @example 42
-             */
-            id: number;
-            /**
-             * @description 發送者暱稱
-             * @example 小明
-             */
-            nickname: string | null;
-        } | null;
-        NotificationListData: {
-            /** @description 通知列表 */
-            notifications: components["schemas"]["NotificationItem"][];
-            /**
-             * @description 下一頁游標
-             * @example null
-             */
-            nextCursor: string | null;
-            /**
-             * @description 未讀通知數
-             * @example 3
-             */
-            unreadCount: number;
-        };
-        /**
-         * @description Standard success response format
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "id": 123,
-         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
-         *         "name": "JavaScript 基礎教程",
-         *         "description": "從零開始學習 JavaScript 程式設計",
-         *         "status": "published"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z"
-         *     }
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "userId": 456,
-         *         "username": "john_doe",
-         *         "email": "john@example.com",
-         *         "role": "student"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z",
-         *       "meta": {
-         *         "cacheHit": true,
-         *         "processingTime": 23.1
-         *       }
-         *     }
-         */
-        NotificationListApiResponse: {
-            /**
-             * @description Indicates successful API response
-             * @enum {boolean}
-             */
-            success: true;
-            data: components["schemas"]["NotificationListData"] & unknown;
-            /**
-             * Format: date-time
-             * @description ISO 8601 timestamp of the response
-             */
-            timestamp: string;
-            /**
-             * @description Optional metadata about the response
-             * @example {
-             *       "searchQuery": "JavaScript教程",
-             *       "searchTime": 45,
-             *       "cacheHit": false,
-             *       "processingTime": 123.5,
-             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-             *     }
-             * @example {
-             *       "categoryCounts": {
-             *         "前端開發": 25,
-             *         "後端開發": 18,
-             *         "資料科學": 12
-             *       },
-             *       "filters": {
-             *         "difficulty": "intermediate",
-             *         "language": "zh-TW"
-             *       }
-             *     }
-             */
-            meta?: {
-                /** @description Search query used for filtering results */
-                searchQuery?: string;
-                /** @description Time taken to execute the search query in milliseconds */
-                searchTime?: number;
-                /** @description Applied filters for the request */
-                filters?: {
-                    [key: string]: unknown;
-                };
-                /** @description Count of items per category */
-                categoryCounts?: {
-                    [key: string]: number;
-                };
-                /** @description Aggregated statistical data */
-                aggregateData?: {
-                    [key: string]: unknown;
-                };
-                /** @description Unique identifier for request tracking */
-                requestId?: string;
-                /** @description Whether the response was served from cache */
-                cacheHit?: boolean;
-                /** @description Total processing time in milliseconds */
-                processingTime?: number;
-            } & {
-                [key: string]: unknown;
-            };
-        };
-        /**
-         * @description Standard success response format
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "id": 123,
-         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
-         *         "name": "JavaScript 基礎教程",
-         *         "description": "從零開始學習 JavaScript 程式設計",
-         *         "status": "published"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z"
-         *     }
-         * @example {
-         *       "success": true,
-         *       "data": {
-         *         "userId": 456,
-         *         "username": "john_doe",
-         *         "email": "john@example.com",
-         *         "role": "student"
-         *       },
-         *       "timestamp": "2024-01-15T10:30:00.000Z",
-         *       "meta": {
-         *         "cacheHit": true,
-         *         "processingTime": 23.1
-         *       }
-         *     }
-         */
-        NotificationPreferencesApiResponse: {
-            /**
-             * @description Indicates successful API response
-             * @enum {boolean}
-             */
-            success: true;
-            /** @description The main response data */
-            data: components["schemas"]["NotificationPreferenceItem"][];
-            /**
-             * Format: date-time
-             * @description ISO 8601 timestamp of the response
-             */
-            timestamp: string;
-            /**
-             * @description Optional metadata about the response
-             * @example {
-             *       "searchQuery": "JavaScript教程",
-             *       "searchTime": 45,
-             *       "cacheHit": false,
-             *       "processingTime": 123.5,
-             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-             *     }
-             * @example {
-             *       "categoryCounts": {
-             *         "前端開發": 25,
-             *         "後端開發": 18,
-             *         "資料科學": 12
-             *       },
-             *       "filters": {
-             *         "difficulty": "intermediate",
-             *         "language": "zh-TW"
-             *       }
-             *     }
-             */
-            meta?: {
-                /** @description Search query used for filtering results */
-                searchQuery?: string;
-                /** @description Time taken to execute the search query in milliseconds */
-                searchTime?: number;
-                /** @description Applied filters for the request */
-                filters?: {
-                    [key: string]: unknown;
-                };
-                /** @description Count of items per category */
-                categoryCounts?: {
-                    [key: string]: number;
-                };
-                /** @description Aggregated statistical data */
-                aggregateData?: {
-                    [key: string]: unknown;
-                };
-                /** @description Unique identifier for request tracking */
-                requestId?: string;
-                /** @description Whether the response was served from cache */
-                cacheHit?: boolean;
-                /** @description Total processing time in milliseconds */
-                processingTime?: number;
-            } & {
-                [key: string]: unknown;
-            };
-        };
-        NotificationPreferenceItem: {
-            /**
-             * @description 通知類型
-             * @example buddy_request
-             */
-            type: string;
-            /**
-             * @description 通知渠道
-             * @example N01
-             */
-            channel: string;
-            /**
-             * @description 是否啟用
-             * @example true
-             */
-            isEnabled: boolean;
-        };
         /**
          * @description 實踐資源輸入資料
          * @example {
@@ -38183,13 +37809,19 @@ export interface components {
              */
             title: string;
             /**
-             * @description 具體的實踐行動描述
+             * @description 具體的實踐行動描述（建立流程 Step 1，上限 50 字）
              * @example 閱讀技術書籍或文章
              * @example 閱讀技術書籍或文章
              * @example 完成線上課程一個章節
              * @example 跑步或健身
              */
             practiceAction?: string;
+            /**
+             * Format: uuid
+             * @description 來源模版的 external_id（從模版建立實踐時帶入，用於追蹤模版使用情況）
+             * @example 123e4567-e89b-12d3-a456-426614174000
+             */
+            templateId?: string;
             /**
              * Format: date
              * @description 實踐開始日期（不可超過 14 天後）
@@ -38200,12 +37832,14 @@ export interface components {
              */
             startDate?: string;
             /**
-             * @description 實踐持續天數
+             * @description 實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）
              * @example 14
              * @example 7
              * @example 14
              * @example 21
              * @example 30
+             * @example 45
+             * @example 90
              */
             durationDays?: number;
             /**
@@ -38226,7 +37860,7 @@ export interface components {
              */
             frequencyMaxDays?: number;
             /**
-             * @description 每次實踐時長（分鐘）
+             * @description 每次實踐時長（分鐘，1–999；預設選項 15/30/45/60，可自訂）
              * @example 30
              * @example 15
              * @example 30
@@ -38282,7 +37916,7 @@ export interface components {
              */
             tags: string[];
             /**
-             * @description 相關學習資源（最多 5 個）
+             * @description 相關學習資源（最多 10 個；可只有名稱不帶連結）
              * @example [
              *       {
              *         "name": "React 官方文檔",
@@ -38309,6 +37943,10 @@ export interface components {
              * @enum {string}
              */
             creationMethod?: "self_created" | "copied" | "action_generator";
+        };
+        BatchCreatePracticeRequest: {
+            /** @description 依序的各段實踐（2–3 段）。標籤由前端複製到每段；資源依段落指派複製到對應段 */
+            segments: (components["schemas"]["CreatePracticeRequest"] & unknown)[];
         };
         /**
          * @description 實踐活動簽到記錄
@@ -39048,7 +38686,7 @@ export interface components {
              */
             title: string;
             /**
-             * @description 具體實踐行動描述
+             * @description 具體實踐行動描述（上限 50 字，與個人實踐建立流程一致）
              * @example 閱讀
              */
             practiceAction?: string;
@@ -39071,12 +38709,12 @@ export interface components {
              */
             frequencyMaxDays?: number;
             /**
-             * @description 建議持續天數
+             * @description 建議持續天數（1–90，與個人實踐統一上限）
              * @example 30
              */
             durationDays?: number;
             /**
-             * @description 每次實踐時長（分鐘）
+             * @description 每次實踐時長（分鐘，1–999）
              * @example 30
              */
             sessionDurationMinutes?: number;
@@ -39099,6 +38737,10 @@ export interface components {
              *     ]
              */
             suggestedTags: string[];
+        };
+        BatchCreatePracticeTemplateRequest: {
+            /** @description 依序的各段模版（2–3 段） */
+            segments: components["schemas"]["CreatePracticeTemplateRequest"][];
         };
         /** @description 打卡鼓勵句 */
         Encouragement: {
@@ -39187,6 +38829,612 @@ export interface components {
              * @example false
              */
             hasReachedTarget: boolean;
+        };
+        /** @description 指定導師參與特定馬拉松活動的請求資料 */
+        AssignMentorToMarathonRequest: {
+            /**
+             * @description 導師的唯一識別 ID
+             * @example 123
+             * @example 1
+             * @example 123
+             * @example 456
+             */
+            mentorId: number;
+            /**
+             * @description 馬拉松活動的唯一識別 ID
+             * @example marathon_2024_spring
+             * @example marathon_2024_spring
+             * @example hackathon_web3_2024
+             * @example coding_bootcamp_js
+             */
+            eventId: string;
+        };
+        /** @description 更新導師與馬拉松活動關聯的請求資料 */
+        UpdateMentorMarathonRequest: {
+            /**
+             * @description 要更新關聯的馬拉松活動 ID
+             * @example marathon_2024_spring
+             * @example marathon_2024_spring
+             * @example web_dev_marathon_2024
+             * @example ai_learning_marathon
+             */
+            marathonId?: string;
+        };
+        /** @description 將特定參與者指派給導師的請求資料 */
+        AssignParticipantToMentorRequest: {
+            /**
+             * @description 要指派給導師的參與者唯一識別 ID
+             * @example 1001
+             * @example 1001
+             * @example 2045
+             * @example 3078
+             */
+            participantId: number;
+        };
+        /** @description 導師馬拉松指派記錄 */
+        MentorMarathonAssignment: {
+            /**
+             * @description 指派記錄 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 導師 ID
+             * @example 123
+             */
+            mentorId: number;
+            /**
+             * @description 馬拉松 ID
+             * @example 456
+             */
+            marathonId: number;
+            /**
+             * @description 活動外部 ID
+             * @example marathon_2024_spring
+             */
+            eventId: string;
+            /**
+             * Format: date-time
+             * @description 指派時間
+             * @example 2024-01-15T10:30:00.000Z
+             */
+            assignedAt: string;
+        };
+        /** @description 導師參與者關聯記錄 */
+        MentorParticipant: {
+            /**
+             * @description 導師 ID
+             * @example 123
+             */
+            mentorId: number;
+            /**
+             * @description 參與者 ID
+             * @example 1001
+             */
+            participantId: number;
+            /**
+             * Format: date-time
+             * @description 指派時間
+             * @example 2024-01-15T10:30:00.000Z
+             */
+            assignedAt: string;
+        };
+        /** @description 導師馬拉松資訊 */
+        MentorMarathon: {
+            /**
+             * @description 馬拉松 ID
+             * @example 456
+             */
+            id: number;
+            /**
+             * @description 活動外部 ID
+             * @example marathon_2024_spring
+             */
+            eventId: string;
+            /**
+             * @description 馬拉松標題
+             * @example 2024 春季學習馬拉松
+             */
+            title: string;
+            /**
+             * Format: date-time
+             * @description 開始日期
+             * @example 2024-01-15T00:00:00.000Z
+             */
+            startDate: string;
+            /**
+             * Format: date-time
+             * @description 結束日期
+             * @example 2024-03-15T00:00:00.000Z
+             */
+            endDate: string;
+            /**
+             * @description 參與者數量
+             * @example 25
+             */
+            participantCount: number;
+        };
+        /** @description 參與者詳細資訊 */
+        ParticipantDetail: {
+            /**
+             * @description 參與者 ID
+             * @example 1001
+             */
+            id: number;
+            /**
+             * @description 參與者姓名
+             * @example 王小明
+             */
+            name: string;
+            /**
+             * Format: uuid
+             * @description 參與者外部 ID（UUID）
+             * @example 123e4567-e89b-12d3-a456-426614174000
+             */
+            _id: string;
+            /**
+             * @description 角色列表
+             * @example [
+             *       "normal_student",
+             *       "educator"
+             *     ]
+             */
+            roleList?: string[];
+            /**
+             * Format: uri
+             * @description 頭像 URL
+             * @example https://example.com/avatar/wang.jpg
+             */
+            photoURL: string | null;
+            /**
+             * @description 教育階段
+             * @example university
+             */
+            educationStage?: string | null;
+            /**
+             * @description 標籤列表
+             * @example [
+             *       "JavaScript",
+             *       "React"
+             *     ]
+             */
+            tagList?: string[];
+            /**
+             * @description 自我介紹
+             * @example 我是一名前端工程師
+             */
+            selfIntroduction?: string | null;
+            /**
+             * @description 地理位置
+             * @example taipei
+             */
+            location: string;
+            /**
+             * @description 想做的事情列表
+             * @example [
+             *       "學習 React",
+             *       "開發 APP"
+             *     ]
+             */
+            wantToDoList: string[];
+            /**
+             * @description 分享內容
+             * @example 我的學習筆記
+             */
+            share: string;
+            /**
+             * Format: date-time
+             * @description 更新日期
+             * @example 2024-01-20T14:25:00.000Z
+             */
+            updatedDate: string;
+            /**
+             * @description 專案外部 ID
+             * @example project_123
+             */
+            projectId: string;
+            /**
+             * @description 專案標題
+             * @example 我的學習專案
+             */
+            projectTitle: string;
+        };
+        /** @description 導師馬拉松參與者資訊 */
+        MentorMarathonParticipants: {
+            /**
+             * @description 馬拉松 ID
+             * @example 456
+             */
+            id: number;
+            /**
+             * @description 活動外部 ID
+             * @example marathon_2024_spring
+             */
+            eventId: string;
+            /**
+             * @description 馬拉松標題
+             * @example 2024 春季學習馬拉松
+             */
+            title: string;
+            /**
+             * Format: date-time
+             * @description 開始日期
+             * @example 2024-01-15T00:00:00.000Z
+             */
+            startDate: string;
+            /**
+             * Format: date-time
+             * @description 結束日期
+             * @example 2024-03-15T00:00:00.000Z
+             */
+            endDate: string;
+            /** @description 參與者列表 */
+            participants: components["schemas"]["ParticipantDetail"][];
+        };
+        /** @description 導師覆盤記錄 */
+        MentorReview: {
+            /**
+             * @description 覆盤 ID
+             * @example 789
+             */
+            id: number;
+            /**
+             * @description 週次
+             * @example 1
+             */
+            week: number;
+            /**
+             * @description 覆盤標題
+             * @example 第一週學習回顧
+             */
+            title: string;
+            /**
+             * @description 心情評分（1-10）
+             * @example 8
+             */
+            mood: number;
+            /**
+             * @description 壓力等級（1-10）
+             * @example 5
+             */
+            stressLevel: number;
+            /**
+             * @description 心情描述
+             * @example 這週學習很順利
+             */
+            moodDescription?: string;
+            /**
+             * @description 學習反思
+             * @example 掌握了 React 基礎
+             */
+            learningReview?: string;
+            /**
+             * @description 學習回饋
+             * @example 需要加強實作練習
+             */
+            learningFeedback?: string;
+            /**
+             * @description 調整計畫
+             * @example 下週增加練習時間
+             */
+            adjustmentPlan?: string;
+            /**
+             * Format: date-time
+             * @description 創建日期
+             * @example 2024-01-22T10:00:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description 更新日期
+             * @example 2024-01-23T15:30:00.000Z
+             */
+            updatedAt?: string;
+        };
+        /** @description 馬拉松基本資訊 */
+        MarathonInfo: {
+            /**
+             * @description 馬拉松 ID
+             * @example 456
+             */
+            id: number;
+            /**
+             * @description 活動外部 ID
+             * @example marathon_2024_spring
+             */
+            eventId: string;
+            /**
+             * @description 馬拉松標題
+             * @example 2024 春季學習馬拉松
+             */
+            title: string;
+            /**
+             * Format: date-time
+             * @description 開始日期
+             * @example 2024-01-15T00:00:00.000Z
+             */
+            startDate: string;
+            /**
+             * Format: date-time
+             * @description 結束日期
+             * @example 2024-03-15T00:00:00.000Z
+             */
+            endDate: string;
+        };
+        /** @description 導師參與者覆盤資訊 */
+        MentorParticipantReviews: {
+            marathon: components["schemas"]["MarathonInfo"] & unknown;
+            /** @description 覆盤列表 */
+            reviews: components["schemas"]["MentorReview"][];
+        };
+        NotificationItem: {
+            /**
+             * @description 通知 ID
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description 通知類型
+             * @example buddy_request
+             */
+            type: string;
+            /**
+             * @description 關聯實體類型
+             * @example practice
+             */
+            entity_type: string | null;
+            /**
+             * @description 關聯實體 ID
+             * @example 550e8400
+             */
+            entity_id: string | null;
+            /**
+             * @description 優先級
+             * @example normal
+             */
+            priority: string;
+            /**
+             * @description 是否已讀
+             * @example false
+             */
+            is_read: boolean;
+            /**
+             * @description 聚合鍵
+             * @example null
+             */
+            aggregation_key: string | null;
+            /**
+             * @description 聚合數量
+             * @example 1
+             */
+            aggregation_count: number;
+            /**
+             * @description 建立時間（ISO 8601）
+             * @example 2024-01-15T10:30:00.000Z
+             */
+            created_at: string;
+            actor: components["schemas"]["NotificationActor"];
+        };
+        /** @description 發送者資訊 */
+        NotificationActor: {
+            /**
+             * @description 發送者 ID
+             * @example 42
+             */
+            id: number;
+            /**
+             * @description 發送者暱稱
+             * @example 小明
+             */
+            nickname: string | null;
+        } | null;
+        NotificationListData: {
+            /** @description 通知列表 */
+            notifications: components["schemas"]["NotificationItem"][];
+            /**
+             * @description 下一頁游標
+             * @example null
+             */
+            nextCursor: string | null;
+            /**
+             * @description 未讀通知數
+             * @example 3
+             */
+            unreadCount: number;
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        NotificationListApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            data: components["schemas"]["NotificationListData"] & unknown;
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        NotificationPreferencesApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            /** @description The main response data */
+            data: components["schemas"]["NotificationPreferenceItem"][];
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        NotificationPreferenceItem: {
+            /**
+             * @description 通知類型
+             * @example buddy_request
+             */
+            type: string;
+            /**
+             * @description 通知渠道
+             * @example N01
+             */
+            channel: string;
+            /**
+             * @description 是否啟用
+             * @example true
+             */
+            isEnabled: boolean;
         };
         /** @description 創建新學習成果的請求資料 */
         CreateOutcomeRequest: {
@@ -43881,7 +44129,7 @@ export interface components {
              */
             endDate?: string;
             /**
-             * @description 持續天數 (7-90天)
+             * @description 持續天數 (1-90天)
              * @example 30
              */
             durationDays?: number;

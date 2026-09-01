@@ -12,6 +12,21 @@
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 
+/**
+ * 實踐建立流程的數值邊界（daodaoedu/daodao#141）
+ * 與 daodao-storage migration 083 的 CHECK 對齊：duration_days 1–90、session_duration_minutes 1–999
+ */
+export const DURATION_DAYS_MIN = 1;
+export const DURATION_DAYS_MAX = 90;
+export const SESSION_MINUTES_MIN = 1;
+export const SESSION_MINUTES_MAX = 999;
+/** Step 1 實踐行動字數上限（FRD FR-1.3；逐段行動同此上限） */
+export const PRACTICE_ACTION_MAX_LENGTH = 50;
+export const RESOURCES_MAX = 10;
+/** 拆段批次建立的段數範圍（FRD OQ-2 定案：上限 3） */
+export const BATCH_SEGMENTS_MIN = 2;
+export const BATCH_SEGMENTS_MAX = 3;
+
 // 基礎枚舉定義
 export const practiceStatusSchema = z.enum(['draft', 'not_started', 'active', 'completed', 'archived']).openapi({
   description: '實踐活動狀態 (draft: 草稿, not_started: 未開始, active: 進行中, completed: 已完成, archived: 已封存)',
@@ -49,7 +64,7 @@ export const practiceResourceInputSchema = z.object({
   dayNumber: z.number()
     .int('使用天數必須是整數')
     .min(1, '使用天數最少為第 1 天')
-    .max(30, '使用天數最多為第 30 天')
+    .max(DURATION_DAYS_MAX, `使用天數最多為第 ${DURATION_DAYS_MAX} 天`)
     .nullable()
     .optional()
     .openapi({
@@ -112,8 +127,19 @@ export const practiceResourceSchema = z.object({
 // 註冊 PracticeResource
 registry.register('PracticeResource', practiceResourceSchema);
 
+/**
+ * 開始日期是否落在「今日 ~ 今日 + 14 天」（UTC 日界）
+ * 單筆建立與拆段第一段共用；拆段後續段落的開始日由接續規則決定，不受此限
+ */
+export const isStartDateWithin14Days = (startDate: string, now: Date = new Date()): boolean => {
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const maxDateStr = new Date(todayUTC + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  return startDate <= maxDateStr;
+};
+
 // 創建實踐請求 Schema - 基於 Prisma schema practices 表
-export const createPracticeSchema = z.object({
+// createPracticeBaseSchema：欄位定義（拆段各段共用）；createPracticeSchema：加上單筆建立的跨欄位 refine
+export const createPracticeBaseSchema = z.object({
   title: z.string({ message: '請輸入標題' })
     .min(1, '請輸入標題')
     .max(100, '標題不可超過100字')
@@ -123,12 +149,20 @@ export const createPracticeSchema = z.object({
       examples: ['每日閱讀 30 分鐘', '學習 React Hooks', '每天運動 20 分鐘']
     }),
   practiceAction: z.string()
-    .max(200, '實踐行動描述不可超過200字')
+    .max(PRACTICE_ACTION_MAX_LENGTH, `實踐行動描述不可超過${PRACTICE_ACTION_MAX_LENGTH}字`)
     .optional()
     .openapi({
-      description: '具體的實踐行動描述',
+      description: '具體的實踐行動描述（建立流程 Step 1，上限 50 字）',
       example: '閱讀技術書籍或文章',
       examples: ['閱讀技術書籍或文章', '完成線上課程一個章節', '跑步或健身']
+    }),
+  templateId: z.string()
+    .uuid('模版 ID 格式不正確')
+    .optional()
+    .openapi({
+      description: '來源模版的 external_id（從模版建立實踐時帶入，用於追蹤模版使用情況）',
+      example: '123e4567-e89b-12d3-a456-426614174000',
+      format: 'uuid'
     }),
   startDate: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD')
@@ -143,13 +177,13 @@ export const createPracticeSchema = z.object({
     message: '持續天數必須是數字'
   })
     .int('持續天數必須是整數')
-    .min(7, '持續天數最少 7 天')
-    .max(90, '持續天數最多 90 天')
+    .min(DURATION_DAYS_MIN, `持續天數最少 ${DURATION_DAYS_MIN} 天`)
+    .max(DURATION_DAYS_MAX, `持續天數最多 ${DURATION_DAYS_MAX} 天`)
     .optional()
     .openapi({
-      description: '實踐持續天數',
+      description: '實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）',
       example: 14,
-      examples: [7, 14, 21, 30]
+      examples: [7, 14, 21, 30, 45, 90]
     }),
   frequencyMinDays: z.number({
     message: '最低頻率必須是數字'
@@ -179,11 +213,11 @@ export const createPracticeSchema = z.object({
     message: '每次時長必須是數字'
   })
     .int('每次時長必須是整數')
-    .min(5, '每次時長最少 5 分鐘')
-    .max(240, '每次時長最多 240 分鐘')
+    .min(SESSION_MINUTES_MIN, `每次時長最少 ${SESSION_MINUTES_MIN} 分鐘`)
+    .max(SESSION_MINUTES_MAX, `每次時長最多 ${SESSION_MINUTES_MAX} 分鐘`)
     .optional()
     .openapi({
-      description: '每次實踐時長（分鐘）',
+      description: '每次實踐時長（分鐘，1–999；預設選項 15/30/45/60，可自訂）',
       example: 30,
       examples: [15, 30, 60, 90]
     }),
@@ -215,10 +249,10 @@ export const createPracticeSchema = z.object({
       ]
     }),
   resources: z.array(practiceResourceInputSchema)
-    .max(5, '資源最多 5 個')
+    .max(RESOURCES_MAX, `資源最多 ${RESOURCES_MAX} 個`)
     .optional()
     .openapi({
-      description: '相關學習資源（最多 5 個）',
+      description: `相關學習資源（最多 ${RESOURCES_MAX} 個；可只有名稱不帶連結）`,
       example: [{
         name: 'React 官方文檔',
         url: 'https://react.dev/'
@@ -257,50 +291,110 @@ export const createPracticeSchema = z.object({
     resources: [],
     isDraft: false
   }
-}).refine(data => {
-  // 驗證 frequencyMinDays <= frequencyMaxDays
-  if (data.frequencyMinDays && data.frequencyMaxDays) {
-    return data.frequencyMinDays <= data.frequencyMaxDays;
-  }
-  return true;
-}, {
-  message: '最低頻率不能大於最高頻率',
-  path: ['frequencyMinDays']
-}).refine(data => {
-  // 驗證 startDate 不能超過 14 天後
-  // 統一使用 UTC 避免時區問題
-  if (data.startDate) {
-    const now = new Date();
-    // 取得今天的 UTC 日期
-    const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    // 計算 14 天後的 UTC 日期
-    const maxDateUTC = new Date(todayUTC + 14 * 24 * 60 * 60 * 1000);
-    const maxDateStr = maxDateUTC.toISOString().split('T')[0];
-    return data.startDate <= maxDateStr;
-  }
-  return true;
-}, {
-  message: '開始日期不能超過 14 天後',
-  path: ['startDate']
 });
+
+const frequencyRangeRefine = {
+  check: (data: { frequencyMinDays?: number; frequencyMaxDays?: number }): boolean => {
+    if (data.frequencyMinDays && data.frequencyMaxDays) {
+      return data.frequencyMinDays <= data.frequencyMaxDays;
+    }
+    return true;
+  },
+  options: { message: '最低頻率不能大於最高頻率', path: ['frequencyMinDays'] as string[] }
+};
+
+/** 拆段單一段落 Schema：欄位 + 頻率區間 refine，不含 14 天開始日限制 */
+export const practiceSegmentSchema = createPracticeBaseSchema
+  .refine(frequencyRangeRefine.check, frequencyRangeRefine.options);
+
+export const createPracticeSchema = createPracticeBaseSchema
+  .refine(frequencyRangeRefine.check, frequencyRangeRefine.options)
+  .refine(data => {
+    // 驗證 startDate 不能超過 14 天後（UTC）
+    return data.startDate ? isStartDateWithin14Days(data.startDate) : true;
+  }, {
+    message: '開始日期不能超過 14 天後',
+    path: ['startDate']
+  });
 
 // 註冊 CreatePracticeRequest
 registry.register('CreatePracticeRequest', createPracticeSchema);
+
+/**
+ * 以 YYYY-MM-DD 字串加天數（UTC，避免時區位移）
+ */
+export const addDaysToDateString = (dateStr: string, days: number): string => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const t = Date.UTC(y, m - 1, d) + days * 24 * 60 * 60 * 1000;
+  return new Date(t).toISOString().slice(0, 10);
+};
+
+/**
+ * 拆段批次建立請求 Schema（daodaoedu/daodao#141 長天數拆段）
+ * 每段沿用 createPracticeSchema；額外要求：段數 2–3、每段 startDate 與 durationDays 必填、日期接續不重疊
+ */
+export const batchCreatePracticeSchema = z.object({
+  segments: z.array(practiceSegmentSchema)
+    .min(BATCH_SEGMENTS_MIN, `拆段至少 ${BATCH_SEGMENTS_MIN} 段`)
+    .max(BATCH_SEGMENTS_MAX, `拆段最多 ${BATCH_SEGMENTS_MAX} 段`)
+    .openapi({
+      description: '依序的各段實踐（2–3 段）。標籤由前端複製到每段；資源依段落指派複製到對應段',
+    })
+}).openapi('BatchCreatePracticeRequest', {
+  description: '一次建立多段實踐（長天數拆段）',
+  example: {
+    segments: [
+      { title: '閱讀原子習慣 (1)', practiceAction: '每天閱讀 30 頁', startDate: '2026-09-01', durationDays: 20, frequencyMinDays: 3, frequencyMaxDays: 5 },
+      { title: '閱讀原子習慣 (2)', practiceAction: '每天閱讀 30 頁', startDate: '2026-09-21', durationDays: 20, frequencyMinDays: 3, frequencyMaxDays: 5 }
+    ]
+  }
+}).superRefine((data, ctx) => {
+  data.segments.forEach((seg, i) => {
+    if (!seg.startDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '請選擇開始時間', path: ['segments', i, 'startDate'] });
+    } else if (i === 0 && !isStartDateWithin14Days(seg.startDate)) {
+      // 14 天限制只套用在第一段；後續段落由接續規則推導
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '開始日期不能超過 14 天後', path: ['segments', 0, 'startDate'] });
+    }
+    if (seg.durationDays === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '請選擇想要持續多久', path: ['segments', i, 'durationDays'] });
+    }
+    if (seg.frequencyMinDays === undefined || seg.frequencyMaxDays === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '請為每個實踐填寫每週頻率', path: ['segments', i, 'frequencyMinDays'] });
+    }
+    if (i > 0) {
+      const prev = data.segments[i - 1];
+      if (prev.startDate && prev.durationDays !== undefined && seg.startDate) {
+        const expected = addDaysToDateString(prev.startDate, prev.durationDays);
+        if (seg.startDate !== expected) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `第 ${i + 1} 段開始日須為前一段結束日的隔日（${expected}）`,
+            path: ['segments', i, 'startDate']
+          });
+        }
+      }
+    }
+  });
+});
+
+registry.register('BatchCreatePracticeRequest', batchCreatePracticeSchema);
 
 // 更新實踐請求 Schema - 基於 Prisma schema practices 表
 // 注意：已打卡後，startDate, durationDays, frequencyMinDays, frequencyMaxDays 將被鎖定
 export const updatePracticeSchema = z.object({
   title: z.string().min(1, '標題不能為空').max(100, '標題不可超過100字').optional(),
+  // 編輯流程沿用舊上限 200，避免既有資料無法編輯；建立流程（createPracticeSchema）為 50
   practiceAction: z.string().max(200, '實踐行動描述不可超過200字').optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '請輸入有效的日期格式 YYYY-MM-DD').optional(),
-  durationDays: z.number().int().min(7).max(90).optional(),
+  durationDays: z.number().int().min(DURATION_DAYS_MIN).max(DURATION_DAYS_MAX).optional(),
   frequencyMinDays: z.number().int().min(1).max(7).optional(),
   frequencyMaxDays: z.number().int().min(1).max(7).optional(),
-  sessionDurationMinutes: z.number().int().min(5).max(240).optional(),
+  sessionDurationMinutes: z.number().int().min(SESSION_MINUTES_MIN).max(SESSION_MINUTES_MAX).optional(),
   practiceTimePeriods: z.array(practiceTimePeriodSchema).max(4).optional(),
   otherContext: z.string().max(500).optional(),
   tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
-  resources: z.array(practiceResourceInputSchema).max(5, '資源最多5個').optional(),
+  resources: z.array(practiceResourceInputSchema).max(RESOURCES_MAX, `資源最多${RESOURCES_MAX}個`).optional(),
   status: practiceStatusSchema.optional(),
   privacyStatus: z.enum(['private', 'public', 'delayed']).optional(),
   isDraft: z.boolean().optional().openapi({
@@ -1060,10 +1154,10 @@ export const createPracticeTemplateSchema = z.object({
       example: '每日閱讀 30 分鐘'
     }),
   practiceAction: z.string()
-    .max(200, '實踐行動描述不可超過 200 字')
+    .max(PRACTICE_ACTION_MAX_LENGTH, `實踐行動描述不可超過 ${PRACTICE_ACTION_MAX_LENGTH} 字`)
     .optional()
     .openapi({
-      description: '具體實踐行動描述',
+      description: '具體實踐行動描述（上限 50 字，與個人實踐建立流程一致）',
       example: '閱讀'
     }),
   categories: z.array(z.string().min(1).max(50))
@@ -1093,20 +1187,20 @@ export const createPracticeTemplateSchema = z.object({
     }),
   durationDays: z.number()
     .int('持續天數必須是整數')
-    .min(1, '持續天數最少 1 天')
-    .max(365, '持續天數最多 365 天')
+    .min(DURATION_DAYS_MIN, `持續天數最少 ${DURATION_DAYS_MIN} 天`)
+    .max(DURATION_DAYS_MAX, `持續天數最多 ${DURATION_DAYS_MAX} 天`)
     .optional()
     .openapi({
-      description: '建議持續天數',
+      description: '建議持續天數（1–90，與個人實踐統一上限）',
       example: 30
     }),
   sessionDurationMinutes: z.number()
     .int('每次時長必須是整數')
-    .min(1, '每次時長最少 1 分鐘')
-    .max(480, '每次時長最多 480 分鐘')
+    .min(SESSION_MINUTES_MIN, `每次時長最少 ${SESSION_MINUTES_MIN} 分鐘`)
+    .max(SESSION_MINUTES_MAX, `每次時長最多 ${SESSION_MINUTES_MAX} 分鐘`)
     .optional()
     .openapi({
-      description: '每次實踐時長（分鐘）',
+      description: '每次實踐時長（分鐘，1–999）',
       example: 30
     }),
   practiceTimePeriods: z.array(practiceTimePeriodSchema)
@@ -1149,6 +1243,26 @@ export const createPracticeTemplateSchema = z.object({
 // 註冊 CreatePracticeTemplateRequest
 registry.register('CreatePracticeTemplateRequest', createPracticeTemplateSchema);
 
+/**
+ * 拆段批次建立模版 Schema（模版無開始日，不驗日期接續）
+ */
+export const batchCreatePracticeTemplateSchema = z.object({
+  segments: z.array(createPracticeTemplateSchema)
+    .min(BATCH_SEGMENTS_MIN, `拆段至少 ${BATCH_SEGMENTS_MIN} 段`)
+    .max(BATCH_SEGMENTS_MAX, `拆段最多 ${BATCH_SEGMENTS_MAX} 段`)
+    .openapi({ description: '依序的各段模版（2–3 段）' })
+}).openapi('BatchCreatePracticeTemplateRequest', {
+  description: '一次建立多段實踐模版（長天數拆段）'
+}).superRefine((data, ctx) => {
+  data.segments.forEach((seg, i) => {
+    if (seg.durationDays === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: '請選擇想要持續多久', path: ['segments', i, 'durationDays'] });
+    }
+  });
+});
+
+registry.register('BatchCreatePracticeTemplateRequest', batchCreatePracticeTemplateSchema);
+
 // 更新模板請求 Schema
 export const updatePracticeTemplateSchema = z.object({
   title: z.string()
@@ -1160,10 +1274,10 @@ export const updatePracticeTemplateSchema = z.object({
       example: '每日閱讀 30 分鐘'
     }),
   practiceAction: z.string()
-    .max(200, '實踐行動描述不可超過 200 字')
+    .max(PRACTICE_ACTION_MAX_LENGTH, `實踐行動描述不可超過 ${PRACTICE_ACTION_MAX_LENGTH} 字`)
     .optional()
     .openapi({
-      description: '具體實踐行動描述',
+      description: '具體實踐行動描述（上限 50 字，與個人實踐建立流程一致）',
       example: '閱讀'
     }),
   categories: z.array(z.string().min(1).max(50))
@@ -1193,8 +1307,8 @@ export const updatePracticeTemplateSchema = z.object({
     }),
   durationDays: z.number()
     .int('持續天數必須是整數')
-    .min(1, '持續天數最少 1 天')
-    .max(365, '持續天數最多 365 天')
+    .min(DURATION_DAYS_MIN, `持續天數最少 ${DURATION_DAYS_MIN} 天`)
+    .max(DURATION_DAYS_MAX, `持續天數最多 ${DURATION_DAYS_MAX} 天`)
     .optional()
     .openapi({
       description: '建議持續天數',
@@ -1202,8 +1316,8 @@ export const updatePracticeTemplateSchema = z.object({
     }),
   sessionDurationMinutes: z.number()
     .int('每次時長必須是整數')
-    .min(1, '每次時長最少 1 分鐘')
-    .max(480, '每次時長最多 480 分鐘')
+    .min(SESSION_MINUTES_MIN, `每次時長最少 ${SESSION_MINUTES_MIN} 分鐘`)
+    .max(SESSION_MINUTES_MAX, `每次時長最多 ${SESSION_MINUTES_MAX} 分鐘`)
     .optional()
     .openapi({
       description: '每次實踐時長（分鐘）',
@@ -1254,6 +1368,9 @@ export const practiceTemplatesListApiResponseSchema = paginatedApiResponseSchema
 
 // 單一模板 API 回應
 export const practiceTemplateApiResponseSchema = apiSuccessResponseSchema(practiceTemplateResponseSchema.nullable());
+export const batchCreatePracticeTemplatesApiResponseSchema = apiSuccessResponseSchema(z.object({
+  templates: z.array(practiceTemplateResponseSchema).describe('依送出順序建立的模板')
+}).describe('拆段批次建立模板回應'));
 
 // 模板分類 API 回應
 export const templateCategoriesApiResponseSchema = apiSuccessResponseSchema(templateCategoriesResponseSchema);
@@ -1403,6 +1520,10 @@ export const userInteractionStatusApiResponseSchema = apiSuccessResponseSchema(u
 
 // 創建/操作回應
 export const createPracticeApiResponseSchema = apiSuccessResponseSchema(practiceEntityResponseSchema);
+export const batchCreatePracticesResponseSchema = z.object({
+  practices: z.array(practiceEntityResponseSchema).describe('依送出順序建立的實踐')
+}).describe('拆段批次建立回應');
+export const batchCreatePracticesApiResponseSchema = apiSuccessResponseSchema(batchCreatePracticesResponseSchema);
 export const updatePracticeApiResponseSchema = apiSuccessResponseSchema(practiceEntityResponseSchema);
 export const operationSuccessApiResponseSchema = apiSuccessResponseSchema(operationSuccessResponseSchema);
 
