@@ -45,6 +45,12 @@ export const EMAIL_TYPES = {
   ONBOARDING_C: 'onboarding_c',
   ONBOARDING_D: 'onboarding_d',
   ONBOARDING_E: 'onboarding_e',
+  // 共同挑戰系列
+  CHALLENGE_WELCOME: 'challenge_welcome',
+  CHALLENGE_T48H: 'challenge_t48h',
+  CHALLENGE_DAY1: 'challenge_day1',
+  CHALLENGE_FIRST_CHECKIN: 'challenge_first_checkin',
+  CHALLENGE_END: 'challenge_end',
 } as const;
 
 export type EmailTypeValue = (typeof EMAIL_TYPES)[keyof typeof EMAIL_TYPES];
