@@ -45,7 +45,7 @@ export const EMAIL_TYPES = {
   ONBOARDING_C: 'onboarding_c',
   ONBOARDING_D: 'onboarding_d',
   ONBOARDING_E: 'onboarding_e',
-  // 共同挑戰系列
+  // 共同挑戰信件節點（Weekly Summary 併入 practice_weekly_summary）
   CHALLENGE_WELCOME: 'challenge_welcome',
   CHALLENGE_T48H: 'challenge_t48h',
   CHALLENGE_DAY1: 'challenge_day1',

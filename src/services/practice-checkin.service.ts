@@ -43,6 +43,7 @@ import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
 import { recordView as trackView } from './view-tracking.service';
 import { MS_PER_DAY } from '../utils/date-utils';
+import { assertChallengeCheckinAllowed, isChallengeCohort } from './challenge-acl.service';
 import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
@@ -96,6 +97,9 @@ export async function createCheckIn(
     // 用於日期位移與 checkin_date（UTC 零點）
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
+
+    // 共同挑戰為固定時段：開始日前不可打卡，也不做提早打卡的日期位移
+    assertChallengeCheckinAllowed(await isChallengeCohort(practice.cohort_id), practice.start_date, today);
 
     // 取得實踐配置用於進度計算
     const durationDays = (practice as { duration_days?: number }).duration_days || 14;
