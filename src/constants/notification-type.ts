@@ -48,6 +48,7 @@ export const NOTIFICATION_TYPES = {
   COHORT_JOINED:        'CohortJoined',
   COHORT_MEMBER_REMOVED: 'CohortMemberRemoved',
   COHORT_WEEKLY_DIGEST: 'CohortWeeklyDigest',
+  COHORT_MESSAGE:       'CohortMessage',
 
   // 週報（僅 email，無 InApp/Push）
   WEEKLY_DIGEST: 'WeeklyDigest',

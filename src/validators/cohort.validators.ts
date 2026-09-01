@@ -32,12 +32,19 @@ export const updateCohortSchema = z.object({
 export const cohortResponseSchema = z.object({
   id: z.number().int(), programId: z.number().int(), slug: z.string(), displayName: z.string(),
   startDate: z.date(), endDate: z.date(), joinToken: z.string().uuid().nullable(),
+  joinPaused: z.boolean().openapi({ description: '是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）' }),
   joinDeadline: z.date().nullable(), capacity: z.number().int().nullable(),
   inviteMessage: z.string().nullable(), status: cohortStatusSchema,
   createdAt: z.date(), updatedAt: z.date().nullable()
 });
 export const cohortListResponseSchema = z.array(cohortResponseSchema);
-export const cohortJoinTokenResponseSchema = z.object({ cohortId: z.number().int(), joinToken: z.string().uuid().nullable() });
+export const organizationCohortResponseSchema = cohortResponseSchema.extend({
+  programName: z.string().openapi({ description: '所屬系列名稱' }),
+  joinedCount: z.number().int().nonnegative().openapi({ description: '已加入的參與者人數（不含帶領人）' })
+});
+export const organizationCohortListResponseSchema = z.array(organizationCohortResponseSchema);
+export const cohortJoinTokenResponseSchema = z.object({ cohortId: z.number().int(), joinToken: z.string().uuid().nullable(), joinPaused: z.boolean() });
 export type CreateCohortInput = z.infer<typeof createCohortSchema>;
 export type UpdateCohortInput = z.infer<typeof updateCohortSchema>;
 export type CohortResponse = z.infer<typeof cohortResponseSchema>;
+export type OrganizationCohortResponse = z.infer<typeof organizationCohortResponseSchema>;

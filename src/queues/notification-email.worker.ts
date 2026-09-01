@@ -103,7 +103,7 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
     const events = await prisma.notification_events.findMany({
       where: {
         priority: { in: ['P1', 'P2'] },
-        type: { notIn: [NOTIFICATION_TYPES.WISH_LINKED, NOTIFICATION_TYPES.COHORT_INVITATION, NOTIFICATION_TYPES.COHORT_JOINED, NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST] },
+        type: { notIn: [NOTIFICATION_TYPES.WISH_LINKED, NOTIFICATION_TYPES.COHORT_INVITATION, NOTIFICATION_TYPES.COHORT_JOINED, NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST, NOTIFICATION_TYPES.COHORT_MESSAGE] },
         created_at: {
           gte: batchStart,
           lt: batchEnd
