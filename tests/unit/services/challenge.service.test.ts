@@ -95,3 +95,27 @@ describe('challengeService.getDetail', () => {
     expect(detail).toMatchObject({ runStatus: 'ended', canJoin: false, unavailableReason: 'ended', template: { title: '晨間書寫' } });
   });
 });
+
+describe('challengeService.listMine', () => {
+  it('回傳我參加的挑戰並附自動複製的實踐 id', async () => {
+    prismaMock.cohorts.findMany.mockResolvedValue([challengeRow(), challengeRow({ id: 2, display_name: '已結束的挑戰' })] as never);
+    prismaMock.cohort_enrollments.groupBy.mockResolvedValue([{ cohort_id: 1, _count: { id: 12 } }] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([{ cohort_id: 1 }, { cohort_id: 2 }] as never);
+    prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
+    prismaMock.practices.findMany.mockResolvedValue([{ cohort_id: 1, external_id: '550e8400-e29b-41d4-a716-446655440000' }] as never);
+
+    const mine = await challengeService.listMine(42, new Date('2026-09-10T00:00:00.000Z'));
+    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ cohort_enrollments: { some: { user_id: 42, status: 'joined' } } })
+    }));
+    expect(mine).toHaveLength(2);
+    expect(mine[0]).toMatchObject({ id: 1, isJoined: true, participantCount: 12, practiceId: '550e8400-e29b-41d4-a716-446655440000' });
+    expect(mine[1]).toMatchObject({ id: 2, practiceId: null });
+  });
+
+  it('沒有參加任何挑戰時回空陣列且不查實踐', async () => {
+    prismaMock.cohorts.findMany.mockResolvedValue([]);
+    expect(await challengeService.listMine(42)).toEqual([]);
+    expect(prismaMock.practices.findMany).not.toHaveBeenCalled();
+  });
+});
