@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { COHORT_VISIBILITIES } from '../constants/cohort-visibility';
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD');
 const cohortStatusSchema = z.enum(['draft', 'published', 'archived']);
@@ -9,6 +10,7 @@ export const cohortProgramParamsSchema = z.object({
 export const cohortParamsSchema = cohortProgramParamsSchema.extend({
   cohortId: z.coerce.number().int().positive().openapi({ example: 1 })
 });
+export const cohortVisibilitySchema = z.enum(COHORT_VISIBILITIES).openapi({ description: '探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）', example: 'private' });
 export const createCohortSchema = z.object({
   slug: z.string().trim().min(1).max(50).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).openapi({ example: '2026-summer' }),
   displayName: z.string().trim().min(1).max(100).openapi({ example: '2026 夏季期' }),
@@ -17,6 +19,7 @@ export const createCohortSchema = z.object({
   joinDeadline: dateSchema.nullable().optional(),
   capacity: z.number().int().positive().nullable().optional(),
   inviteMessage: z.string().trim().max(2000).nullable().optional(),
+  visibility: cohortVisibilitySchema.optional().default('private'),
   status: cohortStatusSchema.optional().default('draft')
 }).refine(value => value.startDate <= value.endDate, { message: '開始日期不可晚於結束日期', path: ['endDate'] });
 export const updateCohortSchema = z.object({
@@ -27,6 +30,7 @@ export const updateCohortSchema = z.object({
   joinDeadline: dateSchema.nullable().optional(),
   capacity: z.number().int().positive().nullable().optional(),
   inviteMessage: z.string().trim().max(2000).nullable().optional(),
+  visibility: cohortVisibilitySchema.optional(),
   status: cohortStatusSchema.optional()
 }).refine(value => Object.keys(value).length > 0, { message: '至少需要提供一個可更新欄位' });
 export const cohortResponseSchema = z.object({
@@ -34,7 +38,7 @@ export const cohortResponseSchema = z.object({
   startDate: z.date(), endDate: z.date(), joinToken: z.string().uuid().nullable(),
   joinPaused: z.boolean().openapi({ description: '是否暫停透過邀請連結加入（token 保留，重新開放沿用原連結）' }),
   joinDeadline: z.date().nullable(), capacity: z.number().int().nullable(),
-  inviteMessage: z.string().nullable(), status: cohortStatusSchema,
+  inviteMessage: z.string().nullable(), status: cohortStatusSchema, visibility: cohortVisibilitySchema,
   createdAt: z.date(), updatedAt: z.date().nullable()
 });
 export const cohortListResponseSchema = z.array(cohortResponseSchema);

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { apiSuccessResponseSchema } from './api-response.validators';
 
-/** Space kinds surfaced on the space list; only event_course rows exist in DB. */
+/** Space kinds surfaced on the space list; challenge/event_course are aggregated from cohort_enrollments. */
 export const SPACE_KINDS = ['personal', 'challenge', 'event_course'] as const;
 
 /** Block types supported by the space home page (FR-5.3). */
@@ -76,7 +76,7 @@ export const publishBlockSchema = z.object({
 
 const spaceListItemSchema = z.object({
   kind: z.enum(SPACE_KINDS).openapi({ description: '空間類型', example: 'event_course' }),
-  id: z.string().nullable().openapi({ description: '空間 UUID；虛擬空間（personal/challenge）為 null', example: '550e8400-e29b-41d4-a716-446655440000' }),
+  id: z.string().nullable().openapi({ description: '活動課程卡為 cohortId 字串（導向 /cohorts/{id}）；虛擬空間（personal/challenge）為 null', example: '12' }),
   name: z.string().openapi({ description: '空間名稱', example: '自我覺察練習' }),
   host: z.string().openapi({ description: '卡片 host 顯示名（FR-2.2/2.3）', example: '我的島' }),
   memberCount: z.number().int().openapi({ description: '成員數', example: 12 }),

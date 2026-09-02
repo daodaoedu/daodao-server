@@ -3,6 +3,7 @@ import { loggerService } from './logging/logger.service';
 import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
+import { day, deriveJoinability, deriveRunStatus } from './cohort-run-state';
 
 /** 探索頁與詳情共用的查詢欄位 */
 const challengeSelect = {
@@ -27,28 +28,7 @@ type ChallengeRow = {
   program: { name: string; description: string | null; kind: string; deleted_at: Date | null };
 };
 
-const day = (value: Date): string => value.toISOString().slice(0, 10);
-
-/** 依日期推導挑戰運行狀態（cohorts.status 僅表示編輯狀態，比照 lighthouse 慣例） */
-export const deriveRunStatus = (startDate: Date, endDate: Date, now = new Date()): 'upcoming' | 'ongoing' | 'ended' => {
-  const today = day(now);
-  if (today < day(startDate)) return 'upcoming';
-  if (today > day(endDate)) return 'ended';
-  return 'ongoing';
-};
-
-/** 判斷是否可加入與不可加入原因（結束後不再接受新加入；join_deadline 未設時可加入至結束日） */
-const deriveJoinability = (
-  row: Pick<ChallengeRow, 'start_date' | 'end_date' | 'join_deadline' | 'capacity'>,
-  participantCount: number,
-  now = new Date()
-): { canJoin: boolean; unavailableReason: 'ended' | 'expired' | 'full' | null } => {
-  const today = day(now);
-  if (today > day(row.end_date)) return { canJoin: false, unavailableReason: 'ended' };
-  if (row.join_deadline !== null && today > day(row.join_deadline)) return { canJoin: false, unavailableReason: 'expired' };
-  if (row.capacity !== null && participantCount >= row.capacity) return { canJoin: false, unavailableReason: 'full' };
-  return { canJoin: true, unavailableReason: null };
-};
+export { deriveRunStatus } from './cohort-run-state';
 
 /** 批次取得已加入人數、使用者參與狀態與卡組指派，組出 summary */
 const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: Date) => {
@@ -152,7 +132,7 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
     const participantCount = await tx.cohort_enrollments.count({ where: { cohort_id: challengeId, status: 'joined' } });
     const joinability = deriveJoinability(row, participantCount, now);
     if (!joinability.canJoin) {
-      const messages = { ended: '此挑戰已結束，不再接受新加入', expired: '此挑戰的加入期限已截止', full: '此挑戰已額滿' } as const;
+      const messages = { ended: '此挑戰已結束，不再接受新加入', expired: '此挑戰的加入期限已截止', full: '此挑戰已額滿', paused: '此挑戰目前暫停加入' } as const;
       throw new ConflictError(messages[joinability.unavailableReason!]);
     }
 
