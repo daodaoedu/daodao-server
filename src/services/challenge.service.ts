@@ -3,6 +3,7 @@ import { loggerService } from './logging/logger.service';
 import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
+import { dateOf, deriveJoinability, deriveRunStatus, today } from './cohort-run-state';
 
 /** 探索頁與詳情共用的查詢欄位 */
 const challengeSelect = {
@@ -11,6 +12,7 @@ const challengeSelect = {
   start_date: true,
   end_date: true,
   join_deadline: true,
+  join_paused: true,
   capacity: true,
   status: true,
   program: { select: { name: true, description: true, kind: true, deleted_at: true } }
@@ -22,33 +24,13 @@ type ChallengeRow = {
   start_date: Date;
   end_date: Date;
   join_deadline: Date | null;
+  join_paused: boolean;
   capacity: number | null;
   status: string;
   program: { name: string; description: string | null; kind: string; deleted_at: Date | null };
 };
 
-const day = (value: Date): string => value.toISOString().slice(0, 10);
-
-/** 依日期推導挑戰運行狀態（cohorts.status 僅表示編輯狀態，比照 lighthouse 慣例） */
-export const deriveRunStatus = (startDate: Date, endDate: Date, now = new Date()): 'upcoming' | 'ongoing' | 'ended' => {
-  const today = day(now);
-  if (today < day(startDate)) return 'upcoming';
-  if (today > day(endDate)) return 'ended';
-  return 'ongoing';
-};
-
-/** 判斷是否可加入與不可加入原因（結束後不再接受新加入；join_deadline 未設時可加入至結束日） */
-const deriveJoinability = (
-  row: Pick<ChallengeRow, 'start_date' | 'end_date' | 'join_deadline' | 'capacity'>,
-  participantCount: number,
-  now = new Date()
-): { canJoin: boolean; unavailableReason: 'ended' | 'expired' | 'full' | null } => {
-  const today = day(now);
-  if (today > day(row.end_date)) return { canJoin: false, unavailableReason: 'ended' };
-  if (row.join_deadline !== null && today > day(row.join_deadline)) return { canJoin: false, unavailableReason: 'expired' };
-  if (row.capacity !== null && participantCount >= row.capacity) return { canJoin: false, unavailableReason: 'full' };
-  return { canJoin: true, unavailableReason: null };
-};
+export { deriveRunStatus } from './cohort-run-state';
 
 /** 批次取得已加入人數、使用者參與狀態與卡組指派，組出 summary */
 const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: Date) => {
@@ -96,12 +78,39 @@ const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: 
   });
 };
 
+/** 我參加的共同挑戰（含已結束）：依開始日新到舊，附我在該挑戰自動複製的實踐 */
+const listMine = async (userId: number, now = new Date()) => {
+  const rows = await prisma.cohorts.findMany({
+    where: {
+      program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null },
+      cohort_enrollments: { some: { user_id: userId, status: 'joined' } }
+    },
+    select: challengeSelect,
+    orderBy: { start_date: 'desc' }
+  });
+  if (rows.length === 0) return [];
+  const [summaries, practices] = await Promise.all([
+    buildSummaries(rows, userId, now),
+    // 與 join() 回傳的實踐一致：只取加入時自動複製的模板實踐，最早建立者優先
+    prisma.practices.findMany({
+      where: { user_id: userId, deleted_at: null, creation_source: 'cohort_template', cohort_id: { in: rows.map(row => row.id) } },
+      select: { cohort_id: true, external_id: true },
+      orderBy: { created_at: 'asc' }
+    })
+  ]);
+  const practiceByCohort = new Map<number | null, string>();
+  for (const practice of practices) {
+    if (practice.external_id && !practiceByCohort.has(practice.cohort_id)) practiceByCohort.set(practice.cohort_id, practice.external_id);
+  }
+  return summaries.map(summary => ({ ...summary, practiceId: practiceByCohort.get(summary.id) ?? null }));
+};
+
 /** 探索共同挑戰頁：列出已發佈且未結束的挑戰（未登入可看） */
 const list = async (userId: number | null, now = new Date()) => {
   const rows = await prisma.cohorts.findMany({
     where: {
       status: 'published',
-      end_date: { gte: new Date(day(now)) },
+      end_date: { gte: dateOf(today(now)) },
       program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null }
     },
     select: challengeSelect,
@@ -152,7 +161,7 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
     const participantCount = await tx.cohort_enrollments.count({ where: { cohort_id: challengeId, status: 'joined' } });
     const joinability = deriveJoinability(row, participantCount, now);
     if (!joinability.canJoin) {
-      const messages = { ended: '此挑戰已結束，不再接受新加入', expired: '此挑戰的加入期限已截止', full: '此挑戰已額滿' } as const;
+      const messages = { ended: '此挑戰已結束，不再接受新加入', expired: '此挑戰的加入期限已截止', full: '此挑戰已額滿', paused: '此挑戰目前暫停加入' } as const;
       throw new ConflictError(messages[joinability.unavailableReason!]);
     }
 
@@ -203,4 +212,4 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
   };
 };
 
-export const challengeService = { list, getDetail, join, deriveRunStatus };
+export const challengeService = { list, listMine, getDetail, join, deriveRunStatus };
