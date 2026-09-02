@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware';
 import { challengeService } from '../services/challenge.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import { challengeDetailResponseSchema, challengeJoinResultSchema, challengeListResponseSchema } from '../validators/challenge.validator';
+import { challengeDetailResponseSchema, challengeJoinResultSchema, challengeListResponseSchema, myChallengesResponseSchema } from '../validators/challenge.validator';
 
 /** 探索共同挑戰列表（公開；登入時附 isJoined） */
 const list = asyncHandler(async (req: Request, res: Response) => {
@@ -20,4 +20,10 @@ const join = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(createSuccessResponse(challengeJoinResultSchema.parse(await challengeService.join(Number(req.params.challengeId), req.user.id))));
 });
 
-export const challengeController = { list, detail, join };
+/** 我參加的共同挑戰（空間共同挑戰子頁） */
+const listMine = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError();
+  res.json(createSuccessResponse(myChallengesResponseSchema.parse(await challengeService.listMine(req.user.id))));
+});
+
+export const challengeController = { list, listMine, detail, join };

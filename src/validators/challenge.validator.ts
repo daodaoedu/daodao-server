@@ -40,3 +40,9 @@ export const challengeJoinResultSchema = z.object({
   status: z.literal('joined'),
   practiceId: z.string().uuid().nullable().openapi({ description: '自動複製產生的實踐 external_id；無綁定模板時為 null' })
 });
+
+/** 我參加的共同挑戰（空間共同挑戰子頁）：挑戰摘要 + 我在該挑戰的實踐 */
+export const myChallengeSchema = challengeSummarySchema.extend({
+  practiceId: z.string().uuid().nullable().openapi({ description: '加入時自動複製的實踐 external_id；無綁定模板或已刪除時為 null' })
+});
+export const myChallengesResponseSchema = z.array(myChallengeSchema);

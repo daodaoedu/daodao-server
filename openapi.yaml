@@ -28821,6 +28821,182 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/me/challenges:
+    get:
+      tags:
+        - Me
+      summary: 取得我參加的共同挑戰（含已結束）
+      description: 空間「共同挑戰」子頁用：列出當前用戶已加入的共同挑戰摘要，附加入時自動複製的實踐 ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功獲取我的共同挑戰
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: 挑戰（期）ID
+                          example: 1
+                        displayName:
+                          type: string
+                          description: 挑戰名稱
+                          example: 21 天晨間書寫
+                        programName:
+                          type: string
+                          description: 所屬挑戰主題名稱
+                          example: 晨間書寫
+                        description:
+                          type: string
+                          nullable: true
+                          description: 主題說明
+                        startDate:
+                          type: string
+                          format: date-time
+                          description: 開始日（所有參與者共用）
+                        endDate:
+                          type: string
+                          format: date-time
+                          description: 結束日
+                        joinDeadline:
+                          type: string
+                          nullable: true
+                          format: date-time
+                          description: 加入截止日；null 表示可加入至結束日
+                        participantCount:
+                          type: integer
+                          minimum: 0
+                          description: 已加入人數（xx 座島已加入）
+                          example: 12
+                        runStatus:
+                          type: string
+                          enum:
+                            - upcoming
+                            - ongoing
+                            - ended
+                          description: 挑戰運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
+                        canJoin:
+                          type: boolean
+                          description: 目前是否可加入
+                        unavailableReason:
+                          type: string
+                          nullable: true
+                          enum:
+                            - ended
+                            - expired
+                            - full
+                            - null
+                          description: 不可加入原因；可加入時為 null
+                        isJoined:
+                          type: boolean
+                          description: 當前使用者是否已加入；未登入一律 false
+                        hasInspirationDeck:
+                          type: boolean
+                          description: 是否有指派靈感卡卡組（顯示抽卡 icon）
+                        practiceId:
+                          type: string
+                          nullable: true
+                          format: uuid
+                          description: 加入時自動複製的實踐 external_id；無綁定模板或已刪除時為 null
+                      required:
+                        - id
+                        - displayName
+                        - programName
+                        - description
+                        - startDate
+                        - endDate
+                        - joinDeadline
+                        - participantCount
+                        - runStatus
+                        - canJoin
+                        - unavailableReason
+                        - isJoined
+                        - hasInspirationDeck
+                        - practiceId
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
   /api/v1/me/cohorts:
     get:
       tags:

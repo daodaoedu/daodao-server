@@ -76,6 +76,28 @@ const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: 
   });
 };
 
+/** 我參加的共同挑戰（含已結束）：依開始日新到舊，附我在該挑戰自動複製的實踐 */
+const listMine = async (userId: number, now = new Date()) => {
+  const rows = await prisma.cohorts.findMany({
+    where: {
+      program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null },
+      cohort_enrollments: { some: { user_id: userId, status: 'joined' } }
+    },
+    select: challengeSelect,
+    orderBy: { start_date: 'desc' }
+  });
+  if (rows.length === 0) return [];
+  const [summaries, practices] = await Promise.all([
+    buildSummaries(rows, userId, now),
+    prisma.practices.findMany({
+      where: { user_id: userId, deleted_at: null, cohort_id: { in: rows.map(row => row.id) } },
+      select: { cohort_id: true, external_id: true }
+    })
+  ]);
+  const practiceByCohort = new Map(practices.map(practice => [practice.cohort_id, practice.external_id]));
+  return summaries.map(summary => ({ ...summary, practiceId: practiceByCohort.get(summary.id) ?? null }));
+};
+
 /** 探索共同挑戰頁：列出已發佈且未結束的挑戰（未登入可看） */
 const list = async (userId: number | null, now = new Date()) => {
   const rows = await prisma.cohorts.findMany({
@@ -183,4 +205,4 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
   };
 };
 
-export const challengeService = { list, getDetail, join, deriveRunStatus };
+export const challengeService = { list, listMine, getDetail, join, deriveRunStatus };
