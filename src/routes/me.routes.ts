@@ -29,6 +29,8 @@ import authController from '@/controllers/auth.controller';
 import userController from '@/controllers/user.controller';
 import { cohortJoinController } from '@/controllers/cohort-join.controller';
 import { myCohortsResponseSchema } from '@/validators/cohort-join.validators';
+import { challengeController } from '@/controllers/challenge.controller';
+import { myChallengesResponseSchema } from '@/validators/challenge.validator';
 import { apiSuccessResponseSchema } from '@/validators/api-response.validators';
 
 const router = Router();
@@ -308,6 +310,29 @@ registry.registerPath({
 });
 
 /**
+ * GET /api/v1/me/challenges - 取得我參加的共同挑戰
+ */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/me/challenges',
+  tags: ['Me'],
+  summary: '取得我參加的共同挑戰（含已結束）',
+  description: '空間「共同挑戰」子頁用：列出當前用戶已加入的共同挑戰摘要，附加入時自動複製的實踐 ID',
+  responses: {
+    200: {
+      description: '成功獲取我的共同挑戰',
+      content: {
+        'application/json': {
+          schema: apiSuccessResponseSchema(myChallengesResponseSchema)
+        }
+      }
+    },
+    401: { $ref: '#/components/responses/UnauthorizedError' }
+  },
+  security: [{ bearerAuth: [] }]
+});
+
+/**
  * GET /api/v1/me/cohorts - 取得我加入的期列表
  */
 registry.registerPath({
@@ -448,6 +473,16 @@ router.get('/footprints',
 router.get('/cohorts',
   authenticate,
   cohortJoinController.listMyCohorts as RequestHandler
+);
+
+/**
+ * GET /me/challenges
+ * 獲取我參加的共同挑戰
+ * 需要身份驗證
+ */
+router.get('/challenges',
+  authenticate,
+  challengeController.listMine as RequestHandler
 );
 
 export default router;

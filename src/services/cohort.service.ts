@@ -4,17 +4,21 @@ import { prisma } from './database/prisma.service';
 import { randomUUID } from 'crypto';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 
-const select = { id: true, program_id: true, slug: true, display_name: true, start_date: true, end_date: true, join_token: true, join_paused: true, join_deadline: true, capacity: true, invite_message: true, status: true, created_at: true, updated_at: true } as const;
-type CohortRow = { id: number; program_id: number; slug: string; display_name: string; start_date: Date; end_date: Date; join_token: string | null; join_paused: boolean; join_deadline: Date | null; capacity: number | null; invite_message: string | null; status: string; created_at: Date; updated_at: Date | null };
+const select = { id: true, program_id: true, slug: true, display_name: true, start_date: true, end_date: true, join_token: true, join_paused: true, join_deadline: true, capacity: true, invite_message: true, status: true, visibility: true, created_at: true, updated_at: true } as const;
+type CohortRow = { id: number; program_id: number; slug: string; display_name: string; start_date: Date; end_date: Date; join_token: string | null; join_paused: boolean; join_deadline: Date | null; capacity: number | null; invite_message: string | null; status: string; visibility: string; created_at: Date; updated_at: Date | null };
 const asStatus = (status: string): CohortResponse['status'] => {
   if (status === 'draft' || status === 'published' || status === 'archived') return status;
   throw new Error(`Invalid cohort status: ${status}`);
+};
+const asVisibility = (visibility: string): CohortResponse['visibility'] => {
+  if (visibility === 'private' || visibility === 'public') return visibility;
+  throw new Error(`Invalid cohort visibility: ${visibility}`);
 };
 const map = (row: CohortRow): CohortResponse => ({
   id: row.id, programId: row.program_id, slug: row.slug, displayName: row.display_name,
   startDate: row.start_date, endDate: row.end_date, joinToken: row.join_token, joinPaused: row.join_paused,
   joinDeadline: row.join_deadline, capacity: row.capacity, inviteMessage: row.invite_message,
-  status: asStatus(row.status), createdAt: row.created_at, updatedAt: row.updated_at
+  status: asStatus(row.status), visibility: asVisibility(row.visibility), createdAt: row.created_at, updatedAt: row.updated_at
 });
 const date = (value: string): Date => new Date(`${value}T00:00:00.000Z`);
 const isCode = (error: unknown, code: string): boolean => typeof error === 'object' && error !== null && 'code' in error && error.code === code;
@@ -75,7 +79,7 @@ const get = async (programId: number, cohortId: number, userId: number): Promise
 const create = async (programId: number, input: CreateCohortInput, userId: number): Promise<CohortResponse> => {
   await assertProgram(programId, userId);
   try {
-    return map(await prisma.cohorts.create({ data: { program_id: programId, slug: input.slug, display_name: input.displayName, start_date: date(input.startDate), end_date: date(input.endDate), join_deadline: input.joinDeadline ? date(input.joinDeadline) : null, capacity: input.capacity ?? null, invite_message: input.inviteMessage ?? null, status: input.status }, select }));
+    return map(await prisma.cohorts.create({ data: { program_id: programId, slug: input.slug, display_name: input.displayName, start_date: date(input.startDate), end_date: date(input.endDate), join_deadline: input.joinDeadline ? date(input.joinDeadline) : null, capacity: input.capacity ?? null, invite_message: input.inviteMessage ?? null, visibility: input.visibility, status: input.status }, select }));
   } catch (error) {
     if (isCode(error, 'P2002')) throw new ConflictError('同一系列下不可使用重複 slug');
     throw error;
@@ -87,7 +91,7 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
   const endDate = input.endDate ? date(input.endDate) : current.end_date;
   if (startDate > endDate) throw new ConflictError('開始日期不可晚於結束日期');
   try {
-    return map(await prisma.cohorts.update({ where: { id: cohortId }, data: { ...(input.slug !== undefined && { slug: input.slug }), ...(input.displayName !== undefined && { display_name: input.displayName }), start_date: startDate, end_date: endDate, ...(input.joinDeadline !== undefined && { join_deadline: input.joinDeadline ? date(input.joinDeadline) : null }), ...(input.capacity !== undefined && { capacity: input.capacity }), ...(input.inviteMessage !== undefined && { invite_message: input.inviteMessage }), ...(input.status !== undefined && { status: input.status }), updated_at: new Date() }, select }));
+    return map(await prisma.cohorts.update({ where: { id: cohortId }, data: { ...(input.slug !== undefined && { slug: input.slug }), ...(input.displayName !== undefined && { display_name: input.displayName }), start_date: startDate, end_date: endDate, ...(input.joinDeadline !== undefined && { join_deadline: input.joinDeadline ? date(input.joinDeadline) : null }), ...(input.capacity !== undefined && { capacity: input.capacity }), ...(input.inviteMessage !== undefined && { invite_message: input.inviteMessage }), ...(input.visibility !== undefined && { visibility: input.visibility }), ...(input.status !== undefined && { status: input.status }), updated_at: new Date() }, select }));
   } catch (error) {
     if (isCode(error, 'P2002')) throw new ConflictError('同一系列下不可使用重複 slug');
     if (isCode(error, 'P2025')) throw new NotFoundError('找不到場次');
