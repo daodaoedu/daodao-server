@@ -4,14 +4,14 @@ import { cohortService } from '@/services/cohort.service';
 import { ConflictError, ForbiddenError } from '@/middleware/error.middleware';
 
 const now = new Date('2026-07-22T00:00:00.000Z');
-const row = { id: 8, program_id: 2, slug: 'summer', display_name: '夏季期', start_date: now, end_date: new Date('2026-08-22T00:00:00.000Z'), join_token: '123e4567-e89b-12d3-a456-426614174000', join_paused: false, join_deadline: null, capacity: null, invite_message: null, status: 'draft', created_at: now, updated_at: null };
+const row = { id: 8, program_id: 2, slug: 'summer', display_name: '夏季期', start_date: now, end_date: new Date('2026-08-22T00:00:00.000Z'), join_token: '123e4567-e89b-12d3-a456-426614174000', join_paused: false, join_deadline: null, capacity: null, invite_message: null, status: 'draft', visibility: 'private', created_at: now, updated_at: null };
 
 describe('cohortService', () => {
   beforeEach(() => setupTransactionMock());
   it('creates a draft cohort under an owned active program', async () => {
     prismaMock.programs.findFirst.mockResolvedValue({ organization: { status: 'active' } } as never);
     prismaMock.cohorts.create.mockResolvedValue(row as never);
-    const result = await cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', status: 'draft' }, 42);
+    const result = await cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', visibility: 'private', status: 'draft' }, 42);
     expect(result.status).toBe('draft');
     expect(prismaMock.cohorts.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ program_id: 2, status: 'draft' }) }));
   });
@@ -19,7 +19,7 @@ describe('cohortService', () => {
   it('maps duplicate slugs to 409', async () => {
     prismaMock.programs.findFirst.mockResolvedValue({ organization: { status: 'active' } } as never);
     prismaMock.cohorts.create.mockRejectedValue(mockPrismaError('P2002'));
-    await expect(cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', status: 'draft' }, 42)).rejects.toBeInstanceOf(ConflictError);
+    await expect(cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', visibility: 'private', status: 'draft' }, 42)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('rejects a cohort id that is not under the scoped program/member chain', async () => {

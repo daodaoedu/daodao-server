@@ -4,6 +4,340 @@
  */
 
 export interface paths {
+    "/api/v1/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 探索活動列表（公開，列出組織公開、已發佈且未結束的燈塔期） */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 活動列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /**
+                                 * @description 活動（期）ID
+                                 * @example 1
+                                 */
+                                id: number;
+                                /**
+                                 * @description 活動名稱
+                                 * @example 2026 秋季讀書會
+                                 */
+                                displayName: string;
+                                /**
+                                 * @description 所屬系列名稱
+                                 * @example 線上讀書會
+                                 */
+                                programName: string;
+                                /** @description 系列說明 */
+                                description: string | null;
+                                /**
+                                 * @description 主辦組織名稱
+                                 * @example 島島阿學
+                                 */
+                                organizationName: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 開始日
+                                 */
+                                startDate: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 結束日
+                                 */
+                                endDate: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 加入截止日；null 表示可加入至結束日
+                                 */
+                                joinDeadline: string | null;
+                                /** @description 人數上限；null 表示不限 */
+                                capacity: number | null;
+                                /**
+                                 * @description 已加入人數
+                                 * @example 12
+                                 */
+                                participantCount: number;
+                                /**
+                                 * @description 活動運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
+                                 * @enum {string}
+                                 */
+                                runStatus: "upcoming" | "ongoing" | "ended";
+                                /** @description 目前是否可加入 */
+                                canJoin: boolean;
+                                /**
+                                 * @description 不可加入原因；可加入時為 null
+                                 * @enum {string|null}
+                                 */
+                                unavailableReason: "ended" | "expired" | "full" | "paused" | null;
+                                /** @description 當前使用者是否已加入；未登入一律 false */
+                                isJoined: boolean;
+                                /**
+                                 * Format: uuid
+                                 * @description 加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null
+                                 */
+                                joinToken: string | null;
+                            }[];
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activities/{cohortId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活動詳情（公開；已結束仍可查看） */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 活動（期）ID */
+                    cohortId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 活動詳情 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates successful API response
+                             * @enum {boolean}
+                             */
+                            success: true;
+                            /** @description The main response data */
+                            data: {
+                                /**
+                                 * @description 活動（期）ID
+                                 * @example 1
+                                 */
+                                id: number;
+                                /**
+                                 * @description 活動名稱
+                                 * @example 2026 秋季讀書會
+                                 */
+                                displayName: string;
+                                /**
+                                 * @description 所屬系列名稱
+                                 * @example 線上讀書會
+                                 */
+                                programName: string;
+                                /** @description 系列說明 */
+                                description: string | null;
+                                /**
+                                 * @description 主辦組織名稱
+                                 * @example 島島阿學
+                                 */
+                                organizationName: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 開始日
+                                 */
+                                startDate: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 結束日
+                                 */
+                                endDate: string;
+                                /**
+                                 * Format: date-time
+                                 * @description 加入截止日；null 表示可加入至結束日
+                                 */
+                                joinDeadline: string | null;
+                                /** @description 人數上限；null 表示不限 */
+                                capacity: number | null;
+                                /**
+                                 * @description 已加入人數
+                                 * @example 12
+                                 */
+                                participantCount: number;
+                                /**
+                                 * @description 活動運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
+                                 * @enum {string}
+                                 */
+                                runStatus: "upcoming" | "ongoing" | "ended";
+                                /** @description 目前是否可加入 */
+                                canJoin: boolean;
+                                /**
+                                 * @description 不可加入原因；可加入時為 null
+                                 * @enum {string|null}
+                                 */
+                                unavailableReason: "ended" | "expired" | "full" | "paused" | null;
+                                /** @description 當前使用者是否已加入；未登入一律 false */
+                                isJoined: boolean;
+                                /**
+                                 * Format: uuid
+                                 * @description 加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null
+                                 */
+                                joinToken: string | null;
+                                organization: {
+                                    /** @description 主辦組織名稱 */
+                                    name: string;
+                                    /** @description 組織簡介 */
+                                    bio: string | null;
+                                    /** @description 組織外部連結 */
+                                    externalLink: string | null;
+                                };
+                                /** @description 組織設定的邀請文案 */
+                                inviteMessage: string | null;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                404: components["responses"]["NotFoundError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/challenges/programs": {
         parameters: {
             query?: never;
@@ -13624,6 +13958,12 @@ export interface paths {
                                 inviteMessage: string | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "archived";
+                                /**
+                                 * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                                 * @example private
+                                 * @enum {string}
+                                 */
+                                visibility: "private" | "public";
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -13712,6 +14052,13 @@ export interface paths {
                         capacity?: number | null;
                         inviteMessage?: string | null;
                         /**
+                         * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                         * @default private
+                         * @example private
+                         * @enum {string}
+                         */
+                        visibility?: "private" | "public";
+                        /**
                          * @default draft
                          * @enum {string}
                          */
@@ -13752,6 +14099,12 @@ export interface paths {
                                 inviteMessage: string | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "archived";
+                                /**
+                                 * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                                 * @example private
+                                 * @enum {string}
+                                 */
+                                visibility: "private" | "public";
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -13875,6 +14228,12 @@ export interface paths {
                                 inviteMessage: string | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "archived";
+                                /**
+                                 * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                                 * @example private
+                                 * @enum {string}
+                                 */
+                                visibility: "private" | "public";
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -13988,6 +14347,12 @@ export interface paths {
                         joinDeadline?: string | null;
                         capacity?: number | null;
                         inviteMessage?: string | null;
+                        /**
+                         * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                         * @example private
+                         * @enum {string}
+                         */
+                        visibility?: "private" | "public";
                         /** @enum {string} */
                         status?: "draft" | "published" | "archived";
                     };
@@ -14026,6 +14391,12 @@ export interface paths {
                                 inviteMessage: string | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "archived";
+                                /**
+                                 * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                                 * @example private
+                                 * @enum {string}
+                                 */
+                                visibility: "private" | "public";
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -15047,6 +15418,12 @@ export interface paths {
                                 inviteMessage: string | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "archived";
+                                /**
+                                 * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                                 * @example private
+                                 * @enum {string}
+                                 */
+                                visibility: "private" | "public";
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -15169,6 +15546,12 @@ export interface paths {
                                 inviteMessage: string | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "archived";
+                                /**
+                                 * @description 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                                 * @example private
+                                 * @enum {string}
+                                 */
+                                visibility: "private" | "public";
                                 /** Format: date-time */
                                 createdAt: string;
                                 /** Format: date-time */
@@ -37238,6 +37621,78 @@ export interface components {
              */
             hasReachedTarget: boolean;
         };
+        /**
+         * @description 更新實踐反思請求
+         * @example {
+         *       "reflection": "這次實踐讓我學到了很多，也培養了持續的習慣"
+         *     }
+         */
+        PatchReflectionRequest: {
+            /**
+             * @description 使用者的實踐反思文字
+             * @example 這次實踐讓我學到了很多，也培養了持續的習慣
+             */
+            reflection: string;
+        };
+        /**
+         * @description 更新「接下來我想」請求
+         * @example {
+         *       "nextIntent": "我想繼續保持每天閱讀的習慣，並嘗試更難的書籍",
+         *       "saveDraft": true
+         *     }
+         */
+        PatchNextIntentRequest: {
+            /**
+             * @description 完成實踐後，接下來想做的事
+             * @example 我想繼續保持每天閱讀的習慣，並嘗試更難的書籍
+             */
+            nextIntent: string;
+            /**
+             * @description 是否同時複製此實踐建立草稿
+             * @example false
+             */
+            saveDraft?: boolean;
+        };
+        /**
+         * @description 更新精選打卡列表請求
+         * @example {
+         *       "checkinIds": [
+         *         "456"
+         *       ]
+         *     }
+         */
+        PatchSelectedCheckinsRequest: {
+            /**
+             * @description 精選打卡 ID 列表（整數 ID 字串，最多 3 筆）
+             * @example [
+             *       "456"
+             *     ]
+             */
+            checkinIds: string[];
+        };
+        /**
+         * @description 建立 AI 洞察回饋請求
+         * @example {
+         *       "type": "positive",
+         *       "reasons": []
+         *     }
+         */
+        CreateInsightFeedbackRequest: {
+            /**
+             * @description 洞察回饋類型 (positive: 正面, negative: 負面)
+             * @example positive
+             * @enum {string}
+             */
+            type: "positive" | "negative";
+            /**
+             * @description 回饋原因（選填，通常用於負面回饋）
+             * @example [
+             *       "內容不準確",
+             *       "與我的實踐無關"
+             *     ]
+             */
+            reasons?: string[];
+        };
         PracticeStatsQuery: {
             /**
              * @description 開始日期
@@ -48822,8 +49277,8 @@ export interface components {
              */
             kind: "personal" | "challenge" | "event_course";
             /**
-             * @description 空間 UUID；虛擬空間（personal/challenge）為 null
-             * @example 550e8400-e29b-41d4-a716-446655440000
+             * @description 活動課程卡為 cohortId 字串（導向 /cohorts/{id}）；虛擬空間（personal/challenge）為 null
+             * @example 12
              */
             id: string | null;
             /**

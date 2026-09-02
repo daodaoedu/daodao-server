@@ -14644,8 +14644,8 @@ components:
         id:
           type: string
           nullable: true
-          description: 空間 UUID；虛擬空間（personal/challenge）為 null
-          example: 550e8400-e29b-41d4-a716-446655440000
+          description: 活動課程卡為 cohortId 字串（導向 /cohorts/{id}）；虛擬空間（personal/challenge）為 null
+          example: '12'
         name:
           type: string
           description: 空間名稱
@@ -15568,6 +15568,397 @@ components:
       description: The main response data
   parameters: {}
 paths:
+  /api/v1/activities:
+    get:
+      tags:
+        - Activity
+      summary: 探索活動列表（公開，列出組織公開、已發佈且未結束的燈塔期）
+      responses:
+        '200':
+          description: 活動列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: 活動（期）ID
+                          example: 1
+                        displayName:
+                          type: string
+                          description: 活動名稱
+                          example: 2026 秋季讀書會
+                        programName:
+                          type: string
+                          description: 所屬系列名稱
+                          example: 線上讀書會
+                        description:
+                          type: string
+                          nullable: true
+                          description: 系列說明
+                        organizationName:
+                          type: string
+                          description: 主辦組織名稱
+                          example: 島島阿學
+                        startDate:
+                          type: string
+                          format: date-time
+                          description: 開始日
+                        endDate:
+                          type: string
+                          format: date-time
+                          description: 結束日
+                        joinDeadline:
+                          type: string
+                          nullable: true
+                          format: date-time
+                          description: 加入截止日；null 表示可加入至結束日
+                        capacity:
+                          type: integer
+                          nullable: true
+                          description: 人數上限；null 表示不限
+                        participantCount:
+                          type: integer
+                          minimum: 0
+                          description: 已加入人數
+                          example: 12
+                        runStatus:
+                          type: string
+                          enum:
+                            - upcoming
+                            - ongoing
+                            - ended
+                          description: 活動運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
+                        canJoin:
+                          type: boolean
+                          description: 目前是否可加入
+                        unavailableReason:
+                          type: string
+                          nullable: true
+                          enum:
+                            - ended
+                            - expired
+                            - full
+                            - paused
+                            - null
+                          description: 不可加入原因；可加入時為 null
+                        isJoined:
+                          type: boolean
+                          description: 當前使用者是否已加入；未登入一律 false
+                        joinToken:
+                          type: string
+                          nullable: true
+                          format: uuid
+                          description: 加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null
+                      required:
+                        - id
+                        - displayName
+                        - programName
+                        - description
+                        - organizationName
+                        - startDate
+                        - endDate
+                        - joinDeadline
+                        - capacity
+                        - participantCount
+                        - runStatus
+                        - canJoin
+                        - unavailableReason
+                        - isJoined
+                        - joinToken
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+  /api/v1/activities/{cohortId}:
+    get:
+      tags:
+        - Activity
+      summary: 活動詳情（公開；已結束仍可查看）
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 活動（期）ID
+            example: 1
+          required: true
+          description: 活動（期）ID
+          name: cohortId
+          in: path
+      responses:
+        '200':
+          description: 活動詳情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: 活動（期）ID
+                        example: 1
+                      displayName:
+                        type: string
+                        description: 活動名稱
+                        example: 2026 秋季讀書會
+                      programName:
+                        type: string
+                        description: 所屬系列名稱
+                        example: 線上讀書會
+                      description:
+                        type: string
+                        nullable: true
+                        description: 系列說明
+                      organizationName:
+                        type: string
+                        description: 主辦組織名稱
+                        example: 島島阿學
+                      startDate:
+                        type: string
+                        format: date-time
+                        description: 開始日
+                      endDate:
+                        type: string
+                        format: date-time
+                        description: 結束日
+                      joinDeadline:
+                        type: string
+                        nullable: true
+                        format: date-time
+                        description: 加入截止日；null 表示可加入至結束日
+                      capacity:
+                        type: integer
+                        nullable: true
+                        description: 人數上限；null 表示不限
+                      participantCount:
+                        type: integer
+                        minimum: 0
+                        description: 已加入人數
+                        example: 12
+                      runStatus:
+                        type: string
+                        enum:
+                          - upcoming
+                          - ongoing
+                          - ended
+                        description: 活動運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
+                      canJoin:
+                        type: boolean
+                        description: 目前是否可加入
+                      unavailableReason:
+                        type: string
+                        nullable: true
+                        enum:
+                          - ended
+                          - expired
+                          - full
+                          - paused
+                          - null
+                        description: 不可加入原因；可加入時為 null
+                      isJoined:
+                        type: boolean
+                        description: 當前使用者是否已加入；未登入一律 false
+                      joinToken:
+                        type: string
+                        nullable: true
+                        format: uuid
+                        description: 加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null
+                      organization:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: 主辦組織名稱
+                          bio:
+                            type: string
+                            nullable: true
+                            description: 組織簡介
+                          externalLink:
+                            type: string
+                            nullable: true
+                            description: 組織外部連結
+                        required:
+                          - name
+                          - bio
+                          - externalLink
+                      inviteMessage:
+                        type: string
+                        nullable: true
+                        description: 組織設定的邀請文案
+                    required:
+                      - id
+                      - displayName
+                      - programName
+                      - description
+                      - organizationName
+                      - startDate
+                      - endDate
+                      - joinDeadline
+                      - capacity
+                      - participantCount
+                      - runStatus
+                      - canJoin
+                      - unavailableReason
+                      - isJoined
+                      - joinToken
+                      - organization
+                      - inviteMessage
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_3
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/admin/challenges/programs:
     get:
       tags: &ref_28
@@ -31378,6 +31769,13 @@ paths:
                             - draft
                             - published
                             - archived
+                        visibility:
+                          type: string
+                          enum:
+                            - private
+                            - public
+                          description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                          example: private
                         createdAt:
                           type: string
                           format: date-time
@@ -31398,6 +31796,7 @@ paths:
                         - capacity
                         - inviteMessage
                         - status
+                        - visibility
                         - createdAt
                         - updatedAt
                     description: The main response data
@@ -31522,6 +31921,14 @@ paths:
                   type: string
                   nullable: true
                   maxLength: 2000
+                visibility:
+                  type: string
+                  enum:
+                    - private
+                    - public
+                  default: private
+                  description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                  example: private
                 status:
                   type: string
                   enum:
@@ -31587,6 +31994,13 @@ paths:
                           - draft
                           - published
                           - archived
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - public
+                        description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                        example: private
                       createdAt:
                         type: string
                         format: date-time
@@ -31607,6 +32021,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - status
+                      - visibility
                       - createdAt
                       - updatedAt
                     description: The main response data
@@ -31759,6 +32174,13 @@ paths:
                           - draft
                           - published
                           - archived
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - public
+                        description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                        example: private
                       createdAt:
                         type: string
                         format: date-time
@@ -31779,6 +32201,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - status
+                      - visibility
                       - createdAt
                       - updatedAt
                     description: The main response data
@@ -31909,6 +32332,13 @@ paths:
                   type: string
                   nullable: true
                   maxLength: 2000
+                visibility:
+                  type: string
+                  enum:
+                    - private
+                    - public
+                  description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                  example: private
                 status:
                   type: string
                   enum:
@@ -31968,6 +32398,13 @@ paths:
                           - draft
                           - published
                           - archived
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - public
+                        description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                        example: private
                       createdAt:
                         type: string
                         format: date-time
@@ -31988,6 +32425,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - status
+                      - visibility
                       - createdAt
                       - updatedAt
                     description: The main response data
@@ -33285,6 +33723,13 @@ paths:
                           - draft
                           - published
                           - archived
+                      visibility:
+                        type: string
+                        enum:
+                          - private
+                          - public
+                        description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                        example: private
                       createdAt:
                         type: string
                         format: date-time
@@ -33305,6 +33750,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - status
+                      - visibility
                       - createdAt
                       - updatedAt
                     description: The main response data
@@ -33451,6 +33897,13 @@ paths:
                             - draft
                             - published
                             - archived
+                        visibility:
+                          type: string
+                          enum:
+                            - private
+                            - public
+                          description: 探索活動頁可見性：private（僅邀請連結）、public（列於探索活動頁，任何人可取得加入連結）
+                          example: private
                         createdAt:
                           type: string
                           format: date-time
@@ -33478,6 +33931,7 @@ paths:
                         - capacity
                         - inviteMessage
                         - status
+                        - visibility
                         - createdAt
                         - updatedAt
                         - programName
