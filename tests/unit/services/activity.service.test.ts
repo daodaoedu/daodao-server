@@ -29,7 +29,7 @@ const setupCounts = (joinedCount = 0, joinedByUser = false) => {
 };
 
 describe('deriveJoinability', () => {
-  const base = { start_date: new Date('2026-09-15T00:00:00.000Z'), end_date: new Date('2026-10-15T00:00:00.000Z'), join_deadline: null, capacity: null };
+  const base = { start_date: new Date('2026-09-15T00:00:00.000Z'), end_date: new Date('2026-10-15T00:00:00.000Z'), join_deadline: null, capacity: null, join_paused: false };
   const now = new Date('2026-09-01T00:00:00.000Z');
 
   it('join_paused 視為暫停加入', () => {
@@ -40,13 +40,30 @@ describe('deriveJoinability', () => {
     expect(deriveJoinability({ ...base, join_paused: true }, 0, new Date('2026-11-01T00:00:00.000Z'))).toEqual({ canJoin: false, unavailableReason: 'ended' });
   });
 
-  it('未帶 join_paused 時沿用挑戰語意', () => {
-    expect(deriveJoinability(base, 0, now)).toEqual({ canJoin: true, unavailableReason: null });
+  it('暫停優先於額滿', () => {
+    expect(deriveJoinability({ ...base, join_paused: true, capacity: 1 }, 1, now)).toEqual({ canJoin: false, unavailableReason: 'paused' });
+  });
+
+  it('以 Asia/Taipei 日曆日判斷：結束日當天台灣 23:00（UTC 15:00）仍可加入', () => {
+    expect(deriveJoinability(base, 0, new Date('2026-10-15T15:00:00.000Z'))).toEqual({ canJoin: true, unavailableReason: null });
+  });
+
+  it('以 Asia/Taipei 日曆日判斷：結束日隔天台灣 00:30（UTC 前一日 16:30）已結束', () => {
+    expect(deriveJoinability(base, 0, new Date('2026-10-15T16:30:00.000Z'))).toEqual({ canJoin: false, unavailableReason: 'ended' });
   });
 });
 
 describe('activityService.list', () => {
   const now = new Date('2026-09-01T00:00:00.000Z');
+
+  it('列表以 Asia/Taipei 的今天過濾 end_date（台灣 09-02 00:30 = UTC 09-01 16:30 → 今天是 09-02）', async () => {
+    prismaMock.cohorts.findMany.mockResolvedValue([]);
+    setupCounts();
+    await activityService.list(null, new Date('2026-09-01T16:30:00.000Z'));
+    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ end_date: { gte: new Date('2026-09-02T00:00:00.000Z') } })
+    }));
+  });
 
   it('只查公開、已發佈、未結束的燈塔期，未登入回傳 isJoined=false 與 joinToken', async () => {
     prismaMock.cohorts.findMany.mockResolvedValue([activityRow()] as never);

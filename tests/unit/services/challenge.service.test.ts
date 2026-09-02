@@ -10,6 +10,7 @@ const challengeRow = (overrides: Record<string, unknown> = {}) => ({
   start_date: new Date('2026-09-01T00:00:00.000Z'),
   end_date: new Date('2026-09-21T00:00:00.000Z'),
   join_deadline: null,
+  join_paused: false,
   capacity: null,
   status: 'published',
   program: { name: '晨間書寫', description: '一起寫', kind: 'challenge', deleted_at: null },
@@ -20,8 +21,12 @@ describe('deriveRunStatus', () => {
   const start = new Date('2026-09-01T00:00:00.000Z');
   const end = new Date('2026-09-21T00:00:00.000Z');
 
-  it('開始日前為 upcoming', () => {
-    expect(deriveRunStatus(start, end, new Date('2026-08-31T23:00:00.000Z'))).toBe('upcoming');
+  it('開始日前為 upcoming（台灣 08-31 23:00 = UTC 15:00）', () => {
+    expect(deriveRunStatus(start, end, new Date('2026-08-31T15:00:00.000Z'))).toBe('upcoming');
+  });
+
+  it('台灣已是開始日（UTC 前一日 16:00）即為 ongoing', () => {
+    expect(deriveRunStatus(start, end, new Date('2026-08-31T16:00:00.000Z'))).toBe('ongoing');
   });
 
   it('開始日當天即為 ongoing（含頭）', () => {
@@ -97,6 +102,24 @@ describe('challengeService.getDetail', () => {
 });
 
 describe('challengeService.listMine', () => {
+  it('同一挑戰有多筆實踐時取最早建立的模板實踐（與 join 回傳一致）', async () => {
+    prismaMock.cohorts.findMany.mockResolvedValue([challengeRow()] as never);
+    prismaMock.cohort_enrollments.groupBy.mockResolvedValue([]);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([{ cohort_id: 1 }] as never);
+    prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
+    prismaMock.practices.findMany.mockResolvedValue([
+      { cohort_id: 1, external_id: 'first-uuid' },
+      { cohort_id: 1, external_id: 'second-uuid' }
+    ] as never);
+
+    const [mine] = await challengeService.listMine(42, new Date('2026-09-10T00:00:00.000Z'));
+    expect(prismaMock.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ creation_source: 'cohort_template' }),
+      orderBy: { created_at: 'asc' }
+    }));
+    expect(mine.practiceId).toBe('first-uuid');
+  });
+
   it('回傳我參加的挑戰並附自動複製的實踐 id', async () => {
     prismaMock.cohorts.findMany.mockResolvedValue([challengeRow(), challengeRow({ id: 2, display_name: '已結束的挑戰' })] as never);
     prismaMock.cohort_enrollments.groupBy.mockResolvedValue([{ cohort_id: 1, _count: { id: 12 } }] as never);

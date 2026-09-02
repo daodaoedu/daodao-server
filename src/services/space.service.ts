@@ -185,14 +185,14 @@ const enrollmentActivityAt = (enrollment: EnrollmentWithCohort): Date | null =>
  * 活動課程卡的 id 為 cohortId 字串，前端導向 /cohorts/[cohortId]。
  */
 async function listMySpaces(userId: number) {
-  const [personalCounts, enrollments] = await Promise.all([
+  const [personalCounts, enrollmentRows] = await Promise.all([
     prisma.practices.groupBy({
       by: ['status'],
       where: { user_id: userId, deleted_at: null, status: { in: [...SUBPAGE_PRACTICE_STATUSES] } },
       _count: { _all: true },
     }),
     prisma.cohort_enrollments.findMany({
-      where: { user_id: userId, status: 'joined', cohort: { program: { deleted_at: null } } },
+      where: { user_id: userId, status: 'joined', cohort: { program: { deleted_at: null, organization: { status: 'active' } } } },
       select: {
         joined_at: true,
         role: true,
@@ -217,11 +217,14 @@ async function listMySpaces(userId: number) {
           },
         },
       },
-    }) as unknown as Promise<EnrollmentWithCohort[]>,
+    }),
   ]);
 
   const personalTotal = personalCounts.reduce((sum, row) => sum + row._count._all, 0);
   const personalActive = personalCounts.some(row => row.status === 'active' && row._count._all > 0);
+
+  // 同一使用者可能因 email 邀請 + 帳號加入而在同一期留下兩筆 joined 列：以期為單位去重
+  const enrollments: EnrollmentWithCohort[] = [...new Map(enrollmentRows.map(row => [row.cohort.id, row])).values()];
 
   const avatarsOf = (enrollment: EnrollmentWithCohort) =>
     toAvatars(enrollment.cohort.cohort_enrollments.flatMap(member => (member.user ? [{ users: member.user }] : [])));
@@ -230,14 +233,13 @@ async function listMySpaces(userId: number) {
   const challengeEnrollments = enrollments.filter(enrollment => enrollment.cohort.program.kind === PROGRAM_KINDS.CHALLENGE);
   const eventEnrollments = enrollments.filter(enrollment => enrollment.cohort.program.kind === PROGRAM_KINDS.LIGHTHOUSE);
 
-  // 共同挑戰卡：以進行中的挑戰為主；沒有進行中的就取最近一檔（依開始日）
+  // 共同挑戰卡的人數與頭像取「代表挑戰」：進行中且開始日最近的一檔；沒有進行中的就取最近一檔
   const now = new Date();
-  const ongoingChallenges = challengeEnrollments.filter(
-    enrollment => deriveRunStatus(enrollment.cohort.start_date, enrollment.cohort.end_date, now) === 'ongoing'
-  );
-  const featuredChallenges = ongoingChallenges.length > 0
-    ? ongoingChallenges
-    : [...challengeEnrollments].sort((a, b) => b.cohort.start_date.getTime() - a.cohort.start_date.getTime()).slice(0, 1);
+  const byLatestStart = (a: EnrollmentWithCohort, b: EnrollmentWithCohort) => b.cohort.start_date.getTime() - a.cohort.start_date.getTime();
+  const ongoingChallenges = challengeEnrollments
+    .filter(enrollment => deriveRunStatus(enrollment.cohort.start_date, enrollment.cohort.end_date, now) === 'ongoing')
+    .sort(byLatestStart);
+  const featuredChallenge = ongoingChallenges[0] ?? [...challengeEnrollments].sort(byLatestStart)[0] ?? null;
 
   const eventSpaces = eventEnrollments
     .map(enrollment => ({ enrollment, activityAt: enrollmentActivityAt(enrollment) }))
@@ -273,8 +275,8 @@ async function listMySpaces(userId: number) {
       id: null,
       name: '共同挑戰',
       host: '島島阿學',
-      memberCount: featuredChallenges.reduce((sum, enrollment) => sum + enrollment.cohort._count.cohort_enrollments, 0),
-      memberAvatars: featuredChallenges[0] ? avatarsOf(featuredChallenges[0]) : [],
+      memberCount: featuredChallenge?.cohort._count.cohort_enrollments ?? 0,
+      memberAvatars: featuredChallenge ? avatarsOf(featuredChallenge) : [],
       hasActivePractice: challengeEnrollments.some(hasActive),
       practiceCount: challengeEnrollments.reduce((sum, enrollment) => sum + enrollment.cohort.practices.length, 0),
       isHost: false,

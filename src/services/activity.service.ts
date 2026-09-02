@@ -2,7 +2,7 @@ import { NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
 import { COHORT_VISIBILITY } from '../constants/cohort-visibility';
-import { day, deriveJoinability, deriveRunStatus } from './cohort-run-state';
+import { dateOf, deriveJoinability, deriveRunStatus, today } from './cohort-run-state';
 
 /** 探索活動頁與詳情共用的查詢欄位 */
 const activitySelect = {
@@ -105,18 +105,18 @@ const list = async (userId: number | null, now = new Date()) => {
     where: {
       status: 'published',
       visibility: COHORT_VISIBILITY.PUBLIC,
-      end_date: { gte: new Date(day(now)) },
+      end_date: { gte: dateOf(today(now)) },
       program: { kind: PROGRAM_KINDS.LIGHTHOUSE, deleted_at: null, organization: { status: 'active' } }
     },
     select: activitySelect,
     orderBy: { start_date: 'asc' }
   });
-  return buildSummaries(rows as ActivityRow[], userId, now);
+  return buildSummaries(rows, userId, now);
 };
 
 /** 活動詳情（公開；已結束仍可查看） */
 const getDetail = async (cohortId: number, userId: number | null, now = new Date()) => {
-  const row = (await prisma.cohorts.findUnique({ where: { id: cohortId }, select: activitySelect })) as ActivityRow | null;
+  const row = await prisma.cohorts.findUnique({ where: { id: cohortId }, select: activitySelect });
   if (!row || !isPublicActivity(row)) throw new NotFoundError('找不到活動');
   const [summary] = await buildSummaries([row], userId, now);
   return {
