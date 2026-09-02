@@ -44,6 +44,7 @@ describe('sortBlocksForDisplay', () => {
 });
 
 describe('spaceService.listMySpaces', () => {
+  afterEach(() => jest.useRealTimers());
   const enrollment = (opts: { id: number; kind: 'lighthouse' | 'challenge'; name: string; start: string; end: string; joined: number; role?: string; practices?: Array<{ status: string; updated_at: string }>; joinedAt?: string }): unknown => ({
     joined_at: new Date(opts.joinedAt ?? '2026-08-01T00:00:00Z'),
     role: opts.role ?? 'member',
@@ -89,6 +90,27 @@ describe('spaceService.listMySpaces', () => {
     expect(result.items.map(item => item.kind)).toEqual(['personal', 'challenge']);
     expect(result.items[1]).toMatchObject({ memberCount: 12, practiceCount: 2, hasActivePractice: true, lastActivityAt: '2026-09-09T00:00:00.000Z' });
     expect(result.items[1].memberAvatars).toHaveLength(1);
+  });
+
+  it('多檔進行中挑戰時人數與頭像取最近開始的一檔', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-10T00:00:00Z'));
+    prismaMock.practices.groupBy.mockResolvedValue([] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      enrollment({ id: 21, kind: 'challenge', name: '八月底開始', start: '2026-08-25', end: '2026-09-30', joined: 40 }),
+      enrollment({ id: 22, kind: 'challenge', name: '九月開始', start: '2026-09-05', end: '2026-09-30', joined: 7 }),
+    ] as never);
+    const result = await spaceService.listMySpaces(42);
+    expect(result.items[1]).toMatchObject({ memberCount: 7 });
+  });
+
+  it('同一期重複的 joined 列只產生一張活動卡', async () => {
+    prismaMock.practices.groupBy.mockResolvedValue([] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      enrollment({ id: 11, kind: 'lighthouse', name: '讀書會', start: '2026-07-01', end: '2026-12-31', joined: 4 }),
+      enrollment({ id: 11, kind: 'lighthouse', name: '讀書會', start: '2026-07-01', end: '2026-12-31', joined: 4 }),
+    ] as never);
+    const result = await spaceService.listMySpaces(42);
+    expect(result.items.filter(item => item.kind === 'event_course')).toHaveLength(1);
   });
 
   it('falls back to the latest challenge when none is ongoing', async () => {

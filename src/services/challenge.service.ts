@@ -3,7 +3,7 @@ import { loggerService } from './logging/logger.service';
 import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
-import { day, deriveJoinability, deriveRunStatus } from './cohort-run-state';
+import { dateOf, deriveJoinability, deriveRunStatus, today } from './cohort-run-state';
 
 /** 探索頁與詳情共用的查詢欄位 */
 const challengeSelect = {
@@ -12,6 +12,7 @@ const challengeSelect = {
   start_date: true,
   end_date: true,
   join_deadline: true,
+  join_paused: true,
   capacity: true,
   status: true,
   program: { select: { name: true, description: true, kind: true, deleted_at: true } }
@@ -23,6 +24,7 @@ type ChallengeRow = {
   start_date: Date;
   end_date: Date;
   join_deadline: Date | null;
+  join_paused: boolean;
   capacity: number | null;
   status: string;
   program: { name: string; description: string | null; kind: string; deleted_at: Date | null };
@@ -89,12 +91,17 @@ const listMine = async (userId: number, now = new Date()) => {
   if (rows.length === 0) return [];
   const [summaries, practices] = await Promise.all([
     buildSummaries(rows, userId, now),
+    // 與 join() 回傳的實踐一致：只取加入時自動複製的模板實踐，最早建立者優先
     prisma.practices.findMany({
-      where: { user_id: userId, deleted_at: null, cohort_id: { in: rows.map(row => row.id) } },
-      select: { cohort_id: true, external_id: true }
+      where: { user_id: userId, deleted_at: null, creation_source: 'cohort_template', cohort_id: { in: rows.map(row => row.id) } },
+      select: { cohort_id: true, external_id: true },
+      orderBy: { created_at: 'asc' }
     })
   ]);
-  const practiceByCohort = new Map(practices.map(practice => [practice.cohort_id, practice.external_id]));
+  const practiceByCohort = new Map<number | null, string>();
+  for (const practice of practices) {
+    if (practice.external_id && !practiceByCohort.has(practice.cohort_id)) practiceByCohort.set(practice.cohort_id, practice.external_id);
+  }
   return summaries.map(summary => ({ ...summary, practiceId: practiceByCohort.get(summary.id) ?? null }));
 };
 
@@ -103,7 +110,7 @@ const list = async (userId: number | null, now = new Date()) => {
   const rows = await prisma.cohorts.findMany({
     where: {
       status: 'published',
-      end_date: { gte: new Date(day(now)) },
+      end_date: { gte: dateOf(today(now)) },
       program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null }
     },
     select: challengeSelect,

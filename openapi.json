@@ -20343,7 +20343,7 @@
           },
           "memberCount": {
             "type": "integer",
-            "description": "成員數",
+            "description": "成員數；共同挑戰卡為代表挑戰（進行中且最近開始的一檔）的參與人數",
             "example": 12
           },
           "memberAvatars": {
@@ -20376,7 +20376,7 @@
           },
           "practiceCount": {
             "type": "integer",
-            "description": "空間內實踐數",
+            "description": "我在此空間的實踐數（personal 為全部實踐、challenge 為我的挑戰實踐、event_course 為我在該期的實踐）",
             "example": 3
           },
           "isHost": {
@@ -33428,6 +33428,7 @@
                               "ended",
                               "expired",
                               "full",
+                              "paused",
                               null
                             ],
                             "description": "不可加入原因；可加入時為 null"
@@ -33679,6 +33680,7 @@
                             "ended",
                             "expired",
                             "full",
+                            "paused",
                             null
                           ],
                           "description": "不可加入原因；可加入時為 null"
@@ -42338,6 +42340,7 @@
                               "ended",
                               "expired",
                               "full",
+                              "paused",
                               null
                             ],
                             "description": "不可加入原因；可加入時為 null"

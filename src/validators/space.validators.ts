@@ -79,13 +79,13 @@ const spaceListItemSchema = z.object({
   id: z.string().nullable().openapi({ description: '活動課程卡為 cohortId 字串（導向 /cohorts/{id}）；虛擬空間（personal/challenge）為 null', example: '12' }),
   name: z.string().openapi({ description: '空間名稱', example: '自我覺察練習' }),
   host: z.string().openapi({ description: '卡片 host 顯示名（FR-2.2/2.3）', example: '我的島' }),
-  memberCount: z.number().int().openapi({ description: '成員數', example: 12 }),
+  memberCount: z.number().int().openapi({ description: '成員數；共同挑戰卡為代表挑戰（進行中且最近開始的一檔）的參與人數', example: 12 }),
   memberAvatars: z.array(z.object({
     nickname: z.string().nullable().openapi({ description: '成員暱稱' }),
     avatar: z.string().nullable().openapi({ description: '頭像 URL' }),
   })).openapi({ description: '疊加頭像（最多 3 位）' }),
   hasActivePractice: z.boolean().openapi({ description: '是否有進行中的實踐（FR-2.4）', example: true }),
-  practiceCount: z.number().int().openapi({ description: '空間內實踐數', example: 3 }),
+  practiceCount: z.number().int().openapi({ description: '我在此空間的實踐數（personal 為全部實踐、challenge 為我的挑戰實踐、event_course 為我在該期的實踐）', example: 3 }),
   isHost: z.boolean().openapi({ description: '目前使用者是否為發起人', example: false }),
   lastActivityAt: z.string().nullable().openapi({ description: '最近活動時間（排序依據）' }),
 }).openapi('SpaceListItem');
