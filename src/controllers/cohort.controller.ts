@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware';
 import { cohortService } from '../services/cohort.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import { cohortJoinTokenResponseSchema, cohortListResponseSchema, cohortResponseSchema, organizationCohortListResponseSchema, type CreateCohortInput, type UpdateCohortInput } from '../validators/cohort.validators';
+import { cohortJoinTokenResponseSchema, cohortListResponseSchema, cohortResponseSchema, cohortUpdateResultSchema, organizationCohortListResponseSchema, type CreateCohortInput, type UpdateCohortInput } from '../validators/cohort.validators';
 
 const actor = (req: Request): number => { if (!req.user) throw new UnauthorizedError(); return req.user.id; };
 const programId = (req: Request): number => Number(req.params.programId);
@@ -12,7 +12,7 @@ const list = asyncHandler(async (req: Request, res: Response) => { res.json(crea
 const listByOrganization = asyncHandler(async (req: Request, res: Response) => { res.json(createSuccessResponse(organizationCohortListResponseSchema.parse(await cohortService.listByOrganization(organizationId(req), actor(req))))); });
 const get = asyncHandler(async (req: Request, res: Response) => { res.json(createSuccessResponse(cohortResponseSchema.parse(await cohortService.get(programId(req), cohortId(req), actor(req))))); });
 const create = asyncHandler(async (req: Request, res: Response) => { res.status(201).json(createSuccessResponse(cohortResponseSchema.parse(await cohortService.create(programId(req), req.body as CreateCohortInput, actor(req))))); });
-const update = asyncHandler(async (req: Request, res: Response) => { res.json(createSuccessResponse(cohortResponseSchema.parse(await cohortService.update(programId(req), cohortId(req), req.body as UpdateCohortInput, actor(req))))); });
+const update = asyncHandler(async (req: Request, res: Response) => { res.json(createSuccessResponse(cohortUpdateResultSchema.parse(await cohortService.update(programId(req), cohortId(req), req.body as UpdateCohortInput, actor(req))))); });
 const archive = asyncHandler(async (req: Request, res: Response) => { await cohortService.archive(programId(req), cohortId(req), actor(req)); res.status(204).send(); });
 const duplicate = asyncHandler(async (req: Request, res: Response) => { res.status(201).json(createSuccessResponse(cohortResponseSchema.parse(await cohortService.duplicate(programId(req), cohortId(req), actor(req))))); });
 const rotateJoinToken = asyncHandler(async (req: Request, res: Response) => { res.json(createSuccessResponse(cohortJoinTokenResponseSchema.parse(await cohortService.setJoinToken(programId(req), cohortId(req), actor(req), 'rotate')))); });

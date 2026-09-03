@@ -929,6 +929,11 @@ model users {
   spaces_owned                         spaces[]
   space_members                        space_members[]
   space_home_pages_created             space_home_pages[]
+  chat_messages_sent                   chat_messages[]        @relation("ChatMessageSender")
+  chat_messages_pinned_by              chat_messages[]        @relation("ChatMessagePinnedBy")
+  chat_messages_deleted_by             chat_messages[]        @relation("ChatMessageDeletedBy")
+  chat_message_likes                   chat_message_likes[]
+  chat_room_reads                      chat_room_reads[]
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
@@ -2074,7 +2079,26 @@ model cohorts {
   invite_message        String?
   status                String                  @default("draft") @db.VarChar(20)
   /// 探索活動頁可見性：private | public；值域由 server 常量管控，僅 programs.kind=lighthouse 使用
-  visibility            String                  @default("private") @db.VarChar(20)
+  visibility                     String                  @default("private") @db.VarChar(20)
+  /// 一句話簡介（≤80 字），顯示於探索卡與報名頁
+  tagline                        String?                 @db.VarChar(80)
+  /// 互動方式多選：sync | async | physical；值域由 server 常量管控
+  interaction_modes              String[]                @default([])
+  meeting_url                    String?
+  location                       String?                 @db.VarChar(200)
+  /// free | paid；paid 時 signup_method 必為 external
+  fee_type                       String                  @default("free") @db.VarChar(10)
+  fee_amount                     Int?
+  /// island_form | external；值域由 server 常量管控
+  signup_method                  String                  @default("island_form") @db.VarChar(20)
+  external_signup_url            String?
+  /// 私密活動：TRUE 時 cohort 實踐 privacy_status 為 private
+  is_private                     Boolean                 @default(true)
+  /// 參與者打卡預設私密（本輪僅存值，強制行為另案）
+  checkin_default_private         Boolean                 @default(false)
+  /// 發起人留言預設私密（本輪僅存值，強制行為另案）
+  host_comment_default_private    Boolean                 @default(false)
+  show_invite_message_on_signup   Boolean                 @default(false)
   created_at            DateTime                @default(now()) @db.Timestamptz(6)
   updated_at            DateTime?               @db.Timestamptz(6)
   cohort_enrollments    cohort_enrollments[]
@@ -2085,6 +2109,8 @@ model cohorts {
   inspiration_draws     inspiration_draws[]
   practices             practices[]
   program               programs                @relation(fields: [program_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohorts_program")
+  cohort_sessions       cohort_sessions[]
+  chat_room             chat_rooms?
 
   @@unique([program_id, slug], map: "uq_cohorts_program_slug")
   @@index([program_id], map: "idx_cohorts_program_id")
@@ -2336,4 +2362,87 @@ model space_block_events {
   space_blocks space_blocks @relation(fields: [block_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_space_block_events_block")
 
   @@index([block_id, start_date], map: "idx_space_block_events_block_date")
+}
+
+/// 場次聚會時段（FR-BS-03）；僅 interaction_modes 含 sync/physical 時有列
+model cohort_sessions {
+  id           Int      @id @default(autoincrement())
+  cohort_id    Int
+  session_date DateTime @db.Date
+  start_time   DateTime? @db.Time(6)
+  end_time     DateTime? @db.Time(6)
+  position     Int      @default(0)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  cohort       cohorts  @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cohort_sessions_cohort")
+
+  @@index([cohort_id, session_date, position], map: "idx_cohort_sessions_cohort_date")
+}
+
+/// 活動課程群組聊天室；與 cohort 一對一，僅 programs.kind=lighthouse 建立
+model chat_rooms {
+  id              Int              @id @default(autoincrement())
+  cohort_id       Int              @unique(map: "uq_chat_rooms_cohort")
+  last_message_at DateTime?        @db.Timestamptz(6)
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?        @db.Timestamptz(6)
+  cohort          cohorts          @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_rooms_cohort")
+  chat_messages   chat_messages[]
+  chat_room_reads chat_room_reads[]
+
+  @@index([last_message_at(sort: Desc)], map: "idx_chat_rooms_last_message_at")
+}
+
+model chat_messages {
+  id                  Int                  @id @default(autoincrement())
+  room_id             Int
+  sender_user_id      Int?
+  kind                String               @default("text") @db.VarChar(20)
+  body                String
+  metadata            Json?
+  reply_to_message_id Int?
+  pinned_at           DateTime?            @db.Timestamptz(6)
+  pinned_by_user_id   Int?
+  edited_at           DateTime?            @db.Timestamptz(6)
+  deleted_at          DateTime?            @db.Timestamptz(6)
+  deleted_by_user_id  Int?
+  created_at          DateTime             @default(now()) @db.Timestamptz(6)
+  /// 任何可見變動（編輯、刪除、置頂、按讚計數）都會更新，供增量輪詢 since 使用
+  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
+  room                chat_rooms           @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_messages_room")
+  sender              users?               @relation("ChatMessageSender", fields: [sender_user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_chat_messages_sender")
+  reply_to            chat_messages?       @relation("ChatMessageReply", fields: [reply_to_message_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_chat_messages_reply_to")
+  replies             chat_messages[]      @relation("ChatMessageReply")
+  pinned_by           users?               @relation("ChatMessagePinnedBy", fields: [pinned_by_user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_chat_messages_pinned_by")
+  deleted_by          users?               @relation("ChatMessageDeletedBy", fields: [deleted_by_user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_chat_messages_deleted_by")
+  chat_message_likes  chat_message_likes[]
+
+  @@index([room_id, id], map: "idx_chat_messages_room_id_id")
+  @@index([room_id, updated_at], map: "idx_chat_messages_room_updated")
+  @@index([reply_to_message_id], map: "idx_chat_messages_reply_to")
+}
+
+model chat_message_likes {
+  id         Int           @id @default(autoincrement())
+  message_id Int
+  user_id    Int
+  created_at DateTime      @default(now()) @db.Timestamptz(6)
+  message    chat_messages @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_message_likes_message")
+  user       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_message_likes_user")
+
+  @@unique([message_id, user_id], map: "uq_chat_message_likes_message_user")
+  @@index([user_id], map: "idx_chat_message_likes_user")
+}
+
+/// 每人每室的已讀游標；未讀 = id > last_read_message_id 且非本人、未刪除的訊息數
+model chat_room_reads {
+  id                   Int        @id @default(autoincrement())
+  room_id              Int
+  user_id              Int
+  last_read_message_id Int?
+  last_read_at         DateTime   @default(now()) @db.Timestamptz(6)
+  room                 chat_rooms @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_room_reads_room")
+  user                 users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_room_reads_user")
+
+  @@unique([room_id, user_id], map: "uq_chat_room_reads_room_user")
+  @@index([user_id], map: "idx_chat_room_reads_user")
 }

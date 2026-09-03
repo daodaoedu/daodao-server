@@ -43,6 +43,7 @@ import {
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 import { assertChallengePracticeCopyable, assertChallengePracticeUpdatable, isChallengeCohort } from './challenge-acl.service';
+import { assertCohortPracticeUpdatable } from './cohort-acl.service';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
@@ -825,6 +826,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       await isChallengeCohort(existingPractice.cohort_id),
       data as unknown as Record<string, unknown>
     );
+
+    // 燈塔場次實踐：隱私由場次統一設定，學員不可自行修改
+    await assertCohortPracticeUpdatable(id, data as unknown as Record<string, unknown>);
 
     // 有打卡記錄時，自動移除鎖定欄位，允許其餘欄位正常更新
     data = stripLockedFields(data, hasCheckIns);
