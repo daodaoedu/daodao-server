@@ -1,11 +1,40 @@
-import type { CreateCohortInput, CohortResponse, OrganizationCohortResponse, UpdateCohortInput } from '../validators/cohort.validators';
-import { ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
+import type { CreateCohortInput, CohortResponse, OrganizationCohortResponse, UpdateCohortInput, CohortUpdateResult, CohortSessionInput } from '../validators/cohort.validators';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { randomUUID } from 'crypto';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
+import type { CohortInteractionMode, CohortFeeType, CohortSignupMethod } from '../constants/cohort-setup';
+import { ensureRoom } from './chat-room.service';
 
-const select = { id: true, program_id: true, slug: true, display_name: true, start_date: true, end_date: true, join_token: true, join_paused: true, join_deadline: true, capacity: true, invite_message: true, status: true, visibility: true, created_at: true, updated_at: true } as const;
-type CohortRow = { id: number; program_id: number; slug: string; display_name: string; start_date: Date; end_date: Date; join_token: string | null; join_paused: boolean; join_deadline: Date | null; capacity: number | null; invite_message: string | null; status: string; visibility: string; created_at: Date; updated_at: Date | null };
+/** Prisma select 含新欄位與 sessions */
+const select = {
+  id: true, program_id: true, slug: true, display_name: true,
+  tagline: true,
+  start_date: true, end_date: true, join_token: true, join_paused: true,
+  join_deadline: true, capacity: true, invite_message: true,
+  show_invite_message_on_signup: true,
+  interaction_modes: true, meeting_url: true, location: true,
+  fee_type: true, fee_amount: true, signup_method: true, external_signup_url: true,
+  is_private: true, checkin_default_private: true, host_comment_default_private: true,
+  status: true, visibility: true, created_at: true, updated_at: true,
+  cohort_sessions: { select: { id: true, session_date: true, start_time: true, end_time: true, position: true }, orderBy: { position: 'asc' as const } },
+  _count: { select: { cohort_sessions: true } }
+} as const;
+
+type CohortRow = {
+  id: number; program_id: number; slug: string; display_name: string;
+  tagline: string | null;
+  start_date: Date; end_date: Date; join_token: string | null; join_paused: boolean;
+  join_deadline: Date | null; capacity: number | null; invite_message: string | null;
+  show_invite_message_on_signup: boolean;
+  interaction_modes: string[]; meeting_url: string | null; location: string | null;
+  fee_type: string; fee_amount: number | null; signup_method: string; external_signup_url: string | null;
+  is_private: boolean; checkin_default_private: boolean; host_comment_default_private: boolean;
+  status: string; visibility: string; created_at: Date; updated_at: Date | null;
+  cohort_sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number }>;
+  _count: { cohort_sessions: number };
+};
+
 const asStatus = (status: string): CohortResponse['status'] => {
   if (status === 'draft' || status === 'published' || status === 'archived') return status;
   throw new Error(`Invalid cohort status: ${status}`);
@@ -14,18 +43,135 @@ const asVisibility = (visibility: string): CohortResponse['visibility'] => {
   if (visibility === 'private' || visibility === 'public') return visibility;
   throw new Error(`Invalid cohort visibility: ${visibility}`);
 };
+const asFeeType = (feeType: string): CohortFeeType => {
+  if (feeType === 'free' || feeType === 'paid') return feeType;
+  throw new Error(`Invalid cohort fee type: ${feeType}`);
+};
+const asSignupMethod = (method: string): CohortSignupMethod => {
+  if (method === 'island_form' || method === 'external') return method;
+  throw new Error(`Invalid cohort signup method: ${method}`);
+};
+const asInteractionModes = (modes: string[]): CohortInteractionMode[] =>
+  modes.filter((m): m is CohortInteractionMode => m === 'sync' || m === 'async' || m === 'physical');
+
+/** 格式化 TIME 欄位為 HH:MM */
+const formatTime = (value: Date | null): string | null => {
+  if (!value) return null;
+  return value.toISOString().slice(11, 16);
+};
+/** 格式化 DATE 欄位為 YYYY-MM-DD */
+const formatDate = (value: Date): string => value.toISOString().slice(0, 10);
+
 const map = (row: CohortRow): CohortResponse => ({
   id: row.id, programId: row.program_id, slug: row.slug, displayName: row.display_name,
+  tagline: row.tagline,
   startDate: row.start_date, endDate: row.end_date, joinToken: row.join_token, joinPaused: row.join_paused,
   joinDeadline: row.join_deadline, capacity: row.capacity, inviteMessage: row.invite_message,
-  status: asStatus(row.status), visibility: asVisibility(row.visibility), createdAt: row.created_at, updatedAt: row.updated_at
+  showInviteMessageOnSignup: row.show_invite_message_on_signup,
+  interactionModes: asInteractionModes(row.interaction_modes),
+  meetingUrl: row.meeting_url, location: row.location,
+  sessions: row.cohort_sessions.map(s => ({
+    id: s.id,
+    sessionDate: formatDate(s.session_date),
+    startTime: formatTime(s.start_time),
+    endTime: formatTime(s.end_time)
+  })),
+  feeType: asFeeType(row.fee_type), feeAmount: row.fee_amount,
+  signupMethod: asSignupMethod(row.signup_method), externalSignupUrl: row.external_signup_url,
+  isPrivate: row.is_private, checkinDefaultPrivate: row.checkin_default_private,
+  hostCommentDefaultPrivate: row.host_comment_default_private,
+  hasHomePage: false, // Phase B：space_home_pages 查詢
+  signupQuestionCount: 0, // Phase C：cohort_signup_questions count
+  status: asStatus(row.status), visibility: asVisibility(row.visibility),
+  createdAt: row.created_at, updatedAt: row.updated_at
 });
+
 const date = (value: string): Date => new Date(`${value}T00:00:00.000Z`);
+/** 將 HH:MM 轉成 TIME 可存的 Date（1970-01-01 + time） */
+const toTime = (value: string | null): Date | null => {
+  if (!value) return null;
+  return new Date(`1970-01-01T${value}:00.000Z`);
+};
 const isCode = (error: unknown, code: string): boolean => typeof error === 'object' && error !== null && 'code' in error && error.code === code;
+
 /** 複製場次時的 slug 候選：`<slug>-copy`、`<slug>-copy-2`…，仍需符合 slug 規則與 50 字上限 */
 const copySlug = (slug: string, attempt: number): string => {
   const suffix = attempt === 0 ? '-copy' : `-copy-${attempt + 1}`;
   return `${slug.slice(0, 50 - suffix.length)}${suffix}`;
+};
+
+/**
+ * D3/D4/D5 正規化邏輯：以合併後的完整欄位狀態驗證並正規化。
+ * 在 service 層操作（validator 的 superRefine 在 create 驗證，update 以 merge 後的結果在此驗證）。
+ */
+const normalizeCohortSetup = (merged: {
+  feeType: string;
+  feeAmount: number | null | undefined;
+  signupMethod: string;
+  externalSignupUrl: string | null | undefined;
+  isPrivate: boolean;
+  checkinDefaultPrivate: boolean;
+  hostCommentDefaultPrivate: boolean;
+  interactionModes: string[];
+  meetingUrl: string | null | undefined;
+  location: string | null | undefined;
+  sessions?: CohortSessionInput[];
+}): {
+  feeAmount: number | null;
+  signupMethod: string;
+  externalSignupUrl: string | null;
+  checkinDefaultPrivate: boolean;
+  hostCommentDefaultPrivate: boolean;
+  meetingUrl: string | null;
+  location: string | null;
+  clearSessions: boolean;
+} => {
+  // D3：收費正規化
+  if (merged.feeType === 'paid') {
+    if (!merged.feeAmount) throw new BadRequestError('付費活動必須填寫費用金額');
+    if (merged.signupMethod !== 'external') {
+      // 強制 external
+      merged.signupMethod = 'external';
+    }
+    if (!merged.externalSignupUrl) throw new BadRequestError('付費活動必須填寫外部報名連結');
+  }
+
+  let feeAmount = merged.feeAmount ?? null;
+  if (merged.feeType === 'free') {
+    feeAmount = null;
+  }
+
+  let externalSignupUrl = merged.externalSignupUrl ?? null;
+  if (merged.signupMethod === 'island_form') {
+    externalSignupUrl = null;
+  } else if (merged.signupMethod === 'external' && !externalSignupUrl) {
+    throw new BadRequestError('外部報名必須填寫外部報名連結');
+  }
+
+  // D4：隱私連動
+  let { checkinDefaultPrivate, hostCommentDefaultPrivate } = merged;
+  if (!merged.isPrivate) {
+    checkinDefaultPrivate = false;
+    hostCommentDefaultPrivate = false;
+  }
+
+  // D5：附屬欄位清理
+  const modes = merged.interactionModes;
+  const meetingUrl = modes.includes('sync') ? (merged.meetingUrl ?? null) : null;
+  const location = modes.includes('physical') ? (merged.location ?? null) : null;
+  const hasSyncOrPhysical = modes.includes('sync') || modes.includes('physical');
+  const clearSessions = !hasSyncOrPhysical;
+
+  return {
+    feeAmount,
+    signupMethod: merged.signupMethod,
+    externalSignupUrl,
+    checkinDefaultPrivate,
+    hostCommentDefaultPrivate,
+    meetingUrl,
+    location,
+    clearSessions
+  };
 };
 
 const assertProgram = async (programId: number, userId: number): Promise<void> => {
@@ -76,56 +222,268 @@ const listByOrganization = async (organizationId: number, userId: number): Promi
   return rows.map(row => ({ ...map(row), programName: row.program.name, joinedCount: joinedByCohort.get(row.id) ?? 0 }));
 };
 const get = async (programId: number, cohortId: number, userId: number): Promise<CohortResponse> => map(await getOwned(programId, cohortId, userId));
+
+/** 建立場次（走正規化） */
 const create = async (programId: number, input: CreateCohortInput, userId: number): Promise<CohortResponse> => {
   await assertProgram(programId, userId);
+
+  const feeType = input.feeType ?? 'free';
+  const signupMethod = input.signupMethod ?? 'island_form';
+  const isPrivate = input.isPrivate ?? true;
+  const interactionModes = input.interactionModes ?? [];
+  const checkinDefaultPrivate = input.checkinDefaultPrivate ?? false;
+  const hostCommentDefaultPrivate = input.hostCommentDefaultPrivate ?? false;
+
+  const normalized = normalizeCohortSetup({
+    feeType, feeAmount: input.feeAmount, signupMethod, externalSignupUrl: input.externalSignupUrl,
+    isPrivate, checkinDefaultPrivate, hostCommentDefaultPrivate,
+    interactionModes, meetingUrl: input.meetingUrl, location: input.location, sessions: input.sessions
+  });
+
   try {
-    return map(await prisma.cohorts.create({ data: { program_id: programId, slug: input.slug, display_name: input.displayName, start_date: date(input.startDate), end_date: date(input.endDate), join_deadline: input.joinDeadline ? date(input.joinDeadline) : null, capacity: input.capacity ?? null, invite_message: input.inviteMessage ?? null, visibility: input.visibility, status: input.status }, select }));
+    const result = await prisma.$transaction(async tx => {
+      const created = await tx.cohorts.create({
+        data: {
+          program_id: programId,
+          slug: input.slug,
+          display_name: input.displayName,
+          tagline: input.tagline ?? null,
+          start_date: date(input.startDate),
+          end_date: date(input.endDate),
+          join_deadline: input.joinDeadline ? date(input.joinDeadline) : null,
+          capacity: input.capacity ?? null,
+          invite_message: input.inviteMessage ?? null,
+          show_invite_message_on_signup: input.showInviteMessageOnSignup ?? false,
+          interaction_modes: interactionModes,
+          meeting_url: normalized.meetingUrl,
+          location: normalized.location,
+          fee_type: feeType,
+          fee_amount: normalized.feeAmount,
+          signup_method: normalized.signupMethod,
+          external_signup_url: normalized.externalSignupUrl,
+          is_private: isPrivate,
+          checkin_default_private: normalized.checkinDefaultPrivate,
+          host_comment_default_private: normalized.hostCommentDefaultPrivate,
+          visibility: input.visibility,
+          status: input.status
+        },
+        select
+      });
+
+      // 建立 sessions
+      if (input.sessions && input.sessions.length > 0 && !normalized.clearSessions) {
+        await tx.cohort_sessions.createMany({
+          data: input.sessions.map((s, i) => ({
+            cohort_id: created.id,
+            session_date: date(s.sessionDate),
+            start_time: toTime(s.startTime),
+            end_time: toTime(s.endTime),
+            position: i
+          }))
+        });
+        // 聊天室：lighthouse cohort 同交易建立
+        await ensureRoom(tx, created.id);
+        // 重新 select 含 sessions
+        return await tx.cohorts.findUniqueOrThrow({ where: { id: created.id }, select });
+      }
+      // 聊天室：lighthouse cohort 同交易建立
+      await ensureRoom(tx, created.id);
+      return created;
+    });
+    return map(result as CohortRow);
   } catch (error) {
     if (isCode(error, 'P2002')) throw new ConflictError('同一系列下不可使用重複 slug');
     throw error;
   }
 };
-const update = async (programId: number, cohortId: number, input: UpdateCohortInput, userId: number): Promise<CohortResponse> => {
+
+/** 更新場次（走正規化 + 隱私連動） */
+const update = async (programId: number, cohortId: number, input: UpdateCohortInput, userId: number): Promise<CohortUpdateResult> => {
   const current = await getOwned(programId, cohortId, userId);
   const startDate = input.startDate ? date(input.startDate) : current.start_date;
   const endDate = input.endDate ? date(input.endDate) : current.end_date;
   if (startDate > endDate) throw new ConflictError('開始日期不可晚於結束日期');
+
+  // 合併當前值與輸入，用正規化驗證
+  const mergedFeeType = input.feeType ?? current.fee_type;
+  const mergedSignupMethod = input.signupMethod ?? current.signup_method;
+  const mergedIsPrivate = input.isPrivate ?? current.is_private;
+  const mergedInteractionModes = input.interactionModes ?? current.interaction_modes;
+  const mergedCheckinDefaultPrivate = input.checkinDefaultPrivate ?? current.checkin_default_private;
+  const mergedHostCommentDefaultPrivate = input.hostCommentDefaultPrivate ?? current.host_comment_default_private;
+
+  const normalized = normalizeCohortSetup({
+    feeType: mergedFeeType,
+    feeAmount: input.feeAmount !== undefined ? input.feeAmount : current.fee_amount,
+    signupMethod: mergedSignupMethod,
+    externalSignupUrl: input.externalSignupUrl !== undefined ? input.externalSignupUrl : current.external_signup_url,
+    isPrivate: mergedIsPrivate,
+    checkinDefaultPrivate: mergedCheckinDefaultPrivate,
+    hostCommentDefaultPrivate: mergedHostCommentDefaultPrivate,
+    interactionModes: mergedInteractionModes,
+    meetingUrl: input.meetingUrl !== undefined ? input.meetingUrl : current.meeting_url,
+    location: input.location !== undefined ? input.location : current.location,
+    sessions: input.sessions
+  });
+
+  const isPrivacyChanged = input.isPrivate !== undefined && input.isPrivate !== current.is_private;
+
   try {
-    return map(await prisma.cohorts.update({ where: { id: cohortId }, data: { ...(input.slug !== undefined && { slug: input.slug }), ...(input.displayName !== undefined && { display_name: input.displayName }), start_date: startDate, end_date: endDate, ...(input.joinDeadline !== undefined && { join_deadline: input.joinDeadline ? date(input.joinDeadline) : null }), ...(input.capacity !== undefined && { capacity: input.capacity }), ...(input.inviteMessage !== undefined && { invite_message: input.inviteMessage }), ...(input.visibility !== undefined && { visibility: input.visibility }), ...(input.status !== undefined && { status: input.status }), updated_at: new Date() }, select }));
+    const result = await prisma.$transaction(async tx => {
+      await tx.cohorts.update({
+        where: { id: cohortId },
+        data: {
+          ...(input.slug !== undefined && { slug: input.slug }),
+          ...(input.displayName !== undefined && { display_name: input.displayName }),
+          ...(input.tagline !== undefined && { tagline: input.tagline }),
+          start_date: startDate,
+          end_date: endDate,
+          ...(input.joinDeadline !== undefined && { join_deadline: input.joinDeadline ? date(input.joinDeadline) : null }),
+          ...(input.capacity !== undefined && { capacity: input.capacity }),
+          ...(input.inviteMessage !== undefined && { invite_message: input.inviteMessage }),
+          ...(input.showInviteMessageOnSignup !== undefined && { show_invite_message_on_signup: input.showInviteMessageOnSignup }),
+          ...(input.interactionModes !== undefined && { interaction_modes: mergedInteractionModes }),
+          meeting_url: normalized.meetingUrl,
+          location: normalized.location,
+          ...(input.feeType !== undefined && { fee_type: mergedFeeType }),
+          fee_amount: normalized.feeAmount,
+          signup_method: normalized.signupMethod,
+          external_signup_url: normalized.externalSignupUrl,
+          is_private: mergedIsPrivate,
+          checkin_default_private: normalized.checkinDefaultPrivate,
+          host_comment_default_private: normalized.hostCommentDefaultPrivate,
+          ...(input.visibility !== undefined && { visibility: input.visibility }),
+          ...(input.status !== undefined && { status: input.status }),
+          updated_at: new Date()
+        },
+        select
+      });
+
+      // Sessions 全量覆寫（如果有傳 sessions）
+      if (input.sessions !== undefined) {
+        await tx.cohort_sessions.deleteMany({ where: { cohort_id: cohortId } });
+        if (input.sessions.length > 0 && !normalized.clearSessions) {
+          await tx.cohort_sessions.createMany({
+            data: input.sessions.map((s, i) => ({
+              cohort_id: cohortId,
+              session_date: date(s.sessionDate),
+              start_time: toTime(s.startTime),
+              end_time: toTime(s.endTime),
+              position: i
+            }))
+          });
+        }
+      } else if (normalized.clearSessions) {
+        // modes 移除了 sync/physical → 清空 sessions
+        await tx.cohort_sessions.deleteMany({ where: { cohort_id: cohortId } });
+      }
+
+      // D7：切換 isPrivate 時同交易 updateMany 實踐 privacy_status
+      let affectedPracticeCount: number | undefined;
+      if (isPrivacyChanged) {
+        const newPrivacyStatus = mergedIsPrivate ? 'private' : 'public';
+        // 只改屬於此 cohort、尚未退出成員的 cohort_template 實踐
+        const updateResult = await tx.practices.updateMany({
+          where: {
+            cohort_id: cohortId,
+            creation_source: 'cohort_template',
+            deleted_at: null
+          },
+          data: { privacy_status: newPrivacyStatus }
+        });
+        affectedPracticeCount = updateResult.count;
+
+        await tx.$executeRaw`
+          INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, old_value, new_value)
+          VALUES (${userId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_PRIVACY_TOGGLED}, 'cohort', ${String(cohortId)},
+                  ${JSON.stringify({ isPrivate: current.is_private })}::jsonb,
+                  ${JSON.stringify({ isPrivate: mergedIsPrivate, affectedPracticeCount })}::jsonb)
+        `;
+      }
+
+      // 重新 select 含最新的 sessions
+      const final = await tx.cohorts.findUniqueOrThrow({ where: { id: cohortId }, select });
+      return { row: final, affectedPracticeCount };
+    });
+
+    const mapped = map(result.row as CohortRow);
+    return { ...mapped, affectedPracticeCount: result.affectedPracticeCount };
   } catch (error) {
     if (isCode(error, 'P2002')) throw new ConflictError('同一系列下不可使用重複 slug');
     if (isCode(error, 'P2025')) throw new NotFoundError('找不到場次');
     throw error;
   }
 };
+
 const archive = async (programId: number, cohortId: number, userId: number): Promise<void> => { await getOwned(programId, cohortId, userId); await prisma.cohorts.update({ where: { id: cohortId }, data: { status: 'archived', updated_at: new Date() } }); };
+
 /**
- * 複製場次（FR-OV-03）：以草稿狀態建立副本，沿用日期／人數上限／邀請文案，
- * 並複製目前仍綁定中的模板；不複製名單、打卡與加入連結（副本自帶新 token）
+ * 複製場次（D10 深複製）：草稿狀態副本，含新欄位、sessions、模板綁定。
+ * visibility 強制 private、joinPaused=false、新 token。
  */
 const duplicate = async (programId: number, cohortId: number, actorId: number): Promise<CohortResponse> => {
   const source = await getOwned(programId, cohortId, actorId);
   const bindings = await prisma.cohort_templates.findMany({ where: { cohort_id: cohortId, unbound_at: null }, select: { template_id: true, start_date: true } });
-  const data = { program_id: programId, display_name: `${source.display_name}（副本）`.slice(0, 100), start_date: source.start_date, end_date: source.end_date, join_deadline: source.join_deadline, capacity: source.capacity, invite_message: source.invite_message, status: 'draft' as const };
+  const sessions = await prisma.cohort_sessions.findMany({ where: { cohort_id: cohortId }, select: { session_date: true, start_time: true, end_time: true, position: true }, orderBy: { position: 'asc' } });
+
+  const data = {
+    program_id: programId,
+    display_name: `${source.display_name}（副本）`.slice(0, 100),
+    tagline: source.tagline,
+    start_date: source.start_date,
+    end_date: source.end_date,
+    join_deadline: source.join_deadline,
+    capacity: source.capacity,
+    invite_message: source.invite_message,
+    show_invite_message_on_signup: source.show_invite_message_on_signup,
+    interaction_modes: source.interaction_modes,
+    meeting_url: source.meeting_url,
+    location: source.location,
+    fee_type: source.fee_type,
+    fee_amount: source.fee_amount,
+    signup_method: source.signup_method,
+    external_signup_url: source.external_signup_url,
+    is_private: source.is_private,
+    checkin_default_private: source.checkin_default_private,
+    host_comment_default_private: source.host_comment_default_private,
+    visibility: 'private' as const,
+    status: 'draft' as const
+  };
+
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
       return map(await prisma.$transaction(async tx => {
         const created = await tx.cohorts.create({ data: { ...data, slug: copySlug(source.slug, attempt) }, select });
         if (bindings.length > 0) await tx.cohort_templates.createMany({ data: bindings.map(binding => ({ cohort_id: created.id, template_id: binding.template_id, start_date: binding.start_date })) });
+        if (sessions.length > 0) {
+          await tx.cohort_sessions.createMany({
+            data: sessions.map(s => ({
+              cohort_id: created.id,
+              session_date: s.session_date,
+              start_time: s.start_time,
+              end_time: s.end_time,
+              position: s.position
+            }))
+          });
+        }
         await tx.$executeRaw`
           INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, old_value, new_value)
           VALUES (${actorId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_DUPLICATED}, 'cohort', ${String(created.id)},
                   ${JSON.stringify({ sourceCohortId: cohortId })}::jsonb,
-                  ${JSON.stringify({ slug: created.slug, templateCount: bindings.length })}::jsonb)
+                  ${JSON.stringify({ slug: created.slug, templateCount: bindings.length, sessionCount: sessions.length })}::jsonb)
         `;
-        return created;
-      }));
+        // 聊天室：lighthouse cohort 同交易建立
+        await ensureRoom(tx, created.id);
+        // 重新 select 含 sessions
+        return await tx.cohorts.findUniqueOrThrow({ where: { id: created.id }, select });
+      }) as CohortRow);
     } catch (error) {
       if (!isCode(error, 'P2002')) throw error;
     }
   }
   throw new ConflictError('副本 slug 已重複多次，請手動建立場次');
 };
+
 /**
  * 加入連結治理（FR-RS-02）：rotate 換新 token；pause / resume 只切 join_paused，token 保留，
  * 重新開放時沿用原連結（token 為 NULL 的舊資料補發一組）

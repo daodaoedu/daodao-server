@@ -11,7 +11,7 @@ describe('cohortService', () => {
   it('creates a draft cohort under an owned active program', async () => {
     prismaMock.programs.findFirst.mockResolvedValue({ organization: { status: 'active' } } as never);
     prismaMock.cohorts.create.mockResolvedValue(row as never);
-    const result = await cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', visibility: 'private', status: 'draft' }, 42);
+    const result = await cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', visibility: 'private', status: 'draft', showInviteMessageOnSignup: false, feeType: 'free' as const, signupMethod: 'island_form' as const, isPrivate: false, checkinDefaultPrivate: false, hostCommentDefaultPrivate: false }, 42);
     expect(result.status).toBe('draft');
     expect(prismaMock.cohorts.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ program_id: 2, status: 'draft' }) }));
   });
@@ -19,7 +19,7 @@ describe('cohortService', () => {
   it('maps duplicate slugs to 409', async () => {
     prismaMock.programs.findFirst.mockResolvedValue({ organization: { status: 'active' } } as never);
     prismaMock.cohorts.create.mockRejectedValue(mockPrismaError('P2002'));
-    await expect(cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', visibility: 'private', status: 'draft' }, 42)).rejects.toBeInstanceOf(ConflictError);
+    await expect(cohortService.create(2, { slug: 'summer', displayName: '夏季期', startDate: '2026-07-22', endDate: '2026-08-22', visibility: 'private', status: 'draft', showInviteMessageOnSignup: false, feeType: 'free' as const, signupMethod: 'island_form' as const, isPrivate: false, checkinDefaultPrivate: false, hostCommentDefaultPrivate: false }, 42)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('rejects a cohort id that is not under the scoped program/member chain', async () => {
