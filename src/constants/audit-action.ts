@@ -10,7 +10,10 @@ export const LIGHTHOUSE_AUDIT_ACTIONS = {
   COHORT_JOIN_PAUSED: 'lighthouse.cohort_join_paused',
   COHORT_JOIN_RESUMED: 'lighthouse.cohort_join_resumed',
   COHORT_DUPLICATED: 'lighthouse.cohort_duplicated',
-  COHORT_MESSAGE_SENT: 'lighthouse.cohort_message_sent'
+  COHORT_MESSAGE_SENT: 'lighthouse.cohort_message_sent',
+  COHORT_PRIVACY_TOGGLED: 'lighthouse.cohort_privacy_toggled',
+  PROGRAM_DUPLICATED: 'lighthouse.program_duplicated',
+  PROGRAM_ARCHIVED_CASCADE: 'lighthouse.program_archived_cascade'
 } as const;
 
 export type LighthouseAuditAction = (typeof LIGHTHOUSE_AUDIT_ACTIONS)[keyof typeof LIGHTHOUSE_AUDIT_ACTIONS];

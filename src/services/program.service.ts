@@ -1,7 +1,8 @@
 import type { CreateProgramInput, ProgramResponse, UpdateProgramInput } from '../validators/program.validators';
-import { ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
+import { ForbiddenError, NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
+import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 
 const select = {
   id: true, organization_id: true, name: true, description: true,
@@ -51,16 +52,62 @@ const update = async (programId: number, input: UpdateProgramInput, userId: numb
   await getOwned(programId, userId);
   return toResponse(await prisma.programs.update({ where: { id: programId }, data: { ...(input.name !== undefined && { name: input.name }), ...(input.description !== undefined && { description: input.description }), updated_at: new Date() }, select }));
 };
-const archive = async (programId: number, userId: number): Promise<void> => {
-  await getOwned(programId, userId);
-  const cohortCount = await prisma.cohorts.count({ where: { program_id: programId } });
-  if (cohortCount > 0) throw new ConflictError('系列仍有期，無法封存');
-  try {
-    await prisma.programs.update({ where: { id: programId }, data: { deleted_at: new Date(), updated_at: new Date() } });
-  } catch (error) {
-    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2025') throw new NotFoundError('找不到系列');
-    throw error;
-  }
-};
-export const programService = { list, create, update, archive };
 
+/**
+ * 封存系列（D9 級聯封存）：同一交易內把該系列下 status<>'archived' 的場次全部封存，
+ * 再寫 deleted_at。回應帶 archivedCohortCount。
+ */
+const archive = async (programId: number, userId: number): Promise<{ programId: number; archivedCohortCount: number }> => {
+  await getOwned(programId, userId);
+  const result = await prisma.$transaction(async tx => {
+    // 級聯封存所有未封存場次
+    const cohortUpdate = await tx.cohorts.updateMany({
+      where: { program_id: programId, status: { not: 'archived' } },
+      data: { status: 'archived', updated_at: new Date() }
+    });
+    // 封存系列本體
+    try {
+      await tx.programs.update({ where: { id: programId }, data: { deleted_at: new Date(), updated_at: new Date() } });
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2025') throw new NotFoundError('找不到系列');
+      throw error;
+    }
+    // 寫 audit
+    await tx.$executeRaw`
+      INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, old_value, new_value)
+      VALUES (${userId}, ${LIGHTHOUSE_AUDIT_ACTIONS.PROGRAM_ARCHIVED_CASCADE}, 'program', ${String(programId)},
+              ${JSON.stringify({})}::jsonb,
+              ${JSON.stringify({ archivedCohortCount: cohortUpdate.count })}::jsonb)
+    `;
+    return { archivedCohortCount: cohortUpdate.count };
+  });
+  return { programId, archivedCohortCount: result.archivedCohortCount };
+};
+
+/**
+ * 複製系列（D9）：只複製 program 本體（name 加「（複製）」截 100 字、description），不複製場次。
+ */
+const duplicate = async (programId: number, userId: number): Promise<ProgramResponse> => {
+  const source = await getOwned(programId, userId);
+  const newName = `${source.name}（複製）`.slice(0, 100);
+  const created = await prisma.$transaction(async tx => {
+    const row = await tx.programs.create({
+      data: {
+        organization_id: source.organization_id,
+        name: newName,
+        description: source.description
+      },
+      select
+    });
+    await tx.$executeRaw`
+      INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, old_value, new_value)
+      VALUES (${userId}, ${LIGHTHOUSE_AUDIT_ACTIONS.PROGRAM_DUPLICATED}, 'program', ${String(row.id)},
+              ${JSON.stringify({ sourceProgramId: programId })}::jsonb,
+              ${JSON.stringify({ name: newName })}::jsonb)
+    `;
+    return row;
+  });
+  return toResponse(created);
+};
+
+export const programService = { list, create, update, archive, duplicate };

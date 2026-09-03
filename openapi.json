@@ -21701,7 +21701,25 @@
         "tags": [
           "Activity"
         ],
-        "summary": "探索活動列表（公開，列出組織公開、已發佈且未結束的燈塔期）",
+        "summary": "探索活動列表（公開，含已結束；列出組織公開、已發佈的燈塔期）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sync",
+                "async",
+                "physical"
+              ],
+              "description": "依互動方式篩選",
+              "example": "sync"
+            },
+            "required": false,
+            "description": "依互動方式篩選",
+            "name": "mode",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "活動列表",
@@ -21732,6 +21750,11 @@
                             "description": "活動名稱",
                             "example": "2026 秋季讀書會"
                           },
+                          "tagline": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "一句話簡介"
+                          },
                           "programName": {
                             "type": "string",
                             "description": "所屬系列名稱",
@@ -21746,6 +21769,37 @@
                             "type": "string",
                             "description": "主辦組織名稱",
                             "example": "島島阿學"
+                          },
+                          "host": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "發起人 user ID；皆無法解析時為 null"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "發起人名稱（nickname 或組織名稱 fallback）"
+                              },
+                              "avatar": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "發起人頭像 URL"
+                              },
+                              "identifier": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "發起人 identifier（custom_id 或 external_id）"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "name",
+                              "avatar",
+                              "identifier"
+                            ],
+                            "description": "發起人資訊"
                           },
                           "startDate": {
                             "type": "string",
@@ -21773,6 +21827,50 @@
                             "minimum": 0,
                             "description": "已加入人數",
                             "example": 12
+                          },
+                          "interactionModes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "sync",
+                                "async",
+                                "physical"
+                              ]
+                            },
+                            "description": "互動方式"
+                          },
+                          "location": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "活動地點"
+                          },
+                          "feeType": {
+                            "type": "string",
+                            "enum": [
+                              "free",
+                              "paid"
+                            ],
+                            "description": "收費類型"
+                          },
+                          "feeAmount": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "費用金額"
+                          },
+                          "signupMethod": {
+                            "type": "string",
+                            "enum": [
+                              "island_form",
+                              "external"
+                            ],
+                            "description": "報名方式"
+                          },
+                          "templateCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "有效綁定的實踐模版數",
+                            "example": 3
                           },
                           "runStatus": {
                             "type": "string",
@@ -21813,14 +21911,22 @@
                         "required": [
                           "id",
                           "displayName",
+                          "tagline",
                           "programName",
                           "description",
                           "organizationName",
+                          "host",
                           "startDate",
                           "endDate",
                           "joinDeadline",
                           "capacity",
                           "participantCount",
+                          "interactionModes",
+                          "location",
+                          "feeType",
+                          "feeAmount",
+                          "signupMethod",
+                          "templateCount",
                           "runStatus",
                           "canJoin",
                           "unavailableReason",
@@ -21949,6 +22055,223 @@
         }
       }
     },
+    "/api/v1/activities/hosts/{userId}": {
+      "get": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "發起人快覽（公開）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "發起人 user ID",
+              "example": 42
+            },
+            "required": true,
+            "description": "發起人 user ID",
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "發起人快覽資訊",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "integer",
+                          "description": "使用者 ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "名稱（nickname）"
+                        },
+                        "avatar": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "頭像 URL"
+                        },
+                        "identifier": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "custom_id 或 external_id"
+                        },
+                        "selfIntroduction": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自我介紹"
+                        },
+                        "organizationName": {
+                          "type": "string",
+                          "description": "組織名稱"
+                        },
+                        "hostedActivityCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "主持的活動數（所有已發佈燈塔期）"
+                        },
+                        "learnedWithCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "共學人數（去重，排除本人）"
+                        },
+                        "joinedYear": {
+                          "type": "integer",
+                          "description": "加入年份",
+                          "example": 2024
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "name",
+                        "avatar",
+                        "identifier",
+                        "selfIntroduction",
+                        "organizationName",
+                        "hostedActivityCount",
+                        "learnedWithCount",
+                        "joinedYear"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
     "/api/v1/activities/{cohortId}": {
       "get": {
         "tags": [
@@ -21998,6 +22321,11 @@
                           "description": "活動名稱",
                           "example": "2026 秋季讀書會"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
                         "programName": {
                           "type": "string",
                           "description": "所屬系列名稱",
@@ -22012,6 +22340,37 @@
                           "type": "string",
                           "description": "主辦組織名稱",
                           "example": "島島阿學"
+                        },
+                        "host": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "integer",
+                              "nullable": true,
+                              "description": "發起人 user ID；皆無法解析時為 null"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "發起人名稱（nickname 或組織名稱 fallback）"
+                            },
+                            "avatar": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "發起人頭像 URL"
+                            },
+                            "identifier": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "發起人 identifier（custom_id 或 external_id）"
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "name",
+                            "avatar",
+                            "identifier"
+                          ],
+                          "description": "發起人資訊"
                         },
                         "startDate": {
                           "type": "string",
@@ -22039,6 +22398,50 @@
                           "minimum": 0,
                           "description": "已加入人數",
                           "example": 12
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ]
+                          },
+                          "description": "互動方式"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ],
+                          "description": "收費類型"
+                        },
+                        "feeAmount": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "費用金額"
+                        },
+                        "signupMethod": {
+                          "type": "string",
+                          "enum": [
+                            "island_form",
+                            "external"
+                          ],
+                          "description": "報名方式"
+                        },
+                        "templateCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "有效綁定的實踐模版數",
+                          "example": 3
                         },
                         "runStatus": {
                           "type": "string",
@@ -22075,6 +22478,40 @@
                           "format": "uuid",
                           "description": "加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null"
                         },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "sessionDate": {
+                                "type": "string"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "sessionDate",
+                              "startTime",
+                              "endTime"
+                            ]
+                          },
+                          "description": "聚會時段"
+                        },
+                        "externalSignupUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "外部報名連結"
+                        },
                         "organization": {
                           "type": "object",
                           "properties": {
@@ -22108,19 +22545,29 @@
                       "required": [
                         "id",
                         "displayName",
+                        "tagline",
                         "programName",
                         "description",
                         "organizationName",
+                        "host",
                         "startDate",
                         "endDate",
                         "joinDeadline",
                         "capacity",
                         "participantCount",
+                        "interactionModes",
+                        "location",
+                        "feeType",
+                        "feeAmount",
+                        "signupMethod",
+                        "templateCount",
                         "runStatus",
                         "canJoin",
                         "unavailableReason",
                         "isJoined",
                         "joinToken",
+                        "sessions",
+                        "externalSignupUrl",
                         "organization",
                         "inviteMessage"
                       ],
@@ -34661,6 +35108,2418 @@
         }
       }
     },
+    "/api/v1/me/chat-rooms": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "我的聊天室列表",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "聊天室列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalUnread": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "全部聊天室的總未讀數"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "聊天室 ID"
+                          },
+                          "cohortId": {
+                            "type": "integer",
+                            "description": "關聯的 cohort ID"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "聊天室名稱（cohort display_name）"
+                          },
+                          "iconLabel": {
+                            "type": "string",
+                            "description": "圖示文字（名稱首字）"
+                          },
+                          "colorSeed": {
+                            "type": "integer",
+                            "description": "色彩種子（roomId）"
+                          },
+                          "organizationName": {
+                            "type": "string",
+                            "description": "組織名稱"
+                          },
+                          "contentState": {
+                            "type": "string",
+                            "enum": [
+                              "writable",
+                              "read_only"
+                            ],
+                            "description": "可寫狀態"
+                          },
+                          "memberCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "成員數"
+                          },
+                          "unreadCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "未讀數"
+                          },
+                          "lastMessage": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "訊息 ID"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "description": "訊息類型"
+                              },
+                              "bodyPreview": {
+                                "type": "string",
+                                "description": "內容預覽"
+                              },
+                              "authorName": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "作者暱稱"
+                              },
+                              "isMine": {
+                                "type": "boolean",
+                                "description": "是否為自己的訊息"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "description": "建立時間（ISO）"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "bodyPreview",
+                              "authorName",
+                              "isMine",
+                              "createdAt"
+                            ],
+                            "description": "最後一則訊息"
+                          },
+                          "lastActivityAt": {
+                            "type": "string",
+                            "description": "最近活動時間（ISO）"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "cohortId",
+                          "name",
+                          "iconLabel",
+                          "colorSeed",
+                          "organizationName",
+                          "contentState",
+                          "memberCount",
+                          "unreadCount",
+                          "lastMessage",
+                          "lastActivityAt"
+                        ],
+                        "description": "聊天室摘要"
+                      },
+                      "description": "聊天室列表"
+                    }
+                  },
+                  "required": [
+                    "totalUnread",
+                    "items"
+                  ],
+                  "description": "我的聊天室列表"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "聊天室詳情",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "聊天室詳情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "聊天室 ID"
+                    },
+                    "cohortId": {
+                      "type": "integer",
+                      "description": "關聯的 cohort ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "聊天室名稱（cohort display_name）"
+                    },
+                    "iconLabel": {
+                      "type": "string",
+                      "description": "圖示文字（名稱首字）"
+                    },
+                    "colorSeed": {
+                      "type": "integer",
+                      "description": "色彩種子（roomId）"
+                    },
+                    "organizationName": {
+                      "type": "string",
+                      "description": "組織名稱"
+                    },
+                    "contentState": {
+                      "type": "string",
+                      "enum": [
+                        "writable",
+                        "read_only"
+                      ],
+                      "description": "可寫狀態"
+                    },
+                    "memberCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "成員數"
+                    },
+                    "unreadCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "未讀數"
+                    },
+                    "lastMessage": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "訊息 ID"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "訊息類型"
+                        },
+                        "bodyPreview": {
+                          "type": "string",
+                          "description": "內容預覽"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "作者暱稱"
+                        },
+                        "isMine": {
+                          "type": "boolean",
+                          "description": "是否為自己的訊息"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "建立時間（ISO）"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "bodyPreview",
+                        "authorName",
+                        "isMine",
+                        "createdAt"
+                      ],
+                      "description": "最後一則訊息"
+                    },
+                    "lastActivityAt": {
+                      "type": "string",
+                      "description": "最近活動時間（ISO）"
+                    },
+                    "viewerRole": {
+                      "type": "string",
+                      "enum": [
+                        "host",
+                        "member"
+                      ],
+                      "description": "當前使用者角色"
+                    },
+                    "pinnedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "置頂訊息數"
+                    },
+                    "memberPreview": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "nickname": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "暱稱"
+                          },
+                          "avatar": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "頭像 URL"
+                          }
+                        },
+                        "required": [
+                          "nickname",
+                          "avatar"
+                        ],
+                        "description": "成員預覽"
+                      },
+                      "description": "前 3 位成員預覽"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "cohortId",
+                    "name",
+                    "iconLabel",
+                    "colorSeed",
+                    "organizationName",
+                    "contentState",
+                    "memberCount",
+                    "unreadCount",
+                    "lastMessage",
+                    "lastActivityAt",
+                    "viewerRole",
+                    "pinnedCount",
+                    "memberPreview"
+                  ],
+                  "description": "聊天室詳情"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/members": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "聊天室成員列表",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成員列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "userId": {
+                        "type": "integer",
+                        "description": "使用者 ID"
+                      },
+                      "nickname": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "暱稱"
+                      },
+                      "avatar": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "頭像 URL"
+                      },
+                      "isHost": {
+                        "type": "boolean",
+                        "description": "是否為帶領人"
+                      },
+                      "isOnline": {
+                        "type": "boolean",
+                        "description": "是否在線"
+                      },
+                      "bio": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "自我介紹"
+                      }
+                    },
+                    "required": [
+                      "userId",
+                      "nickname",
+                      "avatar",
+                      "isHost",
+                      "isOnline",
+                      "bio"
+                    ],
+                    "description": "聊天室成員"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/messages": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "歷史訊息（before 分頁）或增量輪詢（after+since）",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "取此 ID 之前的訊息（歷史分頁）",
+              "example": 100
+            },
+            "required": false,
+            "description": "取此 ID 之前的訊息（歷史分頁）",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "取此 ID 之後的新訊息（增量輪詢）",
+              "example": 50
+            },
+            "required": false,
+            "description": "取此 ID 之後的新訊息（增量輪詢）",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "ISO 時間戳，搭配 after 使用，回傳 changed/deletedIds",
+              "example": "2026-09-01T00:00:00.000Z"
+            },
+            "required": false,
+            "description": "ISO 時間戳，搭配 after 使用，回傳 changed/deletedIds",
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "每頁筆數（預設 50，上限 100）",
+              "example": 50
+            },
+            "required": false,
+            "description": "每頁筆數（預設 50，上限 100）",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "訊息列表或增量回應",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "訊息 ID"
+                          },
+                          "roomId": {
+                            "type": "integer",
+                            "description": "聊天室 ID"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "text",
+                              "system"
+                            ],
+                            "description": "訊息類型"
+                          },
+                          "body": {
+                            "type": "string",
+                            "description": "訊息內容"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "nullable": true,
+                            "additionalProperties": {
+                              "nullable": true
+                            },
+                            "description": "系統訊息元資料"
+                          },
+                          "author": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "userId": {
+                                "type": "integer",
+                                "description": "作者 ID"
+                              },
+                              "nickname": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "暱稱"
+                              },
+                              "avatar": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "頭像 URL"
+                              },
+                              "isHost": {
+                                "type": "boolean",
+                                "description": "是否為帶領人"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "nickname",
+                              "avatar",
+                              "isHost"
+                            ],
+                            "description": "作者（系統訊息為 null）"
+                          },
+                          "replyTo": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "被引用訊息 ID"
+                              },
+                              "authorName": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "被引用訊息的作者暱稱"
+                              },
+                              "bodyPreview": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "被引用訊息的內容預覽（已刪除為 null）"
+                              },
+                              "isDeleted": {
+                                "type": "boolean",
+                                "description": "被引用訊息是否已刪除"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "authorName",
+                              "bodyPreview",
+                              "isDeleted"
+                            ],
+                            "description": "引用回覆（無引用為 null）"
+                          },
+                          "likeCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "按讚數"
+                          },
+                          "likedByMe": {
+                            "type": "boolean",
+                            "description": "我是否已按讚"
+                          },
+                          "isPinned": {
+                            "type": "boolean",
+                            "description": "是否已置頂"
+                          },
+                          "pinnedAt": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "置頂時間（ISO）"
+                          },
+                          "editedAt": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "編輯時間（ISO）"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "建立時間（ISO）"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "description": "更新時間（ISO）"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "roomId",
+                          "kind",
+                          "body",
+                          "metadata",
+                          "author",
+                          "replyTo",
+                          "likeCount",
+                          "likedByMe",
+                          "isPinned",
+                          "pinnedAt",
+                          "editedAt",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "description": "聊天訊息"
+                      },
+                      "description": "新訊息"
+                    },
+                    "changed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "訊息 ID"
+                          },
+                          "roomId": {
+                            "type": "integer",
+                            "description": "聊天室 ID"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "text",
+                              "system"
+                            ],
+                            "description": "訊息類型"
+                          },
+                          "body": {
+                            "type": "string",
+                            "description": "訊息內容"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "nullable": true,
+                            "additionalProperties": {
+                              "nullable": true
+                            },
+                            "description": "系統訊息元資料"
+                          },
+                          "author": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "userId": {
+                                "type": "integer",
+                                "description": "作者 ID"
+                              },
+                              "nickname": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "暱稱"
+                              },
+                              "avatar": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "頭像 URL"
+                              },
+                              "isHost": {
+                                "type": "boolean",
+                                "description": "是否為帶領人"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "nickname",
+                              "avatar",
+                              "isHost"
+                            ],
+                            "description": "作者（系統訊息為 null）"
+                          },
+                          "replyTo": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "被引用訊息 ID"
+                              },
+                              "authorName": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "被引用訊息的作者暱稱"
+                              },
+                              "bodyPreview": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "被引用訊息的內容預覽（已刪除為 null）"
+                              },
+                              "isDeleted": {
+                                "type": "boolean",
+                                "description": "被引用訊息是否已刪除"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "authorName",
+                              "bodyPreview",
+                              "isDeleted"
+                            ],
+                            "description": "引用回覆（無引用為 null）"
+                          },
+                          "likeCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "按讚數"
+                          },
+                          "likedByMe": {
+                            "type": "boolean",
+                            "description": "我是否已按讚"
+                          },
+                          "isPinned": {
+                            "type": "boolean",
+                            "description": "是否已置頂"
+                          },
+                          "pinnedAt": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "置頂時間（ISO）"
+                          },
+                          "editedAt": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "編輯時間（ISO）"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "建立時間（ISO）"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "description": "更新時間（ISO）"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "roomId",
+                          "kind",
+                          "body",
+                          "metadata",
+                          "author",
+                          "replyTo",
+                          "likeCount",
+                          "likedByMe",
+                          "isPinned",
+                          "pinnedAt",
+                          "editedAt",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "description": "聊天訊息"
+                      },
+                      "description": "已變更的既有訊息"
+                    },
+                    "deletedIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "description": "已刪除的訊息 ID"
+                    },
+                    "pinnedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "置頂訊息數"
+                    },
+                    "memberCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "成員數"
+                    },
+                    "serverTime": {
+                      "type": "string",
+                      "description": "伺服器時間（ISO）"
+                    }
+                  },
+                  "required": [
+                    "messages",
+                    "changed",
+                    "deletedIds",
+                    "pinnedCount",
+                    "memberCount",
+                    "serverTime"
+                  ],
+                  "description": "增量輪詢回應"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "發送訊息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000,
+                    "description": "訊息內容",
+                    "example": "大家好！"
+                  },
+                  "replyToMessageId": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "description": "引用回覆的訊息 ID",
+                    "example": 42
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "description": "發送聊天訊息"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "訊息已發送",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "訊息 ID"
+                    },
+                    "roomId": {
+                      "type": "integer",
+                      "description": "聊天室 ID"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "system"
+                      ],
+                      "description": "訊息類型"
+                    },
+                    "body": {
+                      "type": "string",
+                      "description": "訊息內容"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "nullable": true,
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "系統訊息元資料"
+                    },
+                    "author": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "userId": {
+                          "type": "integer",
+                          "description": "作者 ID"
+                        },
+                        "nickname": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暱稱"
+                        },
+                        "avatar": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "頭像 URL"
+                        },
+                        "isHost": {
+                          "type": "boolean",
+                          "description": "是否為帶領人"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "nickname",
+                        "avatar",
+                        "isHost"
+                      ],
+                      "description": "作者（系統訊息為 null）"
+                    },
+                    "replyTo": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "被引用訊息 ID"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的作者暱稱"
+                        },
+                        "bodyPreview": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的內容預覽（已刪除為 null）"
+                        },
+                        "isDeleted": {
+                          "type": "boolean",
+                          "description": "被引用訊息是否已刪除"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorName",
+                        "bodyPreview",
+                        "isDeleted"
+                      ],
+                      "description": "引用回覆（無引用為 null）"
+                    },
+                    "likeCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "按讚數"
+                    },
+                    "likedByMe": {
+                      "type": "boolean",
+                      "description": "我是否已按讚"
+                    },
+                    "isPinned": {
+                      "type": "boolean",
+                      "description": "是否已置頂"
+                    },
+                    "pinnedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "置頂時間（ISO）"
+                    },
+                    "editedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "編輯時間（ISO）"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "建立時間（ISO）"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "更新時間（ISO）"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "roomId",
+                    "kind",
+                    "body",
+                    "metadata",
+                    "author",
+                    "replyTo",
+                    "likeCount",
+                    "likedByMe",
+                    "isPinned",
+                    "pinnedAt",
+                    "editedAt",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "description": "聊天訊息"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/messages/{messageId}": {
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "編輯訊息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "訊息 ID",
+              "example": 100
+            },
+            "required": true,
+            "description": "訊息 ID",
+            "name": "messageId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000,
+                    "description": "編輯後的訊息內容",
+                    "example": "修正：大家好！"
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "description": "編輯聊天訊息"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "訊息已編輯",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "訊息 ID"
+                    },
+                    "roomId": {
+                      "type": "integer",
+                      "description": "聊天室 ID"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "system"
+                      ],
+                      "description": "訊息類型"
+                    },
+                    "body": {
+                      "type": "string",
+                      "description": "訊息內容"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "nullable": true,
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "系統訊息元資料"
+                    },
+                    "author": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "userId": {
+                          "type": "integer",
+                          "description": "作者 ID"
+                        },
+                        "nickname": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暱稱"
+                        },
+                        "avatar": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "頭像 URL"
+                        },
+                        "isHost": {
+                          "type": "boolean",
+                          "description": "是否為帶領人"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "nickname",
+                        "avatar",
+                        "isHost"
+                      ],
+                      "description": "作者（系統訊息為 null）"
+                    },
+                    "replyTo": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "被引用訊息 ID"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的作者暱稱"
+                        },
+                        "bodyPreview": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的內容預覽（已刪除為 null）"
+                        },
+                        "isDeleted": {
+                          "type": "boolean",
+                          "description": "被引用訊息是否已刪除"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorName",
+                        "bodyPreview",
+                        "isDeleted"
+                      ],
+                      "description": "引用回覆（無引用為 null）"
+                    },
+                    "likeCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "按讚數"
+                    },
+                    "likedByMe": {
+                      "type": "boolean",
+                      "description": "我是否已按讚"
+                    },
+                    "isPinned": {
+                      "type": "boolean",
+                      "description": "是否已置頂"
+                    },
+                    "pinnedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "置頂時間（ISO）"
+                    },
+                    "editedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "編輯時間（ISO）"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "建立時間（ISO）"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "更新時間（ISO）"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "roomId",
+                    "kind",
+                    "body",
+                    "metadata",
+                    "author",
+                    "replyTo",
+                    "likeCount",
+                    "likedByMe",
+                    "isPinned",
+                    "pinnedAt",
+                    "editedAt",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "description": "聊天訊息"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "刪除訊息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "訊息 ID",
+              "example": 100
+            },
+            "required": true,
+            "description": "訊息 ID",
+            "name": "messageId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "訊息已刪除"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/messages/{messageId}/like": {
+      "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "按讚",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "訊息 ID",
+              "example": 100
+            },
+            "required": true,
+            "description": "訊息 ID",
+            "name": "messageId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "按讚結果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "likeCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "按讚數"
+                    },
+                    "likedByMe": {
+                      "type": "boolean",
+                      "description": "我是否已按讚"
+                    }
+                  },
+                  "required": [
+                    "likeCount",
+                    "likedByMe"
+                  ],
+                  "description": "按讚回應"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "取消按讚",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "訊息 ID",
+              "example": 100
+            },
+            "required": true,
+            "description": "訊息 ID",
+            "name": "messageId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取消按讚結果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "likeCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "按讚數"
+                    },
+                    "likedByMe": {
+                      "type": "boolean",
+                      "description": "我是否已按讚"
+                    }
+                  },
+                  "required": [
+                    "likeCount",
+                    "likedByMe"
+                  ],
+                  "description": "按讚回應"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/messages/{messageId}/pin": {
+      "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "置頂訊息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "訊息 ID",
+              "example": 100
+            },
+            "required": true,
+            "description": "訊息 ID",
+            "name": "messageId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "置頂結果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "訊息 ID"
+                    },
+                    "roomId": {
+                      "type": "integer",
+                      "description": "聊天室 ID"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "system"
+                      ],
+                      "description": "訊息類型"
+                    },
+                    "body": {
+                      "type": "string",
+                      "description": "訊息內容"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "nullable": true,
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "系統訊息元資料"
+                    },
+                    "author": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "userId": {
+                          "type": "integer",
+                          "description": "作者 ID"
+                        },
+                        "nickname": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暱稱"
+                        },
+                        "avatar": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "頭像 URL"
+                        },
+                        "isHost": {
+                          "type": "boolean",
+                          "description": "是否為帶領人"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "nickname",
+                        "avatar",
+                        "isHost"
+                      ],
+                      "description": "作者（系統訊息為 null）"
+                    },
+                    "replyTo": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "被引用訊息 ID"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的作者暱稱"
+                        },
+                        "bodyPreview": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的內容預覽（已刪除為 null）"
+                        },
+                        "isDeleted": {
+                          "type": "boolean",
+                          "description": "被引用訊息是否已刪除"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorName",
+                        "bodyPreview",
+                        "isDeleted"
+                      ],
+                      "description": "引用回覆（無引用為 null）"
+                    },
+                    "likeCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "按讚數"
+                    },
+                    "likedByMe": {
+                      "type": "boolean",
+                      "description": "我是否已按讚"
+                    },
+                    "isPinned": {
+                      "type": "boolean",
+                      "description": "是否已置頂"
+                    },
+                    "pinnedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "置頂時間（ISO）"
+                    },
+                    "editedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "編輯時間（ISO）"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "建立時間（ISO）"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "更新時間（ISO）"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "roomId",
+                    "kind",
+                    "body",
+                    "metadata",
+                    "author",
+                    "replyTo",
+                    "likeCount",
+                    "likedByMe",
+                    "isPinned",
+                    "pinnedAt",
+                    "editedAt",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "description": "聊天訊息"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "取消置頂",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "訊息 ID",
+              "example": 100
+            },
+            "required": true,
+            "description": "訊息 ID",
+            "name": "messageId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取消置頂結果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "訊息 ID"
+                    },
+                    "roomId": {
+                      "type": "integer",
+                      "description": "聊天室 ID"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "system"
+                      ],
+                      "description": "訊息類型"
+                    },
+                    "body": {
+                      "type": "string",
+                      "description": "訊息內容"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "nullable": true,
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "系統訊息元資料"
+                    },
+                    "author": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "userId": {
+                          "type": "integer",
+                          "description": "作者 ID"
+                        },
+                        "nickname": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暱稱"
+                        },
+                        "avatar": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "頭像 URL"
+                        },
+                        "isHost": {
+                          "type": "boolean",
+                          "description": "是否為帶領人"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "nickname",
+                        "avatar",
+                        "isHost"
+                      ],
+                      "description": "作者（系統訊息為 null）"
+                    },
+                    "replyTo": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "description": "被引用訊息 ID"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的作者暱稱"
+                        },
+                        "bodyPreview": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "被引用訊息的內容預覽（已刪除為 null）"
+                        },
+                        "isDeleted": {
+                          "type": "boolean",
+                          "description": "被引用訊息是否已刪除"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "authorName",
+                        "bodyPreview",
+                        "isDeleted"
+                      ],
+                      "description": "引用回覆（無引用為 null）"
+                    },
+                    "likeCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "按讚數"
+                    },
+                    "likedByMe": {
+                      "type": "boolean",
+                      "description": "我是否已按讚"
+                    },
+                    "isPinned": {
+                      "type": "boolean",
+                      "description": "是否已置頂"
+                    },
+                    "pinnedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "置頂時間（ISO）"
+                    },
+                    "editedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "編輯時間（ISO）"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "建立時間（ISO）"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "更新時間（ISO）"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "roomId",
+                    "kind",
+                    "body",
+                    "metadata",
+                    "author",
+                    "replyTo",
+                    "likeCount",
+                    "likedByMe",
+                    "isPinned",
+                    "pinnedAt",
+                    "editedAt",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "description": "聊天訊息"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/pins": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "置頂訊息列表",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "置頂訊息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "訊息 ID"
+                      },
+                      "roomId": {
+                        "type": "integer",
+                        "description": "聊天室 ID"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "text",
+                          "system"
+                        ],
+                        "description": "訊息類型"
+                      },
+                      "body": {
+                        "type": "string",
+                        "description": "訊息內容"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "nullable": true,
+                        "additionalProperties": {
+                          "nullable": true
+                        },
+                        "description": "系統訊息元資料"
+                      },
+                      "author": {
+                        "type": "object",
+                        "nullable": true,
+                        "properties": {
+                          "userId": {
+                            "type": "integer",
+                            "description": "作者 ID"
+                          },
+                          "nickname": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "暱稱"
+                          },
+                          "avatar": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "頭像 URL"
+                          },
+                          "isHost": {
+                            "type": "boolean",
+                            "description": "是否為帶領人"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "nickname",
+                          "avatar",
+                          "isHost"
+                        ],
+                        "description": "作者（系統訊息為 null）"
+                      },
+                      "replyTo": {
+                        "type": "object",
+                        "nullable": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "被引用訊息 ID"
+                          },
+                          "authorName": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "被引用訊息的作者暱稱"
+                          },
+                          "bodyPreview": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "被引用訊息的內容預覽（已刪除為 null）"
+                          },
+                          "isDeleted": {
+                            "type": "boolean",
+                            "description": "被引用訊息是否已刪除"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "authorName",
+                          "bodyPreview",
+                          "isDeleted"
+                        ],
+                        "description": "引用回覆（無引用為 null）"
+                      },
+                      "likeCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "按讚數"
+                      },
+                      "likedByMe": {
+                        "type": "boolean",
+                        "description": "我是否已按讚"
+                      },
+                      "isPinned": {
+                        "type": "boolean",
+                        "description": "是否已置頂"
+                      },
+                      "pinnedAt": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "置頂時間（ISO）"
+                      },
+                      "editedAt": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "編輯時間（ISO）"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "description": "建立時間（ISO）"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "description": "更新時間（ISO）"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "roomId",
+                      "kind",
+                      "body",
+                      "metadata",
+                      "author",
+                      "replyTo",
+                      "likeCount",
+                      "likedByMe",
+                      "isPinned",
+                      "pinnedAt",
+                      "editedAt",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "description": "聊天訊息"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/messages/search": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "搜尋訊息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "搜尋關鍵字（1-100 字）",
+              "example": "下次"
+            },
+            "required": true,
+            "description": "搜尋關鍵字（1-100 字）",
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "搜尋結果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "結果總數"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "訊息 ID"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "建立時間（ISO）"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "createdAt"
+                        ],
+                        "description": "搜尋結果項目"
+                      },
+                      "description": "搜尋結果"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "items"
+                  ],
+                  "description": "訊息搜尋結果"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/chat-rooms/{roomId}/read": {
+      "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "標記已讀",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "description": "聊天室 ID",
+              "example": 1
+            },
+            "required": true,
+            "description": "聊天室 ID",
+            "name": "roomId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "lastReadMessageId": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "description": "已讀到的最新訊息 ID",
+                    "example": 200
+                  }
+                },
+                "required": [
+                  "lastReadMessageId"
+                ],
+                "description": "標記已讀"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已讀結果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lastReadMessageId": {
+                      "type": "integer",
+                      "description": "已讀到的訊息 ID"
+                    },
+                    "unreadCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "剩餘未讀數"
+                    }
+                  },
+                  "required": [
+                    "lastReadMessageId",
+                    "unreadCount"
+                  ],
+                  "description": "標記已讀回應"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/v1/cities": {
       "get": {
         "tags": [
@@ -34846,6 +37705,97 @@
                           "type": "string",
                           "format": "date-time"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ]
+                          },
+                          "description": "互動方式"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "sessionDate": {
+                                "type": "string"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "sessionDate",
+                              "startTime",
+                              "endTime"
+                            ]
+                          },
+                          "description": "聚會時段"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ]
+                        },
+                        "feeAmount": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "費用金額"
+                        },
+                        "signupMethod": {
+                          "type": "string",
+                          "enum": [
+                            "island_form",
+                            "external"
+                          ]
+                        },
+                        "externalSignupUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "外部報名連結"
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "人數上限"
+                        },
+                        "joinDeadline": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time",
+                          "description": "加入截止日"
+                        },
+                        "participantCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "已加入人數"
+                        },
                         "inviteMessage": {
                           "type": "string",
                           "nullable": true
@@ -34863,6 +37813,30 @@
                             "paused",
                             null
                           ]
+                        },
+                        "privacy": {
+                          "type": "object",
+                          "properties": {
+                            "isPrivate": {
+                              "type": "boolean",
+                              "description": "私密活動"
+                            },
+                            "checkinDefaultPrivate": {
+                              "type": "boolean",
+                              "description": "參與者打卡預設私密"
+                            },
+                            "hostCommentDefaultPrivate": {
+                              "type": "boolean",
+                              "description": "發起人留言預設私密"
+                            }
+                          },
+                          "required": [
+                            "isPrivate",
+                            "checkinDefaultPrivate",
+                            "hostCommentDefaultPrivate"
+                          ],
+                          "title": "CohortPrivacy",
+                          "description": "隱私設定"
                         },
                         "visibilityNotice": {
                           "type": "string"
@@ -34894,9 +37868,21 @@
                         "displayName",
                         "startDate",
                         "endDate",
+                        "tagline",
+                        "interactionModes",
+                        "location",
+                        "sessions",
+                        "feeType",
+                        "feeAmount",
+                        "signupMethod",
+                        "externalSignupUrl",
+                        "capacity",
+                        "joinDeadline",
+                        "participantCount",
                         "inviteMessage",
                         "canJoin",
                         "unavailableReason",
+                        "privacy",
                         "visibilityNotice",
                         "organization"
                       ],
@@ -35283,6 +38269,93 @@
                           "type": "string",
                           "format": "date-time"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ]
+                          },
+                          "description": "互動方式"
+                        },
+                        "meetingUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "會議連結（僅已加入成員可見）"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "sessionDate": {
+                                "type": "string"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "sessionDate",
+                              "startTime",
+                              "endTime"
+                            ]
+                          },
+                          "description": "聚會時段"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ]
+                        },
+                        "privacy": {
+                          "type": "object",
+                          "properties": {
+                            "isPrivate": {
+                              "type": "boolean",
+                              "description": "私密活動"
+                            },
+                            "checkinDefaultPrivate": {
+                              "type": "boolean",
+                              "description": "參與者打卡預設私密"
+                            },
+                            "hostCommentDefaultPrivate": {
+                              "type": "boolean",
+                              "description": "發起人留言預設私密"
+                            }
+                          },
+                          "required": [
+                            "isPrivate",
+                            "checkinDefaultPrivate",
+                            "hostCommentDefaultPrivate"
+                          ],
+                          "title": "CohortPrivacy",
+                          "description": "隱私設定"
+                        },
                         "exportOptIn": {
                           "type": "boolean"
                         },
@@ -35385,6 +38458,13 @@
                         "displayName",
                         "startDate",
                         "endDate",
+                        "tagline",
+                        "interactionModes",
+                        "meetingUrl",
+                        "location",
+                        "sessions",
+                        "feeType",
+                        "privacy",
                         "exportOptIn",
                         "organization",
                         "practices"
@@ -47052,7 +50132,7 @@
         "tags": [
           "Lighthouse Programs"
         ],
-        "summary": "封存系列",
+        "summary": "封存系列（級聯封存全部場次）",
         "security": [
           {
             "bearerAuth": []
@@ -47072,17 +50152,366 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "系列已封存"
+          "200": {
+            "description": "系列已封存",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "programId": {
+                          "type": "integer",
+                          "description": "系列 ID"
+                        },
+                        "archivedCohortCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "本次級聯封存的場次數量"
+                        }
+                      },
+                      "required": [
+                        "programId",
+                        "archivedCohortCount"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
           "403": {
             "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/api/v1/lighthouse/programs/{programId}/duplicate": {
+      "post": {
+        "tags": [
+          "Lighthouse Programs"
+        ],
+        "summary": "複製系列（不含場次）",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "example": 1
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "副本已建立",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "organizationId": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletedAt": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "organizationId",
+                        "name",
+                        "description",
+                        "deletedAt",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           },
-          "409": {
-            "$ref": "#/components/responses/ConflictError"
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
           }
         }
       }
@@ -47143,6 +50572,11 @@
                           "displayName": {
                             "type": "string"
                           },
+                          "tagline": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "一句話簡介"
+                          },
                           "startDate": {
                             "type": "string",
                             "format": "date-time"
@@ -47172,6 +50606,123 @@
                           "inviteMessage": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "showInviteMessageOnSignup": {
+                            "type": "boolean"
+                          },
+                          "interactionModes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "sync",
+                                "async",
+                                "physical"
+                              ],
+                              "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                            },
+                            "description": "互動方式"
+                          },
+                          "meetingUrl": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "會議連結"
+                          },
+                          "location": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "活動地點"
+                          },
+                          "sessions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "sessionDate": {
+                                  "type": "string",
+                                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                  "description": "聚會日期",
+                                  "example": "2026-10-01"
+                                },
+                                "startTime": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "description": "開始時間（HH:MM），可為 null",
+                                  "example": "14:00"
+                                },
+                                "endTime": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "description": "結束時間（HH:MM），可為 null",
+                                  "example": "16:00"
+                                },
+                                "id": {
+                                  "type": "integer",
+                                  "description": "聚會時段 ID",
+                                  "example": 1
+                                }
+                              },
+                              "required": [
+                                "sessionDate",
+                                "startTime",
+                                "endTime",
+                                "id"
+                              ],
+                              "title": "CohortSession",
+                              "description": "場次聚會時段"
+                            },
+                            "description": "聚會時段"
+                          },
+                          "feeType": {
+                            "type": "string",
+                            "enum": [
+                              "free",
+                              "paid"
+                            ],
+                            "description": "收費類型：free（免費）、paid（付費）",
+                            "example": "free"
+                          },
+                          "feeAmount": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "費用金額"
+                          },
+                          "signupMethod": {
+                            "type": "string",
+                            "enum": [
+                              "island_form",
+                              "external"
+                            ],
+                            "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                            "example": "island_form"
+                          },
+                          "externalSignupUrl": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "外部報名連結"
+                          },
+                          "isPrivate": {
+                            "type": "boolean",
+                            "description": "私密活動"
+                          },
+                          "checkinDefaultPrivate": {
+                            "type": "boolean",
+                            "description": "參與者打卡預設私密"
+                          },
+                          "hostCommentDefaultPrivate": {
+                            "type": "boolean",
+                            "description": "發起人留言預設私密"
+                          },
+                          "hasHomePage": {
+                            "type": "boolean",
+                            "description": "是否已建立活動主頁"
+                          },
+                          "signupQuestionCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "報名問題數量"
                           },
                           "status": {
                             "type": "string",
@@ -47205,6 +50756,7 @@
                           "programId",
                           "slug",
                           "displayName",
+                          "tagline",
                           "startDate",
                           "endDate",
                           "joinToken",
@@ -47212,6 +50764,20 @@
                           "joinDeadline",
                           "capacity",
                           "inviteMessage",
+                          "showInviteMessageOnSignup",
+                          "interactionModes",
+                          "meetingUrl",
+                          "location",
+                          "sessions",
+                          "feeType",
+                          "feeAmount",
+                          "signupMethod",
+                          "externalSignupUrl",
+                          "isPrivate",
+                          "checkinDefaultPrivate",
+                          "hostCommentDefaultPrivate",
+                          "hasHomePage",
+                          "signupQuestionCount",
                           "status",
                           "visibility",
                           "createdAt",
@@ -47386,6 +50952,13 @@
                     "maxLength": 100,
                     "example": "2026 夏季期"
                   },
+                  "tagline": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "一句話簡介（≤80 字）",
+                    "example": "一起學習、一起成長"
+                  },
                   "startDate": {
                     "type": "string",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
@@ -47397,18 +50970,141 @@
                   "joinDeadline": {
                     "type": "string",
                     "nullable": true,
-                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "加入截止日；null 表示可加入至結束日"
                   },
                   "capacity": {
                     "type": "integer",
                     "nullable": true,
                     "minimum": 0,
-                    "exclusiveMinimum": true
+                    "exclusiveMinimum": true,
+                    "description": "人數上限；null 表示不限"
                   },
                   "inviteMessage": {
                     "type": "string",
                     "nullable": true,
                     "maxLength": 2000
+                  },
+                  "showInviteMessageOnSignup": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "在報名頁面顯示邀請訊息"
+                  },
+                  "interactionModes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sync",
+                        "async",
+                        "physical"
+                      ],
+                      "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                    },
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "description": "互動方式（至少選一）",
+                    "example": [
+                      "sync"
+                    ]
+                  },
+                  "meetingUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uri",
+                    "description": "會議連結"
+                  },
+                  "location": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "活動地點"
+                  },
+                  "sessions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sessionDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "聚會日期",
+                          "example": "2026-10-01"
+                        },
+                        "startTime": {
+                          "type": "string",
+                          "nullable": true,
+                          "pattern": "^\\d{2}:\\d{2}$",
+                          "description": "開始時間（HH:MM），可為 null",
+                          "example": "14:00"
+                        },
+                        "endTime": {
+                          "type": "string",
+                          "nullable": true,
+                          "pattern": "^\\d{2}:\\d{2}$",
+                          "description": "結束時間（HH:MM），可為 null",
+                          "example": "16:00"
+                        }
+                      },
+                      "required": [
+                        "sessionDate",
+                        "startTime",
+                        "endTime"
+                      ],
+                      "title": "CohortSessionInput",
+                      "description": "場次聚會時段（輸入）"
+                    },
+                    "maxItems": 50,
+                    "description": "聚會時段（上限 50 筆）"
+                  },
+                  "feeType": {
+                    "type": "string",
+                    "enum": [
+                      "free",
+                      "paid"
+                    ],
+                    "default": "free",
+                    "description": "收費類型：free（免費）、paid（付費）",
+                    "example": "free"
+                  },
+                  "feeAmount": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "description": "費用金額（NT$）；free 時清為 null"
+                  },
+                  "signupMethod": {
+                    "type": "string",
+                    "enum": [
+                      "island_form",
+                      "external"
+                    ],
+                    "default": "island_form",
+                    "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                    "example": "island_form"
+                  },
+                  "externalSignupUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uri",
+                    "description": "外部報名連結"
+                  },
+                  "isPrivate": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "私密活動"
+                  },
+                  "checkinDefaultPrivate": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "參與者打卡預設私密"
+                  },
+                  "hostCommentDefaultPrivate": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "發起人留言預設私密"
                   },
                   "visibility": {
                     "type": "string",
@@ -47470,6 +51166,11 @@
                         "displayName": {
                           "type": "string"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
                         "startDate": {
                           "type": "string",
                           "format": "date-time"
@@ -47499,6 +51200,123 @@
                         "inviteMessage": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "showInviteMessageOnSignup": {
+                          "type": "boolean"
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ],
+                            "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                          },
+                          "description": "互動方式"
+                        },
+                        "meetingUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "會議連結"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sessionDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
+                              }
+                            },
+                            "required": [
+                              "sessionDate",
+                              "startTime",
+                              "endTime",
+                              "id"
+                            ],
+                            "title": "CohortSession",
+                            "description": "場次聚會時段"
+                          },
+                          "description": "聚會時段"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ],
+                          "description": "收費類型：free（免費）、paid（付費）",
+                          "example": "free"
+                        },
+                        "feeAmount": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "費用金額"
+                        },
+                        "signupMethod": {
+                          "type": "string",
+                          "enum": [
+                            "island_form",
+                            "external"
+                          ],
+                          "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                          "example": "island_form"
+                        },
+                        "externalSignupUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "外部報名連結"
+                        },
+                        "isPrivate": {
+                          "type": "boolean",
+                          "description": "私密活動"
+                        },
+                        "checkinDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "參與者打卡預設私密"
+                        },
+                        "hostCommentDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "發起人留言預設私密"
+                        },
+                        "hasHomePage": {
+                          "type": "boolean",
+                          "description": "是否已建立活動主頁"
+                        },
+                        "signupQuestionCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "報名問題數量"
                         },
                         "status": {
                           "type": "string",
@@ -47532,6 +51350,7 @@
                         "programId",
                         "slug",
                         "displayName",
+                        "tagline",
                         "startDate",
                         "endDate",
                         "joinToken",
@@ -47539,6 +51358,20 @@
                         "joinDeadline",
                         "capacity",
                         "inviteMessage",
+                        "showInviteMessageOnSignup",
+                        "interactionModes",
+                        "meetingUrl",
+                        "location",
+                        "sessions",
+                        "feeType",
+                        "feeAmount",
+                        "signupMethod",
+                        "externalSignupUrl",
+                        "isPrivate",
+                        "checkinDefaultPrivate",
+                        "hostCommentDefaultPrivate",
+                        "hasHomePage",
+                        "signupQuestionCount",
                         "status",
                         "visibility",
                         "createdAt",
@@ -47739,6 +51572,11 @@
                         "displayName": {
                           "type": "string"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
                         "startDate": {
                           "type": "string",
                           "format": "date-time"
@@ -47768,6 +51606,123 @@
                         "inviteMessage": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "showInviteMessageOnSignup": {
+                          "type": "boolean"
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ],
+                            "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                          },
+                          "description": "互動方式"
+                        },
+                        "meetingUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "會議連結"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sessionDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
+                              }
+                            },
+                            "required": [
+                              "sessionDate",
+                              "startTime",
+                              "endTime",
+                              "id"
+                            ],
+                            "title": "CohortSession",
+                            "description": "場次聚會時段"
+                          },
+                          "description": "聚會時段"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ],
+                          "description": "收費類型：free（免費）、paid（付費）",
+                          "example": "free"
+                        },
+                        "feeAmount": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "費用金額"
+                        },
+                        "signupMethod": {
+                          "type": "string",
+                          "enum": [
+                            "island_form",
+                            "external"
+                          ],
+                          "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                          "example": "island_form"
+                        },
+                        "externalSignupUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "外部報名連結"
+                        },
+                        "isPrivate": {
+                          "type": "boolean",
+                          "description": "私密活動"
+                        },
+                        "checkinDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "參與者打卡預設私密"
+                        },
+                        "hostCommentDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "發起人留言預設私密"
+                        },
+                        "hasHomePage": {
+                          "type": "boolean",
+                          "description": "是否已建立活動主頁"
+                        },
+                        "signupQuestionCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "報名問題數量"
                         },
                         "status": {
                           "type": "string",
@@ -47801,6 +51756,7 @@
                         "programId",
                         "slug",
                         "displayName",
+                        "tagline",
                         "startDate",
                         "endDate",
                         "joinToken",
@@ -47808,6 +51764,20 @@
                         "joinDeadline",
                         "capacity",
                         "inviteMessage",
+                        "showInviteMessageOnSignup",
+                        "interactionModes",
+                        "meetingUrl",
+                        "location",
+                        "sessions",
+                        "feeType",
+                        "feeAmount",
+                        "signupMethod",
+                        "externalSignupUrl",
+                        "isPrivate",
+                        "checkinDefaultPrivate",
+                        "hostCommentDefaultPrivate",
+                        "hasHomePage",
+                        "signupQuestionCount",
                         "status",
                         "visibility",
                         "createdAt",
@@ -47990,6 +51960,13 @@
                     "minLength": 1,
                     "maxLength": 100
                   },
+                  "tagline": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "一句話簡介"
+                  },
                   "startDate": {
                     "type": "string",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
@@ -48013,6 +51990,108 @@
                     "type": "string",
                     "nullable": true,
                     "maxLength": 2000
+                  },
+                  "showInviteMessageOnSignup": {
+                    "type": "boolean"
+                  },
+                  "interactionModes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sync",
+                        "async",
+                        "physical"
+                      ],
+                      "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                    },
+                    "minItems": 1,
+                    "maxItems": 3
+                  },
+                  "meetingUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uri"
+                  },
+                  "location": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "sessions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sessionDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "聚會日期",
+                          "example": "2026-10-01"
+                        },
+                        "startTime": {
+                          "type": "string",
+                          "nullable": true,
+                          "pattern": "^\\d{2}:\\d{2}$",
+                          "description": "開始時間（HH:MM），可為 null",
+                          "example": "14:00"
+                        },
+                        "endTime": {
+                          "type": "string",
+                          "nullable": true,
+                          "pattern": "^\\d{2}:\\d{2}$",
+                          "description": "結束時間（HH:MM），可為 null",
+                          "example": "16:00"
+                        }
+                      },
+                      "required": [
+                        "sessionDate",
+                        "startTime",
+                        "endTime"
+                      ],
+                      "title": "CohortSessionInput",
+                      "description": "場次聚會時段（輸入）"
+                    },
+                    "maxItems": 50
+                  },
+                  "feeType": {
+                    "type": "string",
+                    "enum": [
+                      "free",
+                      "paid"
+                    ],
+                    "description": "收費類型：free（免費）、paid（付費）",
+                    "example": "free"
+                  },
+                  "feeAmount": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "signupMethod": {
+                    "type": "string",
+                    "enum": [
+                      "island_form",
+                      "external"
+                    ],
+                    "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                    "example": "island_form"
+                  },
+                  "externalSignupUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uri"
+                  },
+                  "isPrivate": {
+                    "type": "boolean"
+                  },
+                  "checkinDefaultPrivate": {
+                    "type": "boolean"
+                  },
+                  "hostCommentDefaultPrivate": {
+                    "type": "boolean"
                   },
                   "visibility": {
                     "type": "string",
@@ -48066,6 +52145,11 @@
                         "displayName": {
                           "type": "string"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
                         "startDate": {
                           "type": "string",
                           "format": "date-time"
@@ -48096,6 +52180,123 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "showInviteMessageOnSignup": {
+                          "type": "boolean"
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ],
+                            "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                          },
+                          "description": "互動方式"
+                        },
+                        "meetingUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "會議連結"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sessionDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
+                              }
+                            },
+                            "required": [
+                              "sessionDate",
+                              "startTime",
+                              "endTime",
+                              "id"
+                            ],
+                            "title": "CohortSession",
+                            "description": "場次聚會時段"
+                          },
+                          "description": "聚會時段"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ],
+                          "description": "收費類型：free（免費）、paid（付費）",
+                          "example": "free"
+                        },
+                        "feeAmount": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "費用金額"
+                        },
+                        "signupMethod": {
+                          "type": "string",
+                          "enum": [
+                            "island_form",
+                            "external"
+                          ],
+                          "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                          "example": "island_form"
+                        },
+                        "externalSignupUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "外部報名連結"
+                        },
+                        "isPrivate": {
+                          "type": "boolean",
+                          "description": "私密活動"
+                        },
+                        "checkinDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "參與者打卡預設私密"
+                        },
+                        "hostCommentDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "發起人留言預設私密"
+                        },
+                        "hasHomePage": {
+                          "type": "boolean",
+                          "description": "是否已建立活動主頁"
+                        },
+                        "signupQuestionCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "報名問題數量"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -48121,6 +52322,11 @@
                           "type": "string",
                           "nullable": true,
                           "format": "date-time"
+                        },
+                        "affectedPracticeCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "切換隱私時影響的實踐數量"
                         }
                       },
                       "required": [
@@ -48128,6 +52334,7 @@
                         "programId",
                         "slug",
                         "displayName",
+                        "tagline",
                         "startDate",
                         "endDate",
                         "joinToken",
@@ -48135,6 +52342,20 @@
                         "joinDeadline",
                         "capacity",
                         "inviteMessage",
+                        "showInviteMessageOnSignup",
+                        "interactionModes",
+                        "meetingUrl",
+                        "location",
+                        "sessions",
+                        "feeType",
+                        "feeAmount",
+                        "signupMethod",
+                        "externalSignupUrl",
+                        "isPrivate",
+                        "checkinDefaultPrivate",
+                        "hostCommentDefaultPrivate",
+                        "hasHomePage",
+                        "signupQuestionCount",
                         "status",
                         "visibility",
                         "createdAt",
@@ -50140,6 +54361,11 @@
                         "displayName": {
                           "type": "string"
                         },
+                        "tagline": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "一句話簡介"
+                        },
                         "startDate": {
                           "type": "string",
                           "format": "date-time"
@@ -50169,6 +54395,123 @@
                         "inviteMessage": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "showInviteMessageOnSignup": {
+                          "type": "boolean"
+                        },
+                        "interactionModes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sync",
+                              "async",
+                              "physical"
+                            ],
+                            "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                          },
+                          "description": "互動方式"
+                        },
+                        "meetingUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "會議連結"
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "活動地點"
+                        },
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sessionDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
+                              },
+                              "startTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
+                              },
+                              "endTime": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{2}:\\d{2}$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
+                              }
+                            },
+                            "required": [
+                              "sessionDate",
+                              "startTime",
+                              "endTime",
+                              "id"
+                            ],
+                            "title": "CohortSession",
+                            "description": "場次聚會時段"
+                          },
+                          "description": "聚會時段"
+                        },
+                        "feeType": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "paid"
+                          ],
+                          "description": "收費類型：free（免費）、paid（付費）",
+                          "example": "free"
+                        },
+                        "feeAmount": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "費用金額"
+                        },
+                        "signupMethod": {
+                          "type": "string",
+                          "enum": [
+                            "island_form",
+                            "external"
+                          ],
+                          "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                          "example": "island_form"
+                        },
+                        "externalSignupUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "外部報名連結"
+                        },
+                        "isPrivate": {
+                          "type": "boolean",
+                          "description": "私密活動"
+                        },
+                        "checkinDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "參與者打卡預設私密"
+                        },
+                        "hostCommentDefaultPrivate": {
+                          "type": "boolean",
+                          "description": "發起人留言預設私密"
+                        },
+                        "hasHomePage": {
+                          "type": "boolean",
+                          "description": "是否已建立活動主頁"
+                        },
+                        "signupQuestionCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "報名問題數量"
                         },
                         "status": {
                           "type": "string",
@@ -50202,6 +54545,7 @@
                         "programId",
                         "slug",
                         "displayName",
+                        "tagline",
                         "startDate",
                         "endDate",
                         "joinToken",
@@ -50209,6 +54553,20 @@
                         "joinDeadline",
                         "capacity",
                         "inviteMessage",
+                        "showInviteMessageOnSignup",
+                        "interactionModes",
+                        "meetingUrl",
+                        "location",
+                        "sessions",
+                        "feeType",
+                        "feeAmount",
+                        "signupMethod",
+                        "externalSignupUrl",
+                        "isPrivate",
+                        "checkinDefaultPrivate",
+                        "hostCommentDefaultPrivate",
+                        "hasHomePage",
+                        "signupQuestionCount",
                         "status",
                         "visibility",
                         "createdAt",
@@ -50400,6 +54758,11 @@
                           "displayName": {
                             "type": "string"
                           },
+                          "tagline": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "一句話簡介"
+                          },
                           "startDate": {
                             "type": "string",
                             "format": "date-time"
@@ -50429,6 +54792,123 @@
                           "inviteMessage": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "showInviteMessageOnSignup": {
+                            "type": "boolean"
+                          },
+                          "interactionModes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "sync",
+                                "async",
+                                "physical"
+                              ],
+                              "description": "互動方式：sync（線上同步）、async（非同步）、physical（實體）"
+                            },
+                            "description": "互動方式"
+                          },
+                          "meetingUrl": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "會議連結"
+                          },
+                          "location": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "活動地點"
+                          },
+                          "sessions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "sessionDate": {
+                                  "type": "string",
+                                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                  "description": "聚會日期",
+                                  "example": "2026-10-01"
+                                },
+                                "startTime": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "description": "開始時間（HH:MM），可為 null",
+                                  "example": "14:00"
+                                },
+                                "endTime": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "description": "結束時間（HH:MM），可為 null",
+                                  "example": "16:00"
+                                },
+                                "id": {
+                                  "type": "integer",
+                                  "description": "聚會時段 ID",
+                                  "example": 1
+                                }
+                              },
+                              "required": [
+                                "sessionDate",
+                                "startTime",
+                                "endTime",
+                                "id"
+                              ],
+                              "title": "CohortSession",
+                              "description": "場次聚會時段"
+                            },
+                            "description": "聚會時段"
+                          },
+                          "feeType": {
+                            "type": "string",
+                            "enum": [
+                              "free",
+                              "paid"
+                            ],
+                            "description": "收費類型：free（免費）、paid（付費）",
+                            "example": "free"
+                          },
+                          "feeAmount": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "費用金額"
+                          },
+                          "signupMethod": {
+                            "type": "string",
+                            "enum": [
+                              "island_form",
+                              "external"
+                            ],
+                            "description": "報名方式：island_form（島島表單）、external（外部連結）",
+                            "example": "island_form"
+                          },
+                          "externalSignupUrl": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "外部報名連結"
+                          },
+                          "isPrivate": {
+                            "type": "boolean",
+                            "description": "私密活動"
+                          },
+                          "checkinDefaultPrivate": {
+                            "type": "boolean",
+                            "description": "參與者打卡預設私密"
+                          },
+                          "hostCommentDefaultPrivate": {
+                            "type": "boolean",
+                            "description": "發起人留言預設私密"
+                          },
+                          "hasHomePage": {
+                            "type": "boolean",
+                            "description": "是否已建立活動主頁"
+                          },
+                          "signupQuestionCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "報名問題數量"
                           },
                           "status": {
                             "type": "string",
@@ -50471,6 +54951,7 @@
                           "programId",
                           "slug",
                           "displayName",
+                          "tagline",
                           "startDate",
                           "endDate",
                           "joinToken",
@@ -50478,6 +54959,20 @@
                           "joinDeadline",
                           "capacity",
                           "inviteMessage",
+                          "showInviteMessageOnSignup",
+                          "interactionModes",
+                          "meetingUrl",
+                          "location",
+                          "sessions",
+                          "feeType",
+                          "feeAmount",
+                          "signupMethod",
+                          "externalSignupUrl",
+                          "isPrivate",
+                          "checkinDefaultPrivate",
+                          "hostCommentDefaultPrivate",
+                          "hasHomePage",
+                          "signupQuestionCount",
                           "status",
                           "visibility",
                           "createdAt",
