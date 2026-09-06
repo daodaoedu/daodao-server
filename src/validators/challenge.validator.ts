@@ -43,6 +43,7 @@ export const challengeJoinResultSchema = z.object({
 
 /** 我參加的共同挑戰（空間共同挑戰子頁）：挑戰摘要 + 我在該挑戰的實踐 */
 export const myChallengeSchema = challengeSummarySchema.extend({
-  practiceId: z.string().uuid().nullable().openapi({ description: '加入時自動複製的實踐 external_id；無綁定模板或已刪除時為 null' })
+  practiceId: z.string().uuid().nullable().openapi({ description: '加入時自動複製的實踐 external_id；無綁定模板或已刪除時為 null' }),
+  checkInCount: z.number().int().nonnegative().openapi({ description: '該使用者在此挑戰實踐的打卡次數', example: 7 })
 });
 export const myChallengesResponseSchema = z.array(myChallengeSchema);
