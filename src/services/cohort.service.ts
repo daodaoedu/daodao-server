@@ -69,7 +69,50 @@ const listByOrganization = async (organizationId: number, userId: number): Promi
     _count: { id: true }
   });
   const joinedByCohort = new Map(joined.map(row => [row.cohort_id, row._count.id]));
-  return rows.map(row => ({ ...map(row), programName: row.program.name, joinedCount: joinedByCohort.get(row.id) ?? 0 }));
+  const cohortIds = rows.map(r => r.id);
+  const [encourageRows, celebrateRows] = cohortIds.length === 0 ? [[], []] : await Promise.all([
+    prisma.$queryRaw<Array<{ cohort_id: number; count: bigint }>>`
+      SELECT sub.cohort_id, COUNT(*) AS count FROM (
+        SELECT p.cohort_id
+        FROM practices p
+        JOIN practice_checkins pc ON pc.practice_id = p.id
+        WHERE p.cohort_id = ANY(${cohortIds}::int[]) AND p.deleted_at IS NULL
+        GROUP BY p.cohort_id, p.user_id, p.id
+        HAVING MAX(pc.created_at) < NOW() - INTERVAL '3 days'
+      ) sub
+      GROUP BY sub.cohort_id
+    `,
+    prisma.$queryRaw<Array<{ cohort_id: number; count: bigint }>>`
+      WITH activity AS (
+        SELECT p.cohort_id, p.id AS practice_id, pc.created_at,
+               LAG(pc.created_at) OVER (PARTITION BY p.id ORDER BY pc.created_at) AS previous_at,
+               COUNT(*) OVER (PARTITION BY p.id) AS total_count,
+               MIN(pc.created_at) OVER (PARTITION BY p.id) AS first_at,
+               MAX(pc.created_at) OVER (PARTITION BY p.id) AS latest_at
+        FROM practices p JOIN practice_checkins pc ON pc.practice_id = p.id
+        WHERE p.cohort_id = ANY(${cohortIds}::int[]) AND p.deleted_at IS NULL
+      )
+      SELECT cohort_id, COUNT(DISTINCT (practice_id, moment)) AS count FROM (
+        SELECT cohort_id, practice_id, 'first_checkin' AS moment FROM activity WHERE total_count = 1
+        UNION ALL
+        SELECT cohort_id, practice_id, 'return_after_break' FROM activity
+        WHERE previous_at IS NOT NULL AND created_at - previous_at >= INTERVAL '3 days' AND created_at >= NOW() - INTERVAL '1 day'
+        UNION ALL
+        SELECT DISTINCT cohort_id, practice_id, 'month_milestone' FROM activity
+        WHERE first_at <= NOW() - INTERVAL '30 days' AND latest_at >= NOW() - INTERVAL '1 day'
+      ) x
+      GROUP BY cohort_id
+    `
+  ]);
+  const encourageByCohort = new Map(encourageRows.map(r => [r.cohort_id, Number(r.count)]));
+  const celebrateByCohort = new Map(celebrateRows.map(r => [r.cohort_id, Number(r.count)]));
+  return rows.map(row => ({
+    ...map(row),
+    programName: row.program.name,
+    joinedCount: joinedByCohort.get(row.id) ?? 0,
+    encourageCount: encourageByCohort.get(row.id) ?? 0,
+    celebrateCount: celebrateByCohort.get(row.id) ?? 0,
+  }));
 };
 const get = async (programId: number, cohortId: number, userId: number): Promise<CohortResponse> => map(await getOwned(programId, cohortId, userId));
 const create = async (programId: number, input: CreateCohortInput, userId: number): Promise<CohortResponse> => {

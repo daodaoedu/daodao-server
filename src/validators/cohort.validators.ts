@@ -40,7 +40,9 @@ export const cohortResponseSchema = z.object({
 export const cohortListResponseSchema = z.array(cohortResponseSchema);
 export const organizationCohortResponseSchema = cohortResponseSchema.extend({
   programName: z.string().openapi({ description: '所屬系列名稱' }),
-  joinedCount: z.number().int().nonnegative().openapi({ description: '已加入的參與者人數（不含帶領人）' })
+  joinedCount: z.number().int().nonnegative().openapi({ description: '已加入的參與者人數（不含帶領人）' }),
+  encourageCount: z.number().int().nonnegative().openapi({ description: '需要鼓勵的參與者×實踐數（>3天未打卡）' }),
+  celebrateCount: z.number().int().nonnegative().openapi({ description: '值得慶祝的時刻數' }),
 });
 export const organizationCohortListResponseSchema = z.array(organizationCohortResponseSchema);
 export const cohortJoinTokenResponseSchema = z.object({ cohortId: z.number().int(), joinToken: z.string().uuid().nullable(), joinPaused: z.boolean() });
