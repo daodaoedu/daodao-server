@@ -91,18 +91,22 @@ const listMine = async (userId: number, now = new Date()) => {
   if (rows.length === 0) return [];
   const [summaries, practices] = await Promise.all([
     buildSummaries(rows, userId, now),
-    // 與 join() 回傳的實踐一致：只取加入時自動複製的模板實踐，最早建立者優先
     prisma.practices.findMany({
       where: { user_id: userId, deleted_at: null, creation_source: 'cohort_template', cohort_id: { in: rows.map(row => row.id) } },
-      select: { cohort_id: true, external_id: true },
+      select: { cohort_id: true, external_id: true, id: true, _count: { select: { practice_checkins: true } } },
       orderBy: { created_at: 'asc' }
     })
   ]);
-  const practiceByCohort = new Map<number | null, string>();
+  const practiceByCohort = new Map<number | null, { externalId: string; checkInCount: number }>();
   for (const practice of practices) {
-    if (practice.external_id && !practiceByCohort.has(practice.cohort_id)) practiceByCohort.set(practice.cohort_id, practice.external_id);
+    if (practice.external_id && !practiceByCohort.has(practice.cohort_id)) {
+      practiceByCohort.set(practice.cohort_id, { externalId: practice.external_id, checkInCount: practice._count.practice_checkins });
+    }
   }
-  return summaries.map(summary => ({ ...summary, practiceId: practiceByCohort.get(summary.id) ?? null }));
+  return summaries.map(summary => {
+    const linked = practiceByCohort.get(summary.id);
+    return { ...summary, practiceId: linked?.externalId ?? null, checkInCount: linked?.checkInCount ?? 0 };
+  });
 };
 
 /** 探索共同挑戰頁：列出已發佈且未結束的挑戰（未登入可看） */
