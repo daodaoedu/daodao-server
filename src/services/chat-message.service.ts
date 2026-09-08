@@ -12,7 +12,7 @@ import {
   CHAT_PAGE_MAX,
   CHAT_SEARCH_MAX,
 } from '../constants/chat';
-import { chatAclService, assertWritable, type RoomAccess } from './chat-acl.service';
+import { chatAclService, type RoomAccess } from './chat-acl.service';
 
 /** 共用的訊息 select 子句 */
 const messageSelect = {
@@ -220,8 +220,6 @@ export const create = async (
   body: string,
   replyToMessageId?: number
 ) => {
-  assertWritable(access);
-
   // 驗證引用訊息
   if (replyToMessageId) {
     const replyTarget = await prisma.chat_messages.findFirst({
@@ -257,7 +255,7 @@ export const create = async (
 };
 
 /**
- * 編輯訊息（僅本人、僅 text、僅 writable）
+ * 編輯訊息（僅本人、僅 text）
  */
 export const update = async (
   access: RoomAccess,
@@ -265,8 +263,6 @@ export const update = async (
   userId: number,
   body: string
 ) => {
-  assertWritable(access);
-
   const msg = await prisma.chat_messages.findFirst({
     where: { id: messageId, room_id: access.roomId },
     select: { id: true, sender_user_id: true, kind: true, deleted_at: true },
@@ -289,7 +285,7 @@ export const update = async (
 };
 
 /**
- * 刪除訊息（本人或 host，writable，軟刪 + 取消置頂）
+ * 刪除訊息（本人或 host，軟刪 + 取消置頂）
  */
 export const remove = async (
   access: RoomAccess,
@@ -297,8 +293,6 @@ export const remove = async (
   userId: number,
   isHost: boolean
 ) => {
-  assertWritable(access);
-
   const msg = await prisma.chat_messages.findFirst({
     where: { id: messageId, room_id: access.roomId },
     select: { id: true, sender_user_id: true, deleted_at: true },
@@ -324,8 +318,6 @@ export const remove = async (
  * 按讚（冪等）
  */
 export const like = async (access: RoomAccess, messageId: number, userId: number) => {
-  assertWritable(access);
-
   const msg = await prisma.chat_messages.findFirst({
     where: { id: messageId, room_id: access.roomId },
     select: { id: true, kind: true, deleted_at: true },
@@ -355,8 +347,6 @@ export const like = async (access: RoomAccess, messageId: number, userId: number
  * 取消按讚（冪等）
  */
 export const unlike = async (access: RoomAccess, messageId: number, userId: number) => {
-  assertWritable(access);
-
   const msg = await prisma.chat_messages.findFirst({
     where: { id: messageId, room_id: access.roomId },
     select: { id: true, deleted_at: true },
@@ -382,7 +372,6 @@ export const unlike = async (access: RoomAccess, messageId: number, userId: numb
  * 置頂（host only，冪等）
  */
 export const pin = async (access: RoomAccess, messageId: number, userId: number) => {
-  assertWritable(access);
   if (!access.isHost) throw new ForbiddenError('僅帶領人可置頂訊息');
 
   const msg = await prisma.chat_messages.findFirst({
@@ -413,7 +402,6 @@ export const pin = async (access: RoomAccess, messageId: number, userId: number)
  * 取消置頂（host only，冪等）
  */
 export const unpin = async (access: RoomAccess, messageId: number, userId: number) => {
-  assertWritable(access);
   if (!access.isHost) throw new ForbiddenError('僅帶領人可取消置頂');
 
   const msg = await prisma.chat_messages.findFirst({

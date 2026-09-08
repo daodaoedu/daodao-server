@@ -47,5 +47,8 @@ export {
   type ImageErrorCode,
 } from './errors';
 
+// 群組聊天常量
+export * from './chat';
+
 // 其他常量可以在這裡添加
 // export { API_ENDPOINTS } from './api';

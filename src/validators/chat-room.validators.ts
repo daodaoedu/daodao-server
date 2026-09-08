@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { CHAT_MESSAGE_KINDS, CHAT_MESSAGE_MAX_LENGTH, CHAT_PAGE_MAX, CHAT_ROOM_CONTENT_STATES } from '../constants/chat';
+import { CHAT_MESSAGE_KINDS, CHAT_MESSAGE_MAX_LENGTH, CHAT_PAGE_MAX } from '../constants/chat';
 
 // ─── Params ──────────────────────────────────────────────
 
@@ -96,7 +96,6 @@ export const chatRoomSummarySchema = z.object({
   iconLabel: z.string().openapi({ description: '圖示文字（名稱首字）' }),
   colorSeed: z.number().int().openapi({ description: '色彩種子（roomId）' }),
   organizationName: z.string().openapi({ description: '組織名稱' }),
-  contentState: z.enum([CHAT_ROOM_CONTENT_STATES.WRITABLE, CHAT_ROOM_CONTENT_STATES.READ_ONLY]).openapi({ description: '可寫狀態' }),
   memberCount: z.number().int().nonnegative().openapi({ description: '成員數' }),
   unreadCount: z.number().int().nonnegative().openapi({ description: '未讀數' }),
   lastMessage: chatLastMessageSchema.nullable().openapi({ description: '最後一則訊息' }),

@@ -4,8 +4,6 @@ import { ForbiddenError } from '../middleware/error.middleware';
 import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
-import { appendSystemMessage } from './chat-room.service';
-import { CHAT_SYSTEM_EVENTS } from '../constants/chat';
 
 const exit = async (cohortId: number, userId: number, now = new Date()) => {
   const result = await prisma.$transaction(async tx => {
@@ -17,13 +15,6 @@ const exit = async (cohortId: number, userId: number, now = new Date()) => {
     await tx.cohort_stat_snapshots.deleteMany({ where: { cohort_id: cohortId } });
     return { enrollmentId: enrollment.id, status: 'exited' as const, detachedPracticeCount: detached.count };
   });
-  // 聊天室系統訊息：成員退出（best-effort）
-  try {
-    const user = await prisma.users.findUnique({ where: { id: userId }, select: { nickname: true } });
-    await appendSystemMessage(cohortId, CHAT_SYSTEM_EVENTS.MEMBER_LEFT, { id: userId, nickname: user?.nickname ?? null });
-  } catch (error) {
-    console.error('appendSystemMessage (member_left) failed:', error);
-  }
   return result;
 };
 const remove = async (programId: number, cohortId: number, enrollmentId: number, actorId: number, now = new Date()) => {
@@ -47,13 +38,6 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
   });
   if (result.userId !== null) {
     await notificationEventService.createEvent({ type: NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, actorId, recipientId: result.userId, entityType: 'cohort', entityId: cohortId, payload: { message: '你已不再參與此期，原有實踐已轉回個人實踐。' }, priority: 'P1' });
-    // 聊天室系統訊息：成員被移除（best-effort）
-    try {
-      const user = await prisma.users.findUnique({ where: { id: result.userId }, select: { nickname: true } });
-      await appendSystemMessage(cohortId, CHAT_SYSTEM_EVENTS.MEMBER_LEFT, { id: result.userId, nickname: user?.nickname ?? null });
-    } catch (error) {
-      console.error('appendSystemMessage (member_removed) failed:', error);
-    }
   }
   return result;
 };
