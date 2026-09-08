@@ -20,6 +20,7 @@ import practiceRoutes from './practice.routes';
 import adminRoutes from './admin.routes';
 import cityRoutes from './city.routes';
 import personaRoutes from './persona.routes';
+import feedbackRoutes from './feedback.routes';
 import onboardingRoutes from './onboarding.routes';
 
 const router = Router({ mergeParams: true });
@@ -194,6 +195,10 @@ router.use('/persona', personaRoutes);
 // GET    /api/v1/cities/countries
 // GET    /api/v1/cities/validate/:code
 router.use('/cities', cityRoutes);
+// 回饋路由（用戶端）
+// POST   /api/v1/feedback/bug-report
+router.use('/feedback', feedbackRoutes);
+
 router.use('/onboarding', onboardingRoutes);
 
 /**
