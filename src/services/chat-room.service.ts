@@ -235,7 +235,7 @@ export const listMyRooms = async (userId: number) => {
             createdAt: lastMsg.created_at.toISOString(),
           }
         : null,
-      lastActivityAt: (room.last_message_at ?? room.cohort.display_name ? new Date() : new Date()).toISOString(),
+      lastActivityAt: (room.last_message_at ?? new Date()).toISOString(),
     };
   });
 
