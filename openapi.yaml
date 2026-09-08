@@ -24269,12 +24269,6 @@ paths:
                         organizationName:
                           type: string
                           description: 組織名稱
-                        contentState:
-                          type: string
-                          enum:
-                            - writable
-                            - read_only
-                          description: 可寫狀態
                         memberCount:
                           type: integer
                           minimum: 0
@@ -24324,7 +24318,6 @@ paths:
                         - iconLabel
                         - colorSeed
                         - organizationName
-                        - contentState
                         - memberCount
                         - unreadCount
                         - lastMessage
@@ -24390,12 +24383,6 @@ paths:
                   organizationName:
                     type: string
                     description: 組織名稱
-                  contentState:
-                    type: string
-                    enum:
-                      - writable
-                      - read_only
-                    description: 可寫狀態
                   memberCount:
                     type: integer
                     minimum: 0
@@ -24473,7 +24460,6 @@ paths:
                   - iconLabel
                   - colorSeed
                   - organizationName
-                  - contentState
                   - memberCount
                   - unreadCount
                   - lastMessage
@@ -37341,6 +37327,14 @@ paths:
                           type: integer
                           minimum: 0
                           description: 已加入的參與者人數（不含帶領人）
+                        encourageCount:
+                          type: integer
+                          minimum: 0
+                          description: 需要鼓勵的參與者×實踐數（>3天未打卡）
+                        celebrateCount:
+                          type: integer
+                          minimum: 0
+                          description: 值得慶祝的時刻數
                       required:
                         - id
                         - programId
@@ -37374,6 +37368,8 @@ paths:
                         - updatedAt
                         - programName
                         - joinedCount
+                        - encourageCount
+                        - celebrateCount
                     description: The main response data
                   timestamp:
                     type: string

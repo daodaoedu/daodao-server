@@ -35161,14 +35161,6 @@
                             "type": "string",
                             "description": "組織名稱"
                           },
-                          "contentState": {
-                            "type": "string",
-                            "enum": [
-                              "writable",
-                              "read_only"
-                            ],
-                            "description": "可寫狀態"
-                          },
                           "memberCount": {
                             "type": "integer",
                             "minimum": 0,
@@ -35231,7 +35223,6 @@
                           "iconLabel",
                           "colorSeed",
                           "organizationName",
-                          "contentState",
                           "memberCount",
                           "unreadCount",
                           "lastMessage",
@@ -35329,14 +35320,6 @@
                     "organizationName": {
                       "type": "string",
                       "description": "組織名稱"
-                    },
-                    "contentState": {
-                      "type": "string",
-                      "enum": [
-                        "writable",
-                        "read_only"
-                      ],
-                      "description": "可寫狀態"
                     },
                     "memberCount": {
                       "type": "integer",
@@ -35437,7 +35420,6 @@
                     "iconLabel",
                     "colorSeed",
                     "organizationName",
-                    "contentState",
                     "memberCount",
                     "unreadCount",
                     "lastMessage",
@@ -54951,6 +54933,16 @@
                             "type": "integer",
                             "minimum": 0,
                             "description": "已加入的參與者人數（不含帶領人）"
+                          },
+                          "encourageCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "需要鼓勵的參與者×實踐數（>3天未打卡）"
+                          },
+                          "celebrateCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "值得慶祝的時刻數"
                           }
                         },
                         "required": [
@@ -54985,7 +54977,9 @@
                           "createdAt",
                           "updatedAt",
                           "programName",
-                          "joinedCount"
+                          "joinedCount",
+                          "encourageCount",
+                          "celebrateCount"
                         ]
                       },
                       "description": "The main response data"
