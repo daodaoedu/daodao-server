@@ -130,6 +130,7 @@ export const listMyRooms = async (userId: number) => {
       id: true,
       cohort_id: true,
       last_message_at: true,
+      created_at: true,
       cohort: {
         select: {
           display_name: true,
@@ -235,7 +236,7 @@ export const listMyRooms = async (userId: number) => {
             createdAt: lastMsg.created_at.toISOString(),
           }
         : null,
-      lastActivityAt: (room.last_message_at ?? new Date()).toISOString(),
+      lastActivityAt: (room.last_message_at ?? room.created_at).toISOString(),
     };
   });
 
