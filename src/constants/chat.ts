@@ -10,21 +10,12 @@ export const CHAT_MESSAGE_KINDS = {
 
 export type ChatMessageKind = (typeof CHAT_MESSAGE_KINDS)[keyof typeof CHAT_MESSAGE_KINDS];
 
-/** 系統訊息事件 */
+/** 系統訊息事件（FR-MSG-035：僅 member_joined，不產生離開事件） */
 export const CHAT_SYSTEM_EVENTS = {
   MEMBER_JOINED: 'member_joined',
-  MEMBER_LEFT: 'member_left',
 } as const;
 
 export type ChatSystemEvent = (typeof CHAT_SYSTEM_EVENTS)[keyof typeof CHAT_SYSTEM_EVENTS];
-
-/** 聊天室可寫狀態（僅封存為 read_only，結束日不影響） */
-export const CHAT_ROOM_CONTENT_STATES = {
-  WRITABLE: 'writable',
-  READ_ONLY: 'read_only',
-} as const;
-
-export type ChatRoomContentState = (typeof CHAT_ROOM_CONTENT_STATES)[keyof typeof CHAT_ROOM_CONTENT_STATES];
 
 /** 訊息 body 上限 */
 export const CHAT_MESSAGE_MAX_LENGTH = 2000;

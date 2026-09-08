@@ -6,7 +6,7 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { NotFoundError, BadRequestError } from '../middleware/error.middleware';
-import { CHAT_MESSAGE_KINDS, CHAT_ROOM_CONTENT_STATES, CHAT_SYSTEM_EVENTS, type ChatSystemEvent, type ChatRoomContentState } from '../constants/chat';
+import { CHAT_MESSAGE_KINDS, CHAT_SYSTEM_EVENTS, type ChatSystemEvent } from '../constants/chat';
 import { chatAclService, type RoomAccess } from './chat-acl.service';
 import { chatPresenceService } from './chat-presence.service';
 
@@ -63,7 +63,6 @@ export const appendSystemMessage = async (
 
   const bodyMap: Record<ChatSystemEvent, string> = {
     [CHAT_SYSTEM_EVENTS.MEMBER_JOINED]: `${user.nickname ?? '島民'} 加入了聊天室`,
-    [CHAT_SYSTEM_EVENTS.MEMBER_LEFT]: `${user.nickname ?? '島民'} 離開了聊天室`,
   };
 
   const now = new Date();
@@ -209,8 +208,6 @@ export const listMyRooms = async (userId: number) => {
     totalUnread += unread;
 
     const lastMsg = lastMsgMap.get(room.id);
-    const contentState: ChatRoomContentState =
-      room.cohort.status === 'archived' ? CHAT_ROOM_CONTENT_STATES.READ_ONLY : CHAT_ROOM_CONTENT_STATES.WRITABLE;
 
     // 成員數：去重後的 enrolled + org members（enrollment 和 org member 可能重疊）
     const enrolledCount = enrollmentCountMap.get(room.cohort_id) ?? 0;
@@ -226,7 +223,6 @@ export const listMyRooms = async (userId: number) => {
       iconLabel: name.charAt(0),
       colorSeed: room.id,
       organizationName: room.cohort.program.organization.name,
-      contentState,
       memberCount,
       unreadCount: unread,
       lastMessage: lastMsg
@@ -318,7 +314,6 @@ export const getRoom = async (access: RoomAccess, userId: number) => {
     iconLabel: name.charAt(0),
     colorSeed: room.id,
     organizationName: room.cohort.program.organization.name,
-    contentState: access.contentState,
     memberCount,
     unreadCount,
     lastMessage: null as null, // detail 端點不重複帶 lastMessage

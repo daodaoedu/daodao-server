@@ -4,8 +4,7 @@
  */
 
 import { prisma } from './database/prisma.service';
-import { NotFoundError, ForbiddenError, ConflictError } from '../middleware/error.middleware';
-import { CHAT_ROOM_CONTENT_STATES, type ChatRoomContentState } from '../constants/chat';
+import { NotFoundError, ForbiddenError } from '../middleware/error.middleware';
 
 /** resolveRoomAccess 回傳的存取資訊 */
 export interface RoomAccess {
@@ -13,7 +12,6 @@ export interface RoomAccess {
   cohortId: number;
   isMember: boolean;
   isHost: boolean;
-  contentState: ChatRoomContentState;
 }
 
 /**
@@ -21,7 +19,7 @@ export interface RoomAccess {
  * room → cohort → program → organization；
  * kind !== lighthouse || deleted || org !active → NotFoundError；
  * enrollment(joined) 和 org member 推導 isMember / isHost；
- * contentState 只看 cohort.status==='archived' → read_only，否則 writable
+ * 聊天室永遠 writable，不看 cohort.status（FR-MSG-034）
  * 非成員 → ForbiddenError
  */
 export const resolveRoomAccess = async (roomId: number, userId: number): Promise<RoomAccess> => {
@@ -80,10 +78,7 @@ export const resolveRoomAccess = async (roomId: number, userId: number): Promise
     (enrollment !== null && (enrollment.role === 'owner' || enrollment.role === 'assistant')) ||
     orgMember !== null;
 
-  const contentState: ChatRoomContentState =
-    cohort.status === 'archived' ? CHAT_ROOM_CONTENT_STATES.READ_ONLY : CHAT_ROOM_CONTENT_STATES.WRITABLE;
-
-  return { roomId: room.id, cohortId: cohort.id, isMember, isHost, contentState };
+  return { roomId: room.id, cohortId: cohort.id, isMember, isHost };
 };
 
 /**
@@ -117,13 +112,4 @@ export const listHostUserIds = async (cohortId: number): Promise<Set<number>> =>
   return hostIds;
 };
 
-/**
- * 斷言聊天室可寫；read_only → 409 ConflictError
- */
-export const assertWritable = (access: RoomAccess): void => {
-  if (access.contentState === CHAT_ROOM_CONTENT_STATES.READ_ONLY) {
-    throw new ConflictError('本期已封存，聊天室目前為唯讀');
-  }
-};
-
-export const chatAclService = { resolveRoomAccess, listHostUserIds, assertWritable };
+export const chatAclService = { resolveRoomAccess, listHostUserIds };
