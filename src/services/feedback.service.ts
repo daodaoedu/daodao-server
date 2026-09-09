@@ -10,17 +10,18 @@ interface BugReportData extends BugReportInput {
 }
 
 const uploadScreenshots = async (files: Express.Multer.File[]): Promise<string[]> => {
-  const urls: string[] = []
   const baseUrl = process.env.R2_PUBLIC_URL || ''
 
-  for (const file of files) {
-    const ext = file.originalname.split('.').pop() || 'png'
-    const filename = `bug-reports/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    await uploadToR2(file, filename)
-    urls.push(`${baseUrl}/${filename}`)
-  }
+  const results = await Promise.all(
+    files.map(async (file) => {
+      const ext = file.originalname.split('.').pop() || 'png'
+      const filename = `bug-reports/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`
+      await uploadToR2(file, filename)
+      return `${baseUrl}/${filename}`
+    })
+  )
 
-  return urls
+  return results
 }
 
 const sendNotificationEmail = async (data: BugReportInput & { screenshotUrls: string[] }): Promise<void> => {
