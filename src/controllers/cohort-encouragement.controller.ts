@@ -13,7 +13,8 @@ const draft = asyncHandler(async (req: Request, res: Response) => {
     Number(req.params.programId),
     Number(req.params.cohortId),
     Number(req.params.checkinId),
-    req.user.id
+    req.user.id,
+    req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null
   );
   res.json(createSuccessResponse(cohortEncouragementDraftResponseSchema.parse(result)));
 });
