@@ -1,4 +1,4 @@
-import { prismaMock } from '@tests/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
 import { programService } from '@/services/program.service';
 import { ConflictError, ForbiddenError } from '@/middleware/error.middleware';
@@ -25,11 +25,28 @@ describe('programService', () => {
     expect(prismaMock.programs.update).not.toHaveBeenCalled();
   });
 
-  it('blocks archival while the program still has cohorts', async () => {
-    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, organization: { status: 'active' } } as never);
-    prismaMock.cohorts.count.mockResolvedValue(1);
+  it('archives with archived_at and cascades the cohorts, remembering their previous status', async () => {
+    setupTransactionMock();
+    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, archived_at: null, organization: { status: 'active' } } as never);
+    prismaMock.$executeRaw.mockResolvedValueOnce(3 as never).mockResolvedValueOnce(1 as never);
+    prismaMock.programs.update.mockResolvedValue({} as never);
+    const result = await programService.archive(2, 42);
+    expect(result).toEqual({ programId: 2, archivedCohortCount: 3 });
+    expect(prismaMock.programs.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 2 }, data: expect.objectContaining({ archived_at: expect.any(Date), archived_by: 42 }) }));
+  });
+
+  it('rejects archiving a program that is already in the archive', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, archived_at: new Date(), organization: { status: 'active' } } as never);
     await expect(programService.archive(2, 42)).rejects.toBeInstanceOf(ConflictError);
+    await expect(programService.update(2, { name: '改名' }, 42)).rejects.toBeInstanceOf(ConflictError);
     expect(prismaMock.programs.update).not.toHaveBeenCalled();
+  });
+
+  it('hides archived programs from the main list', async () => {
+    prismaMock.organization_members.findUnique.mockResolvedValue({ organization: { status: 'active' } } as never);
+    prismaMock.programs.findMany.mockResolvedValue([] as never);
+    await programService.list(3, 42);
+    expect(prismaMock.programs.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ archived_at: null, deleted_at: null }) }));
   });
 });
 

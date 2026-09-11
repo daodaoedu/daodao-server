@@ -92,7 +92,7 @@ export const listMyRooms = async (userId: number) => {
   // 先找出 userId 可存取的 lighthouse cohort id 集合
   const [enrolledCohorts, orgMemberCohorts] = await Promise.all([
     prisma.cohort_enrollments.findMany({
-      where: { user_id: userId, status: 'joined', cohort: { program: { kind: 'lighthouse', deleted_at: null, organization: { status: 'active' } } } },
+      where: { user_id: userId, status: 'joined', cohort: { program: { kind: 'lighthouse', archived_at: null, deleted_at: null, organization: { status: 'active' } } } },
       select: { cohort_id: true },
     }),
     // 組織成員可存取的 cohort

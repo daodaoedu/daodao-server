@@ -117,6 +117,7 @@ export const cohortResponseSchema = z.object({
   hasHomePage: z.boolean().openapi({ description: '是否已建立活動主頁' }),
   signupQuestionCount: z.number().int().nonnegative().openapi({ description: '報名問題數量' }),
   status: cohortStatusSchema, visibility: cohortVisibilitySchema,
+  archivedAt: z.date().nullable().optional().openapi({ description: '封存時間；status = archived 時有值' }),
   createdAt: z.date(), updatedAt: z.date().nullable()
 });
 

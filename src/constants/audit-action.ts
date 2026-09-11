@@ -13,7 +13,15 @@ export const LIGHTHOUSE_AUDIT_ACTIONS = {
   COHORT_MESSAGE_SENT: 'lighthouse.cohort_message_sent',
   COHORT_PRIVACY_TOGGLED: 'lighthouse.cohort_privacy_toggled',
   PROGRAM_DUPLICATED: 'lighthouse.program_duplicated',
-  PROGRAM_ARCHIVED_CASCADE: 'lighthouse.program_archived_cascade'
+  PROGRAM_ARCHIVED_CASCADE: 'lighthouse.program_archived_cascade',
+  PROGRAM_RESTORED: 'lighthouse.program_restored',
+  COHORT_ARCHIVED: 'lighthouse.cohort_archived',
+  COHORT_RESTORED: 'lighthouse.cohort_restored',
+  TEMPLATE_DUPLICATED: 'lighthouse.template_duplicated',
+  TEMPLATE_ARCHIVED: 'lighthouse.template_archived',
+  TEMPLATE_RESTORED: 'lighthouse.template_restored',
+  TEMPLATE_DELETED: 'lighthouse.template_deleted',
+  ARCHIVE_ITEM_DELETED: 'lighthouse.archive_item_deleted'
 } as const;
 
 export type LighthouseAuditAction = (typeof LIGHTHOUSE_AUDIT_ACTIONS)[keyof typeof LIGHTHOUSE_AUDIT_ACTIONS];

@@ -27,11 +27,13 @@ describe('cohortService', () => {
     await expect(cohortService.get(2, 999, 42)).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it('archives by setting the only allowed archived status', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { organization: { status: 'active' } } } as never);
+  it('archives with archived_at / archived_by / previous status and refuses a second archive', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
     prismaMock.cohorts.update.mockResolvedValue({ ...row, status: 'archived' } as never);
     await cohortService.archive(2, 8, 42);
-    expect(prismaMock.cohorts.update).toHaveBeenCalledWith({ where: { id: 8 }, data: { status: 'archived', updated_at: expect.any(Date) } });
+    expect(prismaMock.cohorts.update).toHaveBeenCalledWith({ where: { id: 8 }, data: { status: 'archived', archived_at: expect.any(Date), archived_by: 42, archived_from_status: 'published', archived_reason: 'manual', updated_at: expect.any(Date) } });
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'archived', program: { organization: { status: 'active' } } } as never);
+    await expect(cohortService.archive(2, 8, 42)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('rotates, pauses and resumes join links with audit records', async () => {

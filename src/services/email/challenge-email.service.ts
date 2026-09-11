@@ -156,7 +156,7 @@ export const sendPendingChallengeEmails = async (now = new Date()): Promise<void
   const cohorts = await prisma.cohorts.findMany({
     where: {
       status: 'published',
-      program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null },
+      program: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null },
       end_date: { gte: new Date(now.getTime() - 7 * DAY_MS) }
     },
     select: { id: true, start_date: true, end_date: true }
