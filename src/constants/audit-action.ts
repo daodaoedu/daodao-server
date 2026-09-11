@@ -21,7 +21,10 @@ export const LIGHTHOUSE_AUDIT_ACTIONS = {
   TEMPLATE_ARCHIVED: 'lighthouse.template_archived',
   TEMPLATE_RESTORED: 'lighthouse.template_restored',
   TEMPLATE_DELETED: 'lighthouse.template_deleted',
-  ARCHIVE_ITEM_DELETED: 'lighthouse.archive_item_deleted'
+  ARCHIVE_ITEM_DELETED: 'lighthouse.archive_item_deleted',
+  ORGANIZATION_AI_CREDENTIAL_SET: 'lighthouse.organization_ai_credential_set',
+  ORGANIZATION_AI_CREDENTIAL_CLEARED: 'lighthouse.organization_ai_credential_cleared',
+  ORGANIZATION_AI_CREDENTIAL_TESTED: 'lighthouse.organization_ai_credential_tested'
 } as const;
 
 export type LighthouseAuditAction = (typeof LIGHTHOUSE_AUDIT_ACTIONS)[keyof typeof LIGHTHOUSE_AUDIT_ACTIONS];
