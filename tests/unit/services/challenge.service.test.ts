@@ -13,7 +13,7 @@ const challengeRow = (overrides: Record<string, unknown> = {}) => ({
   join_paused: false,
   capacity: null,
   status: 'published',
-  program: { name: '晨間書寫', description: '一起寫', kind: 'challenge', deleted_at: null },
+  program: { name: '晨間書寫', description: '一起寫', kind: 'challenge', archived_at: null, deleted_at: null },
   ...overrides
 });
 
@@ -85,7 +85,14 @@ describe('challengeService.list', () => {
 describe('challengeService.getDetail', () => {
   it('非 challenge kind 的期回 404', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue(
-      challengeRow({ program: { name: '燈塔', description: null, kind: 'lighthouse', deleted_at: null } }) as never
+      challengeRow({ program: { name: '燈塔', description: null, kind: 'lighthouse', archived_at: null, deleted_at: null } }) as never
+    );
+    await expect(challengeService.getDetail(1, null)).rejects.toThrow('找不到共同挑戰');
+  });
+
+  it('已封存計畫的挑戰回 404', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue(
+      challengeRow({ program: { ...challengeRow().program, archived_at: new Date('2026-08-01T00:00:00.000Z') } }) as never
     );
     await expect(challengeService.getDetail(1, null)).rejects.toThrow('找不到共同挑戰');
   });

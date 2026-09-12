@@ -25,6 +25,16 @@ describe('programService', () => {
     expect(prismaMock.programs.update).not.toHaveBeenCalled();
   });
 
+  it('rejects archival outside the owned program before opening a transaction', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue(null);
+
+    await expect(programService.archive(2, 42)).rejects.toBeInstanceOf(ForbiddenError);
+
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+    expect(prismaMock.programs.updateMany).not.toHaveBeenCalled();
+  });
+
   it('archives with archived_at and cascades the cohorts, remembering their previous status', async () => {
     setupTransactionMock();
     prismaMock.programs.findFirst.mockResolvedValue({ id: 2, archived_at: null, organization: { status: 'active' } } as never);
@@ -61,4 +71,3 @@ describe('programService', () => {
     expect(prismaMock.programs.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ archived_at: null, deleted_at: null }) }));
   });
 });
-
