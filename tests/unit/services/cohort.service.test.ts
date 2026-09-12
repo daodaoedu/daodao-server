@@ -112,7 +112,7 @@ describe('cohortService', () => {
       expect.objectContaining({ id: 8, programName: '自主學習', joinedCount: 3 }),
       expect.objectContaining({ id: 9, status: 'archived', joinedCount: 0 })
     ]);
-    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { program: { organization_id: 1, deleted_at: null } } }));
+    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { deleted_at: null, program: { organization_id: 1, deleted_at: null, archived_at: null } } }));
   });
 
   it('rejects listing cohorts of an organization the actor does not belong to', async () => {
