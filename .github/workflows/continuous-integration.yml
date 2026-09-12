@@ -153,22 +153,21 @@ jobs:
       - name: Generate Prisma Client and OpenAPI types
         run: pnpm run types:generate
 
-      # ===== 並行品質檢查 =====
-      # 同時執行多個檢查項目以節省時間：
+      # ===== 品質檢查 =====
+      # 依序執行檢查，避免三個 Node.js 程序同時競爭記憶體：
       # 1. typecheck：TypeScript 類型檢查
       # 2. lint：ESLint 代碼品質和風格檢查
       # 3. test：Jest 單元測試執行
-      # 
-      # & 符號：背景執行命令
-      # wait：等待所有背景任務完成
-      # 任何一個檢查失敗都會導致整個步驟失敗
-      # ========================
-      - name: Run checks in parallel
-        run: |
-          pnpm run typecheck &
-          pnpm run lint &
-          pnpm test &
-          wait
+      # 每個步驟直接保留命令的 exit code，任何失敗都會讓 job 失敗。
+      # ==================
+      - name: Run typecheck
+        run: pnpm run typecheck
+
+      - name: Run lint
+        run: pnpm run lint
+
+      - name: Run tests
+        run: pnpm test
 
       # ===== 生成文件上傳 =====
       # 目的：將生成的類型文件上傳為 artifact
