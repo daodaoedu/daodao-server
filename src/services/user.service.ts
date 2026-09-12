@@ -1662,6 +1662,12 @@ const deleteUser = async (userId: number): Promise<ApiSuccessResponse<{ message:
   return createSuccessResponse({ message: '用戶已成功刪除' });
 };
 
+/** Check exact nickname availability, including private users, as createUser does. */
+const checkNameAvailability = async (name: string, currentUserId?: number): Promise<ApiSuccessResponse<{ name: string; available: boolean }>> => {
+  const existingUser = await prisma.users.findFirst({ where: { nickname: name } });
+  return createSuccessResponse({ name, available: !existingUser || existingUser.id === currentUserId });
+};
+
 /**
  * 檢查自訂 ID 可用性
  */
@@ -2303,6 +2309,7 @@ export const userService = {
   updateUserWithAvatar,
   deleteMe,
   deleteUser,
+  checkNameAvailability,
   checkCustomIdAvailability,
   setCustomId,
   getUserByCustomId,

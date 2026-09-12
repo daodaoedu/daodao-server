@@ -923,6 +923,19 @@ export const availablePreferencesResponseSchema = apiSuccessResponseSchema(
   z.array(preferenceTypeWithOptionsSchema)
 );
 
+/** Name checks preserve the exact nickname used during registration. */
+export const nameAvailabilityQuerySchema = z.object({
+  name: z.string().min(1, '名稱不得為空').max(100, '名稱最多 100 個字元').openapi({
+    description: '要檢查的使用者名稱，精確比對且不移除空白',
+    example: '島島學習者'
+  })
+});
+
+export const nameAvailabilityResponseSchema = apiSuccessResponseSchema(z.object({
+  name: z.string().openapi({ description: '查詢的使用者名稱', example: '島島學習者' }),
+  available: z.boolean().openapi({ description: '名稱是否可用，正式登入者自己的名稱亦可用', example: true })
+})).openapi('NameAvailabilityResponse');
+
 // 自訂 ID 相關回應 schema
 // 使用 user-custom-id.validators.ts 中定義的更完整的 data schemas
 export const customIdAvailabilityResponseSchema = apiSuccessResponseSchema(
