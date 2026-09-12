@@ -17,6 +17,7 @@ import { processCohortStatJob } from '@/queues/cohort-stat.worker';
 import { registerCohortStatJobs } from '@/queues/cohort-stat.queue';
 
 describe('cohort weekly snapshot worker', () => {
+  afterEach(() => jest.useRealTimers());
   it('creates one weekly snapshot for every published cohort', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-07-20T00:10:00Z'));
     prismaMock.cohorts.findMany.mockResolvedValue([{ id: 8 }, { id: 9 }] as never);
@@ -25,11 +26,11 @@ describe('cohort weekly snapshot worker', () => {
     expect(upsertCohortSnapshot).toHaveBeenCalledWith(8, 'weekly', new Date('2026-07-13T00:00:00Z'), new Date('2026-07-20T00:00:00Z'));
     jest.useRealTimers();
   });
-  it('creates final snapshots on each cohort end date', async () => {
+  it('creates missing final snapshots for published cohorts ending today or earlier', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-07-21T16:20:00Z'));
     prismaMock.cohorts.findMany.mockResolvedValue([{ id: 8, start_date: new Date('2026-07-01T00:00:00Z'), end_date: new Date('2026-07-22T00:00:00Z') }] as never);
     await expect(processCohortStatJob({ data: { kind: 'final' } } as never)).resolves.toBe(1);
-    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith({ where: { end_date: new Date('2026-07-22T00:00:00Z') }, select: { id: true, start_date: true, end_date: true } });
+    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith({ where: { end_date: { lte: new Date('2026-07-22T00:00:00Z') }, status: 'published', cohort_stat_snapshots: { none: { kind: 'final' } } }, select: { id: true, start_date: true, end_date: true } });
     expect(upsertCohortSnapshot).toHaveBeenCalledWith(8, 'final', new Date('2026-07-01T00:00:00Z'), new Date('2026-07-23T00:00:00Z'));
     jest.useRealTimers();
   });

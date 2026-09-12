@@ -5,7 +5,7 @@ description: daodao-server codebase 地圖——src/ 全 TS 架構（legacy JS �
 
 # daodao-server Codebase 地圖
 
-> 目錄結構有變動時必須同步更新本檔。最後校準：2026-07-06。
+> 目錄結構有變動時必須同步更新本檔。最後校準：2026-09-12（測試與 CI 執行方式）。
 
 ## 最重要的事實
 
@@ -37,7 +37,13 @@ description: daodao-server codebase 地圖——src/ 全 TS 架構（legacy JS �
 
 ## 測試
 
-`jest`（ts-jest）：`tests/unit/`（41 檔）、`tests/integration/`（11 檔）、`tests/e2e/`。指令：`pnpm test`、`test:unit`、`test:integration`、`test:e2e`、`test:coverage`。alias `@/`、`@tests/` 由 jest moduleNameMapper 處理。
+`jest`（ts-jest）：`tests/unit/`、`tests/integration/`、`tests/e2e/`。指令：`pnpm test`、`test:unit`、`test:integration`、`test:e2e`、`test:coverage`。alias `@/`、`@tests/` 由 jest moduleNameMapper 處理。
+
+- `pnpm test` 使用最多 2 個 worker，每個 suite 完成後超過 512MB 會回收 worker；避免完整 suite 在單一 process 累積 Prisma mock/module graph。診斷單一 suite 可用 `pnpm exec jest --runInBand <path>`。
+- ts-jest 只做單檔 transpile；完整型別檢查仍必須跑 `pnpm run typecheck`。
+- `tests/setup.ts` 隔離 Redis singleton，測試需要 Redis 行為時必須明確提供 mock。
+- Email constraint integration test 需要真實 PostgreSQL；CI 使用 disposable PostgreSQL 16，從 workflow 固定的 storage commit 初始化 `schema/*.sql`。本機使用同樣 schema 初始化測試 DB，透過 `DATABASE_URL` 指向它。
+- Storage 是 private repo；CI checkout 沿用 schema-drift workflow 的 `GIT_HUB_ACCESS_TOKEN`。Fork PR 無法取得此 secret，必須由有權限的 maintainer branch 執行；不可改用 `pull_request_target` 執行未信任程式。
 
 ## 已知殘留與陷阱（改前先知道，不要被誤導）
 

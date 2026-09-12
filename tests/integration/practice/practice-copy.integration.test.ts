@@ -210,7 +210,7 @@ describe('Practice Copy API Integration Tests', () => {
   // ==========================================================================
   describe('C-2: 複製非 public 他人實踐', () => {
     it('應回傳 403', async () => {
-      const privatePractice = { ...mockSourcePractice, visibility: 'private' };
+      const privatePractice = { ...mockSourcePractice, privacy_status: 'private' };
       prismaMock.practices.findUnique.mockResolvedValue(privatePractice as any);
 
       const response = await request(app)
