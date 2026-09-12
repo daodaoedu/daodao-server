@@ -283,9 +283,13 @@ describe('Practice API Integration Tests', () => {
       expect(prismaMock.practices.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
+            AND: expect.arrayContaining([
               expect.objectContaining({
-                title: expect.objectContaining({ contains: '閱讀' })
+                OR: expect.arrayContaining([
+                  expect.objectContaining({
+                    title: expect.objectContaining({ contains: '閱讀' })
+                  })
+                ])
               })
             ])
           })

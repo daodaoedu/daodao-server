@@ -14,7 +14,10 @@ describe('cohortFeedService', () => {
     note: '今天有往前一步',
     image_urls: ['https://example.com/checkin.png'],
     created_at: new Date('2026-07-21T08:00:00.000Z'),
+    practices: { external_id: 'practice-21', title: '每日行動' },
     users: {
+      external_id: 'user-31',
+      custom_id: null,
       nickname: '小島',
       contacts: { photo_url: 'https://example.com/avatar.png' }
     }
@@ -27,6 +30,8 @@ describe('cohortFeedService', () => {
     prismaMock.practice_checkins.findMany.mockResolvedValue([checkin] as never);
     prismaMock.practice_checkins.count.mockResolvedValue(1);
     prismaMock.$queryRaw.mockResolvedValue([{ count: 1n }] as never);
+    prismaMock.comments.groupBy.mockResolvedValue([]);
+    prismaMock.comments.findMany.mockResolvedValue([]);
 
     const result = await cohortFeedService.get(8, 42, 20, 0, 2);
 
@@ -35,16 +40,17 @@ describe('cohortFeedService', () => {
       total: 1,
       pendingResponseCount: 1,
       items: [{
-        id: 11,
-        practiceId: 21,
-        userId: 31,
-        nickname: '小島',
-        avatar: 'https://example.com/avatar.png',
-        checkinDate: new Date('2026-07-21T00:00:00.000Z'),
+        id: '11',
+        practice: { id: 'practice-21', title: '每日行動' },
+        user: { id: 'user-31', name: '小島', photoUrl: 'https://example.com/avatar.png', customId: null },
+        checkinDate: '2026-07-21',
         mood: 'good',
         note: '今天有往前一步',
         imageUrls: ['https://example.com/checkin.png'],
-        createdAt: new Date('2026-07-21T08:00:00.000Z')
+        createdAt: '2026-07-21T08:00:00.000Z',
+        tags: [],
+        commentCount: 0,
+        commentPreview: []
       }]
     });
     expect(prismaMock.practice_checkins.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -52,7 +58,7 @@ describe('cohortFeedService', () => {
       take: 20,
       skip: 0,
       select: expect.objectContaining({
-        users: { select: { nickname: true, contacts: { select: { photo_url: true } } } }
+        users: { select: { external_id: true, nickname: true, custom_id: true, contacts: { select: { photo_url: true } } } }
       })
     }));
     expect(JSON.stringify(prismaMock.practice_checkins.findMany.mock.calls[0])).not.toContain('email');

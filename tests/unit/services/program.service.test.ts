@@ -1,7 +1,7 @@
-import { prismaMock } from '@tests/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
 import { programService } from '@/services/program.service';
-import { ConflictError, ForbiddenError } from '@/middleware/error.middleware';
+import { ForbiddenError } from '@/middleware/error.middleware';
 
 describe('programService', () => {
   it('creates a program only under an active organization membership', async () => {
@@ -25,11 +25,28 @@ describe('programService', () => {
     expect(prismaMock.programs.update).not.toHaveBeenCalled();
   });
 
-  it('blocks archival while the program still has cohorts', async () => {
-    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, organization: { status: 'active' } } as never);
-    prismaMock.cohorts.count.mockResolvedValue(1);
-    await expect(programService.archive(2, 42)).rejects.toBeInstanceOf(ConflictError);
+  it('rejects archival outside the owned program before changing cohorts', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue(null);
+    await expect(programService.archive(2, 42)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(prismaMock.cohorts.updateMany).not.toHaveBeenCalled();
     expect(prismaMock.programs.update).not.toHaveBeenCalled();
   });
-});
 
+  it('archives the program and its unarchived cohorts in one transaction', async () => {
+    setupTransactionMock();
+    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, organization: { status: 'active' } } as never);
+    prismaMock.cohorts.updateMany.mockResolvedValue({ count: 1 });
+    await expect(programService.archive(2, 42)).resolves.toEqual({ programId: 2, archivedCohortCount: 1 });
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(prismaMock.cohorts.updateMany).toHaveBeenCalledWith({
+      where: { program_id: 2, status: { not: 'archived' } },
+      data: { status: 'archived', updated_at: expect.any(Date) }
+    });
+    expect(prismaMock.programs.update).toHaveBeenCalledWith({
+      where: { id: 2 }, data: { deleted_at: expect.any(Date), updated_at: expect.any(Date) }
+    });
+    expect(prismaMock.$executeRaw.mock.calls.flat()).toEqual(expect.arrayContaining([
+      42, '2', JSON.stringify({ archivedCohortCount: 1 })
+    ]));
+  });
+});

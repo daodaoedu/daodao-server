@@ -4,10 +4,14 @@ import { cohortService } from '@/services/cohort.service';
 import { ConflictError, ForbiddenError } from '@/middleware/error.middleware';
 
 const now = new Date('2026-07-22T00:00:00.000Z');
-const row = { id: 8, program_id: 2, slug: 'summer', display_name: '夏季期', start_date: now, end_date: new Date('2026-08-22T00:00:00.000Z'), join_token: '123e4567-e89b-12d3-a456-426614174000', join_paused: false, join_deadline: null, capacity: null, invite_message: null, status: 'draft', visibility: 'private', created_at: now, updated_at: null };
+const row = { id: 8, program_id: 2, slug: 'summer', display_name: '夏季期', start_date: now, end_date: new Date('2026-08-22T00:00:00.000Z'), join_token: '123e4567-e89b-12d3-a456-426614174000', join_paused: false, join_deadline: null, capacity: null, invite_message: null, status: 'draft', visibility: 'private', created_at: now, updated_at: null, interaction_modes: [], cohort_sessions: [], fee_type: 'free', signup_method: 'island_form' };
 
 describe('cohortService', () => {
-  beforeEach(() => setupTransactionMock());
+  beforeEach(() => {
+    setupTransactionMock();
+    prismaMock.cohort_sessions.findMany.mockResolvedValue([]);
+    prismaMock.$queryRaw.mockResolvedValue([]);
+  });
   it('creates a draft cohort under an owned active program', async () => {
     prismaMock.programs.findFirst.mockResolvedValue({ organization: { status: 'active' } } as never);
     prismaMock.cohorts.create.mockResolvedValue(row as never);
@@ -71,6 +75,7 @@ describe('cohortService', () => {
     prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
     prismaMock.cohort_templates.findMany.mockResolvedValue([{ template_id: 5, start_date: null }] as never);
     prismaMock.cohorts.create.mockResolvedValue({ ...row, id: 9, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft' } as never);
+    prismaMock.cohorts.findUniqueOrThrow.mockResolvedValue({ ...row, id: 9, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft' } as never);
     prismaMock.cohort_templates.createMany.mockResolvedValue({ count: 1 } as never);
     const copy = await cohortService.duplicate(2, 8, 42);
     expect(copy).toEqual(expect.objectContaining({ id: 9, slug: 'summer-copy', status: 'draft' }));
@@ -83,6 +88,7 @@ describe('cohortService', () => {
     prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { organization: { status: 'active' } } } as never);
     prismaMock.cohort_templates.findMany.mockResolvedValue([] as never);
     prismaMock.cohorts.create.mockRejectedValueOnce(mockPrismaError('P2002')).mockResolvedValue({ ...row, id: 10, slug: 'summer-copy-2', status: 'draft' } as never);
+    prismaMock.cohorts.findUniqueOrThrow.mockResolvedValue({ ...row, id: 10, slug: 'summer-copy-2', status: 'draft' } as never);
     const copy = await cohortService.duplicate(2, 8, 42);
     expect(copy.slug).toBe('summer-copy-2');
     expect(prismaMock.cohorts.create).toHaveBeenCalledTimes(2);

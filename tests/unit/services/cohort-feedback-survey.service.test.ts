@@ -37,7 +37,7 @@ describe('sendCohortFeedbackSurveys', () => {
 
     await expect(sendCohortFeedbackSurveys(now)).resolves.toBe(1);
     expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { end_date: new Date('2026-07-22T00:00:00.000Z'), status: 'published' }
+      where: { end_date: { lte: new Date('2026-07-22T00:00:00.000Z') }, status: 'published' }
     }));
     expect(prismaMock.surveys.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
