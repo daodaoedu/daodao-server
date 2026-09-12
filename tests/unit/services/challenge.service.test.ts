@@ -108,8 +108,8 @@ describe('challengeService.listMine', () => {
     prismaMock.cohort_enrollments.findMany.mockResolvedValue([{ cohort_id: 1 }] as never);
     prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
     prismaMock.practices.findMany.mockResolvedValue([
-      { cohort_id: 1, external_id: 'first-uuid' },
-      { cohort_id: 1, external_id: 'second-uuid' }
+      { cohort_id: 1, external_id: 'first-uuid', _count: { practice_checkins: 2 } },
+      { cohort_id: 1, external_id: 'second-uuid', _count: { practice_checkins: 1 } }
     ] as never);
 
     const [mine] = await challengeService.listMine(42, new Date('2026-09-10T00:00:00.000Z'));
@@ -118,6 +118,7 @@ describe('challengeService.listMine', () => {
       orderBy: { created_at: 'asc' }
     }));
     expect(mine.practiceId).toBe('first-uuid');
+    expect(mine.checkInCount).toBe(2);
   });
 
   it('回傳我參加的挑戰並附自動複製的實踐 id', async () => {
@@ -125,7 +126,7 @@ describe('challengeService.listMine', () => {
     prismaMock.cohort_enrollments.groupBy.mockResolvedValue([{ cohort_id: 1, _count: { id: 12 } }] as never);
     prismaMock.cohort_enrollments.findMany.mockResolvedValue([{ cohort_id: 1 }, { cohort_id: 2 }] as never);
     prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
-    prismaMock.practices.findMany.mockResolvedValue([{ cohort_id: 1, external_id: '550e8400-e29b-41d4-a716-446655440000' }] as never);
+    prismaMock.practices.findMany.mockResolvedValue([{ cohort_id: 1, external_id: '550e8400-e29b-41d4-a716-446655440000', _count: { practice_checkins: 0 } }] as never);
 
     const mine = await challengeService.listMine(42, new Date('2026-09-10T00:00:00.000Z'));
     expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -133,7 +134,7 @@ describe('challengeService.listMine', () => {
     }));
     expect(mine).toHaveLength(2);
     expect(mine[0]).toMatchObject({ id: 1, isJoined: true, participantCount: 12, practiceId: '550e8400-e29b-41d4-a716-446655440000' });
-    expect(mine[1]).toMatchObject({ id: 2, practiceId: null });
+    expect(mine[1]).toMatchObject({ id: 2, practiceId: null, checkInCount: 0 });
   });
 
   it('沒有參加任何挑戰時回空陣列且不查實踐', async () => {

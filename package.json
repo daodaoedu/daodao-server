@@ -9,7 +9,7 @@
     "dev:watch": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register --watch src src/server.ts",
     "clean": "rm -rf dist",
     "prebuild": "pnpm run clean",
-    "test": "jest --runInBand",
+    "test": "jest",
     "test:unit": "jest tests/unit --runInBand",
     "test:integration": "jest tests/integration --runInBand",
     "test:e2e": "jest tests/e2e --runInBand",

@@ -3,7 +3,7 @@
  *
  * - addSupport：投票（首次 +1、重複冪等）
  * - removeSupport：取消投票（-1、未投票冪等）
- * - getStats：partners 跨許願/投票去重、feedback = 許願總數
+ * - getStats：partners = 使用者總數、feedback = 許願總數
  */
 
 import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
@@ -94,14 +94,15 @@ describe('Roadmap Service', () => {
   });
 
   describe('getStats', () => {
-    it('partners 跨許願/投票去重，feedback = 許願總數', async () => {
+    it('partners = 使用者總數，feedback = 許願總數', async () => {
       mockRedis.get.mockResolvedValue(null);
-      prismaMock.$queryRaw.mockResolvedValue([{ count: 3 }] as never);
+      prismaMock.users.count.mockResolvedValue(3);
       prismaMock.wishes.count.mockResolvedValue(5 as never);
 
       const res = await getStats();
 
       expect(res.data).toEqual({ partners: 3, feedback: 5 });
+      expect(prismaMock.users.count).toHaveBeenCalledTimes(1);
       expect(mockRedis.set).toHaveBeenCalledWith('roadmap:stats', JSON.stringify({ partners: 3, feedback: 5 }), 'EX', 3600);
     });
 
@@ -112,6 +113,7 @@ describe('Roadmap Service', () => {
 
       expect(res.data).toEqual({ partners: 10, feedback: 20 });
       expect(prismaMock.wishes.count).not.toHaveBeenCalled();
+      expect(prismaMock.users.count).not.toHaveBeenCalled();
     });
   });
 });

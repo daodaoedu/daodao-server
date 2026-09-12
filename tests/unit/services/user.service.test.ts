@@ -103,6 +103,7 @@ describe('User Service', () => {
     // Setup common Prisma mock returns for formatUserResponse dependencies
     prismaMock.user_interests.findMany.mockResolvedValue([]);
     prismaMock.quiz_results.findFirst.mockResolvedValue(null);
+    prismaMock.entity_tags.findMany.mockResolvedValue([]);
   });
 
   // Test data factories
@@ -794,6 +795,10 @@ describe('User Service', () => {
   });
 
   describe('deleteUser', () => {
+    beforeEach(() => {
+      prismaMock.cohort_enrollments.updateMany.mockResolvedValue({ count: 0 });
+    });
+
     it('should delete user and all related data', async () => {
       const userToDelete = createTestUser({
         contacts: { id: 10 },

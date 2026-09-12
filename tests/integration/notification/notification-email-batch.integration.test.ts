@@ -233,11 +233,13 @@ describe('Notification Email Batch Integration Tests', () => {
 
       await capturedProcessor!(makeJob());
 
-      // generateNotificationDigestHtml 以含 p1Events 和 p2Events 的 data 呼叫
+      // Comment 屬於互動分類；Reaction 保留在 P2 聚合事件中。
       const callData = (generateNotificationDigestHtml as jest.Mock).mock.calls[0][0];
-      expect(callData.p1Events).toHaveLength(1);
+      expect(callData.interactionEvents).toHaveLength(1);
+      expect(callData.partnerEvents).toHaveLength(0);
+      expect(callData.activityEvents).toHaveLength(0);
       expect(callData.p2Events).toHaveLength(1);
-      expect(callData.p1Events[0].type).toBe('Comment');
+      expect(callData.interactionEvents[0].type).toBe('Comment');
       expect(callData.p2Events[0].type).toBe('Reaction');
     });
   });
@@ -399,8 +401,8 @@ describe('Notification Email Batch Integration Tests', () => {
         .query({ token });
 
       expect(res.status).toBe(200);
-      // digest 退訂觸發 setGlobalEnabled → 16 types × 2 channels (N01, N03) = 32 次 upsert
-      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalledTimes(32);
+      // digest 退訂觸發 setGlobalEnabled → 18 types × 2 channels (N01, N03)。
+      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalledTimes(36);
     });
 
     it('無效 token 回傳 400 HTML 頁面', async () => {

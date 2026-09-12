@@ -342,12 +342,12 @@ describe('NotificationWeeklyWorker', () => {
       expect(callArg.practiceProgress[0]).toEqual({
         title: '每日閱讀',
         checkInCount: 3,
-        isCompleted: false,
+        status: 'in_progress',
       });
       expect(callArg.practiceProgress[1]).toEqual({
         title: '英文學習',
         checkInCount: 0,
-        isCompleted: true,
+        status: 'completed',
       });
     });
 
