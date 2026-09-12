@@ -4,7 +4,7 @@
  * 涵蓋範圍：
  * - POST /answers upsert (新增 201 / 更新 200)
  * - POST /answers 空字串 → 400
- * - POST /resonances 重複 → 409
+ * - POST /reactions persona_answer 共鳴與重複冪等 → 200
  * - POST /carousel-dismiss 後 GET /carousel-state 回 shouldShow = false
  * - GET /profile/:userId 訪客 isLocked 回傳正確 answersNeeded
  * - POST /questions/:questionId/view 記錄觀看（401 / 404 / 200）
@@ -107,33 +107,36 @@ describe('POST /answers', () => {
   });
 });
 
-// ─── POST /resonances ─────────────────────────────────────────────────────
-
-describe('POST /resonances', () => {
-  it('新增共鳴 → 201', async () => {
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 10 }]); // answer exists
-    prismaMock.$queryRaw.mockResolvedValueOnce([]);            // no duplicate
-    prismaMock.$executeRaw.mockResolvedValue(1);               // insert resonance
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ count: 1 }]); // count
-
-    const res = await auth(
-      request(app).post(`${API}/resonances`).send({ answerId: 10 })
-    );
-
-    expect(res.status).toBe(201);
-    expect(res.body.data.resonanceCount).toBe(1);
-  });
-
-  it('重複共鳴 → 409', async () => {
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 10 }]); // answer exists
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 5 }]);  // duplicate found
+// Persona reactions use the shared reaction endpoint and its idempotent upsert.
+describe('POST /reactions — persona_answer', () => {
+  it.each([false, true])('共鳴（existing=%s）→ 200 且只有一筆共鳴', async (existing) => {
+    const reaction = { id: 5, reaction_type: 'touched', users: { nickname: '小島' } };
+    prismaMock.reactions.findUnique
+      .mockResolvedValueOnce(existing ? reaction as never : null)
+      .mockResolvedValueOnce(reaction as never);
+    prismaMock.reactions.findMany.mockResolvedValue([reaction] as never);
+    prismaMock.reactions.upsert.mockResolvedValue(reaction as never);
+    // Use the answer owner to keep notification dispatch outside this contract.
+    prismaMock.persona_answers.findUnique.mockResolvedValue({ user_id: userId, question_id: 1 } as never);
 
     const res = await auth(
-      request(app).post(`${API}/resonances`).send({ answerId: 10 })
+      request(app).post('/api/v1/reactions').send({
+        targetType: 'persona_answer', targetId: '10', reactionType: 'touched',
+      })
     );
 
-    expect(res.status).toBe(409);
-    expect(res.body.success).toBe(false);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.currentUserReaction).toBe('touched');
+    expect(res.body.data.reactions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'touched', count: 1 }),
+    ]));
+    expect(prismaMock.reactions.upsert).toHaveBeenCalledWith({
+      where: { target_type_target_id_user_id: { target_type: 'persona_answer', target_id: 10, user_id: userId } },
+      create: { target_type: 'persona_answer', target_id: 10, user_id: userId, reaction_type: 'touched' },
+      update: { reaction_type: 'touched' },
+    });
+    expect(prismaMock.reactions.upsert).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -148,11 +151,8 @@ describe('POST /carousel-dismiss then GET /carousel-state', () => {
     expect(dismissRes.body.data.dismissed).toBe(true);
 
     // Carousel state — dismissed today
-    const todayStart = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z');
     prismaMock.$queryRaw
-      .mockResolvedValueOnce([{ is_new_user: true }])                      // users
-      .mockResolvedValueOnce([{ session_count_since_last_prompt: 0, last_dismissed_at: todayStart }]) // state
-      .mockResolvedValueOnce([{ unanswered: 3 }]);                         // unanswered
+      .mockResolvedValueOnce([{ dismissed_today: true }]);
 
     const stateRes = await auth(
       request(app).get(`${API}/carousel-state`)
@@ -167,7 +167,8 @@ describe('POST /carousel-dismiss then GET /carousel-state', () => {
 
 describe('GET /profile/:userId', () => {
   it('requesterId < 5 answers → viewerIsLocked = true, answersNeeded 正確', async () => {
-    const targetUserId = 99;
+    const targetUserId = '550e8400-e29b-41d4-a716-446655440099';
+    prismaMock.users.findFirst.mockResolvedValue({ id: 99 } as never);
     // answered questions for target user
     prismaMock.$queryRaw.mockResolvedValueOnce([
       {
@@ -197,7 +198,8 @@ describe('GET /profile/:userId', () => {
   });
 
   it('訪客（未登入）→ 無 viewerIsLocked 欄位', async () => {
-    const targetUserId = 99;
+    const targetUserId = '550e8400-e29b-41d4-a716-446655440099';
+    prismaMock.users.findFirst.mockResolvedValue({ id: 99 } as never);
     prismaMock.$queryRaw.mockResolvedValueOnce([
       {
         id: 1,

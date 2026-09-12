@@ -136,10 +136,12 @@ describe('Practice Service', () => {
       expect(prismaMock.practices.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: [
-              { title: { contains: 'test search', mode: 'insensitive' } },
-              { practice_action: { contains: 'test search', mode: 'insensitive' } }
-            ]
+            AND: expect.arrayContaining([{
+              OR: [
+                { title: { contains: 'test search', mode: 'insensitive' } },
+                { practice_action: { contains: 'test search', mode: 'insensitive' } }
+              ]
+            }])
           })
         })
       );
@@ -424,7 +426,7 @@ describe('Practice Service', () => {
           actorId: 1,
           entityType: 'practice',
           entityId: 1,
-          priority: 'P2',
+          priority: 'P1',
           payload: { practice_title: 'New Practice' },
         });
       });

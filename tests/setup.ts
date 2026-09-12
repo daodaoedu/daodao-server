@@ -1,5 +1,23 @@
 import { config } from 'dotenv';
 
+// Route/service tests mock infrastructure. Importing the real Redis singleton
+// opens a socket even when the test never calls it. Tests that exercise Redis
+// behavior must supply their own explicit mock (or unmock for a live test).
+jest.mock('@/services/database/redis.service', () => {
+  const unconfigured = () => {
+    throw new Error('Configure an explicit Redis mock for this test');
+  };
+  const redis = {
+    get: jest.fn(unconfigured),
+    set: jest.fn(unconfigured),
+    setex: jest.fn(unconfigured),
+    del: jest.fn(unconfigured),
+    exists: jest.fn(unconfigured),
+    mget: jest.fn(unconfigured),
+  };
+  return { __esModule: true, default: redis, redis, redisDisconnect: jest.fn() };
+});
+
 // Load test environment variables
 config({ path: '.env.test' });
 

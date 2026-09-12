@@ -8,7 +8,7 @@ import { cohortJoinService } from '@/services/cohort-join.service';
 import { ConflictError } from '@/middleware/error.middleware';
 
 const token = '123e4567-e89b-12d3-a456-426614174000';
-const cohort = { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), join_deadline: null, capacity: 2, invite_message: '一起行動', status: 'published', join_paused: false, program: { organization: { name: '島島', bio: '社群', external_link: 'https://example.com' } } };
+const cohort = { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), join_deadline: null, capacity: 2, invite_message: '一起行動', status: 'published', join_paused: false, cohort_sessions: [], interaction_modes: [], fee_type: 'free', signup_method: 'island_form', program: { organization: { name: '島島', bio: '社群', external_link: 'https://example.com' } } };
 
 describe('cohortJoinService', () => {
   beforeEach(() => {
@@ -71,7 +71,9 @@ describe('cohortJoinService', () => {
     const result = await cohortJoinService.join(token, 42, true, new Date('2026-08-01T00:00:00Z'));
 
     expect(result).toEqual({ enrollmentId: 99, cohortId: 8, status: 'joined' });
-    expect(prismaMock.users.findUnique).not.toHaveBeenCalled();
+    // Invitation binding does not fetch account email; only the chat announcement reads nickname.
+    expect(prismaMock.users.findUnique).toHaveBeenCalledTimes(1);
+    expect(prismaMock.users.findUnique).toHaveBeenCalledWith({ where: { id: 42 }, select: { nickname: true } });
     expect(prismaMock.cohort_enrollments.update).toHaveBeenCalledWith({
       where: { id: 99 },
       data: { user_id: 42, status: 'joined', joined_at: new Date('2026-08-01T00:00:00Z'), exited_at: null },
@@ -125,7 +127,7 @@ describe('cohortJoinService', () => {
   });
 
   it('returns the joined learner home with cohort-scoped drafts', async () => {
-    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), program: { organization: { name: '島島', bio: '社群', external_link: 'https://example.com' } } } } as never);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort } as never);
     prismaMock.practices.findMany.mockResolvedValue([{ id: 900, external_id: '123e4567-e89b-12d3-a456-426614174000', title: '每日反思', practice_action: '寫一段', status: 'draft', creation_source: 'cohort_template', start_date: new Date('2026-07-01'), end_date: new Date('2026-07-30'), progress_percentage: 40, theme_color: '#FCDD84' }] as never);
     prismaMock.practice_checkins.groupBy.mockResolvedValue([{ practice_id: 900, _count: { id: 3 }, _max: { checkin_date: new Date('2026-07-20') } }] as never);
     const result = await cohortJoinService.getMemberHome(8, 42);
@@ -134,7 +136,7 @@ describe('cohortJoinService', () => {
   });
 
   it('carries the fields the practice card needs so the cohort page can reuse it', async () => {
-    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), program: { organization: { name: '島島', bio: '社群', external_link: null } } } } as never);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: { ...cohort, program: { organization: { name: '島島', bio: '社群', external_link: null } } } } as never);
     prismaMock.practices.findMany.mockResolvedValue([{ id: 900, external_id: '123e4567-e89b-12d3-a456-426614174000', title: '每日反思', practice_action: '寫一段', status: 'active', creation_source: 'cohort_template', start_date: new Date('2026-07-01'), end_date: new Date('2026-07-30'), progress_percentage: 40, theme_color: '#FCDD84' }] as never);
     prismaMock.practice_checkins.groupBy.mockResolvedValue([{ practice_id: 900, _count: { id: 3 }, _max: { checkin_date: new Date('2026-07-20') } }] as never);
     const result = await cohortJoinService.getMemberHome(8, 42);
@@ -149,7 +151,7 @@ describe('cohortJoinService', () => {
   });
 
   it('falls back to zero counts when a practice has no check-in yet', async () => {
-    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: false, cohort: { id: 8, display_name: '夏季期', start_date: new Date('2026-07-01'), end_date: new Date('2026-08-31'), program: { organization: { name: '島島', bio: null, external_link: null } } } } as never);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: false, cohort: { ...cohort, program: { organization: { name: '島島', bio: null, external_link: null } } } } as never);
     prismaMock.practices.findMany.mockResolvedValue([{ id: 901, external_id: '223e4567-e89b-12d3-a456-426614174000', title: '晨間閱讀', practice_action: null, status: 'draft', creation_source: 'cohort_template', start_date: null, end_date: null, progress_percentage: null, theme_color: null }] as never);
     prismaMock.practice_checkins.groupBy.mockResolvedValue([] as never);
     const result = await cohortJoinService.getMemberHome(8, 42);

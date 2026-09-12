@@ -1,6 +1,10 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // Recycle suite workers instead of retaining every Prisma mock/module graph
+  // in one process throughout the full suite (also bounded on CI runners).
+  maxWorkers: 2,
+  workerIdleMemoryLimit: '512MB',
   testMatch: [
     '<rootDir>/tests/**/*.test.(ts|js)',
     '<rootDir>/src/**/*.test.(ts|js)'
@@ -13,16 +17,14 @@ module.exports = {
 
   // ES modules support
   extensionsToTreatAsEsm: ['.ts'],
-  globals: {
-    'ts-jest': {
-      useESM: true
-    }
-  },
 
   // Transform configuration
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true
+      useESM: true,
+      // Keep full program type checking in `pnpm run typecheck`. Building a
+      // TypeScript language service per suite retains the large Prisma types.
+      tsconfig: { isolatedModules: true }
     }]
   },
 
@@ -51,4 +53,3 @@ module.exports = {
   testTimeout: 10000,
   forceExit: true
 };
-  

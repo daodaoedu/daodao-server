@@ -10,6 +10,23 @@ import { EMAIL_TYPES } from '@/types/email/base.types';
 
 const prisma = new PrismaClient();
 
+/** Parse PostgreSQL's rendered email-type CHECK constraint without losing digits. */
+function constraintValues(definition: string): Set<string> {
+  const arrayMatch = definition.match(/ARRAY\[([^\]]+)\]/);
+  const matches = (arrayMatch ? arrayMatch[1] : definition).match(/'([a-z0-9_]+)'/g) || [];
+  return new Set(matches.map(value => value.replace(/'/g, '')));
+}
+
+describe('email constraint value parsing', () => {
+  it.each([
+    "CHECK (email_type = ANY (ARRAY['onboarding_l0'::text, 'challenge_t48h'::text, 'challenge_day1'::text]))",
+    "CHECK (email_type IN ('onboarding_l0', 'challenge_t48h', 'challenge_day1'))",
+  ])('preserves digit-bearing values in %s', definition => {
+    expect([...constraintValues(definition)]).toEqual(['onboarding_l0', 'challenge_t48h', 'challenge_day1']);
+    expect(constraintValues(definition).has('not_present')).toBe(false);
+  });
+});
+
 afterAll(async () => {
   await prisma.$disconnect();
 });
@@ -29,10 +46,7 @@ describe('EMAIL_TYPES vs DB constraint sync', () => {
 
     // 從 CHECK constraint 的 ANY(ARRAY[...]) 或 IN (...) 語法中精確解析值
     // 只匹配 ::character varying 或逗號/括號分隔的單引號字串
-    const arrayMatch = def.match(/ARRAY\[([^\]]+)\]/);
-    const valuesPart = arrayMatch ? arrayMatch[1] : def;
-    const matches = valuesPart.match(/'([a-z_]+)'/g) || [];
-    const dbValues = new Set(matches.map((m: string) => m.replace(/'/g, '')));
+    const dbValues = constraintValues(def);
 
     const codeValues = Object.values(EMAIL_TYPES);
 

@@ -75,6 +75,7 @@ describe('Practice Business Logic Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setupTransactionMock();
+    prismaMock.tags.findUnique.mockResolvedValue({ id: 1, name: '閱讀' } as never);
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
     prismaMock.follows.findMany.mockResolvedValue([]);
   });
@@ -208,7 +209,7 @@ describe('Practice Business Logic Tests', () => {
         message: '太棒了！'
       } as any);
 
-      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { mood: 'happy' }, userToken);
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { tags: ['閱讀'], mood: 'happy' }, userToken);
 
       const data = expectSuccess(response, 201);
       expect(data.practiceProgressPercentage).toBe(50);
@@ -263,7 +264,7 @@ describe('Practice Business Logic Tests', () => {
             message: '加油！'
           } as any);
 
-          const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { mood: 'happy' }, userToken);
+          const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { tags: ['閱讀'], mood: 'happy' }, userToken);
 
           const data = expectSuccess(response, 201);
           expect(data.practiceProgressPercentage).toBeCloseTo(progress, 1);
@@ -309,7 +310,7 @@ describe('Practice Business Logic Tests', () => {
           message: '超棒！'
         } as any);
 
-        const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { mood: 'happy' }, userToken);
+        const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { tags: ['閱讀'], mood: 'happy' }, userToken);
 
         const data = expectSuccess(response, 201);
         expect(data.practiceProgressPercentage).toBeGreaterThan(100);
@@ -388,7 +389,7 @@ describe('Practice Business Logic Tests', () => {
         message: '太棒了！'
       } as any);
 
-      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { mood: 'happy' }, userToken);
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { tags: ['閱讀'], mood: 'happy' }, userToken);
 
       const data = expectSuccess(response, 201);
       expect(data.practiceStatus).toBe('active');
@@ -631,7 +632,7 @@ describe('Practice Business Logic Tests', () => {
         message: '太棒了！'
       } as any);
 
-      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { mood: 'happy' }, userToken);
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { tags: ['閱讀'], mood: 'happy' }, userToken);
 
       expectSuccess(response, 201);
 
@@ -698,7 +699,7 @@ describe('Practice Business Logic Tests', () => {
         message: '太棒了！'
       } as any);
 
-      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { mood: 'happy' }, userToken);
+      const response = await authPost(`${API_BASE}/${practiceId}/checkins`, { tags: ['閱讀'], mood: 'happy' }, userToken);
 
       expectSuccess(response, 201);
 

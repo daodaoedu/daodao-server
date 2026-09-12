@@ -83,6 +83,7 @@ describe('Practice Check-in API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setupTransactionMock();
+    prismaMock.tags.findUnique.mockResolvedValue({ id: 1, name: '閱讀' } as never);
 
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
     otherUserToken = createAuthToken({ id: otherUserId, email: 'other@test.com' });
@@ -109,6 +110,7 @@ describe('Practice Check-in API Integration Tests', () => {
   // ==========================================================================
   describe('POST /api/v1/practices/:id/checkins - 建立打卡記錄', () => {
     const validCheckInData = {
+      tags: ['閱讀'],
       mood: 'happy',
       note: '今天閱讀了 30 分鐘，學到很多新知識！',
       imageUrls: []

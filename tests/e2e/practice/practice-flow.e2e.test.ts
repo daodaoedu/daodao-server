@@ -84,6 +84,7 @@ describe('Practice E2E Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setupTransactionMock();
+    prismaMock.tags.findUnique.mockResolvedValue({ id: 1, name: '閱讀' } as never);
     userToken = createAuthToken({ id: userId, email: 'user@test.com' });
 
     // 設置 id-converter 的默認 mock 行為
@@ -226,7 +227,7 @@ describe('Practice E2E Tests', () => {
 
       const firstCheckInResponse = await authPost(
         `${API_BASE}/${practiceExternalId}/checkins`,
-        { mood: 'happy', note: '第一天閱讀完成！' },
+        { tags: ['閱讀'], mood: 'happy', note: '第一天閱讀完成！' },
         userToken
       );
 
@@ -303,7 +304,7 @@ describe('Practice E2E Tests', () => {
 
         const response = await authPost(
           `${API_BASE}/${practiceExternalId}/checkins`,
-          { mood: 'super-happy-invalid' },
+          { tags: ['閱讀'], mood: 'super-happy-invalid' },
           userToken
         );
 
@@ -390,7 +391,7 @@ describe('Practice E2E Tests', () => {
 
         const response = await authPost(
           `${API_BASE}/${nonExistentId}/checkins`,
-          { mood: 'happy' },
+          { tags: ['閱讀'], mood: 'happy' },
           userToken
         );
 
@@ -437,7 +438,7 @@ describe('Practice E2E Tests', () => {
 
         const response = await authPost(
           `${API_BASE}/${practiceExternalId}/checkins`,
-          { mood: 'happy' },
+          { tags: ['閱讀'], mood: 'happy' },
           userToken
         );
 
@@ -477,7 +478,7 @@ describe('Practice E2E Tests', () => {
 
         const response = await authPost(
           `${API_BASE}/${practiceExternalId}/checkins`,
-          { mood: 'happy' },
+          { tags: ['閱讀'], mood: 'happy' },
           userToken
         );
 
@@ -553,7 +554,7 @@ describe('Practice E2E Tests', () => {
       expectSuccess(response, 201);
     });
 
-    it('note 欄位最大 500 字應驗證', async () => {
+    it('note 欄位超過 600 字應驗證', async () => {
       prismaMock.practices.findUnique.mockResolvedValue({
         id: 1,
         external_id: practiceExternalId,
@@ -564,19 +565,20 @@ describe('Practice E2E Tests', () => {
       } as any);
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
 
-      // API 驗證規則：note 最大 500 字
-      const longNote = 'a'.repeat(501);
+      // API 驗證規則：note 最大 600 字
+      const longNote = 'a'.repeat(601);
 
       const response = await authPost(
         `${API_BASE}/${practiceExternalId}/checkins`,
-        { mood: 'happy', note: longNote },
+        { tags: ['閱讀'], mood: 'happy', note: longNote },
         userToken
       );
 
-      expectError(response, 400);
+      const error = expectError(response, 400);
+      expect(error.message).toContain('note: 詳細描述不可超過600字');
     });
 
-    it('imageUrls 最多 5 張應驗證', async () => {
+    it('imageUrls 超過 3 張應驗證', async () => {
       prismaMock.practices.findUnique.mockResolvedValue({
         id: 1,
         external_id: practiceExternalId,
@@ -587,23 +589,22 @@ describe('Practice E2E Tests', () => {
       } as any);
       prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
 
-      // API 驗證規則：imageUrls 最多 5 張
+      // API 驗證規則：imageUrls 最多 3 張
       const tooManyImages = [
         'https://example.com/1.jpg',
         'https://example.com/2.jpg',
         'https://example.com/3.jpg',
-        'https://example.com/4.jpg',
-        'https://example.com/5.jpg',
-        'https://example.com/6.jpg'
+        'https://example.com/4.jpg'
       ];
 
       const response = await authPost(
         `${API_BASE}/${practiceExternalId}/checkins`,
-        { mood: 'happy', imageUrls: tooManyImages },
+        { tags: ['閱讀'], mood: 'happy', imageUrls: tooManyImages },
         userToken
       );
 
-      expectError(response, 400);
+      const error = expectError(response, 400);
+      expect(error.message).toContain('imageUrls: 圖片最多3張');
     });
   });
 });
