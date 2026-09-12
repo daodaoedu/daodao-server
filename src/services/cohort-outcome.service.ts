@@ -69,9 +69,15 @@ const listSummaries = async (cohortId: number): Promise<SummaryRow[]> =>
   prisma.cohort_outcome_summaries.findMany({ where: { cohort_id: cohortId }, select: summarySelect, orderBy: { version: 'desc' }, take: SUMMARY_VERSIONS_LIMIT });
 
 const platformUsedToday = async (cohortId: number, timezone: string, now: Date): Promise<number> => {
-  const startOfDay = new Date(`${calendarDay(now, timezone)}T00:00:00.000Z`);
-  // 用組織時區的日曆日當額度視窗；created_at 以 UTC 午夜換算會差幾小時，額度控管用途可接受
-  return prisma.cohort_outcome_summaries.count({ where: { cohort_id: cohortId, source: 'platform_ai', created_at: { gte: startOfDay } } });
+  // 額度視窗 = 組織時區的「今天」：日曆日字串在 SQL 端用 AT TIME ZONE 換回真正的當地午夜（與 cohort-activity 一致）
+  const day = calendarDay(now, timezone);
+  const rows = await prisma.$queryRaw<Array<{ used: bigint }>>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS used
+    FROM cohort_outcome_summaries
+    WHERE cohort_id = ${cohortId} AND source = 'platform_ai'
+      AND created_at >= (${day}::date::timestamp AT TIME ZONE ${timezone})
+  `);
+  return Number(rows[0]?.used ?? 0);
 };
 
 const get = async (programId: number, cohortId: number, actorId: number, now = new Date()): Promise<CohortOutcomeResponse> => {
@@ -179,21 +185,24 @@ interface SummaryEntry { participant: string; practice: string; date: string; ki
 
 /** 組給 AI 的資料：打卡筆記與公開留言，暱稱去識別化為「參與者 N」，私密留言（帶領人私訊）不送 */
 const collectSummaryInput = async (cohortId: number): Promise<{ entries: SummaryEntry[]; range: Record<string, unknown> }> => {
+  // 先撈這個場次的打卡 id 對照表，留言查詢用 target_id IN (...) 鎖在場次內（不然全站最近 N 筆留言可能完全不含本場次）
+  const checkinRows = await prisma.practice_checkins.findMany({ where: { practices: { cohort_id: cohortId, deleted_at: null } }, select: { id: true, practices: { select: { title: true, practice_templates: { select: { title: true } } } } } });
+  const checkinIds = new Set<number>();
+  const practiceByCheckin = new Map(checkinRows.map(row => { checkinIds.add(row.id); return [row.id, row.practices.practice_templates?.title ?? row.practices.title]; }));
   const [checkins, comments] = await Promise.all([
     prisma.practice_checkins.findMany({
       where: { practices: { cohort_id: cohortId, deleted_at: null }, note: { not: null }, created_at: { not: null } },
       select: { user_id: true, note: true, mood: true, created_at: true, practices: { select: { title: true, practice_templates: { select: { title: true } } } } },
       orderBy: { created_at: 'desc' }, take: SUMMARY_MAX_CHECKINS
     }),
-    prisma.comments.findMany({
-      where: { target_type: 'checkin', visibility: 'public', created_at: { not: null }, content: { not: '' } },
-      select: { user_id: true, content: true, created_at: true, target_id: true },
-      orderBy: { created_at: 'desc' }, take: SUMMARY_MAX_COMMENTS * 4
-    })
+    checkinIds.size === 0
+      ? Promise.resolve([] as Array<{ user_id: number; content: string; created_at: Date | null; target_id: number }>)
+      : prisma.comments.findMany({
+        where: { target_type: 'checkin', target_id: { in: [...checkinIds] }, visibility: 'public', created_at: { not: null }, content: { not: '' } },
+        select: { user_id: true, content: true, created_at: true, target_id: true },
+        orderBy: { created_at: 'desc' }, take: SUMMARY_MAX_COMMENTS
+      })
   ]);
-  const checkinIds = new Set<number>();
-  const checkinRows = await prisma.practice_checkins.findMany({ where: { practices: { cohort_id: cohortId, deleted_at: null } }, select: { id: true, practices: { select: { title: true, practice_templates: { select: { title: true } } } } } });
-  const practiceByCheckin = new Map(checkinRows.map(row => { checkinIds.add(row.id); return [row.id, row.practices.practice_templates?.title ?? row.practices.title]; }));
   const aliases = new Map<number, string>();
   const alias = (userId: number): string => { if (!aliases.has(userId)) aliases.set(userId, `參與者 ${aliases.size + 1}`); return aliases.get(userId) as string; };
   const entries: SummaryEntry[] = [];

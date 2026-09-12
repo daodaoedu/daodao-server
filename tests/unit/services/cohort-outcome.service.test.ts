@@ -30,11 +30,11 @@ describe('cohortOutcomeService', () => {
     prismaMock.$queryRaw
       .mockResolvedValueOnce([{ participants: 12n, activated: 9n, checkins: 40n, comments: 7n }] as never)
       .mockResolvedValueOnce([{ title: '晨間書寫', participants: 10n, started: 9n, completed: 3n, checkins: 40n, comments: 7n }] as never)
-      .mockResolvedValueOnce([{ user_id: 5, nickname: '小明', avatar: null, practice_id: 7, practice_title: '晨間書寫', practice_status: 'in_progress', checkin_count: 9n, response_count: 2n, target_count: 12, progress: 75.5, last_checkin_at: new Date('2026-08-20T00:00:00.000Z'), last_response_at: new Date('2026-08-21T00:00:00.000Z') }] as never);
+      .mockResolvedValueOnce([{ user_id: 5, nickname: '小明', avatar: null, practice_id: 7, practice_title: '晨間書寫', practice_status: 'in_progress', checkin_count: 9n, response_count: 2n, target_count: 12, progress: 75.5, last_checkin_at: new Date('2026-08-20T00:00:00.000Z'), last_response_at: new Date('2026-08-21T00:00:00.000Z') }] as never)
+      .mockResolvedValueOnce([{ used: 1n }] as never);
     prismaMock.cohort_outcome_summaries.findMany.mockResolvedValue([summaryRow(2, 'platform_ai'), { ...summaryRow(1), is_current: false }] as never);
     prismaMock.organization_ai_credentials.findUnique.mockResolvedValue({ status: 'verified', provider: 'openai', key_last4: 'ABCD' } as never);
     prismaMock.cohort_stat_snapshots.findFirst.mockResolvedValue({ computed_at: new Date('2026-09-01T00:00:00.000Z') } as never);
-    prismaMock.cohort_outcome_summaries.count.mockResolvedValue(1);
     const result = await cohortOutcomeService.get(2, 8, 42, now);
     expect(result.phase).toBe('ended');
     expect(result.finalizedAt).toEqual(new Date('2026-09-01T00:00:00.000Z'));
@@ -63,7 +63,7 @@ describe('cohortOutcomeService', () => {
 
   it('enforces the platform daily limit per cohort', async () => {
     allow();
-    prismaMock.cohort_outcome_summaries.count.mockResolvedValue(5);
+    prismaMock.$queryRaw.mockResolvedValue([{ used: 5n }] as never);
     await expect(cohortOutcomeService.generateSummary(2, 8, 42, { mode: 'platform' }, 'jwt', now)).rejects.toBeInstanceOf(TooManyRequestsError);
     expect(aiPost).not.toHaveBeenCalled();
   });
@@ -72,9 +72,10 @@ describe('cohortOutcomeService', () => {
     allow();
     prismaMock.organization_ai_credentials.findUnique.mockResolvedValue({ status: 'set' } as never);
     resolveApiKey.mockResolvedValue({ provider: 'openai', apiKey: 'sk-own-key' });
+    // collectSummaryInput 先撈場次打卡 id 對照表（id 查詢），再撈有筆記的打卡（note 查詢）
     prismaMock.practice_checkins.findMany
-      .mockResolvedValueOnce([{ user_id: 5, note: '今天讀了兩頁', mood: 'good', created_at: new Date('2026-08-02T00:00:00.000Z'), practices: { title: '個人標題', practice_templates: { title: '晨間書寫' } } }, { user_id: 6, note: '寫了三行', mood: null, created_at: new Date('2026-08-01T00:00:00.000Z'), practices: { title: '晨間書寫', practice_templates: null } }] as never)
-      .mockResolvedValueOnce([{ id: 100, practices: { title: '晨間書寫', practice_templates: null } }] as never);
+      .mockResolvedValueOnce([{ id: 100, practices: { title: '晨間書寫', practice_templates: null } }] as never)
+      .mockResolvedValueOnce([{ user_id: 5, note: '今天讀了兩頁', mood: 'good', created_at: new Date('2026-08-02T00:00:00.000Z'), practices: { title: '個人標題', practice_templates: { title: '晨間書寫' } } }, { user_id: 6, note: '寫了三行', mood: null, created_at: new Date('2026-08-01T00:00:00.000Z'), practices: { title: '晨間書寫', practice_templates: null } }] as never);
     prismaMock.comments.findMany.mockResolvedValue([{ user_id: 2, content: '寫得很好', created_at: new Date('2026-08-03T00:00:00.000Z'), target_id: 100 }, { user_id: 2, content: '不在本場次', created_at: now, target_id: 999 }] as never);
     prismaMock.$queryRaw.mockResolvedValueOnce([{ participants: 2n, checkins: 2n }] as never);
     aiPost.mockResolvedValue({ summary: '  這一期大家很投入。  ', provider: 'openai', model: 'gpt-4o-mini', usage: { tokens: 321 } });
@@ -90,6 +91,8 @@ describe('cohortOutcomeService', () => {
     expect(body.cohort).toEqual(expect.objectContaining({ name: '夏季團', phase: 'ended', participants: 2 }));
     expect(body.entries.map(entry => entry.participant)).toEqual(['參與者 2', '參與者 1', '參與者 3']);
     expect(body.entries.some(entry => entry.text === '不在本場次')).toBe(false);
+    // 留言查詢必須鎖在本場次的打卡 id 內，不能撈全站最近 N 筆再過濾
+    expect(prismaMock.comments.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ target_type: 'checkin', target_id: { in: [100] } }) }));
     expect(JSON.stringify(body)).not.toContain('小明');
     expect(prismaMock.cohort_outcome_summaries.updateMany).toHaveBeenCalledWith({ where: { cohort_id: 8, is_current: true }, data: { is_current: false } });
     expect(prismaMock.cohort_outcome_summaries.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ version: 4, source: 'own_ai', content: '這一期大家很投入。', provider: 'openai', model_name: 'gpt-4o-mini', created_by: 42 }) }));
@@ -98,11 +101,11 @@ describe('cohortOutcomeService', () => {
 
   it('turns ai-backend failures into 409 / 429 instead of 500', async () => {
     allow();
-    prismaMock.cohort_outcome_summaries.count.mockResolvedValue(0);
     // collectSummaryInput 每次呼叫會打兩次 findMany（筆記、對照表）；兩輪嘗試共四次
     prismaMock.practice_checkins.findMany.mockImplementation((async (args: { select?: { note?: boolean } }) => (args.select?.note ? [{ user_id: 5, note: 'x', mood: null, created_at: now, practices: { title: 't', practice_templates: null } }] : [])) as never);
     prismaMock.comments.findMany.mockResolvedValue([] as never);
-    prismaMock.$queryRaw.mockResolvedValue([{ participants: 1n, checkins: 1n }] as never);
+    // 同一個 mock 同時餵額度查詢（used）與 collectSummaryInput 的統計列
+    prismaMock.$queryRaw.mockResolvedValue([{ used: 0n, participants: 1n, checkins: 1n }] as never);
     const { AiBackendError } = jest.requireMock('@/services/ai-backend.client') as { AiBackendError: new (code: string, message: string) => Error };
     aiPost.mockRejectedValueOnce(new AiBackendError('rate_limited', '太頻繁'));
     await expect(cohortOutcomeService.generateSummary(2, 8, 42, { mode: 'platform' }, null, now)).rejects.toBeInstanceOf(TooManyRequestsError);
