@@ -29,10 +29,21 @@ describe('programService', () => {
     setupTransactionMock();
     prismaMock.programs.findFirst.mockResolvedValue({ id: 2, archived_at: null, organization: { status: 'active' } } as never);
     prismaMock.$executeRaw.mockResolvedValueOnce(3 as never).mockResolvedValueOnce(1 as never);
-    prismaMock.programs.update.mockResolvedValue({} as never);
+    prismaMock.programs.updateMany.mockResolvedValue({ count: 1 });
     const result = await programService.archive(2, 42);
     expect(result).toEqual({ programId: 2, archivedCohortCount: 3 });
-    expect(prismaMock.programs.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 2 }, data: expect.objectContaining({ archived_at: expect.any(Date), archived_by: 42 }) }));
+    expect(prismaMock.programs.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 2, archived_at: null, deleted_at: null }, data: expect.objectContaining({ archived_at: expect.any(Date), archived_by: 42 }) }));
+  });
+
+  it('returns 409 and writes no audit when a concurrent archive already won the race', async () => {
+    setupTransactionMock();
+    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, archived_at: null, organization: { status: 'active' } } as never);
+    prismaMock.$executeRaw.mockResolvedValue(3 as never);
+    prismaMock.programs.updateMany.mockResolvedValue({ count: 0 });
+    await expect(programService.archive(2, 42)).rejects.toBeInstanceOf(ConflictError);
+    // 只跑了級聯 UPDATE（交易回滾），沒有 audit INSERT
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(String(prismaMock.$executeRaw.mock.calls[0][0])).not.toContain('audit_logs');
   });
 
   it('rejects archiving a program that is already in the archive', async () => {
@@ -40,6 +51,7 @@ describe('programService', () => {
     await expect(programService.archive(2, 42)).rejects.toBeInstanceOf(ConflictError);
     await expect(programService.update(2, { name: '改名' }, 42)).rejects.toBeInstanceOf(ConflictError);
     expect(prismaMock.programs.update).not.toHaveBeenCalled();
+    expect(prismaMock.programs.updateMany).not.toHaveBeenCalled();
   });
 
   it('hides archived programs from the main list', async () => {

@@ -309,7 +309,11 @@ const archive = async (organizationId: number, templateId: number, userId: numbe
   await assertOrganization(organizationId, userId);
   const existing = await getOwnedTemplate(organizationId, templateId);
   if (existing.archived_at) throw new ConflictError('模板已在封存區');
-  const row = await prisma.practice_templates.update({ where: { id: templateId }, data: { archived_at: new Date(), archived_by: userId, updated_at: new Date() }, select });
+  const now = new Date();
+  // 條件式更新：同一模板被並發封存時只有第一個請求生效，其餘回 409（TP-ARC-05）
+  const updated = await prisma.practice_templates.updateMany({ where: { id: templateId, archived_at: null, deleted_at: null }, data: { archived_at: now, archived_by: userId, updated_at: now } });
+  if (updated.count === 0) throw new ConflictError('模板已在封存區');
+  const row = await prisma.practice_templates.findUniqueOrThrow({ where: { id: templateId }, select });
   await writeLighthouseAudit(prisma, userId, LIGHTHOUSE_AUDIT_ACTIONS.TEMPLATE_ARCHIVED, 'practice_template', templateId, { archivedAt: null }, { archivedAt: row.archived_at });
   return (await hydrate([row]))[0];
 };
@@ -319,7 +323,9 @@ const restore = async (organizationId: number, templateId: number, userId: numbe
   await assertOrganization(organizationId, userId);
   const existing = await getOwnedTemplate(organizationId, templateId);
   if (!existing.archived_at) throw new ConflictError('模板不在封存區');
-  const row = await prisma.practice_templates.update({ where: { id: templateId }, data: { archived_at: null, archived_by: null, updated_at: new Date() }, select });
+  const updated = await prisma.practice_templates.updateMany({ where: { id: templateId, archived_at: { not: null }, deleted_at: null }, data: { archived_at: null, archived_by: null, updated_at: new Date() } });
+  if (updated.count === 0) throw new ConflictError('模板不在封存區');
+  const row = await prisma.practice_templates.findUniqueOrThrow({ where: { id: templateId }, select });
   await writeLighthouseAudit(prisma, userId, LIGHTHOUSE_AUDIT_ACTIONS.TEMPLATE_RESTORED, 'practice_template', templateId, { archivedAt: existing.archived_at }, { archivedAt: null });
   return (await hydrate([row]))[0];
 };

@@ -1,5 +1,5 @@
 import type { CreateProgramInput, ProgramResponse, UpdateProgramInput } from '../validators/program.validators';
-import { ForbiddenError, NotFoundError } from '../middleware/error.middleware';
+import { ForbiddenError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
@@ -76,12 +76,9 @@ const archive = async (programId: number, userId: number): Promise<{ programId: 
       WHERE program_id = ${programId} AND status <> 'archived' AND deleted_at IS NULL
     `;
     // 封存系列本體
-    try {
-      await tx.programs.update({ where: { id: programId }, data: { archived_at: now, archived_by: userId, updated_at: now } });
-    } catch (error) {
-      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2025') throw new NotFoundError('找不到系列');
-      throw error;
-    }
+    // 條件式更新：並發封存只有第一個請求生效，其餘回 409 並回滾上面的級聯（TP-ARC-05）
+    const updated = await tx.programs.updateMany({ where: { id: programId, archived_at: null, deleted_at: null }, data: { archived_at: now, archived_by: userId, updated_at: now } });
+    if (updated.count === 0) throw new ConflictError('系列已在封存區');
     // 寫 audit
     await tx.$executeRaw`
       INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, old_value, new_value)

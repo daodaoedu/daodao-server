@@ -33,27 +33,58 @@ describe('lighthouseArchiveService', () => {
   it('restores a cohort to the status it had before archiving', async () => {
     allow();
     prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, display_name: '夏季', status: 'archived', archived_at: archivedAt, archived_from_status: 'published', archived_reason: 'manual', program: { id: 2, archived_at: null } } as never);
-    prismaMock.cohorts.update.mockResolvedValue({} as never);
+    prismaMock.cohorts.updateMany.mockResolvedValue({ count: 1 });
     const result = await lighthouseArchiveService.restore(1, 42, 'cohorts', 8);
     expect(result).toEqual({ type: 'cohort', id: 8, name: '夏季', restoredCohortCount: 0 });
-    expect(prismaMock.cohorts.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'published', archived_at: null, archived_from_status: null }) }));
+    expect(prismaMock.cohorts.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 8, status: 'archived', deleted_at: null }, data: expect.objectContaining({ status: 'published', archived_at: null, archived_from_status: null }) }));
   });
 
   it('blocks restoring a cohort while its program is still archived', async () => {
     allow();
     prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, display_name: '夏季', status: 'archived', archived_at: archivedAt, archived_from_status: null, archived_reason: 'program_cascade', program: { id: 2, archived_at: archivedAt } } as never);
     await expect(lighthouseArchiveService.restore(1, 42, 'cohorts', 8)).rejects.toBeInstanceOf(ConflictError);
-    expect(prismaMock.cohorts.update).not.toHaveBeenCalled();
+    expect(prismaMock.cohorts.updateMany).not.toHaveBeenCalled();
   });
 
   it('restores a program together with the cohorts that were archived by the cascade', async () => {
     allow();
     prismaMock.programs.findFirst.mockResolvedValue({ id: 2, name: '自主學習', archived_at: archivedAt } as never);
-    prismaMock.programs.update.mockResolvedValue({} as never);
+    prismaMock.programs.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.$executeRaw.mockResolvedValueOnce(2 as never).mockResolvedValueOnce(1 as never);
     const result = await lighthouseArchiveService.restore(1, 42, 'programs', 2);
     expect(result).toEqual({ type: 'program', id: 2, name: '自主學習', restoredCohortCount: 2 });
-    expect(prismaMock.programs.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ archived_at: null, archived_by: null }) }));
+    expect(prismaMock.programs.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 2, archived_at: { not: null }, deleted_at: null }, data: expect.objectContaining({ archived_at: null, archived_by: null }) }));
+  });
+
+  it('returns 409 and writes no audit when a concurrent restore already won the race', async () => {
+    allow();
+    prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, display_name: '夏季', status: 'archived', archived_at: archivedAt, archived_from_status: 'published', archived_reason: 'manual', program: { id: 2, archived_at: null } } as never);
+    prismaMock.cohorts.updateMany.mockResolvedValue({ count: 0 });
+    await expect(lighthouseArchiveService.restore(1, 42, 'cohorts', 8)).rejects.toBeInstanceOf(ConflictError);
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+
+    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, name: '自主學習', archived_at: archivedAt } as never);
+    prismaMock.programs.updateMany.mockResolvedValue({ count: 0 });
+    await expect(lighthouseArchiveService.restore(1, 42, 'programs', 2)).rejects.toBeInstanceOf(ConflictError);
+    // 條件式更新失敗就不該跑級聯復活與 audit
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 and writes no audit when a concurrent delete already won the race', async () => {
+    allow();
+    prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: archivedAt } as never);
+    prismaMock.practice_templates.updateMany.mockResolvedValue({ count: 0 });
+    await expect(lighthouseArchiveService.remove(1, 42, 'templates', 5)).rejects.toBeInstanceOf(ConflictError);
+
+    prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, display_name: '夏季', status: 'archived', archived_at: archivedAt, archived_from_status: 'published', archived_reason: 'manual', program: { id: 2, archived_at: null } } as never);
+    prismaMock.cohorts.updateMany.mockResolvedValue({ count: 0 });
+    await expect(lighthouseArchiveService.remove(1, 42, 'cohorts', 8)).rejects.toBeInstanceOf(ConflictError);
+
+    prismaMock.programs.findFirst.mockResolvedValue({ id: 2, name: '自主學習', archived_at: archivedAt } as never);
+    prismaMock.programs.updateMany.mockResolvedValue({ count: 0 });
+    await expect(lighthouseArchiveService.remove(1, 42, 'programs', 2)).rejects.toBeInstanceOf(ConflictError);
+
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
   });
 
   it('refuses to delete items that are not in the archive and 404s on unknown ids', async () => {
@@ -68,10 +99,10 @@ describe('lighthouseArchiveService', () => {
     allow();
     prismaMock.programs.findFirst.mockResolvedValue({ id: 2, name: '自主學習', archived_at: archivedAt } as never);
     prismaMock.cohorts.updateMany.mockResolvedValue({ count: 3 });
-    prismaMock.programs.update.mockResolvedValue({} as never);
+    prismaMock.programs.updateMany.mockResolvedValue({ count: 1 });
     await lighthouseArchiveService.remove(1, 42, 'programs', 2);
     expect(prismaMock.cohorts.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { program_id: 2, deleted_at: null }, data: expect.objectContaining({ deleted_at: expect.any(Date) }) }));
-    expect(prismaMock.programs.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ deleted_at: expect.any(Date) }) }));
+    expect(prismaMock.programs.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 2, archived_at: { not: null }, deleted_at: null }, data: expect.objectContaining({ deleted_at: expect.any(Date) }) }));
     expect(prismaMock.programs.delete).not.toHaveBeenCalled();
   });
 });

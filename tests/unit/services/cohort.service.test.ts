@@ -29,11 +29,18 @@ describe('cohortService', () => {
 
   it('archives with archived_at / archived_by / previous status and refuses a second archive', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
-    prismaMock.cohorts.update.mockResolvedValue({ ...row, status: 'archived' } as never);
+    prismaMock.cohorts.updateMany.mockResolvedValue({ count: 1 });
     await cohortService.archive(2, 8, 42);
-    expect(prismaMock.cohorts.update).toHaveBeenCalledWith({ where: { id: 8 }, data: { status: 'archived', archived_at: expect.any(Date), archived_by: 42, archived_from_status: 'published', archived_reason: 'manual', updated_at: expect.any(Date) } });
+    expect(prismaMock.cohorts.updateMany).toHaveBeenCalledWith({ where: { id: 8, status: { not: 'archived' }, deleted_at: null }, data: { status: 'archived', archived_at: expect.any(Date), archived_by: 42, archived_from_status: 'published', archived_reason: 'manual', updated_at: expect.any(Date) } });
     prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'archived', program: { organization: { status: 'active' } } } as never);
     await expect(cohortService.archive(2, 8, 42)).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('returns 409 and writes no audit when a concurrent archive already won the race', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.updateMany.mockResolvedValue({ count: 0 });
+    await expect(cohortService.archive(2, 8, 42)).rejects.toBeInstanceOf(ConflictError);
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
   });
 
   it('rotates, pauses and resumes join links with audit records', async () => {

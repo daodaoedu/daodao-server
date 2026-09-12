@@ -167,14 +167,38 @@ describe('organizationTemplateService', () => {
 
   it('archives once and refuses to archive an already archived template', async () => {
     allow(); prismaMock.practice_templates.findFirst.mockResolvedValue(template as never);
-    prismaMock.practice_templates.update.mockResolvedValue({ ...template, archived_at: new Date() } as never);
+    prismaMock.practice_templates.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.practice_templates.findUniqueOrThrow.mockResolvedValue({ ...template, archived_at: new Date() } as never);
     prismaMock.entity_resources.findMany.mockResolvedValue([] as never);
     const archived = await organizationTemplateService.archive(3, 5, 42);
     expect(archived.archivedAt).toBeInstanceOf(Date);
-    expect(prismaMock.practice_templates.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ archived_at: expect.any(Date), archived_by: 42 }) }));
+    expect(prismaMock.practice_templates.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 5, archived_at: null, deleted_at: null }, data: expect.objectContaining({ archived_at: expect.any(Date), archived_by: 42 }) }));
     prismaMock.practice_templates.findFirst.mockResolvedValue({ ...template, archived_at: new Date() } as never);
     await expect(organizationTemplateService.archive(3, 5, 42)).rejects.toBeInstanceOf(ConflictError);
     await expect(organizationTemplateService.update(3, 5, 42, { title: '改名' })).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('returns 409 and writes no audit when a concurrent archive already won the race', async () => {
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue(template as never);
+    prismaMock.practice_templates.updateMany.mockResolvedValue({ count: 0 });
+    await expect(organizationTemplateService.archive(3, 5, 42)).rejects.toBeInstanceOf(ConflictError);
+    expect(prismaMock.practice_templates.findUniqueOrThrow).not.toHaveBeenCalled();
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('restores through a conditional update and returns 409 when the row is no longer archived', async () => {
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ ...template, archived_at: new Date() } as never);
+    prismaMock.practice_templates.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.practice_templates.findUniqueOrThrow.mockResolvedValue(template as never);
+    prismaMock.entity_resources.findMany.mockResolvedValue([] as never);
+    const restored = await organizationTemplateService.restore(3, 5, 42);
+    expect(restored.archivedAt).toBeNull();
+    expect(prismaMock.practice_templates.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 5, archived_at: { not: null }, deleted_at: null }, data: expect.objectContaining({ archived_at: null, archived_by: null }) }));
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+    prismaMock.$executeRaw.mockClear();
+    prismaMock.practice_templates.updateMany.mockResolvedValue({ count: 0 });
+    await expect(organizationTemplateService.restore(3, 5, 42)).rejects.toBeInstanceOf(ConflictError);
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
   });
 
   it('locks bindings once the cohort has started', async () => {

@@ -91,7 +91,9 @@ const restoreCohort = async (organizationId: number, cohortId: number, userId: n
   if (row.program.archived_at) throw new ConflictError('所屬系列仍在封存區，請先恢復系列');
   const status = row.archived_from_status === 'published' ? 'published' : 'draft';
   await prisma.$transaction(async tx => {
-    await tx.cohorts.update({ where: { id: cohortId }, data: { status, archived_at: null, archived_by: null, archived_from_status: null, archived_reason: null, updated_at: new Date() } });
+    // 條件式更新：並發恢復只有第一個請求生效，其餘回 409（TP-ARC-05）
+    const updated = await tx.cohorts.updateMany({ where: { id: cohortId, status: 'archived', deleted_at: null }, data: { status, archived_at: null, archived_by: null, archived_from_status: null, archived_reason: null, updated_at: new Date() } });
+    if (updated.count === 0) throw new ConflictError('場次不在封存區');
     await writeLighthouseAudit(tx, userId, LIGHTHOUSE_AUDIT_ACTIONS.COHORT_RESTORED, 'cohort', cohortId, { status: 'archived', archivedAt: row.archived_at }, { status });
   });
   return { type: 'cohort', id: cohortId, name: row.display_name, restoredCohortCount: 0 };
@@ -100,7 +102,8 @@ const restoreCohort = async (organizationId: number, cohortId: number, userId: n
 const restoreProgram = async (organizationId: number, programId: number, userId: number): Promise<ArchiveRestoreResult> => {
   const row = await getArchivedProgram(organizationId, programId);
   const restoredCohortCount = await prisma.$transaction(async tx => {
-    await tx.programs.update({ where: { id: programId }, data: { archived_at: null, archived_by: null, updated_at: new Date() } });
+    const updated = await tx.programs.updateMany({ where: { id: programId, archived_at: { not: null }, deleted_at: null }, data: { archived_at: null, archived_by: null, updated_at: new Date() } });
+    if (updated.count === 0) throw new ConflictError('系列不在封存區');
     // 只復活隨系列封存的場次；使用者先前手動封存的維持封存
     const restored = await tx.$executeRaw`
       UPDATE cohorts
@@ -133,7 +136,8 @@ const removeTemplate = async (organizationId: number, templateId: number, userId
   if (!row) throw new NotFoundError('找不到模板');
   if (!row.archived_at) throw new ConflictError('模板不在封存區');
   await prisma.$transaction(async tx => {
-    await tx.practice_templates.update({ where: { id: templateId }, data: { deleted_at: new Date(), updated_at: new Date() } });
+    const updated = await tx.practice_templates.updateMany({ where: { id: templateId, archived_at: { not: null }, deleted_at: null }, data: { deleted_at: new Date(), updated_at: new Date() } });
+    if (updated.count === 0) throw new ConflictError('模板不在封存區');
     await writeLighthouseAudit(tx, userId, LIGHTHOUSE_AUDIT_ACTIONS.ARCHIVE_ITEM_DELETED, 'practice_template', templateId, {}, { deleted: true });
   });
 };
@@ -141,7 +145,8 @@ const removeTemplate = async (organizationId: number, templateId: number, userId
 const removeCohort = async (organizationId: number, cohortId: number, userId: number): Promise<void> => {
   const row = await getArchivedCohort(organizationId, cohortId);
   await prisma.$transaction(async tx => {
-    await tx.cohorts.update({ where: { id: row.id }, data: { deleted_at: new Date(), updated_at: new Date() } });
+    const updated = await tx.cohorts.updateMany({ where: { id: row.id, status: 'archived', deleted_at: null }, data: { deleted_at: new Date(), updated_at: new Date() } });
+    if (updated.count === 0) throw new ConflictError('場次不在封存區');
     await writeLighthouseAudit(tx, userId, LIGHTHOUSE_AUDIT_ACTIONS.ARCHIVE_ITEM_DELETED, 'cohort', cohortId, {}, { deleted: true });
   });
 };
@@ -152,7 +157,8 @@ const removeProgram = async (organizationId: number, programId: number, userId: 
     const now = new Date();
     // 系列刪除連同其場次一起軟刪（FR-ARC-03「刪除系列時需明確處理子場次」）
     const cohorts = await tx.cohorts.updateMany({ where: { program_id: row.id, deleted_at: null }, data: { deleted_at: now, updated_at: now } });
-    await tx.programs.update({ where: { id: row.id }, data: { deleted_at: now, updated_at: now } });
+    const updated = await tx.programs.updateMany({ where: { id: row.id, archived_at: { not: null }, deleted_at: null }, data: { deleted_at: now, updated_at: now } });
+    if (updated.count === 0) throw new ConflictError('系列不在封存區');
     await writeLighthouseAudit(tx, userId, LIGHTHOUSE_AUDIT_ACTIONS.ARCHIVE_ITEM_DELETED, 'program', programId, {}, { deleted: true, deletedCohortCount: cohorts.count });
   });
 };

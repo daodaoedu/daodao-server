@@ -470,7 +470,9 @@ const archive = async (programId: number, cohortId: number, userId: number): Pro
   if (current.status === 'archived') throw new ConflictError('場次已在封存區');
   const now = new Date();
   await prisma.$transaction(async tx => {
-    await tx.cohorts.update({ where: { id: cohortId }, data: { status: 'archived', archived_at: now, archived_by: userId, archived_from_status: current.status, archived_reason: COHORT_ARCHIVE_REASONS.MANUAL, updated_at: now } });
+    // 條件式更新：並發封存只有第一個請求生效，其餘回 409（TP-ARC-05）
+    const updated = await tx.cohorts.updateMany({ where: { id: cohortId, status: { not: 'archived' }, deleted_at: null }, data: { status: 'archived', archived_at: now, archived_by: userId, archived_from_status: current.status, archived_reason: COHORT_ARCHIVE_REASONS.MANUAL, updated_at: now } });
+    if (updated.count === 0) throw new ConflictError('場次已在封存區');
     await writeLighthouseAudit(tx, userId, LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ARCHIVED, 'cohort', cohortId, { status: current.status }, { status: 'archived' });
   });
 };
