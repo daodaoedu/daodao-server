@@ -64,3 +64,29 @@ export const cohortMemberHomeResponseSchema = z.object({
     lastCheckinAt: z.date().nullable(), themeColor: z.string().nullable()
   }))
 });
+
+/** HTTP JSON schemas. Service/controller schemas above intentionally accept Date before serialization. */
+const wireDateSchema = z.string().datetime();
+const wirePrivacySchema = privacySchema.strict().openapi({ title: 'CohortPrivacy', description: '隱私設定' });
+const wireOrganizationSchema = cohortJoinInfoResponseSchema.shape.organization.strict();
+const wireSessionSchema = sessionSchema.strict();
+export const cohortJoinInfoWireResponseSchema = cohortJoinInfoResponseSchema.extend({
+  startDate: wireDateSchema,
+  endDate: wireDateSchema,
+  joinDeadline: wireDateSchema.nullable().openapi({ description: '加入截止日' }),
+  privacy: wirePrivacySchema,
+  organization: wireOrganizationSchema,
+  sessions: z.array(wireSessionSchema).openapi({ description: '聚會時段' })
+}).strict();
+export const cohortMemberHomeWireResponseSchema = cohortMemberHomeResponseSchema.extend({
+  startDate: wireDateSchema,
+  endDate: wireDateSchema,
+  privacy: wirePrivacySchema,
+  organization: wireOrganizationSchema,
+  sessions: z.array(wireSessionSchema).openapi({ description: '聚會時段' }),
+  practices: z.array(cohortMemberHomeResponseSchema.shape.practices.element.extend({
+    startDate: wireDateSchema.nullable(),
+    endDate: wireDateSchema.nullable(),
+    lastCheckinAt: wireDateSchema.nullable()
+  }).strict())
+}).strict();
