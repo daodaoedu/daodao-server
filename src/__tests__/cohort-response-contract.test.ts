@@ -5,11 +5,11 @@ import request from 'supertest';
 import { prisma } from '../services/database/prisma.service';
 import router from '../routes/cohort-join.routes';
 import { globalErrorHandler } from '../middleware/error.middleware';
-import { apiSuccessResponseSchema } from '../validators/api-response.validators';
+import { apiErrorResponseSchema, apiSuccessResponseSchema } from '../validators/api-response.validators';
 import { cohortJoinInfoWireResponseSchema, cohortMemberHomeWireResponseSchema } from '../validators/cohort-join.validators';
 
 jest.mock('../services/database/prisma.service', () => ({ prisma: {
-  cohorts: { findUnique: jest.fn() }, cohort_enrollments: { count: jest.fn(), findFirst: jest.fn() },
+  cohorts: { findUnique: jest.fn() }, cohort_enrollments: { count: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn() },
   practices: { findMany: jest.fn() }, practice_checkins: { groupBy: jest.fn() }
 } }));
 jest.mock('../services/notification-event.service', () => ({ notificationEventService: {} }));
@@ -43,6 +43,7 @@ const cohort = {
 
 beforeEach(() => {
   db.cohorts.findUnique.mockResolvedValue(cohort as never);
+  db.cohort_enrollments.findUnique.mockResolvedValue(null);
   db.cohort_enrollments.count.mockResolvedValue(1);
   db.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: cohort } as never);
   db.practices.findMany.mockResolvedValue([{
@@ -50,6 +51,76 @@ beforeEach(() => {
     start_date: new Date('2026-07-01'), end_date: null, progress_percentage: 0, theme_color: null
   }] as never);
   db.practice_checkins.groupBy.mockResolvedValue([]);
+});
+
+it.each(['/join/not-a-uuid', '/0', '/not-a-number'])('rejects invalid parameters at %s before database access', async path => {
+  const res = await request(app).get(`/api/v1/cohorts${path}`).expect(400);
+  expect(res.body.success).toBe(false);
+  expect(res.body).not.toHaveProperty('data');
+  expect(res.body.error.type).toBe('bad_request');
+  expect(res.body.error.details).toEqual(expect.arrayContaining([
+    expect.objectContaining({ path: expect.any(String), message: expect.any(String) })
+  ]));
+  expect(res.text).not.toContain(privateUrl);
+  expect(db.cohorts.findUnique).not.toHaveBeenCalled();
+  expect(db.cohort_enrollments.findFirst).not.toHaveBeenCalled();
+});
+
+it('returns a valid error envelope for a missing public or individual invitation', async () => {
+  db.cohorts.findUnique.mockResolvedValue(null);
+  const res = await request(app).get(`/api/v1/cohorts/join/${token}`).expect(404);
+  expect(apiErrorResponseSchema.safeParse(res.body).success).toBe(true);
+  expect(db.cohort_enrollments.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+    where: { invite_token: token }
+  }));
+  expect(db.cohort_enrollments.count).not.toHaveBeenCalled();
+  expect(res.text).not.toContain(privateUrl);
+});
+
+it.each([
+  ['not_published', { status: 'draft' }],
+  ['expired', { join_deadline: new Date('2000-01-01') }],
+  ['full', { capacity: 1 }],
+  ['paused', { join_paused: true }]
+])('preserves the public privacy contract when joining is %s', async (reason, changes) => {
+  db.cohorts.findUnique.mockResolvedValue({ ...cohort, ...changes as object } as never);
+  const res = await request(app).get(`/api/v1/cohorts/join/${token}`).expect(200);
+  expect(apiSuccessResponseSchema(cohortJoinInfoWireResponseSchema).safeParse(res.body).success).toBe(true);
+  expect(res.body.data.canJoin).toBe(false);
+  expect(res.body.data.unavailableReason).toBe(reason);
+  expect(res.text).not.toContain(privateUrl);
+  expect(res.text).not.toContain('private invitation');
+});
+
+it('allows an individual invitation while public joining is paused without exposing its recipient', async () => {
+  db.cohorts.findUnique.mockResolvedValue(null);
+  db.cohort_enrollments.findUnique.mockResolvedValue({
+    id: 789123, user_id: 987123, status: 'invited', cohort: { ...cohort, join_paused: true }
+  } as never);
+  const res = await request(app).get(`/api/v1/cohorts/join/${token}`).expect(200);
+  expect(apiSuccessResponseSchema(cohortJoinInfoWireResponseSchema).safeParse(res.body).success).toBe(true);
+  expect(res.body.data.canJoin).toBe(true);
+  expect(res.body.data.unavailableReason).toBeNull();
+  expect(res.text).not.toContain('789123');
+  expect(res.text).not.toContain('987123');
+  expect(res.text).not.toContain(privateUrl);
+});
+
+it('maps populated member check-ins with user-scoped practices and serialized dates', async () => {
+  db.practice_checkins.groupBy.mockResolvedValue([{
+    practice_id: 900, _count: { id: 3 }, _max: { checkin_date: new Date('2026-09-12T12:00:00Z') }
+  }] as never);
+  const res = await request(app).get('/api/v1/cohorts/8').expect(200);
+  expect(apiSuccessResponseSchema(cohortMemberHomeWireResponseSchema).safeParse(res.body).success).toBe(true);
+  expect(res.body.data.practices[0]).toEqual(expect.objectContaining({
+    id: token, checkInCount: 3, lastCheckinAt: '2026-09-12T12:00:00.000Z'
+  }));
+  expect(db.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({
+    where: { cohort_id: 8, user_id: 42, deleted_at: null }
+  }));
+  expect(db.practice_checkins.groupBy).toHaveBeenCalledWith(expect.objectContaining({
+    where: { practice_id: { in: [900] } }
+  }));
 });
 
 it('validates the entire public HTTP response and excludes member-only and internal fields', async () => {
