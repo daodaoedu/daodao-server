@@ -26066,6 +26066,7 @@ paths:
                             - sessionDate
                             - startTime
                             - endTime
+                          additionalProperties: false
                         description: 聚會時段
                       feeType:
                         type: string
@@ -26128,6 +26129,7 @@ paths:
                           - isPrivate
                           - checkinDefaultPrivate
                           - hostCommentDefaultPrivate
+                        additionalProperties: false
                         title: CohortPrivacy
                         description: 隱私設定
                       visibilityNotice:
@@ -26147,6 +26149,7 @@ paths:
                           - name
                           - bio
                           - externalLink
+                        additionalProperties: false
                     required:
                       - cohortId
                       - displayName
@@ -26169,6 +26172,7 @@ paths:
                       - privacy
                       - visibilityNotice
                       - organization
+                    additionalProperties: false
                     description: The main response data
                   timestamp:
                     type: string
@@ -26449,6 +26453,7 @@ paths:
                             - sessionDate
                             - startTime
                             - endTime
+                          additionalProperties: false
                         description: 聚會時段
                       feeType:
                         type: string
@@ -26471,6 +26476,7 @@ paths:
                           - isPrivate
                           - checkinDefaultPrivate
                           - hostCommentDefaultPrivate
+                        additionalProperties: false
                         title: CohortPrivacy
                         description: 隱私設定
                       exportOptIn:
@@ -26490,6 +26496,7 @@ paths:
                           - name
                           - bio
                           - externalLink
+                        additionalProperties: false
                       practices:
                         type: array
                         items:
@@ -26546,6 +26553,7 @@ paths:
                             - checkInCount
                             - lastCheckinAt
                             - themeColor
+                          additionalProperties: false
                     required:
                       - cohortId
                       - displayName
@@ -26561,6 +26569,7 @@ paths:
                       - exportOptIn
                       - organization
                       - practices
+                    additionalProperties: false
                     description: The main response data
                   timestamp:
                     type: string
