@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware';
 import { followService } from '../services/follow.service';
 import type { FollowTargetBody, FollowParams, FollowQuery, FollowCheckParams } from '../validators/follow.validators';
+import { followActionApiResponseSchema, followListApiResponseSchema } from '../validators/follow.validators';
 
 /**
  * POST /api/v1/follows
@@ -21,7 +22,8 @@ export const follow = asyncHandler(async (req: Request, res: Response) => {
     ? await followService.followUser(req.user.id, body.targetId)
     : await followService.followPractice(req.user.id, body.targetId);
 
-  res.status(201).json(result);
+  const validatedResponse = followActionApiResponseSchema.parse(result);
+  res.status(201).json(validatedResponse);
 });
 
 /**
@@ -37,7 +39,8 @@ export const unfollow = asyncHandler(async (req: Request, res: Response) => {
     ? await followService.unfollowUser(req.user.id, targetId)
     : await followService.unfollowPractice(req.user.id, targetId);
 
-  res.json(result);
+  const validatedResponse = followActionApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -61,7 +64,8 @@ export const getFollowers = asyncHandler(async (req: Request, res: Response) => 
   const { page, limit } = req.query as unknown as FollowQuery;
 
   const result = await followService.getFollowers(userId, page, limit);
-  res.json(result);
+  const validatedResponse = followListApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -73,5 +77,6 @@ export const getFollowing = asyncHandler(async (req: Request, res: Response) => 
   const { page, limit } = req.query as unknown as FollowQuery;
 
   const result = await followService.getFollowing(userId, page, limit);
-  res.json(result);
+  const validatedResponse = followListApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });

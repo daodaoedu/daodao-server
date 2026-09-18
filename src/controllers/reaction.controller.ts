@@ -15,6 +15,9 @@ import {
   GetReactionsQuerySchema,
   GetReactionsListQuerySchema,
   GetReactionsBatchQuerySchema,
+  getReactionsApiResponseSchema,
+  getReactionsListApiResponseSchema,
+  getReactionsBatchApiResponseSchema,
 } from '../validators/reaction.validators';
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import { externalToInternalId, EntityType } from '../services/id-converter.service';
@@ -47,7 +50,8 @@ async function upsertReaction(req: Request, res: Response): Promise<void> {
     reactionType: reactionType as ReactionTypeValue,
   });
 
-  res.status(200).json(result);
+  const validatedResponse = getReactionsApiResponseSchema.parse(result);
+  res.status(200).json(validatedResponse);
 }
 
 /**
@@ -66,7 +70,8 @@ async function removeReaction(req: Request, res: Response): Promise<void> {
     userId: req.user.id,
   });
 
-  res.status(200).json(result);
+  const validatedResponse = getReactionsApiResponseSchema.parse(result);
+  res.status(200).json(validatedResponse);
 }
 
 /**
@@ -83,7 +88,8 @@ async function getReactions(req: Request, res: Response): Promise<void> {
     currentUserId: req.user?.id ?? null,
   });
 
-  res.status(200).json(result);
+  const validatedResponse = getReactionsApiResponseSchema.parse(result);
+  res.status(200).json(validatedResponse);
 }
 
 /**
@@ -100,7 +106,8 @@ async function getReactionsList(req: Request, res: Response): Promise<void> {
     currentUserId: req.user?.id ?? null,
   });
 
-  res.status(200).json(result);
+  const validatedResponse = getReactionsListApiResponseSchema.parse(result);
+  res.status(200).json(validatedResponse);
 }
 
 /**
@@ -154,7 +161,8 @@ async function getReactionsBatch(req: Request, res: Response): Promise<void> {
     currentUserId: req.user?.id ?? null,
   });
 
-  res.status(200).json(result);
+  const validatedResponse = getReactionsBatchApiResponseSchema.parse(result);
+  res.status(200).json(validatedResponse);
 }
 
 export const reactionController = {
