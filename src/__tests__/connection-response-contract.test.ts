@@ -147,16 +147,15 @@ describe('send connection request (POST /connections/request)', () => {
 });
 
 describe('field leakage prevention', () => {
-  it('FINDING: connection controller passes service result directly — extra fields leak through', async () => {
+  it('strips extra fields injected by the service after Zod validation was added to the controller', async () => {
     service.getConnections.mockResolvedValueOnce({
       ...mockConnectionList,
       data: [{ ...mockConnectionList.data[0], internalId: sensitiveInternalUserId, password_hash: 'secret' }],
     });
     const res = await request(app).get('/api/v1/connections').set('Authorization', 'Bearer test').expect(200);
-    // Unlike user/cohort controllers, connection controller does NOT parse through Zod.
-    // Extra fields are forwarded verbatim. This documents the gap.
-    expect(res.body.data[0]).toHaveProperty('internalId');
-    expect(res.body.data[0]).toHaveProperty('password_hash');
+    expect(res.body.data[0]).not.toHaveProperty('internalId');
+    expect(res.body.data[0]).not.toHaveProperty('password_hash');
+    expect(res.text).not.toContain('secret');
   });
 
   it('requires authentication for all connection endpoints', async () => {
