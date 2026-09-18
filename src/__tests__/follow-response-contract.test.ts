@@ -6,7 +6,7 @@ import { globalErrorHandler } from '../middleware/error.middleware';
 import { followActionApiResponseSchema, followListApiResponseSchema } from '../validators/follow.validators';
 
 const sensitiveEmail = 'follower-secret@hidden.com';
-const internalDbId = 55443322;
+
 
 const mockFollowItem = {
   userId: 101,

@@ -3,7 +3,7 @@ import '../config/openapi-registry';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import request from 'supertest';
 import { globalErrorHandler } from '../middleware/error.middleware';
-import { getReactionsApiResponseSchema } from '../validators/reaction.validators';
+
 
 const internalTargetId = 12345;
 
