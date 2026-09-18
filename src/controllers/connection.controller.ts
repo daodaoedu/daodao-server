@@ -11,6 +11,12 @@ import type {
   UpdateRequestBody,
   ConnectionQuery,
 } from '../validators/connection.validators';
+import {
+  connectionActionApiResponseSchema,
+  connectionListApiResponseSchema,
+  connectionRequestListApiResponseSchema,
+  connectionStatusApiResponseSchema,
+} from '../validators/connection.validators';
 
 /**
  * POST /api/v1/connections/request
@@ -27,7 +33,8 @@ export const sendRequest = asyncHandler(async (req: Request, res: Response) => {
     body.contextPracticeExternalId
   );
 
-  res.status(201).json(result);
+  const validatedResponse = connectionActionApiResponseSchema.parse(result);
+  res.status(201).json(validatedResponse);
 });
 
 /**
@@ -44,7 +51,8 @@ export const updateRequest = asyncHandler(async (req: Request, res: Response) =>
     ? await connectionService.acceptRequest(req.user.id, requestId)
     : await connectionService.rejectRequest(req.user.id, requestId);
 
-  res.json(result);
+  const validatedResponse = connectionActionApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -56,7 +64,8 @@ export const withdrawRequest = asyncHandler(async (req: Request, res: Response) 
 
   const requestId = parseInt(req.params.requestId, 10);
   const result = await connectionService.withdrawRequest(req.user.id, requestId);
-  res.json(result);
+  const validatedResponse = connectionActionApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -67,7 +76,8 @@ export const disconnect = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
 
   const result = await connectionService.disconnect(req.user.id, req.params.userId);
-  res.json(result);
+  const validatedResponse = connectionActionApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -79,7 +89,8 @@ export const getConnections = asyncHandler(async (req: Request, res: Response) =
 
   const { page, limit } = req.query as unknown as ConnectionQuery;
   const result = await connectionService.getConnections(req.user.id, page, limit);
-  res.json(result);
+  const validatedResponse = connectionListApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -91,7 +102,8 @@ export const getIncomingRequests = asyncHandler(async (req: Request, res: Respon
 
   const { page, limit } = req.query as unknown as ConnectionQuery;
   const result = await connectionService.getPendingIncoming(req.user.id, page, limit);
-  res.json(result);
+  const validatedResponse = connectionRequestListApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -103,7 +115,8 @@ export const getOutgoingRequests = asyncHandler(async (req: Request, res: Respon
 
   const { page, limit } = req.query as unknown as ConnectionQuery;
   const result = await connectionService.getPendingOutgoing(req.user.id, page, limit);
-  res.json(result);
+  const validatedResponse = connectionRequestListApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
 
 /**
@@ -114,5 +127,6 @@ export const getConnectionStatus = asyncHandler(async (req: Request, res: Respon
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
 
   const result = await connectionService.getConnectionStatus(req.user.id, req.params.userId);
-  res.json(result);
+  const validatedResponse = connectionStatusApiResponseSchema.parse(result);
+  res.json(validatedResponse);
 });
