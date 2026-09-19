@@ -317,7 +317,9 @@ describe('NotificationEmailWorker — processNotificationEmailJob', () => {
       const batchEnd: Date = callArg.where.created_at.lt;
 
       const windowMs = batchEnd.getTime() - batchStart.getTime();
-      expect(windowMs).toBeCloseTo(4 * 60 * 60 * 1000, -3); // 4 小時 ± 1 秒
+      const isMorningBatch = new Date().getUTCHours() === 0;
+      const expectedMs = isMorningBatch ? 12 * 60 * 60 * 1000 : 4 * 60 * 60 * 1000;
+      expect(windowMs).toBeCloseTo(expectedMs, -3);
 
       expect(batchEnd.getTime()).toBeGreaterThanOrEqual(before);
       expect(batchEnd.getTime()).toBeLessThanOrEqual(after + 100);

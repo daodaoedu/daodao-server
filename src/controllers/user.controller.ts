@@ -60,7 +60,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
     result.data = result.data.map(user => ({
       ...user,
       email: null,
-      birthDate: null,
+      birthDay: null,
       isSubscribeEmail: false,
       loginCount: 0,
       lastLoginAt: null,

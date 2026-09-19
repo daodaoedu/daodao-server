@@ -1,4 +1,6 @@
 import type { CreateCohortInput, CohortResponse, OrganizationCohortResponse, UpdateCohortInput, CohortUpdateResult, CohortSessionInput } from '../validators/cohort.validators';
+import { ACTIVE_PROGRAM_WHERE, COHORT_ARCHIVE_REASONS } from '../constants/archive-state';
+import { writeLighthouseAudit } from '../utils/lighthouse-audit';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { randomUUID } from 'crypto';
@@ -16,7 +18,7 @@ const select = {
   interaction_modes: true, meeting_url: true, location: true,
   fee_type: true, fee_amount: true, signup_method: true, external_signup_url: true,
   is_private: true, checkin_default_private: true, host_comment_default_private: true,
-  status: true, visibility: true, created_at: true, updated_at: true,
+  status: true, visibility: true, archived_at: true, created_at: true, updated_at: true,
   cohort_sessions: { select: { id: true, session_date: true, start_time: true, end_time: true, position: true }, orderBy: { position: 'asc' as const } },
   _count: { select: { cohort_sessions: true } }
 } as const;
@@ -30,7 +32,7 @@ type CohortRow = {
   interaction_modes: string[]; meeting_url: string | null; location: string | null;
   fee_type: string; fee_amount: number | null; signup_method: string; external_signup_url: string | null;
   is_private: boolean; checkin_default_private: boolean; host_comment_default_private: boolean;
-  status: string; visibility: string; created_at: Date; updated_at: Date | null;
+  status: string; visibility: string; archived_at?: Date | null; created_at: Date; updated_at: Date | null;
   cohort_sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number }>;
   _count: { cohort_sessions: number };
 };
@@ -83,6 +85,7 @@ const map = (row: CohortRow): CohortResponse => ({
   hasHomePage: false, // Phase B：space_home_pages 查詢
   signupQuestionCount: 0, // Phase C：cohort_signup_questions count
   status: asStatus(row.status), visibility: asVisibility(row.visibility),
+  archivedAt: row.archived_at ?? null,
   createdAt: row.created_at, updatedAt: row.updated_at
 });
 
@@ -176,7 +179,7 @@ const normalizeCohortSetup = (merged: {
 
 const assertProgram = async (programId: number, userId: number): Promise<void> => {
   const program = await prisma.programs.findFirst({
-    where: { id: programId, deleted_at: null, organization: { organization_members: { some: { user_id: userId } } } },
+    where: { id: programId, ...ACTIVE_PROGRAM_WHERE, organization: { organization_members: { some: { user_id: userId } } } },
     select: { organization: { select: { status: true } } }
   });
   if (!program) throw new ForbiddenError('無權限存取此系列');
@@ -192,7 +195,7 @@ const assertOrganization = async (organizationId: number, userId: number): Promi
 };
 const getOwned = async (programId: number, cohortId: number, userId: number) => {
   const row = await prisma.cohorts.findFirst({
-    where: { id: cohortId, program_id: programId, program: { deleted_at: null, organization: { organization_members: { some: { user_id: userId } } } } },
+    where: { id: cohortId, program_id: programId, deleted_at: null, program: { ...ACTIVE_PROGRAM_WHERE, organization: { organization_members: { some: { user_id: userId } } } } },
     select: { ...select, program: { select: { organization: { select: { status: true } } } } }
   });
   if (!row) throw new ForbiddenError('無權限存取此場次');
@@ -201,7 +204,7 @@ const getOwned = async (programId: number, cohortId: number, userId: number) => 
 };
 const list = async (programId: number, userId: number): Promise<CohortResponse[]> => {
   await assertProgram(programId, userId);
-  return (await prisma.cohorts.findMany({ where: { program_id: programId }, select, orderBy: { created_at: 'asc' } })).map(map);
+  return (await prisma.cohorts.findMany({ where: { program_id: programId, deleted_at: null }, select, orderBy: { created_at: 'asc' } })).map(map);
 };
 /**
  * 組織底下所有系列的全部場次（總覽頁一次列出，含草稿與封存），附系列名稱與已加入人數
@@ -209,7 +212,7 @@ const list = async (programId: number, userId: number): Promise<CohortResponse[]
 const listByOrganization = async (organizationId: number, userId: number): Promise<OrganizationCohortResponse[]> => {
   await assertOrganization(organizationId, userId);
   const rows = await prisma.cohorts.findMany({
-    where: { program: { organization_id: organizationId, deleted_at: null } },
+    where: { deleted_at: null, program: { organization_id: organizationId, ...ACTIVE_PROGRAM_WHERE } },
     select: { ...select, program: { select: { name: true } } },
     orderBy: [{ start_date: 'desc' }, { created_at: 'desc' }]
   });
@@ -397,6 +400,9 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
           host_comment_default_private: normalized.hostCommentDefaultPrivate,
           ...(input.visibility !== undefined && { visibility: input.visibility }),
           ...(input.status !== undefined && { status: input.status }),
+          // 用 PATCH 切到 archived 也要留下封存紀錄；從 archived 切回其他狀態則清掉（FR-ARC-04）
+          ...(input.status === 'archived' && current.status !== 'archived' && { archived_at: new Date(), archived_by: userId, archived_from_status: current.status, archived_reason: COHORT_ARCHIVE_REASONS.MANUAL }),
+          ...(input.status !== undefined && input.status !== 'archived' && current.status === 'archived' && { archived_at: null, archived_by: null, archived_from_status: null, archived_reason: null }),
           updated_at: new Date()
         },
         select
@@ -458,7 +464,18 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
   }
 };
 
-const archive = async (programId: number, cohortId: number, userId: number): Promise<void> => { await getOwned(programId, cohortId, userId); await prisma.cohorts.update({ where: { id: cohortId }, data: { status: 'archived', updated_at: new Date() } }); };
+/** 封存場次：記封存時間／操作人／封存前狀態，寫 audit；已封存再封存回 409（FR-ARC-04） */
+const archive = async (programId: number, cohortId: number, userId: number): Promise<void> => {
+  const current = await getOwned(programId, cohortId, userId);
+  if (current.status === 'archived') throw new ConflictError('場次已在封存區');
+  const now = new Date();
+  await prisma.$transaction(async tx => {
+    // 條件式更新：並發封存只有第一個請求生效，其餘回 409（TP-ARC-05）
+    const updated = await tx.cohorts.updateMany({ where: { id: cohortId, status: { not: 'archived' }, deleted_at: null }, data: { status: 'archived', archived_at: now, archived_by: userId, archived_from_status: current.status, archived_reason: COHORT_ARCHIVE_REASONS.MANUAL, updated_at: now } });
+    if (updated.count === 0) throw new ConflictError('場次已在封存區');
+    await writeLighthouseAudit(tx, userId, LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ARCHIVED, 'cohort', cohortId, { status: current.status }, { status: 'archived' });
+  });
+};
 
 /**
  * 複製場次（D10 深複製）：草稿狀態副本，含新欄位、sessions、模板綁定。

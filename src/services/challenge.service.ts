@@ -15,7 +15,7 @@ const challengeSelect = {
   join_paused: true,
   capacity: true,
   status: true,
-  program: { select: { name: true, description: true, kind: true, deleted_at: true } }
+  program: { select: { name: true, description: true, kind: true, archived_at: true, deleted_at: true } }
 } as const;
 
 type ChallengeRow = {
@@ -27,7 +27,7 @@ type ChallengeRow = {
   join_paused: boolean;
   capacity: number | null;
   status: string;
-  program: { name: string; description: string | null; kind: string; deleted_at: Date | null };
+  program: { name: string; description: string | null; kind: string; archived_at: Date | null; deleted_at: Date | null };
 };
 
 export { deriveRunStatus } from './cohort-run-state';
@@ -82,7 +82,7 @@ const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: 
 const listMine = async (userId: number, now = new Date()) => {
   const rows = await prisma.cohorts.findMany({
     where: {
-      program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null },
+      program: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null },
       cohort_enrollments: { some: { user_id: userId, status: 'joined' } }
     },
     select: challengeSelect,
@@ -115,7 +115,7 @@ const list = async (userId: number | null, now = new Date()) => {
     where: {
       status: 'published',
       end_date: { gte: dateOf(today(now)) },
-      program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null }
+      program: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null }
     },
     select: challengeSelect,
     orderBy: { start_date: 'asc' }
@@ -126,7 +126,7 @@ const list = async (userId: number | null, now = new Date()) => {
 /** 挑戰詳情：已發佈即可看，含已結束（歷史足跡） */
 const getDetail = async (challengeId: number, userId: number | null, now = new Date()) => {
   const row = await prisma.cohorts.findUnique({ where: { id: challengeId }, select: challengeSelect });
-  if (!row || row.program.kind !== PROGRAM_KINDS.CHALLENGE || row.program.deleted_at !== null || row.status !== 'published') {
+  if (!row || row.program.kind !== PROGRAM_KINDS.CHALLENGE || row.program.archived_at !== null || row.program.deleted_at !== null || row.status !== 'published') {
     throw new NotFoundError('找不到共同挑戰');
   }
   const [summary] = await buildSummaries([row], userId, now);
@@ -149,7 +149,7 @@ const getDetail = async (challengeId: number, userId: number | null, now = new D
  */
 const join = async (challengeId: number, userId: number, now = new Date()) => {
   const row = await prisma.cohorts.findUnique({ where: { id: challengeId }, select: challengeSelect });
-  if (!row || row.program.kind !== PROGRAM_KINDS.CHALLENGE || row.program.deleted_at !== null || row.status !== 'published') {
+  if (!row || row.program.kind !== PROGRAM_KINDS.CHALLENGE || row.program.archived_at !== null || row.program.deleted_at !== null || row.status !== 'published') {
     throw new NotFoundError('找不到共同挑戰');
   }
   const user = await prisma.users.findUnique({ where: { id: userId }, select: { contacts: { select: { email: true } } } });

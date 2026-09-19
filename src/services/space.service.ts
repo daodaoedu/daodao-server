@@ -192,7 +192,7 @@ async function listMySpaces(userId: number) {
       _count: { _all: true },
     }),
     prisma.cohort_enrollments.findMany({
-      where: { user_id: userId, status: 'joined', cohort: { program: { deleted_at: null, organization: { status: 'active' } } } },
+      where: { user_id: userId, status: 'joined', cohort: { program: { archived_at: null, deleted_at: null, organization: { status: 'active' } } } },
       select: {
         joined_at: true,
         role: true,

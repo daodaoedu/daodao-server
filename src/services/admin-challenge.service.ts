@@ -72,7 +72,7 @@ const assertActiveOrganization = async (organizationId: number): Promise<void> =
 
 const getProgram = async (programId: number) => {
   const row = await prisma.programs.findFirst({
-    where: { id: programId, kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null },
+    where: { id: programId, kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null },
     select: programSelect
   });
   if (!row) throw new NotFoundError('找不到挑戰主題');
@@ -81,7 +81,7 @@ const getProgram = async (programId: number) => {
 
 const listPrograms = async (organizationId?: number) => {
   const rows = await prisma.programs.findMany({
-    where: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null, ...(organizationId !== undefined && { organization_id: organizationId }) },
+    where: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null, ...(organizationId !== undefined && { organization_id: organizationId }) },
     select: programSelect,
     orderBy: { created_at: 'desc' }
   });
@@ -113,7 +113,7 @@ const archiveProgram = async (programId: number): Promise<void> => {
   if (program.cohorts.some(cohort => cohort.status !== 'archived')) {
     throw new ConflictError('主題底下仍有未封存的挑戰，請先封存所有挑戰');
   }
-  await prisma.programs.update({ where: { id: programId }, data: { deleted_at: new Date(), updated_at: new Date() } });
+  await prisma.programs.update({ where: { id: programId }, data: { archived_at: new Date(), updated_at: new Date() } });
 };
 
 /** 複製主題（只複製名稱與描述，不複製期） */
@@ -181,7 +181,7 @@ const mapCohort = (row: CohortRow, now = new Date()): AdminCohortResponse => {
 
 const getCohort = async (programId: number, cohortId: number) => {
   const row = await prisma.cohorts.findFirst({
-    where: { id: cohortId, program_id: programId, program: { kind: PROGRAM_KINDS.CHALLENGE, deleted_at: null } },
+    where: { id: cohortId, program_id: programId, program: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null } },
     select: cohortSelect
   });
   if (!row) throw new NotFoundError('找不到挑戰');

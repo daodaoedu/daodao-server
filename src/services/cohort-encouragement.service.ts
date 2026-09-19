@@ -1,9 +1,8 @@
 import { ForbiddenError } from '../middleware/error.middleware';
+import { aiBackendClient } from './ai-backend.client';
 import { commentService } from './comment.service';
 import { prisma } from './database/prisma.service';
 import { getRandomEncouragement } from './encouragement.service';
-
-const AI_BACKEND_URL = process.env.AI_BACKEND_URL || '';
 
 const assertCoachCheckinAccess = async (
   programId: number,
@@ -60,23 +59,17 @@ const fetchCheckinContext = async (checkinId: number): Promise<{
   };
 };
 
+/** 走 ai-backend 產草稿；轉發使用者 JWT（ai-backend 沒 token 會 401，之前一律 fallback 到句庫） */
 const generateAiDraft = async (context: {
   mood: string | null;
   note: string | null;
   practiceTitle: string;
   learnerNickname: string | null;
-}): Promise<string | null> => {
-  if (!AI_BACKEND_URL) return null;
+}, userToken: string | null): Promise<string | null> => {
+  if (!aiBackendClient.isConfigured()) return null;
   try {
-    const res = await fetch(`${AI_BACKEND_URL}/api/v1/encouragement/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(context),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { draft?: string };
-    return data.draft ?? null;
+    const data = await aiBackendClient.post<{ draft?: string }>('/api/v1/encouragement/generate', context, { userToken, timeoutMs: 15000 });
+    return data.draft?.trim() || null;
   } catch {
     return null;
   }
@@ -86,12 +79,13 @@ const draft = async (
   programId: number,
   cohortId: number,
   checkinId: number,
-  actorId: number
+  actorId: number,
+  userToken: string | null = null
 ): Promise<{ checkinId: number; draft: string }> => {
   await assertCoachCheckinAccess(programId, cohortId, checkinId, actorId);
 
   const context = await fetchCheckinContext(checkinId);
-  const aiDraft = await generateAiDraft(context);
+  const aiDraft = await generateAiDraft(context, userToken);
   if (aiDraft) return { checkinId, draft: aiDraft };
 
   const encouragement = await getRandomEncouragement();

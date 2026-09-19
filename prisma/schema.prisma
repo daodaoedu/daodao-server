@@ -892,6 +892,11 @@ model users {
   notifications_as_recipient           notifications[]            @relation("notifications_recipient")
   organization                         organization[]
   organization_members                 organization_members[]
+  archived_programs                    programs[]                    @relation("programs_archived_by")
+  archived_cohorts                     cohorts[]                     @relation("cohorts_archived_by")
+  archived_practice_templates          practice_templates[]          @relation("practice_templates_archived_by")
+  organization_ai_credentials_updates  organization_ai_credentials[]
+  cohort_outcome_summaries             cohort_outcome_summaries[]
   post                                 post[]
   practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
   practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
@@ -1087,11 +1092,18 @@ model practice_templates {
   updated_at                   DateTime?                      @db.Timestamptz(6)
   organization_id              Int?
   cohort_templates             cohort_templates[]
+  status                       String                         @default("ready") @db.VarChar(20)
+  archived_at                  DateTime?                      @db.Timestamptz(6)
+  archived_by                  Int?
+  deleted_at                   DateTime?                      @db.Timestamptz(6)
   organization                 organization?                  @relation(fields: [organization_id], references: [id], onUpdate: NoAction, map: "fk_practice_templates_organization")
+  archiver                     users?                         @relation("practice_templates_archived_by", fields: [archived_by], references: [id], onUpdate: NoAction, map: "fk_practice_templates_archived_by")
   practice_template_categories practice_template_categories[]
   practices                    practices[]
 
   @@index([organization_id], map: "idx_practice_templates_organization_id")
+  @@index([organization_id, updated_at], map: "idx_practice_templates_org_active")
+  @@index([organization_id, archived_at], map: "idx_practice_templates_org_archived")
 }
 
 /// 打卡鼓勵句表
@@ -1989,13 +2001,56 @@ model organization {
   approved_at          DateTime?              @db.Timestamptz(6)
   created_at           DateTime               @default(now()) @db.Timestamptz(6)
   approver             users?                 @relation(fields: [approved_by], references: [id], onUpdate: NoAction, map: "fk_organization_approved_by")
+  timezone             String                 @default("Asia/Taipei") @db.VarChar(64)
+  updated_at           DateTime?              @db.Timestamptz(6)
   cohort_message_templates cohort_message_templates[]
   organization_members organization_members[]
   practice_templates   practice_templates[]
   programs             programs[]
+  ai_credentials       organization_ai_credentials?
 }
 
 /// 帶領人訊息範本；組織內共享，分「鼓勵 encourage」「慶祝 celebrate」兩類（FR-TF-06）
+model organization_ai_credentials {
+  id                  Int          @id @default(autoincrement())
+  organization_id     Int          @unique(map: "uq_organization_ai_credentials_organization")
+  provider            String       @default("openai") @db.VarChar(50)
+  api_key_ciphertext  Bytes?
+  encryption_iv       Bytes?
+  encryption_auth_tag Bytes?
+  encryption_version  String?      @db.VarChar(32)
+  key_last4           String?      @db.VarChar(4)
+  status              String       @default("unset") @db.VarChar(20)
+  last_tested_at      DateTime?    @db.Timestamptz(6)
+  last_test_error     String?
+  updated_by          Int?
+  created_at          DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?    @db.Timestamptz(6)
+  organization        organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_organization_ai_credentials_organization")
+  updater             users?       @relation(fields: [updated_by], references: [id], onUpdate: NoAction, map: "fk_organization_ai_credentials_updated_by")
+}
+
+model cohort_outcome_summaries {
+  id             Int       @id @default(autoincrement())
+  cohort_id      Int
+  version        Int
+  source         String    @db.VarChar(20)
+  content        String
+  is_current     Boolean   @default(true)
+  provider       String?   @db.VarChar(50)
+  model_name     String?   @db.VarChar(200)
+  prompt_version String?   @db.VarChar(32)
+  input_range    Json?
+  usage          Json?
+  generated_at   DateTime? @db.Timestamptz(6)
+  created_by     Int?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  cohort         cohorts   @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cohort_outcome_summaries_cohort")
+  creator        users?    @relation(fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_cohort_outcome_summaries_created_by")
+
+  @@unique([cohort_id, version], map: "uq_cohort_outcome_summaries_version")
+}
+
 model cohort_message_templates {
   id              Int               @id @default(autoincrement())
   organization_id Int
@@ -2057,8 +2112,11 @@ model programs {
   deleted_at      DateTime?    @db.Timestamptz(6)
   created_at      DateTime     @default(now()) @db.Timestamptz(6)
   updated_at      DateTime?    @db.Timestamptz(6)
+  archived_at     DateTime?    @db.Timestamptz(6)
+  archived_by     Int?
   cohorts         cohorts[]
   organization    organization @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_programs_organization")
+  archiver        users?       @relation("programs_archived_by", fields: [archived_by], references: [id], onUpdate: NoAction, map: "fk_programs_archived_by")
 
   @@index([organization_id], map: "idx_programs_organization_id")
 }
@@ -2111,10 +2169,18 @@ model cohorts {
   program               programs                @relation(fields: [program_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohorts_program")
   cohort_sessions       cohort_sessions[]
   chat_room             chat_rooms?
+  archived_at           DateTime?  @db.Timestamptz(6)
+  archived_by           Int?
+  archived_from_status  String?    @db.VarChar(20)
+  archived_reason       String?    @db.VarChar(20)
+  deleted_at            DateTime?  @db.Timestamptz(6)
+  archiver              users?     @relation("cohorts_archived_by", fields: [archived_by], references: [id], onUpdate: NoAction, map: "fk_cohorts_archived_by")
+  outcome_summaries     cohort_outcome_summaries[]
 
   @@unique([program_id, slug], map: "uq_cohorts_program_slug")
   @@index([program_id], map: "idx_cohorts_program_id")
   @@index([end_date], map: "idx_cohorts_public_published_end_date")
+  @@index([program_id, archived_at], map: "idx_cohorts_archived")
 }
 
 /// 靈感卡卡組：admin 建立，可重複 assign 給不同共同挑戰。
