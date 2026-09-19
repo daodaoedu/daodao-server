@@ -9,23 +9,20 @@ const internalTargetId = 12345;
 
 const mockReactionCounts = {
   reactions: [
-    { reactionType: 'fire', count: 3 },
-    { reactionType: 'heart', count: 1 }
+    { type: 'fire', count: 3, latestActorName: '學習者' },
+    { type: 'heart', count: 1, latestActorName: null }
   ],
   currentUserReaction: 'fire'
 };
 
-const mockUpsertResult = {
-  reactionType: 'fire',
-  created: true
-};
+const makeEnvelope = (data: unknown) => ({ success: true as const, data, timestamp: new Date().toISOString() });
 
 const reactionService = {
-  upsertReaction: jest.fn().mockResolvedValue(mockUpsertResult),
-  removeReaction: jest.fn().mockResolvedValue({ removed: true }),
-  getReactionsByTarget: jest.fn().mockResolvedValue({ success: true, data: mockReactionCounts, timestamp: new Date().toISOString() }),
-  getReactionsListByTarget: jest.fn().mockResolvedValue({ success: true, data: { items: [] }, timestamp: new Date().toISOString() }),
-  getReactionsBatchByTargets: jest.fn().mockResolvedValue({})
+  upsertReaction: jest.fn().mockResolvedValue(makeEnvelope(mockReactionCounts)),
+  removeReaction: jest.fn().mockResolvedValue(makeEnvelope(mockReactionCounts)),
+  getReactionsByTarget: jest.fn().mockResolvedValue(makeEnvelope(mockReactionCounts)),
+  getReactionsListByTarget: jest.fn().mockResolvedValue(makeEnvelope({ items: [] })),
+  getReactionsBatchByTargets: jest.fn().mockResolvedValue(makeEnvelope({}))
 };
 
 jest.mock('../services/reaction.service', () => ({ reactionService }));
@@ -68,23 +65,25 @@ describe('reaction response contracts', () => {
     expect(res.body.data.currentUserReaction).toBeDefined();
   });
 
-  it('upsert reaction returns result without internal target ID', async () => {
+  it('upsert reaction returns validated reaction counts without internal target ID', async () => {
     const res = await request(app)
       .post('/api/v1/reactions')
       .send({ targetType: 'practice', targetId: 'practice-uuid', reactionType: 'fire' })
       .expect(200);
-    expect(res.body.reactionType).toBe('fire');
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.reactions).toBeInstanceOf(Array);
     expect(res.text).not.toContain(String(internalTargetId));
-    expect(res.body).not.toHaveProperty('targetId');
-    expect(res.body).not.toHaveProperty('userId');
+    expect(res.body.data).not.toHaveProperty('targetId');
+    expect(res.body.data).not.toHaveProperty('userId');
   });
 
-  it('remove reaction returns result without internal IDs', async () => {
+  it('remove reaction returns validated counts without internal IDs', async () => {
     const res = await request(app)
       .delete('/api/v1/reactions')
       .send({ targetType: 'practice', targetId: 'practice-uuid' })
       .expect(200);
-    expect(res.body.removed).toBe(true);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.reactions).toBeInstanceOf(Array);
     expect(res.text).not.toContain(String(internalTargetId));
   });
 
