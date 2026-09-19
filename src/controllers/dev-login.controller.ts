@@ -6,13 +6,13 @@
  * 讓 agent 做部署後冒煙時不需真人 Google 登入即可取得 temp／正式用戶身份。
  */
 
-import { timingSafeEqual } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
 import { authService } from '../services/auth/auth.service';
 import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse } from '../utils/response-helper';
-import { asyncHandler, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
+import { asyncHandler, ConflictError, InternalServerError, NotFoundError, UnauthorizedError } from '../middleware/error.middleware';
 import { setAuthCookie } from '../utils/cookie-config';
 import { loggerService } from '../services/logging/logger.service';
 import {
@@ -23,6 +23,15 @@ import {
 
 /** temp_users.google_id 前綴，避免與真實 Google ID 碰撞 */
 export const DEV_LOGIN_GOOGLE_ID_PREFIX = 'dev-login:';
+
+/** 前綴 + sha256(email) hex，固定 74 字元，不會超過 temp_users.google_id VARCHAR(255) */
+export const devLoginGoogleId = (email: string): string =>
+  `${DEV_LOGIN_GOOGLE_ID_PREFIX}${createHash('sha256').update(email).digest('hex')}`;
+
+/** Prisma 唯一約束衝突（兩個首次 temp 請求同時建立同 email 時的競態） */
+const isUniqueViolation = (error: unknown): boolean =>
+  error instanceof ConflictError ||
+  (typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002');
 
 /** 常數時間比對，長度不同直接視為不符，不洩漏 secret 資訊 */
 const secretMatches = (provided: string | undefined, expected: string): boolean => {
@@ -54,15 +63,21 @@ const issueTempLogin = async (email: string, name: string | undefined): Promise<
   // 同 email 重複呼叫回同一列（AC-09），不論該列是否來自真實 Google 登入
   let tempUser = await prisma.temp_users.findFirst({ where: { email } });
   if (!tempUser) {
-    const created = await authService.findOrCreateTempUser({
-      googleId: `${DEV_LOGIN_GOOGLE_ID_PREFIX}${email}`,
-      email,
-      name: name || email.split('@')[0] || 'dev-login'
-    });
-    tempUser = (created.data?.user ?? null) as typeof tempUser;
+    try {
+      const created = await authService.findOrCreateTempUser({
+        googleId: devLoginGoogleId(email),
+        email,
+        name: name || email.split('@')[0] || 'dev-login'
+      });
+      tempUser = (created.data?.user ?? null) as typeof tempUser;
+    } catch (error) {
+      // 並發的另一個請求剛建立同 email 的列：重讀後沿用，而不是回 409
+      if (!isUniqueViolation(error)) throw error;
+      tempUser = await prisma.temp_users.findFirst({ where: { email } });
+    }
   }
   if (!tempUser) {
-    throw new NotFoundError('臨時用戶建立失敗');
+    throw new InternalServerError('dev-login: 臨時用戶建立後讀取失敗');
   }
 
   const token = jwtService.generateToken({
@@ -83,9 +98,10 @@ const issueTempLogin = async (email: string, name: string | undefined): Promise<
 const issueUserLogin = async (email: string): Promise<DevLoginResult> => {
   const found = await authService.findUserByEmail(email);
   const user = found.data?.user as
-    | { id: number; external_id: string; nickname?: string | null }
+    | { id?: unknown; external_id?: unknown; nickname?: string | null }
     | undefined;
-  if (!user) {
+  // findUserByEmail 回 any：只接受帶有數字 id 與字串 external_id 的正式用戶列
+  if (!user || typeof user.id !== 'number' || typeof user.external_id !== 'string') {
     throw new NotFoundError('找不到此 email 的正式用戶');
   }
 
