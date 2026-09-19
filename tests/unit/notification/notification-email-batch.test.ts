@@ -142,7 +142,7 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
   });
 
-  it('查詢的時間範圍精確覆蓋 4 小時（batchEnd - batchStart ≈ 4h）', async () => {
+  it('查詢的時間範圍精確覆蓋批次視窗（普通 4h，UTC 午夜 12h）', async () => {
     prismaMock.notification_events.findMany.mockResolvedValue([]);
 
     const before = Date.now();
@@ -154,9 +154,9 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
     const batchEnd: Date   = callArg.where.created_at.lt;
     const windowMs = batchEnd.getTime() - batchStart.getTime();
 
-    // 時間窗口應為 4 小時（4 * 60 * 60 * 1000 ms）
-    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
-    expect(windowMs).toBeCloseTo(FOUR_HOURS_MS, -3); // 允許小範圍誤差
+    const isMorningBatch = new Date().getUTCHours() === 0;
+    const expectedMs = isMorningBatch ? 12 * 60 * 60 * 1000 : 4 * 60 * 60 * 1000;
+    expect(windowMs).toBeCloseTo(expectedMs, -3);
 
     // batchEnd 應接近 now
     expect(batchEnd.getTime()).toBeGreaterThanOrEqual(before - 100);
