@@ -34,6 +34,7 @@ import {
   appleSignInResponseSchema
 } from '../validators/auth.validators';
 import { apiSuccessResponseSchema } from '../validators/api-response.validators';
+import { createDevLoginRouter } from './dev-login.routes';
 
 const router = Router();
 
@@ -677,5 +678,12 @@ registry.registerPath({
 router.post('/token',
   authController.exchangeToken
 );
+
+// dev 環境測試登入（僅 NODE_ENV=dev／development 且 DEV_LOGIN_SECRET 已設時掛載；prod 為 404）
+const devLoginRouter = createDevLoginRouter();
+if (devLoginRouter) {
+  router.use(devLoginRouter);
+  console.log('🧪 dev-login 路由已掛載 - POST /api/v1/auth/dev-login（僅 dev 環境）');
+}
 
 export default router;
