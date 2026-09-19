@@ -26,6 +26,7 @@ import {
   updateUserResponseSchema,
   deleteUserResponseSchema,
   customIdAvailabilityResponseSchema,
+  nameAvailabilityResponseSchema,
   setCustomIdResponseSchema,
   removeCustomIdResponseSchema,
   userPreferencesResponseSchema,
@@ -254,6 +255,14 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   const validatedResponse = deleteUserResponseSchema.parse(result);
 
   res.json(validatedResponse);
+});
+
+/** Check name availability without confusing temporary and permanent user IDs. */
+export const checkNameAvailability = asyncHandler(async (req: Request, res: Response) => {
+  const name = req.query.name as string;
+  const currentUserId = req.user && !req.isTemporary ? Number(req.user.id) : undefined;
+  const result = await userService.checkNameAvailability(name, currentUserId);
+  res.json(nameAvailabilityResponseSchema.parse(result));
 });
 
 /**
@@ -566,6 +575,7 @@ export const userController = {
   updateUser,
   deleteMe,
   deleteUser,
+  checkNameAvailability,
   checkCustomIdAvailability,
   setCustomId,
   removeCustomId,
