@@ -7,7 +7,8 @@ jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
 jest.mock('@/services/email/email.service', () => ({ emailService: {} }));
 
 import { createDevLoginRouter, isDevLoginEnabled } from '@/routes/dev-login.routes';
-import { DEV_LOGIN_GOOGLE_ID_PREFIX } from '@/controllers/dev-login.controller';
+import { DEV_LOGIN_GOOGLE_ID_PREFIX, devLoginGoogleId } from '@/controllers/dev-login.controller';
+import { ConflictError } from '@/middleware/error.middleware';
 import { globalErrorHandler, notFoundHandler } from '@/middleware/error.middleware';
 
 const SECRET = 'unit-test-dev-login-secret';
@@ -78,7 +79,7 @@ describe('dev-login body validation', () => {
 });
 
 describe('dev-login mode=temp', () => {
-  const tempRow = { id: 77, google_id: `${DEV_LOGIN_GOOGLE_ID_PREFIX}qa+230@daodao.so`, email: 'qa+230@daodao.so', name: '冒煙 QA 二三〇', photo_url: null };
+  const tempRow = { id: 77, google_id: devLoginGoogleId('qa+230@daodao.so'), email: 'qa+230@daodao.so', name: '冒煙 QA 二三〇', photo_url: null };
 
   it('creates a temp user with the dev-login google_id prefix and returns a temp token + cookie', async () => {
     prismaMock.temp_users.findFirst.mockResolvedValue(null);
@@ -90,8 +91,9 @@ describe('dev-login mode=temp', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ success: true, data: { isTemporary: true, user: { id: '77', email: 'qa+230@daodao.so', name: '冒煙 QA 二三〇' } } });
     expect(prismaMock.temp_users.create).toHaveBeenCalledWith({
-      data: { google_id: `${DEV_LOGIN_GOOGLE_ID_PREFIX}qa+230@daodao.so`, email: 'qa+230@daodao.so', name: '冒煙 QA 二三〇', photo_url: undefined }
+      data: { google_id: devLoginGoogleId('qa+230@daodao.so'), email: 'qa+230@daodao.so', name: '冒煙 QA 二三〇', photo_url: undefined }
     });
+    expect(devLoginGoogleId('qa+230@daodao.so')).toMatch(new RegExp(`^${DEV_LOGIN_GOOGLE_ID_PREFIX}[0-9a-f]{64}$`));
 
     const decoded = jwt.verify(response.body.data.token, process.env.JWT_SECRET!) as { id: number; isTemp: boolean };
     expect(decoded).toMatchObject({ id: 77, isTemp: true });
@@ -112,6 +114,40 @@ describe('dev-login mode=temp', () => {
     expect(first.body.data.user.id).toBe('77');
     expect(second.body.data.user.id).toBe('77');
     expect(prismaMock.temp_users.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps google_id within VARCHAR(255) even for the longest valid email', async () => {
+    const longEmail = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(58)}.io`; // 254 chars
+    expect(longEmail.length).toBe(254);
+    prismaMock.temp_users.findFirst.mockResolvedValue(null);
+    prismaMock.temp_users.create.mockImplementation((async (args: { data: { google_id: string } }) => ({ ...tempRow, id: 78, email: longEmail, google_id: args.data.google_id })) as never);
+
+    const response = await request(buildApp(devEnv)).post(endpoint).set(HEADER, SECRET).send({ email: longEmail, mode: 'temp' });
+    expect(response.status).toBe(200);
+    const created = prismaMock.temp_users.create.mock.calls[0]?.[0] as { data: { google_id: string } };
+    expect(created.data.google_id.length).toBe(DEV_LOGIN_GOOGLE_ID_PREFIX.length + 64);
+    expect(created.data.google_id.length).toBeLessThanOrEqual(255);
+  });
+
+  it.each([
+    ['ConflictError from findOrCreateTempUser', new ConflictError('此電子郵件已被使用')],
+    ['Prisma P2002 unique violation', Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })]
+  ])('re-reads the row instead of returning 409 when a concurrent request created it first (%s)', async (_label, error) => {
+    prismaMock.temp_users.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(tempRow as never);
+    prismaMock.temp_users.create.mockRejectedValue(error as never);
+
+    const response = await request(buildApp(devEnv)).post(endpoint).set(HEADER, SECRET).send({ email: 'qa+230@daodao.so', mode: 'temp' });
+    expect(response.status).toBe(200);
+    expect(response.body.data.user.id).toBe('77');
+    expect(prismaMock.temp_users.findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it('still surfaces non-unique database failures', async () => {
+    prismaMock.temp_users.findFirst.mockResolvedValue(null);
+    prismaMock.temp_users.create.mockRejectedValue(new Error('database unavailable') as never);
+    const response = await request(buildApp(devEnv)).post(endpoint).set(HEADER, SECRET).send({ email: 'qa+230@daodao.so', mode: 'temp' });
+    expect(response.status).toBe(500);
+    expect(response.body.success).toBe(false);
   });
 
   it('defaults the display name to the email local part', async () => {

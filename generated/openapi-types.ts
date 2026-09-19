@@ -5611,27 +5611,96 @@ export interface paths {
                         "application/json": components["schemas"]["DevLoginResponse"];
                     };
                 };
-                /** @description 請求格式錯誤 */
-                400: {
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                404: components["responses"]["NotFoundError"];
+                /** @description 超過 dev-login 專用限流（60 次／15 分鐘） */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
-                };
-                /** @description secret 不符 */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Indicates failed API response
+                             * @enum {boolean}
+                             */
+                            success: false;
+                            /**
+                             * @description Null data for error responses
+                             * @enum {object|null}
+                             */
+                            data: never | null;
+                            /** @description Error information object */
+                            error: {
+                                /**
+                                 * @description Error code for programmatic handling
+                                 * @enum {string}
+                                 */
+                                code: "VALIDATION_ERROR" | "INVALID_TOKEN" | "TOKEN_EXPIRED" | "DATABASE_ERROR" | "FILE_UPLOAD_ERROR" | "APP_ERROR" | "INTERNAL_SERVER_ERROR" | "USER_NOT_FOUND" | "RESOURCE_NOT_FOUND" | "UNAUTHORIZED" | "FORBIDDEN" | "CONFLICT" | "BAD_REQUEST";
+                                /** @description Human-readable error message */
+                                message: string;
+                                /** @description Additional error details */
+                                details?: {
+                                    [key: string]: string;
+                                };
+                            };
+                            /**
+                             * Format: date-time
+                             * @description ISO 8601 timestamp of the response
+                             */
+                            timestamp: string;
+                            /**
+                             * @description Optional metadata about the response
+                             * @example {
+                             *       "searchQuery": "JavaScript教程",
+                             *       "searchTime": 45,
+                             *       "cacheHit": false,
+                             *       "processingTime": 123.5,
+                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                             *     }
+                             * @example {
+                             *       "categoryCounts": {
+                             *         "前端開發": 25,
+                             *         "後端開發": 18,
+                             *         "資料科學": 12
+                             *       },
+                             *       "filters": {
+                             *         "difficulty": "intermediate",
+                             *         "language": "zh-TW"
+                             *       }
+                             *     }
+                             */
+                            meta?: {
+                                /** @description Search query used for filtering results */
+                                searchQuery?: string;
+                                /** @description Time taken to execute the search query in milliseconds */
+                                searchTime?: number;
+                                /** @description Applied filters for the request */
+                                filters?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Count of items per category */
+                                categoryCounts?: {
+                                    [key: string]: number;
+                                };
+                                /** @description Aggregated statistical data */
+                                aggregateData?: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Unique identifier for request tracking */
+                                requestId?: string;
+                                /** @description Whether the response was served from cache */
+                                cacheHit?: boolean;
+                                /** @description Total processing time in milliseconds */
+                                processingTime?: number;
+                            } & {
+                                [key: string]: unknown;
+                            };
+                        };
                     };
-                    content?: never;
                 };
-                /** @description user 模式找不到該 email；或此環境未掛載此路由 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
+                500: components["responses"]["InternalServerError"];
             };
         };
         delete?: never;

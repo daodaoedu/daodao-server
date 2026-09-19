@@ -11,6 +11,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { registry } from '../config/openapi-registry';
+import { apiErrorResponseSchema } from '../validators/api-response.validators';
 import { validate } from '../middleware/validation.middleware';
 import { devLoginController, requireDevLoginSecret } from '../controllers/dev-login.controller';
 import {
@@ -51,9 +52,14 @@ registry.registerPath({
   },
   responses: {
     200: { description: '登入成功，已設定 auth_token cookie', content: { 'application/json': { schema: devLoginResponseSchema } } },
-    400: { description: '請求格式錯誤' },
-    401: { description: 'secret 不符' },
-    404: { description: 'user 模式找不到該 email；或此環境未掛載此路由' }
+    400: { $ref: '#/components/responses/BadRequestError' },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    404: { $ref: '#/components/responses/NotFoundError' },
+    429: {
+      description: '超過 dev-login 專用限流（60 次／15 分鐘）',
+      content: { 'application/json': { schema: apiErrorResponseSchema } }
+    },
+    500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
 
