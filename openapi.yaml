@@ -15154,6 +15154,97 @@ components:
           format: date-time
           description: 預定發佈時間；省略表示立即發佈，過去時間視同立即發佈（FR-7.6）
           example: '2026-09-01T08:00:00.000Z'
+    NameAvailabilityResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+          description: Indicates successful API response
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+              description: 查詢的使用者名稱
+              example: 島島學習者
+            available:
+              type: boolean
+              description: 名稱是否可用，正式登入者自己的名稱亦可用
+              example: true
+          required:
+            - name
+            - available
+          description: The main response data
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+        meta:
+          type: object
+          properties:
+            searchQuery:
+              type: string
+              description: Search query used for filtering results
+            searchTime:
+              type: number
+              minimum: 0
+              description: Time taken to execute the search query in milliseconds
+            filters:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Applied filters for the request
+            categoryCounts:
+              type: object
+              additionalProperties:
+                type: integer
+                minimum: 0
+              description: Count of items per category
+            aggregateData:
+              type: object
+              additionalProperties:
+                nullable: true
+              description: Aggregated statistical data
+            requestId:
+              type: string
+              description: Unique identifier for request tracking
+            cacheHit:
+              type: boolean
+              description: Whether the response was served from cache
+            processingTime:
+              type: number
+              minimum: 0
+              description: Total processing time in milliseconds
+          additionalProperties:
+            nullable: true
+          description: Optional metadata about the response
+          examples: *ref_3
+      required:
+        - success
+        - data
+        - timestamp
+      description: Standard success response format
+      examples:
+        - success: true
+          data:
+            id: 123
+            _id: 550e8400-e29b-41d4-a716-446655440000
+            name: JavaScript 基礎教程
+            description: 從零開始學習 JavaScript 程式設計
+            status: published
+          timestamp: '2024-01-15T10:30:00.000Z'
+        - success: true
+          data:
+            userId: 456
+            username: john_doe
+            email: john@example.com
+            role: student
+          timestamp: '2024-01-15T10:30:00.000Z'
+          meta:
+            cacheHit: true
+            processingTime: 23.1
     CustomIdAvailabilityResponse:
       type: object
       properties:
@@ -59951,6 +60042,34 @@ paths:
                       processingTime: 23.1
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/users/name/check:
+    get:
+      tags:
+        - Users
+      summary: 檢查使用者名稱可用性
+      description: 精確比對 nickname，包含非公開帳號。無需登入；提供有效的正式用戶 token 時，本人的名稱視為可用。
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            description: 要檢查的使用者名稱，精確比對且不移除空白
+            example: 島島學習者
+          required: true
+          description: 要檢查的使用者名稱，精確比對且不移除空白
+          name: name
+          in: query
+      responses:
+        '200':
+          description: 成功檢查名稱可用性
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NameAvailabilityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/users/custom-id/check/{customId}:

@@ -27,6 +27,8 @@ import {
   updateUserResponseSchema,
   deleteUserResponseSchema,
   customIdAvailabilityResponseSchema,
+  nameAvailabilityQuerySchema,
+  nameAvailabilityResponseSchema,
   setCustomIdResponseSchema,
   removeCustomIdResponseSchema,
   userPreferencesResponseSchema,
@@ -262,6 +264,30 @@ router.put('/me',
       return typeof userId === 'number' && userService.isOnboardingProfileComplete(userId);
     },
   }) as RequestHandler
+);
+
+/** Public availability check with optional recognition of the current permanent user. */
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/name/check',
+  tags: ['Users'],
+  summary: '檢查使用者名稱可用性',
+  description: '精確比對 nickname，包含非公開帳號。無需登入；提供有效的正式用戶 token 時，本人的名稱視為可用。',
+  request: { query: nameAvailabilityQuerySchema },
+  responses: {
+    200: {
+      description: '成功檢查名稱可用性',
+      content: { 'application/json': { schema: nameAvailabilityResponseSchema } }
+    },
+    400: { $ref: '#/components/responses/BadRequestError' },
+    500: { $ref: '#/components/responses/InternalServerError' }
+  }
+});
+
+router.get('/name/check',
+  optionalAuth,
+  validate(nameAvailabilityQuerySchema, 'query'),
+  userController.checkNameAvailability as RequestHandler
 );
 
 /**
