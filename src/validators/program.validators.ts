@@ -13,7 +13,9 @@ export const updateProgramSchema = z.object({
 }).refine(value => Object.keys(value).length > 0, { message: '至少需要提供一個可更新欄位' });
 export const programResponseSchema = z.object({
   id: z.number().int(), organizationId: z.number().int(), name: z.string(),
-  description: z.string().nullable(), deletedAt: z.date().nullable(),
+  description: z.string().nullable(),
+  archivedAt: z.date().nullable().openapi({ description: '封存時間；有值表示在封存區（migration 089 起，deleted_at 改為封存區刪除）' }),
+  deletedAt: z.date().nullable(),
   createdAt: z.date(), updatedAt: z.date().nullable()
 });
 export const programListResponseSchema = z.array(programResponseSchema);

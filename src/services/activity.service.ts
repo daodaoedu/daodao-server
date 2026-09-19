@@ -35,6 +35,7 @@ const activitySelect = {
       name: true,
       description: true,
       kind: true,
+      archived_at: true,
       deleted_at: true,
       organization_id: true,
       organization: { select: { id: true, name: true, bio: true, external_link: true, status: true } }
@@ -66,6 +67,7 @@ type ActivityRow = {
     name: string;
     description: string | null;
     kind: string;
+    archived_at: Date | null;
     deleted_at: Date | null;
     organization_id: number;
     organization: { id: number; name: string; bio: string | null; external_link: string | null; status: string };
@@ -92,6 +94,7 @@ const mapSessions = (sessions: Array<{ id: number; session_date: Date; start_tim
 /** 是否為可公開展示的活動：燈塔系列、已發佈、visibility=public、組織未停權 */
 const isPublicActivity = (row: ActivityRow): boolean =>
   row.program.kind === PROGRAM_KINDS.LIGHTHOUSE &&
+  row.program.archived_at === null &&
   row.program.deleted_at === null &&
   row.program.organization.status === 'active' &&
   row.status === 'published' &&
@@ -248,7 +251,7 @@ const buildSummaries = async (rows: ActivityRow[], userId: number | null, now: D
 const publicActivityWhere = (mode?: string) => ({
   status: 'published' as const,
   visibility: COHORT_VISIBILITY.PUBLIC,
-  program: { kind: PROGRAM_KINDS.LIGHTHOUSE, deleted_at: null, organization: { status: 'active' } },
+  program: { kind: PROGRAM_KINDS.LIGHTHOUSE, archived_at: null, deleted_at: null, organization: { status: 'active' } },
   ...(mode ? { interaction_modes: { has: mode } } : {})
 });
 
@@ -315,7 +318,7 @@ const getHostPreview = async (targetUserId: number) => {
       user_id: targetUserId, status: 'joined', role: 'owner',
       cohort: {
         status: 'published',
-        program: { kind: PROGRAM_KINDS.LIGHTHOUSE, deleted_at: null, organization: { status: 'active' } }
+        program: { kind: PROGRAM_KINDS.LIGHTHOUSE, archived_at: null, deleted_at: null, organization: { status: 'active' } }
       }
     },
     select: {
@@ -339,7 +342,7 @@ const getHostPreview = async (targetUserId: number) => {
     const orgCohorts = await prisma.cohorts.findMany({
       where: {
         status: 'published',
-        program: { kind: PROGRAM_KINDS.LIGHTHOUSE, deleted_at: null, organization_id: { in: orgIds }, organization: { status: 'active' } },
+        program: { kind: PROGRAM_KINDS.LIGHTHOUSE, archived_at: null, deleted_at: null, organization_id: { in: orgIds }, organization: { status: 'active' } },
         NOT: { cohort_enrollments: { some: { status: 'joined', role: 'owner', user_id: { not: null } } } }
       },
       select: { id: true }

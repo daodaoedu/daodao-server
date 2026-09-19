@@ -35,6 +35,7 @@ export const resolveRoomAccess = async (roomId: number, userId: number): Promise
           program: {
             select: {
               kind: true,
+              archived_at: true,
               deleted_at: true,
               organization: {
                 select: {
@@ -55,7 +56,7 @@ export const resolveRoomAccess = async (roomId: number, userId: number): Promise
   const { program } = cohort;
 
   // kind !== lighthouse || deleted || org !active → NotFound
-  if (program.kind !== 'lighthouse' || program.deleted_at !== null || program.organization.status !== 'active') {
+  if (program.kind !== 'lighthouse' || program.archived_at !== null || program.deleted_at !== null || program.organization.status !== 'active') {
     throw new NotFoundError('找不到聊天室');
   }
 

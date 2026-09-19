@@ -23,7 +23,9 @@ const organizationSelect = {
   status: true,
   approved_by: true,
   approved_at: true,
-  created_at: true
+  timezone: true,
+  created_at: true,
+  updated_at: true
 } satisfies Prisma.organizationSelect;
 
 const memberSelect = {
@@ -72,7 +74,9 @@ const toOrganization = (organization: {
   status: string;
   approved_by: number | null;
   approved_at: Date | null;
+  timezone?: string;
   created_at: Date;
+  updated_at?: Date | null;
 }): OrganizationResponse => ({
   id: organization.id,
   name: organization.name,
@@ -81,7 +85,9 @@ const toOrganization = (organization: {
   status: asOrganizationStatus(organization.status),
   approvedBy: organization.approved_by,
   approvedAt: organization.approved_at,
-  createdAt: organization.created_at
+  timezone: organization.timezone ?? 'Asia/Taipei',
+  createdAt: organization.created_at,
+  updatedAt: organization.updated_at ?? null
 });
 
 type MemberRow = {
@@ -229,7 +235,8 @@ const update = async (
       data: {
         ...(input.name !== undefined && { name: input.name }),
         ...(input.bio !== undefined && { bio: input.bio }),
-        ...(input.externalLink !== undefined && { external_link: input.externalLink })
+        ...(input.externalLink !== undefined && { external_link: input.externalLink }),
+        updated_at: new Date()
       },
       select: organizationSelect
     });

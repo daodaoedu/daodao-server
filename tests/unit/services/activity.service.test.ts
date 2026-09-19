@@ -27,7 +27,7 @@ const activityRow = (overrides: Record<string, unknown> = {}) => ({
   status: 'published',
   visibility: 'public',
   cohort_sessions: [],
-  program: { name: '線上讀書會', description: '每週二讀一章', kind: 'lighthouse', deleted_at: null, organization_id: 10, organization: { id: 10, name: '燈塔工作室', bio: null, external_link: null, status: 'active' } },
+  program: { name: '線上讀書會', description: '每週二讀一章', kind: 'lighthouse', archived_at: null, deleted_at: null, organization_id: 10, organization: { id: 10, name: '燈塔工作室', bio: null, external_link: null, status: 'active' } },
   ...overrides
 });
 
@@ -128,6 +128,7 @@ describe('activityService.getDetail', () => {
     ['private 期', { visibility: 'private' }],
     ['草稿期', { status: 'draft' }],
     ['共同挑戰期', { program: { ...activityRow().program, kind: 'challenge' } }],
+    ['已封存計畫', { program: { ...activityRow().program, archived_at: new Date('2026-08-01T00:00:00.000Z') } }],
     ['已停權組織', { program: { ...activityRow().program, organization: { ...activityRow().program.organization, status: 'suspended' } } }]
   ])('%s 回 404', async (_label, overrides) => {
     setupDetailMocks(activityRow(overrides));
