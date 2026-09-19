@@ -43,7 +43,9 @@ export const organizationResponseSchema = z.object({
   status: z.enum(['active', 'suspended']),
   approvedBy: z.number().int().nullable(),
   approvedAt: z.date().nullable(),
-  createdAt: z.date()
+  timezone: z.string().openapi({ description: 'IANA 時區；動態頁最近 7 天與已開始場次判定的基準，預設 Asia/Taipei' }),
+  createdAt: z.date(),
+  updatedAt: z.date().nullable().openapi({ description: '組織資訊最後更新時間' })
 });
 
 export const organizationListResponseSchema = z.array(organizationResponseSchema);
