@@ -14,7 +14,9 @@ const mockOrg = {
   status: 'active' as const,
   approvedBy: null,
   approvedAt: null,
-  createdAt: new Date('2024-01-01')
+  timezone: 'Asia/Taipei',
+  createdAt: new Date('2024-01-01'),
+  updatedAt: null
 };
 
 const mockMember = {
