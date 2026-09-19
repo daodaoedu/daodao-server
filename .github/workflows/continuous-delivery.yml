@@ -298,6 +298,8 @@ jobs:
           APP_SERVICE: ${{ needs.build.outputs.image-tag == 'prod' && 'prod_app' || (needs.build.outputs.image-tag == 'production' && 'production_app' || 'dev_app') }}
           COMMIT_SHA: ${{ github.sha }}
           FUTURE_LETTER_ENCRYPTION_KEYS: ${{ secrets.FUTURE_LETTER_ENCRYPTION_KEYS }}
+          # dev-login 測試登入端點的 secret：只在 dev 環境注入；prod 一律清除（路由在 prod 本來就不掛載，這是第二道保險）
+          DEV_LOGIN_SECRET: ${{ secrets.DEV_LOGIN_SECRET }}
         run: |
           if [ -z "$FUTURE_LETTER_ENCRYPTION_KEYS" ]; then
             echo "❌ FUTURE_LETTER_ENCRYPTION_KEYS is not configured for this GitHub environment"
@@ -307,10 +309,21 @@ jobs:
           FUTURE_LETTER_ENCRYPTION_KEYS_B64=$(printf '%s' "$FUTURE_LETTER_ENCRYPTION_KEYS" | base64 | tr -d '\n')
           echo "::add-mask::$FUTURE_LETTER_ENCRYPTION_KEYS_B64"
 
+          DEV_LOGIN_SECRET_B64=""
+          if [ "$APP_ENV" = "dev" ]; then
+            if [ -z "$DEV_LOGIN_SECRET" ]; then
+              echo "⚠️ DEV_LOGIN_SECRET is not configured; POST /api/v1/auth/dev-login will stay unmounted on dev"
+            else
+              DEV_LOGIN_SECRET_B64=$(printf '%s' "$DEV_LOGIN_SECRET" | base64 | tr -d '\n')
+              echo "::add-mask::$DEV_LOGIN_SECRET_B64"
+            fi
+          fi
+
           ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=10 \
-            root@$LINODE_INSTANCE_IP bash -s -- "$FUTURE_LETTER_ENCRYPTION_KEYS_B64" << 'ENDSSH'
+            root@$LINODE_INSTANCE_IP bash -s -- "$FUTURE_LETTER_ENCRYPTION_KEYS_B64" "$DEV_LOGIN_SECRET_B64" << 'ENDSSH'
             set -e
             DEPLOY_FUTURE_LETTER_ENCRYPTION_KEYS=$(printf '%s' "$1" | base64 --decode)
+            DEPLOY_DEV_LOGIN_SECRET=$(printf '%s' "$2" | base64 --decode)
             export APP_DIR=/root/daodao-server
             export COMPOSE_FILE=docker-compose.yaml
             export APP_ENV=${{ env.APP_ENV }}
@@ -426,10 +439,29 @@ jobs:
               mv "$temp_file" "$file"
             }
 
+            remove_env_key() {
+              key="$1"
+              file="$2"
+              temp_file=$(mktemp)
+              grep -v "^${key}=" "$file" > "$temp_file" || true
+              chmod 600 "$temp_file"
+              mv "$temp_file" "$file"
+            }
+
             persist_env_value "FUTURE_LETTER_ACTIVE_KEY_VERSION" "v1" "$ENV_FILE"
             persist_env_value "FUTURE_LETTER_ENCRYPTION_KEYS" "$DEPLOY_FUTURE_LETTER_ENCRYPTION_KEYS" "$ENV_FILE"
             unset DEPLOY_FUTURE_LETTER_ENCRYPTION_KEYS
             echo "Future Letter encryption configuration persisted for $APP_ENV"
+
+            # dev-login：dev 有值就寫入，沒值或非 dev 環境一律移除，避免殘留舊 secret
+            if [ "$APP_ENV" = "dev" ] && [ -n "$DEPLOY_DEV_LOGIN_SECRET" ]; then
+              persist_env_value "DEV_LOGIN_SECRET" "$DEPLOY_DEV_LOGIN_SECRET" "$ENV_FILE"
+              echo "dev-login secret persisted for $APP_ENV"
+            else
+              remove_env_key "DEV_LOGIN_SECRET" "$ENV_FILE"
+              echo "dev-login secret not configured for $APP_ENV (route stays unmounted)"
+            fi
+            unset DEPLOY_DEV_LOGIN_SECRET
 
             # 載入環境變數
             set -o allexport && source .env.${APP_ENV} && set +o allexport
