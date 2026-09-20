@@ -6,8 +6,7 @@
 import { Request, Response } from 'express';
 import { jwtService } from '../services/jwt.service';
 import { emailService } from '../services/email/email.service';
-import { enqueueOnboardingL0Email, enqueueNextSequenceEmail } from '../queues/onboarding-email.queue';
-import { deriveUserSource } from '../utils/onboarding-source';
+import { sendWelcomeEmailInBackground } from '../services/email/welcome-email.service';
 import { authService } from '../services/auth/auth.service';
 import { personaService } from '../services/persona.service';
 import { prisma } from '../services/database/prisma.service';
@@ -38,8 +37,6 @@ import { oauthNonceService } from '../services/auth/oauth-nonce.service';
 import { authCodeService } from '../services/auth/auth-code.service';
 import { extractDeviceInfo } from '../utils/device-info.utils';
 
-const ONBOARDING_SEQUENCE_DELAY_MS = 3 * 60 * 1000;
-
 /**
  * 嘗試自動認領匿名測驗結果（從 quiz_claim cookie）。
  * 認領成功才清除 cookie；失敗時保留 cookie 讓下次請求可重試。
@@ -60,19 +57,6 @@ async function tryAutoClaimQuiz(req: Request, res: Response, userId: number): Pr
       error: err instanceof Error ? err.message : String(err)
     });
   }
-}
-
-/** Email 驗證成功後，排程序列第一封提醒信（所有 source 皆適用） */
-function enqueueSequenceAfterVerification(userId: number, referralSource: string | null | undefined): void {
-  const userSource = deriveUserSource(referralSource, false);
-
-  enqueueNextSequenceEmail(userId, userSource, ONBOARDING_SEQUENCE_DELAY_MS)
-    .catch((error: unknown) => {
-      loggerService.error('Failed to enqueue onboarding sequence email after verification', {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      });
-    });
 }
 
 /**
@@ -502,15 +486,8 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     }
     loggerService.info('User email verification updated', { userId: user.id });
 
-    // Email 驗證成功，觸發 L0 歡迎信（註冊時已建立 onboarding 記錄但 skipL0Email）
-    enqueueOnboardingL0Email(user.id, deriveUserSource(user.referral_source ?? null, false))
-      .catch(error => {
-        loggerService.error('Failed to enqueue onboarding L0 email after verification', {
-          error: error instanceof Error ? error.message : String(error),
-          userId: user.id,
-        });
-      });
-    enqueueSequenceAfterVerification(user.id, user.referral_source ?? null);
+    // Email 驗證成功，寄歡迎信（註冊時 email 尚未驗證，延後到此刻）
+    sendWelcomeEmailInBackground(user.id, 'verify-email');
 
     const response = createSuccessResponse({
       message: '郵件驗證成功'
@@ -569,15 +546,8 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
       return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
     }
 
-    // Email 驗證成功，觸發 L0 歡迎信
-    enqueueOnboardingL0Email(user.id, deriveUserSource(user.referral_source ?? null, false))
-      .catch(error => {
-        loggerService.error('Failed to enqueue onboarding L0 email after verification (GET)', {
-          error: error instanceof Error ? error.message : String(error),
-          userId: user.id,
-        });
-      });
-    enqueueSequenceAfterVerification(user.id, user.referral_source ?? null);
+    // Email 驗證成功，寄歡迎信
+    sendWelcomeEmailInBackground(user.id, 'verify-email GET');
 
     return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=verified`);
   } catch (err) {

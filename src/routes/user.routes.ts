@@ -50,10 +50,7 @@ import {
   preferencesQuerySchema,
   updatePreferencesSchema
 } from '../validators/me.validators';
-import { userService } from '../services/user.service';
 import { userFollowRouter } from './follow.routes';
-import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
-import { OnboardingTask } from '../types/onboarding.types';
 
 const router = Router();
 
@@ -258,12 +255,7 @@ router.put('/me',
   authenticate,
   upload.single('avatar'),
   parseFormData,
-  withOnboardingHook(OnboardingTask.B, userController.updateMe as RequestHandler, {
-    shouldAdvance: (req) => {
-      const userId = req.user?.id;
-      return typeof userId === 'number' && userService.isOnboardingProfileComplete(userId);
-    },
-  }) as RequestHandler
+  userController.updateMe as RequestHandler
 );
 
 /** Public availability check with optional recognition of the current permanent user. */
@@ -555,12 +547,7 @@ registry.registerPath({
 router.put('/me/preferences',
   authenticate,
   validate(updatePreferencesSchema, 'body'),
-  withOnboardingHook(OnboardingTask.B, userController.updateUserPreferences as RequestHandler, {
-    shouldAdvance: (req) => {
-      const userId = req.user?.id;
-      return typeof userId === 'number' && userService.isOnboardingProfileComplete(userId);
-    },
-  }) as RequestHandler
+  userController.updateUserPreferences as RequestHandler
 );
 
 /**

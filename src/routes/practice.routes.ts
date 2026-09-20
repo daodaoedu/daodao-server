@@ -10,15 +10,7 @@ import { practiceController } from '../controllers/practice.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
 import upload from '../middleware/multer.middleware';
-import { withOnboardingHook } from '../middleware/onboarding-hook.middleware';
 import { enforcePracticeCohortContentLifecycle } from '../middleware/cohort-content-lifecycle.middleware';
-import { OnboardingTask } from '../types/onboarding.types';
-import type { CreationMethod } from '../types/onboarding.types';
-import {
-  isCreatedPracticeResponse,
-  isBatchCreatedPracticeResponse,
-  isFirstCheckInResponse,
-} from '../utils/onboarding-task-completion';
 import {
   practiceQuerySchema,
   myPracticesQuerySchema,
@@ -1356,23 +1348,16 @@ router.get('/:id',
 router.post('/',
   authenticate,
   validate(createPracticeSchema, 'body'),
-  withOnboardingHook(OnboardingTask.C, practiceController.createPractice as RequestHandler, {
-    resolveCreationMethod: (req) => req.body.creationMethod,
-    shouldAdvance: (_req, body) => isCreatedPracticeResponse(body),
-  }) as RequestHandler);
+  practiceController.createPractice as RequestHandler);
 
 /**
  * POST /practices/batch
  * 拆段批次建立實踐（2–3 段、同一交易）
- * Onboarding hook 只掛一次，以第一段判定
  */
 router.post('/batch',
   authenticate,
   validate(batchCreatePracticeSchema, 'body'),
-  withOnboardingHook(OnboardingTask.C, practiceController.batchCreatePractices as RequestHandler, {
-    resolveCreationMethod: (req) => req.body.segments?.[0]?.creationMethod,
-    shouldAdvance: (_req, body) => isBatchCreatedPracticeResponse(body),
-  }) as RequestHandler);
+  practiceController.batchCreatePractices as RequestHandler);
 
 /**
  * PUT /practices/:id
@@ -1415,9 +1400,7 @@ router.post('/:id/checkins',
   enforcePracticeCohortContentLifecycle,
   upload.array('images', 3),
   // TODO: requirePracticeOwnership middleware
-  withOnboardingHook(OnboardingTask.D, practiceController.createCheckIn as RequestHandler, {
-    shouldAdvance: (_req, body) => isFirstCheckInResponse(body),
-  }) as RequestHandler);
+  practiceController.createCheckIn as RequestHandler);
 
 /**
  * PUT /practices/:id/checkins/:checkInId
@@ -1585,11 +1568,7 @@ router.get('/:id/user-status',
 router.post('/:id/copy',
   authenticate,
   validate(practiceParamsSchema, 'params'),
-  withOnboardingHook(OnboardingTask.C, practiceController.copyPractice as RequestHandler, {
-    resolveCreationMethod: () => 'copied' as CreationMethod,
-    // copyPractice always creates a new not_started practice.
-    shouldAdvance: () => true,
-  }) as RequestHandler);
+  practiceController.copyPractice as RequestHandler);
 
 /**
  * POST /practices/:id/archive

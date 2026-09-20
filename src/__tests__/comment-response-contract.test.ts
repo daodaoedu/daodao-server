@@ -69,12 +69,6 @@ jest.mock('../middleware/auth', () => ({
     req.user = { id: 42, _id: 'user-ext-uuid-001' } as Request['user']; next();
   }
 }));
-jest.mock('../middleware/onboarding-hook.middleware', () => ({
-  withOnboardingHook: () => (_req: Request, _res: Response, next: NextFunction): void => next()
-}));
-jest.mock('../utils/onboarding-task-completion', () => ({
-  isInspirationCommentTarget: jest.fn().mockReturnValue(false)
-}));
 
 import router from '../routes/comment.routes';
 

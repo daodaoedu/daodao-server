@@ -16,8 +16,7 @@ import { createSuccessResponse } from '../../utils/response-helper';
 import { ApiResponse } from '../../types/api-response.types';
 import { userService } from '../user.service';
 import { loggerService } from '../logging/logger.service';
-import { onboardingService } from '../onboarding.service';
-import { deriveUserSource } from '../../utils/onboarding-source';
+import { sendWelcomeEmailInBackground } from '../email/welcome-email.service';
 
 /**
  * 根據 email 查找用戶及其聯絡資訊
@@ -270,16 +269,9 @@ export const createUserFromAppleOAuth = async (profile: {
     return createdUser;
   });
 
-  // 建立 Onboarding 記錄（非阻塞，內部會觸發 L0 歡迎信）
+  // Apple 登入無 email 驗證步驟，建立用戶後直接寄歡迎信（非阻塞）
   if (newUser) {
-    onboardingService
-      .createOnboarding(newUser.id, deriveUserSource(null, false))
-      .catch((err: unknown) =>
-        loggerService.warn('Failed to create onboarding record for Apple OAuth user', {
-          userId: newUser.id,
-          error: err instanceof Error ? err.message : String(err),
-        })
-      );
+    sendWelcomeEmailInBackground(newUser.id, 'apple-oauth');
   }
 
   return createSuccessResponse(newUser);

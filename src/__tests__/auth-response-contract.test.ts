@@ -52,10 +52,6 @@ jest.mock('../services/database/prisma.service', () => ({
   prisma: { temp_users: { findUnique: jest.fn() } }
 }));
 jest.mock('../services/email/email.service', () => ({ emailService: {} }));
-jest.mock('../queues/onboarding-email.queue', () => ({
-  enqueueOnboardingL0Email: jest.fn(),
-  enqueueNextSequenceEmail: jest.fn()
-}));
 jest.mock('../services/persona.service', () => ({ personaService: {} }));
 jest.mock('../services/quiz.service', () => ({
   quizService: { claimByToken: jest.fn() }

@@ -105,9 +105,6 @@ jest.mock('../middleware/permission.middleware', () => ({
   canUpdateUser: () => (_req: Request, _res: Response, next: NextFunction): void => next(),
   requireAdmin: (_req: Request, _res: Response, next: NextFunction): void => next()
 }));
-jest.mock('../middleware/onboarding-hook.middleware', () => ({
-  withOnboardingHook: () => (_req: Request, _res: Response, next: NextFunction): void => next()
-}));
 jest.mock('../services/user-island.service', () => ({
   getUserIslandData: jest.fn().mockResolvedValue(null)
 }));

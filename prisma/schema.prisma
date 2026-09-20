@@ -913,7 +913,6 @@ model users {
   user_interests                       user_interests[]
   user_join_group                      user_join_group[]
   user_login_history                   user_login_history[]
-  user_onboarding                      user_onboarding?
   user_permissions                     user_permissions[]
   user_positions                       user_positions[]
   user_preferences                     user_preferences[]
@@ -1491,28 +1490,6 @@ model interaction_counts {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model user_onboarding {
-  id                Int       @id @default(autoincrement())
-  user_id           Int       @unique(map: "idx_user_onboarding_user_id")
-  user_source       String    @db.VarChar(10)
-  task_states       Json      @default("{}")
-  task_completed_at Json      @default("{}")
-  email_states      Json      @default("{}")
-  creation_method   String?   @db.VarChar(20)
-  registration_flow String?   @db.VarChar(30)
-  badge_granted     Boolean   @default(false)
-  badge_granted_at  DateTime? @db.Timestamptz(6)
-  completed_at      DateTime? @db.Timestamptz(6)
-  days_to_complete  Int?
-  created_at        DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
-  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([badge_granted], map: "idx_user_onboarding_badge_granted")
-  @@index([registration_flow], map: "idx_user_onboarding_registration_flow")
-}
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 

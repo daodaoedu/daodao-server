@@ -138,9 +138,6 @@ jest.mock('../middleware/auth', () => ({
     req.user = { id: 42, _id: 'user-uuid-001' } as Request['user']; next();
   }
 }));
-jest.mock('../middleware/onboarding-hook.middleware', () => ({
-  withOnboardingHook: (_task: unknown, handler: RequestHandler) => handler
-}));
 jest.mock('../middleware/cohort-content-lifecycle.middleware', () => ({
   enforcePracticeCohortContentLifecycle: (_req: Request, _res: Response, next: NextFunction): void => next()
 }));
@@ -149,7 +146,6 @@ jest.mock('../middleware/multer.middleware', () => ({
   default: { array: () => (_req: Request, _res: Response, next: NextFunction): void => next() }
 }));
 
-import type { RequestHandler } from 'express';
 import router from '../routes/practice.routes';
 
 const app = express();
