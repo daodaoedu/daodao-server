@@ -97,6 +97,8 @@ describe('PE01 寄送路徑接上後台模板', () => {
         entityType: 'practice',
         entityId: 10,
         emailCode: 'PE01',
+        // 記後台當下的主旨，而不是程式碼裡寫死的預設值
+        subject: '【後台】每天寫三行 建立完成',
       })
     );
   });

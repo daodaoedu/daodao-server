@@ -197,7 +197,8 @@ export class EmailService {
       await recordSkippedEmail({
         userId,
         emailType: context.emailType,
-        subject: context.subject,
+        // 記後台當下的主旨；查不到才退回預設值
+        subject: resolved.subject || context.subject,
       });
     } else {
       this.logger?.info(
@@ -272,7 +273,7 @@ export class EmailService {
       await recordSkippedEmail({
         userId,
         emailType: EMAIL_TYPES.WELCOME_LETTER,
-        subject: '【島島阿學】歡迎來到島島阿學！',
+        subject: resolved.subject || '【島島阿學】歡迎來到島島阿學！',
       });
       return this.skippedResult();
     }

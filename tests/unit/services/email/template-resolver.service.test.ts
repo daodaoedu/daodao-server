@@ -117,7 +117,21 @@ describe('EmailTemplateResolver', () => {
       const result = await resolveTemplate(verificationDescriptor, verifyData);
 
       expect(isSkipped(result)).toBe(true);
-      expect(result).toEqual({ skipped: true, slug: 'auth-email-verify' });
+      expect(result).toEqual({
+        skipped: true,
+        slug: 'auth-email-verify',
+        subject: '【後台】小島 請驗證信箱',
+      });
+    });
+
+    it('skipped 帶回後台當下的主旨，供 email_logs 記錄用', async () => {
+      prismaMock.email_templates.findUnique.mockResolvedValue(
+        templateRow({ is_active: false, subject: '{{name}} 的信（已停用）' }) as never
+      );
+
+      const result = await resolveTemplate(verificationDescriptor, verifyData);
+
+      expect(isSkipped(result) && result.subject).toBe('小島 的信（已停用）');
     });
   });
 

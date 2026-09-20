@@ -68,6 +68,13 @@ export interface ResolvedTemplate extends EmailTemplateContent {
 export interface SkippedTemplate {
   skipped: true;
   slug: string;
+  /**
+   * 後台模板當下的主旨（已做變數替換）
+   *
+   * 停用時不會產生信件內容，但 email_logs 仍要記一筆；記後台的主旨才對得上
+   * 「這封信本來會長什麼樣」，而不是程式碼裡寫死的預設值。
+   */
+  subject: string;
 }
 
 export type ResolveResult = ResolvedTemplate | SkippedTemplate;
@@ -109,6 +116,27 @@ const fetchTemplate = async (slug: string): Promise<TemplateRow | null> => {
  * @param descriptor 該 slug 的接線設定
  * @param data 既有寄信路徑本來就備妥的資料物件
  */
+/**
+ * 產生停用時要記進 email_logs 的主旨
+ *
+ * 渲染失敗（例如主旨語法壞掉）不該讓「記一筆 skipped」也跟著失敗，退回原字串。
+ */
+const renderSkippedSubject = <D>(
+  descriptor: TemplateDescriptor<D>,
+  data: D,
+  row: TemplateRow
+): string => {
+  try {
+    return renderTemplate(row.subject, descriptor.flatten(data), {
+      slug: descriptor.slug,
+      field: 'subject',
+      escape: false,
+    }).text;
+  } catch {
+    return row.subject;
+  }
+};
+
 export const resolveTemplate = async <D>(
   descriptor: TemplateDescriptor<D>,
   data: D
@@ -118,7 +146,7 @@ export const resolveTemplate = async <D>(
 
   if (row && !row.is_active) {
     loggerService.info('[email-template] 模板已於後台停用，不寄送', { slug });
-    return { skipped: true, slug };
+    return { skipped: true, slug, subject: renderSkippedSubject(descriptor, data, row) };
   }
 
   if (row && row.body.trim().length > 0) {

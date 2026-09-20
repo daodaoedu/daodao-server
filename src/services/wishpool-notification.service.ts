@@ -71,7 +71,7 @@ async function sendWishLinkedEmail(params: NotifyWishLinkedParams): Promise<void
       await recordSkippedEmail({
         userId: wisherUserId,
         emailType: EMAIL_TYPES.NOTIFICATION,
-        subject: '你的許願已被島島採納 🎉',
+        subject: resolved.subject || '你的許願已被島島採納 🎉',
       });
       return;
     }

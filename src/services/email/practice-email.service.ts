@@ -129,7 +129,7 @@ export async function sendPracticeCreatedEmail(
         entityType: 'practice',
         entityId: practiceId,
         emailCode: 'PE01',
-        subject: '開啟你的小而美學習生活提案',
+        subject: resolved.subject || '開啟你的小而美學習生活提案',
       });
       return;
     }
@@ -229,7 +229,7 @@ export async function sendFirstCheckInEmail(
         entityType: 'practice',
         entityId: practiceId,
         emailCode: 'PE02',
-        subject: `你在【${practice.title}】的第一次打卡紀錄 ✨`,
+        subject: resolved.subject || `你在【${practice.title}】的第一次打卡紀錄 ✨`,
       });
       return;
     }
