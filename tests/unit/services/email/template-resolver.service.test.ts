@@ -252,6 +252,36 @@ describe('EmailTemplateResolver', () => {
     });
   });
 
+  describe('主旨不做 HTML 跳脫', () => {
+    it('暱稱含 & 與單引號時，主旨維持原字元（body 仍跳脫）', async () => {
+      prismaMock.email_templates.findUnique.mockResolvedValue(
+        templateRow({ subject: '{{name}} 的驗證信', body: '<p>{{name}}</p>' }) as never
+      );
+
+      const result = expectResolved(
+        await resolveTemplate(verificationDescriptor, { ...verifyData, name: "O'Neil & 小島" })
+      );
+
+      // 主旨是純文字信件標頭，跳脫後會變成 O&#x27;Neil &amp; 小島
+      expect(result.subject).toBe("O'Neil & 小島 的驗證信");
+      // body 進的是 HTML，仍要跳脫
+      expect(result.html).toContain('O&#x27;Neil &amp; 小島');
+    });
+
+    it('主旨與 fallback 程式碼模板一致，不因有無 DB 模板而不同', async () => {
+      prismaMock.email_templates.findUnique.mockResolvedValue(
+        templateRow({ subject: '【島島阿學】驗證您的電子郵件', body: '<p>x</p>' }) as never
+      );
+      const fromDb = expectResolved(await resolveTemplate(verificationDescriptor, verifyData));
+
+      invalidateTemplateCache();
+      prismaMock.email_templates.findUnique.mockResolvedValue(null as never);
+      const fromCode = expectResolved(await resolveTemplate(verificationDescriptor, verifyData));
+
+      expect(fromDb.subject).toBe(fromCode.subject);
+    });
+  });
+
   describe('collectTemplateKeys', () => {
     it('只收簡單變數引用，不收 block 與帶參數的 helper', () => {
       const keys = collectTemplateKeys(
@@ -262,6 +292,23 @@ describe('EmailTemplateResolver', () => {
       expect(keys).toContain('b.c');
       expect(keys).not.toContain('items');
       expect(keys).not.toContain('d');
+    });
+
+    it('不把 block 內部的 scope 變數當成未定義變數', () => {
+      const keys = collectTemplateKeys('{{#each items}}{{this}} {{item.name}}{{/each}}');
+
+      expect(keys).not.toContain('this');
+      expect(keys).not.toContain('item.name');
+    });
+
+    it('模板用 {{#each}} 時不會噴假的未定義變數 warn', async () => {
+      prismaMock.email_templates.findUnique.mockResolvedValue(
+        templateRow({ body: '<p>{{name}}{{#each rows}}<span>{{this}}</span>{{/each}}</p>' }) as never
+      );
+
+      await resolveTemplate(verificationDescriptor, verifyData);
+
+      expect(warnMock).not.toHaveBeenCalled();
     });
   });
 

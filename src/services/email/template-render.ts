@@ -35,25 +35,28 @@ export interface RenderResult {
   unknownKeys: string[];
 }
 
-/** 編譯結果快取：同一段模板字串只編譯一次 */
+/** 編譯結果快取：同一段模板字串（含跳脫模式）只編譯一次 */
 const compiledCache = new Map<string, HandlebarsTemplateDelegate>();
 const MAX_COMPILED_CACHE = 200;
 
-const compile = (template: string): HandlebarsTemplateDelegate => {
-  const cached = compiledCache.get(template);
+const compile = (template: string, escape: boolean): HandlebarsTemplateDelegate => {
+  const key = `${escape ? 'esc' : 'raw'}:${template}`;
+  const cached = compiledCache.get(key);
   if (cached) return cached;
 
-  const fn = Handlebars.compile(template, { noEscape: false, strict: false });
+  const fn = Handlebars.compile(template, { noEscape: !escape, strict: false });
   if (compiledCache.size >= MAX_COMPILED_CACHE) compiledCache.clear();
-  compiledCache.set(template, fn);
+  compiledCache.set(key, fn);
   return fn;
 };
 
 /**
- * 掃 AST 取出模板引用到的簡單變數 key（{{a}}、{{a.b}}）
+ * 掃 AST 取出「最外層」引用到的簡單變數 key（{{a}}、{{a.b}}）
  *
  * 只收單純的變數引用：帶參數的 helper（{{formatDate x}}）與 block（{{#each}}）
- * 交給 Handlebars 自己處理，不列入未知變數判斷。
+ * 交給 Handlebars 自己處理，不列入未知變數判斷。block 內部也不遞迴——
+ * 那裡的 {{this}}、{{item.name}} 是 block 自己的 scope，不是變數表要提供的 key，
+ * 收進來只會產生假的「未定義變數」warn。
  */
 export const collectTemplateKeys = (template: string): string[] => {
   const keys = new Set<string>();
@@ -75,12 +78,9 @@ export const collectTemplateKeys = (template: string): string[] => {
         if (isPlainPath) keys.add((stmt.path as hbs.AST.PathExpression).original);
         break;
       }
-      case 'BlockStatement': {
-        const block = node as hbs.AST.BlockStatement;
-        walk(block.program);
-        walk(block.inverse);
+      case 'BlockStatement':
+        // block 內部是 block 自己的 scope（{{this}}、{{item.x}}），不列入未知變數判斷
         break;
-      }
       default:
         break;
     }
@@ -103,13 +103,16 @@ export const collectTemplateKeys = (template: string): string[] => {
  *
  * @param template 後台儲存的模板字串（subject / preheader / body 都走這裡）
  * @param variables 扁平變數表
- * @param context 記 log 用的識別資訊（slug、欄位）
+ * @param context 記 log 用的識別資訊（slug、欄位）與是否做 HTML 跳脫（預設跳脫）
  */
 export const renderTemplate = (
   template: string,
   variables: TemplateVariables,
-  context: { slug: string; field: string }
+  context: { slug: string; field: string; escape?: boolean }
 ): RenderResult => {
+  // 主旨是純文字信件標頭，不能做 HTML 跳脫——否則暱稱裡的 & ' " 會變成 &amp;／&#x27;，
+  // 且與 fallback 程式碼模板的主旨不一致。body／preheader 進的是 HTML，維持跳脫。
+  const escape = context.escape ?? true;
   const referenced = collectTemplateKeys(template);
   const unknownKeys = referenced.filter(key => !(key in variables));
 
@@ -143,7 +146,7 @@ export const renderTemplate = (
     });
   }
 
-  const text = compile(template)(renderContext);
+  const text = compile(template, escape)(renderContext);
   return { text, unknownKeys };
 };
 

@@ -20,6 +20,14 @@ import type { EmailTemplateContent } from '../../types/email';
 /** 模板快取 TTL：5 分鐘（daodao#236 AC-06） */
 export const TEMPLATE_CACHE_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * DB 查詢失敗時的短 TTL
+ *
+ * 失敗也要快取，否則週報／總結這種批次寄送會對每一位收件人重打一次失敗查詢；
+ * 但不能用 5 分鐘——DB 恢復後要能很快回到讀後台模板。
+ */
+export const TEMPLATE_ERROR_CACHE_TTL_MS = 30 * 1000;
+
 interface TemplateRow {
   slug: string;
   subject: string;
@@ -81,11 +89,13 @@ const fetchTemplate = async (slug: string): Promise<TemplateRow | null> => {
     });
     row = found ? { ...found, slug: found.slug as string } : null;
   } catch (error) {
-    // DB 查不到不能讓信寄不出去：記 error 後走程式碼模板
+    // DB 查不到不能讓信寄不出去：記 error 後走程式碼模板，並短暫快取失敗結果，
+    // 避免批次寄送時每一位收件人都重打一次失敗查詢
     loggerService.error('[email-template] 查詢後台模板失敗，改用程式碼模板', {
       slug,
       error: error instanceof Error ? error.message : String(error),
     });
+    cache.set(slug, { row: null, expiresAt: Date.now() + TEMPLATE_ERROR_CACHE_TTL_MS });
     return null;
   }
 
@@ -114,7 +124,7 @@ export const resolveTemplate = async <D>(
   if (row && row.body.trim().length > 0) {
     try {
       const variables = descriptor.flatten(data);
-      const subject = renderTemplate(row.subject, variables, { slug, field: 'subject' }).text;
+      const subject = renderTemplate(row.subject, variables, { slug, field: 'subject', escape: false }).text;
       const preheader = row.preheader
         ? renderTemplate(row.preheader, variables, { slug, field: 'preheader' }).text
         : '';

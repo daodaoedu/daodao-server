@@ -283,7 +283,8 @@ export class EmailService {
       logRecord = await createEmailLog({
         userId,
         emailType: EMAIL_TYPES.WELCOME_LETTER,
-        subject: '【島島阿學】歡迎來到島島阿學！',
+        // 用解析後的主旨，後台改過主旨時紀錄才與實際寄出的信一致
+        subject: resolved.subject,
         status: 'pending',
       });
     } catch (error) {
@@ -621,28 +622,53 @@ export class EmailService {
     let failed = 0;
 
     for (const recipient of recipients) {
-      let template: EmailTemplateContent;
-      
+      let template: EmailTemplateContent | null;
+
       if (templateType === 'custom' && customTemplate) {
         template = customTemplate;
       } else {
-        // 根據類型生成模板
+        // 有後台模板的類型一律走解析層，否則批量寄送會繞過後台的編輯與停用（daodao#236）
         switch (templateType) {
           case 'welcome':
-            template = this.templateService.generateWelcomeEmail(recipient.data);
+            template = await this.resolveOrSkip(
+              welcomeLetterDescriptor(recipient.data),
+              recipient.data,
+              {
+                to: recipient.email,
+                emailType: EMAIL_TYPES.WELCOME_LETTER,
+                subject: '【島島阿學】歡迎來到島島阿學！',
+              }
+            );
             break;
           case 'verification':
-            template = this.templateService.generateVerificationEmail(recipient.data);
+            template = await this.resolveOrSkip(verificationDescriptor, recipient.data, {
+              to: recipient.email,
+              emailType: EMAIL_TYPES.AUTH_EMAIL_VERIFY,
+              subject: '【島島阿學】驗證您的電子郵件',
+            });
             break;
           case 'contact':
+            // 聯絡信沒有對應的後台模板（email_templates 無此 slug），維持程式碼模板
             template = this.templateService.generateContactEmail(recipient.data);
             break;
           case 'marathon':
-            template = this.templateService.generateMarathonEmail(recipient.data);
+            template = await this.resolveOrSkip(marathonDescriptor, recipient.data, {
+              to: recipient.email,
+              emailType: EMAIL_TYPES.MARATHON,
+              subject: '【島島阿學】馬拉松報名成功確認',
+            });
             break;
           default:
             template = { subject: '無效模板', html: '無效模板' };
         }
+      }
+
+      // 後台已停用該類型：不寄出，計入 failed 並在結果標 skipped
+      if (!template) {
+        const skipped = this.skippedResult();
+        results.push(skipped);
+        failed++;
+        continue;
       }
 
       const result = await this.sendEmail({

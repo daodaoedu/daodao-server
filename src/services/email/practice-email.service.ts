@@ -453,9 +453,12 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
           emailType: EMAIL_TYPES.PRACTICE_WEEKLY_SUMMARY
         });
 
+        // 只算真的寄出去的（status='sent'）：後台停用而記成 skipped 的那幾週沒有打擾到使用者，
+        // 不該把人算進「已經提醒 3 次」而提早靜默（daodao#236）
         const recentInactiveSummaries = recentWeeklySummaryLogs.filter(log => {
           const logDate = log.sent_at || log.created_at;
           return logDate && logDate >= threeWeeksAgo &&
+                 log.status === EMAIL_STATUS.SENT &&
                  (log.email_code === 'PE05' || log.email_code === 'PE06');
         });
 
