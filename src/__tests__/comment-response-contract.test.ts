@@ -69,12 +69,6 @@ jest.mock('../middleware/auth', () => ({
     req.user = { id: 42, _id: 'user-ext-uuid-001' } as Request['user']; next();
   }
 }));
-jest.mock('../middleware/onboarding-hook.middleware', () => ({
-  withOnboardingHook: () => (_req: Request, _res: Response, next: NextFunction): void => next()
-}));
-jest.mock('../utils/onboarding-task-completion', () => ({
-  isInspirationCommentTarget: jest.fn().mockReturnValue(false)
-}));
 
 import router from '../routes/comment.routes';
 
@@ -122,6 +116,16 @@ describe('comment list (GET /comments)', () => {
 });
 
 describe('comment detail (GET /comments/:commentId)', () => {
+  it('POST /comments (原新手任務 E hook 路由) 回應 meta 不再夾帶 onboardingUpdate', async () => {
+    // Regression for #218：withOnboardingHook 已移除，留言建立回應應只剩標準 envelope
+    const res = await request(app)
+      .post('/api/v1/comments')
+      .send({ targetType: 'post', targetId: 'target-uuid-001', content: '留言內容' })
+      .expect(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.meta ?? {}).not.toHaveProperty('onboardingUpdate');
+  });
+
   it('returns single comment with expected fields', async () => {
     const res = await request(app)
       .get('/api/v1/comments/101')

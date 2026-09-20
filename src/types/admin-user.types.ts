@@ -18,14 +18,6 @@ export interface AdminUserFilters {
   isVerified?: boolean;
   /** 篩選人物誌類型（最新一次測驗結果） */
   personaType?: 'L' | 'C' | 'A' | 'D' | 'O';
-  /** 篩選 Onboarding Badge 完成狀態 */
-  badgeGranted?: boolean;
-  /** 篩選用戶來源 */
-  userSource?: 'S1' | 'S2' | 'S3';
-  /** 篩選註冊來源 */
-  registrationFlow?: 'landing_page' | 'quiz' | 'action_maker';
-  /** 篩選建立方式 */
-  creationMethod?: 'self_created' | 'copied' | 'action_generator';
   /** 註冊起始日期 (YYYY-MM-DD) */
   createdFrom?: string;
   /** 註冊結束日期 (YYYY-MM-DD) */
@@ -43,7 +35,7 @@ export interface AdminUserFilters {
   /** 每頁數量 */
   limit?: number;
   /** 排序欄位 */
-  sortBy?: 'createdAt' | 'lastLoginAt' | 'lastActiveAt' | 'name' | 'email' | 'registrationFlow' | 'creationMethod' | 'daysToComplete';
+  sortBy?: 'createdAt' | 'lastLoginAt' | 'lastActiveAt' | 'name' | 'email';
   /** 排序方向 */
   sortOrder?: 'asc' | 'desc';
 }
@@ -79,16 +71,6 @@ export interface AdminUserListItem {
   lastActiveAt: string | null;
   /** 最新一次學習風格測驗結果 */
   personaType: 'L' | 'C' | 'A' | 'D' | 'O' | null;
-  /** 是否完成 Onboarding Badge */
-  badgeGranted: boolean | null;
-  /** 用戶來源（S1/S2/S3） */
-  userSource: string | null;
-  /** 註冊來源 */
-  registrationFlow: 'landing_page' | 'quiz' | 'action_maker' | null;
-  /** 任務建立方式 */
-  creationMethod: 'self_created' | 'copied' | 'action_generator' | null;
-  /** 完成天數 */
-  daysToComplete: number | null;
   /** 管理標籤 */
   tags: Array<{ id: number; name: string; color: string }>;
   /** 內容標籤 */
@@ -185,10 +167,6 @@ export interface AdminUserDetailResponse {
   activityStats: UserActivityStats;
   /** 人物誌類型 */
   personaType: 'L' | 'C' | 'A' | 'D' | 'O' | null;
-  /** 是否完成 Onboarding Badge */
-  badgeGranted: boolean | null;
-  /** 用戶來源 */
-  userSource: string | null;
   /** 管理標籤 */
   tags: Array<{ id: number; name: string; color: string }>;
   /** 內容標籤 */

@@ -30,13 +30,6 @@ import { generateReactionNotificationEmail } from '../services/email/reaction-no
 import { generateWishLinkedEmail } from '../services/email/wish-linked-template';
 import { generateWeeklyDigestHtml } from '../services/email/notification-weekly-template';
 import { generateNotificationDigestHtml } from '../services/email/notification-digest-template';
-import {
-  generateOnboardingAEmail,
-  generateOnboardingBEmail,
-  generateOnboardingCEmail,
-  generateOnboardingDEmail,
-  generateOnboardingEEmail,
-} from '../services/email/onboarding-template';
 
 // ── 輔助函式 ──────────────────────────────────────────────────────────────────
 
@@ -452,27 +445,6 @@ const seeds: TemplateSeed[] = [];
     preheader: '',
     body: generateNotificationDigestHtml(sampleData),
     variables: ['recipientName'],
-    dataSource: 'user',
-  });
-}
-
-// 入門任務 A–E（依 Onboarding Letter.md）
-const SAMPLE_USER = '小明';
-for (const [_label, slug, dbName, gen] of [
-  ['入門任務 A', 'onboarding-a', '入門任務 A', generateOnboardingAEmail],
-  ['入門任務 B', 'onboarding-b', '入門任務 B', generateOnboardingBEmail],
-  ['入門任務 C', 'onboarding-c', '入門任務 C', generateOnboardingCEmail],
-  ['入門任務 D', 'onboarding-d', '入門任務 D', generateOnboardingDEmail],
-  ['入門任務 E', 'onboarding-e', '入門任務 E', generateOnboardingEEmail],
-] as const) {
-  const r = (gen as (d: { name: string }) => { subject: string; content?: string; html: string; preheader?: string })({ name: SAMPLE_USER });
-  seeds.push({
-    name: dbName,
-    slug,
-    subject: r.subject,
-    preheader: r.preheader ?? '',
-    body: r.content ?? '',
-    variables: ['name'],
     dataSource: 'user',
   });
 }

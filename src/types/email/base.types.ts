@@ -38,7 +38,7 @@ export const EMAIL_TYPES = {
   NOTIFICATION_DIGEST: 'notification_digest',
   NOTIFICATION_WEEKLY: 'notification_weekly',
   REACTION_NOTIFICATION: 'reaction_notification',
-  // Onboarding 系列
+  // Onboarding 系列（新手任務 email 已於 2026-09 移除；常量保留至 storage email_type CHECK 同步移除為止）
   ONBOARDING_L0: 'onboarding_l0',
   ONBOARDING_A: 'onboarding_a',
   ONBOARDING_B: 'onboarding_b',

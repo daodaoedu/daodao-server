@@ -41,10 +41,6 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     isActive,
     isVerified,
     personaType,
-    badgeGranted,
-    userSource,
-    registrationFlow,
-    creationMethod,
     createdFrom,
     createdTo,
     lastLoginFrom,
@@ -114,31 +110,6 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     where.quiz_results = { some: { result_type: personaType } };
   }
 
-  // 篩選 Onboarding Badge / userSource（user_onboarding 不在 include 裡，預先查 id 集合）
-  if (
-    badgeGranted !== undefined ||
-    userSource !== undefined ||
-    registrationFlow !== undefined ||
-    creationMethod !== undefined
-  ) {
-    const onboardingFilter: Prisma.user_onboardingWhereInput = {};
-
-    if (badgeGranted !== undefined) {
-      onboardingFilter.badge_granted = badgeGranted;
-    }
-    if (userSource !== undefined) {
-      onboardingFilter.user_source = userSource;
-    }
-    if (registrationFlow !== undefined) {
-      onboardingFilter.registration_flow = registrationFlow;
-    }
-    if (creationMethod !== undefined) {
-      onboardingFilter.creation_method = creationMethod;
-    }
-
-    where.user_onboarding = { is: onboardingFilter };
-  }
-
   // 計算排序
   const orderBy: Prisma.usersOrderByWithRelationInput = {};
   switch (sortBy) {
@@ -153,15 +124,6 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       break;
     case 'lastActiveAt':
       orderBy.user_activity_stats = { last_active_at: { sort: sortOrder, nulls: 'last' } };
-      break;
-    case 'registrationFlow':
-      orderBy.user_onboarding = { registration_flow: sortOrder };
-      break;
-    case 'creationMethod':
-      orderBy.user_onboarding = { creation_method: sortOrder };
-      break;
-    case 'daysToComplete':
-      orderBy.user_onboarding = { days_to_complete: sortOrder };
       break;
     case 'createdAt':
     default:
@@ -204,15 +166,6 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
           last_active_at: true
         }
       },
-      user_onboarding: {
-        select: {
-          badge_granted: true,
-          user_source: true,
-          registration_flow: true,
-          creation_method: true,
-          days_to_complete: true,
-        },
-      },
       quiz_results: {
         orderBy: { completed_at: 'desc' },
         take: 1,
@@ -221,18 +174,7 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
     }
   });
 
-  // 批次取得 onboarding 資料（user_onboarding 不在 Prisma 生成的 usersInclude 中）
   const userIds = users.map((u) => u.id);
-  const onboardingMap = new Map(users.map((user) => [
-    user.id,
-    {
-      badgeGranted: user.user_onboarding?.badge_granted,
-      userSource: user.user_onboarding?.user_source,
-      registrationFlow: user.user_onboarding?.registration_flow,
-      creationMethod: user.user_onboarding?.creation_method,
-      daysToComplete: user.user_onboarding?.days_to_complete,
-    },
-  ]));
 
   // 批次取得管理標籤（user_tag_assignments + user_tags）
   const adminTagsData = await prisma.$queryRaw<Array<{
@@ -268,22 +210,6 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
 
   // 格式化回應
   const formattedUsers: AdminUserListItem[] = users.map(user => {
-    const userOnboarding = onboardingMap.get(user.id);
-    const userRegistrationFlow = userOnboarding?.registrationFlow;
-    const userCreationMethod = userOnboarding?.creationMethod;
-
-    const normalizedRegistrationFlow = userRegistrationFlow === 'landing_page' ||
-      userRegistrationFlow === 'quiz' ||
-      userRegistrationFlow === 'action_maker'
-      ? userRegistrationFlow
-      : null;
-
-    const normalizedCreationMethod = userCreationMethod === 'self_created' ||
-      userCreationMethod === 'copied' ||
-      userCreationMethod === 'action_generator'
-      ? userCreationMethod
-      : null;
-
     const roles: RoleInfo[] = [];
     const permissions: string[] = [];
 
@@ -317,11 +243,6 @@ const getAdminUserList = async (filters: AdminUserFilters): Promise<AdminUserLis
       lastLoginAt: user.user_activity_stats?.last_login_at?.toISOString() ?? null,
       lastActiveAt: user.user_activity_stats?.last_active_at?.toISOString() ?? null,
       personaType: (user.quiz_results[0]?.result_type ?? null) as 'L' | 'C' | 'A' | 'D' | 'O' | null,
-      badgeGranted: userOnboarding?.badgeGranted ?? null,
-      userSource: userOnboarding?.userSource ?? null,
-      registrationFlow: normalizedRegistrationFlow,
-      creationMethod: normalizedCreationMethod,
-      daysToComplete: userOnboarding?.daysToComplete ?? null,
       tags: adminTagsMap.get(user.id) ?? [],
       entityTags: entityTagsMap.get(user.id) ?? [],
       referralSource: user.referral_source ?? null,
@@ -381,11 +302,6 @@ const getAdminUserDetail = async (userId: number | string): Promise<AdminUserDet
   if (!user) {
     throw new NotFoundError('User not found');
   }
-
-  const onboarding = await prisma.user_onboarding.findUnique({
-    where: { user_id: user.id },
-    select: { badge_granted: true, user_source: true },
-  });
 
   const roles: RoleInfo[] = [];
   const permissions: string[] = [];
@@ -491,8 +407,6 @@ const getAdminUserDetail = async (userId: number | string): Promise<AdminUserDet
     recentLoginHistory,
     activityStats,
     personaType: (user.quiz_results[0]?.result_type ?? null) as 'L' | 'C' | 'A' | 'D' | 'O' | null,
-    badgeGranted: onboarding?.badge_granted ?? null,
-    userSource: onboarding?.user_source ?? null,
     tags: userTagsData.map((t) => ({ id: t.id, name: t.name, color: t.color })),
     entityTags: entityTagsRaw.filter((et) => et.tags).map((et) => ({ id: et.tags.id, name: et.tags.name })),
   };
