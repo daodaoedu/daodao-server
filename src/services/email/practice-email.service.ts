@@ -12,7 +12,20 @@
 import { prisma } from '../database/prisma.service';
 import { loggerService } from '../logging/logger.service';
 import { generateStandardEmail, generateCtaButton, generateDivider, generateAuthorSection, EMAIL_COLORS } from './base-template';
-import { createEmailLog, hasEmailBeenSent, getEntityEmailLogs, updateEmailLogStatus } from './email-log.service';
+import {
+  createEmailLog,
+  hasEmailBeenSent,
+  getEntityEmailLogs,
+  recordSkippedEmail,
+  updateEmailLogStatus,
+} from './email-log.service';
+import { isSkipped, resolveTemplate } from './template-resolver.service';
+import {
+  finalSummaryDescriptor,
+  practiceCreatedDescriptor,
+  practiceFirstCheckInDescriptor,
+  weeklySummaryDescriptor,
+} from './template-descriptors';
 import type {
   PracticeEmailCode,
   WeeklySummaryEmailCode,
@@ -107,8 +120,20 @@ export async function sendPracticeCreatedEmail(
       return;
     }
 
-    // 生成郵件內容
-    const emailContent = generatePracticeCreatedEmailContent(variables);
+    // 生成郵件內容（後台模板優先，停用則不寄並記 skipped）
+    const resolved = await resolveTemplate(practiceCreatedDescriptor, variables);
+    if (isSkipped(resolved)) {
+      await recordSkippedEmail({
+        userId,
+        emailType: EMAIL_TYPES.PRACTICE_CREATED,
+        entityType: 'practice',
+        entityId: practiceId,
+        emailCode: 'PE01',
+        subject: resolved.subject || '開啟你的小而美學習生活提案',
+      });
+      return;
+    }
+    const emailContent = resolved;
 
     // 先建立 pending 紀錄，取得 trackingToken
     const logRecord = await createEmailLog({
@@ -196,7 +221,19 @@ export async function sendFirstCheckInEmail(
       encouragement: '太棒了！你邁出了第一步，這是最重要的開始！'
     };
 
-    const emailContent = generateFirstCheckInEmailContent(variables);
+    const resolved = await resolveTemplate(practiceFirstCheckInDescriptor, variables);
+    if (isSkipped(resolved)) {
+      await recordSkippedEmail({
+        userId,
+        emailType: EMAIL_TYPES.PRACTICE_FIRST_CHECKIN,
+        entityType: 'practice',
+        entityId: practiceId,
+        emailCode: 'PE02',
+        subject: resolved.subject || `你在【${practice.title}】的第一次打卡紀錄 ✨`,
+      });
+      return;
+    }
+    const emailContent = resolved;
 
     // 先建立 pending 紀錄，取得 trackingToken
     const logRecord = await createEmailLog({
@@ -243,7 +280,7 @@ export async function sendWeeklySummaryEmail(
   practiceId: number,
   userId: number,
   trackingToken?: string
-): Promise<void> {
+): Promise<{ skipped: boolean }> {
   try {
     const [practice, user] = await Promise.all([
       prismaClient.practices.findUnique({
@@ -308,10 +345,20 @@ export async function sendWeeklySummaryEmail(
       progressPercentage: Number(practice.progress_percentage) || 0
     };
 
-    const emailContent = generateWeeklySummaryEmailContent(emailCode, variables);
-    await sendEmail(email, emailContent.subject, emailContent.html, trackingToken);
+    const resolved = await resolveTemplate(weeklySummaryDescriptor(emailCode), variables);
+    if (isSkipped(resolved)) {
+      loggerService.info('Weekly summary email skipped by admin template', {
+        emailCode,
+        practiceId,
+        userId,
+      });
+      return { skipped: true };
+    }
+
+    await sendEmail(email, resolved.subject, resolved.html, trackingToken);
 
     loggerService.info('Weekly summary email sent', { emailCode, practiceId, userId, email });
+    return { skipped: false };
 
   } catch (error) {
     loggerService.error('Failed to send weekly summary email', {
@@ -406,9 +453,12 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
           emailType: EMAIL_TYPES.PRACTICE_WEEKLY_SUMMARY
         });
 
+        // 只算真的寄出去的（status='sent'）：後台停用而記成 skipped 的那幾週沒有打擾到使用者，
+        // 不該把人算進「已經提醒 3 次」而提早靜默（daodao#236）
         const recentInactiveSummaries = recentWeeklySummaryLogs.filter(log => {
           const logDate = log.sent_at || log.created_at;
           return logDate && logDate >= threeWeeksAgo &&
+                 log.status === EMAIL_STATUS.SENT &&
                  (log.email_code === 'PE05' || log.email_code === 'PE06');
         });
 
@@ -488,10 +538,18 @@ export async function sendPendingWeeklySummaries(): Promise<void> {
         });
 
         // 發送週報（帶 trackingToken）
-        await sendWeeklySummaryEmail(emailCode, practice.id, practice.user_id, logRecord.tracking_token ?? undefined);
+        const outcome = await sendWeeklySummaryEmail(
+          emailCode,
+          practice.id,
+          practice.user_id,
+          logRecord.tracking_token ?? undefined
+        );
 
-        // 更新狀態為 sent
-        await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
+        // 更新狀態：後台停用該模板時記 skipped，否則 sent
+        await updateEmailLogStatus(
+          logRecord.id,
+          outcome.skipped ? EMAIL_STATUS.SKIPPED : EMAIL_STATUS.SENT
+        );
 
       } catch (error) {
         loggerService.error('Failed to send weekly summary for practice', {
@@ -527,7 +585,7 @@ export async function sendFinalSummaryEmail(
   practiceId: number,
   userId: number,
   trackingToken?: string
-): Promise<void> {
+): Promise<{ skipped: boolean }> {
   try {
     const [practice, user] = await Promise.all([
       prismaClient.practices.findUnique({
@@ -583,10 +641,20 @@ export async function sendFinalSummaryEmail(
       bestNoteDate: bestNote?.checkin_date?.toISOString().split('T')[0]
     };
 
-    const emailContent = generateFinalSummaryEmailContent(emailCode, variables);
-    await sendEmail(email, emailContent.subject, emailContent.html, trackingToken);
+    const resolved = await resolveTemplate(finalSummaryDescriptor(emailCode), variables);
+    if (isSkipped(resolved)) {
+      loggerService.info('Final summary email skipped by admin template', {
+        emailCode,
+        practiceId,
+        userId,
+      });
+      return { skipped: true };
+    }
+
+    await sendEmail(email, resolved.subject, resolved.html, trackingToken);
 
     loggerService.info('Final summary email sent', { emailCode, practiceId, userId, email });
+    return { skipped: false };
 
   } catch (error) {
     loggerService.error('Failed to send final summary email', {
@@ -672,10 +740,18 @@ export async function sendPendingFinalSummaries(): Promise<void> {
         });
 
         // 發送結束總結（帶 trackingToken）
-        await sendFinalSummaryEmail(emailCode, practice.id, practice.user_id, logRecord.tracking_token ?? undefined);
+        const outcome = await sendFinalSummaryEmail(
+          emailCode,
+          practice.id,
+          practice.user_id,
+          logRecord.tracking_token ?? undefined
+        );
 
-        // 更新狀態為 sent
-        await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
+        // 更新狀態：後台停用該模板時記 skipped，否則 sent
+        await updateEmailLogStatus(
+          logRecord.id,
+          outcome.skipped ? EMAIL_STATUS.SKIPPED : EMAIL_STATUS.SENT
+        );
 
         loggerService.info('Final summary sent', {
           practiceId: practice.id,

@@ -13,9 +13,17 @@ import {
   createEmailLog,
   hasEmailBeenSent,
   recordEmailOpen,
+  recordSkippedEmail,
   resolveUserIdByEmail,
   updateEmailLogStatus,
 } from './email-log.service';
+import { isSkipped, resolveTemplate, type TemplateDescriptor } from './template-resolver.service';
+import {
+  marathonDescriptor,
+  passwordResetDescriptor,
+  verificationDescriptor,
+  welcomeLetterDescriptor,
+} from './template-descriptors';
 import type { EmailTemplateContent, WelcomeEmailData } from '../../types/email';
 import { EMAIL_TYPES } from '../../types/email';
 import type { EmailTypeValue } from '../../types/email';
@@ -38,6 +46,8 @@ export interface EmailSendOptions {
 }
 
 export interface EmailSendResult {
+  /** 後台停用該類型模板時為 true（daodao#236 AC-02），信沒有寄出但已記錄 */
+  skipped?: boolean;
   success: boolean;
   messageId?: string;
   error?: string;
@@ -167,12 +177,58 @@ export class EmailService {
   }
 
   /**
+   * 解析後台模板；後台已停用該類型時記一筆 skipped 並回傳 null
+   *
+   * @param descriptor 該 slug 的接線設定
+   * @param data 模板資料物件
+   * @param context 記 skipped log 需要的收件人與郵件類型
+   * @returns 可寄送的內容；後台停用時為 null
+   */
+  private async resolveOrSkip<D>(
+    descriptor: TemplateDescriptor<D>,
+    data: D,
+    context: { to: string; userId?: number; emailType: EmailTypeValue; subject: string }
+  ): Promise<EmailTemplateContent | null> {
+    const resolved = await resolveTemplate(descriptor, data);
+    if (!isSkipped(resolved)) return resolved;
+
+    const userId = context.userId ?? (await resolveUserIdByEmail(context.to).catch(() => null));
+    if (userId) {
+      await recordSkippedEmail({
+        userId,
+        emailType: context.emailType,
+        // 記後台當下的主旨；查不到才退回預設值
+        subject: resolved.subject || context.subject,
+      });
+    } else {
+      this.logger?.info(
+        `郵件因後台停用未寄出（查無用戶，未記錄 email_logs） - emailType: ${context.emailType}, 收件人: ${context.to}`
+      );
+    }
+    return null;
+  }
+
+  /** 後台停用時的統一回傳 */
+  private skippedResult(): EmailSendResult {
+    return {
+      success: false,
+      skipped: true,
+      error: getErrorMessage(EMAIL_ERROR_CODES.TEMPLATE_DISABLED),
+    };
+  }
+
+  /**
    * 發送歡迎郵件
    * @param to 收件人 Email
    * @param data 歡迎信資料（包含 referralGroup 決定使用哪個版本）
    */
   async sendWelcomeEmail(to: string, data: WelcomeEmailData): Promise<EmailSendResult> {
-    const template = this.templateService.generateWelcomeEmail(data);
+    const template = await this.resolveOrSkip(welcomeLetterDescriptor(data), data, {
+      to,
+      emailType: EMAIL_TYPES.WELCOME_LETTER,
+      subject: '【島島阿學】歡迎來到島島阿學！',
+    });
+    if (!template) return this.skippedResult();
 
     return this.sendEmail({
       to,
@@ -211,13 +267,25 @@ export class EmailService {
       };
     }
 
-    // 2. 先建立發送紀錄（含 tracking_token），狀態為 pending
+    // 2. 解析後台模板；後台停用該類型時記一筆 skipped 並結束
+    const resolved = await resolveTemplate(welcomeLetterDescriptor(templateData), templateData);
+    if (isSkipped(resolved)) {
+      await recordSkippedEmail({
+        userId,
+        emailType: EMAIL_TYPES.WELCOME_LETTER,
+        subject: resolved.subject || '【島島阿學】歡迎來到島島阿學！',
+      });
+      return this.skippedResult();
+    }
+
+    // 3. 先建立發送紀錄（含 tracking_token），狀態為 pending
     let logRecord;
     try {
       logRecord = await createEmailLog({
         userId,
         emailType: EMAIL_TYPES.WELCOME_LETTER,
-        subject: '【島島阿學】歡迎來到島島阿學！',
+        // 用解析後的主旨，後台改過主旨時紀錄才與實際寄出的信一致
+        subject: resolved.subject,
         status: 'pending',
       });
     } catch (error) {
@@ -226,14 +294,11 @@ export class EmailService {
       return { success: false, error: '建立郵件紀錄失敗' };
     }
 
-    // 3. 產生郵件內容
-    const template = this.templateService.generateWelcomeEmail(templateData);
-
     // 4. 透過 queue 發送（worker 負責更新 log 狀態）
     return this.enqueueOrSend({
       to,
-      subject: template.subject,
-      html: template.html,
+      subject: resolved.subject,
+      html: resolved.html,
       trackingToken: logRecord.tracking_token ?? undefined,
       emailLogId: logRecord.id,
       emailType: EMAIL_TYPES.WELCOME_LETTER,
@@ -277,7 +342,12 @@ export class EmailService {
    * @param userId 用戶 ID（提供時會記錄到 email_logs 並注入追蹤像素）
    */
   async sendVerificationEmail(to: string, verifyLink: string, name?: string, userId?: number): Promise<EmailSendResult> {
-    const template = this.templateService.generateVerificationEmail({ verifyLink, name });
+    const template = await this.resolveOrSkip(
+      verificationDescriptor,
+      { verifyLink, name },
+      { to, userId, emailType: EMAIL_TYPES.AUTH_EMAIL_VERIFY, subject: '【島島阿學】驗證您的電子郵件' }
+    );
+    if (!template) return this.skippedResult();
 
     return this.sendWithOptionalLog({
       to,
@@ -362,12 +432,12 @@ export class EmailService {
     marathonDescription?: string,
     userId?: number
   ): Promise<EmailSendResult> {
-    const template = this.templateService.generateMarathonEmail({
-      name,
-      marathonTitle,
-      marathonDate,
-      marathonDescription
-    });
+    const template = await this.resolveOrSkip(
+      marathonDescriptor,
+      { name, marathonTitle, marathonDate, marathonDescription },
+      { to, userId, emailType: EMAIL_TYPES.MARATHON, subject: '【島島阿學】馬拉松報名成功確認' }
+    );
+    if (!template) return this.skippedResult();
 
     return this.sendWithOptionalLog({
       to,
@@ -386,7 +456,12 @@ export class EmailService {
    * @param userId 用戶 ID（提供時會記錄到 email_logs 並注入追蹤像素）
    */
   async sendPasswordResetEmail(to: string, resetLink: string, name?: string, userId?: number): Promise<EmailSendResult> {
-    const template = this.templateService.generatePasswordResetEmail({ resetLink, name });
+    const template = await this.resolveOrSkip(
+      passwordResetDescriptor,
+      { resetLink, name },
+      { to, userId, emailType: EMAIL_TYPES.AUTH_PASSWORD_RESET, subject: '【島島阿學】密碼重設' }
+    );
+    if (!template) return this.skippedResult();
 
     return this.sendWithOptionalLog({
       to,
@@ -548,28 +623,53 @@ export class EmailService {
     let failed = 0;
 
     for (const recipient of recipients) {
-      let template: EmailTemplateContent;
-      
+      let template: EmailTemplateContent | null;
+
       if (templateType === 'custom' && customTemplate) {
         template = customTemplate;
       } else {
-        // 根據類型生成模板
+        // 有後台模板的類型一律走解析層，否則批量寄送會繞過後台的編輯與停用（daodao#236）
         switch (templateType) {
           case 'welcome':
-            template = this.templateService.generateWelcomeEmail(recipient.data);
+            template = await this.resolveOrSkip(
+              welcomeLetterDescriptor(recipient.data),
+              recipient.data,
+              {
+                to: recipient.email,
+                emailType: EMAIL_TYPES.WELCOME_LETTER,
+                subject: '【島島阿學】歡迎來到島島阿學！',
+              }
+            );
             break;
           case 'verification':
-            template = this.templateService.generateVerificationEmail(recipient.data);
+            template = await this.resolveOrSkip(verificationDescriptor, recipient.data, {
+              to: recipient.email,
+              emailType: EMAIL_TYPES.AUTH_EMAIL_VERIFY,
+              subject: '【島島阿學】驗證您的電子郵件',
+            });
             break;
           case 'contact':
+            // 聯絡信沒有對應的後台模板（email_templates 無此 slug），維持程式碼模板
             template = this.templateService.generateContactEmail(recipient.data);
             break;
           case 'marathon':
-            template = this.templateService.generateMarathonEmail(recipient.data);
+            template = await this.resolveOrSkip(marathonDescriptor, recipient.data, {
+              to: recipient.email,
+              emailType: EMAIL_TYPES.MARATHON,
+              subject: '【島島阿學】馬拉松報名成功確認',
+            });
             break;
           default:
             template = { subject: '無效模板', html: '無效模板' };
         }
+      }
+
+      // 後台已停用該類型：不寄出，計入 failed 並在結果標 skipped
+      if (!template) {
+        const skipped = this.skippedResult();
+        results.push(skipped);
+        failed++;
+        continue;
       }
 
       const result = await this.sendEmail({

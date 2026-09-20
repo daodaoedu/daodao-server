@@ -17,6 +17,8 @@ import { EMAIL_ERROR_CODES, getErrorMessage } from '../constants/errors';
 import { emailHistoryService } from '../services/email-history.service';
 
 const EMAIL_ALREADY_SENT_MESSAGE = getErrorMessage(EMAIL_ERROR_CODES.ALREADY_SENT);
+/** 後台停用該類型模板時不寄出，屬營運選擇而非錯誤（daodao#236 AC-02） */
+const EMAIL_TEMPLATE_DISABLED_MESSAGE = getErrorMessage(EMAIL_ERROR_CODES.TEMPLATE_DISABLED);
 import { prisma } from '../services/database/prisma.service';
 import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
 import { createSuccessResponse } from '../utils/response-helper';
@@ -131,6 +133,10 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
   const result = await emailService.sendVerificationEmail(email, verifyLink, name, userId);
 
   if (!result.success) {
+    if (result.skipped) {
+      res.json(createSuccessResponse({ messageId: undefined }, { message: EMAIL_TEMPLATE_DISABLED_MESSAGE }));
+      return;
+    }
     throw new Error(result.error || '發送驗證郵件失敗');
   }
 
@@ -180,6 +186,10 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
       res.json(createSuccessResponse({ messageId: undefined }, { message: '歡迎郵件已於先前寄送' }));
       return;
     }
+    if (result.skipped) {
+      res.json(createSuccessResponse({ messageId: undefined }, { message: EMAIL_TEMPLATE_DISABLED_MESSAGE }));
+      return;
+    }
     throw new Error(result.error || '發送歡迎郵件失敗');
   }
 
@@ -221,6 +231,10 @@ export const sendPasswordResetEmail = asyncHandler(async (req: Request, res: Res
   const result = await emailService.sendPasswordResetEmail(email, resetLink, name, userId);
 
   if (!result.success) {
+    if (result.skipped) {
+      res.json(createSuccessResponse({ messageId: undefined }, { message: EMAIL_TEMPLATE_DISABLED_MESSAGE }));
+      return;
+    }
     throw new Error(result.error || '密碼重設郵件發送失敗');
   }
 
@@ -252,6 +266,10 @@ export const sendMarathonEmail = asyncHandler(async (req: Request, res: Response
   const result = await emailService.sendMarathonEmail(email, name, marathonTitle, marathonDate, marathonDescription, userId);
 
   if (!result.success) {
+    if (result.skipped) {
+      res.json(createSuccessResponse({ messageId: undefined }, { message: EMAIL_TEMPLATE_DISABLED_MESSAGE }));
+      return;
+    }
     throw new Error(result.error || '馬拉松郵件發送失敗');
   }
 
