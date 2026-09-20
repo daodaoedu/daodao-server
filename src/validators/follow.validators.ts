@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
-import { apiSuccessResponseSchema } from './api-response.validators';
+import { apiSuccessResponseSchema, paginatedApiResponseSchema } from './api-response.validators';
 
 const FOLLOW_TARGET_TYPES = ['user', 'practice'] as const;
 
@@ -58,9 +58,46 @@ const followItemSchema = z.object({
   followedAt: z.string().openapi({ description: '關注時間 ISO 8601' }),
 }).openapi('FollowItem');
 
-export const followListApiResponseSchema = apiSuccessResponseSchema(
-  z.array(followItemSchema)
+// followers／following 的 service 都用 createPaginatedResponse 回 { data, pagination }；
+// 用 apiSuccessResponseSchema 會被 zod 把 pagination 剝掉（Codex review on daodao#238 抓到），要用 paginated 版
+export const followListApiResponseSchema = paginatedApiResponseSchema(
+  followItemSchema
 ).openapi('FollowListApiResponse');
+
+/**
+ * GET /users/:userId/following 的 item 與 followers 不同形：依 targetType 分流 user／practice
+ *（對應 follow.service.ts 的 FollowingItem）。daodao#238：之前拿 followers schema 驗這條，有關注就 400。
+ */
+const followingUserProfileSchema = z.object({
+  id:         z.string().openapi({ description: '被關注用戶 external_id' }),
+  name:       z.string().openapi({ description: '暱稱' }),
+  photoURL:   z.string().nullable().openapi({ description: '頭像 URL' }),
+  bio:        z.string().nullable().openapi({ description: '個人標語' }),
+  identifier: z.string().nullable().openapi({ description: '自訂 ID（custom_id）' }),
+}).openapi('FollowingUserProfile');
+
+const followingPracticeProfileSchema = z.object({
+  id:            z.string().openapi({ description: '主題實踐 external_id' }),
+  title:         z.string().openapi({ description: '主題實踐標題' }),
+  ownerName:     z.string().openapi({ description: '擁有者暱稱' }),
+  ownerPhotoURL: z.string().nullable().openapi({ description: '擁有者頭像 URL' }),
+}).openapi('FollowingPracticeProfile');
+
+const followingItemSchema = z.discriminatedUnion('targetType', [
+  z.object({
+    targetType: z.literal('user'),
+    // service 在目標已被刪除時會給 undefined，前端據此顯示空卡；不能因此 400
+    user:       followingUserProfileSchema.optional(),
+  }).strict(),  // service 明確組物件；strict 讓「targetType 與 payload 對不上」在 server 端就爆，不會混進前端
+  z.object({
+    targetType: z.literal('practice'),
+    practice:   followingPracticeProfileSchema.optional(),
+  }).strict(),
+]).openapi('FollowingItem');
+
+export const followingListApiResponseSchema = paginatedApiResponseSchema(
+  followingItemSchema
+).openapi('FollowingListApiResponse');
 
 export const followActionApiResponseSchema = apiSuccessResponseSchema(
   z.object({ message: z.string() })
@@ -72,6 +109,7 @@ export const followActionApiResponseSchema = apiSuccessResponseSchema(
 
 registry.register('FollowTargetBody', followTargetSchema);
 registry.register('FollowListApiResponse', followListApiResponseSchema);
+registry.register('FollowingListApiResponse', followingListApiResponseSchema);
 registry.register('FollowActionApiResponse', followActionApiResponseSchema);
 
 // ============================================================================
