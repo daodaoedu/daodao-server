@@ -32,6 +32,31 @@ export const createEmailLog = async (data: EmailLogData) => {
 };
 
 /**
+ * 記錄「因後台停用而未寄出」的郵件（daodao#236 AC-02）
+ *
+ * 寫 log 失敗不應影響呼叫端流程——信本來就沒有要寄，記不起來只留 error log。
+ *
+ * @param data 與 createEmailLog 相同，但 status 固定為 skipped
+ */
+export const recordSkippedEmail = async (
+  data: Omit<EmailLogData, 'status'>
+): Promise<void> => {
+  try {
+    await createEmailLog({ ...data, status: EMAIL_STATUS.SKIPPED });
+    loggerService.info('郵件因後台停用未寄出，已記錄 skipped', {
+      userId: data.userId,
+      emailType: data.emailType,
+    });
+  } catch (error) {
+    loggerService.error('記錄 skipped 郵件失敗', {
+      userId: data.userId,
+      emailType: data.emailType,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+/**
  * 記錄 email 開啟事件
  * 首次開啟時設定 opened_at，每次開啟時遞增 open_count
  */

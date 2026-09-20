@@ -62,6 +62,8 @@ export const EMAIL_STATUS = {
   PENDING: 'pending',
   SENT: 'sent',
   FAILED: 'failed',
+  /** 後台把該類型模板停用，不寄出但留紀錄（daodao#236 AC-02） */
+  SKIPPED: 'skipped',
 } as const;
 
 export type EmailStatusValue = (typeof EMAIL_STATUS)[keyof typeof EMAIL_STATUS];

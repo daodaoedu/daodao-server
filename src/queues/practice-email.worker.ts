@@ -188,9 +188,18 @@ async function handleFinalSummaryEmail(
     status: EMAIL_STATUS.PENDING
   });
 
-  await sendFinalSummaryEmail(emailCode as FinalSummaryEmailCode, practiceId, userId, logRecord.tracking_token ?? undefined);
+  const outcome = await sendFinalSummaryEmail(
+    emailCode as FinalSummaryEmailCode,
+    practiceId,
+    userId,
+    logRecord.tracking_token ?? undefined
+  );
 
-  await updateEmailLogStatus(logRecord.id, EMAIL_STATUS.SENT);
+  // 後台停用該模板時記 skipped，否則 sent（daodao#236 AC-02）
+  await updateEmailLogStatus(
+    logRecord.id,
+    outcome.skipped ? EMAIL_STATUS.SKIPPED : EMAIL_STATUS.SENT
+  );
 }
 
 /**
