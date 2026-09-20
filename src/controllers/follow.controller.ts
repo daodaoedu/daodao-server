@@ -7,7 +7,11 @@ import { Request, Response } from 'express';
 import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware';
 import { followService } from '../services/follow.service';
 import type { FollowTargetBody, FollowParams, FollowQuery, FollowCheckParams } from '../validators/follow.validators';
-import { followActionApiResponseSchema, followListApiResponseSchema } from '../validators/follow.validators';
+import {
+  followActionApiResponseSchema,
+  followListApiResponseSchema,
+  followingListApiResponseSchema,
+} from '../validators/follow.validators';
 
 /**
  * POST /api/v1/follows
@@ -77,6 +81,7 @@ export const getFollowing = asyncHandler(async (req: Request, res: Response) => 
   const { page, limit } = req.query as unknown as FollowQuery;
 
   const result = await followService.getFollowing(userId, page, limit);
-  const validatedResponse = followListApiResponseSchema.parse(result);
+  // following 的 item 是 FollowingItem（targetType 分流），與 followers 的 FollowUserItem 不同形（daodao#238）
+  const validatedResponse = followingListApiResponseSchema.parse(result);
   res.json(validatedResponse);
 });

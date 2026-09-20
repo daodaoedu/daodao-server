@@ -3,7 +3,11 @@ import '../config/openapi-registry';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import request from 'supertest';
 import { globalErrorHandler } from '../middleware/error.middleware';
-import { followActionApiResponseSchema, followListApiResponseSchema } from '../validators/follow.validators';
+import {
+  followActionApiResponseSchema,
+  followListApiResponseSchema,
+  followingListApiResponseSchema
+} from '../validators/follow.validators';
 
 const sensitiveEmail = 'follower-secret@hidden.com';
 
@@ -15,14 +19,30 @@ const mockFollowItem = {
   followedAt: '2024-01-20T10:00:00.000Z'
 };
 
+// getFollowing 回的是 FollowingItem（targetType 分流 user／practice），不是 followers 的 FollowUserItem——
+// daodao#238：controller 拿 followers schema 驗 following 回應，有關注就 400
+const mockFollowingItems = [
+  {
+    targetType: 'user',
+    user: { id: 'target-user-uuid', name: '被關注的人', photoURL: null, bio: '一句話簡介', identifier: 'custom-id' }
+  },
+  {
+    targetType: 'practice',
+    practice: { id: 'practice-uuid', title: '每天寫一點', ownerName: '主題主人', ownerPhotoURL: 'https://cdn.example/p.png' }
+  }
+];
+
+// service 用 createPaginatedResponse 回 { data, pagination }；schema 必須保留 pagination，前端才知道有沒有下一頁
+const mockPagination = { currentPage: 1, totalPages: 1, totalItems: 2, itemsPerPage: 20, hasNext: false, hasPrev: false };
+
 const followService = {
   followUser: jest.fn().mockResolvedValue({ success: true, data: { message: '關注成功' }, timestamp: new Date().toISOString() }),
   followPractice: jest.fn().mockResolvedValue({ success: true, data: { message: '關注成功' }, timestamp: new Date().toISOString() }),
   unfollowUser: jest.fn().mockResolvedValue({ success: true, data: { message: '已取消關注' }, timestamp: new Date().toISOString() }),
   unfollowPractice: jest.fn().mockResolvedValue({ success: true, data: { message: '已取消關注' }, timestamp: new Date().toISOString() }),
   checkFollowStatus: jest.fn().mockResolvedValue({ success: true, data: { isFollowing: true }, timestamp: new Date().toISOString() }),
-  getFollowers: jest.fn().mockResolvedValue({ success: true, data: [mockFollowItem], timestamp: new Date().toISOString() }),
-  getFollowing: jest.fn().mockResolvedValue({ success: true, data: [mockFollowItem], timestamp: new Date().toISOString() })
+  getFollowers: jest.fn().mockResolvedValue({ success: true, data: [mockFollowItem], pagination: mockPagination, timestamp: new Date().toISOString() }),
+  getFollowing: jest.fn().mockResolvedValue({ success: true, data: mockFollowingItems, pagination: mockPagination, timestamp: new Date().toISOString() })
 };
 
 jest.mock('../services/follow.service', () => ({ followService }));
@@ -67,11 +87,34 @@ describe('follow response contracts', () => {
     expect(() => followListApiResponseSchema.parse(res.body)).not.toThrow();
     expect(res.body.data[0].externalId).toBe('follower-uuid-001');
     expect(res.body.data[0].nickname).toBeDefined();
+    expect(res.body.pagination).toEqual(mockPagination);
   });
 
-  it('validates following list against followListApiResponseSchema', async () => {
+  it('validates following list (user + practice targets) against followingListApiResponseSchema', async () => {
+    // daodao#238 regression：service 回 FollowingItem 形狀時 controller 必須放行，不能 400
     const res = await request(app).get('/api/v1/users/user-uuid/following').expect(200);
-    expect(() => followListApiResponseSchema.parse(res.body)).not.toThrow();
+    expect(() => followingListApiResponseSchema.parse(res.body)).not.toThrow();
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data[0]).toMatchObject({ targetType: 'user', user: { id: 'target-user-uuid', name: '被關注的人' } });
+    expect(res.body.data[1]).toMatchObject({ targetType: 'practice', practice: { id: 'practice-uuid', title: '每天寫一點' } });
+    // pagination 不能被 schema 剝掉（apiSuccessResponseSchema 會；paginatedApiResponseSchema 才保留）
+    expect(res.body.pagination).toEqual(mockPagination);
+    // 與 followers 對稱：wire 上不得有內部欄位
+    expect(res.text).not.toContain('external_id');
+    expect(res.text).not.toContain('email');
+  });
+
+  it('rejects followers-shaped items under followingListApiResponseSchema (schemas must not be interchangeable)', () => {
+    const followersShaped = { success: true, data: [mockFollowItem], pagination: mockPagination, timestamp: new Date().toISOString() };
+    expect(() => followingListApiResponseSchema.parse(followersShaped)).toThrow();
+    // 反向也成立：FollowingItem 塞進 followers schema 要 fail
+    const followingShaped = { success: true, data: mockFollowingItems, pagination: mockPagination, timestamp: new Date().toISOString() };
+    expect(() => followListApiResponseSchema.parse(followingShaped)).toThrow();
+  });
+
+  it('rejects a following item whose payload does not match its targetType', () => {
+    const mismatched = { success: true, data: [{ targetType: 'user', practice: mockFollowingItems[1].practice }], pagination: mockPagination, timestamp: new Date().toISOString() };
+    expect(() => followingListApiResponseSchema.parse(mismatched)).toThrow();
   });
 
   it('never leaks email or sensitive PII in follower items', async () => {
