@@ -532,14 +532,13 @@ describe('Auth Service', () => {
   });
 
   describe('verifyUserEmail', () => {
-    it('should verify user email and return success', async () => {
-      const mockUpdatedUser = createTestUser({ verified: true });
-      prismaMock.users.update.mockResolvedValue(mockUpdatedUser);
+    it('should verify user email atomically (verified=false → true) and return success', async () => {
+      prismaMock.users.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await authService.verifyUserEmail(1);
 
-      expect(prismaMock.users.update).toHaveBeenCalledWith({
-        where: { id: 1 },
+      expect(prismaMock.users.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, verified: false },
         data: {
           verified: true,
           verified_at: expect.any(Date),
@@ -548,6 +547,16 @@ describe('Auth Service', () => {
       });
       expect(result.success).toBe(true);
       expect(result.data!.success).toBe(true);
+    });
+
+    it('returns data.success=false when the user was already verified (concurrent verify-email)', async () => {
+      // Regression for #218 review：舊 onboarding queue 以 L0-<userId> jobId 去重，改直接寄後靠這裡擋重複歡迎信
+      prismaMock.users.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await authService.verifyUserEmail(1);
+
+      expect(result.success).toBe(true);
+      expect(result.data!.success).toBe(false);
     });
   });
 

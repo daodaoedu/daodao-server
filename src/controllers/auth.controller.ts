@@ -484,6 +484,10 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     if (!verifyResponse.success) {
       throw new BadRequestError('郵件驗證失敗');
     }
+    if (!verifyResponse.data?.success) {
+      // 併發請求已先完成驗證（歡迎信由那一次負責）
+      throw new BadRequestError('郵件已驗證');
+    }
     loggerService.info('User email verification updated', { userId: user.id });
 
     // Email 驗證成功，寄歡迎信（註冊時 email 尚未驗證，延後到此刻）
@@ -544,6 +548,10 @@ export const verifyEmailGet = asyncHandler(async (req: Request, res: Response) =
     const verifyResponse = await authService.verifyUserEmail(user.id);
     if (!verifyResponse.success) {
       return res.redirect(`${frontendUrl}/auth/verify-email?status=error&message=verification_failed`);
+    }
+    if (!verifyResponse.data?.success) {
+      // 併發請求已先完成驗證（歡迎信由那一次負責）
+      return res.redirect(`${frontendUrl}/auth/verify-email?status=success&message=already_verified`);
     }
 
     // Email 驗證成功，寄歡迎信

@@ -510,8 +510,10 @@ export const updateLastLogin = async (
  * 驗證用戶郵件
  */
 export const verifyUserEmail = async (userId: number): Promise<ApiResponse<{ success: boolean }>> => {
-  await prisma.users.update({
-    where: { id: userId },
+  // 只在 verified=false 時更新：同一 token 的 POST/GET 併發只會有一個拿到 count=1，
+  // 呼叫端據此決定是否寄歡迎信（取代舊 onboarding queue 的 L0-<userId> jobId 冪等）
+  const { count } = await prisma.users.updateMany({
+    where: { id: userId, verified: false },
     data: {
       verified: true,
       verified_at: new Date(),
@@ -519,7 +521,7 @@ export const verifyUserEmail = async (userId: number): Promise<ApiResponse<{ suc
     }
   });
 
-  return createSuccessResponse({ success: true });
+  return createSuccessResponse({ success: count > 0 });
 };
 
 /**
