@@ -11,9 +11,10 @@ import { prisma } from './database/prisma.service';
 import { notificationEventService } from './notification-event.service';
 import { loggerService } from './logging/logger.service';
 import { emailService } from './email/email.service';
-import { generateWishLinkedEmail } from './email/wish-linked-template';
+import { isSkipped, resolveTemplate } from './email/template-resolver.service';
+import { wishLinkedDescriptor } from './email/template-descriptors';
 import { generateUnsubscribeUrl } from './notification-unsubscribe.service';
-import { createEmailLog, updateEmailLogStatus } from './email/email-log.service';
+import { createEmailLog, recordSkippedEmail, updateEmailLogStatus } from './email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
@@ -58,12 +59,24 @@ async function sendWishLinkedEmail(params: NotifyWishLinkedParams): Promise<void
     });
     if (pref?.is_enabled === false) return;
 
-    const { subject, html } = generateWishLinkedEmail({
+    const resolved = await resolveTemplate(wishLinkedDescriptor, {
       recipientName: user?.nickname ?? '島島夥伴',
       itemTitle,
       url: roadmapUrl(),
       unsubscribeUrl: generateUnsubscribeUrl(wisherUserId, 'wish.linked'),
     });
+
+    // 後台停用此模板時不寄，記一筆 skipped（daodao#236 AC-02）
+    if (isSkipped(resolved)) {
+      await recordSkippedEmail({
+        userId: wisherUserId,
+        emailType: EMAIL_TYPES.NOTIFICATION,
+        subject: '你的許願已被島島採納 🎉',
+      });
+      return;
+    }
+
+    const { subject, html } = resolved;
 
     let log: { id: number; tracking_token: string | null } | null = null;
     try {
