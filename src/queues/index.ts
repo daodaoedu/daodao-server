@@ -129,23 +129,6 @@ export {
   type SocialNotificationWorkerOptions,
 } from './social-notification.worker';
 
-// Onboarding Email Queue
-export {
-  ONBOARDING_EMAIL_QUEUE_NAME,
-  createOnboardingEmailQueue,
-  setOnboardingEmailQueue,
-  getOnboardingEmailQueue,
-  enqueueOnboardingEmail,
-  enqueueOnboardingL0Email,
-  enqueueNextSequenceEmail,
-} from './onboarding-email.queue';
-
-// Onboarding Email Worker
-export {
-  createOnboardingEmailWorker,
-  closeOnboardingEmailWorker,
-} from './onboarding-email.worker';
-
 // Email Trigger Queue（觸發式信件掃描）
 export {
   EMAIL_TRIGGER_QUEUE_NAME,

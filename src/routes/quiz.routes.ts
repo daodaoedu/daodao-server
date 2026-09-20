@@ -15,8 +15,6 @@ import {
   claimQuizResultResponseSchema
 } from '@/validators/quiz.validators';
 import { quizController } from '@/controllers/quiz.controller';
-import { withOnboardingHook } from '@/middleware/onboarding-hook.middleware';
-import { OnboardingTask } from '@/types/onboarding.types';
 
 const router = Router();
 
@@ -162,7 +160,7 @@ registry.registerPath({
 router.post(
   '/',
   validate(saveQuizResultBodySchema, 'body'),
-  withOnboardingHook(OnboardingTask.A, quizController.saveResult as RequestHandler) as RequestHandler
+  quizController.saveResult as RequestHandler
 );
 
 router.post(

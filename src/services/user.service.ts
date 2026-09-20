@@ -7,9 +7,7 @@ import { prisma } from './database/prisma.service';
 import { anonymizeCohortEnrollments } from './cohort-anonymization.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
-import { onboardingService } from './onboarding.service';
 import { quizService } from './quiz.service';
-import { deriveUserSource } from '../utils/onboarding-source';
 import { cityService } from './city.service';
 import {
   UserQueryParams,
@@ -855,7 +853,7 @@ const createUser = async (
 ): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }> & { quizClaimed?: boolean }> => {
   // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
   // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
-  const { response, emailData, onboardingData } = await prisma.$transaction(async (tx) => {
+  const { response, emailData, newUserId } = await prisma.$transaction(async (tx) => {
     const {
       gender,
       birthDay,
@@ -876,7 +874,6 @@ const createUser = async (
       professionalField,
       personalSlogan,
       referralSource,
-      registrationFlow,
       interestList,
       customId,
       name: nickname
@@ -1089,7 +1086,7 @@ const createUser = async (
     return {
       response: createSuccessResponse(result),
       emailData: pendingEmail,
-      onboardingData: { userId: newUser.id, referralSource: referralSource ?? null, registrationFlow: registrationFlow ?? null },
+      newUserId: newUser.id,
     };
   });
 
@@ -1103,35 +1100,18 @@ const createUser = async (
     );
   }
 
-  // 建立 Onboarding 記錄（await 確保後續 quiz hook 能找到記錄）
-  // skipL0Email: email 尚未驗證，歡迎信延後到驗證成功再寄
-  try {
-    const fromQuiz = onboardingData.registrationFlow === 'quiz';
-    await onboardingService.createOnboarding(
-      onboardingData.userId,
-      deriveUserSource(onboardingData.referralSource, fromQuiz),
-      onboardingData.registrationFlow ?? undefined,
-      { skipL0Email: true },
-    );
-  } catch (err: unknown) {
-    loggerService.warn('Failed to create onboarding record', {
-      userId: onboardingData.userId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-
   // 認領匿名測驗結果（臨時用戶轉正式用戶時，用正式的 users.id 認領）
   let quizClaimed = false;
   if (opts?.quizClaimToken) {
     try {
-      const claimed = await quizService.claimByToken(onboardingData.userId, opts.quizClaimToken);
+      const claimed = await quizService.claimByToken(newUserId, opts.quizClaimToken);
       if (claimed) {
         quizClaimed = true;
-        loggerService.info('Claimed pending quiz result during registration', { userId: onboardingData.userId });
+        loggerService.info('Claimed pending quiz result during registration', { userId: newUserId });
       }
     } catch (err: unknown) {
       loggerService.warn('Failed to claim quiz result during registration', {
-        userId: onboardingData.userId,
+        userId: newUserId,
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -2243,11 +2223,6 @@ const getSettingsSections = async (userId: number): Promise<SettingsSections> =>
   };
 };
 
-const isOnboardingProfileComplete = async (userId: number): Promise<boolean> => {
-  const sections = await getSettingsSections(userId);
-  return sections.preferences && sections.account && sections.publicInfo;
-};
-
 /**
  * 獲取設定頁完整度摘要
  * 計算用戶四個設定區塊的完成狀態
@@ -2323,7 +2298,6 @@ export const userService = {
   incrementProfileViews,
   getLoginHistory,
   getUserActivityStats,
-  isOnboardingProfileComplete,
   getSettingsSummary
 } as const;
 

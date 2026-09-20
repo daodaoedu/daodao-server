@@ -1510,11 +1510,8 @@ router.put('/content/collections/:id/items/order', authenticateAny, requireAdmin
 router.delete('/content/collections/:id/items/:itemId', authenticateAny, requireAdmin, adminContentController.removeCollectionItem as RequestHandler);
 
 // ─── Tracking & Analytics ─────────────────────────────────────────────────────
-router.get('/onboarding/stats', authenticateAny, requireAdmin, adminTrackingController.getOnboardingStats as RequestHandler);
-router.get('/users/:userId/onboarding', authenticateAny, requireAdmin, adminTrackingController.getUserOnboardingDetail as RequestHandler);
 router.get('/quiz/stats', authenticateAny, requireAdmin, adminTrackingController.getQuizStats as RequestHandler);
 router.get('/persona/stats', authenticateAny, requireAdmin, adminTrackingController.getPersonaStats as RequestHandler);
-router.get('/email/onboarding-stats', authenticateAny, requireAdmin, adminTrackingController.getEmailOnboardingStats as RequestHandler);
 router.get('/engagement/stats', authenticateAny, requireAdmin, adminTrackingController.getEngagementStats as RequestHandler);
 router.get('/metrics/drilldown', authenticateAny, requireAdmin, adminTrackingController.getMetricDrillDown as RequestHandler);
 

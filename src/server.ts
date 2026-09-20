@@ -64,11 +64,6 @@ import {
   setSocialNotificationQueue,
   createSocialNotificationWorker,
   closeSocialNotificationWorker,
-  // Onboarding Email Queue
-  createOnboardingEmailQueue,
-  setOnboardingEmailQueue,
-  createOnboardingEmailWorker,
-  closeOnboardingEmailWorker,
   // Email Queue（通用郵件發送佇列）
   createEmailQueue,
   setEmailQueue,
@@ -93,7 +88,6 @@ import {
   closeFutureLetterWorker,
   type FutureLetterJobData,
 } from './queues';
-import type { OnboardingEmailJobData } from './types/email/onboarding.types';
 import { DEFAULT_EMAIL_SCHEDULES } from './types/email/practice.types';
 import type { Queue, Worker } from 'bullmq';
 import type { PracticeEmailJobData } from './types/email/practice.types';
@@ -112,8 +106,6 @@ let notificationEmailWorker: Worker | null = null;
 let notificationWeeklyWorker: Worker | null = null;
 let socialNotificationQueue: Queue<SocialNotificationJob> | null = null;
 let socialNotificationWorker: Worker<SocialNotificationJob> | null = null;
-let onboardingEmailQueue: Queue<OnboardingEmailJobData> | null = null;
-let onboardingEmailWorker: Worker<OnboardingEmailJobData> | null = null;
 let emailQueue: Queue<EmailJobData> | null = null;
 let emailWorker: Worker<EmailJobData> | null = null;
 let tagRuleQueue: Queue<TagRuleJobData> | null = null;
@@ -377,14 +369,6 @@ async function initializeBullMQ(): Promise<void> {
     socialNotificationWorker = createSocialNotificationWorker({ concurrency: 5 });
     console.log('👥 Social Notification Worker 已啟動');
 
-    // ===== Onboarding Email Queue =====
-    onboardingEmailQueue = createOnboardingEmailQueue();
-    setOnboardingEmailQueue(onboardingEmailQueue);
-    console.log('🎯 Onboarding Email Queue 已建立');
-
-    onboardingEmailWorker = createOnboardingEmailWorker();
-    console.log('🎯 Onboarding Email Worker 已啟動');
-
     // ===== Email Queue（通用郵件發送佇列，含持久化重試）=====
     emailQueue = createEmailQueue();
     setEmailQueue(emailQueue);
@@ -478,14 +462,6 @@ async function gracefulShutdown(signal: string) {
     if (socialNotificationQueue) {
       await socialNotificationQueue.close();
       console.log('✅ Social Notification Queue 已關閉');
-    }
-    if (onboardingEmailWorker) {
-      await closeOnboardingEmailWorker(onboardingEmailWorker);
-      console.log('✅ Onboarding Email Worker 已關閉');
-    }
-    if (onboardingEmailQueue) {
-      await onboardingEmailQueue.close();
-      console.log('✅ Onboarding Email Queue 已關閉');
     }
     if (emailWorker) {
       await closeEmailWorker(emailWorker);

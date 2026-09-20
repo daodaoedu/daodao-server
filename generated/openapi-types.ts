@@ -5147,19 +5147,11 @@ export interface paths {
                     /** @description 每頁數量 */
                     limit?: string;
                     /** @description 排序欄位 */
-                    sortBy?: "createdAt" | "lastLoginAt" | "lastActiveAt" | "name" | "email" | "registrationFlow" | "creationMethod" | "daysToComplete";
+                    sortBy?: "createdAt" | "lastLoginAt" | "lastActiveAt" | "name" | "email";
                     /** @description 排序方向 */
                     sortOrder?: "asc" | "desc";
                     /** @description 篩選學習風格人物誌（最新一次測驗結果） */
                     personaType?: "L" | "C" | "A" | "D" | "O";
-                    /** @description 篩選 Onboarding Badge 完成狀態 */
-                    badgeGranted?: "true" | "false";
-                    /** @description 篩選用戶來源 */
-                    userSource?: "S1" | "S2" | "S3";
-                    /** @description 篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。 */
-                    registrationFlow?: "landing_page" | "quiz" | "action_maker";
-                    /** @description 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。 */
-                    creationMethod?: "self_created" | "copied" | "action_generator";
                     /** @description 篩選註冊起始日期（含） */
                     createdFrom?: string;
                     /** @description 篩選註冊結束日期（含） */
@@ -14486,68 +14478,6 @@ export interface paths {
                 };
                 401: components["responses"]["UnauthorizedError"];
                 500: components["responses"]["InternalServerError"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/onboarding/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 取得 Onboarding 進度
-         * @description 回傳當前用戶的 Onboarding 任務清單、完成數量與 Badge 狀態。任務順序依 user_source（S1/S2/S3）排列。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Onboarding 狀態 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {boolean} */
-                            success: true;
-                            data: {
-                                taskList: {
-                                    /**
-                                     * @example A
-                                     * @enum {string}
-                                     */
-                                    taskKey: "A" | "B" | "C" | "D" | "E";
-                                    /** @example false */
-                                    done: boolean;
-                                    /** @example /practices/123e4567-e89b-12d3-a456-426614174000 */
-                                    ctaHref?: string;
-                                }[];
-                                /** @example 2 */
-                                completedTasks: number;
-                                /** @example false */
-                                badgeGranted: boolean;
-                            };
-                            timestamp: string;
-                        };
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
             };
         };
         put?: never;
@@ -24472,7 +24402,7 @@ export interface paths {
                          */
                         privacyStatus?: "private" | "public" | "delayed";
                         /**
-                         * @description 實踐建立方式（用於 Onboarding 任務 C 記錄）
+                         * @description 實踐建立方式（寫入 practices.creation_source，供分析用）
                          * @example self_created
                          * @enum {string}
                          */
@@ -41192,7 +41122,7 @@ export interface components {
              */
             privacyStatus?: "private" | "public" | "delayed";
             /**
-             * @description 實踐建立方式（用於 Onboarding 任務 C 記錄）
+             * @description 實踐建立方式（寫入 practices.creation_source，供分析用）
              * @example self_created
              * @enum {string}
              */
@@ -42329,7 +42259,7 @@ export interface components {
              * @example createdAt
              * @enum {string}
              */
-            sortBy: "createdAt" | "lastLoginAt" | "lastActiveAt" | "name" | "email" | "registrationFlow" | "creationMethod" | "daysToComplete";
+            sortBy: "createdAt" | "lastLoginAt" | "lastActiveAt" | "name" | "email";
             /**
              * @description 排序方向
              * @default desc
@@ -42343,30 +42273,6 @@ export interface components {
              * @enum {string}
              */
             personaType?: "L" | "C" | "A" | "D" | "O";
-            /**
-             * @description 篩選 Onboarding Badge 完成狀態
-             * @example true
-             * @enum {string}
-             */
-            badgeGranted?: "true" | "false";
-            /**
-             * @description 篩選用戶來源
-             * @example S1
-             * @enum {string}
-             */
-            userSource?: "S1" | "S2" | "S3";
-            /**
-             * @description 篩選註冊來源。僅接受 landing_page/quiz/action_maker；違規值會回傳 400 + VALIDATION_ERROR。
-             * @example landing_page
-             * @enum {string}
-             */
-            registrationFlow?: "landing_page" | "quiz" | "action_maker";
-            /**
-             * @description 篩選任務建立方式。僅接受 self_created/copied/action_generator；違規值會回傳 400 + VALIDATION_ERROR。
-             * @example self_created
-             * @enum {string}
-             */
-            creationMethod?: "self_created" | "copied" | "action_generator";
             /**
              * @description 篩選註冊起始日期（含）
              * @example 2024-01-01
@@ -42528,33 +42434,6 @@ export interface components {
              * @enum {string|null}
              */
             personaType: "L" | "C" | "A" | "D" | "O" | null;
-            /**
-             * @description 是否完成 Onboarding Badge
-             * @example true
-             */
-            badgeGranted: boolean | null;
-            /**
-             * @description 用戶來源（S1/S2/S3）
-             * @example S1
-             */
-            userSource: string | null;
-            /**
-             * @description 註冊來源。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。
-             * @example landing_page
-             * @enum {string|null}
-             */
-            registrationFlow: "landing_page" | "quiz" | "action_maker" | null;
-            /**
-             * @description 任務建立方式。若後端回傳無法對應枚舉值，將回傳 400 + VALIDATION_ERROR。
-             * @example self_created
-             * @enum {string|null}
-             */
-            creationMethod: "self_created" | "copied" | "action_generator" | null;
-            /**
-             * @description 完成天數
-             * @example 7
-             */
-            daysToComplete: number | null;
             /** @description 用戶標籤列表 */
             tags: {
                 id: number;
@@ -42594,10 +42473,6 @@ export interface components {
              * @enum {string|null}
              */
             personaType: "L" | "C" | "A" | "D" | "O" | null;
-            /** @description 是否完成 Onboarding Badge */
-            badgeGranted: boolean | null;
-            /** @description 用戶來源 */
-            userSource: string | null;
         };
         LoginHistoryRecord: {
             /**

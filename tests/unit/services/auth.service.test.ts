@@ -40,17 +40,13 @@ jest.mock('@/services/email/email.service', () => ({
   emailService: mockEmailService,
 }));
 
-// Mock onboardingService
-const mockOnboardingService = {
-  createOnboarding: jest.fn().mockResolvedValue(undefined),
-};
-jest.mock('@/services/onboarding.service', () => ({
-  onboardingService: mockOnboardingService,
-}));
-
-// Mock deriveUserSource
-jest.mock('@/utils/onboarding-source', () => ({
-  deriveUserSource: jest.fn().mockReturnValue('S1'),
+// Mock 歡迎信（Apple 註冊後直接寄，非阻塞）
+const mockSendWelcomeEmailToUser = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/services/email/welcome-email.service', () => ({
+  sendWelcomeEmailToUser: (...args: unknown[]) => mockSendWelcomeEmailToUser(...args),
+  sendWelcomeEmailInBackground: (userId: number) => {
+    mockSendWelcomeEmailToUser(userId).catch(() => undefined);
+  },
 }));
 
 // Import mocked modules
@@ -536,14 +532,13 @@ describe('Auth Service', () => {
   });
 
   describe('verifyUserEmail', () => {
-    it('should verify user email and return success', async () => {
-      const mockUpdatedUser = createTestUser({ verified: true });
-      prismaMock.users.update.mockResolvedValue(mockUpdatedUser);
+    it('should verify user email atomically (verified=false → true) and return success', async () => {
+      prismaMock.users.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await authService.verifyUserEmail(1);
 
-      expect(prismaMock.users.update).toHaveBeenCalledWith({
-        where: { id: 1 },
+      expect(prismaMock.users.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, verified: false },
         data: {
           verified: true,
           verified_at: expect.any(Date),
@@ -552,6 +547,16 @@ describe('Auth Service', () => {
       });
       expect(result.success).toBe(true);
       expect(result.data!.success).toBe(true);
+    });
+
+    it('returns data.success=false when the user was already verified (concurrent verify-email)', async () => {
+      // Regression for #218 review：舊 onboarding queue 以 L0-<userId> jobId 去重，改直接寄後靠這裡擋重複歡迎信
+      prismaMock.users.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await authService.verifyUserEmail(1);
+
+      expect(result.success).toBe(true);
+      expect(result.data!.success).toBe(false);
     });
   });
 
@@ -831,7 +836,8 @@ describe('Auth Service', () => {
 
     beforeEach(() => {
       setupTransactionMock();
-      mockOnboardingService.createOnboarding.mockClear();
+      mockSendWelcomeEmailToUser.mockClear();
+      mockSendWelcomeEmailToUser.mockResolvedValue(undefined);
     });
 
     it('should create a new user with verified=true when emailVerified is true', async () => {
@@ -876,7 +882,7 @@ describe('Auth Service', () => {
       });
     });
 
-    it('should create onboarding record after creating user', async () => {
+    it('should send welcome email after creating user (no onboarding task record)', async () => {
       const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
       const mockContact = {
         id: 1,
@@ -900,13 +906,10 @@ describe('Auth Service', () => {
 
       await new Promise(resolve => setImmediate(resolve));
 
-      expect(mockOnboardingService.createOnboarding).toHaveBeenCalledWith(
-        mockUser.id,
-        expect.any(String),
-      );
+      expect(mockSendWelcomeEmailToUser).toHaveBeenCalledWith(mockUser.id);
     });
 
-    it('should not fail if onboarding creation fails', async () => {
+    it('should not fail if welcome email sending fails', async () => {
       const mockBasicInfo = { id: 1, self_introduction: null, share_list: null, want_to_do_list: [] };
       const mockContact = {
         id: 1,
@@ -925,7 +928,7 @@ describe('Auth Service', () => {
       prismaMock.users.create.mockResolvedValue(mockUser);
       prismaMock.users.findUnique.mockResolvedValue(mockUser);
 
-      mockOnboardingService.createOnboarding.mockRejectedValue(new Error('Redis connection failed'));
+      mockSendWelcomeEmailToUser.mockRejectedValue(new Error('SMTP connection failed'));
 
       const result = await authService.createUserFromAppleOAuth(mockAppleProfile);
 
