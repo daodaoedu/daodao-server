@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
-import { apiSuccessResponseSchema } from './api-response.validators';
+import { apiSuccessResponseSchema, paginatedApiResponseSchema } from './api-response.validators';
 
 const FOLLOW_TARGET_TYPES = ['user', 'practice'] as const;
 
@@ -58,8 +58,10 @@ const followItemSchema = z.object({
   followedAt: z.string().openapi({ description: '關注時間 ISO 8601' }),
 }).openapi('FollowItem');
 
-export const followListApiResponseSchema = apiSuccessResponseSchema(
-  z.array(followItemSchema)
+// followers／following 的 service 都用 createPaginatedResponse 回 { data, pagination }；
+// 用 apiSuccessResponseSchema 會被 zod 把 pagination 剝掉（Codex review on daodao#238 抓到），要用 paginated 版
+export const followListApiResponseSchema = paginatedApiResponseSchema(
+  followItemSchema
 ).openapi('FollowListApiResponse');
 
 /**
@@ -93,8 +95,8 @@ const followingItemSchema = z.discriminatedUnion('targetType', [
   }).strict(),
 ]).openapi('FollowingItem');
 
-export const followingListApiResponseSchema = apiSuccessResponseSchema(
-  z.array(followingItemSchema)
+export const followingListApiResponseSchema = paginatedApiResponseSchema(
+  followingItemSchema
 ).openapi('FollowingListApiResponse');
 
 export const followActionApiResponseSchema = apiSuccessResponseSchema(

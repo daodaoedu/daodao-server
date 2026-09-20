@@ -32,14 +32,17 @@ const mockFollowingItems = [
   }
 ];
 
+// service 用 createPaginatedResponse 回 { data, pagination }；schema 必須保留 pagination，前端才知道有沒有下一頁
+const mockPagination = { currentPage: 1, totalPages: 1, totalItems: 2, itemsPerPage: 20, hasNext: false, hasPrev: false };
+
 const followService = {
   followUser: jest.fn().mockResolvedValue({ success: true, data: { message: '關注成功' }, timestamp: new Date().toISOString() }),
   followPractice: jest.fn().mockResolvedValue({ success: true, data: { message: '關注成功' }, timestamp: new Date().toISOString() }),
   unfollowUser: jest.fn().mockResolvedValue({ success: true, data: { message: '已取消關注' }, timestamp: new Date().toISOString() }),
   unfollowPractice: jest.fn().mockResolvedValue({ success: true, data: { message: '已取消關注' }, timestamp: new Date().toISOString() }),
   checkFollowStatus: jest.fn().mockResolvedValue({ success: true, data: { isFollowing: true }, timestamp: new Date().toISOString() }),
-  getFollowers: jest.fn().mockResolvedValue({ success: true, data: [mockFollowItem], timestamp: new Date().toISOString() }),
-  getFollowing: jest.fn().mockResolvedValue({ success: true, data: mockFollowingItems, timestamp: new Date().toISOString() })
+  getFollowers: jest.fn().mockResolvedValue({ success: true, data: [mockFollowItem], pagination: mockPagination, timestamp: new Date().toISOString() }),
+  getFollowing: jest.fn().mockResolvedValue({ success: true, data: mockFollowingItems, pagination: mockPagination, timestamp: new Date().toISOString() })
 };
 
 jest.mock('../services/follow.service', () => ({ followService }));
@@ -84,6 +87,7 @@ describe('follow response contracts', () => {
     expect(() => followListApiResponseSchema.parse(res.body)).not.toThrow();
     expect(res.body.data[0].externalId).toBe('follower-uuid-001');
     expect(res.body.data[0].nickname).toBeDefined();
+    expect(res.body.pagination).toEqual(mockPagination);
   });
 
   it('validates following list (user + practice targets) against followingListApiResponseSchema', async () => {
@@ -93,18 +97,23 @@ describe('follow response contracts', () => {
     expect(res.body.data).toHaveLength(2);
     expect(res.body.data[0]).toMatchObject({ targetType: 'user', user: { id: 'target-user-uuid', name: '被關注的人' } });
     expect(res.body.data[1]).toMatchObject({ targetType: 'practice', practice: { id: 'practice-uuid', title: '每天寫一點' } });
+    // pagination 不能被 schema 剝掉（apiSuccessResponseSchema 會；paginatedApiResponseSchema 才保留）
+    expect(res.body.pagination).toEqual(mockPagination);
+    // 與 followers 對稱：wire 上不得有內部欄位
+    expect(res.text).not.toContain('external_id');
+    expect(res.text).not.toContain('email');
   });
 
   it('rejects followers-shaped items under followingListApiResponseSchema (schemas must not be interchangeable)', () => {
-    const followersShaped = { success: true, data: [mockFollowItem], timestamp: new Date().toISOString() };
+    const followersShaped = { success: true, data: [mockFollowItem], pagination: mockPagination, timestamp: new Date().toISOString() };
     expect(() => followingListApiResponseSchema.parse(followersShaped)).toThrow();
     // 反向也成立：FollowingItem 塞進 followers schema 要 fail
-    const followingShaped = { success: true, data: mockFollowingItems, timestamp: new Date().toISOString() };
+    const followingShaped = { success: true, data: mockFollowingItems, pagination: mockPagination, timestamp: new Date().toISOString() };
     expect(() => followListApiResponseSchema.parse(followingShaped)).toThrow();
   });
 
   it('rejects a following item whose payload does not match its targetType', () => {
-    const mismatched = { success: true, data: [{ targetType: 'user', practice: mockFollowingItems[1].practice }], timestamp: new Date().toISOString() };
+    const mismatched = { success: true, data: [{ targetType: 'user', practice: mockFollowingItems[1].practice }], pagination: mockPagination, timestamp: new Date().toISOString() };
     expect(() => followingListApiResponseSchema.parse(mismatched)).toThrow();
   });
 
