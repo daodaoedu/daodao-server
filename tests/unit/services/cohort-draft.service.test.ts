@@ -61,6 +61,29 @@ describe('ensureCohortDrafts', () => {
     expect(prismaMock.practices.updateMany).toHaveBeenCalledWith({ where: { id: { in: [900] } }, data: { has_resources: true } });
   });
 
+  // daodao#295：共同挑戰加入後複製出的實踐不可是草稿（草稿不能打卡，FRD FR-CC-11 開始日即可打卡）
+  it('uses the caller-provided initial status instead of draft', async () => {
+    prismaMock.cohort_templates.findMany.mockResolvedValue([bindings[0]] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'not_started' });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ status: 'not_started', creation_source: 'cohort_template' })]
+    }));
+  });
+
+  // daodao#295 AC-03：挑戰 2026-10-09 起 14 天、結束 2026-10-22，複製出的實踐結束日要同一天
+  it('ends the copied practice on the same day as a 14-day challenge (start + duration - 1)', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-09T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, duration_days: 14 } }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42);
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ start_date: new Date('2026-10-09T00:00:00Z'), end_date: new Date('2026-10-22T00:00:00Z') })]
+    }));
+  });
+
   it('does not issue a write when there are no active bindings', async () => {
     prismaMock.cohort_templates.findMany.mockResolvedValue([]);
     await expect(ensureCohortDrafts(prismaMock, 8, 42)).resolves.toBe(0);

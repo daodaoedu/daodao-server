@@ -31,7 +31,19 @@ const copyTemplateResources = async (tx: TransactionClient, cohortId: number, us
   await tx.practices.updateMany({ where: { id: { in: [...new Set(links.map(link => link.entity_id))] } }, data: { has_resources: true } });
 };
 
-export const ensureCohortDrafts = async (tx: TransactionClient, cohortId: number, userId: number): Promise<number> => {
+/**
+ * 複製出的實踐初始狀態：燈塔場次預設草稿（學員自行啟用）；
+ * 共同挑戰沒有啟用步驟，由呼叫端依挑戰期間指定未開始／進行中（daodao#295）。
+ */
+export type CohortPracticeInitialStatus = 'draft' | 'not_started' | 'active';
+
+export const ensureCohortDrafts = async (
+  tx: TransactionClient,
+  cohortId: number,
+  userId: number,
+  options: { status?: CohortPracticeInitialStatus } = {}
+): Promise<number> => {
+  const status = options.status ?? 'draft';
   const [cohort, bindings] = await Promise.all([
     tx.cohorts.findUnique({ where: { id: cohortId }, select: { start_date: true, is_private: true } }),
     tx.cohort_templates.findMany({
@@ -56,7 +68,7 @@ export const ensureCohortDrafts = async (tx: TransactionClient, cohortId: number
       duration_days: binding.practice_template.duration_days, frequency_min_days: binding.practice_template.frequency_min_days,
       frequency_max_days: binding.practice_template.frequency_max_days, session_duration_minutes: binding.practice_template.session_duration_minutes,
       practice_time_periods: binding.practice_template.practice_time_periods, other_context: binding.practice_template.other_context,
-      status: 'draft', creation_source: 'cohort_template',
+      status, creation_source: 'cohort_template',
       privacy_status: privacyStatus
       };
     }),
