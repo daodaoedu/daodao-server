@@ -5499,8 +5499,8 @@ export interface paths {
                 query?: {
                     /** @description 郵件類型 */
                     emailType?: string;
-                    /** @description 發送狀態 */
-                    status?: "sent" | "failed" | "pending";
+                    /** @description 發送狀態（skipped：後台停用該模板而未寄出） */
+                    status?: "sent" | "failed" | "pending" | "skipped";
                     /** @description 收件人 email */
                     recipient?: string;
                     /** @description 用戶 ID */
@@ -44815,11 +44815,11 @@ export interface components {
              */
             emailType?: string;
             /**
-             * @description 發送狀態
+             * @description 發送狀態（skipped：後台停用該模板而未寄出）
              * @example sent
              * @enum {string}
              */
-            status?: "sent" | "failed" | "pending";
+            status?: "sent" | "failed" | "pending" | "skipped";
             /**
              * Format: email
              * @description 收件人 email
@@ -44899,11 +44899,11 @@ export interface components {
              */
             subject: string | null;
             /**
-             * @description 發送狀態
+             * @description 發送狀態（skipped：後台停用該模板而未寄出）
              * @example sent
              * @enum {string}
              */
-            status: "sent" | "failed" | "pending";
+            status: "sent" | "failed" | "pending" | "skipped";
             /**
              * @description 發送時間
              * @example 2024-01-15T10:30:00.000Z
