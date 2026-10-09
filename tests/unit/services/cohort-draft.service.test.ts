@@ -84,6 +84,37 @@ describe('ensureCohortDrafts', () => {
     }));
   });
 
+  // daodao#295 review：模板沒有 duration_days 時，複製出的實踐不可留 null end_date——
+  // 共同挑戰的實踐直接是 not_started／active，completeExpiredPractices 會用 created_at + 14 天提早完成
+  it('falls back to the cohort period when the template has no duration', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-09T00:00:00Z'), end_date: new Date('2026-11-27T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, duration_days: null } }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'active' });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({
+        start_date: new Date('2026-10-09T00:00:00Z'),
+        end_date: new Date('2026-11-27T00:00:00Z'),
+        duration_days: 50,
+        status: 'active'
+      })]
+    }));
+  });
+
+  it('keeps end_date null when a pinned start date falls after the cohort end (no negative period)', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-09T00:00:00Z'), end_date: new Date('2026-10-22T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], start_date: new Date('2026-10-30T00:00:00Z'), practice_template: { ...bindings[0].practice_template, duration_days: null } }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42);
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ start_date: new Date('2026-10-30T00:00:00Z'), end_date: null, duration_days: null })]
+    }));
+  });
+
   it('does not issue a write when there are no active bindings', async () => {
     prismaMock.cohort_templates.findMany.mockResolvedValue([]);
     await expect(ensureCohortDrafts(prismaMock, 8, 42)).resolves.toBe(0);

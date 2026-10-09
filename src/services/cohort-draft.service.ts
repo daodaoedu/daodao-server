@@ -9,6 +9,28 @@ const addDays = (start: Date, durationDays: number): Date => {
   return end;
 };
 
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * 推算複製實踐的期間：模板有天數 → 開始日 + 天數 − 1；
+ * 模板沒有天數 → 沿用本期結束日並回推天數（daodao#295：null end_date 的 not_started／active 實踐
+ * 會被 completeExpiredPractices 以 created_at + 14 天提早完成）。
+ * 開始日晚於本期結束日時不硬湊期間，維持 null。
+ */
+const resolvePeriod = (
+  startDate: Date | null,
+  templateDurationDays: number | null,
+  cohortEndDate: Date | null
+): { endDate: Date | null; durationDays: number | null } => {
+  if (!startDate) return { endDate: null, durationDays: templateDurationDays };
+  if (templateDurationDays) return { endDate: addDays(startDate, templateDurationDays), durationDays: templateDurationDays };
+  if (!cohortEndDate || cohortEndDate.getTime() < startDate.getTime()) return { endDate: null, durationDays: null };
+  return {
+    endDate: cohortEndDate,
+    durationDays: Math.round((cohortEndDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1
+  };
+};
+
 /** 把模板掛的資源複製到本次產生的草稿上（共用同一筆 resources，只加關聯） */
 const copyTemplateResources = async (tx: TransactionClient, cohortId: number, userId: number, templateIds: number[]): Promise<void> => {
   const templateResources = await tx.entity_resources.findMany({
@@ -45,7 +67,7 @@ export const ensureCohortDrafts = async (
 ): Promise<number> => {
   const status = options.status ?? 'draft';
   const [cohort, bindings] = await Promise.all([
-    tx.cohorts.findUnique({ where: { id: cohortId }, select: { start_date: true, is_private: true } }),
+    tx.cohorts.findUnique({ where: { id: cohortId }, select: { start_date: true, end_date: true, is_private: true } }),
     tx.cohort_templates.findMany({
       where: { cohort_id: cohortId, unbound_at: null },
       select: { template_id: true, start_date: true, practice_template: { select: { title: true, practice_action: true, duration_days: true, frequency_min_days: true, frequency_max_days: true, session_duration_minutes: true, practice_time_periods: true, other_context: true } } }
@@ -60,12 +82,13 @@ export const ensureCohortDrafts = async (
   const result = await tx.practices.createMany({
     data: bindings.map(binding => {
       const startDate = binding.start_date ?? cohort?.start_date ?? null;
+      const period = resolvePeriod(startDate, binding.practice_template.duration_days, cohort?.end_date ?? null);
       return {
       user_id: userId, cohort_id: cohortId, template_id: binding.template_id,
       title: binding.practice_template.title, practice_action: binding.practice_template.practice_action,
       start_date: startDate,
-      end_date: startDate && binding.practice_template.duration_days ? addDays(startDate, binding.practice_template.duration_days) : null,
-      duration_days: binding.practice_template.duration_days, frequency_min_days: binding.practice_template.frequency_min_days,
+      end_date: period.endDate,
+      duration_days: period.durationDays, frequency_min_days: binding.practice_template.frequency_min_days,
       frequency_max_days: binding.practice_template.frequency_max_days, session_duration_minutes: binding.practice_template.session_duration_minutes,
       practice_time_periods: binding.practice_template.practice_time_periods, other_context: binding.practice_template.other_context,
       status, creation_source: 'cohort_template',
