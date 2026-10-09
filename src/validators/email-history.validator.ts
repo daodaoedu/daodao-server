@@ -6,6 +6,15 @@
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { apiSuccessResponseSchema } from './api-response.validators';
+import { EMAIL_STATUS } from '../types/email';
+
+/** email_logs.status 的全部可能值（含後台停用時記的 skipped，daodao#236／#292） */
+const EMAIL_HISTORY_STATUSES = [
+  EMAIL_STATUS.SENT,
+  EMAIL_STATUS.FAILED,
+  EMAIL_STATUS.PENDING,
+  EMAIL_STATUS.SKIPPED,
+] as const;
 
 // ============================================================================
 // Query Schemas
@@ -21,10 +30,10 @@ export const emailHistoryQuerySchema = z.object({
       description: '郵件類型',
       example: 'verification'
     }),
-  status: z.enum(['sent', 'failed', 'pending'])
+  status: z.enum(EMAIL_HISTORY_STATUSES)
     .optional()
     .openapi({
-      description: '發送狀態',
+      description: '發送狀態（skipped：後台停用該模板而未寄出）',
       example: 'sent'
     }),
   recipient: z.string()
@@ -122,8 +131,8 @@ const emailHistoryRecordSchema = z.object({
     description: '郵件主題',
     example: '請驗證您的電子郵件'
   }),
-  status: z.enum(['sent', 'failed', 'pending']).openapi({
-    description: '發送狀態',
+  status: z.enum(EMAIL_HISTORY_STATUSES).openapi({
+    description: '發送狀態（skipped：後台停用該模板而未寄出）',
     example: 'sent'
   }),
   sentAt: z.string().nullable().openapi({
