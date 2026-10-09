@@ -311,8 +311,8 @@ describe('ensureCohortDrafts', () => {
     );
   });
 
-  // daodao#295 review 3：模板有天數但釘選開始日較晚時，結束日不可超出本期（FR-CC-03 固定時段）
-  it('clamps a templated end date to the cohort end and recomputes the duration', async () => {
+  // daodao#295 review 3：共同挑戰（by_period）模板有天數但釘選開始日較晚時，結束日不可超出本期（FR-CC-03 固定時段）
+  it('clamps a templated end date to the cohort end and recomputes the duration for challenges (by_period)', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue({
       start_date: new Date('2026-10-01T00:00:00Z'),
       end_date: new Date('2026-10-25T00:00:00Z'),
@@ -321,7 +321,7 @@ describe('ensureCohortDrafts', () => {
       { ...bindings[1], start_date: new Date('2026-10-20T00:00:00Z') },
     ] as never);
     prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
-    await ensureCohortDrafts(prismaMock, 8, 42);
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-10T04:00:00Z') });
     expect(prismaMock.practices.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: [
@@ -356,7 +356,33 @@ describe('ensureCohortDrafts', () => {
     );
   });
 
-  it('leaves the period null when a templated binding starts after the cohort end', async () => {
+  // daodao#295 final check：燈塔場次（預設 draft）不截期間，要與 organizationTemplateService.map 給教練看的
+  // 「開始日 + 天數 − 1」一致；30 天模板釘選 10-20、本期 10-25 結束 → 學員實踐仍是 10-20～11-18
+  it('keeps start + duration - 1 for Lighthouse cohorts even past the cohort end (matches organizer view)', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({
+      start_date: new Date('2026-10-01T00:00:00Z'),
+      end_date: new Date('2026-10-25T00:00:00Z'),
+    } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], start_date: new Date('2026-10-20T00:00:00Z') },
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42);
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({
+            start_date: new Date('2026-10-20T00:00:00Z'),
+            end_date: new Date('2026-11-18T00:00:00Z'),
+            duration_days: 30,
+            status: 'draft',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('keeps start + duration - 1 for Lighthouse cohorts when the pinned start is after the cohort end', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue({
       start_date: new Date('2026-10-01T00:00:00Z'),
       end_date: new Date('2026-10-21T00:00:00Z'),
@@ -366,6 +392,29 @@ describe('ensureCohortDrafts', () => {
     ] as never);
     prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
     await ensureCohortDrafts(prismaMock, 8, 42);
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({
+            start_date: new Date('2026-10-30T00:00:00Z'),
+            end_date: new Date('2026-11-19T00:00:00Z'),
+            duration_days: 21,
+          }),
+        ],
+      })
+    );
+  });
+
+  it('leaves the period null for challenges when a templated binding starts after the cohort end', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({
+      start_date: new Date('2026-10-01T00:00:00Z'),
+      end_date: new Date('2026-10-21T00:00:00Z'),
+    } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[1], start_date: new Date('2026-10-30T00:00:00Z') },
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-10T04:00:00Z') });
     expect(prismaMock.practices.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: [
