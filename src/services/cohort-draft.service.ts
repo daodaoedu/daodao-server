@@ -1,4 +1,6 @@
 import type { PrismaClient } from '../../generated/prisma';
+import { DURATION_DAYS_MAX } from '../validators/practice.validators';
+import { day, today } from './cohort-run-state';
 
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
@@ -25,10 +27,10 @@ const resolvePeriod = (
   if (!startDate) return { endDate: null, durationDays: templateDurationDays };
   if (templateDurationDays) return { endDate: addDays(startDate, templateDurationDays), durationDays: templateDurationDays };
   if (!cohortEndDate || cohortEndDate.getTime() < startDate.getTime()) return { endDate: null, durationDays: null };
-  return {
-    endDate: cohortEndDate,
-    durationDays: Math.round((cohortEndDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1
-  };
+  // 結束日一律沿用本期；回推天數超過 practices.duration_days CHECK（1–90，migration 083）時留 null——
+  // CHECK 允許 NULL，到期判斷（checkHasPassedEndDate）以 end_date 為準，不會退回 created_at + 14 天
+  const inferred = Math.round((cohortEndDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
+  return { endDate: cohortEndDate, durationDays: inferred <= DURATION_DAYS_MAX ? inferred : null };
 };
 
 /** 把模板掛的資源複製到本次產生的草稿上（共用同一筆 resources，只加關聯） */
@@ -55,17 +57,22 @@ const copyTemplateResources = async (tx: TransactionClient, cohortId: number, us
 
 /**
  * 複製出的實踐初始狀態：燈塔場次預設草稿（學員自行啟用）；
- * 共同挑戰沒有啟用步驟，由呼叫端依挑戰期間指定未開始／進行中（daodao#295）。
+ * 共同挑戰沒有啟用步驟，用 by_period 依「每個綁定的實際開始日」給未開始／進行中（daodao#295）——
+ * 綁定可釘選自己的開始日，不能用整期狀態一次決定。
  */
-export type CohortPracticeInitialStatus = 'draft' | 'not_started' | 'active';
+export type CohortPracticeInitialStatus = 'draft' | 'not_started' | 'active' | 'by_period';
+
+const statusByStart = (startDate: Date | null, now: Date): 'not_started' | 'active' =>
+  startDate && day(startDate) <= today(now) ? 'active' : 'not_started';
 
 export const ensureCohortDrafts = async (
   tx: TransactionClient,
   cohortId: number,
   userId: number,
-  options: { status?: CohortPracticeInitialStatus } = {}
+  options: { status?: CohortPracticeInitialStatus; now?: Date } = {}
 ): Promise<number> => {
-  const status = options.status ?? 'draft';
+  const requestedStatus = options.status ?? 'draft';
+  const now = options.now ?? new Date();
   const [cohort, bindings] = await Promise.all([
     tx.cohorts.findUnique({ where: { id: cohortId }, select: { start_date: true, end_date: true, is_private: true } }),
     tx.cohort_templates.findMany({
@@ -83,6 +90,7 @@ export const ensureCohortDrafts = async (
     data: bindings.map(binding => {
       const startDate = binding.start_date ?? cohort?.start_date ?? null;
       const period = resolvePeriod(startDate, binding.practice_template.duration_days, cohort?.end_date ?? null);
+      const status = requestedStatus === 'by_period' ? statusByStart(startDate, now) : requestedStatus;
       return {
       user_id: userId, cohort_id: cohortId, template_id: binding.template_id,
       title: binding.practice_template.title, practice_action: binding.practice_template.practice_action,

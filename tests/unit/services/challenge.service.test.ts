@@ -168,23 +168,20 @@ describe('challengeService.join', () => {
     prismaMock.practices.findFirst.mockResolvedValue({ external_id: 'p-ext' } as never);
   };
 
-  it('挑戰進行中加入：實踐為 active（進行中）', async () => {
+  // 狀態依每個綁定的實際開始日推導（綁定可釘選開始日），由 ensureCohortDrafts 的 by_period 處理（cohort-draft.service.test.ts 覆蓋）
+  it('加入時以 by_period 複製實踐，cohortId 即挑戰 id（挑戰＝cohorts 一列），並帶入加入時間', async () => {
     setupJoin();
-    const result = await challengeService.join(1, 42, new Date('2026-09-05T04:00:00.000Z'));
-    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'active' });
+    const now = new Date('2026-09-05T04:00:00.000Z');
+    const result = await challengeService.join(1, 42, now);
+    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'by_period', now });
     expect(result).toEqual({ enrollmentId: 9, cohortId: 1, status: 'joined', practiceId: 'p-ext' });
   });
 
-  it('挑戰未開始加入：實踐為 not_started（未開始）', async () => {
+  it('未開始的挑戰同樣以 by_period 複製（不再由整期狀態一次決定）', async () => {
     setupJoin();
-    await challengeService.join(1, 42, new Date('2026-08-20T04:00:00.000Z'));
-    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'not_started' });
-  });
-
-  it('台灣已是開始日（UTC 前一日 16:00）加入即為 active', async () => {
-    setupJoin();
-    await challengeService.join(1, 42, new Date('2026-08-31T16:00:00.000Z'));
-    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'active' });
+    const now = new Date('2026-08-20T04:00:00.000Z');
+    await challengeService.join(1, 42, now);
+    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'by_period', now });
   });
 
   it('已加入再加入回 409，不再複製實踐', async () => {
