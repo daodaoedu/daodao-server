@@ -1,8 +1,11 @@
-import { prismaMock } from '@tests/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
+jest.mock('@/services/cohort-draft.service', () => ({ ensureCohortDrafts: jest.fn().mockResolvedValue(1) }));
+jest.mock('@/queues/challenge-email.queue', () => ({ enqueueChallengeWelcomeEmail: jest.fn().mockResolvedValue(undefined) }));
 
 import { challengeService, deriveRunStatus } from '@/services/challenge.service';
+import { ensureCohortDrafts } from '@/services/cohort-draft.service';
 
 const challengeRow = (overrides: Record<string, unknown> = {}) => ({
   id: 1,
@@ -148,5 +151,46 @@ describe('challengeService.listMine', () => {
     prismaMock.cohorts.findMany.mockResolvedValue([]);
     expect(await challengeService.listMine(42)).toEqual([]);
     expect(prismaMock.practices.findMany).not.toHaveBeenCalled();
+  });
+});
+
+// daodao#295 AC-02：加入後複製出的實踐依挑戰期間給狀態（未開始／進行中），不是草稿
+describe('challengeService.join', () => {
+  beforeEach(() => jest.mocked(ensureCohortDrafts).mockClear());
+  const setupJoin = (): void => {
+    prismaMock.cohorts.findUnique.mockResolvedValue(challengeRow() as never);
+    prismaMock.users.findUnique.mockResolvedValue({ contacts: { email: 'member@example.test' } } as never);
+    setupTransactionMock();
+    prismaMock.$queryRaw.mockResolvedValue([{ id: 1, capacity: null }] as never);
+    prismaMock.cohort_enrollments.count.mockResolvedValue(0);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue(null);
+    prismaMock.cohort_enrollments.upsert.mockResolvedValue({ id: 9, cohort_id: 1 } as never);
+    prismaMock.practices.findFirst.mockResolvedValue({ external_id: 'p-ext' } as never);
+  };
+
+  it('挑戰進行中加入：實踐為 active（進行中）', async () => {
+    setupJoin();
+    const result = await challengeService.join(1, 42, new Date('2026-09-05T04:00:00.000Z'));
+    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'active' });
+    expect(result).toEqual({ enrollmentId: 9, cohortId: 1, status: 'joined', practiceId: 'p-ext' });
+  });
+
+  it('挑戰未開始加入：實踐為 not_started（未開始）', async () => {
+    setupJoin();
+    await challengeService.join(1, 42, new Date('2026-08-20T04:00:00.000Z'));
+    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'not_started' });
+  });
+
+  it('台灣已是開始日（UTC 前一日 16:00）加入即為 active', async () => {
+    setupJoin();
+    await challengeService.join(1, 42, new Date('2026-08-31T16:00:00.000Z'));
+    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, { status: 'active' });
+  });
+
+  it('已加入再加入回 409，不再複製實踐', async () => {
+    setupJoin();
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 9, status: 'joined' } as never);
+    await expect(challengeService.join(1, 42, new Date('2026-09-05T04:00:00.000Z'))).rejects.toThrow('你已加入此挑戰');
+    expect(ensureCohortDrafts).not.toHaveBeenCalled();
   });
 });
