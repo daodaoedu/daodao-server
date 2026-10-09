@@ -23,29 +23,34 @@ const inclusiveDays = (start: Date, end: Date): number | null => {
 };
 
 /**
- * 推算複製實踐的期間，結束日一律不超出本期（FR-CC-03 固定時段，daodao#295）：
- * - 模板有天數 → 開始日 + 天數 − 1，超出本期結束日時截到本期結束日並重算天數
+ * 推算複製實踐的期間（daodao#295）：
+ * - 模板有天數 → 開始日 + 天數 − 1
+ *   - 共同挑戰（clampToCohort）：結束日不超出本期（FR-CC-03 固定時段），超出時截到本期結束日並重算天數；
+ *     開始日晚於本期結束日 → 期間為 null（by_period 會因此保持草稿）
+ *   - 燈塔場次：不截，與 organizationTemplateService.map 給教練看的「開始日 + 天數 − 1」一致
  * - 模板沒有天數 → 沿用本期結束日並回推天數（null end_date 的 not_started／active 實踐
  *   會被 completeExpiredPractices 以 created_at + 14 天提早完成）；回推超過 90 天時天數留 null，
- *   到期判斷（checkHasPassedEndDate）以 end_date 為準
- * - 開始日晚於本期結束日 → 不硬湊期間，維持 null（by_period 會因此保持草稿）
+ *   到期判斷（checkHasPassedEndDate）以 end_date、進度以起訖日（resolveProgressDurationDays）為準；
+ *   開始日晚於本期結束日 → 期間為 null
  */
 const resolvePeriod = (
   startDate: Date | null,
   templateDurationDays: number | null,
-  cohortEndDate: Date | null
+  cohortEndDate: Date | null,
+  clampToCohort: boolean
 ): { endDate: Date | null; durationDays: number | null } => {
   if (!startDate) return { endDate: null, durationDays: templateDurationDays };
-  if (cohortEndDate && cohortEndDate.getTime() < startDate.getTime())
-    return { endDate: null, durationDays: null };
+  const startsAfterCohortEnd = cohortEndDate !== null && cohortEndDate.getTime() < startDate.getTime();
   if (templateDurationDays) {
     const templatedEnd = addDays(startDate, templateDurationDays);
-    if (cohortEndDate && templatedEnd.getTime() > cohortEndDate.getTime()) {
+    if (!clampToCohort || !cohortEndDate) return { endDate: templatedEnd, durationDays: templateDurationDays };
+    if (startsAfterCohortEnd) return { endDate: null, durationDays: null };
+    if (templatedEnd.getTime() > cohortEndDate.getTime()) {
       return { endDate: cohortEndDate, durationDays: inclusiveDays(startDate, cohortEndDate) };
     }
     return { endDate: templatedEnd, durationDays: templateDurationDays };
   }
-  if (!cohortEndDate) return { endDate: null, durationDays: null };
+  if (!cohortEndDate || startsAfterCohortEnd) return { endDate: null, durationDays: null };
   return { endDate: cohortEndDate, durationDays: inclusiveDays(startDate, cohortEndDate) };
 };
 
@@ -145,10 +150,12 @@ export const ensureCohortDrafts = async (
   const result = await tx.practices.createMany({
     data: bindings.map((binding) => {
       const startDate = binding.start_date ?? cohort?.start_date ?? null;
+      // 只有共同挑戰（by_period）把期間截在本期內；燈塔場次維持模板天數
       const period = resolvePeriod(
         startDate,
         binding.practice_template.duration_days,
-        cohort?.end_date ?? null
+        cohort?.end_date ?? null,
+        requestedStatus === 'by_period'
       );
       // by_period 拿不到完整期間（開始日或結束日為 null）時保持草稿：可打卡但沒有 end_date 的實踐
       // 會被 completeExpiredPractices 以 created_at + 14 天提早完成；共同挑戰依 FR-CC-03 必有固定期間，
