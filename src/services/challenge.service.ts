@@ -187,9 +187,9 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
         update: { user_id: userId, status: 'joined', joined_at: now, exited_at: null },
         select: { id: true, cohort_id: true }
       });
-    // 共同挑戰沒有「啟用草稿」步驟：依挑戰期間直接給未開始／進行中，草稿不能打卡（daodao#295）
-    const practiceStatus = deriveRunStatus(row.start_date, row.end_date, now) === 'upcoming' ? 'not_started' : 'active';
-    await ensureCohortDrafts(tx, challengeId, userId, { status: practiceStatus });
+    // 共同挑戰沒有「啟用草稿」步驟：依每個綁定的實際開始日給未開始／進行中，草稿不能打卡（daodao#295）。
+    // 挑戰即 cohorts 的一列（programs.kind = challenge），challengeId 就是 cohortId。
+    await ensureCohortDrafts(tx, challengeId, userId, { status: 'by_period', now });
     const practice = await tx.practices.findFirst({
       where: { cohort_id: challengeId, user_id: userId, creation_source: 'cohort_template', deleted_at: null },
       select: { external_id: true },

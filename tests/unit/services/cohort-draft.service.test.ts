@@ -115,6 +115,59 @@ describe('ensureCohortDrafts', () => {
     }));
   });
 
+  // daodao#295 review 2：期間 > 90 天時回推的天數會違反 practices.duration_days CHECK（1–90），createMany 失敗
+  it('keeps the cohort end date but leaves duration_days null when the inferred period exceeds 90 days', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-09T00:00:00Z'), end_date: new Date('2027-01-16T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, duration_days: null } }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'active' });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ start_date: new Date('2026-10-09T00:00:00Z'), end_date: new Date('2027-01-16T00:00:00Z'), duration_days: null })]
+    }));
+  });
+
+  it('still writes the inferred duration at exactly 90 days', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-09T00:00:00Z'), end_date: new Date('2027-01-06T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, duration_days: null } }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'active' });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ end_date: new Date('2027-01-06T00:00:00Z'), duration_days: 90 })]
+    }));
+  });
+
+  // daodao#295 review 2：綁定可釘選自己的開始日；本期進行中但該模板開始日在未來 → 該實踐應為未開始
+  it('derives the status per binding from its effective start date when status is by_period', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-01T00:00:00Z'), end_date: new Date('2026-11-30T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      bindings[0],
+      { ...bindings[1], start_date: new Date('2026-10-20T00:00:00Z') }
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 2 });
+    // 台灣 2026-10-10 中午
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-10T04:00:00Z') });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [
+        expect.objectContaining({ template_id: 5, status: 'active' }),
+        expect.objectContaining({ template_id: 6, status: 'not_started' })
+      ]
+    }));
+  });
+
+  it('by_period uses the Taipei calendar day: a binding starting today (UTC previous day 16:00) is active', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ start_date: new Date('2026-10-20T00:00:00Z'), end_date: new Date('2026-11-30T00:00:00Z') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([bindings[0]] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-19T16:00:00Z') });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ status: 'active' })]
+    }));
+  });
+
   it('does not issue a write when there are no active bindings', async () => {
     prismaMock.cohort_templates.findMany.mockResolvedValue([]);
     await expect(ensureCohortDrafts(prismaMock, 8, 42)).resolves.toBe(0);
