@@ -1,8 +1,15 @@
-import { prismaMock } from '@tests/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
+jest.mock('@/services/cohort-draft.service', () => ({
+  ensureCohortDrafts: jest.fn().mockResolvedValue(1),
+}));
+jest.mock('@/queues/challenge-email.queue', () => ({
+  enqueueChallengeWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { challengeService, deriveRunStatus } from '@/services/challenge.service';
+import { ensureCohortDrafts } from '@/services/cohort-draft.service';
 
 const challengeRow = (overrides: Record<string, unknown> = {}) => ({
   id: 1,
@@ -13,8 +20,14 @@ const challengeRow = (overrides: Record<string, unknown> = {}) => ({
   join_paused: false,
   capacity: null,
   status: 'published',
-  program: { name: '晨間書寫', description: '一起寫', kind: 'challenge', archived_at: null, deleted_at: null },
-  ...overrides
+  program: {
+    name: '晨間書寫',
+    description: '一起寫',
+    kind: 'challenge',
+    archived_at: null,
+    deleted_at: null,
+  },
+  ...overrides,
 });
 
 describe('deriveRunStatus', () => {
@@ -55,11 +68,20 @@ describe('challengeService.list', () => {
     prismaMock.cohorts.findMany.mockResolvedValue([challengeRow()] as never);
     setupCounts(12);
     const [summary] = await challengeService.list(null, new Date('2026-08-27T00:00:00.000Z'));
-    expect(summary).toMatchObject({ id: 1, participantCount: 12, isJoined: false, canJoin: true, unavailableReason: null, runStatus: 'upcoming' });
+    expect(summary).toMatchObject({
+      id: 1,
+      participantCount: 12,
+      isJoined: false,
+      canJoin: true,
+      unavailableReason: null,
+      runStatus: 'upcoming',
+    });
   });
 
   it('超過加入截止日回報 expired', async () => {
-    prismaMock.cohorts.findMany.mockResolvedValue([challengeRow({ join_deadline: new Date('2026-08-20T00:00:00.000Z') })] as never);
+    prismaMock.cohorts.findMany.mockResolvedValue([
+      challengeRow({ join_deadline: new Date('2026-08-20T00:00:00.000Z') }),
+    ] as never);
     setupCounts();
     const [summary] = await challengeService.list(null, new Date('2026-08-27T00:00:00.000Z'));
     expect(summary).toMatchObject({ canJoin: false, unavailableReason: 'expired' });
@@ -74,7 +96,9 @@ describe('challengeService.list', () => {
 
   it('已登入且已加入回傳 isJoined=true', async () => {
     prismaMock.cohorts.findMany.mockResolvedValue([challengeRow()] as never);
-    prismaMock.cohort_enrollments.groupBy.mockResolvedValue([{ cohort_id: 1, _count: { id: 1 } }] as never);
+    prismaMock.cohort_enrollments.groupBy.mockResolvedValue([
+      { cohort_id: 1, _count: { id: 1 } },
+    ] as never);
     prismaMock.cohort_enrollments.findMany.mockResolvedValue([{ cohort_id: 1 }] as never);
     prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([{ cohort_id: 1 }] as never);
     const [summary] = await challengeService.list(7, new Date('2026-08-27T00:00:00.000Z'));
@@ -85,14 +109,24 @@ describe('challengeService.list', () => {
 describe('challengeService.getDetail', () => {
   it('非 challenge kind 的期回 404', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue(
-      challengeRow({ program: { name: '燈塔', description: null, kind: 'lighthouse', archived_at: null, deleted_at: null } }) as never
+      challengeRow({
+        program: {
+          name: '燈塔',
+          description: null,
+          kind: 'lighthouse',
+          archived_at: null,
+          deleted_at: null,
+        },
+      }) as never
     );
     await expect(challengeService.getDetail(1, null)).rejects.toThrow('找不到共同挑戰');
   });
 
   it('已封存計畫的挑戰回 404', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue(
-      challengeRow({ program: { ...challengeRow().program, archived_at: new Date('2026-08-01T00:00:00.000Z') } }) as never
+      challengeRow({
+        program: { ...challengeRow().program, archived_at: new Date('2026-08-01T00:00:00.000Z') },
+      }) as never
     );
     await expect(challengeService.getDetail(1, null)).rejects.toThrow('找不到共同挑戰');
   });
@@ -102,9 +136,16 @@ describe('challengeService.getDetail', () => {
     prismaMock.cohort_enrollments.groupBy.mockResolvedValue([] as never);
     prismaMock.cohort_enrollments.findMany.mockResolvedValue([]);
     prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
-    prismaMock.cohort_templates.findFirst.mockResolvedValue({ practice_template: { title: '晨間書寫', practice_action: '每天寫 10 分鐘' } } as never);
+    prismaMock.cohort_templates.findFirst.mockResolvedValue({
+      practice_template: { title: '晨間書寫', practice_action: '每天寫 10 分鐘' },
+    } as never);
     const detail = await challengeService.getDetail(1, null, new Date('2026-10-01T00:00:00.000Z'));
-    expect(detail).toMatchObject({ runStatus: 'ended', canJoin: false, unavailableReason: 'ended', template: { title: '晨間書寫' } });
+    expect(detail).toMatchObject({
+      runStatus: 'ended',
+      canJoin: false,
+      unavailableReason: 'ended',
+      template: { title: '晨間書寫' },
+    });
   });
 });
 
@@ -116,31 +157,56 @@ describe('challengeService.listMine', () => {
     prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
     prismaMock.practices.findMany.mockResolvedValue([
       { cohort_id: 1, external_id: 'first-uuid', _count: { practice_checkins: 2 } },
-      { cohort_id: 1, external_id: 'second-uuid', _count: { practice_checkins: 1 } }
+      { cohort_id: 1, external_id: 'second-uuid', _count: { practice_checkins: 1 } },
     ] as never);
 
     const [mine] = await challengeService.listMine(42, new Date('2026-09-10T00:00:00.000Z'));
-    expect(prismaMock.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ creation_source: 'cohort_template' }),
-      orderBy: { created_at: 'asc' }
-    }));
+    expect(prismaMock.practices.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ creation_source: 'cohort_template' }),
+        orderBy: { created_at: 'asc' },
+      })
+    );
     expect(mine.practiceId).toBe('first-uuid');
     expect(mine.checkInCount).toBe(2);
   });
 
   it('回傳我參加的挑戰並附自動複製的實踐 id', async () => {
-    prismaMock.cohorts.findMany.mockResolvedValue([challengeRow(), challengeRow({ id: 2, display_name: '已結束的挑戰' })] as never);
-    prismaMock.cohort_enrollments.groupBy.mockResolvedValue([{ cohort_id: 1, _count: { id: 12 } }] as never);
-    prismaMock.cohort_enrollments.findMany.mockResolvedValue([{ cohort_id: 1 }, { cohort_id: 2 }] as never);
+    prismaMock.cohorts.findMany.mockResolvedValue([
+      challengeRow(),
+      challengeRow({ id: 2, display_name: '已結束的挑戰' }),
+    ] as never);
+    prismaMock.cohort_enrollments.groupBy.mockResolvedValue([
+      { cohort_id: 1, _count: { id: 12 } },
+    ] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      { cohort_id: 1 },
+      { cohort_id: 2 },
+    ] as never);
     prismaMock.inspiration_deck_assignments.findMany.mockResolvedValue([]);
-    prismaMock.practices.findMany.mockResolvedValue([{ cohort_id: 1, external_id: '550e8400-e29b-41d4-a716-446655440000', _count: { practice_checkins: 0 } }] as never);
+    prismaMock.practices.findMany.mockResolvedValue([
+      {
+        cohort_id: 1,
+        external_id: '550e8400-e29b-41d4-a716-446655440000',
+        _count: { practice_checkins: 0 },
+      },
+    ] as never);
 
     const mine = await challengeService.listMine(42, new Date('2026-09-10T00:00:00.000Z'));
-    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ cohort_enrollments: { some: { user_id: 42, status: 'joined' } } })
-    }));
+    expect(prismaMock.cohorts.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          cohort_enrollments: { some: { user_id: 42, status: 'joined' } },
+        }),
+      })
+    );
     expect(mine).toHaveLength(2);
-    expect(mine[0]).toMatchObject({ id: 1, isJoined: true, participantCount: 12, practiceId: '550e8400-e29b-41d4-a716-446655440000' });
+    expect(mine[0]).toMatchObject({
+      id: 1,
+      isJoined: true,
+      participantCount: 12,
+      practiceId: '550e8400-e29b-41d4-a716-446655440000',
+    });
     expect(mine[1]).toMatchObject({ id: 2, practiceId: null, checkInCount: 0 });
   });
 
@@ -148,5 +214,43 @@ describe('challengeService.listMine', () => {
     prismaMock.cohorts.findMany.mockResolvedValue([]);
     expect(await challengeService.listMine(42)).toEqual([]);
     expect(prismaMock.practices.findMany).not.toHaveBeenCalled();
+  });
+});
+
+// daodao#295 AC-02：加入後複製出的實踐依挑戰期間給狀態（未開始／進行中），不是草稿
+describe('challengeService.join', () => {
+  beforeEach(() => jest.mocked(ensureCohortDrafts).mockClear());
+  const setupJoin = (): void => {
+    prismaMock.cohorts.findUnique.mockResolvedValue(challengeRow() as never);
+    prismaMock.users.findUnique.mockResolvedValue({
+      contacts: { email: 'member@example.test' },
+    } as never);
+    setupTransactionMock();
+    prismaMock.$queryRaw.mockResolvedValue([{ id: 1, capacity: null }] as never);
+    prismaMock.cohort_enrollments.count.mockResolvedValue(0);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue(null);
+    prismaMock.cohort_enrollments.upsert.mockResolvedValue({ id: 9, cohort_id: 1 } as never);
+    prismaMock.practices.findFirst.mockResolvedValue({ external_id: 'p-ext' } as never);
+  };
+
+  // 狀態依每個綁定的實際開始日推導（綁定可釘選開始日），由 ensureCohortDrafts 的 by_period 處理（cohort-draft.service.test.ts 覆蓋）
+  it('加入時以 by_period 複製實踐，cohortId 即挑戰 id（挑戰＝cohorts 一列），並帶入加入時間', async () => {
+    setupJoin();
+    const now = new Date('2026-09-05T04:00:00.000Z');
+    const result = await challengeService.join(1, 42, now);
+    expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, {
+      status: 'by_period',
+      now,
+    });
+    expect(result).toEqual({ enrollmentId: 9, cohortId: 1, status: 'joined', practiceId: 'p-ext' });
+  });
+
+  it('已加入再加入回 409，不再複製實踐', async () => {
+    setupJoin();
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 9, status: 'joined' } as never);
+    await expect(
+      challengeService.join(1, 42, new Date('2026-09-05T04:00:00.000Z'))
+    ).rejects.toThrow('你已加入此挑戰');
+    expect(ensureCohortDrafts).not.toHaveBeenCalled();
   });
 });

@@ -253,6 +253,34 @@ describe('Practice CheckIn Service', () => {
       expect(result.data.isFirstCheckIn).toBe(false);
     });
 
+    // daodao#295：共同挑戰期間 > 90 天時 duration_days 留 null（CHECK 1–90），進度不可退回 14 天計算
+    it('uses the inclusive start/end span for progress when duration_days is null (100-day challenge)', async () => {
+      const start = new Date(futureStart);
+      const end = new Date(start.getTime() + 99 * 24 * 60 * 60 * 1000); // 含頭尾 100 天
+      const testPractice = createTestPractice({
+        status: 'active',
+        first_checkin_at: new Date(),
+        start_date: start,
+        end_date: end,
+        duration_days: null,
+        frequency_min_days: 7,
+        frequency_max_days: 7
+      });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(55); // 本次為第 56 次
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(createTestCheckIn());
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
+
+      const result = await createCheckIn(1, createCheckInRequest(), 1);
+
+      // 最低目標 = ceil(100 / 7 × 7) = 100；50% + 55 × 50 / 99 = 77.78%（用 14 天會變成 261.54%）
+      expect(result.data.practiceProgressPercentage).toBe(77.78);
+    });
+
     it('should use transaction for database operations', async () => {
       const testPractice = createTestPractice({ status: 'not_started' });
       const testCheckIn = createTestCheckIn();
