@@ -21,6 +21,7 @@ import type {
   AdminUpdateProgramInput,
   AdminUpdateTemplateInput
 } from '../validators/admin-challenge.validator';
+import { DURATION_DAYS_MAX } from '../validators/practice.validators';
 import { deriveRunStatus } from './challenge.service';
 import { prisma } from './database/prisma.service';
 import { organizationTemplateInternals } from './organization-template.service';
@@ -204,12 +205,30 @@ const getTemplateForProgram = async (templateId: number, organizationId: number)
   return template;
 };
 
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * 共同挑戰期間上限（FRD FR-CC-03「91 天內」，daodaoedu/daodao#300）：含頭尾超過 DURATION_DAYS_MAX 天時拒絕，
+ * 讓加入時複製出的實踐 duration_days 一定寫得進 practices CHECK（1–91），不會落到空天數。
+ */
+const assertWithinMaxPeriod = (startDate: Date, endDate: Date): void => {
+  const days = Math.round((endDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
+  if (days > DURATION_DAYS_MAX) {
+    throw new BadRequestError(`挑戰期間最多 ${DURATION_DAYS_MAX} 天（目前為 ${days} 天），請調整開始日或結束日`);
+  }
+};
+
 /** 依模板持續天數推算結束日；沒有持續天數時必須手動給結束日 */
 const resolveEndDate = (startDate: Date, endDateInput: string | undefined, durationDays: number | null | undefined): Date => {
-  if (durationDays) return computeEndDate(startDate, durationDays);
+  if (durationDays) {
+    const endDate = computeEndDate(startDate, durationDays);
+    assertWithinMaxPeriod(startDate, endDate);
+    return endDate;
+  }
   if (!endDateInput) throw new BadRequestError('模板未設定持續天數時，必須提供結束日');
   const endDate = toDate(endDateInput);
   if (startDate > endDate) throw new BadRequestError('開始日期不可晚於結束日期');
+  assertWithinMaxPeriod(startDate, endDate);
   return endDate;
 };
 

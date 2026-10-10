@@ -866,7 +866,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       const newStartDate = data.startDate
         ? new Date(data.startDate)
         : existingPractice.start_date;
-      // duration_days 為 null（> 90 天的共同挑戰）時沿用原起訖日天數，不退回 14 天（daodao#295）
+      // duration_days 為 null（> 91 天的共同挑戰，daodao#300 前建立）時沿用原起訖日天數，不退回 14 天（daodao#295）
       const newDurationDays = data.durationDays ?? resolveProgressDurationDays(existingPractice, 14);
 
       if (data.startDate !== undefined) {

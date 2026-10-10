@@ -89,6 +89,37 @@ describe('adminChallengeService.createCohort', () => {
     prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 1, duration_days: null } as never);
     await expect(adminChallengeService.createCohort(10, { displayName: 'x', startDate: '2026-09-01', templateId: 1 })).rejects.toMatchObject({ statusCode: 400 });
   });
+
+  // daodao#300 AC-01：共同挑戰 FRD FR-CC-03 期間 91 天內，91 天（含頭尾）可建立
+  it('期間剛好 91 天（含頭尾）可建立', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue(programRow() as never);
+    prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 1, duration_days: null } as never);
+    prismaMock.cohorts.create.mockResolvedValue({ id: 6 } as never);
+    prismaMock.cohort_templates.updateMany.mockResolvedValue({ count: 0 } as never);
+    prismaMock.cohort_templates.upsert.mockResolvedValue({} as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohortRow({ end_date: new Date('2026-11-30T00:00:00.000Z') }) as never);
+
+    await adminChallengeService.createCohort(10, { displayName: '91 天挑戰', startDate: '2026-09-01', endDate: '2026-11-30', templateId: 1 }, new Date('2026-08-28T00:00:00.000Z'));
+
+    expect(prismaMock.cohorts.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ start_date: new Date('2026-09-01T00:00:00.000Z'), end_date: new Date('2026-11-30T00:00:00.000Z') })
+    }));
+  });
+
+  // daodao#300 AC-02：92 天以上在後台建立時被擋，訊息要講清楚上限與實際天數
+  it('期間 92 天（含頭尾）→ 400，訊息寫明上限 91 天與實際天數', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue(programRow() as never);
+    prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 1, duration_days: null } as never);
+    await expect(adminChallengeService.createCohort(10, { displayName: '92 天挑戰', startDate: '2026-09-01', endDate: '2026-12-01', templateId: 1 }))
+      .rejects.toMatchObject({ statusCode: 400, message: '挑戰期間最多 91 天（目前為 92 天），請調整開始日或結束日' });
+    expect(prismaMock.cohorts.create).not.toHaveBeenCalled();
+  });
+
+  it('未綁模板、只給起訖日時同樣受 91 天上限約束', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue(programRow() as never);
+    await expect(adminChallengeService.createCohort(10, { displayName: '半年挑戰', startDate: '2026-09-01', endDate: '2027-02-28' }))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('最多 91 天') });
+  });
 });
 
 describe('adminChallengeService.updateCohort', () => {
