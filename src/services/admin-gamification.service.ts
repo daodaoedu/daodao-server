@@ -201,7 +201,7 @@ const getParticipants = async (challengeId: number): Promise<Array<{ userId: num
     user_id: number; user_name: string | null;
     progress: number; completed_at: Date | null;
   }>>`
-    SELECT cp.user_id, u.name AS user_name, cp.progress, cp.completed_at
+    SELECT cp.user_id, u.nickname AS user_name, cp.progress, cp.completed_at
     FROM challenge_progress cp
     JOIN users u ON cp.user_id = u.id
     WHERE cp.challenge_id = ${challengeId}
@@ -304,9 +304,10 @@ const getLeaderboard = async (period: 'weekly' | 'monthly' | 'alltime'): Promise
     total_points: number; weekly_points: number; monthly_points: number;
     breakdown: Record<string, number> | null;
   }>>(
-    Prisma.sql`SELECT up.*, u.name AS user_name, u.photo_url
+    Prisma.sql`SELECT up.*, u.nickname AS user_name, c.photo_url
      FROM user_points up
      JOIN users u ON up.user_id = u.id
+     LEFT JOIN contacts c ON c.id = u.contact_id
      ORDER BY ${Prisma.raw(`up.${orderCol}`)} DESC
      LIMIT 20`
   )

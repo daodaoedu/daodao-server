@@ -95,7 +95,7 @@ const getStalledUsers = async (stalledDays: number): Promise<StalledUser[]> => {
   }>>`
     SELECT
       lp.user_id,
-      u.name AS user_name,
+      u.nickname AS user_name,
       p.title AS course_name,
       lp.progress_percent AS progress,
       EXTRACT(DAY FROM NOW() - lp.last_activity_at)::int AS stalled_days
@@ -534,7 +534,7 @@ const issueCertificate = async (userId: number, templateId: number): Promise<Cer
     SELECT
       i.id,
       ct.name AS template_name,
-      u.name AS user_name,
+      u.nickname AS user_name,
       i.issued_at,
       i.status
     FROM inserted i
@@ -585,7 +585,7 @@ const listIssuedCertificates = async (): Promise<Certificate[]> => {
     SELECT
       c.id,
       ct.name AS template_name,
-      u.name AS user_name,
+      u.nickname AS user_name,
       c.issued_at,
       c.status
     FROM certificates c
@@ -619,7 +619,7 @@ const verifyCertificate = async (id: number): Promise<{ valid: boolean; certific
     SELECT
       c.id,
       ct.name AS template_name,
-      u.name AS user_name,
+      u.nickname AS user_name,
       c.issued_at,
       c.status
     FROM certificates c

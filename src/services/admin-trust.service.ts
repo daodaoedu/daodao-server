@@ -116,7 +116,7 @@ const getTrustHistory = async (limit: number, offset: number): Promise<TrustLeve
     from_level: number; to_level: number; reason: string;
     created_at: Date;
   }>>`
-    SELECT tlh.*, u.name AS user_name
+    SELECT tlh.*, u.nickname AS user_name
     FROM trust_level_history tlh
     JOIN users u ON tlh.user_id = u.id
     ORDER BY tlh.created_at DESC
