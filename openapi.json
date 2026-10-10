@@ -14251,9 +14251,10 @@
             "enum": [
               "sent",
               "failed",
-              "pending"
+              "pending",
+              "skipped"
             ],
-            "description": "發送狀態",
+            "description": "發送狀態（skipped：後台停用該模板而未寄出）",
             "example": "sent"
           },
           "recipient": {
@@ -14358,9 +14359,10 @@
             "enum": [
               "sent",
               "failed",
-              "pending"
+              "pending",
+              "skipped"
             ],
-            "description": "發送狀態",
+            "description": "發送狀態（skipped：後台停用該模板而未寄出）",
             "example": "sent"
           },
           "sentAt": {
@@ -61244,13 +61246,14 @@
               "enum": [
                 "sent",
                 "failed",
-                "pending"
+                "pending",
+                "skipped"
               ],
-              "description": "發送狀態",
+              "description": "發送狀態（skipped：後台停用該模板而未寄出）",
               "example": "sent"
             },
             "required": false,
-            "description": "發送狀態",
+            "description": "發送狀態（skipped：後台停用該模板而未寄出）",
             "name": "status",
             "in": "query"
           },

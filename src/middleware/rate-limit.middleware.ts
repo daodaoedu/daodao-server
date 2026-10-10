@@ -2,8 +2,9 @@
  * 速率限制中間件
  */
 
+import type { NextFunction, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { Request, Response } from 'express';
+import { TooManyRequestsError } from './error.middleware';
 
 /**
  * 全域速率限制器
@@ -30,7 +31,7 @@ export const globalLimiter = rateLimit({
       error: 'RATE_LIMIT_EXCEEDED',
       retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
-  },
+  }
 });
 
 /**
@@ -57,7 +58,7 @@ export const strictLimiter = rateLimit({
       error: 'STRICT_RATE_LIMIT_EXCEEDED',
       retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
-  },
+  }
 });
 
 /**
@@ -84,7 +85,7 @@ export const authLimiter = rateLimit({
       error: 'AUTH_RATE_LIMIT_EXCEEDED',
       retryAfter: Math.round((15 * 60 * 1000) / 1000) // 重試等待時間（秒）
     });
-  },
+  }
 });
 
 /**
@@ -111,7 +112,7 @@ export const createLimiter = rateLimit({
       error: 'CREATE_RATE_LIMIT_EXCEEDED',
       retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
-  },
+  }
 });
 
 /**
@@ -137,5 +138,24 @@ export const uploadLimiter = rateLimit({
       error: 'UPLOAD_RATE_LIMIT_EXCEEDED',
       retryAfter: Math.round((60 * 1000) / 1000) // 重試等待時間（秒）
     });
-  },
+  }
+});
+
+/**
+ * 錯誤回報限流（POST /api/v1/feedback/bug-report）
+ * 每次請求最多上傳 3 張截圖到 R2 並寄一封通知信給 contact@daodao.so，
+ * 以登入使用者為 key（掛在 authenticateAny 之後；沒有 user 時退回 IP），每 10 分鐘最多 5 次。
+ */
+export const BUG_REPORT_RATE_LIMIT = { windowMs: 10 * 60 * 1000, max: 5 } as const;
+
+export const bugReportLimiter = rateLimit({
+  windowMs: BUG_REPORT_RATE_LIMIT.windowMs,
+  max: BUG_REPORT_RATE_LIMIT.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request): string =>
+    req.user?.id !== undefined ? `user:${req.user.id}` : `ip:${req.ip || 'unknown'}`,
+  handler: (_req: Request, _res: Response, next: NextFunction) => {
+    next(new TooManyRequestsError('錯誤回報送出過於頻繁，請稍後再試'));
+  }
 });
