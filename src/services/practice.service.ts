@@ -30,7 +30,8 @@ import {
 import { calculatePagination } from '../utils/pagination-helper';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import {
-  INITIAL_PROGRESS
+  INITIAL_PROGRESS,
+  resolveProgressDurationDays
 } from '../utils/practice-progress';
 import {
   determineNewStatus,
@@ -865,7 +866,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       const newStartDate = data.startDate
         ? new Date(data.startDate)
         : existingPractice.start_date;
-      const newDurationDays = data.durationDays ?? existingPractice.duration_days ?? 14;
+      // duration_days 為 null（> 90 天的共同挑戰）時沿用原起訖日天數，不退回 14 天（daodao#295）
+      const newDurationDays = data.durationDays ?? resolveProgressDurationDays(existingPractice, 14);
 
       if (data.startDate !== undefined) {
         updateData.start_date = newStartDate;

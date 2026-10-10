@@ -31,6 +31,7 @@ import {
 import { calculatePagination } from '../utils/pagination-helper';
 import {
   calculateProgress,
+  resolveProgressDurationDays,
   type PracticeProgressConfig
 } from '../utils/practice-progress';
 import {
@@ -101,8 +102,8 @@ export async function createCheckIn(
     // 共同挑戰為固定時段：開始日前不可打卡，也不做提早打卡的日期位移
     assertChallengeCheckinAllowed(await isChallengeCohort(practice.cohort_id), practice.start_date, today);
 
-    // 取得實踐配置用於進度計算
-    const durationDays = (practice as { duration_days?: number }).duration_days || 14;
+    // 取得實踐配置用於進度計算（duration_days 為 null 時改用起訖日天數，見 resolveProgressDurationDays）
+    const durationDays = resolveProgressDurationDays(practice, 14);
     const progressConfig: PracticeProgressConfig = {
       frequencyMinDays: (practice as { frequency_min_days?: number }).frequency_min_days || 1,
       frequencyMaxDays: (practice as { frequency_max_days?: number }).frequency_max_days || 7,
@@ -1053,7 +1054,7 @@ export async function deleteCheckIn(
         const progressConfig: PracticeProgressConfig = {
           frequencyMinDays: (practice as { frequency_min_days?: number }).frequency_min_days || 1,
           frequencyMaxDays: (practice as { frequency_max_days?: number }).frequency_max_days || 7,
-          durationDays: (practice as { duration_days?: number }).duration_days || 30
+          durationDays: resolveProgressDurationDays(practice, 30)
         };
 
         const progressResult = calculateProgress(progressConfig, currentRemainingCheckIns);

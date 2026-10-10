@@ -163,6 +163,26 @@ export function calculateRemainingCheckIns(
   return Math.max(remaining, 0);
 }
 
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * 進度／期間計算用的實踐天數。
+ * duration_days 有值就用；為 null 但有起訖日時用含頭尾天數——共同挑戰期間超過 90 天時
+ * duration_days 依 practices CHECK（1–90）留 null，不可退回預設天數，否則 100 天挑戰 14 次就 100%（daodao#295）。
+ * 兩者都沒有（或起訖日顛倒）才用呼叫端原本的預設值。
+ */
+export function resolveProgressDurationDays(
+  practice: { duration_days?: number | null; start_date?: Date | null; end_date?: Date | null },
+  fallbackDays: number
+): number {
+  if (practice.duration_days) return practice.duration_days;
+  if (practice.start_date && practice.end_date) {
+    const days = Math.round((practice.end_date.getTime() - practice.start_date.getTime()) / MS_PER_DAY) + 1;
+    if (days >= 1) return days;
+  }
+  return fallbackDays;
+}
+
 /**
  * 驗證進度值是否有效
  *
