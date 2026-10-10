@@ -208,7 +208,7 @@ const getRsvps = async (eventId: number): Promise<EventRsvp[]> => {
     SELECT
       er.id,
       er.user_id,
-      u.name AS user_name,
+      u.nickname AS user_name,
       er.status,
       er.created_at AS registered_at
     FROM event_rsvps er

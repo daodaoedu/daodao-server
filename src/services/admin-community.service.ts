@@ -594,7 +594,7 @@ const getConversations = async (status?: 'resolved' | 'escalated' | 'needs_human
         SELECT
           c.id,
           c.user_id,
-          u.name AS user_name,
+          u.nickname AS user_name,
           COALESCE(
             (SELECT content FROM ai_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1),
             ''
@@ -617,7 +617,7 @@ const getConversations = async (status?: 'resolved' | 'escalated' | 'needs_human
         SELECT
           c.id,
           c.user_id,
-          u.name AS user_name,
+          u.nickname AS user_name,
           COALESCE(
             (SELECT content FROM ai_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1),
             ''
@@ -655,7 +655,7 @@ const getConversation = async (conversationId: number): Promise<AIConversation |
     SELECT
       c.id,
       c.user_id,
-      u.name AS user_name,
+      u.nickname AS user_name,
       COALESCE(
         (SELECT content FROM ai_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1),
         ''

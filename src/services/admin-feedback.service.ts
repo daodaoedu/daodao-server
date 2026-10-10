@@ -5,13 +5,13 @@
 
 import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
-import type { FeedbackItem, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput } from '../types/admin-feedback.types'
+import type { FeedbackItem, FeedbackListResult, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput } from '../types/admin-feedback.types'
 
 /**
  * 列出回饋（含篩選與分頁）
  * @param filters - 狀態、分類篩選及分頁參數
  */
-const listFeedback = async (filters: { status?: string; category?: string; limit: number; offset: number }): Promise<{ items: FeedbackItem[]; total: number }> => {
+const listFeedback = async (filters: { status?: string; category?: string; limit: number; offset: number }): Promise<FeedbackListResult> => {
   const conditions: Prisma.Sql[] = [Prisma.sql`1=1`]
   if (filters.status) conditions.push(Prisma.sql`f.status = ${filters.status}`)
   if (filters.category) conditions.push(Prisma.sql`f.category = ${filters.category}`)
@@ -22,12 +22,22 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
   )
   const total = Number(countResult?.total ?? 0)
 
+  // 統計卡片用全部回饋（不受篩選影響）；「本月」以台灣時間的月初起算
+  const [statsResult] = await prisma.$queryRaw<Array<{ total: bigint; pending: bigint; this_month: bigint }>>(
+    Prisma.sql`SELECT COUNT(*)::bigint AS total,
+       COUNT(*) FILTER (WHERE f.status = 'pending')::bigint AS pending,
+       COUNT(*) FILTER (WHERE f.created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Taipei') AT TIME ZONE 'Asia/Taipei')::bigint AS this_month
+     FROM feedback f`
+  )
+
+  // users 沒有 name 欄位（顯示名稱是 nickname）；feedback 沒有 replied_at，回覆時間取最後一則 feedback_replies
   const rows = await prisma.$queryRaw<Array<{
-    id: number; user_id: number; user_name: string | null;
+    id: number; user_id: number | null; user_name: string | null;
     content: string; category: string; status: string;
     created_at: Date; replied_at: Date | null;
   }>>(
-    Prisma.sql`SELECT f.id, f.user_id, u.name as user_name, f.content, f.category, f.status, f.created_at, f.replied_at
+    Prisma.sql`SELECT f.id, f.user_id, u.nickname AS user_name, f.content, f.category, f.status, f.created_at,
+       (SELECT MAX(fr.created_at) FROM feedback_replies fr WHERE fr.feedback_id = f.id) AS replied_at
      FROM feedback f
      LEFT JOIN users u ON f.user_id = u.id
      WHERE ${where}
@@ -36,6 +46,12 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
   )
 
   return {
+    total,
+    stats: {
+      total: Number(statsResult?.total ?? 0),
+      pending: Number(statsResult?.pending ?? 0),
+      thisMonth: Number(statsResult?.this_month ?? 0),
+    },
     items: rows.map(r => ({
       id: r.id,
       userId: r.user_id,
@@ -46,7 +62,6 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
       createdAt: r.created_at.toISOString(),
       repliedAt: r.replied_at?.toISOString() ?? null,
     })),
-    total,
   }
 }
 
@@ -75,7 +90,8 @@ const replyToFeedback = async (id: number, content: string): Promise<{ sent: boo
     INSERT INTO feedback_replies (feedback_id, content, created_at)
     VALUES (${id}, ${content}, NOW())
   `
-  await prisma.$executeRaw`UPDATE feedback SET status = 'replied', replied_at = NOW() WHERE id = ${id}`
+  // feedback 沒有 replied_at 欄位，回覆時間以 feedback_replies.created_at 為準
+  await prisma.$executeRaw`UPDATE feedback SET status = 'replied', updated_at = NOW() WHERE id = ${id}`
   return { sent: true }
 }
 

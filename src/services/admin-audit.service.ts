@@ -26,7 +26,7 @@ const listAuditLogs = async (filters: AuditLogFilters): Promise<{ items: AuditLo
     old_value: Record<string, unknown> | null; new_value: Record<string, unknown> | null; ip_address: string | null;
     user_agent: string | null; created_at: Date;
   }>>(
-    Prisma.sql`SELECT al.*, u.name as admin_name
+    Prisma.sql`SELECT al.*, u.nickname as admin_name
      FROM audit_logs al
      LEFT JOIN users u ON al.admin_id = u.id
      WHERE ${where}
