@@ -11,6 +11,7 @@
 
 import { randomBytes } from 'crypto';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
+import { MS_PER_DAY } from '../utils/date-utils';
 import { PROGRAM_KINDS } from '../constants/program-kind';
 import type {
   AdminCohortResponse,
@@ -205,8 +206,6 @@ const getTemplateForProgram = async (templateId: number, organizationId: number)
   return template;
 };
 
-const MS_PER_DAY = 86_400_000;
-
 /**
  * 共同挑戰期間上限（FRD FR-CC-03「91 天內」，daodaoedu/daodao#300）：含頭尾超過 DURATION_DAYS_MAX 天時拒絕，
  * 讓加入時複製出的實踐 duration_days 一定寫得進 practices CHECK（1–91），不會落到空天數。
@@ -342,6 +341,8 @@ const archiveCohort = async (programId: number, cohortId: number): Promise<void>
 /** 複製挑戰：以草稿建立同期間、同模板的新挑戰（不複製參與者與卡組指派） */
 const duplicateCohort = async (programId: number, cohortId: number, now = new Date()) => {
   const source = await getCohort(programId, cohortId);
+  // 複製也是建立新挑戰：#300 之前建立的舊挑戰可能超過 91 天，副本不可沿用
+  assertWithinMaxPeriod(source.start_date, source.end_date);
   const templateId = source.cohort_templates[0]?.template_id ?? null;
   const startDate = source.start_date.toISOString().slice(0, 10);
   const newId = await prisma.$transaction(async tx => {
