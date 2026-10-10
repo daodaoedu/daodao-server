@@ -5,6 +5,7 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { authenticateAny } from '../middleware/auth';
 import { validate } from '../middleware/validation.middleware';
@@ -27,6 +28,7 @@ import {
   chatLikeResponseSchema,
   chatMarkReadResponseSchema,
 } from '../validators/chat-room.validators';
+import { apiSuccessResponseSchema, cursorPaginatedApiResponseSchema } from '../validators/api-response.validators';
 
 const errors = {
   400: { $ref: '#/components/responses/BadRequestError' },
@@ -39,46 +41,54 @@ const errors = {
 
 const security = [{ bearerAuth: [] }];
 
+// 回應一律包在 { success, data, ... } 外層（controller 用 createSuccessResponse／createCursorPaginatedResponse）；
+// 文件必須照實描述，否則 f2e 由 OpenAPI 產生的型別會少一層，讀不到資料（daodao#154）。
+// GET messages 依 query 回兩種形狀：歷史分頁（data 為訊息陣列 + pagination）或增量輪詢（data 為 delta 物件）
+const chatMessagesResponseSchema = z.union([
+  cursorPaginatedApiResponseSchema(chatMessageSchema) as z.ZodTypeAny,
+  apiSuccessResponseSchema(chatMessageDeltaSchema) as z.ZodTypeAny,
+]);
+
 // ─── OpenAPI Registry ────────────────────────────────────
 
 registry.registerPath({
   method: 'get', path: '/api/v1/me/chat-rooms', tags: ['Chat'], summary: '我的聊天室列表',
-  responses: { 200: { description: '聊天室列表', content: { 'application/json': { schema: chatRoomListResponseSchema } } }, ...errors },
+  responses: { 200: { description: '聊天室列表', content: { 'application/json': { schema: apiSuccessResponseSchema(chatRoomListResponseSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'get', path: '/api/v1/chat-rooms/{roomId}', tags: ['Chat'], summary: '聊天室詳情',
   request: { params: chatRoomIdParamsSchema },
-  responses: { 200: { description: '聊天室詳情', content: { 'application/json': { schema: chatRoomDetailSchema } } }, ...errors },
+  responses: { 200: { description: '聊天室詳情', content: { 'application/json': { schema: apiSuccessResponseSchema(chatRoomDetailSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'get', path: '/api/v1/chat-rooms/{roomId}/members', tags: ['Chat'], summary: '聊天室成員列表',
   request: { params: chatRoomIdParamsSchema },
-  responses: { 200: { description: '成員列表', content: { 'application/json': { schema: chatMemberSchema.array() } } }, ...errors },
+  responses: { 200: { description: '成員列表', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMemberSchema.array()) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'get', path: '/api/v1/chat-rooms/{roomId}/messages', tags: ['Chat'], summary: '歷史訊息（before 分頁）或增量輪詢（after+since）',
   request: { params: chatRoomIdParamsSchema, query: chatMessagesQuerySchema },
-  responses: { 200: { description: '訊息列表或增量回應', content: { 'application/json': { schema: chatMessageDeltaSchema } } }, ...errors },
+  responses: { 200: { description: '訊息列表或增量回應', content: { 'application/json': { schema: chatMessagesResponseSchema } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'post', path: '/api/v1/chat-rooms/{roomId}/messages', tags: ['Chat'], summary: '發送訊息',
   request: { params: chatRoomIdParamsSchema, body: { content: { 'application/json': { schema: createChatMessageSchema } } } },
-  responses: { 201: { description: '訊息已發送', content: { 'application/json': { schema: chatMessageSchema } } }, ...errors },
+  responses: { 201: { description: '訊息已發送', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMessageSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'patch', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}', tags: ['Chat'], summary: '編輯訊息',
   request: { params: chatMessageIdParamsSchema, body: { content: { 'application/json': { schema: updateChatMessageSchema } } } },
-  responses: { 200: { description: '訊息已編輯', content: { 'application/json': { schema: chatMessageSchema } } }, ...errors },
+  responses: { 200: { description: '訊息已編輯', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMessageSchema) } } }, ...errors },
   security,
 });
 
@@ -92,49 +102,49 @@ registry.registerPath({
 registry.registerPath({
   method: 'put', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/like', tags: ['Chat'], summary: '按讚',
   request: { params: chatMessageIdParamsSchema },
-  responses: { 200: { description: '按讚結果', content: { 'application/json': { schema: chatLikeResponseSchema } } }, ...errors },
+  responses: { 200: { description: '按讚結果', content: { 'application/json': { schema: apiSuccessResponseSchema(chatLikeResponseSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'delete', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/like', tags: ['Chat'], summary: '取消按讚',
   request: { params: chatMessageIdParamsSchema },
-  responses: { 200: { description: '取消按讚結果', content: { 'application/json': { schema: chatLikeResponseSchema } } }, ...errors },
+  responses: { 200: { description: '取消按讚結果', content: { 'application/json': { schema: apiSuccessResponseSchema(chatLikeResponseSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'put', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/pin', tags: ['Chat'], summary: '置頂訊息',
   request: { params: chatMessageIdParamsSchema },
-  responses: { 200: { description: '置頂結果', content: { 'application/json': { schema: chatMessageSchema } } }, ...errors },
+  responses: { 200: { description: '置頂結果', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMessageSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'delete', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/pin', tags: ['Chat'], summary: '取消置頂',
   request: { params: chatMessageIdParamsSchema },
-  responses: { 200: { description: '取消置頂結果', content: { 'application/json': { schema: chatMessageSchema } } }, ...errors },
+  responses: { 200: { description: '取消置頂結果', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMessageSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'get', path: '/api/v1/chat-rooms/{roomId}/pins', tags: ['Chat'], summary: '置頂訊息列表',
   request: { params: chatRoomIdParamsSchema },
-  responses: { 200: { description: '置頂訊息', content: { 'application/json': { schema: chatMessageSchema.array() } } }, ...errors },
+  responses: { 200: { description: '置頂訊息', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMessageSchema.array()) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'get', path: '/api/v1/chat-rooms/{roomId}/messages/search', tags: ['Chat'], summary: '搜尋訊息',
   request: { params: chatRoomIdParamsSchema, query: chatSearchQuerySchema },
-  responses: { 200: { description: '搜尋結果', content: { 'application/json': { schema: chatSearchResponseSchema } } }, ...errors },
+  responses: { 200: { description: '搜尋結果', content: { 'application/json': { schema: apiSuccessResponseSchema(chatSearchResponseSchema) } } }, ...errors },
   security,
 });
 
 registry.registerPath({
   method: 'put', path: '/api/v1/chat-rooms/{roomId}/read', tags: ['Chat'], summary: '標記已讀',
   request: { params: chatRoomIdParamsSchema, body: { content: { 'application/json': { schema: markChatRoomReadSchema } } } },
-  responses: { 200: { description: '已讀結果', content: { 'application/json': { schema: chatMarkReadResponseSchema } } }, ...errors },
+  responses: { 200: { description: '已讀結果', content: { 'application/json': { schema: apiSuccessResponseSchema(chatMarkReadResponseSchema) } } }, ...errors },
   security,
 });
 

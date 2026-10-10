@@ -162,7 +162,7 @@ const getActionLog = async (limit: number, offset: number): Promise<AutoModActio
     rule_name: string; action: string; user_id: number;
     user_name: string | null; created_at: Date;
   }>>`
-    SELECT aal.*, u.name AS user_name
+    SELECT aal.*, u.nickname AS user_name
     FROM automod_action_log aal
     LEFT JOIN users u ON aal.user_id = u.id
     ORDER BY aal.created_at DESC
