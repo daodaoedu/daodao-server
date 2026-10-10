@@ -18,6 +18,7 @@ import {
   followTargetSchema,
   followParamsSchema,
   followQuerySchema,
+  userIdParamSchema,
   followActionApiResponseSchema,
 } from '../validators/follow.validators';
 
@@ -96,11 +97,13 @@ router.delete('/:targetType/:targetId',
 export const userFollowRouter = Router();
 
 userFollowRouter.get('/:userId/followers',
+  validate(userIdParamSchema, 'params'),
   validate(followQuerySchema, 'query'),
   getFollowers
 );
 
 userFollowRouter.get('/:userId/following',
+  validate(userIdParamSchema, 'params'),
   validate(followQuerySchema, 'query'),
   getFollowing
 );
