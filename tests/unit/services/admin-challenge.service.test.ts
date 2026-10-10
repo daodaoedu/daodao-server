@@ -198,3 +198,13 @@ describe('adminChallengeService.listParticipants', () => {
     expect(prismaMock.cohort_enrollments.findMany).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { joined_at: 'asc' } }));
   });
 });
+
+describe('adminChallengeService.duplicateCohort', () => {
+  it('來源期間超過 91 天（#300 之前建立的舊挑戰）→ 400，不建立副本', async () => {
+    // 2026-09-01～2026-12-09 含頭尾 100 天
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohortRow({ end_date: new Date('2026-12-09T00:00:00.000Z') }) as never);
+    await expect(adminChallengeService.duplicateCohort(10, 6))
+      .rejects.toMatchObject({ statusCode: 400, message: '挑戰期間最多 91 天（目前為 100 天），請調整開始日或結束日' });
+    expect(prismaMock.cohorts.create).not.toHaveBeenCalled();
+  });
+});
