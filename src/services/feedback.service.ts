@@ -1,12 +1,13 @@
 import { Prisma } from '../../generated/prisma'
-import { prisma } from './database/prisma.service'
-import { uploadToR2 } from './r2.service'
-import { emailService } from './email/email.service'
+import { escapeHtml } from '../utils/sanitize'
 import type { BugReportInput } from '../validators/feedback.validator'
+import { prisma } from './database/prisma.service'
+import { emailService } from './email/email.service'
+import { uploadToR2 } from './r2.service'
 
 interface BugReportData extends BugReportInput {
-  userId: number
-  screenshots?: Express.Multer.File[]
+  userId: number;
+  screenshots?: Express.Multer.File[];
 }
 
 const uploadScreenshots = async (files: Express.Multer.File[]): Promise<string[]> => {
@@ -24,21 +25,40 @@ const uploadScreenshots = async (files: Express.Multer.File[]): Promise<string[]
   return results
 }
 
-const sendNotificationEmail = async (data: BugReportInput & { screenshotUrls: string[] }): Promise<void> => {
+/**
+ * 通知信內容全部來自使用者輸入（描述、連結、referrer、UA、上傳檔名組成的截圖 URL），
+ * 一律 escapeHtml 後以純文字呈現；連結不產生 <a>，避免對 contact@daodao.so 的 HTML injection／釣魚連結。
+ */
+export const buildNotificationEmail = (
+  data: BugReportInput & { screenshotUrls: string[] }
+): { subject: string; html: string } => {
+  const text = (value: string | undefined | null): string => escapeHtml(value || '') || 'N/A'
+  const subjectSummary = data.description.replace(/\s+/g, ' ').trim().slice(0, 60)
+
+  return {
+    subject: `[Bug Report] ${data.area} — ${subjectSummary}`,
+    html: `
+        <h3>新錯誤回報</h3>
+        <p><strong>問題區域：</strong>${text(data.area)}</p>
+        <p><strong>描述：</strong></p>
+        <p>${escapeHtml(data.description).replace(/\r?\n/g, '<br>')}</p>
+        ${data.link ? `<p><strong>相關連結：</strong>${text(data.link)}</p>` : ''}
+        ${data.screenshotUrls.length > 0 ? `<p><strong>截圖：</strong>${data.screenshotUrls.map((u) => `<br>${text(u)}`).join('')}</p>` : ''}
+        <p><strong>User Agent：</strong>${text(data.userAgent)}</p>
+        <p><strong>Referrer：</strong>${text(data.referrer)}</p>
+      `,
+  }
+}
+
+const sendNotificationEmail = async (
+  data: BugReportInput & { screenshotUrls: string[] }
+): Promise<void> => {
   try {
+    const { subject, html } = buildNotificationEmail(data)
     await emailService.sendEmail({
       to: 'contact@daodao.so',
-      subject: `[Bug Report] ${data.area} — ${data.description.slice(0, 60)}`,
-      html: `
-        <h3>新錯誤回報</h3>
-        <p><strong>問題區域：</strong>${data.area}</p>
-        <p><strong>描述：</strong></p>
-        <p>${data.description.replace(/\n/g, '<br>')}</p>
-        ${data.link ? `<p><strong>相關連結：</strong><a href="${data.link}">${data.link}</a></p>` : ''}
-        ${data.screenshotUrls.length > 0 ? `<p><strong>截圖：</strong>${data.screenshotUrls.map(u => `<br><a href="${u}">${u}</a>`).join('')}</p>` : ''}
-        <p><strong>User Agent：</strong>${data.userAgent || 'N/A'}</p>
-        <p><strong>Referrer：</strong>${data.referrer || 'N/A'}</p>
-      `,
+      subject,
+      html,
     })
   } catch (err) {
     console.error('Bug report email notification failed (non-blocking):', err)
