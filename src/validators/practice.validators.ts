@@ -14,10 +14,11 @@ import { registry } from '../config/openapi-registry';
 
 /**
  * 實踐建立流程的數值邊界（daodaoedu/daodao#141）
- * 與 daodao-storage migration 083 的 CHECK 對齊：duration_days 1–90、session_duration_minutes 1–999
+ * 與 daodao-storage migration 083／092 的 CHECK 對齊：duration_days 1–91、session_duration_minutes 1–999
+ * duration_days 上限 91 對齊共同挑戰 FRD FR-CC-03「91 天內」（daodaoedu/daodao#300）
  */
 export const DURATION_DAYS_MIN = 1;
-export const DURATION_DAYS_MAX = 90;
+export const DURATION_DAYS_MAX = 91;
 export const SESSION_MINUTES_MIN = 1;
 export const SESSION_MINUTES_MAX = 999;
 /** Step 1 實踐行動字數上限（FRD FR-1.3；逐段行動同此上限） */

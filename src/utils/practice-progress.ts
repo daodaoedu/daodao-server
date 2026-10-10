@@ -167,8 +167,8 @@ const MS_PER_DAY = 86_400_000;
 
 /**
  * 進度／期間計算用的實踐天數。
- * duration_days 有值就用；為 null 但有起訖日時用含頭尾天數——共同挑戰期間超過 90 天時
- * duration_days 依 practices CHECK（1–90）留 null，不可退回預設天數，否則 100 天挑戰 14 次就 100%（daodao#295）。
+ * duration_days 有值就用；為 null 但有起訖日時用含頭尾天數——共同挑戰期間超過 91 天時
+ * duration_days 依 practices CHECK（1–91，migration 092）留 null，不可退回預設天數，否則 100 天挑戰 14 次就 100%（daodao#295）。
  * 兩者都沒有（或起訖日顛倒）才用呼叫端原本的預設值。
  */
 export function resolveProgressDurationDays(
