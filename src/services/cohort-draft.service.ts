@@ -105,8 +105,17 @@ const copyTemplateResources = async (
  */
 export type CohortPracticeInitialStatus = 'draft' | 'not_started' | 'active' | 'by_period';
 
-const statusByStart = (startDate: Date | null, now: Date): 'not_started' | 'active' =>
-  startDate && day(startDate) <= today(now) ? 'active' : 'not_started';
+/**
+ * 依實際期間（Asia/Taipei 日曆日，含頭尾）給共同挑戰複製實踐的初始狀態：
+ * 開始日前 → not_started；期間內 → active；結束日已過 → completed，與 completeExpiredPractices
+ * （checkHasPassedEndDate：今天 > 結束日）給的值相同。模板天數被事後改短時，加入當下複製出的期間可能已結束，
+ * 標 active 會讓 createCheckIn 接受期外打卡（daodao#295）。
+ */
+const statusByPeriod = (startDate: Date, endDate: Date, now: Date): 'not_started' | 'active' | 'completed' => {
+  const current = today(now);
+  if (day(endDate) < current) return 'completed';
+  return day(startDate) <= current ? 'active' : 'not_started';
+};
 
 export const ensureCohortDrafts = async (
   tx: TransactionClient,
@@ -163,7 +172,7 @@ export const ensureCohortDrafts = async (
       const status =
         requestedStatus === 'by_period'
           ? startDate && period.endDate
-            ? statusByStart(startDate, now)
+            ? statusByPeriod(startDate, period.endDate, now)
             : 'draft'
           : requestedStatus;
       return {

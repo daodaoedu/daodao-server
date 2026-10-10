@@ -293,6 +293,53 @@ describe('ensureCohortDrafts', () => {
     );
   });
 
+  // daodao#295 final check：本期 10/1–10/30，模板事後被改成 7 天；10/15 加入時複製出的 10/1–10/7 實踐已過期，
+  // 不可標 active（createCheckIn 會接受期外打卡）——比照 completeExpiredPractices 直接給 completed
+  it('marks a by_period practice whose resolved end date has already passed as completed', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({
+      start_date: new Date('2026-10-01T00:00:00Z'),
+      end_date: new Date('2026-10-30T00:00:00Z'),
+    } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, duration_days: 7 } },
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-15T04:00:00Z') });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({
+            start_date: new Date('2026-10-01T00:00:00Z'),
+            end_date: new Date('2026-10-07T00:00:00Z'),
+            status: 'completed',
+          }),
+        ],
+      })
+    );
+  });
+
+  it('keeps a by_period practice active on its end date (Taipei calendar day, inclusive)', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({
+      start_date: new Date('2026-10-01T00:00:00Z'),
+      end_date: new Date('2026-10-30T00:00:00Z'),
+    } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, duration_days: 7 } },
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    // 台灣 10/7 23:00 = UTC 10/7 15:00：結束日當天仍是 active；台灣 10/8 00:30 = UTC 10/7 16:30 起才算過期
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-07T15:00:00Z') });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'by_period', now: new Date('2026-10-07T16:30:00Z') });
+    expect(prismaMock.practices.createMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ data: [expect.objectContaining({ status: 'active' })] })
+    );
+    expect(prismaMock.practices.createMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ data: [expect.objectContaining({ status: 'completed' })] })
+    );
+  });
+
   it('by_period uses the Taipei calendar day: a binding starting today (UTC previous day 16:00) is active', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue({
       start_date: new Date('2026-10-20T00:00:00Z'),
