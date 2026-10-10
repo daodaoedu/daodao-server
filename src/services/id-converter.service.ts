@@ -4,7 +4,8 @@
  */
 
 import { prisma } from '@/services/database/prisma.service';
-import { NotFoundError } from '@/middleware/error.middleware';
+import { AppError, BadRequestError, InternalServerError, NotFoundError } from '@/middleware/error.middleware';
+import { loggerService } from '@/services/logging/logger.service';
 
 /**
  * 支援的實體類型（對應 comment 系統的 target type）
@@ -54,6 +55,27 @@ const ENTITY_TABLE_MAP: Record<EntityType, string> = {
   persona_answer: 'persona_answers',
 };
 
+/** external_id 為 Postgres uuid 欄位的實體類型 */
+const UUID_ENTITY_TYPES: ReadonlySet<EntityType> = new Set<EntityType>([
+  'resource', 'idea', 'group', 'user', 'circle', 'practice',
+]);
+
+/**
+ * 轉換失敗時對外只給固定文字：AppError（400／404）原樣拋出，其餘（Prisma／連線錯誤）
+ * 細節只進 server log，不把 Prisma invocation、檔案路徑串進回應（daodao#250）
+ */
+function toSafeConversionError(error: unknown, entityType: EntityType): Error {
+  if (error instanceof AppError) {
+    return error;
+  }
+  loggerService.error(`轉換 ${entityType} ID 時發生錯誤`, {
+    entityType,
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+  return new InternalServerError(`轉換 ${entityType} ID 時發生錯誤`);
+}
+
 /**
  * 將 external_id (UUID) 轉換為內部 id (整數)
  * 整合了原本 comment.service.ts 中 getTargetEntity 的邏輯
@@ -67,6 +89,11 @@ export async function externalToInternalId(
   externalId: string
 ): Promise<number> {
   let result: { id: number } | null = null;
+
+  // external_id 欄位是 Postgres uuid；非 UUID 字串送進 Prisma 會丟「Inconsistent column data」變 500（daodao#250）
+  if (UUID_ENTITY_TYPES.has(entityType) && !isValidUUID(externalId)) {
+    throw new BadRequestError(`${entityType} ID 格式不正確`);
+  }
 
   try {
     switch (entityType) {
@@ -124,7 +151,7 @@ export async function externalToInternalId(
       case 'post': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
         
         result = await prisma.post.findUnique({
@@ -137,7 +164,7 @@ export async function externalToInternalId(
       case 'note': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
         
         result = await prisma.note.findUnique({
@@ -150,7 +177,7 @@ export async function externalToInternalId(
       case 'outcome': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
         
         result = await prisma.outcome.findUnique({
@@ -163,7 +190,7 @@ export async function externalToInternalId(
       case 'review': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
         
         result = await prisma.review.findUnique({
@@ -176,7 +203,7 @@ export async function externalToInternalId(
       case 'milestone': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
         
         result = await prisma.milestone.findUnique({
@@ -189,7 +216,7 @@ export async function externalToInternalId(
       case 'resource_review': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
 
         result = await prisma.resource_review.findUnique({
@@ -202,7 +229,7 @@ export async function externalToInternalId(
       case 'checkin': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
 
         result = await prisma.practice_checkins.findUnique({
@@ -215,7 +242,7 @@ export async function externalToInternalId(
       case 'persona_answer': {
         const numId = parseInt(externalId);
         if (isNaN(numId)) {
-          throw new Error(`${entityType} 需要整數 ID，但收到: ${externalId}`);
+          throw new BadRequestError(`${entityType} ID 格式不正確`);
         }
 
         result = await prisma.persona_answers.findUnique({
@@ -236,10 +263,7 @@ export async function externalToInternalId(
     return result.id;
 
   } catch (error) {
-    if (error instanceof NotFoundError) {
-      throw error;
-    }
-    throw new Error(`轉換 ${entityType} ID 時發生錯誤: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw toSafeConversionError(error, entityType);
   }
 }
 
@@ -323,10 +347,7 @@ export async function internalToExternalId(
     return result.external_id;
 
   } catch (error) {
-    if (error instanceof NotFoundError) {
-      throw error;
-    }
-    throw new Error(`轉換 ${entityType} ID 時發生錯誤: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw toSafeConversionError(error, entityType);
   }
 }
 
