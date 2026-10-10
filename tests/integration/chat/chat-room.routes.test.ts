@@ -72,6 +72,24 @@ jest.mock('@/services/chat-presence.service', () => ({ chatPresenceService: pres
 
 import { meChatRoomRoutes, chatRoomRoutes } from '@/routes/chat-room.routes';
 import { BadRequestError, ForbiddenError, globalErrorHandler, NotFoundError } from '@/middleware/error.middleware';
+import { registry } from '@/config/openapi-registry';
+import type { ZodTypeAny } from 'zod';
+
+// registerPath 是 module 載入時呼叫的；beforeEach 的 clearAllMocks 會清掉 mock.calls，所以先存下來
+type RegisteredPath = {
+  method: string;
+  path: string;
+  responses: Record<string, { content?: { 'application/json'?: { schema: ZodTypeAny } } }>;
+};
+const registeredPaths: RegisteredPath[] = (registry.registerPath as jest.Mock).mock.calls.map(
+  ([config]) => config as RegisteredPath,
+);
+const documentedSchema = (method: string, path: string, status: number): ZodTypeAny => {
+  const entry = registeredPaths.find((p) => p.method === method && p.path === path);
+  const schema = entry?.responses[String(status)]?.content?.['application/json']?.schema;
+  if (!schema) throw new Error(`OpenAPI 未登記 ${method.toUpperCase()} ${path} ${status}`);
+  return schema;
+};
 
 // ─── Mock data ───────────────────────────────────────────
 
@@ -593,6 +611,35 @@ describe('chat room routes', () => {
     it('returns 400 for non-numeric messageId', async () => {
       const res = await request(app).delete('/api/v1/chat-rooms/1/messages/abc').set(auth);
       expect(res.status).toBe(400);
+    });
+  });
+  // ─── OpenAPI 文件 vs 實際回應（daodao#154 regression）──
+  // f2e 的型別由 OpenAPI 產生；文件少了 { success, data } 外層時，前端會讀錯層級而整個聊天畫面空白
+
+  describe('OpenAPI response contract matches wire body', () => {
+    const cases: Array<{ name: string; method: string; path: string; status: number; send: () => request.Test }> = [
+      { name: 'room list', method: 'get', path: '/api/v1/me/chat-rooms', status: 200, send: () => request(app).get('/api/v1/me/chat-rooms').set(auth) },
+      { name: 'room detail', method: 'get', path: '/api/v1/chat-rooms/{roomId}', status: 200, send: () => request(app).get('/api/v1/chat-rooms/1').set(auth) },
+      { name: 'members', method: 'get', path: '/api/v1/chat-rooms/{roomId}/members', status: 200, send: () => request(app).get('/api/v1/chat-rooms/1/members').set(auth) },
+      { name: 'history page', method: 'get', path: '/api/v1/chat-rooms/{roomId}/messages', status: 200, send: () => request(app).get('/api/v1/chat-rooms/1/messages').set(auth) },
+      { name: 'delta', method: 'get', path: '/api/v1/chat-rooms/{roomId}/messages', status: 200, send: () => request(app).get('/api/v1/chat-rooms/1/messages').query({ after: 50, since: '2026-09-01T00:00:00.000Z' }).set(auth) },
+      { name: 'send message', method: 'post', path: '/api/v1/chat-rooms/{roomId}/messages', status: 201, send: () => request(app).post('/api/v1/chat-rooms/1/messages').set(auth).send({ body: '你好' }) },
+      { name: 'edit message', method: 'patch', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}', status: 200, send: () => request(app).patch('/api/v1/chat-rooms/1/messages/100').set(auth).send({ body: '修改後' }) },
+      { name: 'like', method: 'put', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/like', status: 200, send: () => request(app).put('/api/v1/chat-rooms/1/messages/100/like').set(auth) },
+      { name: 'unlike', method: 'delete', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/like', status: 200, send: () => request(app).delete('/api/v1/chat-rooms/1/messages/100/like').set(auth) },
+      { name: 'pin', method: 'put', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/pin', status: 200, send: () => { aclService.resolveRoomAccess.mockResolvedValue(mockHostAccess); return request(app).put('/api/v1/chat-rooms/1/messages/100/pin').set(auth); } },
+      { name: 'unpin', method: 'delete', path: '/api/v1/chat-rooms/{roomId}/messages/{messageId}/pin', status: 200, send: () => { aclService.resolveRoomAccess.mockResolvedValue(mockHostAccess); return request(app).delete('/api/v1/chat-rooms/1/messages/100/pin').set(auth); } },
+      { name: 'pins', method: 'get', path: '/api/v1/chat-rooms/{roomId}/pins', status: 200, send: () => request(app).get('/api/v1/chat-rooms/1/pins').set(auth) },
+      { name: 'search', method: 'get', path: '/api/v1/chat-rooms/{roomId}/messages/search', status: 200, send: () => request(app).get('/api/v1/chat-rooms/1/messages/search').query({ q: '你好' }).set(auth) },
+      { name: 'mark read', method: 'put', path: '/api/v1/chat-rooms/{roomId}/read', status: 200, send: () => request(app).put('/api/v1/chat-rooms/1/read').set(auth).send({ lastReadMessageId: 100 }) },
+    ];
+
+    it.each(cases)('$name: documented $status schema accepts the actual body', async ({ method, path, status, send }) => {
+      const res = await send();
+      expect(res.status).toBe(status);
+      const result = documentedSchema(method, path, status).safeParse(res.body);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
     });
   });
 });

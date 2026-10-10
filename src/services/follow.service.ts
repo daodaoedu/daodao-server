@@ -4,6 +4,7 @@
  * 關注為單向、低承諾行為，無需對方同意
  */
 
+import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { externalToInternalId } from './id-converter.service';
 import { notificationEventService } from './notification-event.service';
@@ -54,6 +55,21 @@ export interface FollowingItem {
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/**
+ * following 列表只算「目標仍可顯示」的關注（daodao#293）：
+ * - follows.target_id 是多型欄位、沒有 FK，使用者被硬刪除後會留下孤兒列 → 要求 users 仍存在
+ * - practices 是軟刪除（deleted_at）→ 要求存在且 deleted_at IS NULL
+ * count 與分頁共用同一段條件，totalItems／totalPages 才會等於實際回傳的可顯示筆數。
+ */
+const displayableFollowingWhere = (followerId: number): Prisma.Sql => Prisma.sql`
+  f.follower_id = ${followerId}
+  AND (
+    (f.target_type = 'user'
+      AND EXISTS (SELECT 1 FROM users u WHERE u.id = f.target_id))
+    OR (f.target_type = 'practice'
+      AND EXISTS (SELECT 1 FROM practices p WHERE p.id = f.target_id AND p.deleted_at IS NULL))
+  )`;
 
 
 // ============================================================================
@@ -250,17 +266,18 @@ const getFollowing = async (
 ): Promise<PaginatedApiResponse<FollowingItem>> => {
   const userId = await externalToInternalId('user', userExternalId);
 
-  const [total, rows] = await Promise.all([
-    prisma.follows.count({
-      where: { follower_id: userId },
-    }),
-    prisma.follows.findMany({
-      where:   { follower_id: userId },
-      orderBy: { created_at: 'desc' },
-      skip:    (page - 1) * limit,
-      take:    limit,
-    }),
+  const where = displayableFollowingWhere(userId);
+  const [countRows, rows] = await Promise.all([
+    prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS count FROM follows f WHERE ${where}`),
+    prisma.$queryRaw<Array<{ target_type: string; target_id: number; created_at: Date | null }>>(Prisma.sql`
+      SELECT f.target_type, f.target_id, f.created_at
+      FROM follows f
+      WHERE ${where}
+      ORDER BY f.created_at DESC NULLS LAST, f.id DESC
+      LIMIT ${limit} OFFSET ${(page - 1) * limit}`),
   ]);
+  const total = Number(countRows[0]?.count ?? 0);
 
   const userTargetIds    = rows.filter(r => r.target_type === 'user').map(r => r.target_id);
   const practiceTargetIds = rows.filter(r => r.target_type === 'practice').map(r => r.target_id);
@@ -281,7 +298,7 @@ const getFollowing = async (
       : [],
     practiceTargetIds.length > 0
       ? prisma.practices.findMany({
-          where:  { id: { in: practiceTargetIds } },
+          where:  { id: { in: practiceTargetIds }, deleted_at: null },
           select: {
             id:          true,
             external_id: true,
@@ -300,31 +317,33 @@ const getFollowing = async (
   const userMap     = new Map(targetUsers.map(u => [u.id, u]));
   const practiceMap = new Map(targetPractices.map(p => [p.id, p]));
 
-  const items: FollowingItem[] = rows.map(r => {
+  // 查詢與補資料之間目標剛好被刪除時直接略過，不回只有 targetType 的空殼（daodao#293）
+  const items: FollowingItem[] = rows.flatMap((r): FollowingItem[] => {
     if (r.target_type === 'user') {
       const u = userMap.get(r.target_id);
-      return {
+      if (!u) return [];
+      return [{
         targetType: 'user',
-        user: u ? {
+        user: {
           id:         u.external_id ?? '',
           name:       u.nickname ?? '',
           photoURL:   u.contacts?.photo_url ?? null,
           bio:        u.personal_slogan ?? null,
           identifier: u.custom_id ?? null,
-        } : undefined,
-      };
-    } else {
-      const p = practiceMap.get(r.target_id);
-      return {
-        targetType: 'practice',
-        practice: p ? {
-          id:            p.external_id ?? '',
-          title:         p.title,
-          ownerName:     p.users.nickname ?? '',
-          ownerPhotoURL: p.users.contacts?.photo_url ?? null,
-        } : undefined,
-      };
+        },
+      }];
     }
+    const p = practiceMap.get(r.target_id);
+    if (!p) return [];
+    return [{
+      targetType: 'practice',
+      practice: {
+        id:            p.external_id ?? '',
+        title:         p.title,
+        ownerName:     p.users.nickname ?? '',
+        ownerPhotoURL: p.users.contacts?.photo_url ?? null,
+      },
+    }];
   });
 
   const pagination = calculatePagination(page, limit, total);

@@ -10447,7 +10447,8 @@ components:
             - sent
             - failed
             - pending
-          description: 發送狀態
+            - skipped
+          description: 發送狀態（skipped：後台停用該模板而未寄出）
           example: sent
         recipient:
           type: string
@@ -10533,7 +10534,8 @@ components:
             - sent
             - failed
             - pending
-          description: 發送狀態
+            - skipped
+          description: 發送狀態（skipped：後台停用該模板而未寄出）
           example: sent
         sentAt:
           type: string
@@ -39978,10 +39980,11 @@ paths:
               - sent
               - failed
               - pending
-            description: 發送狀態
+              - skipped
+            description: 發送狀態（skipped：後台停用該模板而未寄出）
             example: sent
           required: false
-          description: 發送狀態
+          description: 發送狀態（skipped：後台停用該模板而未寄出）
           name: status
           in: query
         - schema:
