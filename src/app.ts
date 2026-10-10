@@ -86,6 +86,8 @@ import timelineRoutes from './routes/timeline.routes';
 import spaceRoutes from './routes/space.routes';
 // 引入聊天室路由
 import { meChatRoomRoutes, chatRoomRoutes } from './routes/chat-room.routes';
+// 引入意見回饋（錯誤回報）路由
+import feedbackRoutes from './routes/feedback.routes';
 // 引入活動追蹤中間件
 import { trackActivity } from './middleware/activity-tracker.middleware';
 // 引入 Onboarding Gate 中間件
@@ -145,7 +147,7 @@ export function setupTypescriptRoutes(app: express.Application) {
     buddyRequestRouter, practiceBuddyRequestRouter,
     roadmapRoutes, wishRoutes, adminRoadmapRoutes, organizationRoutes, cohortJoinRoutes,
     futureLetterRoutes, timelineRoutes, spaceRoutes, challengeRoutes, activityRoutes, adminInspirationRoutes, adminChallengeRoutes,
-    meChatRoomRoutes, chatRoomRoutes
+    meChatRoomRoutes, chatRoomRoutes, feedbackRoutes
   ];
   console.log('✅ 路由模組已載入');
 
@@ -315,6 +317,11 @@ export function setupTypescriptRoutes(app: express.Application) {
 
   app.use('/api/v1/persona', personaRoutes);
   console.log('🎭 v1 人物誌路由已註冊 - 可在 /api/v1/persona 訪問');
+
+  // 註冊意見回饋路由（設定頁「錯誤回報」表單：POST /api/v1/feedback/bug-report）
+  // 不掛 requireOnboardingComplete：尚未完成 onboarding 的使用者也要能回報問題
+  app.use('/api/v1/feedback', feedbackRoutes);
+  console.log('🐛 v1 意見回饋路由已註冊 - 可在 /api/v1/feedback 訪問');
 
   // 註冊許願池 / Roadmap 路由（公開看板 optionalAuth、互動 authenticate）
   app.use('/api/v1/roadmap', roadmapRoutes);

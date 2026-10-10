@@ -117,7 +117,7 @@ const getEmailHistory = async (filters: EmailHistoryFilters): Promise<EmailHisto
     recipientName: log.users?.nickname ?? null,
     emailType: log.email_type,
     subject: log.subject,
-    status: (log.status as 'sent' | 'failed' | 'pending') ?? 'sent',
+    status: (log.status as EmailHistoryRecord['status']) ?? 'sent',
     sentAt: log.sent_at?.toISOString() ?? null,
     createdAt: log.created_at?.toISOString() ?? null,
     entityType: log.entity_type,
