@@ -2,6 +2,8 @@
  * 郵件歷史相關型別定義
  */
 
+import type { EmailStatusValue } from './email';
+
 /**
  * 郵件歷史記錄
  */
@@ -19,7 +21,7 @@ export interface EmailHistoryRecord {
   /** 郵件主題 */
   subject: string | null;
   /** 發送狀態 */
-  status: 'sent' | 'failed' | 'pending';
+  status: EmailStatusValue;
   /** 發送時間 */
   sentAt: string | null;
   /** 建立時間 */
@@ -43,7 +45,7 @@ export interface EmailHistoryFilters {
   /** 郵件類型 */
   emailType?: string;
   /** 發送狀態 */
-  status?: 'sent' | 'failed' | 'pending';
+  status?: EmailStatusValue;
   /** 收件人 email */
   recipient?: string;
   /** 用戶 ID */
