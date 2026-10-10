@@ -267,6 +267,56 @@ describe('ensureCohortDrafts', () => {
     );
   });
 
+  // daodao#300 AC-01：上限放寬為 91 天（FR-CC-03），91 天挑戰複製出的實踐 duration_days = 91、結束日與挑戰一致
+  it('writes duration_days 91 and the cohort end date for a 91-day challenge', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({
+      start_date: new Date('2026-10-09T00:00:00Z'),
+      end_date: new Date('2027-01-07T00:00:00Z'),
+    } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      {
+        ...bindings[0],
+        practice_template: { ...bindings[0].practice_template, duration_days: null },
+      },
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+    await ensureCohortDrafts(prismaMock, 8, 42, { status: 'active' });
+    expect(prismaMock.practices.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({
+            start_date: new Date('2026-10-09T00:00:00Z'),
+            end_date: new Date('2027-01-07T00:00:00Z'),
+            duration_days: 91,
+          }),
+        ],
+      })
+    );
+  });
+
+  // daodao#300 AC-04：後台只允許 ≤ 91 天的挑戰，因此每個合法期間複製出的實踐都要有 duration_days，
+  // 完成通知信（PE07／PE08 的 duration_days ?? 30）與打卡進度才不會走到空天數的退路
+  it('never leaves duration_days null for any legal challenge period (1–91 days)', async () => {
+    const start = new Date('2026-10-09T00:00:00Z');
+    for (let days = 1; days <= 91; days += 1) {
+      prismaMock.cohorts.findUnique.mockResolvedValue({
+        start_date: start,
+        end_date: new Date(start.getTime() + (days - 1) * 86_400_000),
+      } as never);
+      prismaMock.cohort_templates.findMany.mockResolvedValue([
+        {
+          ...bindings[0],
+          practice_template: { ...bindings[0].practice_template, duration_days: null },
+        },
+      ] as never);
+      prismaMock.practices.createMany.mockClear();
+      prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
+      await ensureCohortDrafts(prismaMock, 8, 42, { status: 'active' });
+      const [[{ data }]] = prismaMock.practices.createMany.mock.calls as unknown as [[{ data: Array<{ duration_days: number | null }> }]];
+      expect({ days, durationDays: data[0].duration_days }).toEqual({ days, durationDays: days });
+    }
+  });
+
   // daodao#295 review 2：綁定可釘選自己的開始日；本期進行中但該模板開始日在未來 → 該實踐應為未開始
   it('derives the status per binding from its effective start date when status is by_period', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue({
