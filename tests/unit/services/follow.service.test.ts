@@ -6,6 +6,7 @@
  */
 
 import { prismaMock } from '@tests/utils/prisma-mock';
+import { Prisma } from '@generated/prisma';
 
 jest.mock('@/services/database/prisma.service', () => ({
   prisma: prismaMock,
@@ -177,19 +178,18 @@ describe('Follow Service', () => {
   // --------------------------------------------------------------------------
 
   describe('getFollowing', () => {
+    // getFollowing 用 $queryRaw 在 DB 層同時做 count 與分頁（daodao#293）；
+    // mock 依 SQL 文字分流：COUNT 查詢回總數，其餘回該頁 follows 列
+    const mockFollowingQueries = (total: number, rows: Array<{ target_type: string; target_id: number; created_at: Date }>) => {
+      prismaMock.$queryRaw.mockImplementation((async (query: Prisma.Sql) =>
+        /COUNT\(/i.test(query.sql) ? [{ count: BigInt(total) }] : rows) as any);
+    };
+    const rawSqlCalls = (): Prisma.Sql[] =>
+      prismaMock.$queryRaw.mock.calls.map(call => call[0] as unknown as Prisma.Sql);
+
     it('回傳關注中的用戶列表', async () => {
       const now = new Date();
-
-      prismaMock.follows.count.mockResolvedValue(1);
-      prismaMock.follows.findMany.mockResolvedValue([
-        {
-          id: 1,
-          follower_id: 1,
-          target_type: 'user',
-          target_id: 2,
-          created_at: now,
-        },
-      ] as any);
+      mockFollowingQueries(1, [{ target_type: 'user', target_id: 2, created_at: now }]);
       prismaMock.users.findMany.mockResolvedValue([
         {
           id: 2,
@@ -215,14 +215,72 @@ describe('Follow Service', () => {
     });
 
     it('沒有關注任何人時回傳空列表', async () => {
-      prismaMock.follows.count.mockResolvedValue(0);
-      prismaMock.follows.findMany.mockResolvedValue([] as any);
-      prismaMock.users.findMany.mockResolvedValue([] as any);
+      mockFollowingQueries(0, []);
 
       const result = await followService.getFollowing('ext-1', 1, 10);
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(0);
+      expect(result.pagination.totalItems).toBe(0);
+    });
+
+    // daodao#293 regression：已刪除的使用者（硬刪除留下孤兒 follows 列）與已軟刪除的實踐，
+    // 不能被算進 totalItems，也不能以「只有 targetType」的空殼出現在 data
+    it('已刪除的關注目標不計入 totalItems，且 count 與分頁查詢用同一組排除條件（daodao#293）', async () => {
+      const now = new Date();
+      // DB 層已排除已刪除目標：只剩 1 筆可顯示的使用者
+      mockFollowingQueries(1, [{ target_type: 'user', target_id: 2, created_at: now }]);
+      prismaMock.users.findMany.mockResolvedValue([
+        { id: 2, external_id: 'ext-2', nickname: '用戶B', custom_id: null, personal_slogan: null, contacts: null },
+      ] as any);
+
+      const result = await followService.getFollowing('ext-1', 1, 20);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.pagination.totalItems).toBe(result.data.length);
+      expect(result.pagination.totalPages).toBe(1);
+      // 舊實作：follows.count 只看 follower_id，會把已刪除目標算進去
+      expect(prismaMock.follows.count).not.toHaveBeenCalled();
+
+      const calls = rawSqlCalls();
+      expect(calls).toHaveLength(2);
+      for (const q of calls) {
+        // 使用者目標必須仍存在；實踐目標必須存在且未軟刪除
+        expect(q.sql).toMatch(/EXISTS\s*\(\s*SELECT 1 FROM users/i);
+        expect(q.sql).toMatch(/EXISTS\s*\(\s*SELECT 1 FROM practices[\s\S]*deleted_at IS NULL/i);
+      }
+    });
+
+    it('分頁以過濾後的總數計算 totalPages，並把 limit／offset 帶進 SQL', async () => {
+      const now = new Date();
+      mockFollowingQueries(25, [{ target_type: 'practice', target_id: 7, created_at: now }]);
+      prismaMock.practices.findMany.mockResolvedValue([
+        { id: 7, external_id: 'p-7', title: '每天寫一點', users: { nickname: '主人', contacts: null } },
+      ] as any);
+
+      const result = await followService.getFollowing('ext-1', 3, 10);
+
+      expect(result.pagination).toMatchObject({ currentPage: 3, totalPages: 3, totalItems: 25, hasNext: false, hasPrev: true });
+      const pageQuery = rawSqlCalls().find(q => !/COUNT\(/i.test(q.sql));
+      expect(pageQuery?.values).toEqual(expect.arrayContaining([10, 20]));
+      expect(result.data[0]).toMatchObject({ targetType: 'practice', practice: { id: 'p-7', title: '每天寫一點' } });
+    });
+
+    it('查詢與補資料之間目標剛被刪除時，不回傳沒有內容的空殼項目', async () => {
+      const now = new Date();
+      mockFollowingQueries(2, [
+        { target_type: 'user', target_id: 2, created_at: now },
+        { target_type: 'practice', target_id: 9, created_at: now },
+      ]);
+      prismaMock.users.findMany.mockResolvedValue([
+        { id: 2, external_id: 'ext-2', nickname: '用戶B', custom_id: null, personal_slogan: null, contacts: null },
+      ] as any);
+      prismaMock.practices.findMany.mockResolvedValue([] as any);
+
+      const result = await followService.getFollowing('ext-1', 1, 20);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data.every(item => (item.targetType === 'user' ? item.user : item.practice))).toBe(true);
     });
   });
 
