@@ -43,8 +43,15 @@ export const followQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20).openapi({ description: '每頁筆數', example: 20 }),
 }).openapi('FollowQuery');
 
+/**
+ * Path params for GET /api/v1/users/:userId/followers | /following
+ * users.external_id 是 Postgres uuid；非 UUID 在這裡就回 400，不讓 Prisma 爆 500 並外洩內部訊息（daodao#250）
+ */
 export const userIdParamSchema = z.object({
-  userId: z.string().trim().min(1).openapi({ description: '用戶 external_id', example: 'abc123' }),
+  userId: z.string().trim().uuid('userId 格式不正確').openapi({
+    description: '用戶 external_id（UUID）',
+    example: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+  }),
 }).openapi('UserIdParam');
 
 // ============================================================================
