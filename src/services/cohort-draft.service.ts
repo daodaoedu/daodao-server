@@ -16,7 +16,10 @@ const addDays = (start: Date, durationDays: number): Date => {
 
 const MS_PER_DAY = 86_400_000;
 
-/** 含頭尾的天數；超過 practices.duration_days CHECK（1–90，migration 083）時回 null（CHECK 允許 NULL） */
+/**
+ * 含頭尾的天數；超過 practices.duration_days CHECK（1–91，migration 092）時回 null（CHECK 允許 NULL）。
+ * 後台建立共同挑戰已限制期間 ≤ DURATION_DAYS_MAX（daodao#300），null 只剩防禦用途（例如上限前建立的舊挑戰）。
+ */
 const inclusiveDays = (start: Date, end: Date): number | null => {
   const days = Math.round((end.getTime() - start.getTime()) / MS_PER_DAY) + 1;
   return days <= DURATION_DAYS_MAX ? days : null;
@@ -29,7 +32,7 @@ const inclusiveDays = (start: Date, end: Date): number | null => {
  *     開始日晚於本期結束日 → 期間為 null（by_period 會因此保持草稿）
  *   - 燈塔場次：不截，與 organizationTemplateService.map 給教練看的「開始日 + 天數 − 1」一致
  * - 模板沒有天數 → 沿用本期結束日並回推天數（null end_date 的 not_started／active 實踐
- *   會被 completeExpiredPractices 以 created_at + 14 天提早完成）；回推超過 90 天時天數留 null，
+ *   會被 completeExpiredPractices 以 created_at + 14 天提早完成）；回推超過 DURATION_DAYS_MAX（91）天時天數留 null，
  *   到期判斷（checkHasPassedEndDate）以 end_date、進度以起訖日（resolveProgressDurationDays）為準；
  *   開始日晚於本期結束日 → 期間為 null
  */

@@ -28,12 +28,17 @@ const validPractice = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('practice validators (#141 實踐建立流程優化)', () => {
-  describe('createPracticeSchema — durationDays 1–90', () => {
-    it.each([DURATION_DAYS_MIN, 7, 45, DURATION_DAYS_MAX])('accepts %i days', (days) => {
+  describe('createPracticeSchema — durationDays 1–91', () => {
+    // daodao#300：上限對齊共同挑戰 FRD FR-CC-03（91 天內）與 daodao-storage migration 092
+    it('DURATION_DAYS_MAX is 91', () => {
+      expect(DURATION_DAYS_MAX).toBe(91);
+    });
+
+    it.each([DURATION_DAYS_MIN, 7, 45, 91])('accepts %i days', (days) => {
       expect(createPracticeSchema.safeParse(validPractice({ durationDays: days })).success).toBe(true);
     });
 
-    it.each([0, DURATION_DAYS_MAX + 1, 14.5])('rejects %s days', (days) => {
+    it.each([0, 92, 14.5])('rejects %s days', (days) => {
       expect(createPracticeSchema.safeParse(validPractice({ durationDays: days })).success).toBe(false);
     });
   });
@@ -90,16 +95,16 @@ describe('practice validators (#141 實踐建立流程優化)', () => {
       expect(createPracticeSchema.safeParse(validPractice({ resources: res(11) })).success).toBe(false);
     });
 
-    it('allows dayNumber up to the 90-day ceiling', () => {
-      expect(createPracticeSchema.safeParse(validPractice({ durationDays: 90, resources: [{ name: 'r', dayNumber: 90 }] })).success).toBe(true);
-      expect(createPracticeSchema.safeParse(validPractice({ resources: [{ name: 'r', dayNumber: 91 }] })).success).toBe(false);
+    it('allows dayNumber up to the 91-day ceiling', () => {
+      expect(createPracticeSchema.safeParse(validPractice({ durationDays: 91, resources: [{ name: 'r', dayNumber: 91 }] })).success).toBe(true);
+      expect(createPracticeSchema.safeParse(validPractice({ resources: [{ name: 'r', dayNumber: 92 }] })).success).toBe(false);
     });
   });
 
   describe('createPracticeTemplateSchema — aligned with practices', () => {
-    it('accepts 90 days and rejects 91 (was 365)', () => {
-      expect(createPracticeTemplateSchema.safeParse({ title: 't', durationDays: 90 }).success).toBe(true);
-      expect(createPracticeTemplateSchema.safeParse({ title: 't', durationDays: 91 }).success).toBe(false);
+    it('accepts 91 days and rejects 92 (was 365, then 90 until daodao#300)', () => {
+      expect(createPracticeTemplateSchema.safeParse({ title: 't', durationDays: 91 }).success).toBe(true);
+      expect(createPracticeTemplateSchema.safeParse({ title: 't', durationDays: 92 }).success).toBe(false);
     });
 
     it('accepts 999 minutes and rejects 1000 (was 480)', () => {
