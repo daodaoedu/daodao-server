@@ -854,7 +854,11 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       : existingPractice.start_date ?? new Date();
     if (data.isDraft === true) {
       updateData.status = 'draft';
-    } else if (data.isDraft === false && existingPractice.status === 'draft') {
+    } else if (
+      existingPractice.status === 'draft' &&
+      (data.isDraft === false || data.status === 'not_started')
+    ) {
+      // 發布草稿（isDraft=false 或 status='not_started' 兩種寫法，同 isPublishingDraft）
       updateData.status = initialStatusForStartDate(nextStartDate);
     } else if (data.status !== undefined) {
       updateData.status = data.status;
@@ -1655,7 +1659,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       currentStatus: 'archived',
       hasCheckIns,
       hasPassedEndDate,
-      isUnarchiving: true
+      isUnarchiving: true,
+      startDate: practice.start_date
     });
 
     const updatedPractice = await prismaClient.practices.update({

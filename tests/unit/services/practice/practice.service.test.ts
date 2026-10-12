@@ -488,6 +488,14 @@ describe('Practice Service', () => {
     });
 
     describe('initial status by start date (daodao#212)', () => {
+      // 固定在 2026-10-12 10:00 Asia/Taipei，避免跨台灣午夜時測試不穩
+      beforeAll(() => {
+        jest.useFakeTimers({ now: new Date('2026-10-12T02:00:00.000Z'), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'setInterval'] });
+      });
+      afterAll(() => {
+        jest.useRealTimers();
+      });
+
       const taipeiDay = (offsetDays: number) => {
         const d = new Date(Date.now() + offsetDays * 86400000);
         return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
@@ -865,6 +873,14 @@ describe('Practice Service', () => {
     });
 
     describe('publishing a draft sets status by start date (daodao#212)', () => {
+      // 固定在 2026-10-12 10:00 Asia/Taipei，避免跨台灣午夜時測試不穩
+      beforeAll(() => {
+        jest.useFakeTimers({ now: new Date('2026-10-12T02:00:00.000Z'), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'setInterval'] });
+      });
+      afterAll(() => {
+        jest.useRealTimers();
+      });
+
       const taipeiMidnight = (offsetDays: number) => {
         const d = new Date(Date.now() + offsetDays * 86400000);
         return new Date(`${d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })}T00:00:00.000Z`);
@@ -926,6 +942,12 @@ describe('Practice Service', () => {
       it('moves a not_started practice to active when its start date is moved to today', async () => {
         arrange(taipeiMidnight(3), 'not_started');
         await update(1, { startDate: taipeiMidnight(0).toISOString().slice(0, 10) }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('publishes a draft via status=not_started as active when it starts today', async () => {
+        arrange(taipeiMidnight(0));
+        await update(1, { status: 'not_started' }, 1);
         expect(updatedStatus()).toBe('active');
       });
 
