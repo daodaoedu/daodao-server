@@ -42397,6 +42397,11 @@ export interface components {
              * @example 3
              */
             dayNumber?: number | null;
+            /**
+             * @description 教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除
+             * @example false
+             */
+            isLocked?: boolean;
         };
         /**
          * @description 實踐活動詳細資訊

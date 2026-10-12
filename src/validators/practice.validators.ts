@@ -743,7 +743,8 @@ export const practiceResourceEntitySchema = z.object({
   id: z.string().openapi({ description: '資源外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   name: z.string().openapi({ description: '資源名稱', example: 'React 官方文檔' }),
   url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' }),
-  dayNumber: z.number().int().nullable().optional().openapi({ description: '指定第幾天使用此資源（null 代表整段實踐期間皆可使用）', example: 3 })
+  dayNumber: z.number().int().nullable().optional().openapi({ description: '指定第幾天使用此資源（null 代表整段實踐期間皆可使用）', example: 3 }),
+  isLocked: z.boolean().optional().openapi({ description: '教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除', example: false })
 }).openapi('PracticeResourceEntity', {
   description: '實踐使用的資源',
   example: {

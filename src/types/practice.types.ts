@@ -51,6 +51,8 @@ export interface PracticeResourceEntity {
   url?: string;
   /** 指定第幾天使用（1 = 開始日當天；null 代表整段實踐期間皆可使用） */
   dayNumber?: number | null;
+  /** 教練加入的資源（本期草稿由模板帶入），學員不可移除或修改 */
+  isLocked?: boolean;
 }
 
 // Core practice entity interface - 基於 Prisma schema practices 表
