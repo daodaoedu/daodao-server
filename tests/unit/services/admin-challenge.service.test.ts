@@ -2,7 +2,23 @@ import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
 
+const OFFICIAL_ORG_ID = 1;
+const mockGetOrganizationId = jest.fn<Promise<number>, []>();
+const mockGetActiveOrganizationId = jest.fn<Promise<number>, []>();
+jest.mock('@/services/challenge-organization.service', () => ({
+  challengeOrganizationService: {
+    getOrganizationId: () => mockGetOrganizationId(),
+    getActiveOrganizationId: () => mockGetActiveOrganizationId()
+  }
+}));
+
+import { ConflictError } from '@/middleware/error.middleware';
 import { adminChallengeService, computeEndDate } from '@/services/admin-challenge.service';
+
+beforeEach(() => {
+  mockGetOrganizationId.mockResolvedValue(OFFICIAL_ORG_ID);
+  mockGetActiveOrganizationId.mockResolvedValue(OFFICIAL_ORG_ID);
+});
 
 const programRow = (overrides: Record<string, unknown> = {}) => ({
   id: 10, organization_id: 1, name: '晨間書寫', description: null,
@@ -39,19 +55,62 @@ describe('adminChallengeService.listPrograms', () => {
     expect(result[0]).toMatchObject({ id: 10, organizationName: '島島阿學', cohortCount: 2, publishedCohortCount: 1 });
     expect(prismaMock.programs.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ kind: 'challenge', deleted_at: null }) }));
   });
+
+  it('#179 只列島島阿學組織底下的主題，不列其他組織', async () => {
+    prismaMock.programs.findMany.mockResolvedValue([] as never);
+    await adminChallengeService.listPrograms();
+    expect(prismaMock.programs.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organization_id: OFFICIAL_ORG_ID }) }));
+  });
 });
 
 describe('adminChallengeService.createProgram', () => {
-  it('停權組織不可建立主題', async () => {
-    prismaMock.organization.findUnique.mockResolvedValue({ status: 'suspended' } as never);
-    await expect(adminChallengeService.createProgram({ organizationId: 1, name: 'x' })).rejects.toMatchObject({ statusCode: 409 });
+  it('以 kind=challenge 建立在島島阿學組織底下', async () => {
+    prismaMock.programs.create.mockResolvedValue(programRow() as never);
+    await adminChallengeService.createProgram({ name: '晨間書寫' });
+    expect(prismaMock.programs.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ kind: 'challenge', organization_id: OFFICIAL_ORG_ID })
+    }));
   });
 
-  it('以 kind=challenge 建立', async () => {
-    prismaMock.organization.findUnique.mockResolvedValue({ status: 'active' } as never);
+  it('#179 client 夾帶其他組織 ID 也一律建在島島阿學組織，且不查其他組織的停權狀態', async () => {
     prismaMock.programs.create.mockResolvedValue(programRow() as never);
-    await adminChallengeService.createProgram({ organizationId: 1, name: '晨間書寫' });
-    expect(prismaMock.programs.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ kind: 'challenge' }) }));
+    await adminChallengeService.createProgram({ organizationId: 3, name: 'PM 驗收 #179' } as never);
+    expect(prismaMock.programs.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organization_id: OFFICIAL_ORG_ID }) }));
+    expect(prismaMock.organization.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('島島阿學組織無法使用（未設定或停權）時不建立主題', async () => {
+    mockGetActiveOrganizationId.mockRejectedValue(new ConflictError('島島阿學組織目前已停權，無法建立挑戰'));
+    await expect(adminChallengeService.createProgram({ name: 'x' })).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.programs.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('adminChallengeService program 範圍', () => {
+  it('#179 其他組織的挑戰主題視為不存在（404），不可在其底下操作', async () => {
+    prismaMock.programs.findFirst.mockResolvedValue(null as never);
+    await expect(adminChallengeService.listCohorts(10)).rejects.toMatchObject({ statusCode: 404 });
+    expect(prismaMock.programs.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 10, organization_id: OFFICIAL_ORG_ID }) }));
+  });
+});
+
+describe('adminChallengeService templates', () => {
+  it('#179 列表只回島島阿學組織的模板', async () => {
+    prismaMock.practice_templates.findMany.mockResolvedValue([] as never);
+    await adminChallengeService.listTemplates();
+    expect(prismaMock.practice_templates.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { organization_id: OFFICIAL_ORG_ID } }));
+  });
+
+  it('#179 建立模板一律落在島島阿學組織（忽略 client 夾帶的組織 ID）', async () => {
+    prismaMock.practice_templates.create.mockRejectedValue(new Error('stop after create args'));
+    await expect(adminChallengeService.createTemplate({ organizationId: 3, title: 't', practiceTimePeriods: [] } as never, 99)).rejects.toThrow('stop after create args');
+    expect(prismaMock.practice_templates.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organization_id: OFFICIAL_ORG_ID }) }));
+  });
+
+  it('#179 其他組織的模板不可修改（404）', async () => {
+    prismaMock.practice_templates.findFirst.mockResolvedValue(null as never);
+    await expect(adminChallengeService.updateTemplate(36, { title: 'x' }, 99)).rejects.toMatchObject({ statusCode: 404 });
+    expect(prismaMock.practice_templates.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 36, organization_id: OFFICIAL_ORG_ID }) }));
   });
 });
 
