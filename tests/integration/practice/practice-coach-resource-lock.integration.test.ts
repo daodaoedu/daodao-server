@@ -129,6 +129,7 @@ describe('教練資源鎖定（daodao#278）', () => {
     prismaMock.comments.groupBy.mockResolvedValue([] as any);
     prismaMock.entity_tags.findMany.mockResolvedValue([] as any);
     prismaMock.cohorts.findUnique.mockResolvedValue({ program: { kind: 'lighthouse' } } as any);
+    prismaMock.cohorts.findMany.mockResolvedValue([{ id: 7 }] as any);
     prismaMock.entity_resources.findMany.mockImplementation((async (args: any) => {
       if (args?.where?.entity_type === 'practice_template') {
         return [{ entity_id: templateId, resource_id: coachResourceId, resources: { name: '暖身影片', url: 'https://example.com/warmup' } }];
@@ -194,6 +195,19 @@ describe('教練資源鎖定（daodao#278）', () => {
     const response = await put({ resources: [{ name: '我的筆記' }] });
 
     expect(response.status).toBe(403);
+  });
+
+  it('共同挑戰的模板實踐（非燈塔）→ 資源照舊可調整，不鎖定', async () => {
+    mockPractice();
+    prismaMock.cohorts.findUnique.mockResolvedValue({ program: { kind: 'challenge' } } as any);
+    prismaMock.cohorts.findMany.mockResolvedValue([] as any);
+
+    const response = await put({ resources: [{ name: '我的筆記' }] });
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.entity_resources.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { entity_type: 'practice', entity_id: 1, deleted_at: null }
+    }));
   });
 
   it('已退出本期（轉個人實踐）→ 可移除原教練資源', async () => {

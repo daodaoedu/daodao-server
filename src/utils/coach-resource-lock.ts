@@ -1,6 +1,7 @@
 /**
  * 教練資源鎖定：燈塔本期草稿由模板產生，模板掛的資源是教練加的，學員不可移除或修改。
  * 退出本期後實踐轉為個人實踐（cohort_id 清空），鎖定隨之解除。
+ * 這裡只看實踐本身；是否為燈塔場次（共同挑戰不鎖）由呼叫端查 cohorts.program.kind。
  */
 
 export interface LockableResource {
