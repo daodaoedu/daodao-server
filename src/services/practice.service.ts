@@ -50,6 +50,7 @@ import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
+import { PROGRAM_KINDS } from '../constants/program-kind';
 import { externalToInternalId } from './id-converter.service';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
@@ -1565,9 +1566,18 @@ type PracticeResourceRelation = { resource_id: number; resources: { name: string
  * 草稿建立時共用模板的 resources 列，所以 resource_id 掛過模板就是教練加的；
  * 但教練改模板、或修正前學員存檔都會重建 resources 列（id 換掉），因此也比對名稱＋網址。
  * 模板關聯含已軟刪的：教練事後從模板拿掉的資源，已在草稿上的仍是教練加的。
+ * 只鎖燈塔場次；共同挑戰也用模板產生草稿，但資源開放學員調整。
  */
 async function loadCoachResourceMatcher(practices: CoachLockSubject[]): Promise<(practiceId: number, relation: PracticeResourceRelation) => boolean> {
-  const lockedPractices = practices.filter(isCoachResourceLockActive);
+  const candidates = practices.filter(isCoachResourceLockActive);
+  if (candidates.length === 0) return () => false;
+
+  const lighthouseCohorts = await prismaClient.cohorts.findMany({
+    where: { id: { in: [...new Set(candidates.map(practice => practice.cohort_id as number))] }, program: { kind: PROGRAM_KINDS.LIGHTHOUSE } },
+    select: { id: true }
+  });
+  const lighthouseCohortIds = new Set((lighthouseCohorts ?? []).map(cohort => cohort.id));
+  const lockedPractices = candidates.filter(practice => lighthouseCohortIds.has(practice.cohort_id as number));
   if (lockedPractices.length === 0) return () => false;
 
   const templateResources = await prismaClient.entity_resources.findMany({
