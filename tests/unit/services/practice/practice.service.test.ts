@@ -50,7 +50,8 @@ import {
   update,
   deleteFunction,
   findUserPractices,
-  getUserStats
+  getUserStats,
+  copyPractice
 } from '@/services/practice.service';
 
 describe('Practice Service', () => {
@@ -846,6 +847,28 @@ describe('Practice Service', () => {
       await update(1, { title: 'Updated Title' }, 1);
 
       expect(mockEnqueuePracticeEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  // daodao#277：複製出的實踐從今天開始，結束日 = 開始日 + 天數 − 1（與範本庫、梯次指派同一規則）
+  describe('copyPractice', () => {
+    it('writes end_date = start_date + duration_days - 1', async () => {
+      prismaMock.practices.findUnique.mockResolvedValue({
+        id: 5, user_id: 1, cohort_id: null, deleted_at: null, privacy_status: 'public', status: 'active',
+        title: '每天寫三行', practice_action: '書寫', duration_days: 7, session_duration_minutes: 30,
+        frequency_min_days: 2, frequency_max_days: 4, practice_time_periods: [], other_context: null,
+        theme_color: '#FCDD84', template_id: null
+      } as any);
+      prismaMock.entity_tags.findMany.mockResolvedValue([] as any);
+      prismaMock.entity_resources.findMany.mockResolvedValue([] as any);
+      prismaMock.practices.create.mockResolvedValue({ id: 9, external_id: 'copied-uuid' } as any);
+      prismaMock.practices.update.mockResolvedValue({} as any);
+
+      const result = await copyPractice(5, 1);
+
+      expect(result.data.id).toBe('copied-uuid');
+      const data = prismaMock.practices.create.mock.calls[0][0].data as { start_date: Date; end_date: Date };
+      expect(data.end_date.getTime() - data.start_date.getTime()).toBe(6 * 86_400_000);
     });
   });
 
