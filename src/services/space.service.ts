@@ -268,19 +268,26 @@ async function listMySpaces(userId: number) {
   // 組織成員管理的場次優先以發起人卡呈現；同一期若也有學員 enrollment 只留一張
   const hostedIds = new Set(hostedCohorts.map(cohort => cohort.id));
   const eventEntries = [
-    ...hostedCohorts.map(cohort => ({ cohort, isHost: true, activityAt: cohortActivityAt(cohort, cohort.updated_at ?? cohort.created_at) })),
+    ...hostedCohorts.map(cohort => ({
+      cohort,
+      isHost: true,
+      canManage: true,
+      activityAt: cohortActivityAt(cohort, cohort.updated_at ?? cohort.created_at),
+    })),
     ...eventEnrollments
       .filter(enrollment => !hostedIds.has(enrollment.cohort.id))
       .map(enrollment => ({
         cohort: enrollment.cohort,
         isHost: enrollment.role === 'owner' || enrollment.role === 'assistant',
+        // 管理端權限走 organization_members，owner/assistant enrollment 本身進不了管理端
+        canManage: false,
         activityAt: enrollmentActivityAt(enrollment),
       })),
   ];
 
   const eventSpaces = eventEntries
     .sort((a, b) => (b.activityAt?.getTime() ?? 0) - (a.activityAt?.getTime() ?? 0))
-    .map(({ cohort, isHost, activityAt }) => ({
+    .map(({ cohort, isHost, canManage, activityAt }) => ({
       kind: 'event_course' as const,
       id: String(cohort.id),
       programId: cohort.program.id,
@@ -291,6 +298,7 @@ async function listMySpaces(userId: number) {
       hasActivePractice: hasActive(cohort),
       practiceCount: cohort.practices.length,
       isHost,
+      canManage,
       lastActivityAt: activityAt?.toISOString() ?? null,
     }));
 
@@ -306,6 +314,7 @@ async function listMySpaces(userId: number) {
       hasActivePractice: personalActive,
       practiceCount: personalTotal,
       isHost: true,
+      canManage: false,
       lastActivityAt: null,
     },
     {
@@ -319,6 +328,7 @@ async function listMySpaces(userId: number) {
       hasActivePractice: challengeEnrollments.some(enrollment => hasActive(enrollment.cohort)),
       practiceCount: challengeEnrollments.reduce((sum, enrollment) => sum + enrollment.cohort.practices.length, 0),
       isHost: false,
+      canManage: false,
       lastActivityAt: latestDate(challengeEnrollments.map(enrollmentActivityAt))?.toISOString() ?? null,
     },
     ...eventSpaces,
