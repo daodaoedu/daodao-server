@@ -73,7 +73,7 @@ describe('spaceService.listMySpaces', () => {
     expect(result.total).toBe(3);
     expect(result.items[2]).toMatchObject({
       kind: 'event_course', id: '64', programId: 7, name: '剛建立的場次', host: '燈塔工作室',
-      memberCount: 0, isHost: true, practiceCount: 0, lastActivityAt: '2026-10-12T00:00:00.000Z',
+      memberCount: 0, isHost: true, canManage: true, practiceCount: 0, lastActivityAt: '2026-10-12T00:00:00.000Z',
     });
     const where = prismaMock.cohorts.findMany.mock.calls[0][0]?.where;
     expect(where).toMatchObject({
@@ -95,7 +95,19 @@ describe('spaceService.listMySpaces', () => {
     const result = await spaceService.listMySpaces(42);
     const events = result.items.filter(item => item.kind === 'event_course');
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ id: '11', programId: 7, isHost: true });
+    expect(events[0]).toMatchObject({ id: '11', programId: 7, isHost: true, canManage: true });
+  });
+
+  it('只有組織成員管理的場次 canManage=true；非組織成員的 owner enrollment 不可導向管理端 (#201)', async () => {
+    prismaMock.practices.groupBy.mockResolvedValue([] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      enrollment({ id: 12, kind: 'lighthouse', name: '協作帶領', start: '2026-07-01', end: '2026-12-31', joined: 3, role: 'owner' }),
+    ] as never);
+
+    const result = await spaceService.listMySpaces(42);
+    expect(result.items[0].canManage).toBe(false);
+    expect(result.items[1].canManage).toBe(false);
+    expect(result.items[2]).toMatchObject({ id: '12', isHost: true, canManage: false });
   });
 
   it('orders the aggregate list personal → challenge → event cohorts by recent activity (FR-1.2)', async () => {
