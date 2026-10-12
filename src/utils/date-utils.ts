@@ -6,6 +6,17 @@
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
+ * 期間結束日：含開始日當天共 durationDays 天，結束日 = 開始日 + 天數 − 1。
+ * 範本綁定、共同挑戰、梯次指派複製的實踐與個人實踐共用這一條規則（daodao#277）。
+ * 以 UTC 日曆日運算：DATE 欄位由 Prisma 讀成 UTC 午夜，結果不受程序時區影響。
+ */
+export function inclusiveEndDate(startDate: Date, durationDays: number): Date {
+  const end = new Date(startDate);
+  end.setUTCDate(end.getUTCDate() + durationDays - 1);
+  return end;
+}
+
+/**
  * 格式化日期為 YYYY-MM-DD
  * @param date - 日期物件
  * @returns 格式化後的日期字串

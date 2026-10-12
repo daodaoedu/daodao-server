@@ -28,6 +28,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { inclusiveEndDate } from '../utils/date-utils';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import {
   INITIAL_PROGRESS,
@@ -565,8 +566,7 @@ async function createPracticeCore(
     // 計算結束日期（含首日：結束日 = 開始日 + 天數 − 1）
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
     const durationDays = data.durationDays || 14;
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + durationDays - 1);
+    const endDate = inclusiveEndDate(startDate, durationDays);
 
     // 根據 isDraft 決定初始狀態
     const initialStatus = data.isDraft ? 'draft' : 'not_started';
@@ -1890,13 +1890,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const endDate = source.duration_days
-      ? (() => {
-          const d = new Date(today);
-          d.setDate(d.getDate() + source.duration_days - 1);
-          return d;
-        })()
-      : null;
+    const endDate = source.duration_days ? inclusiveEndDate(today, source.duration_days) : null;
 
     const sourceResources = resourcesMap[sourceId] ?? [];
 
