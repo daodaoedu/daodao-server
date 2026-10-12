@@ -871,11 +871,11 @@ describe('Practice Service', () => {
       };
       const updatedStatus = () => (prismaMock.practices.update.mock.calls[0][0] as any).data.status;
 
-      const arrange = (startDate: Date) => {
+      const arrange = (startDate: Date, status = 'draft') => {
         prismaMock.practices.findUnique.mockResolvedValue({
           id: 1,
           user_id: 1,
-          status: 'draft',
+          status,
           start_date: startDate,
           practice_time_periods: [],
           created_at: new Date(),
@@ -915,6 +915,24 @@ describe('Practice Service', () => {
         arrange(taipeiMidnight(3));
         await update(1, { isDraft: false, startDate: taipeiMidnight(0).toISOString().slice(0, 10) }, 1);
         expect(updatedStatus()).toBe('active');
+      });
+
+      it('moves an active practice without check-ins back to not_started when its start date is pushed to the future', async () => {
+        arrange(taipeiMidnight(0), 'active');
+        await update(1, { startDate: taipeiMidnight(3).toISOString().slice(0, 10) }, 1);
+        expect(updatedStatus()).toBe('not_started');
+      });
+
+      it('moves a not_started practice to active when its start date is moved to today', async () => {
+        arrange(taipeiMidnight(3), 'not_started');
+        await update(1, { startDate: taipeiMidnight(0).toISOString().slice(0, 10) }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('does not change the status of a non-draft practice when isDraft=false is sent', async () => {
+        arrange(taipeiMidnight(-20), 'completed');
+        await update(1, { isDraft: false }, 1);
+        expect(updatedStatus()).toBeUndefined();
       });
     });
   });
