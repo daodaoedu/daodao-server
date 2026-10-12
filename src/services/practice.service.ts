@@ -45,7 +45,7 @@ import {
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 import { assertChallengePracticeCopyable, assertChallengePracticeUpdatable, isChallengeCohort } from './challenge-acl.service';
-import { assertCohortPracticeUpdatable } from './cohort-acl.service';
+import { assertCohortPracticeUpdatable, isLighthouseCohort } from './cohort-acl.service';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
@@ -442,6 +442,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       title: practice.title,
       // 前端據此隱藏「我也想實踐」並鎖定名稱／期間／隱私（FR-CC-09、FR-CC-10）
       isChallenge: await isChallengeCohort(practice.cohort_id),
+      // 燈塔場次實踐的隱私由場次統一設定，編輯頁據此不送 privacyStatus（否則 assertCohortPracticeUpdatable 會擋）
+      isCohortPrivacyLocked: await isLighthouseCohort(practice.cohort_id),
       practiceAction: practice.practice_action || undefined,
       startDate: practice.start_date?.toISOString().split('T')[0],
       endDate: practice.end_date?.toISOString().split('T')[0],

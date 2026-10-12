@@ -22,6 +22,16 @@ export const getLighthouseCohortIdByPracticeId = async (practiceId: number): Pro
   return practice.cohort_id;
 };
 
+/** cohort 是否為燈塔場次；比照 challenge-acl.service.ts 的 isChallengeCohort */
+export const isLighthouseCohort = async (cohortId: number | null): Promise<boolean> => {
+  if (cohortId === null) return false;
+  const cohort = await prisma.cohorts.findUnique({
+    where: { id: cohortId },
+    select: { program: { select: { kind: true } } }
+  });
+  return cohort?.program.kind === PROGRAM_KINDS.LIGHTHOUSE;
+};
+
 /**
  * 更新 guard：燈塔場次實踐嘗試修改 privacyStatus 時拒絕。
  * 隱私由場次的 is_private 統一設定，學員不可自行修改。
@@ -35,5 +45,6 @@ export const assertCohortPracticeUpdatable = async (practiceId: number, data: Re
 
 export const cohortAclService = {
   getLighthouseCohortIdByPracticeId,
+  isLighthouseCohort,
   assertCohortPracticeUpdatable
 };

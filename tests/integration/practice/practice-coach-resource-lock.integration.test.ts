@@ -207,6 +207,24 @@ describe('教練資源鎖定（daodao#278）', () => {
     }));
   });
 
+  it('GET 詳情：燈塔本期實踐回 isCohortPrivacyLocked=true，編輯頁據此不送隱私', async () => {
+    mockPractice();
+
+    const response = await request(app).get(PRACTICE_URL).set('Authorization', `Bearer ${userToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.isCohortPrivacyLocked).toBe(true);
+  });
+
+  it('GET 詳情：已退出本期 → isCohortPrivacyLocked=false', async () => {
+    mockPractice({ cohort_id: null as unknown as number });
+
+    const response = await request(app).get(PRACTICE_URL).set('Authorization', `Bearer ${userToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.isCohortPrivacyLocked).toBe(false);
+  });
+
   it('GET 詳情：教練資源 isLocked=true，自己的 isLocked=false', async () => {
     mockPractice();
 
