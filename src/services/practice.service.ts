@@ -847,14 +847,22 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     if (data.practiceAction !== undefined) updateData.practice_action = data.practiceAction;
     if (data.otherContext !== undefined) updateData.other_context = data.otherContext;
 
-    // 處理 isDraft 欄位：優先於 status；發布時依開始日決定 active／not_started（daodao#212）
-    if (data.isDraft !== undefined) {
-      const startDate = data.startDate
-        ? new Date(data.startDate)
-        : existingPractice.start_date ?? new Date();
-      updateData.status = data.isDraft ? 'draft' : initialStatusForStartDate(startDate);
+    // 處理 isDraft 欄位：優先於 status；發布草稿、或未打卡實踐改開始日時，依開始日決定 active／not_started（daodao#212）
+    // startDate 在有打卡後已被 stripLockedFields 移除，所以改開始日只會發生在尚未打卡的實踐
+    const nextStartDate = data.startDate
+      ? new Date(data.startDate)
+      : existingPractice.start_date ?? new Date();
+    if (data.isDraft === true) {
+      updateData.status = 'draft';
+    } else if (data.isDraft === false && existingPractice.status === 'draft') {
+      updateData.status = initialStatusForStartDate(nextStartDate);
     } else if (data.status !== undefined) {
       updateData.status = data.status;
+    } else if (
+      data.startDate !== undefined &&
+      (existingPractice.status === 'not_started' || existingPractice.status === 'active')
+    ) {
+      updateData.status = initialStatusForStartDate(nextStartDate);
     }
 
     if (data.privacyStatus !== undefined) updateData.privacy_status = data.privacyStatus;
