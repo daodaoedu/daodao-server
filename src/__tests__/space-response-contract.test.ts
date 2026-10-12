@@ -19,6 +19,7 @@ const mockSpaceListData = {
   items: [{
     kind: 'event_course' as const,
     id: '12',
+    programId: 3,
     name: '自我覺察練習',
     host: '我的島',
     memberCount: 5,

@@ -156,36 +156,70 @@ async function requireHostSpace(externalId: string, userId: number): Promise<spa
   return space;
 }
 
+type SpaceCohort = {
+  id: number;
+  display_name: string;
+  start_date: Date;
+  end_date: Date;
+  created_at: Date;
+  updated_at: Date | null;
+  program: { id: number; kind: string; organization: { name: string } };
+  _count: { cohort_enrollments: number };
+  cohort_enrollments: Array<{ user: MemberWithAvatar['users'] | null }>;
+  practices: Array<{ status: string | null; updated_at: Date | null; created_at: Date | null }>;
+};
+
 type EnrollmentWithCohort = {
   joined_at: Date | null;
   role: string;
-  cohort: {
-    id: number;
-    display_name: string;
-    start_date: Date;
-    end_date: Date;
-    program: { kind: string; organization: { name: string } };
-    _count: { cohort_enrollments: number };
-    cohort_enrollments: Array<{ user: MemberWithAvatar['users'] | null }>;
-    practices: Array<{ status: string | null; updated_at: Date | null; created_at: Date | null }>;
-  };
+  cohort: SpaceCohort;
 };
+
+/** Cohort fields a space card needs; practices are scoped to the viewer. */
+const spaceCohortSelect = (userId: number) => ({
+  id: true,
+  display_name: true,
+  start_date: true,
+  end_date: true,
+  created_at: true,
+  updated_at: true,
+  program: { select: { id: true, kind: true, organization: { select: { name: true } } } },
+  _count: { select: { cohort_enrollments: { where: { status: 'joined' } } } },
+  cohort_enrollments: {
+    where: { status: 'joined', user_id: { not: null } },
+    orderBy: { joined_at: 'asc' },
+    take: MEMBER_AVATAR_LIMIT,
+    select: { user: memberAvatarSelect.users },
+  },
+  practices: {
+    where: { user_id: userId, deleted_at: null, status: { in: [...SUBPAGE_PRACTICE_STATUSES] } },
+    select: { status: true, updated_at: true, created_at: true },
+  },
+}) satisfies Prisma.cohortsSelect;
+
+/** Cohort statuses a host still sees on the space list; archived cohorts drop off. */
+const HOSTED_COHORT_STATUSES = ['draft', 'published'] as const;
 
 const latestDate = (dates: Array<Date | null | undefined>): Date | null =>
   dates.reduce<Date | null>((latest, value) => (value && (!latest || value > latest) ? value : latest), null);
 
-/** 由我在該期的實踐推導活動時間：最近一次實踐更新，無實踐則退回加入時間 */
+/** 由我在該期的實踐推導活動時間：最近一次實踐更新，無實踐則退回 fallback（加入時間／場次更新時間） */
+const cohortActivityAt = (cohort: SpaceCohort, fallback: Date | null): Date | null =>
+  latestDate(cohort.practices.flatMap(practice => [practice.updated_at, practice.created_at])) ?? fallback;
+
 const enrollmentActivityAt = (enrollment: EnrollmentWithCohort): Date | null =>
-  latestDate(enrollment.cohort.practices.flatMap(practice => [practice.updated_at, practice.created_at])) ?? enrollment.joined_at;
+  cohortActivityAt(enrollment.cohort, enrollment.joined_at);
 
 /**
  * The aggregated "你的空間" list (FR-1.2): personal practices → platform
  * challenge → joined event-course cohorts ordered by recent activity.
- * 共同挑戰卡與活動課程卡皆由 cohort_enrollments（status=joined）聚合；
- * 活動課程卡的 id 為 cohortId 字串，前端導向 /cohorts/[cohortId]。
+ * 共同挑戰卡與學員的活動課程卡由 cohort_enrollments（status=joined）聚合；
+ * 發起人的活動課程卡另由「我所屬組織底下的燈塔場次」聚合——建場次不會寫
+ * enrollment，管理權限走 organization_members（#201）。
+ * 活動課程卡的 id 為 cohortId 字串、programId 供前端組管理端連結。
  */
 async function listMySpaces(userId: number) {
-  const [personalCounts, enrollmentRows] = await Promise.all([
+  const [personalCounts, enrollmentRows, hostedCohorts] = await Promise.all([
     prisma.practices.groupBy({
       by: ['status'],
       where: { user_id: userId, deleted_at: null, status: { in: [...SUBPAGE_PRACTICE_STATUSES] } },
@@ -193,30 +227,20 @@ async function listMySpaces(userId: number) {
     }),
     prisma.cohort_enrollments.findMany({
       where: { user_id: userId, status: 'joined', cohort: { program: { archived_at: null, deleted_at: null, organization: { status: 'active' } } } },
-      select: {
-        joined_at: true,
-        role: true,
-        cohort: {
-          select: {
-            id: true,
-            display_name: true,
-            start_date: true,
-            end_date: true,
-            program: { select: { kind: true, organization: { select: { name: true } } } },
-            _count: { select: { cohort_enrollments: { where: { status: 'joined' } } } },
-            cohort_enrollments: {
-              where: { status: 'joined', user_id: { not: null } },
-              orderBy: { joined_at: 'asc' },
-              take: MEMBER_AVATAR_LIMIT,
-              select: { user: memberAvatarSelect.users },
-            },
-            practices: {
-              where: { user_id: userId, deleted_at: null, status: { in: [...SUBPAGE_PRACTICE_STATUSES] } },
-              select: { status: true, updated_at: true, created_at: true },
-            },
-          },
+      select: { joined_at: true, role: true, cohort: { select: spaceCohortSelect(userId) } },
+    }),
+    prisma.cohorts.findMany({
+      where: {
+        deleted_at: null,
+        status: { in: [...HOSTED_COHORT_STATUSES] },
+        program: {
+          kind: PROGRAM_KINDS.LIGHTHOUSE,
+          archived_at: null,
+          deleted_at: null,
+          organization: { status: 'active', organization_members: { some: { user_id: userId } } },
         },
       },
+      select: spaceCohortSelect(userId),
     }),
   ]);
 
@@ -226,9 +250,9 @@ async function listMySpaces(userId: number) {
   // 同一使用者可能因 email 邀請 + 帳號加入而在同一期留下兩筆 joined 列：以期為單位去重
   const enrollments: EnrollmentWithCohort[] = [...new Map(enrollmentRows.map(row => [row.cohort.id, row])).values()];
 
-  const avatarsOf = (enrollment: EnrollmentWithCohort) =>
-    toAvatars(enrollment.cohort.cohort_enrollments.flatMap(member => (member.user ? [{ users: member.user }] : [])));
-  const hasActive = (enrollment: EnrollmentWithCohort) => enrollment.cohort.practices.some(practice => practice.status === 'active');
+  const avatarsOf = (cohort: SpaceCohort) =>
+    toAvatars(cohort.cohort_enrollments.flatMap(member => (member.user ? [{ users: member.user }] : [])));
+  const hasActive = (cohort: SpaceCohort) => cohort.practices.some(practice => practice.status === 'active');
 
   const challengeEnrollments = enrollments.filter(enrollment => enrollment.cohort.program.kind === PROGRAM_KINDS.CHALLENGE);
   const eventEnrollments = enrollments.filter(enrollment => enrollment.cohort.program.kind === PROGRAM_KINDS.LIGHTHOUSE);
@@ -241,19 +265,32 @@ async function listMySpaces(userId: number) {
     .sort(byLatestStart);
   const featuredChallenge = ongoingChallenges[0] ?? [...challengeEnrollments].sort(byLatestStart)[0] ?? null;
 
-  const eventSpaces = eventEnrollments
-    .map(enrollment => ({ enrollment, activityAt: enrollmentActivityAt(enrollment) }))
+  // 組織成員管理的場次優先以發起人卡呈現；同一期若也有學員 enrollment 只留一張
+  const hostedIds = new Set(hostedCohorts.map(cohort => cohort.id));
+  const eventEntries = [
+    ...hostedCohorts.map(cohort => ({ cohort, isHost: true, activityAt: cohortActivityAt(cohort, cohort.updated_at ?? cohort.created_at) })),
+    ...eventEnrollments
+      .filter(enrollment => !hostedIds.has(enrollment.cohort.id))
+      .map(enrollment => ({
+        cohort: enrollment.cohort,
+        isHost: enrollment.role === 'owner' || enrollment.role === 'assistant',
+        activityAt: enrollmentActivityAt(enrollment),
+      })),
+  ];
+
+  const eventSpaces = eventEntries
     .sort((a, b) => (b.activityAt?.getTime() ?? 0) - (a.activityAt?.getTime() ?? 0))
-    .map(({ enrollment, activityAt }) => ({
+    .map(({ cohort, isHost, activityAt }) => ({
       kind: 'event_course' as const,
-      id: String(enrollment.cohort.id),
-      name: enrollment.cohort.display_name,
-      host: enrollment.cohort.program.organization.name,
-      memberCount: enrollment.cohort._count.cohort_enrollments,
-      memberAvatars: avatarsOf(enrollment),
-      hasActivePractice: hasActive(enrollment),
-      practiceCount: enrollment.cohort.practices.length,
-      isHost: enrollment.role === 'owner' || enrollment.role === 'assistant',
+      id: String(cohort.id),
+      programId: cohort.program.id,
+      name: cohort.display_name,
+      host: cohort.program.organization.name,
+      memberCount: cohort._count.cohort_enrollments,
+      memberAvatars: avatarsOf(cohort),
+      hasActivePractice: hasActive(cohort),
+      practiceCount: cohort.practices.length,
+      isHost,
       lastActivityAt: activityAt?.toISOString() ?? null,
     }));
 
@@ -261,6 +298,7 @@ async function listMySpaces(userId: number) {
     {
       kind: 'personal' as const,
       id: null,
+      programId: null,
       name: '個人實踐',
       host: '我的島',
       memberCount: 1,
@@ -273,11 +311,12 @@ async function listMySpaces(userId: number) {
     {
       kind: 'challenge' as const,
       id: null,
+      programId: null,
       name: '共同挑戰',
       host: '島島阿學',
       memberCount: featuredChallenge?.cohort._count.cohort_enrollments ?? 0,
-      memberAvatars: featuredChallenge ? avatarsOf(featuredChallenge) : [],
-      hasActivePractice: challengeEnrollments.some(hasActive),
+      memberAvatars: featuredChallenge ? avatarsOf(featuredChallenge.cohort) : [],
+      hasActivePractice: challengeEnrollments.some(enrollment => hasActive(enrollment.cohort)),
       practiceCount: challengeEnrollments.reduce((sum, enrollment) => sum + enrollment.cohort.practices.length, 0),
       isHost: false,
       lastActivityAt: latestDate(challengeEnrollments.map(enrollmentActivityAt))?.toISOString() ?? null,
