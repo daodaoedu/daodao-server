@@ -878,9 +878,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
       // 重新計算 end_date
       if (newStartDate) {
-        const endDate = new Date(newStartDate);
-        endDate.setDate(endDate.getDate() + newDurationDays - 1);
-        updateData.end_date = endDate;
+        updateData.end_date = inclusiveEndDate(newStartDate, newDurationDays);
       }
     }
 

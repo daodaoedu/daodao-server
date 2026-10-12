@@ -9,6 +9,7 @@
  * @see docs/practice-mvp/practice-email-spec.md
  */
 
+import { inclusiveEndDate } from '../../utils/date-utils';
 import { prisma } from '../database/prisma.service';
 import { loggerService } from '../logging/logger.service';
 import { generateStandardEmail, generateCtaButton, generateDivider, generateAuthorSection, EMAIL_COLORS } from './base-template';
@@ -82,10 +83,9 @@ export async function sendPracticeCreatedEmail(
     const frequencyMinDays = practice.frequency_min_days ?? 1;
     const frequencyMaxDays = practice.frequency_max_days ?? 7;
 
-    // 計算結束日期
-    const endDate = practice.start_date
-      ? new Date(practice.start_date.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      : '未設定';
+    // 結束日：優先用實踐的 end_date，沒有時以同一條規則推算（開始日 + 天數 − 1，daodao#277）
+    const end = practice.end_date ?? (practice.start_date ? inclusiveEndDate(practice.start_date, durationDays) : null);
+    const endDate = end ? end.toISOString().split('T')[0] : '未設定';
 
     // 計算目標打卡次數
     const targetCheckIns = Math.floor(durationDays / frequencyMaxDays);
