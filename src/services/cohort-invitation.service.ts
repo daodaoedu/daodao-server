@@ -11,9 +11,9 @@ import { notificationEventService } from './notification-event.service';
 
 const emailSchema = z.string().trim().toLowerCase().email();
 const blockMessages: Record<InvitationBlockReason, string> = {
-  expired: '已超過加入截止日，請先到期設定延後加入截止日再寄送邀請',
-  not_published: '此期尚未發布，請先發布再寄送邀請',
-  full: '此期人數已滿，請先調整人數上限再寄送邀請'
+  expired: '已超過加入截止日，請先到「編輯場次設定」延後加入截止日再寄送邀請',
+  not_published: '此場次尚未發布，請先發布再寄送邀請',
+  full: '此場次人數已滿，請先到「編輯場次設定」調整人數上限再寄送邀請'
 };
 const joinWindowSelect = { id: true, status: true, end_date: true, join_deadline: true, capacity: true } as const;
 /** 受邀者收到信時是否還能加入；不能加入就不寄（daodao#281） */
