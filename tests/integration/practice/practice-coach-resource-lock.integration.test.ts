@@ -221,6 +221,21 @@ describe('教練資源鎖定（daodao#278）', () => {
     }));
   });
 
+  it('燈塔本期實踐：編輯頁不帶 privacyStatus 的 PUT → 200；帶了 → 400（#277 回報的存檔一律 400）', async () => {
+    mockPractice();
+    prismaMock.practices.findUnique.mockResolvedValue({
+      ...cohortDraft,
+      cohorts: { end_date: new Date('2099-12-31'), program: { kind: 'lighthouse' } }
+    } as any);
+    const editPagePayload = {
+      title: '每日寫作', practiceAction: '每天寫 300 字', sessionDurationMinutes: 30, practiceTimePeriods: ['morning'], tags: [],
+      resources: [{ name: '暖身影片', url: 'https://example.com/warmup' }, { name: '我的筆記' }]
+    };
+
+    expect((await put(editPagePayload)).status).toBe(200);
+    expect((await put({ ...editPagePayload, privacyStatus: 'private' })).status).toBe(400);
+  });
+
   it('GET 詳情：燈塔本期實踐回 isCohortPrivacyLocked=true，編輯頁據此不送隱私', async () => {
     mockPractice();
 
