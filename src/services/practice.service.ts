@@ -29,7 +29,7 @@ import {
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
-import { isCoachResourceLockActive, partitionIncomingResources, resourceContentKey } from '../utils/coach-resource-lock';
+import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import {
   INITIAL_PROGRESS,
   resolveProgressDurationDays
@@ -1537,7 +1537,7 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
         select: { id: true, cohort_id: true, template_id: true, creation_source: true }
       })
       : [];
-    const isCoachResource = await loadCoachResourceMatcher(practices ?? []);
+    const lockedRelationIds = await loadCoachLockedRelationIds(practices ?? [], entityResources);
 
     return entityResources.reduce((acc, er) => {
       if (!acc[er.entity_id]) {
@@ -1548,7 +1548,7 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
         name: er.resources.name,
         url: er.resources.url || undefined,
         dayNumber: parseResourceDay(er.note),
-        isLocked: isCoachResource(er.entity_id, er)
+        isLocked: lockedRelationIds.has(er.id)
       });
       return acc;
     }, {} as Record<number, PracticeResourceEntity[]>);
@@ -1559,18 +1559,16 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
 }
 
 type CoachLockSubject = { id: number; cohort_id: number | null; template_id: number | null; creation_source: string | null };
-type PracticeResourceRelation = { resource_id: number; resources: { name: string; url: string | null } };
+type PracticeResourceRelation = { id: number; entity_id: number; resource_id: number; resources: { name: string; url: string | null } };
 
 /**
- * 建立「這筆實踐資源是不是教練加的」判斷式。
- * 草稿建立時共用模板的 resources 列，所以 resource_id 掛過模板就是教練加的；
- * 但教練改模板、或修正前學員存檔都會重建 resources 列（id 換掉），因此也比對名稱＋網址。
+ * 找出教練加的實踐資源關聯 id（判定規則見 pickCoachLockedRelationIds）。
  * 模板關聯含已軟刪的：教練事後從模板拿掉的資源，已在草稿上的仍是教練加的。
  * 只鎖燈塔場次；共同挑戰也用模板產生草稿，但資源開放學員調整。
  */
-async function loadCoachResourceMatcher(practices: CoachLockSubject[]): Promise<(practiceId: number, relation: PracticeResourceRelation) => boolean> {
+async function loadCoachLockedRelationIds(practices: CoachLockSubject[], relations: PracticeResourceRelation[]): Promise<Set<number>> {
   const candidates = practices.filter(isCoachResourceLockActive);
-  if (candidates.length === 0) return () => false;
+  if (candidates.length === 0) return new Set();
 
   const lighthouseCohorts = await prismaClient.cohorts.findMany({
     where: { id: { in: [...new Set(candidates.map(practice => practice.cohort_id as number))] }, program: { kind: PROGRAM_KINDS.LIGHTHOUSE } },
@@ -1578,7 +1576,7 @@ async function loadCoachResourceMatcher(practices: CoachLockSubject[]): Promise<
   });
   const lighthouseCohortIds = new Set((lighthouseCohorts ?? []).map(cohort => cohort.id));
   const lockedPractices = candidates.filter(practice => lighthouseCohortIds.has(practice.cohort_id as number));
-  if (lockedPractices.length === 0) return () => false;
+  if (lockedPractices.length === 0) return new Set();
 
   const templateResources = await prismaClient.entity_resources.findMany({
     where: {
@@ -1588,32 +1586,26 @@ async function loadCoachResourceMatcher(practices: CoachLockSubject[]): Promise<
     select: { entity_id: true, resource_id: true, resources: { select: { name: true, url: true } } }
   });
 
-  const byTemplate = new Map<number, { resourceIds: Set<number>; contents: Set<string> }>();
-  for (const er of templateResources ?? []) {
-    const entry = byTemplate.get(er.entity_id) ?? { resourceIds: new Set<number>(), contents: new Set<string>() };
-    entry.resourceIds.add(er.resource_id);
-    entry.contents.add(resourceContentKey(er.resources));
-    byTemplate.set(er.entity_id, entry);
+  const lockedIds = new Set<number>();
+  for (const practice of lockedPractices) {
+    const templateLinks = (templateResources ?? []).filter(er => er.entity_id === practice.template_id);
+    const practiceRelations = relations.filter(er => er.entity_id === practice.id);
+    for (const id of pickCoachLockedRelationIds(templateLinks, practiceRelations)) lockedIds.add(id);
   }
-  const templateByPractice = new Map(lockedPractices.map(practice => [practice.id, practice.template_id as number]));
-
-  return (practiceId, relation) => {
-    const entry = byTemplate.get(templateByPractice.get(practiceId) ?? -1);
-    return !!entry && (entry.resourceIds.has(relation.resource_id) || entry.contents.has(resourceContentKey(relation.resources)));
-  };
+  return lockedIds;
 }
 
 /** 取得單一實踐目前掛著、且被教練鎖定的資源（含關聯 id，更新時原樣保留） */
 async function getCoachLockedResources(practice: CoachLockSubject): Promise<Array<{ relationId: number; name: string; url: string; dayNumber: number | null }>> {
   if (!isCoachResourceLockActive(practice)) return [];
-  const isCoachResource = await loadCoachResourceMatcher([practice]);
 
-  const relations = await prismaClient.entity_resources.findMany({
+  const relations = (await prismaClient.entity_resources.findMany({
     where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null },
     include: { resources: { select: { name: true, url: true } } }
-  });
-  return (relations ?? [])
-    .filter(er => isCoachResource(practice.id, er))
+  })) ?? [];
+  const lockedRelationIds = await loadCoachLockedRelationIds([practice], relations);
+  return relations
+    .filter(er => lockedRelationIds.has(er.id))
     .map(er => ({ relationId: er.id, name: er.resources.name, url: er.resources.url, dayNumber: parseResourceDay(er.note) }));
 }
 

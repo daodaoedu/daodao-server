@@ -1,4 +1,32 @@
-import { isCoachResourceLockActive, partitionIncomingResources } from '@/utils/coach-resource-lock';
+import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '@/utils/coach-resource-lock';
+
+describe('pickCoachLockedRelationIds', () => {
+  const template = [
+    { resource_id: 100, resources: { name: '暖身影片', url: 'https://example.com/v' } },
+    { resource_id: 101, resources: { name: '指定讀物', url: '' } }
+  ];
+  const relation = (id: number, resourceId: number, name: string, url = '') => ({ id, resource_id: resourceId, resources: { name, url } });
+
+  it('resource_id 掛過模板 → 鎖定', () => {
+    expect(pickCoachLockedRelationIds(template, [relation(1, 100, '暖身影片', 'https://example.com/v'), relation(2, 900, '我的筆記')])).toEqual(new Set([1]));
+  });
+
+  it('教練資源被重建（id 不同、內容相同）→ 以內容補鎖一筆', () => {
+    expect(pickCoachLockedRelationIds(template, [relation(1, 555, '指定讀物')])).toEqual(new Set([1]));
+  });
+
+  it('學員自己另存一份同名同網址 → 只鎖教練那筆，學員那份可移除', () => {
+    expect(pickCoachLockedRelationIds(template, [
+      relation(1, 100, '暖身影片', 'https://example.com/v'),
+      relation(2, 777, '暖身影片', 'https://example.com/v')
+    ])).toEqual(new Set([1]));
+  });
+
+  it('同內容在模板歷史出現多次（教練改過模板）→ 內容比對仍只鎖一筆', () => {
+    const history = [...template, { resource_id: 200, resources: { name: '指定讀物', url: '' } }];
+    expect(pickCoachLockedRelationIds(history, [relation(1, 555, '指定讀物'), relation(2, 556, '指定讀物')])).toEqual(new Set([1]));
+  });
+});
 
 describe('isCoachResourceLockActive', () => {
   it('本期模板草稿 → 鎖定', () => {
@@ -56,6 +84,17 @@ describe('partitionIncomingResources', () => {
     const twin = { ...coachBook, id: 'r3' };
     const result = partitionIncomingResources([coachBook, twin], [{ name: '指定讀物' }]);
     expect(result.violated).toEqual([twin]);
+  });
+
+  it('同名同網址、不同天數的教練資源：明確帶天數的先配對，沒帶天數的再補', () => {
+    const day2 = { id: 'd2', name: '練習單', url: 'https://example.com/sheet', dayNumber: 2 };
+    const day3 = { id: 'd3', name: '練習單', url: 'https://example.com/sheet', dayNumber: 3 };
+    const result = partitionIncomingResources([day2, day3], [
+      { name: '練習單', url: 'https://example.com/sheet' },
+      { name: '練習單', url: 'https://example.com/sheet', dayNumber: 2 }
+    ]);
+    expect(result.violated).toEqual([]);
+    expect(result.rest).toEqual([]);
   });
 
   it('沒有鎖定資源 → 全部照送出內容建立', () => {
