@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
-import { ForbiddenError } from '../middleware/error.middleware';
+import { getInvitationBlockReason, isInvitationSendable, type InvitationBlockReason, type InviteItemState } from '../domain/cohort.rules';
+import { ConflictError, ForbiddenError } from '../middleware/error.middleware';
 import { bulkEnqueueEmails, enqueueEmail } from '../queues/email.queue';
 import type { InviteMembersInput } from '../validators/cohort-invitation.validators';
 import { prisma } from './database/prisma.service';
@@ -9,8 +10,21 @@ import { generateCohortInvitationEmail } from './email/cohort-invitation-templat
 import { notificationEventService } from './notification-event.service';
 
 const emailSchema = z.string().trim().toLowerCase().email();
-/** 名單狀態（FR-RS-03 預覽結果）：new 新邀請、invited 已邀請、joined 已加入、rejoin 曾退出將重新邀請、invalid 格式錯誤 */
-type InviteItemState = 'new' | 'invited' | 'joined' | 'rejoin' | 'invalid';
+const blockMessages: Record<InvitationBlockReason, string> = {
+  expired: '已超過加入截止日，請先到期設定延後加入截止日再寄送邀請',
+  not_published: '此期尚未發布，請先發布再寄送邀請',
+  full: '此期人數已滿，請先調整人數上限再寄送邀請'
+};
+const joinWindowSelect = { id: true, status: true, end_date: true, join_deadline: true, capacity: true } as const;
+/** 受邀者收到信時是否還能加入；不能加入就不寄（daodao#281） */
+const resolveBlockReason = async (cohort: { id: number; status: string; end_date: Date; join_deadline: Date | null; capacity: number | null }): Promise<InvitationBlockReason | null> => {
+  const participantCount = cohort.capacity === null ? 0 : await prisma.cohort_enrollments.count({ where: { cohort_id: cohort.id, status: 'joined' } });
+  return getInvitationBlockReason({ status: cohort.status, endDate: cohort.end_date, joinDeadline: cohort.join_deadline, capacity: cohort.capacity, participantCount });
+};
+const countStates = (items: Array<{ state: InviteItemState }>): { sendableCount: number; skippedCount: number } => ({
+  sendableCount: items.filter(item => isInvitationSendable(item.state)).length,
+  skippedCount: items.filter(item => item.state === 'joined').length
+});
 const collect = (input: InviteMembersInput): string[] => {
   const csvEmails = input.csv?.split(/\r?\n/).map(line => line.split(',')[0]?.trim()).filter(Boolean) ?? [];
   if (csvEmails[0]?.toLowerCase() === 'email') csvEmails.shift();
@@ -19,9 +33,10 @@ const collect = (input: InviteMembersInput): string[] => {
 const invite = async (programId: number, cohortId: number, actorId: number, input: InviteMembersInput) => {
   const cohort = await prisma.cohorts.findFirst({
     where: { id: cohortId, program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } },
-    select: { id: true, display_name: true, invite_message: true, program: { select: { organization: { select: { name: true } } } } }
+    select: { ...joinWindowSelect, display_name: true, invite_message: true, program: { select: { organization: { select: { name: true } } } } }
   });
   if (!cohort) throw new ForbiddenError('無權限管理此期邀請');
+  const blockedReason = await resolveBlockReason(cohort);
   const emails = collect(input);
   const validated = emails.map(email => ({ email, valid: emailSchema.safeParse(email).success, reason: emailSchema.safeParse(email).success ? null : 'email 格式錯誤' }));
   const errors = validated.filter(item => !item.valid).length;
@@ -38,8 +53,9 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
       const reasons = { invalid: item.reason, joined: '已加入', invited: '已邀請，將重寄邀請信', rejoin: '曾退出，將重新邀請', new: null } as const;
       return { ...item, reason: reasons[state], state, enrollmentId: null };
     });
-    return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: 0, items };
+    return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: 0, ...countStates(items), blockedReason, items };
   }
+  if (blockedReason) throw new ConflictError(blockMessages[blockedReason]);
 
   const created = await prisma.$transaction(async tx => {
     const items: Array<{ email: string; valid: boolean; reason: string | null; enrollmentId: number | null; state: InviteItemState; inviteToken?: string }> = validated.map(item => ({ ...item, enrollmentId: null, state: item.valid ? 'new' : 'invalid' }));
@@ -64,7 +80,8 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
     return items;
   });
   const base = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
-  const jobs = created.filter(item => item.valid && item.inviteToken).map(item => {
+  // 已加入者保留原 enrollment，不重寄邀請信（daodao#282）
+  const jobs = created.filter(item => isInvitationSendable(item.state) && item.inviteToken).map(item => {
     const template = generateCohortInvitationEmail({ organizationName: cohort.program.organization.name, cohortName: cohort.display_name, inviteMessage: cohort.invite_message, inviteUrl: `${base}/cohorts/join/${item.inviteToken}` });
     return { to: item.email, subject: template.subject, html: template.html, emailType: 'cohort_invitation', priority: 'P1' as const };
   });
@@ -82,15 +99,18 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
     payload: { message: `你收到「${cohort.display_name}」的加入邀請。` },
     priority: 'P1'
   })));
-  return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: jobs.length, items: created.map(({ inviteToken: _inviteToken, ...item }) => item) };
+  return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: jobs.length, ...countStates(created), blockedReason: null, items: created.map(({ inviteToken: _inviteToken, ...item }) => item) };
 };
 const resend = async (programId: number, cohortId: number, enrollmentId: number, actorId: number) => {
   const enrollment = await prisma.cohort_enrollments.findFirst({
     where: { id: enrollmentId, cohort_id: cohortId, cohort: { program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } } },
-    select: { id: true, email: true, invite_token: true, cohort: { select: { display_name: true, invite_message: true, program: { select: { organization: { select: { name: true } } } } } } }
+    select: { id: true, email: true, invite_token: true, status: true, cohort: { select: { ...joinWindowSelect, display_name: true, invite_message: true, program: { select: { organization: { select: { name: true } } } } } } }
   });
   if (!enrollment) throw new ForbiddenError('無權限重寄此邀請');
   if (!enrollment.email) throw new ForbiddenError('此匿名名冊紀錄不可重寄邀請');
+  if (enrollment.status === 'joined') throw new ConflictError('此成員已加入，不需重寄邀請');
+  const blockedReason = await resolveBlockReason(enrollment.cohort);
+  if (blockedReason) throw new ConflictError(blockMessages[blockedReason]);
   const token = enrollment.invite_token;
   if (!token) throw new ForbiddenError('此邀請沒有可用 token');
   const base = process.env.FRONTEND_URL ?? 'https://app.daodao.so';
