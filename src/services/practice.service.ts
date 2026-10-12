@@ -29,6 +29,7 @@ import {
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
+import { isCoachResourceLockActive, partitionIncomingResources, resourceContentKey } from '../utils/coach-resource-lock';
 import {
   INITIAL_PROGRESS,
   resolveProgressDurationDays
@@ -831,6 +832,13 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     // 燈塔場次實踐：隱私由場次統一設定，學員不可自行修改
     await assertCohortPracticeUpdatable(id, data as unknown as Record<string, unknown>);
 
+    // 燈塔本期草稿：教練加入的資源不可移除或修改，原樣送回的那幾筆保留原關聯不重建
+    const lockedResources = data.resources !== undefined ? await getCoachLockedResources(existingPractice) : [];
+    const { violated, rest: resourcesToCreate } = partitionIncomingResources(lockedResources, data.resources ?? []);
+    if (violated.length > 0) {
+      throw new ForbiddenError(`教練加入的資源不可移除或修改：${violated.map(resource => resource.name).join('、')}`);
+    }
+
     // 有打卡記錄時，自動移除鎖定欄位，允許其餘欄位正常更新
     data = stripLockedFields(data, hasCheckIns);
 
@@ -922,7 +930,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     // 處理資源更新（如果有提供）
     if (data.resources !== undefined) {
-      await updateResources(id, data.resources, userId);
+      await updateResources(id, resourcesToCreate, userId, lockedResources.map(resource => resource.relationId));
       await prismaClient.practices.update({
         where: { id },
         data: { has_resources: data.resources.length > 0 }
@@ -1307,27 +1315,31 @@ async function updateTags(practiceId: number, tagNames: string[]): Promise<void>
 
 /**
  * 更新資源
- * 軟刪除現有關聯並建立新的資源關聯
+ * 軟刪除現有關聯並建立新的資源關聯；keepRelationIds 的關聯（教練鎖定資源）原樣保留
  */
-async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<void> {
+async function updateResources(
+  practiceId: number,
+  resources: Array<{ name: string; url?: string; dayNumber?: number | null }>,
+  userId: number,
+  keepRelationIds: number[] = []
+): Promise<void> {
   try {
+    const replaceableWhere: Prisma.entity_resourcesWhereInput = {
+      entity_type: 'practice',
+      entity_id: practiceId,
+      deleted_at: null,
+      ...(keepRelationIds.length > 0 && { id: { notIn: keepRelationIds } })
+    };
+
     // 1. 取得現有的 practice-resource 關聯
     const existingRelations = await prismaClient.entity_resources.findMany({
-      where: {
-        entity_type: 'practice',
-        entity_id: practiceId,
-        deleted_at: null
-      }
+      where: replaceableWhere
     });
 
     // 2. 軟刪除現有關聯（設置 deleted_at）
     if (existingRelations.length > 0) {
       await prismaClient.entity_resources.updateMany({
-        where: {
-          entity_type: 'practice',
-          entity_id: practiceId,
-          deleted_at: null
-        },
+        where: replaceableWhere,
         data: {
           deleted_at: new Date()
         }
@@ -1516,6 +1528,14 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
       }
     });
 
+    const practices = entityResources.length > 0
+      ? await prismaClient.practices.findMany({
+        where: { id: { in: practiceIds } },
+        select: { id: true, cohort_id: true, template_id: true, creation_source: true }
+      })
+      : [];
+    const isCoachResource = await loadCoachResourceMatcher(practices ?? []);
+
     return entityResources.reduce((acc, er) => {
       if (!acc[er.entity_id]) {
         acc[er.entity_id] = [];
@@ -1524,7 +1544,8 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
         id: er.resources.external_id || String(er.resources.id),
         name: er.resources.name,
         url: er.resources.url || undefined,
-        dayNumber: parseResourceDay(er.note)
+        dayNumber: parseResourceDay(er.note),
+        isLocked: isCoachResource(er.entity_id, er)
       });
       return acc;
     }, {} as Record<number, PracticeResourceEntity[]>);
@@ -1532,6 +1553,56 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
     loggerService.warn('Failed to get practice resources', { practiceIds, error });
     return {};
   }
+}
+
+type CoachLockSubject = { id: number; cohort_id: number | null; template_id: number | null; creation_source: string | null };
+type PracticeResourceRelation = { resource_id: number; resources: { name: string; url: string | null } };
+
+/**
+ * 建立「這筆實踐資源是不是教練加的」判斷式。
+ * 草稿建立時共用模板的 resources 列，所以 resource_id 掛過模板就是教練加的；
+ * 但教練改模板、或修正前學員存檔都會重建 resources 列（id 換掉），因此也比對名稱＋網址。
+ * 模板關聯含已軟刪的：教練事後從模板拿掉的資源，已在草稿上的仍是教練加的。
+ */
+async function loadCoachResourceMatcher(practices: CoachLockSubject[]): Promise<(practiceId: number, relation: PracticeResourceRelation) => boolean> {
+  const lockedPractices = practices.filter(isCoachResourceLockActive);
+  if (lockedPractices.length === 0) return () => false;
+
+  const templateResources = await prismaClient.entity_resources.findMany({
+    where: {
+      entity_type: 'practice_template',
+      entity_id: { in: [...new Set(lockedPractices.map(practice => practice.template_id as number))] }
+    },
+    select: { entity_id: true, resource_id: true, resources: { select: { name: true, url: true } } }
+  });
+
+  const byTemplate = new Map<number, { resourceIds: Set<number>; contents: Set<string> }>();
+  for (const er of templateResources ?? []) {
+    const entry = byTemplate.get(er.entity_id) ?? { resourceIds: new Set<number>(), contents: new Set<string>() };
+    entry.resourceIds.add(er.resource_id);
+    entry.contents.add(resourceContentKey(er.resources));
+    byTemplate.set(er.entity_id, entry);
+  }
+  const templateByPractice = new Map(lockedPractices.map(practice => [practice.id, practice.template_id as number]));
+
+  return (practiceId, relation) => {
+    const entry = byTemplate.get(templateByPractice.get(practiceId) ?? -1);
+    return !!entry && (entry.resourceIds.has(relation.resource_id) || entry.contents.has(resourceContentKey(relation.resources)));
+  };
+}
+
+/** 取得單一實踐目前掛著、且被教練鎖定的資源（含關聯 id，更新時原樣保留） */
+async function getCoachLockedResources(practice: CoachLockSubject): Promise<Array<{ relationId: number; name: string; url: string; dayNumber: number | null }>> {
+  if (!isCoachResourceLockActive(practice)) return [];
+  const isCoachResource = await loadCoachResourceMatcher([practice]);
+
+  const relations = await prismaClient.entity_resources.findMany({
+    where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null },
+    include: { resources: { select: { name: true, url: true } } }
+  });
+  return (relations ?? [])
+    .filter(er => isCoachResource(practice.id, er))
+    .map(er => ({ relationId: er.id, name: er.resources.name, url: er.resources.url, dayNumber: parseResourceDay(er.note) }));
 }
 
 /**
