@@ -61,6 +61,8 @@ export interface PracticeEntity {
   title: string;
   /** 是否為共同挑戰實踐（名稱／期間／隱私鎖定、不可複製；只在詳情回傳） */
   isChallenge?: boolean;
+  /** 燈塔場次實踐：隱私由場次統一設定，學員不可修改（只在詳情回傳） */
+  isCohortPrivacyLocked?: boolean;
   practiceAction?: string;
   startDate?: string;
   endDate?: string;

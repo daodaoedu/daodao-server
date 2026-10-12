@@ -42481,6 +42481,11 @@ export interface components {
              */
             isChallenge?: boolean;
             /**
+             * @description 是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）
+             * @example false
+             */
+            isCohortPrivacyLocked?: boolean;
+            /**
              * @description 實踐行動描述
              * @example 閱讀技術書籍或文章
              */

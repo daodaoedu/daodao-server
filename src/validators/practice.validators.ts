@@ -763,6 +763,7 @@ export const practiceEntityResponseSchema = z.object({
   id: z.string().openapi({ description: '實踐活動外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   title: z.string().openapi({ description: '實踐活動標題', example: '每日閱讀 30 分鐘' }),
   isChallenge: z.boolean().optional().openapi({ description: '是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）', example: false }),
+  isCohortPrivacyLocked: z.boolean().optional().openapi({ description: '是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）', example: false }),
   practiceAction: z.string().optional().openapi({ description: '實踐行動描述', example: '閱讀技術書籍或文章' }),
   startDate: z.string().optional().openapi({ description: '開始日期 (YYYY-MM-DD)', example: '2024-01-15', format: 'date' }),
   endDate: z.string().optional().openapi({ description: '結束日期 (YYYY-MM-DD)', example: '2024-01-29', format: 'date' }),
