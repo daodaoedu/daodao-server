@@ -1,6 +1,7 @@
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableEntityError } from '../middleware/error.middleware';
+import { inclusiveEndDate } from '../utils/date-utils';
 import { writeLighthouseAudit } from '../utils/lighthouse-audit';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import { assertTemplateReady, ORG_TEMPLATE_TITLE_MAX, type BindOrganizationTemplateInput, type CreateOrganizationTemplateInput, type OrganizationTemplateListQuery, type OrganizationTemplateResourceInput, type UpdateOrganizationTemplateInput } from '../validators/organization-template.validators';
@@ -33,14 +34,12 @@ const asStatus = (status: string | undefined): 'draft' | 'ready' => (status === 
 /** 場次是否已開始：場次開始日 ≤ 產品時區的今天（FR-TPL-05 已開始場次鎖定） */
 const isCohortStarted = (startDate: Date, currentDay: string): boolean => day(startDate) <= currentDay;
 
-const addDays = (value: Date, days: number): Date => new Date(value.getTime() + days * 86_400_000);
-
 const map = (row: TemplateRow, resources: TemplateResource[] = [], tags: string[] = [], currentDay: string = today()) => {
   if (row.organization_id === null) throw new Error('Organization template is missing organization_id');
   const bindings = row.cohort_templates.map(item => {
     const cohortStartDate = item.cohort?.start_date ?? item.start_date ?? new Date(0);
     const startDate = item.start_date ?? (item.cohort ? item.cohort.start_date : null);
-    const endDate = startDate && row.duration_days ? addDays(startDate, row.duration_days - 1) : null;
+    const endDate = startDate && row.duration_days ? inclusiveEndDate(startDate, row.duration_days) : null;
     return {
       cohortId: item.cohort_id,
       cohortName: item.cohort?.display_name ?? '',

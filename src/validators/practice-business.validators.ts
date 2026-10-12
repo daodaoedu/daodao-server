@@ -170,7 +170,7 @@ export function stripLockedFields<T extends object>(
 /**
  * 計算日期位移（提早打卡時使用）
  *
- * 當使用者在 start_date 之前打卡時，自動將實踐日期往前調整
+ * 當使用者在 start_date 之前打卡時，自動將實踐日期往前調整；結束日含開始日當天（開始日 + 天數 − 1，daodao#277）
  *
  * @param originalStartDate 原始開始日期
  * @param firstCheckinDate 首次打卡日期
@@ -196,7 +196,7 @@ export function calculateDateShift(
   if (!needsShift) {
     return {
       newStartDate: originalStart.toDate(),
-      newEndDate: originalStart.clone().add(durationDays, 'days').toDate(),
+      newEndDate: originalStart.clone().add(durationDays - 1, 'days').toDate(),
       shiftDays: 0,
       needsShift: false,
     };
@@ -204,7 +204,7 @@ export function calculateDateShift(
 
   // 計算新的日期
   const newStartDate = checkinDate.toDate();
-  const newEndDate = checkinDate.clone().add(durationDays, 'days').toDate();
+  const newEndDate = checkinDate.clone().add(durationDays - 1, 'days').toDate();
 
   return {
     newStartDate,
@@ -290,7 +290,7 @@ export function validateCheckInFrequency(
 }
 
 /**
- * 計算實踐結束日期
+ * 計算實踐結束日期（含開始日當天：結束日 = 開始日 + 天數 − 1，與 inclusiveEndDate 同一規則，daodao#277）
  *
  * @param startDate 開始日期
  * @param durationDays 持續天數
@@ -304,7 +304,7 @@ export function calculateEndDate(
 ): Date {
   return moment.tz(startDate, timezone)
     .startOf('day')
-    .add(durationDays, 'days')
+    .add(durationDays - 1, 'days')
     .toDate();
 }
 
