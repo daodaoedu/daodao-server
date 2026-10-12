@@ -214,6 +214,32 @@ describe('Practice CheckIn Service', () => {
       );
     });
 
+    // daodao#277：提早打卡位移後，結束日 = 今天 + 天數 − 1（與範本庫、梯次指派同一規則）
+    it('shifts end_date to today + durationDays - 1 on early first check-in', async () => {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const start = new Date(today.getTime() + 3 * 86_400_000);
+      const testPractice = createTestPractice({
+        status: 'not_started',
+        start_date: start,
+        end_date: new Date(start.getTime() + 6 * 86_400_000),
+        duration_days: 7
+      });
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(createTestCheckIn());
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice, status: 'active' });
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
+
+      await createCheckIn(1, createCheckInRequest(), 1);
+
+      const data = prismaMock.practices.update.mock.calls[0][0].data as { start_date: Date; end_date: Date };
+      expect(data.start_date.toISOString()).toBe(today.toISOString());
+      expect(data.end_date.getTime() - today.getTime()).toBe(6 * 86_400_000);
+    });
+
     it('should throw NotFoundError when practice not found', async () => {
       prismaMock.practices.findUnique.mockResolvedValue(null);
 

@@ -115,6 +115,33 @@ describe('PE01 寄送路徑接上後台模板', () => {
     expect(recordSkippedEmailMock).not.toHaveBeenCalled();
   });
 
+  // daodao#277：信裡的結束日要跟範本庫、學員實踐頁同一天（含開始日當天：開始日 + 天數 − 1）
+  it('{{endDate}} 是開始日 + 天數 − 1，與實踐頁一致', async () => {
+    prismaMock.practices.findUnique.mockResolvedValue({ ...practiceRow, duration_days: 7, end_date: null } as never);
+    prismaMock.email_templates.findUnique.mockResolvedValue(
+      dbTemplate({ body: '<p>{{startDate}}~{{endDate}}</p>' }) as never
+    );
+
+    await sendPracticeCreatedEmail(10, 7);
+
+    expect(sendEmailMock.mock.calls[0][0].html).toContain('2026-09-01~2026-09-07');
+  });
+
+  it('實踐已有 end_date 時信裡沿用它', async () => {
+    prismaMock.practices.findUnique.mockResolvedValue({
+      ...practiceRow,
+      duration_days: 7,
+      end_date: new Date('2026-09-05T00:00:00.000Z'),
+    } as never);
+    prismaMock.email_templates.findUnique.mockResolvedValue(
+      dbTemplate({ body: '<p>{{startDate}}~{{endDate}}</p>' }) as never
+    );
+
+    await sendPracticeCreatedEmail(10, 7);
+
+    expect(sendEmailMock.mock.calls[0][0].html).toContain('2026-09-01~2026-09-05');
+  });
+
   it('後台模板含未知變數時信照寄，原字串保留（AC-05）', async () => {
     prismaMock.email_templates.findUnique.mockResolvedValue(
       dbTemplate({ body: '<p>{{userName}} {{unknownVar}}</p>' }) as never
