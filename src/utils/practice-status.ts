@@ -213,6 +213,19 @@ function toTaipeiDateString(date: Date): string {
 }
 
 /**
+ * 非草稿實踐建立／發布時的初始狀態（daodao#212）
+ *
+ * 開始日（Asia/Taipei 日曆日）已到 → active，讓實踐一建立就出現在「進行中」；
+ * 開始日在未來 → not_started。與共同挑戰加入時的 statusByPeriod（daodao#295）一致。
+ *
+ * @param startDate 開始日期
+ * @param now 目前時間（測試用）
+ */
+export function initialStatusForStartDate(startDate: Date, now: Date = new Date()): 'not_started' | 'active' {
+  return toTaipeiDateString(startDate) <= toTaipeiDateString(now) ? 'active' : 'not_started';
+}
+
+/**
  * 檢查實踐是否已過期
  *
  * 優先使用 end_date（使用者可見的到期日）以 Asia/Taipei 時區判斷，
