@@ -44,6 +44,10 @@ export interface StatusTransitionContext {
   isUnarchiving?: boolean;
   /** 封存前的狀態（用於取消封存） */
   previousStatus?: PracticeStatusType;
+  /** 開始日期（取消封存且無打卡時，依開始日決定 active／not_started） */
+  startDate?: Date | null;
+  /** 目前時間（測試用） */
+  now?: Date;
 }
 
 /**
@@ -61,9 +65,10 @@ export const STATUS_PRIORITY: Record<PracticeStatusType, number> = {
  * 有效的狀態轉換映射
  */
 export const VALID_TRANSITIONS: Record<PracticeStatusType, PracticeStatusType[]> = {
-  draft: ['not_started', 'archived'],
+  // 開始日已到的草稿發布即為 active；未打卡的 active 改開始日到未來會回 not_started（daodao#212）
+  draft: ['not_started', 'active', 'archived'],
   not_started: ['active', 'archived'],
-  active: ['completed', 'archived'],
+  active: ['not_started', 'completed', 'archived'],
   completed: ['archived'],
   archived: ['not_started', 'active', 'completed'], // 取消封存可回到之前狀態
 } as const;
@@ -99,7 +104,7 @@ export function isValidTransition(
  * @returns 新狀態
  */
 export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatusType {
-  const { currentStatus, hasCheckIns, hasPassedEndDate, isArchiving, isUnarchiving, previousStatus } = ctx;
+  const { currentStatus, hasCheckIns, hasPassedEndDate, isArchiving, isUnarchiving, previousStatus, startDate, now } = ctx;
 
   // 手動封存
   if (isArchiving) {
@@ -117,8 +122,9 @@ export function determineNewStatus(ctx: StatusTransitionContext): PracticeStatus
     if (previousStatus && previousStatus !== 'archived') {
       return previousStatus;
     }
-    // 根據是否有打卡記錄決定回到哪個狀態
-    return hasCheckIns ? 'active' : 'not_started';
+    // 根據是否有打卡記錄決定回到哪個狀態；未打卡時依開始日（daodao#212）
+    if (hasCheckIns) return 'active';
+    return startDate ? initialStatusForStartDate(startDate, now) : 'not_started';
   }
 
   // 首次打卡：not_started → active
@@ -210,6 +216,19 @@ export function isValidStatus(status: string): status is PracticeStatusType {
  */
 function toTaipeiDateString(date: Date): string {
   return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+}
+
+/**
+ * 非草稿實踐建立／發布時的初始狀態（daodao#212）
+ *
+ * 開始日（Asia/Taipei 日曆日）已到 → active，讓實踐一建立就出現在「進行中」；
+ * 開始日在未來 → not_started。與共同挑戰加入時的 statusByPeriod（daodao#295）一致。
+ *
+ * @param startDate 開始日期
+ * @param now 目前時間（測試用）
+ */
+export function initialStatusForStartDate(startDate: Date, now: Date = new Date()): 'not_started' | 'active' {
+  return toTaipeiDateString(startDate) <= toTaipeiDateString(now) ? 'active' : 'not_started';
 }
 
 /**
