@@ -37,3 +37,21 @@ export const getCohortUnavailableReason = (input: CohortJoinEligibilityInput): C
 
 export const canJoinCohort = (input: CohortJoinEligibilityInput): boolean =>
   getCohortUnavailableReason(input) === null;
+
+// === 邀請寄送資格 ===
+
+/** 邀請信帶個人 token，暫停加入不擋受邀者，所以不會出現 paused */
+export type InvitationBlockReason = Exclude<CohortUnavailableReason, 'paused'>;
+
+/** 寄邀請信前的檢查：受邀者點連結時已無法加入（截止、未發布、額滿）就不該寄出 */
+export const getInvitationBlockReason = (
+  input: Omit<CohortJoinEligibilityInput, 'joinPaused' | 'hasInvitation'>
+): InvitationBlockReason | null =>
+  getCohortUnavailableReason({ ...input, joinPaused: false, hasInvitation: true }) as InvitationBlockReason | null;
+
+/** 名單狀態（FR-RS-03 預覽結果）：new 新邀請、invited 已邀請、joined 已加入、rejoin 曾退出將重新邀請、invalid 格式錯誤 */
+export type InviteItemState = 'new' | 'invited' | 'joined' | 'rejoin' | 'invalid';
+
+/** 已加入者略過、不重寄邀請信；格式錯誤的 email 不寄 */
+export const isInvitationSendable = (state: InviteItemState): boolean =>
+  state === 'new' || state === 'invited' || state === 'rejoin';
