@@ -43,7 +43,7 @@ import {
 import { enqueuePracticeEmail } from '../queues';
 import { setEntityTags } from './tag.service';
 import { recordView as trackView } from './view-tracking.service';
-import { MS_PER_DAY } from '../utils/date-utils';
+import { MS_PER_DAY, inclusiveEndDate } from '../utils/date-utils';
 import { assertChallengeCheckinAllowed, isChallengeCohort } from './challenge-acl.service';
 import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
@@ -162,8 +162,7 @@ export async function createCheckIn(
             practiceUpdateData.start_date = today;
 
             // 從 start_date + duration_days 重新計算 end_date（而非減法位移）
-            const newEndDate = new Date(today);
-            newEndDate.setUTCDate(newEndDate.getUTCDate() + durationDays - 1);
+            const newEndDate = inclusiveEndDate(today, durationDays);
             practiceUpdateData.end_date = newEndDate;
 
             loggerService.info('Practice dates shifted due to early check-in', {

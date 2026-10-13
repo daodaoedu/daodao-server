@@ -28,6 +28,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { inclusiveEndDate } from '../utils/date-utils';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import {
@@ -570,8 +571,7 @@ async function createPracticeCore(
     // 計算結束日期（含首日：結束日 = 開始日 + 天數 − 1）
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
     const durationDays = data.durationDays || 14;
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + durationDays - 1);
+    const endDate = inclusiveEndDate(startDate, durationDays);
 
     // 草稿維持 draft；否則依開始日決定 active／not_started（daodao#212）
     const initialStatus = data.isDraft ? 'draft' : initialStatusForStartDate(startDate);
@@ -905,9 +905,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
       // 重新計算 end_date
       if (newStartDate) {
-        const endDate = new Date(newStartDate);
-        endDate.setDate(endDate.getDate() + newDurationDays - 1);
-        updateData.end_date = endDate;
+        updateData.end_date = inclusiveEndDate(newStartDate, newDurationDays);
       }
     }
 
@@ -1982,13 +1980,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const endDate = source.duration_days
-      ? (() => {
-          const d = new Date(today);
-          d.setDate(d.getDate() + source.duration_days - 1);
-          return d;
-        })()
-      : null;
+    const endDate = source.duration_days ? inclusiveEndDate(today, source.duration_days) : null;
 
     const sourceResources = resourcesMap[sourceId] ?? [];
 
