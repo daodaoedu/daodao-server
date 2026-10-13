@@ -96,7 +96,7 @@ describe('Practice Business Logic Tests', () => {
   };
 
   // Helper for success response
-  const expectSuccess = (response: any, statusCode: number = 200) => {
+  const expectSuccess = (response: any, statusCode = 200) => {
     expect(response.status).toBe(statusCode);
     expect(response.body.success).toBe(true);
     return response.body.data;
@@ -322,13 +322,13 @@ describe('Practice Business Logic Tests', () => {
   // BL-2: 狀態轉換驗證
   // ==========================================================================
   describe('BL-2: 狀態轉換驗證', () => {
-    it('BL-2-a: 建立實踐後狀態應為 not_started', async () => {
+    it('BL-2-a: 建立開始日為今天的實踐，狀態應為 active（daodao#212）', async () => {
       const mockCreatedPractice = {
         id: 1,
         external_id: practiceId,
         user_id: userId,
         title: '每日閱讀',
-        status: 'not_started',
+        status: 'active',
         progress_percentage: createDecimalMock(20),
         users: { id: userId, nickname: 'Test', contacts: null, user_positions: [] }
       };
@@ -338,14 +338,15 @@ describe('Practice Business Logic Tests', () => {
       const response = await authPost(API_BASE, {
         title: '每日閱讀',
         practiceAction: '閱讀',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }),
         durationDays: 14,
         frequencyMinDays: 4,
         frequencyMaxDays: 7
       }, userToken);
 
       const data = expectSuccess(response, 201);
-      expect(data.status).toBe('not_started');
+      expect((prismaMock.practices.create.mock.calls[0][0] as any).data.status).toBe('active');
+      expect(data.status).toBe('active');
     });
 
     it('BL-2-b: 首次打卡後狀態應自動轉為 active', async () => {
