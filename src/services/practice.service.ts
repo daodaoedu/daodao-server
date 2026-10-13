@@ -38,6 +38,7 @@ import {
   determineNewStatus,
   canEdit,
   checkHasPassedEndDate,
+  initialStatusForStartDate,
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
@@ -503,7 +504,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
  *
  * 變更：
  * - 設定初始進度 progress_percentage: 20
- * - 設定初始狀態 status: 'draft' 或 'not_started'（依據 isDraft 參數）
+ * - 設定初始狀態 status: 草稿為 'draft'；否則開始日已到為 'active'、未到為 'not_started'
  * - 支援 templateId 參數追蹤模版使用情況
  */
 /** Prisma client 或交易中的 client，讓建立核心邏輯可在 $transaction 內外共用 */
@@ -572,8 +573,8 @@ async function createPracticeCore(
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + durationDays - 1);
 
-    // 根據 isDraft 決定初始狀態
-    const initialStatus = data.isDraft ? 'draft' : 'not_started';
+    // 草稿維持 draft；否則依開始日決定 active／not_started（daodao#212）
+    const initialStatus = data.isDraft ? 'draft' : initialStatusForStartDate(startDate);
 
     // 如果有 templateId，查詢模版的內部 ID
     let templateInternalId: number | null = null;
@@ -857,11 +858,26 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     if (data.practiceAction !== undefined) updateData.practice_action = data.practiceAction;
     if (data.otherContext !== undefined) updateData.other_context = data.otherContext;
 
-    // 處理 isDraft 欄位：優先於 status
-    if (data.isDraft !== undefined) {
-      updateData.status = data.isDraft ? 'draft' : 'not_started';
+    // 處理 isDraft 欄位：優先於 status；發布草稿、或未打卡實踐改開始日時，依開始日決定 active／not_started（daodao#212）
+    // startDate 在有打卡後已被 stripLockedFields 移除，所以改開始日只會發生在尚未打卡的實踐
+    const nextStartDate = data.startDate
+      ? new Date(data.startDate)
+      : existingPractice.start_date ?? new Date();
+    if (data.isDraft === true) {
+      updateData.status = 'draft';
+    } else if (
+      existingPractice.status === 'draft' &&
+      (data.isDraft === false || data.status === 'not_started')
+    ) {
+      // 發布草稿（isDraft=false 或 status='not_started' 兩種寫法，同 isPublishingDraft）
+      updateData.status = initialStatusForStartDate(nextStartDate);
     } else if (data.status !== undefined) {
       updateData.status = data.status;
+    } else if (
+      data.startDate !== undefined &&
+      (existingPractice.status === 'not_started' || existingPractice.status === 'active')
+    ) {
+      updateData.status = initialStatusForStartDate(nextStartDate);
     }
 
     if (data.privacyStatus !== undefined) updateData.privacy_status = data.privacyStatus;
@@ -1718,7 +1734,8 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       currentStatus: 'archived',
       hasCheckIns,
       hasPassedEndDate,
-      isUnarchiving: true
+      isUnarchiving: true,
+      startDate: practice.start_date
     });
 
     const updatedPractice = await prismaClient.practices.update({
@@ -1992,7 +2009,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
           template_id: source.template_id,
           source_practice_id: sourceId,
           creation_source: 'copied',
-          status: 'not_started',
+          status: initialStatusForStartDate(today),
           progress_percentage: INITIAL_PROGRESS,
           start_date: today,
           end_date: endDate

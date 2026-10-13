@@ -47,6 +47,7 @@ import {
   findAll,
   findById,
   create,
+  batchCreate,
   update,
   deleteFunction,
   findUserPractices,
@@ -485,6 +486,67 @@ describe('Practice Service', () => {
 
       expect(mockEnqueuePracticeEmail).not.toHaveBeenCalled();
     });
+
+    describe('initial status by start date (daodao#212)', () => {
+      // 固定在 2026-10-12 10:00 Asia/Taipei，避免跨台灣午夜時測試不穩
+      beforeAll(() => {
+        jest.useFakeTimers({ now: new Date('2026-10-12T02:00:00.000Z'), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'setInterval'] });
+      });
+      afterAll(() => {
+        jest.useRealTimers();
+      });
+
+      const taipeiDay = (offsetDays: number) => {
+        const d = new Date(Date.now() + offsetDays * 86400000);
+        return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+      };
+      const createdStatus = (callIndex = 0) =>
+        (prismaMock.practices.create.mock.calls[callIndex][0] as any).data.status;
+
+      beforeEach(() => {
+        prismaMock.practices.count.mockResolvedValue(0);
+        prismaMock.practices.create.mockResolvedValue({
+          id: 1,
+          external_id: 'practice-uuid-1',
+          title: 'New Practice',
+          status: 'active',
+          progress_percentage: 20,
+          practice_time_periods: ['morning'],
+          theme_color: '#FCDD84',
+          created_at: new Date(),
+          users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
+        } as any);
+        prismaMock.tags.upsert.mockResolvedValue({ id: 1, name: 'test' } as any);
+        prismaMock.entity_tags.upsert.mockResolvedValue({} as any);
+      });
+
+      it('creates a practice starting today as active so it shows under 進行中', async () => {
+        await create({ ...mockCreateRequest, startDate: taipeiDay(0), isDraft: false }, 1);
+        expect(createdStatus()).toBe('active');
+      });
+
+      it('creates a practice starting in the future as not_started', async () => {
+        await create({ ...mockCreateRequest, startDate: taipeiDay(3), isDraft: false }, 1);
+        expect(createdStatus()).toBe('not_started');
+      });
+
+      it('keeps drafts as draft regardless of start date', async () => {
+        await create({ ...mockCreateRequest, startDate: taipeiDay(0), isDraft: true }, 1);
+        expect(createdStatus()).toBe('draft');
+      });
+
+      it('applies the rule per segment in batch create', async () => {
+        await batchCreate(
+          [
+            { ...mockCreateRequest, startDate: taipeiDay(0), durationDays: 7, isDraft: false },
+            { ...mockCreateRequest, startDate: taipeiDay(7), durationDays: 7, isDraft: false },
+          ],
+          1
+        );
+        expect(createdStatus(0)).toBe('active');
+        expect(createdStatus(1)).toBe('not_started');
+      });
+    });
   });
 
   describe('update', () => {
@@ -808,6 +870,92 @@ describe('Practice Service', () => {
       await update(1, { title: 'Updated Title' }, 1);
 
       expect(mockEnqueuePracticeEmail).not.toHaveBeenCalled();
+    });
+
+    describe('publishing a draft sets status by start date (daodao#212)', () => {
+      // 固定在 2026-10-12 10:00 Asia/Taipei，避免跨台灣午夜時測試不穩
+      beforeAll(() => {
+        jest.useFakeTimers({ now: new Date('2026-10-12T02:00:00.000Z'), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'setInterval'] });
+      });
+      afterAll(() => {
+        jest.useRealTimers();
+      });
+
+      const taipeiMidnight = (offsetDays: number) => {
+        const d = new Date(Date.now() + offsetDays * 86400000);
+        return new Date(`${d.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })}T00:00:00.000Z`);
+      };
+      const updatedStatus = () => (prismaMock.practices.update.mock.calls[0][0] as any).data.status;
+
+      const arrange = (startDate: Date, status = 'draft') => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          id: 1,
+          user_id: 1,
+          status,
+          start_date: startDate,
+          practice_time_periods: [],
+          created_at: new Date(),
+          deleted_at: null
+        } as any);
+        prismaMock.practice_checkins.count.mockResolvedValue(0);
+        prismaMock.practices.update.mockResolvedValue({
+          id: 1,
+          external_id: 'practice-uuid',
+          title: 'Published Practice',
+          status: 'active',
+          progress_percentage: 20,
+          practice_time_periods: [],
+          theme_color: '#FCDD84',
+          created_at: new Date(),
+          deleted_at: null,
+          users: { id: 1, external_id: 'user-1', nickname: 'Test', contacts: null, user_positions: [] }
+        } as any);
+        prismaMock.comments.groupBy.mockResolvedValue([]);
+        prismaMock.entity_tags.findMany.mockResolvedValue([]);
+        prismaMock.practice_checkins.groupBy.mockResolvedValue([]);
+      };
+
+      it('publishes a draft that starts today as active', async () => {
+        arrange(taipeiMidnight(0));
+        await update(1, { isDraft: false }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('publishes a draft that starts in the future as not_started', async () => {
+        arrange(taipeiMidnight(3));
+        await update(1, { isDraft: false }, 1);
+        expect(updatedStatus()).toBe('not_started');
+      });
+
+      it('uses the start date sent in the same request', async () => {
+        arrange(taipeiMidnight(3));
+        await update(1, { isDraft: false, startDate: taipeiMidnight(0).toISOString().slice(0, 10) }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('moves an active practice without check-ins back to not_started when its start date is pushed to the future', async () => {
+        arrange(taipeiMidnight(0), 'active');
+        await update(1, { startDate: taipeiMidnight(3).toISOString().slice(0, 10) }, 1);
+        expect(updatedStatus()).toBe('not_started');
+      });
+
+      it('moves a not_started practice to active when its start date is moved to today', async () => {
+        arrange(taipeiMidnight(3), 'not_started');
+        await update(1, { startDate: taipeiMidnight(0).toISOString().slice(0, 10) }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('publishes a draft via status=not_started as active when it starts today', async () => {
+        arrange(taipeiMidnight(0));
+        await update(1, { status: 'not_started' }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('does not change the status of a non-draft practice when isDraft=false is sent', async () => {
+        arrange(taipeiMidnight(-20), 'completed');
+        await update(1, { isDraft: false }, 1);
+        expect(updatedStatus()).toBeUndefined();
+      });
     });
   });
 

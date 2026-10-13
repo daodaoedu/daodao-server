@@ -2,6 +2,8 @@ import {
   getCohortContentState,
   getCohortUnavailableReason,
   canJoinCohort,
+  getInvitationBlockReason,
+  isInvitationSendable,
   type CohortJoinEligibilityInput
 } from '@/domain/cohort.rules';
 
@@ -174,5 +176,48 @@ describe('canJoinCohort', () => {
   it('returns false when any condition fails', () => {
     expect(canJoinCohort({ ...open, status: 'draft' })).toBe(false);
     expect(canJoinCohort({ ...open, capacity: 0, participantCount: 0 })).toBe(false);
+  });
+});
+
+// === 邀請寄送資格（daodao#281 / #282） ===
+
+describe('getInvitationBlockReason', () => {
+  const open = {
+    status: 'published',
+    endDate: new Date('2026-12-31'),
+    joinDeadline: new Date('2026-10-01'),
+    capacity: 10,
+    participantCount: 3,
+    now: new Date('2026-09-30T12:00:00Z')
+  };
+
+  it('allows sending while the cohort is joinable', () => {
+    expect(getInvitationBlockReason(open)).toBeNull();
+  });
+
+  it('blocks sending after the join deadline even though the cohort has not ended', () => {
+    expect(getInvitationBlockReason({ ...open, now: new Date('2026-10-02T00:00:00Z') })).toBe('expired');
+  });
+
+  it('falls back to endDate when joinDeadline is null', () => {
+    expect(getInvitationBlockReason({ ...open, joinDeadline: null, now: new Date('2027-01-01T00:00:00Z') })).toBe('expired');
+  });
+
+  it('blocks sending for unpublished or full cohorts', () => {
+    expect(getInvitationBlockReason({ ...open, status: 'draft' })).toBe('not_published');
+    expect(getInvitationBlockReason({ ...open, participantCount: 10 })).toBe('full');
+  });
+});
+
+describe('isInvitationSendable', () => {
+  it('sends to new, already-invited and previously-exited emails', () => {
+    expect(isInvitationSendable('new')).toBe(true);
+    expect(isInvitationSendable('invited')).toBe(true);
+    expect(isInvitationSendable('rejoin')).toBe(true);
+  });
+
+  it('skips already-joined members and invalid emails', () => {
+    expect(isInvitationSendable('joined')).toBe(false);
+    expect(isInvitationSendable('invalid')).toBe(false);
   });
 });
