@@ -44,17 +44,70 @@ describe('sortBlocksForDisplay', () => {
 });
 
 describe('spaceService.listMySpaces', () => {
+  beforeEach(() => {
+    prismaMock.cohorts.findMany.mockResolvedValue([] as never);
+  });
   afterEach(() => jest.useRealTimers());
-  const enrollment = (opts: { id: number; kind: 'lighthouse' | 'challenge'; name: string; start: string; end: string; joined: number; role?: string; practices?: Array<{ status: string; updated_at: string }>; joinedAt?: string }): unknown => ({
+  const cohortRow = (opts: { id: number; kind: 'lighthouse' | 'challenge'; name: string; start: string; end: string; joined: number; programId?: number; practices?: Array<{ status: string; updated_at: string }>; createdAt?: string }): unknown => ({
+    id: opts.id, display_name: opts.name, start_date: new Date(opts.start), end_date: new Date(opts.end),
+    created_at: new Date(opts.createdAt ?? '2026-07-01T00:00:00Z'), updated_at: null,
+    program: { id: opts.programId ?? 3, kind: opts.kind, organization: { name: opts.kind === 'challenge' ? '島島阿學' : '燈塔工作室' } },
+    _count: { cohort_enrollments: opts.joined },
+    cohort_enrollments: [{ user: { nickname: '小島', contacts: { photo_url: null } } }],
+    practices: (opts.practices ?? []).map(practice => ({ status: practice.status, updated_at: new Date(practice.updated_at), created_at: new Date('2026-07-01T00:00:00Z') })),
+  });
+  const enrollment = (opts: Parameters<typeof cohortRow>[0] & { role?: string; joinedAt?: string }): unknown => ({
     joined_at: new Date(opts.joinedAt ?? '2026-08-01T00:00:00Z'),
     role: opts.role ?? 'member',
-    cohort: {
-      id: opts.id, display_name: opts.name, start_date: new Date(opts.start), end_date: new Date(opts.end),
-      program: { kind: opts.kind, organization: { name: opts.kind === 'challenge' ? '島島阿學' : '燈塔工作室' } },
-      _count: { cohort_enrollments: opts.joined },
-      cohort_enrollments: [{ user: { nickname: '小島', contacts: { photo_url: null } } }],
-      practices: (opts.practices ?? []).map(practice => ({ status: practice.status, updated_at: new Date(practice.updated_at), created_at: new Date('2026-07-01T00:00:00Z') })),
-    },
+    cohort: cohortRow(opts),
+  });
+
+  it('組織成員建立的燈塔場次（尚無任何 enrollment）出現在空間清單，標為發起人 (#201)', async () => {
+    prismaMock.practices.groupBy.mockResolvedValue([] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([] as never);
+    prismaMock.cohorts.findMany.mockResolvedValue([
+      cohortRow({ id: 64, kind: 'lighthouse', name: '剛建立的場次', start: '2026-11-01', end: '2026-11-30', joined: 0, programId: 7, createdAt: '2026-10-12T00:00:00Z' }),
+    ] as never);
+
+    const result = await spaceService.listMySpaces(42);
+    expect(result.total).toBe(3);
+    expect(result.items[2]).toMatchObject({
+      kind: 'event_course', id: '64', programId: 7, name: '剛建立的場次', host: '燈塔工作室',
+      memberCount: 0, isHost: true, canManage: true, practiceCount: 0, lastActivityAt: '2026-10-12T00:00:00.000Z',
+    });
+    const where = prismaMock.cohorts.findMany.mock.calls[0][0]?.where;
+    expect(where).toMatchObject({
+      deleted_at: null,
+      status: { in: ['draft', 'published'] },
+      program: { kind: 'lighthouse', archived_at: null, deleted_at: null, organization: { status: 'active', organization_members: { some: { user_id: 42 } } } },
+    });
+  });
+
+  it('既是學員又是組織成員的場次只出現一張卡，且以發起人身份呈現 (#201)', async () => {
+    prismaMock.practices.groupBy.mockResolvedValue([] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      enrollment({ id: 11, kind: 'lighthouse', name: '讀書會', start: '2026-07-01', end: '2026-12-31', joined: 4, programId: 7 }),
+    ] as never);
+    prismaMock.cohorts.findMany.mockResolvedValue([
+      cohortRow({ id: 11, kind: 'lighthouse', name: '讀書會', start: '2026-07-01', end: '2026-12-31', joined: 4, programId: 7 }),
+    ] as never);
+
+    const result = await spaceService.listMySpaces(42);
+    const events = result.items.filter(item => item.kind === 'event_course');
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ id: '11', programId: 7, isHost: true, canManage: true });
+  });
+
+  it('只有組織成員管理的場次 canManage=true；非組織成員的 owner enrollment 不可導向管理端 (#201)', async () => {
+    prismaMock.practices.groupBy.mockResolvedValue([] as never);
+    prismaMock.cohort_enrollments.findMany.mockResolvedValue([
+      enrollment({ id: 12, kind: 'lighthouse', name: '協作帶領', start: '2026-07-01', end: '2026-12-31', joined: 3, role: 'owner' }),
+    ] as never);
+
+    const result = await spaceService.listMySpaces(42);
+    expect(result.items[0].canManage).toBe(false);
+    expect(result.items[1].canManage).toBe(false);
+    expect(result.items[2]).toMatchObject({ id: '12', isHost: true, canManage: false });
   });
 
   it('orders the aggregate list personal → challenge → event cohorts by recent activity (FR-1.2)', async () => {
@@ -71,9 +124,11 @@ describe('spaceService.listMySpaces', () => {
     expect(result.total).toBe(4);
     expect(result.items.map(item => item.kind)).toEqual(['personal', 'challenge', 'event_course', 'event_course']);
     expect(result.items[0]).toMatchObject({ host: '我的島', memberCount: 1, hasActivePractice: true, practiceCount: 3 });
+    expect(result.items[0].programId).toBeNull();
     expect(result.items[1]).toMatchObject({ host: '島島阿學', memberCount: 0, practiceCount: 0, hasActivePractice: false });
     expect(result.items[2]).toMatchObject({ id: '12', name: '自我覺察練習', host: '燈塔工作室', memberCount: 9, isHost: true, hasActivePractice: false, practiceCount: 1 });
     expect(result.items[3]).toMatchObject({ id: '11', name: '線上讀書會', memberCount: 4, isHost: false, hasActivePractice: true });
+    expect(result.items[3].programId).toBe(3);
     expect(prismaMock.space_members.findMany).not.toHaveBeenCalled();
   });
 
