@@ -19,6 +19,7 @@ const mockSpaceListData = {
   items: [{
     kind: 'event_course' as const,
     id: '12',
+    programId: 3,
     name: '自我覺察練習',
     host: '我的島',
     memberCount: 5,
@@ -26,6 +27,7 @@ const mockSpaceListData = {
     hasActivePractice: true,
     practiceCount: 2,
     isHost: false,
+    canManage: false,
     lastActivityAt: '2026-09-01T10:00:00.000Z',
   }],
 };
