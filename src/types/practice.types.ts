@@ -51,6 +51,8 @@ export interface PracticeResourceEntity {
   url?: string;
   /** 指定第幾天使用（1 = 開始日當天；null 代表整段實踐期間皆可使用） */
   dayNumber?: number | null;
+  /** 教練加入的資源（本期草稿由模板帶入），學員不可移除或修改 */
+  isLocked?: boolean;
 }
 
 // Core practice entity interface - 基於 Prisma schema practices 表
@@ -59,6 +61,8 @@ export interface PracticeEntity {
   title: string;
   /** 是否為共同挑戰實踐（名稱／期間／隱私鎖定、不可複製；只在詳情回傳） */
   isChallenge?: boolean;
+  /** 燈塔場次實踐：隱私由場次統一設定，學員不可修改（只在詳情回傳） */
+  isCohortPrivacyLocked?: boolean;
   practiceAction?: string;
   startDate?: string;
   endDate?: string;

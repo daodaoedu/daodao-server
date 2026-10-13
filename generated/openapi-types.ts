@@ -550,10 +550,7 @@ export interface paths {
         /** 挑戰主題列表 */
         get: {
             parameters: {
-                query?: {
-                    /** @description 只列某組織底下的挑戰主題 */
-                    organizationId?: number;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -657,8 +654,6 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        /** @description 所屬組織 ID（通常為島島官方組織） */
-                        organizationId: number;
                         /** @example 晨間書寫 */
                         name: string;
                         description?: string | null;
@@ -1864,10 +1859,7 @@ export interface paths {
         /** 組織模板列表 */
         get: {
             parameters: {
-                query: {
-                    /** @description 組織 ID（模板隸屬組織） */
-                    organizationId: number;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1997,7 +1989,6 @@ export interface paths {
                         /** @default [] */
                         practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         resources?: components["schemas"]["PracticeResourceInput"][];
-                        organizationId: number;
                     };
                 };
             };
@@ -7627,6 +7618,8 @@ export interface paths {
                                  * @enum {string}
                                  */
                                 viewerRole: "host" | "member";
+                                /** @description 當前使用者的 users.id（與訊息 author.userId 同一種 id），用來判斷本人訊息 */
+                                viewerUserId: number;
                                 /** @description 置頂訊息數 */
                                 pinnedCount: number;
                                 /** @description 前 3 位成員預覽 */
@@ -17764,6 +17757,15 @@ export interface paths {
                                 validCount: number;
                                 errorCount: number;
                                 queuedCount: number;
+                                /** @description 會寄出邀請信的筆數（新邀請、已邀請重寄、曾退出重新邀請） */
+                                sendableCount: number;
+                                /** @description 已加入而略過、不重寄的筆數 */
+                                skippedCount: number;
+                                /**
+                                 * @description 此期目前不可寄送邀請的原因（未發布／已過加入截止日／已額滿）；可寄送時為 null
+                                 * @enum {string|null}
+                                 */
+                                blockedReason: "not_published" | "expired" | "full" | null;
                                 items: {
                                     email: string;
                                     valid: boolean;
@@ -17849,6 +17851,15 @@ export interface paths {
                                 validCount: number;
                                 errorCount: number;
                                 queuedCount: number;
+                                /** @description 會寄出邀請信的筆數（新邀請、已邀請重寄、曾退出重新邀請） */
+                                sendableCount: number;
+                                /** @description 已加入而略過、不重寄的筆數 */
+                                skippedCount: number;
+                                /**
+                                 * @description 此期目前不可寄送邀請的原因（未發布／已過加入截止日／已額滿）；可寄送時為 null
+                                 * @enum {string|null}
+                                 */
+                                blockedReason: "not_published" | "expired" | "full" | null;
                                 items: {
                                     email: string;
                                     valid: boolean;
@@ -42397,6 +42408,11 @@ export interface components {
              * @example 3
              */
             dayNumber?: number | null;
+            /**
+             * @description 教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除
+             * @example false
+             */
+            isLocked?: boolean;
         };
         /**
          * @description 實踐活動詳細資訊
@@ -42475,6 +42491,11 @@ export interface components {
              * @example false
              */
             isChallenge?: boolean;
+            /**
+             * @description 是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）
+             * @example false
+             */
+            isCohortPrivacyLocked?: boolean;
             /**
              * @description 實踐行動描述
              * @example 閱讀技術書籍或文章
