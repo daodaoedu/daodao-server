@@ -20,11 +20,11 @@ export const chatMessageIdParamsSchema = chatRoomIdParamsSchema.extend({
 
 export const chatMessagesQuerySchema = z.object({
   before: z.coerce.number().int().positive().optional().openapi({ description: '取此 ID 之前的訊息（歷史分頁）', example: 100 }),
-  after: z.coerce.number().int().positive().optional().openapi({ description: '取此 ID 之後的新訊息（增量輪詢）', example: 50 }),
+  after: z.coerce.number().int().nonnegative().optional().openapi({ description: '取此 ID 之後的新訊息（增量輪詢）；聊天室還沒有訊息時傳 0', example: 50 }),
   since: z.string().datetime().optional().openapi({ description: 'ISO 時間戳，搭配 after 使用，回傳 changed/deletedIds', example: '2026-09-01T00:00:00.000Z' }),
   limit: z.coerce.number().int().min(1).max(CHAT_PAGE_MAX).optional().openapi({ description: '每頁筆數（預設 50，上限 100）', example: 50 }),
 }).refine(
-  data => !(data.before && data.after),
+  data => !(data.before !== undefined && data.after !== undefined),
   { message: 'before 與 after 不可同時使用' }
 ).openapi({ description: '訊息查詢參數' });
 
@@ -114,6 +114,7 @@ export const chatMemberPreviewSchema = z.object({
 
 export const chatRoomDetailSchema = chatRoomSummarySchema.extend({
   viewerRole: z.enum(['host', 'member']).openapi({ description: '當前使用者角色' }),
+  viewerUserId: z.number().int().openapi({ description: '當前使用者的 users.id（與訊息 author.userId 同一種 id），用來判斷本人訊息' }),
   pinnedCount: z.number().int().nonnegative().openapi({ description: '置頂訊息數' }),
   memberPreview: z.array(chatMemberPreviewSchema).openapi({ description: '前 3 位成員預覽' }),
 }).openapi({ description: '聊天室詳情' });

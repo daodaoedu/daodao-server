@@ -22,9 +22,8 @@ const templateId = (req: Request): number => Number(req.params.templateId);
 
 // ── program ─────────────────────────────────────────────────────
 
-const listPrograms = asyncHandler(async (req: Request, res: Response) => {
-  const organizationId = req.query.organizationId === undefined ? undefined : Number(req.query.organizationId);
-  res.json(createSuccessResponse(adminProgramListResponseSchema.parse(await adminChallengeService.listPrograms(organizationId))));
+const listPrograms = asyncHandler(async (_req: Request, res: Response) => {
+  res.json(createSuccessResponse(adminProgramListResponseSchema.parse(await adminChallengeService.listPrograms())));
 });
 const createProgram = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(createSuccessResponse(adminProgramResponseSchema.parse(await adminChallengeService.createProgram(req.body))));
@@ -67,8 +66,8 @@ const listParticipants = asyncHandler(async (req: Request, res: Response) => {
 
 // ── template ────────────────────────────────────────────────────
 
-const listTemplates = asyncHandler(async (req: Request, res: Response) => {
-  res.json(createSuccessResponse(adminTemplateListResponseSchema.parse(await adminChallengeService.listTemplates(Number(req.query.organizationId)))));
+const listTemplates = asyncHandler(async (_req: Request, res: Response) => {
+  res.json(createSuccessResponse(adminTemplateListResponseSchema.parse(await adminChallengeService.listTemplates())));
 });
 const createTemplate = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(createSuccessResponse(adminTemplateResponseSchema.parse(await adminChallengeService.createTemplate(req.body, requireUserId(req)))));
