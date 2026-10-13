@@ -11,6 +11,7 @@ import type {
 } from '../validators/organization.validators';
 import { prisma } from './database/prisma.service';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
+import { isAcceptanceFixtureOrganization } from '../constants/acceptance-fixtures';
 import { enqueueEmail } from '../queues/email.queue';
 import { generateOrganizationOwnerEmail } from './email/organization-owner-template';
 import { loggerService } from './logging/logger.service';
@@ -259,6 +260,9 @@ const adminUpdate = async (
 ): Promise<OrganizationResponse> => prisma.$transaction(async tx => {
   const before = await tx.organization.findUnique({ where: { id: organizationId }, select: organizationSelect });
   if (!before) throw new NotFoundError('找不到組織');
+  if (input.status === 'suspended' && isAcceptanceFixtureOrganization(organizationId)) {
+    throw new ForbiddenError('此組織是驗收 fixture，不可停權；需要調整請改用 daodao-storage 的 fixture reset 腳本');
+  }
   const row = await tx.organization.update({
     where: { id: organizationId },
     data: {

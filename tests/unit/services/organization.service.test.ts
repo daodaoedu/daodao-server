@@ -78,6 +78,26 @@ describe('organizationService', () => {
     expect(prismaMock.organization_members.findUnique).not.toHaveBeenCalled();
   });
 
+  it('refuses to suspend the acceptance fixture organization without writing (daodao#323)', async () => {
+    prismaMock.organization.findUnique.mockResolvedValue({ ...organizationRow, id: 900001 } as never);
+
+    const attempt = organizationService.adminUpdate(900001, 1, { status: 'suspended' });
+
+    await expect(attempt).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(attempt).rejects.toThrow('驗收 fixture');
+    expect(prismaMock.organization.update).not.toHaveBeenCalled();
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('still lets an admin edit the fixture organization profile or keep it active', async () => {
+    const fixtureRow = { ...organizationRow, id: 900001 };
+    prismaMock.organization.findUnique.mockResolvedValue(fixtureRow as never);
+    prismaMock.organization.update.mockResolvedValue(fixtureRow as never);
+
+    await expect(organizationService.adminUpdate(900001, 1, { bio: '驗收說明', status: 'active' }))
+      .resolves.toMatchObject({ id: 900001, status: 'active' });
+  });
+
   it('rejects cross-organization profile updates before writing', async () => {
     prismaMock.organization_members.findUnique.mockResolvedValue(null);
 

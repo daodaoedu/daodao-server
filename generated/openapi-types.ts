@@ -42408,6 +42408,11 @@ export interface components {
              * @example 3
              */
             dayNumber?: number | null;
+            /**
+             * @description 教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除
+             * @example false
+             */
+            isLocked?: boolean;
         };
         /**
          * @description 實踐活動詳細資訊
@@ -42486,6 +42491,11 @@ export interface components {
              * @example false
              */
             isChallenge?: boolean;
+            /**
+             * @description 是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）
+             * @example false
+             */
+            isCohortPrivacyLocked?: boolean;
             /**
              * @description 實踐行動描述
              * @example 閱讀技術書籍或文章
@@ -54951,6 +54961,11 @@ export interface components {
              */
             id: string | null;
             /**
+             * @description 活動課程卡所屬燈塔系列 id（canManage 時導向管理端 /lighthouse/programs/{programId}/cohorts/{id}）；虛擬空間為 null
+             * @example 3
+             */
+            programId: number | null;
+            /**
              * @description 空間名稱
              * @example 自我覺察練習
              */
@@ -54987,6 +55002,11 @@ export interface components {
              * @example false
              */
             isHost: boolean;
+            /**
+             * @description 目前使用者是否為該場次所屬組織成員、可進管理端（前端據此導向 /lighthouse/programs/{programId}/cohorts/{id}/dashboard）
+             * @example false
+             */
+            canManage: boolean;
             /** @description 最近活動時間（排序依據） */
             lastActivityAt: string | null;
         };

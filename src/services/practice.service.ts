@@ -30,6 +30,7 @@ import {
 import { calculatePagination } from '../utils/pagination-helper';
 import { inclusiveEndDate } from '../utils/date-utils';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
+import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import {
   INITIAL_PROGRESS,
   resolveProgressDurationDays
@@ -46,11 +47,12 @@ import {
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 import { assertChallengePracticeCopyable, assertChallengePracticeUpdatable, isChallengeCohort } from './challenge-acl.service';
-import { assertCohortPracticeUpdatable } from './cohort-acl.service';
+import { assertCohortPracticeUpdatable, isLighthouseCohort } from './cohort-acl.service';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
+import { PROGRAM_KINDS } from '../constants/program-kind';
 import { externalToInternalId } from './id-converter.service';
 
 /** Cached dynamic import to avoid per-call overhead (breaks circular dep if imported statically) */
@@ -443,6 +445,8 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       title: practice.title,
       // 前端據此隱藏「我也想實踐」並鎖定名稱／期間／隱私（FR-CC-09、FR-CC-10）
       isChallenge: await isChallengeCohort(practice.cohort_id),
+      // 燈塔場次實踐的隱私由場次統一設定，編輯頁據此不送 privacyStatus（否則 assertCohortPracticeUpdatable 會擋）
+      isCohortPrivacyLocked: await isLighthouseCohort(practice.cohort_id),
       practiceAction: practice.practice_action || undefined,
       startDate: practice.start_date?.toISOString().split('T')[0],
       endDate: practice.end_date?.toISOString().split('T')[0],
@@ -832,6 +836,13 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     // 燈塔場次實踐：隱私由場次統一設定，學員不可自行修改
     await assertCohortPracticeUpdatable(id, data as unknown as Record<string, unknown>);
 
+    // 燈塔本期草稿：教練加入的資源不可移除或修改，原樣送回的那幾筆保留原關聯不重建
+    const lockedResources = data.resources !== undefined ? await getCoachLockedResources(existingPractice) : [];
+    const { violated, rest: resourcesToCreate } = partitionIncomingResources(lockedResources, data.resources ?? []);
+    if (violated.length > 0) {
+      throw new ForbiddenError(`教練加入的資源不可移除或修改：${violated.map(resource => resource.name).join('、')}`);
+    }
+
     // 有打卡記錄時，自動移除鎖定欄位，允許其餘欄位正常更新
     data = stripLockedFields(data, hasCheckIns);
 
@@ -936,7 +947,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     // 處理資源更新（如果有提供）
     if (data.resources !== undefined) {
-      await updateResources(id, data.resources, userId);
+      await updateResources(id, resourcesToCreate, userId, lockedResources.map(resource => resource.relationId));
       await prismaClient.practices.update({
         where: { id },
         data: { has_resources: data.resources.length > 0 }
@@ -1321,27 +1332,31 @@ async function updateTags(practiceId: number, tagNames: string[]): Promise<void>
 
 /**
  * 更新資源
- * 軟刪除現有關聯並建立新的資源關聯
+ * 軟刪除現有關聯並建立新的資源關聯；keepRelationIds 的關聯（教練鎖定資源）原樣保留
  */
-async function updateResources(practiceId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, userId: number): Promise<void> {
+async function updateResources(
+  practiceId: number,
+  resources: Array<{ name: string; url?: string; dayNumber?: number | null }>,
+  userId: number,
+  keepRelationIds: number[] = []
+): Promise<void> {
   try {
+    const replaceableWhere: Prisma.entity_resourcesWhereInput = {
+      entity_type: 'practice',
+      entity_id: practiceId,
+      deleted_at: null,
+      ...(keepRelationIds.length > 0 && { id: { notIn: keepRelationIds } })
+    };
+
     // 1. 取得現有的 practice-resource 關聯
     const existingRelations = await prismaClient.entity_resources.findMany({
-      where: {
-        entity_type: 'practice',
-        entity_id: practiceId,
-        deleted_at: null
-      }
+      where: replaceableWhere
     });
 
     // 2. 軟刪除現有關聯（設置 deleted_at）
     if (existingRelations.length > 0) {
       await prismaClient.entity_resources.updateMany({
-        where: {
-          entity_type: 'practice',
-          entity_id: practiceId,
-          deleted_at: null
-        },
+        where: replaceableWhere,
         data: {
           deleted_at: new Date()
         }
@@ -1530,6 +1545,14 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
       }
     });
 
+    const practices = entityResources.length > 0
+      ? await prismaClient.practices.findMany({
+        where: { id: { in: practiceIds } },
+        select: { id: true, cohort_id: true, template_id: true, creation_source: true }
+      })
+      : [];
+    const lockedRelationIds = await loadCoachLockedRelationIds(practices ?? [], entityResources);
+
     return entityResources.reduce((acc, er) => {
       if (!acc[er.entity_id]) {
         acc[er.entity_id] = [];
@@ -1538,7 +1561,8 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
         id: er.resources.external_id || String(er.resources.id),
         name: er.resources.name,
         url: er.resources.url || undefined,
-        dayNumber: parseResourceDay(er.note)
+        dayNumber: parseResourceDay(er.note),
+        isLocked: lockedRelationIds.has(er.id)
       });
       return acc;
     }, {} as Record<number, PracticeResourceEntity[]>);
@@ -1546,6 +1570,57 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
     loggerService.warn('Failed to get practice resources', { practiceIds, error });
     return {};
   }
+}
+
+type CoachLockSubject = { id: number; cohort_id: number | null; template_id: number | null; creation_source: string | null };
+type PracticeResourceRelation = { id: number; entity_id: number; resource_id: number; resources: { name: string; url: string | null } };
+
+/**
+ * 找出教練加的實踐資源關聯 id（判定規則見 pickCoachLockedRelationIds）。
+ * 模板關聯含已軟刪的：教練事後從模板拿掉的資源，已在草稿上的仍是教練加的。
+ * 只鎖燈塔場次；共同挑戰也用模板產生草稿，但資源開放學員調整。
+ */
+async function loadCoachLockedRelationIds(practices: CoachLockSubject[], relations: PracticeResourceRelation[]): Promise<Set<number>> {
+  const candidates = practices.filter(isCoachResourceLockActive);
+  if (candidates.length === 0) return new Set();
+
+  const lighthouseCohorts = await prismaClient.cohorts.findMany({
+    where: { id: { in: [...new Set(candidates.map(practice => practice.cohort_id as number))] }, program: { kind: PROGRAM_KINDS.LIGHTHOUSE } },
+    select: { id: true }
+  });
+  const lighthouseCohortIds = new Set((lighthouseCohorts ?? []).map(cohort => cohort.id));
+  const lockedPractices = candidates.filter(practice => lighthouseCohortIds.has(practice.cohort_id as number));
+  if (lockedPractices.length === 0) return new Set();
+
+  const templateResources = await prismaClient.entity_resources.findMany({
+    where: {
+      entity_type: 'practice_template',
+      entity_id: { in: [...new Set(lockedPractices.map(practice => practice.template_id as number))] }
+    },
+    select: { entity_id: true, resource_id: true, resources: { select: { name: true, url: true } } }
+  });
+
+  const lockedIds = new Set<number>();
+  for (const practice of lockedPractices) {
+    const templateLinks = (templateResources ?? []).filter(er => er.entity_id === practice.template_id);
+    const practiceRelations = relations.filter(er => er.entity_id === practice.id);
+    for (const id of pickCoachLockedRelationIds(templateLinks, practiceRelations)) lockedIds.add(id);
+  }
+  return lockedIds;
+}
+
+/** 取得單一實踐目前掛著、且被教練鎖定的資源（含關聯 id，更新時原樣保留） */
+async function getCoachLockedResources(practice: CoachLockSubject): Promise<Array<{ relationId: number; name: string; url: string; dayNumber: number | null }>> {
+  if (!isCoachResourceLockActive(practice)) return [];
+
+  const relations = (await prismaClient.entity_resources.findMany({
+    where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null },
+    include: { resources: { select: { name: true, url: true } } }
+  })) ?? [];
+  const lockedRelationIds = await loadCoachLockedRelationIds([practice], relations);
+  return relations
+    .filter(er => lockedRelationIds.has(er.id))
+    .map(er => ({ relationId: er.id, name: er.resources.name, url: er.resources.url, dayNumber: parseResourceDay(er.note) }));
 }
 
 /**
