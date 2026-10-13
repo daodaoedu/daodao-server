@@ -3446,7 +3446,7 @@ components:
           type: integer
           nullable: true
           minimum: 1
-          maximum: 90
+          maximum: 91
           description: 指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）
           example: 3
       required:
@@ -3533,7 +3533,7 @@ components:
         durationDays:
           type: integer
           minimum: 1
-          maximum: 90
+          maximum: 91
           description: 實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）
           example: 14
           examples: &ref_93
@@ -4473,7 +4473,7 @@ components:
         durationDays:
           type: integer
           minimum: 1
-          maximum: 90
+          maximum: 91
           description: 建議持續天數（1–90，與個人實踐統一上限）
           example: 30
         sessionDurationMinutes:
@@ -12545,8 +12545,8 @@ components:
         durationDays:
           type: integer
           minimum: 1
-          maximum: 90
-          description: 持續天數 (1-90天)
+          maximum: 91
+          description: 持續天數 (1-91天)
           example: 30
         frequencyMinDays:
           type: integer
@@ -32043,7 +32043,7 @@ paths:
                 durationDays:
                   type: integer
                   minimum: 1
-                  maximum: 90
+                  maximum: 91
                   description: 實踐持續天數（1–90，預設選項 7/14/21/30，可自訂）
                   example: 14
                   examples: *ref_93
@@ -32846,7 +32846,7 @@ paths:
                 durationDays:
                   type: integer
                   minimum: 1
-                  maximum: 90
+                  maximum: 91
                 frequencyMinDays:
                   type: integer
                   minimum: 1
@@ -35996,7 +35996,7 @@ paths:
                 durationDays:
                   type: integer
                   minimum: 1
-                  maximum: 90
+                  maximum: 91
                   description: 建議持續天數
                   example: 30
                 sessionDurationMinutes:
@@ -47652,7 +47652,7 @@ paths:
                   type: integer
                   nullable: true
                   minimum: 1
-                  maximum: 90
+                  maximum: 91
                 frequencyMinDays:
                   type: integer
                   nullable: true
@@ -47711,7 +47711,7 @@ paths:
                         type: integer
                         nullable: true
                         minimum: 1
-                        maximum: 90
+                        maximum: 91
                     required:
                       - name
                   maxItems: 5
@@ -47985,7 +47985,7 @@ paths:
                   type: integer
                   nullable: true
                   minimum: 1
-                  maximum: 90
+                  maximum: 91
                 frequencyMinDays:
                   type: integer
                   nullable: true
@@ -48044,7 +48044,7 @@ paths:
                         type: integer
                         nullable: true
                         minimum: 1
-                        maximum: 90
+                        maximum: 91
                     required:
                       - name
                   maxItems: 5
@@ -62664,92 +62664,168 @@ paths:
               schema:
                 type: object
                 properties:
-                  totalUnread:
-                    type: integer
-                    minimum: 0
-                    description: 全部聊天室的總未讀數
-                  items:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: 聊天室 ID
-                        cohortId:
-                          type: integer
-                          description: 關聯的 cohort ID
-                        name:
-                          type: string
-                          description: 聊天室名稱（cohort display_name）
-                        iconLabel:
-                          type: string
-                          description: 圖示文字（名稱首字）
-                        colorSeed:
-                          type: integer
-                          description: 色彩種子（roomId）
-                        organizationName:
-                          type: string
-                          description: 組織名稱
-                        memberCount:
-                          type: integer
-                          minimum: 0
-                          description: 成員數
-                        unreadCount:
-                          type: integer
-                          minimum: 0
-                          description: 未讀數
-                        lastMessage:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      totalUnread:
+                        type: integer
+                        minimum: 0
+                        description: 全部聊天室的總未讀數
+                      items:
+                        type: array
+                        items:
                           type: object
-                          nullable: true
                           properties:
                             id:
                               type: integer
-                              description: 訊息 ID
-                            kind:
+                              description: 聊天室 ID
+                            cohortId:
+                              type: integer
+                              description: 關聯的 cohort ID
+                            name:
                               type: string
-                              description: 訊息類型
-                            bodyPreview:
+                              description: 聊天室名稱（cohort display_name）
+                            iconLabel:
                               type: string
-                              description: 內容預覽
-                            authorName:
+                              description: 圖示文字（名稱首字）
+                            colorSeed:
+                              type: integer
+                              description: 色彩種子（roomId）
+                            organizationName:
                               type: string
+                              description: 組織名稱
+                            memberCount:
+                              type: integer
+                              minimum: 0
+                              description: 成員數
+                            unreadCount:
+                              type: integer
+                              minimum: 0
+                              description: 未讀數
+                            lastMessage:
+                              type: object
                               nullable: true
-                              description: 作者暱稱
-                            isMine:
-                              type: boolean
-                              description: 是否為自己的訊息
-                            createdAt:
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 訊息 ID
+                                kind:
+                                  type: string
+                                  description: 訊息類型
+                                bodyPreview:
+                                  type: string
+                                  description: 內容預覽
+                                authorName:
+                                  type: string
+                                  nullable: true
+                                  description: 作者暱稱
+                                isMine:
+                                  type: boolean
+                                  description: 是否為自己的訊息
+                                createdAt:
+                                  type: string
+                                  description: 建立時間（ISO）
+                              required:
+                                - id
+                                - kind
+                                - bodyPreview
+                                - authorName
+                                - isMine
+                                - createdAt
+                              description: 最後一則訊息
+                            lastActivityAt:
                               type: string
-                              description: 建立時間（ISO）
+                              description: 最近活動時間（ISO）
                           required:
                             - id
-                            - kind
-                            - bodyPreview
-                            - authorName
-                            - isMine
-                            - createdAt
-                          description: 最後一則訊息
-                        lastActivityAt:
-                          type: string
-                          description: 最近活動時間（ISO）
-                      required:
-                        - id
-                        - cohortId
-                        - name
-                        - iconLabel
-                        - colorSeed
-                        - organizationName
-                        - memberCount
-                        - unreadCount
-                        - lastMessage
-                        - lastActivityAt
-                      description: 聊天室摘要
-                    description: 聊天室列表
+                            - cohortId
+                            - name
+                            - iconLabel
+                            - colorSeed
+                            - organizationName
+                            - memberCount
+                            - unreadCount
+                            - lastMessage
+                            - lastActivityAt
+                          description: 聊天室摘要
+                        description: 聊天室列表
+                    required:
+                      - totalUnread
+                      - items
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - totalUnread
-                  - items
-                description: 我的聊天室列表
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': &ref_132
           $ref: '#/components/responses/BadRequestError'
         '401': &ref_133
@@ -62787,109 +62863,189 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: integer
-                    description: 聊天室 ID
-                  cohortId:
-                    type: integer
-                    description: 關聯的 cohort ID
-                  name:
-                    type: string
-                    description: 聊天室名稱（cohort display_name）
-                  iconLabel:
-                    type: string
-                    description: 圖示文字（名稱首字）
-                  colorSeed:
-                    type: integer
-                    description: 色彩種子（roomId）
-                  organizationName:
-                    type: string
-                    description: 組織名稱
-                  memberCount:
-                    type: integer
-                    minimum: 0
-                    description: 成員數
-                  unreadCount:
-                    type: integer
-                    minimum: 0
-                    description: 未讀數
-                  lastMessage:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
                     type: object
-                    nullable: true
                     properties:
                       id:
                         type: integer
-                        description: 訊息 ID
-                      kind:
+                        description: 聊天室 ID
+                      cohortId:
+                        type: integer
+                        description: 關聯的 cohort ID
+                      name:
                         type: string
-                        description: 訊息類型
-                      bodyPreview:
+                        description: 聊天室名稱（cohort display_name）
+                      iconLabel:
                         type: string
-                        description: 內容預覽
-                      authorName:
+                        description: 圖示文字（名稱首字）
+                      colorSeed:
+                        type: integer
+                        description: 色彩種子（roomId）
+                      organizationName:
                         type: string
+                        description: 組織名稱
+                      memberCount:
+                        type: integer
+                        minimum: 0
+                        description: 成員數
+                      unreadCount:
+                        type: integer
+                        minimum: 0
+                        description: 未讀數
+                      lastMessage:
+                        type: object
                         nullable: true
-                        description: 作者暱稱
-                      isMine:
-                        type: boolean
-                        description: 是否為自己的訊息
-                      createdAt:
+                        properties:
+                          id:
+                            type: integer
+                            description: 訊息 ID
+                          kind:
+                            type: string
+                            description: 訊息類型
+                          bodyPreview:
+                            type: string
+                            description: 內容預覽
+                          authorName:
+                            type: string
+                            nullable: true
+                            description: 作者暱稱
+                          isMine:
+                            type: boolean
+                            description: 是否為自己的訊息
+                          createdAt:
+                            type: string
+                            description: 建立時間（ISO）
+                        required:
+                          - id
+                          - kind
+                          - bodyPreview
+                          - authorName
+                          - isMine
+                          - createdAt
+                        description: 最後一則訊息
+                      lastActivityAt:
                         type: string
-                        description: 建立時間（ISO）
+                        description: 最近活動時間（ISO）
+                      viewerRole:
+                        type: string
+                        enum:
+                          - host
+                          - member
+                        description: 當前使用者角色
+                      viewerUserId:
+                        type: integer
+                        description: 當前使用者的 users.id（與訊息 author.userId 同一種 id），用來判斷本人訊息
+                      pinnedCount:
+                        type: integer
+                        minimum: 0
+                        description: 置頂訊息數
+                      memberPreview:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            nickname:
+                              type: string
+                              nullable: true
+                              description: 暱稱
+                            avatar:
+                              type: string
+                              nullable: true
+                              description: 頭像 URL
+                          required:
+                            - nickname
+                            - avatar
+                          description: 成員預覽
+                        description: 前 3 位成員預覽
                     required:
                       - id
-                      - kind
-                      - bodyPreview
-                      - authorName
-                      - isMine
-                      - createdAt
-                    description: 最後一則訊息
-                  lastActivityAt:
+                      - cohortId
+                      - name
+                      - iconLabel
+                      - colorSeed
+                      - organizationName
+                      - memberCount
+                      - unreadCount
+                      - lastMessage
+                      - lastActivityAt
+                      - viewerRole
+                      - viewerUserId
+                      - pinnedCount
+                      - memberPreview
+                    description: The main response data
+                  timestamp:
                     type: string
-                    description: 最近活動時間（ISO）
-                  viewerRole:
-                    type: string
-                    enum:
-                      - host
-                      - member
-                    description: 當前使用者角色
-                  pinnedCount:
-                    type: integer
-                    minimum: 0
-                    description: 置頂訊息數
-                  memberPreview:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        nickname:
-                          type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
                           nullable: true
-                          description: 暱稱
-                        avatar:
-                          type: string
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
                           nullable: true
-                          description: 頭像 URL
-                      required:
-                        - nickname
-                        - avatar
-                      description: 成員預覽
-                    description: 前 3 位成員預覽
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - id
-                  - cohortId
-                  - name
-                  - iconLabel
-                  - colorSeed
-                  - organizationName
-                  - memberCount
-                  - unreadCount
-                  - lastMessage
-                  - lastActivityAt
-                  - viewerRole
-                  - pinnedCount
-                  - memberPreview
-                description: 聊天室詳情
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -62919,39 +63075,116 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    userId:
-                      type: integer
-                      description: 使用者 ID
-                    nickname:
-                      type: string
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: integer
+                          description: 使用者 ID
+                        nickname:
+                          type: string
+                          nullable: true
+                          description: 暱稱
+                        avatar:
+                          type: string
+                          nullable: true
+                          description: 頭像 URL
+                        isHost:
+                          type: boolean
+                          description: 是否為帶領人
+                        isOnline:
+                          type: boolean
+                          description: 是否在線
+                        bio:
+                          type: string
+                          nullable: true
+                          description: 自我介紹
+                      required:
+                        - userId
+                        - nickname
+                        - avatar
+                        - isHost
+                        - isOnline
+                        - bio
+                      description: 聊天室成員
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
                       nullable: true
-                      description: 暱稱
-                    avatar:
-                      type: string
-                      nullable: true
-                      description: 頭像 URL
-                    isHost:
-                      type: boolean
-                      description: 是否為帶領人
-                    isOnline:
-                      type: boolean
-                      description: 是否在線
-                    bio:
-                      type: string
-                      nullable: true
-                      description: 自我介紹
-                  required:
-                    - userId
-                    - nickname
-                    - avatar
-                    - isHost
-                    - isOnline
-                    - bio
-                  description: 聊天室成員
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63020,262 +63253,671 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  messages:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: 訊息 ID
-                        roomId:
-                          type: integer
-                          description: 聊天室 ID
-                        kind:
-                          type: string
-                          enum:
-                            - text
-                            - system
-                          description: 訊息類型
-                        body:
-                          type: string
-                          description: 訊息內容
-                        metadata:
+                anyOf:
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                        enum:
+                          - true
+                        description: Indicates successful API response
+                      data:
+                        type: array
+                        items:
                           type: object
-                          nullable: true
-                          additionalProperties:
-                            nullable: true
-                          description: 系統訊息元資料
-                        author:
-                          type: object
-                          nullable: true
-                          properties:
-                            userId:
-                              type: integer
-                              description: 作者 ID
-                            nickname:
-                              type: string
-                              nullable: true
-                              description: 暱稱
-                            avatar:
-                              type: string
-                              nullable: true
-                              description: 頭像 URL
-                            isHost:
-                              type: boolean
-                              description: 是否為帶領人
-                          required:
-                            - userId
-                            - nickname
-                            - avatar
-                            - isHost
-                          description: 作者（系統訊息為 null）
-                        replyTo:
-                          type: object
-                          nullable: true
                           properties:
                             id:
                               type: integer
-                              description: 被引用訊息 ID
-                            authorName:
+                              description: 訊息 ID
+                            roomId:
+                              type: integer
+                              description: 聊天室 ID
+                            kind:
                               type: string
-                              nullable: true
-                              description: 被引用訊息的作者暱稱
-                            bodyPreview:
+                              enum:
+                                - text
+                                - system
+                              description: 訊息類型
+                            body:
                               type: string
+                              description: 訊息內容
+                            metadata:
+                              type: object
                               nullable: true
-                              description: 被引用訊息的內容預覽（已刪除為 null）
-                            isDeleted:
+                              additionalProperties:
+                                nullable: true
+                              description: 系統訊息元資料
+                            author:
+                              type: object
+                              nullable: true
+                              properties:
+                                userId:
+                                  type: integer
+                                  description: 作者 ID
+                                nickname:
+                                  type: string
+                                  nullable: true
+                                  description: 暱稱
+                                avatar:
+                                  type: string
+                                  nullable: true
+                                  description: 頭像 URL
+                                isHost:
+                                  type: boolean
+                                  description: 是否為帶領人
+                              required:
+                                - userId
+                                - nickname
+                                - avatar
+                                - isHost
+                              description: 作者（系統訊息為 null）
+                            replyTo:
+                              type: object
+                              nullable: true
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 被引用訊息 ID
+                                authorName:
+                                  type: string
+                                  nullable: true
+                                  description: 被引用訊息的作者暱稱
+                                bodyPreview:
+                                  type: string
+                                  nullable: true
+                                  description: 被引用訊息的內容預覽（已刪除為 null）
+                                isDeleted:
+                                  type: boolean
+                                  description: 被引用訊息是否已刪除
+                              required:
+                                - id
+                                - authorName
+                                - bodyPreview
+                                - isDeleted
+                              description: 引用回覆（無引用為 null）
+                            likeCount:
+                              type: integer
+                              minimum: 0
+                              description: 按讚數
+                            likedByMe:
                               type: boolean
-                              description: 被引用訊息是否已刪除
+                              description: 我是否已按讚
+                            isPinned:
+                              type: boolean
+                              description: 是否已置頂
+                            pinnedAt:
+                              type: string
+                              nullable: true
+                              description: 置頂時間（ISO）
+                            editedAt:
+                              type: string
+                              nullable: true
+                              description: 編輯時間（ISO）
+                            createdAt:
+                              type: string
+                              description: 建立時間（ISO）
+                            updatedAt:
+                              type: string
+                              description: 更新時間（ISO）
                           required:
                             - id
-                            - authorName
-                            - bodyPreview
-                            - isDeleted
-                          description: 引用回覆（無引用為 null）
-                        likeCount:
-                          type: integer
-                          minimum: 0
-                          description: 按讚數
-                        likedByMe:
-                          type: boolean
-                          description: 我是否已按讚
-                        isPinned:
-                          type: boolean
-                          description: 是否已置頂
-                        pinnedAt:
-                          type: string
-                          nullable: true
-                          description: 置頂時間（ISO）
-                        editedAt:
-                          type: string
-                          nullable: true
-                          description: 編輯時間（ISO）
-                        createdAt:
-                          type: string
-                          description: 建立時間（ISO）
-                        updatedAt:
-                          type: string
-                          description: 更新時間（ISO）
-                      required:
-                        - id
-                        - roomId
-                        - kind
-                        - body
-                        - metadata
-                        - author
-                        - replyTo
-                        - likeCount
-                        - likedByMe
-                        - isPinned
-                        - pinnedAt
-                        - editedAt
-                        - createdAt
-                        - updatedAt
-                      description: 聊天訊息
-                    description: 新訊息
-                  changed:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: 訊息 ID
-                        roomId:
-                          type: integer
-                          description: 聊天室 ID
-                        kind:
-                          type: string
-                          enum:
-                            - text
-                            - system
-                          description: 訊息類型
-                        body:
-                          type: string
-                          description: 訊息內容
-                        metadata:
-                          type: object
-                          nullable: true
-                          additionalProperties:
+                            - roomId
+                            - kind
+                            - body
+                            - metadata
+                            - author
+                            - replyTo
+                            - likeCount
+                            - likedByMe
+                            - isPinned
+                            - pinnedAt
+                            - editedAt
+                            - createdAt
+                            - updatedAt
+                          description: 聊天訊息
+                        description: Array of paginated data items
+                      pagination:
+                        type: object
+                        properties:
+                          cursors:
+                            type: object
+                            properties:
+                              start:
+                                type: string
+                                nullable: true
+                                description: Start cursor for the current page
+                              end:
+                                type: string
+                                nullable: true
+                                description: End cursor for the current page
+                            required:
+                              - start
+                              - end
+                            description: Cursor boundaries for the current page
+                          hasMore:
+                            type: boolean
+                            description: Whether there are more items after the current page
+                          count:
+                            type: integer
+                            minimum: 0
+                            description: Number of items in the current page
+                          limit:
+                            type: integer
+                            minimum: 1
+                            description: Maximum number of items per page
+                          hasNext:
+                            type: boolean
+                            description: Whether there are more items in the next page
+                          hasPrev:
+                            type: boolean
+                            description: Whether there are items in the previous page
+                          nextCursor:
+                            type: string
                             nullable: true
-                          description: 系統訊息元資料
-                        author:
-                          type: object
-                          nullable: true
-                          properties:
-                            userId:
+                            description: Cursor to fetch the next page
+                          prevCursor:
+                            type: string
+                            nullable: true
+                            description: Cursor to fetch the previous page
+                          totalEstimate:
+                            type: integer
+                            nullable: true
+                            minimum: 0
+                            description: Estimated total number of items (may be null if unknown)
+                          parentTotalEstimate:
+                            type: integer
+                            nullable: true
+                            minimum: 0
+                            description: Estimated total number of items in parent context (may be null)
+                        required:
+                          - cursors
+                          - hasMore
+                          - count
+                          - limit
+                          - hasNext
+                          - hasPrev
+                          - nextCursor
+                          - prevCursor
+                          - totalEstimate
+                          - parentTotalEstimate
+                        description: Cursor-based pagination information
+                        examples: *ref_29
+                      facets:
+                        type: object
+                        properties:
+                          majorCategory:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                value:
+                                  type: string
+                                  description: Facet value key (used for URL path parameter)
+                                count:
+                                  type: integer
+                                  minimum: 0
+                                  description: Number of items matching this facet value
+                              required:
+                                - value
+                                - count
+                              description: Single facet value with count
+                              examples: *ref_27
+                            description: Major category facet values (parent_id is NULL)
+                          subCategory:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                value:
+                                  type: string
+                                  description: Facet value key (used for URL path parameter)
+                                count:
+                                  type: integer
+                                  minimum: 0
+                                  description: Number of items matching this facet value
+                              required:
+                                - value
+                                - count
+                              description: Single facet value with count
+                              examples: *ref_27
+                            description: Sub category facet values (parent_id is NOT NULL)
+                        additionalProperties:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              value:
+                                type: string
+                                description: Facet value key (used for URL path parameter)
+                              count:
+                                type: integer
+                                minimum: 0
+                                description: Number of items matching this facet value
+                            required:
+                              - value
+                              - count
+                            description: Single facet value with count
+                            examples: *ref_27
+                        description: Faceted search aggregations for filtering
+                        examples: *ref_30
+                      timestamp:
+                        type: string
+                        format: date-time
+                        description: ISO 8601 timestamp of the response
+                      meta:
+                        type: object
+                        properties:
+                          searchQuery:
+                            type: string
+                            description: Search query used for filtering results
+                          searchTime:
+                            type: number
+                            minimum: 0
+                            description: Time taken to execute the search query in milliseconds
+                          filters:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                            description: Applied filters for the request
+                          categoryCounts:
+                            type: object
+                            additionalProperties:
                               type: integer
-                              description: 作者 ID
-                            nickname:
-                              type: string
+                              minimum: 0
+                            description: Count of items per category
+                          aggregateData:
+                            type: object
+                            additionalProperties:
                               nullable: true
-                              description: 暱稱
-                            avatar:
-                              type: string
-                              nullable: true
-                              description: 頭像 URL
-                            isHost:
-                              type: boolean
-                              description: 是否為帶領人
-                          required:
-                            - userId
-                            - nickname
-                            - avatar
-                            - isHost
-                          description: 作者（系統訊息為 null）
-                        replyTo:
-                          type: object
+                            description: Aggregated statistical data
+                          requestId:
+                            type: string
+                            description: Unique identifier for request tracking
+                          cacheHit:
+                            type: boolean
+                            description: Whether the response was served from cache
+                          processingTime:
+                            type: number
+                            minimum: 0
+                            description: Total processing time in milliseconds
+                        additionalProperties:
                           nullable: true
-                          properties:
-                            id:
+                        description: Optional metadata about the response
+                        examples: *ref_0
+                    required:
+                      - success
+                      - data
+                      - pagination
+                      - timestamp
+                    description: Paginated response format for cursor-based pagination
+                    examples:
+                      - success: true
+                        data:
+                          - id: 123
+                            title: Node.js 實戰開發
+                            category: 後端開發
+                            createdAt: '2024-01-12T14:30:00Z'
+                          - id: 124
+                            title: Express.js 框架學習
+                            category: 後端開發
+                            createdAt: '2024-01-13T09:15:00Z'
+                        pagination:
+                          cursors:
+                            start: eyJpZCI6MTIzLCJjcmVhdGVkQXQiOiIyMDI0LTAxLTEyVDE0OjMwOjAwWiJ9
+                            end: eyJpZCI6MTI0LCJjcmVhdGVkQXQiOiIyMDI0LTAxLTEzVDA5OjE1OjAwWiJ9
+                          hasMore: true
+                          count: 20
+                        facets:
+                          majorCategory:
+                            - value: education_learning
+                              count: 45
+                            - value: nature_environment
+                              count: 32
+                            - value: information_computer_science
+                              count: 28
+                          subCategory:
+                            - value: physics
+                              count: 15
+                            - value: biology
+                              count: 12
+                            - value: mathematics
+                              count: 10
+                        timestamp: '2024-01-15T10:30:00.000Z'
+                        meta:
+                          processingTime: 67.2
+                          requestId: req-456e7890-e89b-12d3-a456-426614174000
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                        enum:
+                          - true
+                        description: Indicates successful API response
+                      data:
+                        type: object
+                        properties:
+                          messages:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 訊息 ID
+                                roomId:
+                                  type: integer
+                                  description: 聊天室 ID
+                                kind:
+                                  type: string
+                                  enum:
+                                    - text
+                                    - system
+                                  description: 訊息類型
+                                body:
+                                  type: string
+                                  description: 訊息內容
+                                metadata:
+                                  type: object
+                                  nullable: true
+                                  additionalProperties:
+                                    nullable: true
+                                  description: 系統訊息元資料
+                                author:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    userId:
+                                      type: integer
+                                      description: 作者 ID
+                                    nickname:
+                                      type: string
+                                      nullable: true
+                                      description: 暱稱
+                                    avatar:
+                                      type: string
+                                      nullable: true
+                                      description: 頭像 URL
+                                    isHost:
+                                      type: boolean
+                                      description: 是否為帶領人
+                                  required:
+                                    - userId
+                                    - nickname
+                                    - avatar
+                                    - isHost
+                                  description: 作者（系統訊息為 null）
+                                replyTo:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: 被引用訊息 ID
+                                    authorName:
+                                      type: string
+                                      nullable: true
+                                      description: 被引用訊息的作者暱稱
+                                    bodyPreview:
+                                      type: string
+                                      nullable: true
+                                      description: 被引用訊息的內容預覽（已刪除為 null）
+                                    isDeleted:
+                                      type: boolean
+                                      description: 被引用訊息是否已刪除
+                                  required:
+                                    - id
+                                    - authorName
+                                    - bodyPreview
+                                    - isDeleted
+                                  description: 引用回覆（無引用為 null）
+                                likeCount:
+                                  type: integer
+                                  minimum: 0
+                                  description: 按讚數
+                                likedByMe:
+                                  type: boolean
+                                  description: 我是否已按讚
+                                isPinned:
+                                  type: boolean
+                                  description: 是否已置頂
+                                pinnedAt:
+                                  type: string
+                                  nullable: true
+                                  description: 置頂時間（ISO）
+                                editedAt:
+                                  type: string
+                                  nullable: true
+                                  description: 編輯時間（ISO）
+                                createdAt:
+                                  type: string
+                                  description: 建立時間（ISO）
+                                updatedAt:
+                                  type: string
+                                  description: 更新時間（ISO）
+                              required:
+                                - id
+                                - roomId
+                                - kind
+                                - body
+                                - metadata
+                                - author
+                                - replyTo
+                                - likeCount
+                                - likedByMe
+                                - isPinned
+                                - pinnedAt
+                                - editedAt
+                                - createdAt
+                                - updatedAt
+                              description: 聊天訊息
+                            description: 新訊息
+                          changed:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 訊息 ID
+                                roomId:
+                                  type: integer
+                                  description: 聊天室 ID
+                                kind:
+                                  type: string
+                                  enum:
+                                    - text
+                                    - system
+                                  description: 訊息類型
+                                body:
+                                  type: string
+                                  description: 訊息內容
+                                metadata:
+                                  type: object
+                                  nullable: true
+                                  additionalProperties:
+                                    nullable: true
+                                  description: 系統訊息元資料
+                                author:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    userId:
+                                      type: integer
+                                      description: 作者 ID
+                                    nickname:
+                                      type: string
+                                      nullable: true
+                                      description: 暱稱
+                                    avatar:
+                                      type: string
+                                      nullable: true
+                                      description: 頭像 URL
+                                    isHost:
+                                      type: boolean
+                                      description: 是否為帶領人
+                                  required:
+                                    - userId
+                                    - nickname
+                                    - avatar
+                                    - isHost
+                                  description: 作者（系統訊息為 null）
+                                replyTo:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    id:
+                                      type: integer
+                                      description: 被引用訊息 ID
+                                    authorName:
+                                      type: string
+                                      nullable: true
+                                      description: 被引用訊息的作者暱稱
+                                    bodyPreview:
+                                      type: string
+                                      nullable: true
+                                      description: 被引用訊息的內容預覽（已刪除為 null）
+                                    isDeleted:
+                                      type: boolean
+                                      description: 被引用訊息是否已刪除
+                                  required:
+                                    - id
+                                    - authorName
+                                    - bodyPreview
+                                    - isDeleted
+                                  description: 引用回覆（無引用為 null）
+                                likeCount:
+                                  type: integer
+                                  minimum: 0
+                                  description: 按讚數
+                                likedByMe:
+                                  type: boolean
+                                  description: 我是否已按讚
+                                isPinned:
+                                  type: boolean
+                                  description: 是否已置頂
+                                pinnedAt:
+                                  type: string
+                                  nullable: true
+                                  description: 置頂時間（ISO）
+                                editedAt:
+                                  type: string
+                                  nullable: true
+                                  description: 編輯時間（ISO）
+                                createdAt:
+                                  type: string
+                                  description: 建立時間（ISO）
+                                updatedAt:
+                                  type: string
+                                  description: 更新時間（ISO）
+                              required:
+                                - id
+                                - roomId
+                                - kind
+                                - body
+                                - metadata
+                                - author
+                                - replyTo
+                                - likeCount
+                                - likedByMe
+                                - isPinned
+                                - pinnedAt
+                                - editedAt
+                                - createdAt
+                                - updatedAt
+                              description: 聊天訊息
+                            description: 已變更的既有訊息
+                          deletedIds:
+                            type: array
+                            items:
                               type: integer
-                              description: 被引用訊息 ID
-                            authorName:
-                              type: string
+                            description: 已刪除的訊息 ID
+                          pinnedCount:
+                            type: integer
+                            minimum: 0
+                            description: 置頂訊息數
+                          memberCount:
+                            type: integer
+                            minimum: 0
+                            description: 成員數
+                          serverTime:
+                            type: string
+                            description: 伺服器時間（ISO）
+                        required:
+                          - messages
+                          - changed
+                          - deletedIds
+                          - pinnedCount
+                          - memberCount
+                          - serverTime
+                        description: The main response data
+                      timestamp:
+                        type: string
+                        format: date-time
+                        description: ISO 8601 timestamp of the response
+                      meta:
+                        type: object
+                        properties:
+                          searchQuery:
+                            type: string
+                            description: Search query used for filtering results
+                          searchTime:
+                            type: number
+                            minimum: 0
+                            description: Time taken to execute the search query in milliseconds
+                          filters:
+                            type: object
+                            additionalProperties:
                               nullable: true
-                              description: 被引用訊息的作者暱稱
-                            bodyPreview:
-                              type: string
+                            description: Applied filters for the request
+                          categoryCounts:
+                            type: object
+                            additionalProperties:
+                              type: integer
+                              minimum: 0
+                            description: Count of items per category
+                          aggregateData:
+                            type: object
+                            additionalProperties:
                               nullable: true
-                              description: 被引用訊息的內容預覽（已刪除為 null）
-                            isDeleted:
-                              type: boolean
-                              description: 被引用訊息是否已刪除
-                          required:
-                            - id
-                            - authorName
-                            - bodyPreview
-                            - isDeleted
-                          description: 引用回覆（無引用為 null）
-                        likeCount:
-                          type: integer
-                          minimum: 0
-                          description: 按讚數
-                        likedByMe:
-                          type: boolean
-                          description: 我是否已按讚
-                        isPinned:
-                          type: boolean
-                          description: 是否已置頂
-                        pinnedAt:
-                          type: string
+                            description: Aggregated statistical data
+                          requestId:
+                            type: string
+                            description: Unique identifier for request tracking
+                          cacheHit:
+                            type: boolean
+                            description: Whether the response was served from cache
+                          processingTime:
+                            type: number
+                            minimum: 0
+                            description: Total processing time in milliseconds
+                        additionalProperties:
                           nullable: true
-                          description: 置頂時間（ISO）
-                        editedAt:
-                          type: string
-                          nullable: true
-                          description: 編輯時間（ISO）
-                        createdAt:
-                          type: string
-                          description: 建立時間（ISO）
-                        updatedAt:
-                          type: string
-                          description: 更新時間（ISO）
-                      required:
-                        - id
-                        - roomId
-                        - kind
-                        - body
-                        - metadata
-                        - author
-                        - replyTo
-                        - likeCount
-                        - likedByMe
-                        - isPinned
-                        - pinnedAt
-                        - editedAt
-                        - createdAt
-                        - updatedAt
-                      description: 聊天訊息
-                    description: 已變更的既有訊息
-                  deletedIds:
-                    type: array
-                    items:
-                      type: integer
-                    description: 已刪除的訊息 ID
-                  pinnedCount:
-                    type: integer
-                    minimum: 0
-                    description: 置頂訊息數
-                  memberCount:
-                    type: integer
-                    minimum: 0
-                    description: 成員數
-                  serverTime:
-                    type: string
-                    description: 伺服器時間（ISO）
-                required:
-                  - messages
-                  - changed
-                  - deletedIds
-                  - pinnedCount
-                  - memberCount
-                  - serverTime
-                description: 增量輪詢回應
+                        description: Optional metadata about the response
+                        examples: *ref_0
+                    required:
+                      - success
+                      - data
+                      - timestamp
+                    description: Standard success response format
+                    examples:
+                      - success: true
+                        data:
+                          id: 123
+                          _id: 550e8400-e29b-41d4-a716-446655440000
+                          name: JavaScript 基礎教程
+                          description: 從零開始學習 JavaScript 程式設計
+                          status: published
+                        timestamp: '2024-01-15T10:30:00.000Z'
+                      - success: true
+                        data:
+                          userId: 456
+                          username: john_doe
+                          email: john@example.com
+                          role: student
+                        timestamp: '2024-01-15T10:30:00.000Z'
+                        meta:
+                          cacheHit: true
+                          processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63327,115 +63969,191 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: integer
-                    description: 訊息 ID
-                  roomId:
-                    type: integer
-                    description: 聊天室 ID
-                  kind:
-                    type: string
+                  success:
+                    type: boolean
                     enum:
-                      - text
-                      - system
-                    description: 訊息類型
-                  body:
-                    type: string
-                    description: 訊息內容
-                  metadata:
+                      - true
+                    description: Indicates successful API response
+                  data:
                     type: object
-                    nullable: true
-                    additionalProperties:
-                      nullable: true
-                    description: 系統訊息元資料
-                  author:
-                    type: object
-                    nullable: true
-                    properties:
-                      userId:
-                        type: integer
-                        description: 作者 ID
-                      nickname:
-                        type: string
-                        nullable: true
-                        description: 暱稱
-                      avatar:
-                        type: string
-                        nullable: true
-                        description: 頭像 URL
-                      isHost:
-                        type: boolean
-                        description: 是否為帶領人
-                    required:
-                      - userId
-                      - nickname
-                      - avatar
-                      - isHost
-                    description: 作者（系統訊息為 null）
-                  replyTo:
-                    type: object
-                    nullable: true
                     properties:
                       id:
                         type: integer
-                        description: 被引用訊息 ID
-                      authorName:
+                        description: 訊息 ID
+                      roomId:
+                        type: integer
+                        description: 聊天室 ID
+                      kind:
                         type: string
-                        nullable: true
-                        description: 被引用訊息的作者暱稱
-                      bodyPreview:
+                        enum:
+                          - text
+                          - system
+                        description: 訊息類型
+                      body:
                         type: string
+                        description: 訊息內容
+                      metadata:
+                        type: object
                         nullable: true
-                        description: 被引用訊息的內容預覽（已刪除為 null）
-                      isDeleted:
+                        additionalProperties:
+                          nullable: true
+                        description: 系統訊息元資料
+                      author:
+                        type: object
+                        nullable: true
+                        properties:
+                          userId:
+                            type: integer
+                            description: 作者 ID
+                          nickname:
+                            type: string
+                            nullable: true
+                            description: 暱稱
+                          avatar:
+                            type: string
+                            nullable: true
+                            description: 頭像 URL
+                          isHost:
+                            type: boolean
+                            description: 是否為帶領人
+                        required:
+                          - userId
+                          - nickname
+                          - avatar
+                          - isHost
+                        description: 作者（系統訊息為 null）
+                      replyTo:
+                        type: object
+                        nullable: true
+                        properties:
+                          id:
+                            type: integer
+                            description: 被引用訊息 ID
+                          authorName:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的作者暱稱
+                          bodyPreview:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的內容預覽（已刪除為 null）
+                          isDeleted:
+                            type: boolean
+                            description: 被引用訊息是否已刪除
+                        required:
+                          - id
+                          - authorName
+                          - bodyPreview
+                          - isDeleted
+                        description: 引用回覆（無引用為 null）
+                      likeCount:
+                        type: integer
+                        minimum: 0
+                        description: 按讚數
+                      likedByMe:
                         type: boolean
-                        description: 被引用訊息是否已刪除
+                        description: 我是否已按讚
+                      isPinned:
+                        type: boolean
+                        description: 是否已置頂
+                      pinnedAt:
+                        type: string
+                        nullable: true
+                        description: 置頂時間（ISO）
+                      editedAt:
+                        type: string
+                        nullable: true
+                        description: 編輯時間（ISO）
+                      createdAt:
+                        type: string
+                        description: 建立時間（ISO）
+                      updatedAt:
+                        type: string
+                        description: 更新時間（ISO）
                     required:
                       - id
-                      - authorName
-                      - bodyPreview
-                      - isDeleted
-                    description: 引用回覆（無引用為 null）
-                  likeCount:
-                    type: integer
-                    minimum: 0
-                    description: 按讚數
-                  likedByMe:
-                    type: boolean
-                    description: 我是否已按讚
-                  isPinned:
-                    type: boolean
-                    description: 是否已置頂
-                  pinnedAt:
+                      - roomId
+                      - kind
+                      - body
+                      - metadata
+                      - author
+                      - replyTo
+                      - likeCount
+                      - likedByMe
+                      - isPinned
+                      - pinnedAt
+                      - editedAt
+                      - createdAt
+                      - updatedAt
+                    description: The main response data
+                  timestamp:
                     type: string
-                    nullable: true
-                    description: 置頂時間（ISO）
-                  editedAt:
-                    type: string
-                    nullable: true
-                    description: 編輯時間（ISO）
-                  createdAt:
-                    type: string
-                    description: 建立時間（ISO）
-                  updatedAt:
-                    type: string
-                    description: 更新時間（ISO）
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - id
-                  - roomId
-                  - kind
-                  - body
-                  - metadata
-                  - author
-                  - replyTo
-                  - likeCount
-                  - likedByMe
-                  - isPinned
-                  - pinnedAt
-                  - editedAt
-                  - createdAt
-                  - updatedAt
-                description: 聊天訊息
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63492,115 +64210,191 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: integer
-                    description: 訊息 ID
-                  roomId:
-                    type: integer
-                    description: 聊天室 ID
-                  kind:
-                    type: string
+                  success:
+                    type: boolean
                     enum:
-                      - text
-                      - system
-                    description: 訊息類型
-                  body:
-                    type: string
-                    description: 訊息內容
-                  metadata:
+                      - true
+                    description: Indicates successful API response
+                  data:
                     type: object
-                    nullable: true
-                    additionalProperties:
-                      nullable: true
-                    description: 系統訊息元資料
-                  author:
-                    type: object
-                    nullable: true
-                    properties:
-                      userId:
-                        type: integer
-                        description: 作者 ID
-                      nickname:
-                        type: string
-                        nullable: true
-                        description: 暱稱
-                      avatar:
-                        type: string
-                        nullable: true
-                        description: 頭像 URL
-                      isHost:
-                        type: boolean
-                        description: 是否為帶領人
-                    required:
-                      - userId
-                      - nickname
-                      - avatar
-                      - isHost
-                    description: 作者（系統訊息為 null）
-                  replyTo:
-                    type: object
-                    nullable: true
                     properties:
                       id:
                         type: integer
-                        description: 被引用訊息 ID
-                      authorName:
+                        description: 訊息 ID
+                      roomId:
+                        type: integer
+                        description: 聊天室 ID
+                      kind:
                         type: string
-                        nullable: true
-                        description: 被引用訊息的作者暱稱
-                      bodyPreview:
+                        enum:
+                          - text
+                          - system
+                        description: 訊息類型
+                      body:
                         type: string
+                        description: 訊息內容
+                      metadata:
+                        type: object
                         nullable: true
-                        description: 被引用訊息的內容預覽（已刪除為 null）
-                      isDeleted:
+                        additionalProperties:
+                          nullable: true
+                        description: 系統訊息元資料
+                      author:
+                        type: object
+                        nullable: true
+                        properties:
+                          userId:
+                            type: integer
+                            description: 作者 ID
+                          nickname:
+                            type: string
+                            nullable: true
+                            description: 暱稱
+                          avatar:
+                            type: string
+                            nullable: true
+                            description: 頭像 URL
+                          isHost:
+                            type: boolean
+                            description: 是否為帶領人
+                        required:
+                          - userId
+                          - nickname
+                          - avatar
+                          - isHost
+                        description: 作者（系統訊息為 null）
+                      replyTo:
+                        type: object
+                        nullable: true
+                        properties:
+                          id:
+                            type: integer
+                            description: 被引用訊息 ID
+                          authorName:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的作者暱稱
+                          bodyPreview:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的內容預覽（已刪除為 null）
+                          isDeleted:
+                            type: boolean
+                            description: 被引用訊息是否已刪除
+                        required:
+                          - id
+                          - authorName
+                          - bodyPreview
+                          - isDeleted
+                        description: 引用回覆（無引用為 null）
+                      likeCount:
+                        type: integer
+                        minimum: 0
+                        description: 按讚數
+                      likedByMe:
                         type: boolean
-                        description: 被引用訊息是否已刪除
+                        description: 我是否已按讚
+                      isPinned:
+                        type: boolean
+                        description: 是否已置頂
+                      pinnedAt:
+                        type: string
+                        nullable: true
+                        description: 置頂時間（ISO）
+                      editedAt:
+                        type: string
+                        nullable: true
+                        description: 編輯時間（ISO）
+                      createdAt:
+                        type: string
+                        description: 建立時間（ISO）
+                      updatedAt:
+                        type: string
+                        description: 更新時間（ISO）
                     required:
                       - id
-                      - authorName
-                      - bodyPreview
-                      - isDeleted
-                    description: 引用回覆（無引用為 null）
-                  likeCount:
-                    type: integer
-                    minimum: 0
-                    description: 按讚數
-                  likedByMe:
-                    type: boolean
-                    description: 我是否已按讚
-                  isPinned:
-                    type: boolean
-                    description: 是否已置頂
-                  pinnedAt:
+                      - roomId
+                      - kind
+                      - body
+                      - metadata
+                      - author
+                      - replyTo
+                      - likeCount
+                      - likedByMe
+                      - isPinned
+                      - pinnedAt
+                      - editedAt
+                      - createdAt
+                      - updatedAt
+                    description: The main response data
+                  timestamp:
                     type: string
-                    nullable: true
-                    description: 置頂時間（ISO）
-                  editedAt:
-                    type: string
-                    nullable: true
-                    description: 編輯時間（ISO）
-                  createdAt:
-                    type: string
-                    description: 建立時間（ISO）
-                  updatedAt:
-                    type: string
-                    description: 更新時間（ISO）
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - id
-                  - roomId
-                  - kind
-                  - body
-                  - metadata
-                  - author
-                  - replyTo
-                  - likeCount
-                  - likedByMe
-                  - isPinned
-                  - pinnedAt
-                  - editedAt
-                  - createdAt
-                  - updatedAt
-                description: 聊天訊息
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63677,17 +64471,93 @@ paths:
               schema:
                 type: object
                 properties:
-                  likeCount:
-                    type: integer
-                    minimum: 0
-                    description: 按讚數
-                  likedByMe:
+                  success:
                     type: boolean
-                    description: 我是否已按讚
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      likeCount:
+                        type: integer
+                        minimum: 0
+                        description: 按讚數
+                      likedByMe:
+                        type: boolean
+                        description: 我是否已按讚
+                    required:
+                      - likeCount
+                      - likedByMe
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - likeCount
-                  - likedByMe
-                description: 按讚回應
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63728,17 +64598,93 @@ paths:
               schema:
                 type: object
                 properties:
-                  likeCount:
-                    type: integer
-                    minimum: 0
-                    description: 按讚數
-                  likedByMe:
+                  success:
                     type: boolean
-                    description: 我是否已按讚
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      likeCount:
+                        type: integer
+                        minimum: 0
+                        description: 按讚數
+                      likedByMe:
+                        type: boolean
+                        description: 我是否已按讚
+                    required:
+                      - likeCount
+                      - likedByMe
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - likeCount
-                  - likedByMe
-                description: 按讚回應
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63780,115 +64726,191 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: integer
-                    description: 訊息 ID
-                  roomId:
-                    type: integer
-                    description: 聊天室 ID
-                  kind:
-                    type: string
+                  success:
+                    type: boolean
                     enum:
-                      - text
-                      - system
-                    description: 訊息類型
-                  body:
-                    type: string
-                    description: 訊息內容
-                  metadata:
+                      - true
+                    description: Indicates successful API response
+                  data:
                     type: object
-                    nullable: true
-                    additionalProperties:
-                      nullable: true
-                    description: 系統訊息元資料
-                  author:
-                    type: object
-                    nullable: true
-                    properties:
-                      userId:
-                        type: integer
-                        description: 作者 ID
-                      nickname:
-                        type: string
-                        nullable: true
-                        description: 暱稱
-                      avatar:
-                        type: string
-                        nullable: true
-                        description: 頭像 URL
-                      isHost:
-                        type: boolean
-                        description: 是否為帶領人
-                    required:
-                      - userId
-                      - nickname
-                      - avatar
-                      - isHost
-                    description: 作者（系統訊息為 null）
-                  replyTo:
-                    type: object
-                    nullable: true
                     properties:
                       id:
                         type: integer
-                        description: 被引用訊息 ID
-                      authorName:
+                        description: 訊息 ID
+                      roomId:
+                        type: integer
+                        description: 聊天室 ID
+                      kind:
                         type: string
-                        nullable: true
-                        description: 被引用訊息的作者暱稱
-                      bodyPreview:
+                        enum:
+                          - text
+                          - system
+                        description: 訊息類型
+                      body:
                         type: string
+                        description: 訊息內容
+                      metadata:
+                        type: object
                         nullable: true
-                        description: 被引用訊息的內容預覽（已刪除為 null）
-                      isDeleted:
+                        additionalProperties:
+                          nullable: true
+                        description: 系統訊息元資料
+                      author:
+                        type: object
+                        nullable: true
+                        properties:
+                          userId:
+                            type: integer
+                            description: 作者 ID
+                          nickname:
+                            type: string
+                            nullable: true
+                            description: 暱稱
+                          avatar:
+                            type: string
+                            nullable: true
+                            description: 頭像 URL
+                          isHost:
+                            type: boolean
+                            description: 是否為帶領人
+                        required:
+                          - userId
+                          - nickname
+                          - avatar
+                          - isHost
+                        description: 作者（系統訊息為 null）
+                      replyTo:
+                        type: object
+                        nullable: true
+                        properties:
+                          id:
+                            type: integer
+                            description: 被引用訊息 ID
+                          authorName:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的作者暱稱
+                          bodyPreview:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的內容預覽（已刪除為 null）
+                          isDeleted:
+                            type: boolean
+                            description: 被引用訊息是否已刪除
+                        required:
+                          - id
+                          - authorName
+                          - bodyPreview
+                          - isDeleted
+                        description: 引用回覆（無引用為 null）
+                      likeCount:
+                        type: integer
+                        minimum: 0
+                        description: 按讚數
+                      likedByMe:
                         type: boolean
-                        description: 被引用訊息是否已刪除
+                        description: 我是否已按讚
+                      isPinned:
+                        type: boolean
+                        description: 是否已置頂
+                      pinnedAt:
+                        type: string
+                        nullable: true
+                        description: 置頂時間（ISO）
+                      editedAt:
+                        type: string
+                        nullable: true
+                        description: 編輯時間（ISO）
+                      createdAt:
+                        type: string
+                        description: 建立時間（ISO）
+                      updatedAt:
+                        type: string
+                        description: 更新時間（ISO）
                     required:
                       - id
-                      - authorName
-                      - bodyPreview
-                      - isDeleted
-                    description: 引用回覆（無引用為 null）
-                  likeCount:
-                    type: integer
-                    minimum: 0
-                    description: 按讚數
-                  likedByMe:
-                    type: boolean
-                    description: 我是否已按讚
-                  isPinned:
-                    type: boolean
-                    description: 是否已置頂
-                  pinnedAt:
+                      - roomId
+                      - kind
+                      - body
+                      - metadata
+                      - author
+                      - replyTo
+                      - likeCount
+                      - likedByMe
+                      - isPinned
+                      - pinnedAt
+                      - editedAt
+                      - createdAt
+                      - updatedAt
+                    description: The main response data
+                  timestamp:
                     type: string
-                    nullable: true
-                    description: 置頂時間（ISO）
-                  editedAt:
-                    type: string
-                    nullable: true
-                    description: 編輯時間（ISO）
-                  createdAt:
-                    type: string
-                    description: 建立時間（ISO）
-                  updatedAt:
-                    type: string
-                    description: 更新時間（ISO）
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - id
-                  - roomId
-                  - kind
-                  - body
-                  - metadata
-                  - author
-                  - replyTo
-                  - likeCount
-                  - likedByMe
-                  - isPinned
-                  - pinnedAt
-                  - editedAt
-                  - createdAt
-                  - updatedAt
-                description: 聊天訊息
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -63929,115 +64951,191 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: integer
-                    description: 訊息 ID
-                  roomId:
-                    type: integer
-                    description: 聊天室 ID
-                  kind:
-                    type: string
+                  success:
+                    type: boolean
                     enum:
-                      - text
-                      - system
-                    description: 訊息類型
-                  body:
-                    type: string
-                    description: 訊息內容
-                  metadata:
+                      - true
+                    description: Indicates successful API response
+                  data:
                     type: object
-                    nullable: true
-                    additionalProperties:
-                      nullable: true
-                    description: 系統訊息元資料
-                  author:
-                    type: object
-                    nullable: true
-                    properties:
-                      userId:
-                        type: integer
-                        description: 作者 ID
-                      nickname:
-                        type: string
-                        nullable: true
-                        description: 暱稱
-                      avatar:
-                        type: string
-                        nullable: true
-                        description: 頭像 URL
-                      isHost:
-                        type: boolean
-                        description: 是否為帶領人
-                    required:
-                      - userId
-                      - nickname
-                      - avatar
-                      - isHost
-                    description: 作者（系統訊息為 null）
-                  replyTo:
-                    type: object
-                    nullable: true
                     properties:
                       id:
                         type: integer
-                        description: 被引用訊息 ID
-                      authorName:
+                        description: 訊息 ID
+                      roomId:
+                        type: integer
+                        description: 聊天室 ID
+                      kind:
                         type: string
-                        nullable: true
-                        description: 被引用訊息的作者暱稱
-                      bodyPreview:
+                        enum:
+                          - text
+                          - system
+                        description: 訊息類型
+                      body:
                         type: string
+                        description: 訊息內容
+                      metadata:
+                        type: object
                         nullable: true
-                        description: 被引用訊息的內容預覽（已刪除為 null）
-                      isDeleted:
+                        additionalProperties:
+                          nullable: true
+                        description: 系統訊息元資料
+                      author:
+                        type: object
+                        nullable: true
+                        properties:
+                          userId:
+                            type: integer
+                            description: 作者 ID
+                          nickname:
+                            type: string
+                            nullable: true
+                            description: 暱稱
+                          avatar:
+                            type: string
+                            nullable: true
+                            description: 頭像 URL
+                          isHost:
+                            type: boolean
+                            description: 是否為帶領人
+                        required:
+                          - userId
+                          - nickname
+                          - avatar
+                          - isHost
+                        description: 作者（系統訊息為 null）
+                      replyTo:
+                        type: object
+                        nullable: true
+                        properties:
+                          id:
+                            type: integer
+                            description: 被引用訊息 ID
+                          authorName:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的作者暱稱
+                          bodyPreview:
+                            type: string
+                            nullable: true
+                            description: 被引用訊息的內容預覽（已刪除為 null）
+                          isDeleted:
+                            type: boolean
+                            description: 被引用訊息是否已刪除
+                        required:
+                          - id
+                          - authorName
+                          - bodyPreview
+                          - isDeleted
+                        description: 引用回覆（無引用為 null）
+                      likeCount:
+                        type: integer
+                        minimum: 0
+                        description: 按讚數
+                      likedByMe:
                         type: boolean
-                        description: 被引用訊息是否已刪除
+                        description: 我是否已按讚
+                      isPinned:
+                        type: boolean
+                        description: 是否已置頂
+                      pinnedAt:
+                        type: string
+                        nullable: true
+                        description: 置頂時間（ISO）
+                      editedAt:
+                        type: string
+                        nullable: true
+                        description: 編輯時間（ISO）
+                      createdAt:
+                        type: string
+                        description: 建立時間（ISO）
+                      updatedAt:
+                        type: string
+                        description: 更新時間（ISO）
                     required:
                       - id
-                      - authorName
-                      - bodyPreview
-                      - isDeleted
-                    description: 引用回覆（無引用為 null）
-                  likeCount:
-                    type: integer
-                    minimum: 0
-                    description: 按讚數
-                  likedByMe:
-                    type: boolean
-                    description: 我是否已按讚
-                  isPinned:
-                    type: boolean
-                    description: 是否已置頂
-                  pinnedAt:
+                      - roomId
+                      - kind
+                      - body
+                      - metadata
+                      - author
+                      - replyTo
+                      - likeCount
+                      - likedByMe
+                      - isPinned
+                      - pinnedAt
+                      - editedAt
+                      - createdAt
+                      - updatedAt
+                    description: The main response data
+                  timestamp:
                     type: string
-                    nullable: true
-                    description: 置頂時間（ISO）
-                  editedAt:
-                    type: string
-                    nullable: true
-                    description: 編輯時間（ISO）
-                  createdAt:
-                    type: string
-                    description: 建立時間（ISO）
-                  updatedAt:
-                    type: string
-                    description: 更新時間（ISO）
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - id
-                  - roomId
-                  - kind
-                  - body
-                  - metadata
-                  - author
-                  - replyTo
-                  - likeCount
-                  - likedByMe
-                  - isPinned
-                  - pinnedAt
-                  - editedAt
-                  - createdAt
-                  - updatedAt
-                description: 聊天訊息
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -64067,119 +65165,196 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                      description: 訊息 ID
-                    roomId:
-                      type: integer
-                      description: 聊天室 ID
-                    kind:
-                      type: string
-                      enum:
-                        - text
-                        - system
-                      description: 訊息類型
-                    body:
-                      type: string
-                      description: 訊息內容
-                    metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
                       type: object
-                      nullable: true
-                      additionalProperties:
-                        nullable: true
-                      description: 系統訊息元資料
-                    author:
-                      type: object
-                      nullable: true
-                      properties:
-                        userId:
-                          type: integer
-                          description: 作者 ID
-                        nickname:
-                          type: string
-                          nullable: true
-                          description: 暱稱
-                        avatar:
-                          type: string
-                          nullable: true
-                          description: 頭像 URL
-                        isHost:
-                          type: boolean
-                          description: 是否為帶領人
-                      required:
-                        - userId
-                        - nickname
-                        - avatar
-                        - isHost
-                      description: 作者（系統訊息為 null）
-                    replyTo:
-                      type: object
-                      nullable: true
                       properties:
                         id:
                           type: integer
-                          description: 被引用訊息 ID
-                        authorName:
+                          description: 訊息 ID
+                        roomId:
+                          type: integer
+                          description: 聊天室 ID
+                        kind:
                           type: string
-                          nullable: true
-                          description: 被引用訊息的作者暱稱
-                        bodyPreview:
+                          enum:
+                            - text
+                            - system
+                          description: 訊息類型
+                        body:
                           type: string
+                          description: 訊息內容
+                        metadata:
+                          type: object
                           nullable: true
-                          description: 被引用訊息的內容預覽（已刪除為 null）
-                        isDeleted:
+                          additionalProperties:
+                            nullable: true
+                          description: 系統訊息元資料
+                        author:
+                          type: object
+                          nullable: true
+                          properties:
+                            userId:
+                              type: integer
+                              description: 作者 ID
+                            nickname:
+                              type: string
+                              nullable: true
+                              description: 暱稱
+                            avatar:
+                              type: string
+                              nullable: true
+                              description: 頭像 URL
+                            isHost:
+                              type: boolean
+                              description: 是否為帶領人
+                          required:
+                            - userId
+                            - nickname
+                            - avatar
+                            - isHost
+                          description: 作者（系統訊息為 null）
+                        replyTo:
+                          type: object
+                          nullable: true
+                          properties:
+                            id:
+                              type: integer
+                              description: 被引用訊息 ID
+                            authorName:
+                              type: string
+                              nullable: true
+                              description: 被引用訊息的作者暱稱
+                            bodyPreview:
+                              type: string
+                              nullable: true
+                              description: 被引用訊息的內容預覽（已刪除為 null）
+                            isDeleted:
+                              type: boolean
+                              description: 被引用訊息是否已刪除
+                          required:
+                            - id
+                            - authorName
+                            - bodyPreview
+                            - isDeleted
+                          description: 引用回覆（無引用為 null）
+                        likeCount:
+                          type: integer
+                          minimum: 0
+                          description: 按讚數
+                        likedByMe:
                           type: boolean
-                          description: 被引用訊息是否已刪除
+                          description: 我是否已按讚
+                        isPinned:
+                          type: boolean
+                          description: 是否已置頂
+                        pinnedAt:
+                          type: string
+                          nullable: true
+                          description: 置頂時間（ISO）
+                        editedAt:
+                          type: string
+                          nullable: true
+                          description: 編輯時間（ISO）
+                        createdAt:
+                          type: string
+                          description: 建立時間（ISO）
+                        updatedAt:
+                          type: string
+                          description: 更新時間（ISO）
                       required:
                         - id
-                        - authorName
-                        - bodyPreview
-                        - isDeleted
-                      description: 引用回覆（無引用為 null）
-                    likeCount:
-                      type: integer
-                      minimum: 0
-                      description: 按讚數
-                    likedByMe:
-                      type: boolean
-                      description: 我是否已按讚
-                    isPinned:
-                      type: boolean
-                      description: 是否已置頂
-                    pinnedAt:
-                      type: string
+                        - roomId
+                        - kind
+                        - body
+                        - metadata
+                        - author
+                        - replyTo
+                        - likeCount
+                        - likedByMe
+                        - isPinned
+                        - pinnedAt
+                        - editedAt
+                        - createdAt
+                        - updatedAt
+                      description: 聊天訊息
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
                       nullable: true
-                      description: 置頂時間（ISO）
-                    editedAt:
-                      type: string
-                      nullable: true
-                      description: 編輯時間（ISO）
-                    createdAt:
-                      type: string
-                      description: 建立時間（ISO）
-                    updatedAt:
-                      type: string
-                      description: 更新時間（ISO）
-                  required:
-                    - id
-                    - roomId
-                    - kind
-                    - body
-                    - metadata
-                    - author
-                    - replyTo
-                    - likeCount
-                    - likedByMe
-                    - isPinned
-                    - pinnedAt
-                    - editedAt
-                    - createdAt
-                    - updatedAt
-                  description: 聊天訊息
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -64221,30 +65396,106 @@ paths:
               schema:
                 type: object
                 properties:
-                  total:
-                    type: integer
-                    minimum: 0
-                    description: 結果總數
-                  items:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        minimum: 0
+                        description: 結果總數
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              description: 訊息 ID
+                            createdAt:
+                              type: string
+                              description: 建立時間（ISO）
+                          required:
+                            - id
+                            - createdAt
+                          description: 搜尋結果項目
+                        description: 搜尋結果
+                    required:
+                      - total
+                      - items
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
                           type: integer
-                          description: 訊息 ID
-                        createdAt:
-                          type: string
-                          description: 建立時間（ISO）
-                      required:
-                        - id
-                        - createdAt
-                      description: 搜尋結果項目
-                    description: 搜尋結果
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - total
-                  - items
-                description: 訊息搜尋結果
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
@@ -64291,17 +65542,93 @@ paths:
               schema:
                 type: object
                 properties:
-                  lastReadMessageId:
-                    type: integer
-                    description: 已讀到的訊息 ID
-                  unreadCount:
-                    type: integer
-                    minimum: 0
-                    description: 剩餘未讀數
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: object
+                    properties:
+                      lastReadMessageId:
+                        type: integer
+                        description: 已讀到的訊息 ID
+                      unreadCount:
+                        type: integer
+                        minimum: 0
+                        description: 剩餘未讀數
+                    required:
+                      - lastReadMessageId
+                      - unreadCount
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
                 required:
-                  - lastReadMessageId
-                  - unreadCount
-                description: 標記已讀回應
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
         '400': *ref_132
         '401': *ref_133
         '403': *ref_134
