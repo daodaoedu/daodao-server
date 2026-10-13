@@ -119,6 +119,7 @@ const archiveProgram = async (programId: number): Promise<void> => {
 
 /** 複製主題（只複製名稱與描述，不複製期） */
 const duplicateProgram = async (programId: number) => {
+  await challengeOrganizationService.getActiveOrganizationId();
   const source = await getProgram(programId);
   const row = await prisma.programs.create({
     data: { organization_id: source.organization_id, name: `${source.name}（副本）`.slice(0, 100), description: source.description, kind: PROGRAM_KINDS.CHALLENGE },
@@ -251,6 +252,7 @@ const syncTemplateBinding = async (tx: Tx, cohortId: number, templateId: number 
 };
 
 const createCohort = async (programId: number, input: AdminCreateCohortInput, now = new Date()) => {
+  await challengeOrganizationService.getActiveOrganizationId();
   const program = await getProgram(programId);
   const template = input.templateId ? await getTemplateForProgram(input.templateId, program.organization_id) : null;
   const startDate = toDate(input.startDate);
@@ -340,6 +342,7 @@ const archiveCohort = async (programId: number, cohortId: number): Promise<void>
 
 /** 複製挑戰：以草稿建立同期間、同模板的新挑戰（不複製參與者與卡組指派） */
 const duplicateCohort = async (programId: number, cohortId: number, now = new Date()) => {
+  await challengeOrganizationService.getActiveOrganizationId();
   const source = await getCohort(programId, cohortId);
   // 複製也是建立新挑戰：#300 之前建立的舊挑戰可能超過 91 天，副本不可沿用
   assertWithinMaxPeriod(source.start_date, source.end_date);
