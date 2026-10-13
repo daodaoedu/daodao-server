@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../../generated/prisma';
+import { MS_PER_DAY, inclusiveEndDate } from '../utils/date-utils';
 import { DURATION_DAYS_MAX } from '../validators/practice.validators';
 import { day, today } from './cohort-run-state';
 
@@ -6,15 +7,6 @@ type TransactionClient = Omit<
   PrismaClient,
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >;
-
-/** 由開始日與持續天數推算結束日（與 practice.service.create 一致：含頭尾共 durationDays 天） */
-const addDays = (start: Date, durationDays: number): Date => {
-  const end = new Date(start);
-  end.setDate(end.getDate() + durationDays - 1);
-  return end;
-};
-
-const MS_PER_DAY = 86_400_000;
 
 /**
  * 含頭尾的天數；超過 practices.duration_days CHECK（1–91，migration 092）時回 null（CHECK 允許 NULL）。
@@ -45,7 +37,7 @@ const resolvePeriod = (
   if (!startDate) return { endDate: null, durationDays: templateDurationDays };
   const startsAfterCohortEnd = cohortEndDate !== null && cohortEndDate.getTime() < startDate.getTime();
   if (templateDurationDays) {
-    const templatedEnd = addDays(startDate, templateDurationDays);
+    const templatedEnd = inclusiveEndDate(startDate, templateDurationDays);
     if (!clampToCohort || !cohortEndDate) return { endDate: templatedEnd, durationDays: templateDurationDays };
     if (startsAfterCohortEnd) return { endDate: null, durationDays: null };
     if (templatedEnd.getTime() > cohortEndDate.getTime()) {

@@ -13,7 +13,7 @@
 
 import { randomBytes } from 'crypto';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
-import { MS_PER_DAY } from '../utils/date-utils';
+import { MS_PER_DAY, inclusiveEndDate } from '../utils/date-utils';
 import { PROGRAM_KINDS } from '../constants/program-kind';
 import type {
   AdminCohortResponse,
@@ -36,12 +36,8 @@ const toDate = (value: string): Date => new Date(`${value}T00:00:00.000Z`);
 const isCode = (error: unknown, code: string): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 
-/** 由開始日與持續天數推算結束日（含頭尾共 durationDays 天，與 cohort-draft.service 一致） */
-export const computeEndDate = (startDate: Date, durationDays: number): Date => {
-  const end = new Date(startDate);
-  end.setUTCDate(end.getUTCDate() + durationDays - 1);
-  return end;
-};
+/** 由開始日與持續天數推算結束日（含頭尾共 durationDays 天，共用 inclusiveEndDate） */
+export const computeEndDate = inclusiveEndDate;
 
 // ── program ─────────────────────────────────────────────────────
 
