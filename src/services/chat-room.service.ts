@@ -320,6 +320,8 @@ export const getRoom = async (access: RoomAccess, userId: number) => {
     lastMessage: null as null, // detail 端點不重複帶 lastMessage
     lastActivityAt: (room.last_message_at ?? new Date()).toISOString(),
     viewerRole: access.isHost ? ('host' as const) : ('member' as const),
+    // 與訊息 author.userId 同為內部 users.id；前端靠它判斷本人訊息（/users/me 只給 external UUID）
+    viewerUserId: userId,
     pinnedCount,
     memberPreview,
   };

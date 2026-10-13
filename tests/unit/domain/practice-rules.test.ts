@@ -18,6 +18,7 @@ import {
   canEdit,
   canDelete,
   isValidStatus,
+  initialStatusForStartDate,
   StatusTransitionError,
   // Progress
   type PracticeProgressConfig,
@@ -54,7 +55,6 @@ describe('isValidTransition', () => {
     expect(isValidTransition('completed', 'not_started')).toBe(false);
     expect(isValidTransition('completed', 'active')).toBe(false);
     expect(isValidTransition('not_started', 'completed')).toBe(false);
-    expect(isValidTransition('draft', 'active')).toBe(false);
     expect(isValidTransition('draft', 'completed')).toBe(false);
   });
 });
@@ -170,6 +170,64 @@ describe('isValidStatus', () => {
     expect(isValidStatus('pending')).toBe(false);
     expect(isValidStatus('')).toBe(false);
     expect(isValidStatus('ACTIVE')).toBe(false);
+  });
+});
+
+describe('determineNewStatus — unarchive without check-ins (daodao#212)', () => {
+  // 2026-10-12 10:00 Asia/Taipei
+  const now = new Date('2026-10-12T02:00:00.000Z');
+
+  it('restores to active when the start date has arrived', () => {
+    expect(determineNewStatus({
+      currentStatus: 'archived',
+      hasCheckIns: false,
+      isUnarchiving: true,
+      startDate: new Date('2026-10-12'),
+      now,
+    })).toBe('active');
+  });
+
+  it('restores to not_started when the start date is in the future', () => {
+    expect(determineNewStatus({
+      currentStatus: 'archived',
+      hasCheckIns: false,
+      isUnarchiving: true,
+      startDate: new Date('2026-10-13'),
+      now,
+    })).toBe('not_started');
+  });
+});
+
+describe('VALID_TRANSITIONS — date-based initial status (daodao#212)', () => {
+  it('allows publishing a draft straight to active and moving active back to not_started before any check-in', () => {
+    expect(isValidTransition('draft', 'active')).toBe(true);
+    expect(isValidTransition('active', 'not_started')).toBe(true);
+  });
+});
+
+describe('initialStatusForStartDate', () => {
+  // 2026-10-12 10:00 Asia/Taipei
+  const now = new Date('2026-10-12T02:00:00.000Z');
+
+  it('returns active when the practice starts today (daodao#212)', () => {
+    expect(initialStatusForStartDate(new Date('2026-10-12'), now)).toBe('active');
+  });
+
+  it('returns not_started when the start date is in the future', () => {
+    expect(initialStatusForStartDate(new Date('2026-10-13'), now)).toBe('not_started');
+  });
+
+  it('returns active when the start date has already passed', () => {
+    expect(initialStatusForStartDate(new Date('2026-10-11'), now)).toBe('active');
+  });
+
+  it('compares calendar days in Asia/Taipei, not UTC', () => {
+    // UTC 2026-10-11 16:00 = Taipei 2026-10-12 00:00
+    const taipeiMidnight = new Date('2026-10-11T16:00:00.000Z');
+    expect(initialStatusForStartDate(new Date('2026-10-12'), taipeiMidnight)).toBe('active');
+    // UTC 2026-10-11 15:59 = Taipei 2026-10-11 23:59
+    const beforeMidnight = new Date('2026-10-11T15:59:00.000Z');
+    expect(initialStatusForStartDate(new Date('2026-10-12'), beforeMidnight)).toBe('not_started');
   });
 });
 
