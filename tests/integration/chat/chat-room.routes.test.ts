@@ -106,7 +106,7 @@ const mockRoomList = {
 };
 
 const mockRoomDetail = {
-  ...mockRoomList.items[0], viewerRole: 'member' as const, pinnedCount: 1,
+  ...mockRoomList.items[0], viewerRole: 'member' as const, viewerUserId: 7, pinnedCount: 1,
   memberPreview: [{ nickname: '島民A', avatar: null }],
 };
 
@@ -218,6 +218,7 @@ describe('chat room routes', () => {
       const res = await request(app).get('/api/v1/chat-rooms/1').set(auth);
       expect(res.status).toBe(200);
       expect(res.body.data.viewerRole).toBe('member');
+      expect(res.body.data.viewerUserId).toBe(7);
       expect(res.body.data.pinnedCount).toBe(1);
       expect(res.body.data.memberPreview).toHaveLength(1);
     });
