@@ -96868,13 +96868,13 @@
           {
             "schema": {
               "type": "integer",
+              "nullable": true,
               "minimum": 0,
-              "exclusiveMinimum": true,
-              "description": "取此 ID 之後的新訊息（增量輪詢）",
+              "description": "取此 ID 之後的新訊息（增量輪詢）；聊天室還沒有訊息時傳 0",
               "example": 50
             },
             "required": false,
-            "description": "取此 ID 之後的新訊息（增量輪詢）",
+            "description": "取此 ID 之後的新訊息（增量輪詢）；聊天室還沒有訊息時傳 0",
             "name": "after",
             "in": "query"
           },
