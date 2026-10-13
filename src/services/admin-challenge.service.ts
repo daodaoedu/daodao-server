@@ -4,6 +4,8 @@
  * openspec: challenge-authoring。以 lighthouse 資料模型管理挑戰：
  * 主題 = programs(kind='challenge') → 期 = cohorts → 模板/開始日 = cohort_templates。
  * 權限由 requireAdmin 把關，此處不做組織成員檢查（與 lighthouse owner 端服務的差異）。
+ * 共同挑戰只屬於島島阿學（daodao#179）：主題與模板一律落在官方組織，讀寫也只看官方組織的資料，
+ * 不接受 client 指定組織。
  *
  * 期間規則：共同挑戰為固定時段，所有參與者共用同一段起訖日；綁定的模板若有 duration_days，
  * end_date 由 start_date + duration_days - 1 推算，確保加入時複製出的實踐與挑戰期間一致。
@@ -23,6 +25,7 @@ import type {
   AdminUpdateTemplateInput
 } from '../validators/admin-challenge.validator';
 import { DURATION_DAYS_MAX } from '../validators/practice.validators';
+import { challengeOrganizationService } from './challenge-organization.service';
 import { deriveRunStatus } from './challenge.service';
 import { prisma } from './database/prisma.service';
 import { organizationTemplateInternals } from './organization-template.service';
@@ -62,24 +65,20 @@ const mapProgram = (row: ProgramRow) => ({
   updatedAt: row.updated_at
 });
 
-const assertActiveOrganization = async (organizationId: number): Promise<void> => {
-  const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { status: true } });
-  if (!organization) throw new NotFoundError('找不到組織');
-  if (organization.status !== 'active') throw new ConflictError('此組織目前已停權，無法建立挑戰');
-};
-
 const getProgram = async (programId: number) => {
+  const organizationId = await challengeOrganizationService.getOrganizationId();
   const row = await prisma.programs.findFirst({
-    where: { id: programId, kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null },
+    where: { id: programId, organization_id: organizationId, kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null },
     select: programSelect
   });
   if (!row) throw new NotFoundError('找不到挑戰主題');
   return row;
 };
 
-const listPrograms = async (organizationId?: number) => {
+const listPrograms = async () => {
+  const organizationId = await challengeOrganizationService.getOrganizationId();
   const rows = await prisma.programs.findMany({
-    where: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null, ...(organizationId !== undefined && { organization_id: organizationId }) },
+    where: { kind: PROGRAM_KINDS.CHALLENGE, organization_id: organizationId, archived_at: null, deleted_at: null },
     select: programSelect,
     orderBy: { created_at: 'desc' }
   });
@@ -87,9 +86,9 @@ const listPrograms = async (organizationId?: number) => {
 };
 
 const createProgram = async (input: AdminCreateProgramInput) => {
-  await assertActiveOrganization(input.organizationId);
+  const organizationId = await challengeOrganizationService.getActiveOrganizationId();
   const row = await prisma.programs.create({
-    data: { organization_id: input.organizationId, name: input.name, description: input.description ?? null, kind: PROGRAM_KINDS.CHALLENGE },
+    data: { organization_id: organizationId, name: input.name, description: input.description ?? null, kind: PROGRAM_KINDS.CHALLENGE },
     select: programSelect
   });
   return mapProgram(row);
@@ -116,6 +115,7 @@ const archiveProgram = async (programId: number): Promise<void> => {
 
 /** 複製主題（只複製名稱與描述，不複製期） */
 const duplicateProgram = async (programId: number) => {
+  await challengeOrganizationService.getActiveOrganizationId();
   const source = await getProgram(programId);
   const row = await prisma.programs.create({
     data: { organization_id: source.organization_id, name: `${source.name}（副本）`.slice(0, 100), description: source.description, kind: PROGRAM_KINDS.CHALLENGE },
@@ -178,8 +178,9 @@ const mapCohort = (row: CohortRow, now = new Date()): AdminCohortResponse => {
 };
 
 const getCohort = async (programId: number, cohortId: number) => {
+  const organizationId = await challengeOrganizationService.getOrganizationId();
   const row = await prisma.cohorts.findFirst({
-    where: { id: cohortId, program_id: programId, program: { kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null } },
+    where: { id: cohortId, program_id: programId, program: { organization_id: organizationId, kind: PROGRAM_KINDS.CHALLENGE, archived_at: null, deleted_at: null } },
     select: cohortSelect
   });
   if (!row) throw new NotFoundError('找不到挑戰');
@@ -247,6 +248,7 @@ const syncTemplateBinding = async (tx: Tx, cohortId: number, templateId: number 
 };
 
 const createCohort = async (programId: number, input: AdminCreateCohortInput, now = new Date()) => {
+  await challengeOrganizationService.getActiveOrganizationId();
   const program = await getProgram(programId);
   const template = input.templateId ? await getTemplateForProgram(input.templateId, program.organization_id) : null;
   const startDate = toDate(input.startDate);
@@ -336,6 +338,7 @@ const archiveCohort = async (programId: number, cohortId: number): Promise<void>
 
 /** 複製挑戰：以草稿建立同期間、同模板的新挑戰（不複製參與者與卡組指派） */
 const duplicateCohort = async (programId: number, cohortId: number, now = new Date()) => {
+  await challengeOrganizationService.getActiveOrganizationId();
   const source = await getCohort(programId, cohortId);
   // 複製也是建立新挑戰：#300 之前建立的舊挑戰可能超過 91 天，副本不可沿用
   assertWithinMaxPeriod(source.start_date, source.end_date);
@@ -385,17 +388,18 @@ const listParticipants = async (programId: number, cohortId: number) => {
 
 // ── template ────────────────────────────────────────────────────
 
-const listTemplates = async (organizationId: number) => {
+const listTemplates = async () => {
+  const organizationId = await challengeOrganizationService.getOrganizationId();
   const rows = await prisma.practice_templates.findMany({ where: { organization_id: organizationId }, select: templateSelect, orderBy: { created_at: 'desc' } });
   const resources = await loadResources(rows.map(row => row.id));
   return rows.map(row => mapTemplate(row, resources.get(row.id) ?? []));
 };
 
 const createTemplate = async (input: AdminCreateTemplateInput, actorId: number) => {
-  await assertActiveOrganization(input.organizationId);
+  const organizationId = await challengeOrganizationService.getActiveOrganizationId();
   const row = await prisma.practice_templates.create({
     data: {
-      organization_id: input.organizationId, title: input.title, practice_action: input.practiceAction ?? null,
+      organization_id: organizationId, title: input.title, practice_action: input.practiceAction ?? null,
       duration_days: input.durationDays ?? null, frequency_min_days: input.frequencyMinDays ?? null,
       frequency_max_days: input.frequencyMaxDays ?? null, session_duration_minutes: input.sessionDurationMinutes ?? null,
       practice_time_periods: input.practiceTimePeriods
@@ -407,7 +411,8 @@ const createTemplate = async (input: AdminCreateTemplateInput, actorId: number) 
 };
 
 const getTemplate = async (templateId: number) => {
-  const existing = await prisma.practice_templates.findFirst({ where: { id: templateId, organization_id: { not: null } }, select: { id: true } });
+  const organizationId = await challengeOrganizationService.getOrganizationId();
+  const existing = await prisma.practice_templates.findFirst({ where: { id: templateId, organization_id: organizationId }, select: { id: true } });
   if (!existing) throw new NotFoundError('找不到模板');
 };
 
