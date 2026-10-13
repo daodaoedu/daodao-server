@@ -23,17 +23,14 @@ export const adminCohortParamsSchema = adminProgramParamsSchema.extend({
 export const adminTemplateParamsSchema = z.object({
   templateId: z.coerce.number().int().positive().openapi({ description: '模板 ID' })
 });
-export const adminProgramListQuerySchema = z.object({
-  organizationId: z.coerce.number().int().positive().optional().openapi({ description: '只列某組織底下的挑戰主題' })
-});
-export const adminTemplateListQuerySchema = z.object({
-  organizationId: z.coerce.number().int().positive().openapi({ description: '組織 ID（模板隸屬組織）' })
-});
+// 共同挑戰只屬於島島阿學官方組織（daodao#179）：列表與建立都不接受組織參數，
+// 舊版 client 夾帶的 organizationId 會被 zod 略過，不影響所屬組織
+export const adminProgramListQuerySchema = z.object({});
+export const adminTemplateListQuerySchema = z.object({});
 
 // ── program ─────────────────────────────────────────────────────
 
 export const adminCreateProgramSchema = z.object({
-  organizationId: z.number().int().positive().openapi({ description: '所屬組織 ID（通常為島島官方組織）' }),
   name: z.string().trim().min(1).max(100).openapi({ example: '晨間書寫' }),
   description: z.string().trim().max(2000).nullable().optional()
 });
@@ -125,7 +122,6 @@ const frequencyOrdered = (v: { frequencyMinDays?: number | null; frequencyMaxDay
   !v.frequencyMinDays || !v.frequencyMaxDays || v.frequencyMinDays <= v.frequencyMaxDays;
 export const adminCreateTemplateSchema = templateFieldsSchema
   .extend({
-    organizationId: z.number().int().positive(),
     practiceTimePeriods: z.array(practiceTimePeriodSchema).max(5).default([])
   })
   .refine(frequencyOrdered, { message: '最小頻率不可大於最大頻率' });
