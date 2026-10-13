@@ -550,10 +550,7 @@ export interface paths {
         /** 挑戰主題列表 */
         get: {
             parameters: {
-                query?: {
-                    /** @description 只列某組織底下的挑戰主題 */
-                    organizationId?: number;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -657,8 +654,6 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        /** @description 所屬組織 ID（通常為島島官方組織） */
-                        organizationId: number;
                         /** @example 晨間書寫 */
                         name: string;
                         description?: string | null;
@@ -1864,10 +1859,7 @@ export interface paths {
         /** 組織模板列表 */
         get: {
             parameters: {
-                query: {
-                    /** @description 組織 ID（模板隸屬組織） */
-                    organizationId: number;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -1997,7 +1989,6 @@ export interface paths {
                         /** @default [] */
                         practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         resources?: components["schemas"]["PracticeResourceInput"][];
-                        organizationId: number;
                     };
                 };
             };
