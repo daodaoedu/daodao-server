@@ -86,6 +86,30 @@ describe('adminChallengeService.createProgram', () => {
   });
 });
 
+describe('#179 島島阿學組織停權時不可新增任何挑戰（含複製）', () => {
+  beforeEach(() => {
+    setupTransactionMock();
+    mockGetActiveOrganizationId.mockRejectedValue(new ConflictError('島島阿學組織目前已停權，無法建立挑戰'));
+    prismaMock.programs.findFirst.mockResolvedValue(programRow() as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohortRow() as never);
+  });
+
+  it('複製主題 → 409，不建立', async () => {
+    await expect(adminChallengeService.duplicateProgram(10)).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.programs.create).not.toHaveBeenCalled();
+  });
+
+  it('新增一期 → 409，不建立', async () => {
+    await expect(adminChallengeService.createCohort(10, { displayName: 'x', startDate: '2026-09-01', endDate: '2026-09-10' })).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.cohorts.create).not.toHaveBeenCalled();
+  });
+
+  it('複製一期 → 409，不建立', async () => {
+    await expect(adminChallengeService.duplicateCohort(10, 6)).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.cohorts.create).not.toHaveBeenCalled();
+  });
+});
+
 describe('adminChallengeService program 範圍', () => {
   it('#179 其他組織的挑戰主題視為不存在（404），不可在其底下操作', async () => {
     prismaMock.programs.findFirst.mockResolvedValue(null as never);
