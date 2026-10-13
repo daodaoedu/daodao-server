@@ -25,6 +25,7 @@ export {
   canDelete,
   isValidStatus,
   checkHasPassedEndDate,
+  initialStatusForStartDate,
   StatusTransitionError,
 } from '../utils/practice-status';
 
