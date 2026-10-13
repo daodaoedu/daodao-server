@@ -106,7 +106,7 @@ const mockRoomList = {
 };
 
 const mockRoomDetail = {
-  ...mockRoomList.items[0], viewerRole: 'member' as const, pinnedCount: 1,
+  ...mockRoomList.items[0], viewerRole: 'member' as const, viewerUserId: 7, pinnedCount: 1,
   memberPreview: [{ nickname: '島民A', avatar: null }],
 };
 
@@ -218,6 +218,7 @@ describe('chat room routes', () => {
       const res = await request(app).get('/api/v1/chat-rooms/1').set(auth);
       expect(res.status).toBe(200);
       expect(res.body.data.viewerRole).toBe('member');
+      expect(res.body.data.viewerUserId).toBe(7);
       expect(res.body.data.pinnedCount).toBe(1);
       expect(res.body.data.memberPreview).toHaveLength(1);
     });
@@ -273,6 +274,33 @@ describe('chat room routes', () => {
       expect(res.body.data.messages).toHaveLength(1);
       expect(res.body.data.serverTime).toBeDefined();
       expect(messageService.listDelta).toHaveBeenCalledWith(1, 7, 50, '2026-09-01T00:00:00.000Z');
+    });
+
+    // daodao#154 regression：聊天室還沒有訊息時，前端用 after=0 輪詢，不能被 400 擋掉
+    it('returns delta when after=0 (room has no messages yet)', async () => {
+      const res = await request(app)
+        .get('/api/v1/chat-rooms/1/messages')
+        .query({ after: 0, since: '2026-09-01T00:00:00.000Z' })
+        .set(auth);
+      expect(res.status).toBe(200);
+      expect(messageService.listDelta).toHaveBeenCalledWith(1, 7, 0, '2026-09-01T00:00:00.000Z');
+      expect(presenceService.touch).toHaveBeenCalledWith(1, 7);
+    });
+
+    it('returns 400 when after is negative', async () => {
+      const res = await request(app)
+        .get('/api/v1/chat-rooms/1/messages')
+        .query({ after: -1, since: '2026-09-01T00:00:00.000Z' })
+        .set(auth);
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when before is combined with after=0', async () => {
+      const res = await request(app)
+        .get('/api/v1/chat-rooms/1/messages')
+        .query({ before: 100, after: 0 })
+        .set(auth);
+      expect(res.status).toBe(400);
     });
 
     it('calls presence.touch in delta mode', async () => {
