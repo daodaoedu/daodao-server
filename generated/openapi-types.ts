@@ -7832,8 +7832,8 @@ export interface paths {
                 query?: {
                     /** @description 取此 ID 之前的訊息（歷史分頁） */
                     before?: number;
-                    /** @description 取此 ID 之後的新訊息（增量輪詢） */
-                    after?: number;
+                    /** @description 取此 ID 之後的新訊息（增量輪詢）；聊天室還沒有訊息時傳 0 */
+                    after?: number | null;
                     /** @description ISO 時間戳，搭配 after 使用，回傳 changed/deletedIds */
                     since?: string;
                     /** @description 每頁筆數（預設 50，上限 100） */
@@ -9711,6 +9711,8 @@ export interface paths {
                                 canJoin: boolean;
                                 /** @enum {string|null} */
                                 unavailableReason: "not_published" | "expired" | "full" | "paused" | null;
+                                /** @description 所有成立的不可加入原因（依優先序，第一個等於 unavailableReason）；可加入時為空陣列 */
+                                unavailableReasons: ("not_published" | "expired" | "full" | "paused")[];
                                 /**
                                  * CohortPrivacy
                                  * @description 隱私設定
