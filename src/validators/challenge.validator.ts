@@ -19,8 +19,8 @@ export const challengeSummarySchema = z.object({
   joinDeadline: z.date().nullable().openapi({ description: '加入截止日；null 表示可加入至結束日' }),
   participantCount: z.number().int().nonnegative().openapi({ description: '已加入人數（xx 座島已加入）', example: 12 }),
   runStatus: challengeRunStatusSchema,
-  canJoin: z.boolean().openapi({ description: '目前是否可加入' }),
-  unavailableReason: z.enum(['ended', 'expired', 'full', 'paused']).nullable().openapi({ description: '不可加入原因；可加入時為 null' }),
+  canJoin: z.boolean().openapi({ description: '目前是否可加入（只有未開始的挑戰可加入）' }),
+  unavailableReason: z.enum(['ended', 'started', 'expired', 'full', 'paused']).nullable().openapi({ description: '不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null' }),
   isJoined: z.boolean().openapi({ description: '當前使用者是否已加入；未登入一律 false' }),
   hasInspirationDeck: z.boolean().openapi({ description: '是否有指派靈感卡卡組（顯示抽卡 icon）' })
 });

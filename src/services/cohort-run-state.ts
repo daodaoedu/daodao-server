@@ -46,3 +46,21 @@ export const deriveJoinability = (
   if (row.capacity !== null && participantCount >= row.capacity) return { canJoin: false, unavailableReason: 'full' };
   return { canJoin: true, unavailableReason: null };
 };
+
+export type ChallengeUnavailableReason = CohortUnavailableReason | 'started';
+
+/**
+ * 共同挑戰的可加入判斷：只有未開始的挑戰接受新加入（FRD FR-EXP-04，daodao#181／#184）。
+ * 已開始（進行中）回 started，優先於截止／暫停／額滿；已結束仍回 ended。
+ * 探索活動沿用 deriveJoinability（可加入至結束日），不受影響。
+ */
+export const deriveChallengeJoinability = (
+  row: { start_date: Date; end_date: Date; join_deadline: Date | null; capacity: number | null; join_paused: boolean },
+  participantCount: number,
+  now = new Date()
+): { canJoin: boolean; unavailableReason: ChallengeUnavailableReason | null } => {
+  const base = deriveJoinability(row, participantCount, now);
+  if (base.unavailableReason === 'ended') return base;
+  if (deriveRunStatus(row.start_date, row.end_date, now) === 'ongoing') return { canJoin: false, unavailableReason: 'started' };
+  return base;
+};
