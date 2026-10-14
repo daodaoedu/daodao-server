@@ -8,6 +8,16 @@ import { prisma } from './database/prisma.service'
 import type { FeedbackItem, FeedbackListResult, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput } from '../types/admin-feedback.types'
 
 /**
+ * 取出錯誤回報的截圖網址（feedback.meta.screenshots，見 feedback.service.ts uploadScreenshots）。
+ * 只回傳後台可直接當 <img src> 載入的 http(s) 絕對網址；R2_PUBLIC_URL 未設時存下的相對路徑與其他值略過。
+ */
+const toScreenshotUrls = (meta: unknown): string[] => {
+  const screenshots = (meta as { screenshots?: unknown } | null)?.screenshots
+  if (!Array.isArray(screenshots)) return []
+  return screenshots.filter((url): url is string => typeof url === 'string' && /^https?:\/\//i.test(url))
+}
+
+/**
  * 列出回饋（含篩選與分頁）
  * @param filters - 狀態、分類篩選及分頁參數
  */
@@ -34,9 +44,9 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
   const rows = await prisma.$queryRaw<Array<{
     id: number; user_id: number | null; user_name: string | null;
     content: string; category: string; status: string;
-    created_at: Date; replied_at: Date | null;
+    created_at: Date; replied_at: Date | null; meta: unknown;
   }>>(
-    Prisma.sql`SELECT f.id, f.user_id, u.nickname AS user_name, f.content, f.category, f.status, f.created_at,
+    Prisma.sql`SELECT f.id, f.user_id, u.nickname AS user_name, f.content, f.category, f.status, f.created_at, f.meta,
        (SELECT MAX(fr.created_at) FROM feedback_replies fr WHERE fr.feedback_id = f.id) AS replied_at
      FROM feedback f
      LEFT JOIN users u ON f.user_id = u.id
@@ -61,6 +71,7 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
       status: r.status as FeedbackItem['status'],
       createdAt: r.created_at.toISOString(),
       repliedAt: r.replied_at?.toISOString() ?? null,
+      screenshots: toScreenshotUrls(r.meta),
     })),
   }
 }

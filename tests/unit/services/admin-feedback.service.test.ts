@@ -27,10 +27,14 @@ describe('adminFeedbackService.listFeedback', () => {
       {
         id: 7, user_id: 12, user_name: '小島', content: '送出按鈕沒反應', category: 'bug', status: 'replied',
         created_at: new Date('2026-10-10T03:00:00Z'), replied_at: new Date('2026-10-10T05:00:00Z'),
+        meta: {
+          area: 'ui',
+          screenshots: ['https://storage-dev.daodao.so/bug-reports/1791698535059-fd8570e1.png'],
+        },
       },
       {
         id: 6, user_id: null, user_name: null, content: '希望有深色模式', category: 'feature', status: 'pending',
-        created_at: new Date('2026-10-09T03:00:00Z'), replied_at: null,
+        created_at: new Date('2026-10-09T03:00:00Z'), replied_at: null, meta: null,
       },
     ] as never);
 
@@ -61,13 +65,47 @@ describe('adminFeedbackService.listFeedback', () => {
         {
           id: 7, userId: 12, userName: '小島', content: '送出按鈕沒反應', category: 'bug', status: 'replied',
           createdAt: '2026-10-10T03:00:00.000Z', repliedAt: '2026-10-10T05:00:00.000Z',
+          screenshots: ['https://storage-dev.daodao.so/bug-reports/1791698535059-fd8570e1.png'],
         },
         {
           id: 6, userId: null, userName: null, content: '希望有深色模式', category: 'feature', status: 'pending',
-          createdAt: '2026-10-09T03:00:00.000Z', repliedAt: null,
+          createdAt: '2026-10-09T03:00:00.000Z', repliedAt: null, screenshots: [],
         },
       ],
     });
+  });
+
+  it('列表 SQL 帶出 meta，錯誤回報的截圖網址才能交給後台顯示（daodao#166）', async () => {
+    mockRows();
+    await adminFeedbackService.listFeedback({ limit: 20, offset: 0 });
+
+    const listSql = prismaMock.$queryRaw.mock.calls
+      .map(([arg]) => sqlText(arg))
+      .find((s) => /LEFT JOIN users u/.test(s));
+    expect(listSql).toMatch(/\bf\.meta\b/);
+  });
+
+  it('截圖只回傳可直接載入的 http(s) 網址，略過相對路徑與非字串（R2_PUBLIC_URL 未設時會存成 /bug-reports/...）', async () => {
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ total: 1n }] as never)
+      .mockResolvedValueOnce([{ total: 1n, pending: 1n, this_month: 1n }] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 8, user_id: 12, user_name: '小島', content: '圖', category: 'bug', status: 'pending',
+          created_at: new Date('2026-10-11T03:00:00Z'), replied_at: null,
+          meta: {
+            screenshots: [
+              'https://storage.daodao.so/bug-reports/a.png',
+              '/bug-reports/b.png',
+              'javascript:alert(1)',
+              42,
+            ],
+          },
+        },
+      ] as never);
+
+    const result = await adminFeedbackService.listFeedback({ limit: 20, offset: 0 });
+    expect(result.items[0].screenshots).toEqual(['https://storage.daodao.so/bug-reports/a.png']);
   });
 
   it('篩選值以參數綁定傳入，不拼進 SQL', async () => {
