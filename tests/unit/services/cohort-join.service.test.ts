@@ -39,6 +39,13 @@ describe('cohortJoinService', () => {
     expect(invited.canJoin).toBe(true);
   });
 
+  it('returns both reasons when the deadline has passed and the join link is paused', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue({ ...cohort, join_deadline: new Date('2026-08-01'), join_paused: true } as never);
+    prismaMock.cohort_enrollments.count.mockResolvedValue(0);
+    const info = await cohortJoinService.getJoinInfo(token, new Date('2026-08-30T12:00:00Z'));
+    expect(info).toEqual(expect.objectContaining({ canJoin: false, unavailableReason: 'expired', unavailableReasons: ['expired', 'paused'] }));
+  });
+
   it('rejects joining after the deadline', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue(cohort as never);
     prismaMock.cohort_enrollments.count.mockResolvedValue(0);
