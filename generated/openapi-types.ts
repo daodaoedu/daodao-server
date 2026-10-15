@@ -6721,13 +6721,13 @@ export interface paths {
                                  * @enum {string}
                                  */
                                 runStatus: "upcoming" | "ongoing" | "ended";
-                                /** @description 目前是否可加入 */
+                                /** @description 目前是否可加入（只有未開始的挑戰可加入） */
                                 canJoin: boolean;
                                 /**
-                                 * @description 不可加入原因；可加入時為 null
+                                 * @description 不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null
                                  * @enum {string|null}
                                  */
-                                unavailableReason: "ended" | "expired" | "full" | "paused" | null;
+                                unavailableReason: "ended" | "started" | "expired" | "full" | "paused" | null;
                                 /** @description 當前使用者是否已加入；未登入一律 false */
                                 isJoined: boolean;
                                 /** @description 是否有指派靈感卡卡組（顯示抽卡 icon） */
@@ -6874,13 +6874,13 @@ export interface paths {
                                  * @enum {string}
                                  */
                                 runStatus: "upcoming" | "ongoing" | "ended";
-                                /** @description 目前是否可加入 */
+                                /** @description 目前是否可加入（只有未開始的挑戰可加入） */
                                 canJoin: boolean;
                                 /**
-                                 * @description 不可加入原因；可加入時為 null
+                                 * @description 不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null
                                  * @enum {string|null}
                                  */
-                                unavailableReason: "ended" | "expired" | "full" | "paused" | null;
+                                unavailableReason: "ended" | "started" | "expired" | "full" | "paused" | null;
                                 /** @description 當前使用者是否已加入；未登入一律 false */
                                 isJoined: boolean;
                                 /** @description 是否有指派靈感卡卡組（顯示抽卡 icon） */
@@ -13990,13 +13990,13 @@ export interface paths {
                                  * @enum {string}
                                  */
                                 runStatus: "upcoming" | "ongoing" | "ended";
-                                /** @description 目前是否可加入 */
+                                /** @description 目前是否可加入（只有未開始的挑戰可加入） */
                                 canJoin: boolean;
                                 /**
-                                 * @description 不可加入原因；可加入時為 null
+                                 * @description 不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null
                                  * @enum {string|null}
                                  */
-                                unavailableReason: "ended" | "expired" | "full" | "paused" | null;
+                                unavailableReason: "ended" | "started" | "expired" | "full" | "paused" | null;
                                 /** @description 當前使用者是否已加入；未登入一律 false */
                                 isJoined: boolean;
                                 /** @description 是否有指派靈感卡卡組（顯示抽卡 icon） */
