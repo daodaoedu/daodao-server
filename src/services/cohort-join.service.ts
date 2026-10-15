@@ -6,6 +6,7 @@ import { notificationEventService } from './notification-event.service';
 import { INITIAL_PROGRESS } from '../utils/practice-progress';
 import { appendSystemMessage } from './chat-room.service';
 import { CHAT_SYSTEM_EVENTS } from '../constants/chat';
+import { getCohortUnavailableReasons } from '../domain/cohort.rules';
 
 const visibilityNotice = '加入後，你的本期打卡內容將對教練與同期學員可見。';
 const cohortSelect = {
@@ -69,13 +70,13 @@ const resolveJoinTarget = async (token: string) => {
 
 const getJoinInfoForTarget = async (target: Awaited<ReturnType<typeof resolveJoinTarget>>, now: Date) => {
   const { cohort } = target;
-  const deadline = cohort.join_deadline ?? cohort.end_date;
   const participantCount = await prisma.cohort_enrollments.count({ where: { cohort_id: cohort.id, status: 'joined' } });
   // 暫停加入只擋「公開加入連結」；帶邀請 token 的受邀者仍可加入（FR-RS-02：新成員需要邀請信才能加入）
-  const unavailableReason = cohort.status !== 'published' ? 'not_published' as const
-    : day(now) > day(deadline) ? 'expired' as const
-      : cohort.capacity !== null && participantCount >= cohort.capacity ? 'full' as const
-        : target.invitation === null && cohort.join_paused ? 'paused' as const : null;
+  const unavailableReasons = getCohortUnavailableReasons({
+    status: cohort.status, endDate: cohort.end_date, joinDeadline: cohort.join_deadline, capacity: cohort.capacity,
+    participantCount, joinPaused: cohort.join_paused, hasInvitation: target.invitation !== null, now
+  });
+  const unavailableReason = unavailableReasons[0] ?? null;
 
   // inviteMessage 只在 showInviteMessageOnSignup=true 時回傳
   const inviteMessage = cohort.show_invite_message_on_signup ? cohort.invite_message : null;
@@ -93,7 +94,7 @@ const getJoinInfoForTarget = async (target: Awaited<ReturnType<typeof resolveJoi
     capacity: cohort.capacity,
     joinDeadline: cohort.join_deadline,
     participantCount,
-    inviteMessage, canJoin: unavailableReason === null, unavailableReason,
+    inviteMessage, canJoin: unavailableReason === null, unavailableReason, unavailableReasons,
     privacy: {
       isPrivate: cohort.is_private,
       checkinDefaultPrivate: cohort.checkin_default_private,
