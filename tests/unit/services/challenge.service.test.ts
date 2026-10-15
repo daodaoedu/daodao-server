@@ -10,6 +10,7 @@ jest.mock('@/queues/challenge-email.queue', () => ({
 
 import { challengeService, deriveRunStatus } from '@/services/challenge.service';
 import { ensureCohortDrafts } from '@/services/cohort-draft.service';
+import { deriveChallengeJoinability } from '@/services/cohort-run-state';
 
 const challengeRow = (overrides: Record<string, unknown> = {}) => ({
   id: 1,
@@ -85,6 +86,13 @@ describe('challengeService.list', () => {
     setupCounts();
     const [summary] = await challengeService.list(null, new Date('2026-08-27T00:00:00.000Z'));
     expect(summary).toMatchObject({ canJoin: false, unavailableReason: 'expired' });
+  });
+
+  it('進行中的挑戰回報 canJoin=false、started（daodao#181／#184 FR-EXP-04）', async () => {
+    prismaMock.cohorts.findMany.mockResolvedValue([challengeRow()] as never);
+    setupCounts();
+    const [summary] = await challengeService.list(null, new Date('2026-09-05T00:00:00.000Z'));
+    expect(summary).toMatchObject({ runStatus: 'ongoing', canJoin: false, unavailableReason: 'started' });
   });
 
   it('額滿回報 full', async () => {
@@ -236,7 +244,7 @@ describe('challengeService.join', () => {
   // 狀態依每個綁定的實際開始日推導（綁定可釘選開始日），由 ensureCohortDrafts 的 by_period 處理（cohort-draft.service.test.ts 覆蓋）
   it('加入時以 by_period 複製實踐，cohortId 即挑戰 id（挑戰＝cohorts 一列），並帶入加入時間', async () => {
     setupJoin();
-    const now = new Date('2026-09-05T04:00:00.000Z');
+    const now = new Date('2026-08-27T04:00:00.000Z');
     const result = await challengeService.join(1, 42, now);
     expect(ensureCohortDrafts).toHaveBeenCalledWith(prismaMock, 1, 42, {
       status: 'by_period',
@@ -249,8 +257,67 @@ describe('challengeService.join', () => {
     setupJoin();
     prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 9, status: 'joined' } as never);
     await expect(
-      challengeService.join(1, 42, new Date('2026-09-05T04:00:00.000Z'))
+      challengeService.join(1, 42, new Date('2026-08-27T04:00:00.000Z'))
     ).rejects.toThrow('你已加入此挑戰');
     expect(ensureCohortDrafts).not.toHaveBeenCalled();
+  });
+
+  // daodao#181／#184 regression：FR-EXP-04 進行中的挑戰不接受新加入（前端已不顯示入口，API 也要擋）
+  it('已開始（進行中）的挑戰回 409，不建立參與記錄也不複製實踐', async () => {
+    setupJoin();
+    await expect(
+      challengeService.join(1, 42, new Date('2026-09-05T04:00:00.000Z'))
+    ).rejects.toThrow('此挑戰已開始，不再接受新加入');
+    expect(prismaMock.cohort_enrollments.upsert).not.toHaveBeenCalled();
+    expect(ensureCohortDrafts).not.toHaveBeenCalled();
+  });
+
+  it('開始日當天（台灣時間）即視為已開始', async () => {
+    setupJoin();
+    await expect(
+      challengeService.join(1, 42, new Date('2026-08-31T16:00:00.000Z'))
+    ).rejects.toThrow('此挑戰已開始，不再接受新加入');
+  });
+
+  it('開始日前一天（台灣 23:00）仍可加入', async () => {
+    setupJoin();
+    const result = await challengeService.join(1, 42, new Date('2026-08-31T15:00:00.000Z'));
+    expect(result).toMatchObject({ status: 'joined' });
+  });
+});
+
+describe('deriveChallengeJoinability', () => {
+  const base = {
+    start_date: new Date('2026-09-01T00:00:00.000Z'),
+    end_date: new Date('2026-09-21T00:00:00.000Z'),
+    join_deadline: null,
+    capacity: null,
+    join_paused: false,
+  };
+  const upcoming = new Date('2026-08-27T00:00:00.000Z');
+  const ongoing = new Date('2026-09-05T00:00:00.000Z');
+
+  it('未開始可加入', () => {
+    expect(deriveChallengeJoinability(base, 0, upcoming)).toEqual({ canJoin: true, unavailableReason: null });
+  });
+
+  it('進行中回 started（即使未額滿、未截止、未暫停）', () => {
+    expect(deriveChallengeJoinability(base, 0, ongoing)).toEqual({ canJoin: false, unavailableReason: 'started' });
+  });
+
+  it('進行中且已截止／額滿／暫停時仍以 started 為準', () => {
+    expect(
+      deriveChallengeJoinability({ ...base, join_deadline: new Date('2026-09-02T00:00:00.000Z'), capacity: 1, join_paused: true }, 1, ongoing)
+    ).toEqual({ canJoin: false, unavailableReason: 'started' });
+  });
+
+  it('已結束仍回 ended', () => {
+    expect(deriveChallengeJoinability(base, 0, new Date('2026-09-22T00:00:00.000Z'))).toEqual({ canJoin: false, unavailableReason: 'ended' });
+  });
+
+  it('未開始時 expired／paused／full 不回歸', () => {
+    expect(deriveChallengeJoinability({ ...base, join_deadline: new Date('2026-08-20T00:00:00.000Z') }, 0, upcoming)).toEqual({ canJoin: false, unavailableReason: 'expired' });
+    expect(deriveChallengeJoinability({ ...base, join_paused: true }, 0, upcoming)).toEqual({ canJoin: false, unavailableReason: 'paused' });
+    expect(deriveChallengeJoinability({ ...base, capacity: 2 }, 2, upcoming)).toEqual({ canJoin: false, unavailableReason: 'full' });
   });
 });
