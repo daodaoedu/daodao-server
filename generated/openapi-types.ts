@@ -9711,6 +9711,8 @@ export interface paths {
                                 canJoin: boolean;
                                 /** @enum {string|null} */
                                 unavailableReason: "not_published" | "expired" | "full" | "paused" | null;
+                                /** @description 所有成立的不可加入原因（依優先序，第一個等於 unavailableReason）；可加入時為空陣列 */
+                                unavailableReasons: ("not_published" | "expired" | "full" | "paused")[];
                                 /**
                                  * CohortPrivacy
                                  * @description 隱私設定

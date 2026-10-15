@@ -1,6 +1,7 @@
 import {
   getCohortContentState,
   getCohortUnavailableReason,
+  getCohortUnavailableReasons,
   canJoinCohort,
   getInvitationBlockReason,
   isInvitationSendable,
@@ -152,6 +153,41 @@ describe('getCohortUnavailableReason', () => {
       participantCount: 1,
       now: new Date('2026-06-15')
     })).toBe('expired');
+  });
+});
+
+// === getCohortUnavailableReasons ===
+
+describe('getCohortUnavailableReasons', () => {
+  const base: CohortJoinEligibilityInput = {
+    status: 'published',
+    endDate: new Date('2026-12-31'),
+    joinDeadline: null,
+    capacity: null,
+    participantCount: 0,
+    joinPaused: false,
+    hasInvitation: false,
+    now: new Date('2026-10-14')
+  };
+  const deadlinePassed = { joinDeadline: new Date('2026-10-13') };
+
+  // daodao#281：截止＋暫停同時成立時，加入頁要兩個原因都看得到
+  it.each([
+    ['neither', {}, []],
+    ['deadline only', deadlinePassed, ['expired']],
+    ['paused only', { joinPaused: true }, ['paused']],
+    ['deadline and paused', { ...deadlinePassed, joinPaused: true }, ['expired', 'paused']]
+  ] as const)('lists every reason (%s)', (_label, override, expected) => {
+    expect(getCohortUnavailableReasons({ ...base, ...override })).toEqual(expected);
+  });
+
+  it('keeps the primary reason equal to getCohortUnavailableReason', () => {
+    const input = { ...base, ...deadlinePassed, joinPaused: true };
+    expect(getCohortUnavailableReasons(input)[0]).toBe(getCohortUnavailableReason(input));
+  });
+
+  it('does not list paused for invited users', () => {
+    expect(getCohortUnavailableReasons({ ...base, ...deadlinePassed, joinPaused: true, hasInvitation: true })).toEqual(['expired']);
   });
 });
 
