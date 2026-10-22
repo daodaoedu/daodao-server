@@ -38,6 +38,7 @@ const mockPractice = {
   practiceTimePeriods: ['morning', 'evening'],
   otherContext: undefined,
   status: 'active' as const,
+  privacyStatus: 'public',
   hasResources: false,
   resources: [],
   progressPercentage: 50,
@@ -178,6 +179,12 @@ describe('practice list (GET /practices)', () => {
     expect(typeof practice.id).toBe('string');
     expect(practice).not.toHaveProperty('internalId');
   });
+
+  // #358：列表與詳情共用 practiceEntityResponseSchema，privacyStatus 一樣不能被濾掉
+  it('keeps privacyStatus in list items', async () => {
+    const res = await request(app).get('/api/v1/practices').expect(200);
+    expect(res.body.data[0].privacyStatus).toBe('public');
+  });
 });
 
 describe('my practices (GET /practices/me)', () => {
@@ -193,6 +200,16 @@ describe('single practice (GET /practices/:id)', () => {
     const res = await request(app).get('/api/v1/practices/123e4567-e89b-12d3-a456-426614174000').expect(200);
     expect(() => practiceApiResponseSchema.parse(res.body)).not.toThrow();
     expect(res.body.data.title).toBe('每日閱讀 30 分鐘');
+  });
+
+  // regression #358：回應 schema 沒定義 privacyStatus，輸出時被濾掉，編輯頁讀不到原本隱私、存檔把公開改回私人
+  it.each(['public', 'private', 'delayed'])('keeps privacyStatus=%s in single practice response', async (privacyStatus) => {
+    practiceServiceMock.findById.mockResolvedValue({
+      ...structuredClone(singlePractice),
+      data: { ...structuredClone(mockPractice), privacyStatus }
+    });
+    const res = await request(app).get('/api/v1/practices/123e4567-e89b-12d3-a456-426614174000').expect(200);
+    expect(res.body.data.privacyStatus).toBe(privacyStatus);
   });
 
   it('rejects non-UUID practice id', async () => {
