@@ -207,7 +207,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Environment Variables
 
-Key configuration (see `.env.dev_temp` for full list):
+Key configuration (see `.env.dev.example` for full list):
 - `DATABASE_URL` - PostgreSQL connection string
 - `REDIS_HOST`, `REDIS_PORT` - Redis configuration
 - `JWT_SECRET`, `JWT_EXPIRATION` - JWT configuration
