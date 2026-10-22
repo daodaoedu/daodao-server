@@ -9,17 +9,10 @@
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { isChallengeCohort, isChallengeParticipant } from './challenge-acl.service';
+import { taipeiToday } from '../utils/date-utils';
 
 const DAILY_DRAW_LIMIT = 3;
 const CARD_CONTENT_MAX = 50;
-const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-/** 今天的台北日曆日（存成 UTC 零點的 Date，對齊 @db.Date 欄位） */
-const taipeiToday = (now = new Date()): Date => {
-  const shifted = new Date(now.getTime() + TAIPEI_OFFSET_MS);
-  return new Date(`${shifted.toISOString().slice(0, 10)}T00:00:00Z`);
-};
-
 /** 參與者資格檢查：僅挑戰參與者可抽卡 */
 const assertParticipant = async (cohortId: number, userId: number): Promise<void> => {
   if (!(await isChallengeCohort(cohortId))) throw new NotFoundError('找不到共同挑戰');

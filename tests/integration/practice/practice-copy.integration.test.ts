@@ -134,6 +134,27 @@ describe('Practice Copy API Integration Tests', () => {
       expect(response.body.data.id).toBe(mockNewPractice.external_id);
     });
 
+    // daodao#336：台北 00:30（UTC 前一天 16:30）複製，開始日仍是台北當天
+    it('台北凌晨複製：start_date 為台北當天、end_date = 開始日 + 天數 − 1', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-21T16:30:00.000Z'), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'setInterval'] });
+      try {
+        prismaMock.practices.findUnique.mockResolvedValue(mockSourcePractice as any);
+        prismaMock.practices.create.mockResolvedValue(mockNewPractice as any);
+        prismaMock.practices.update.mockResolvedValue({ ...mockSourcePractice, copy_count: 1 } as any);
+
+        const response = await request(app)
+          .post(`${API_BASE}/${SOURCE_UUID}/copy`)
+          .set('Authorization', `Bearer ${userToken}`);
+
+        expect(response.status).toBe(201);
+        const data = prismaMock.practices.create.mock.calls[0][0].data as { start_date: Date; end_date: Date };
+        expect(data.start_date.toISOString()).toBe('2026-10-22T00:00:00.000Z');
+        expect(data.end_date.toISOString()).toBe('2026-11-20T00:00:00.000Z');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('應同時複製 tags 與 resources 至新實踐', async () => {
       const sourceTags = [
         { tags: { id: 1, name: 'English' } },
