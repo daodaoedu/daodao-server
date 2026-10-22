@@ -266,4 +266,60 @@ describe('教練資源鎖定（daodao#278）', () => {
       expect.objectContaining({ name: '我的筆記', isLocked: false })
     ]));
   });
+
+  describe('模板在不同天放同名同網址的資源、實踐資源列已重建（daodao#355）', () => {
+    const sheet = { name: '練習單', url: 'https://example.com/sheet' };
+    const sheetRelation = (id: number, resourceId: number, note: string | null) => ({
+      id, resource_id: resourceId, entity_type: 'practice', entity_id: 1, note, deleted_at: null,
+      resources: { id: resourceId, external_id: `4444444${id}-4444-4444-8444-444444444444`, ...sheet }
+    });
+    // 模板關聯 id 600／601；學員實踐上的列已重建成 900／901，另有學員自己存的一份 777（沒帶天數）
+    const relations = [sheetRelation(510, 900, 'day:2'), sheetRelation(511, 901, 'day:3'), sheetRelation(512, 777, null)];
+
+    beforeEach(() => {
+      prismaMock.entity_resources.findMany.mockImplementation((async (args: any) => {
+        if (args?.where?.entity_type === 'practice_template') {
+          return [
+            { entity_id: templateId, resource_id: 600, note: 'day:2', deleted_at: null, resources: sheet },
+            { entity_id: templateId, resource_id: 601, note: 'day:3', deleted_at: null, resources: sheet }
+          ];
+        }
+        return relations;
+      }) as any);
+    });
+
+    it('GET 詳情：兩天的教練資源都 isLocked=true，學員自己那份 false', async () => {
+      mockPractice();
+
+      const response = await request(app).get(PRACTICE_URL).set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(200);
+      const resources = response.body.data.resources as Array<{ dayNumber: number | null; isLocked: boolean }>;
+      expect(resources.map(resource => [resource.dayNumber, resource.isLocked])).toEqual([[2, true], [3, true], [null, false]]);
+    });
+
+    // 學員自己那份明確帶 dayNumber: null（不帶天數的送出會被視為沿用原天數，見 partitionIncomingResources）
+    it.each([
+      ['拿掉第 2 天那筆', [{ ...sheet, dayNumber: 3 }, { ...sheet, dayNumber: null }]],
+      ['拿掉第 3 天那筆', [{ ...sheet, dayNumber: 2 }, { ...sheet, dayNumber: null }]]
+    ])('PUT %s → 403，不動任何資源', async (_label, resources) => {
+      mockPractice();
+
+      const response = await put({ resources });
+
+      expect(response.status).toBe(403);
+      expect(prismaMock.entity_resources.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('PUT 兩天原樣保留、拿掉學員自己那份 → 200（#278 既有行為：學員的同名資源可移除）', async () => {
+      mockPractice();
+
+      const response = await put({ resources: [{ ...sheet, dayNumber: 2 }, { ...sheet, dayNumber: 3 }] });
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.entity_resources.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ entity_type: 'practice', entity_id: 1, id: { notIn: [510, 511] } })
+      }));
+    });
+  });
 });
