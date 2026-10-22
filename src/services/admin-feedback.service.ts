@@ -5,6 +5,7 @@
 
 import { Prisma } from '../../generated/prisma'
 import { prisma } from './database/prisma.service'
+import { NotFoundError } from '../middleware/error.middleware'
 import type { FeedbackItem, FeedbackListResult, FaqCategory, FaqItem, CreateFaqInput, UpdateFaqInput } from '../types/admin-feedback.types'
 
 /**
@@ -45,9 +46,12 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
     id: number; user_id: number | null; user_name: string | null;
     content: string; category: string; status: string;
     created_at: Date; replied_at: Date | null; meta: unknown;
+    replies?: Array<{ id: number; content: string; createdAt: string }> | null;
   }>>(
     Prisma.sql`SELECT f.id, f.user_id, u.nickname AS user_name, f.content, f.category, f.status, f.created_at, f.meta,
-       (SELECT MAX(fr.created_at) FROM feedback_replies fr WHERE fr.feedback_id = f.id) AS replied_at
+       (SELECT MAX(fr.created_at) FROM feedback_replies fr WHERE fr.feedback_id = f.id) AS replied_at,
+       (SELECT json_agg(json_build_object('id', fr.id, 'content', fr.content, 'createdAt', fr.created_at) ORDER BY fr.created_at)
+          FROM feedback_replies fr WHERE fr.feedback_id = f.id) AS replies
      FROM feedback f
      LEFT JOIN users u ON f.user_id = u.id
      WHERE ${where}
@@ -72,6 +76,12 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
       createdAt: r.created_at.toISOString(),
       repliedAt: r.replied_at?.toISOString() ?? null,
       screenshots: toScreenshotUrls(r.meta),
+      // json_agg 的時間是 Postgres 字串格式，統一成 ISO
+      replies: (r.replies ?? []).map(reply => ({
+        id: reply.id,
+        content: reply.content,
+        createdAt: new Date(reply.createdAt).toISOString(),
+      })),
     })),
   }
 }
@@ -83,26 +93,30 @@ const listFeedback = async (filters: { status?: string; category?: string; limit
  * @param category - 新分類（選填）
  */
 const updateFeedbackStatus = async (id: number, status: string, category?: string): Promise<{ updated: boolean }> => {
-  if (category) {
-    await prisma.$executeRaw`UPDATE feedback SET status = ${status}, category = ${category} WHERE id = ${id}`
-  } else {
-    await prisma.$executeRaw`UPDATE feedback SET status = ${status} WHERE id = ${id}`
-  }
+  const affected = category
+    ? await prisma.$executeRaw`UPDATE feedback SET status = ${status}, category = ${category}, updated_at = NOW() WHERE id = ${id}`
+    : await prisma.$executeRaw`UPDATE feedback SET status = ${status}, updated_at = NOW() WHERE id = ${id}`
+  if (affected === 0) throw new NotFoundError('找不到這則意見回饋')
   return { updated: true }
 }
 
 /**
- * 回覆回饋
+ * 回覆回饋（只寫入後台紀錄，不寄信、不通知使用者）
  * @param id - 回饋 ID
  * @param content - 回覆內容
+ * @param adminId - 回覆的管理者 user id
  */
-const replyToFeedback = async (id: number, content: string): Promise<{ sent: boolean }> => {
-  await prisma.$executeRaw`
-    INSERT INTO feedback_replies (feedback_id, content, created_at)
-    VALUES (${id}, ${content}, NOW())
-  `
-  // feedback 沒有 replied_at 欄位，回覆時間以 feedback_replies.created_at 為準
-  await prisma.$executeRaw`UPDATE feedback SET status = 'replied', updated_at = NOW() WHERE id = ${id}`
+const replyToFeedback = async (id: number, content: string, adminId: number): Promise<{ sent: boolean }> => {
+  await prisma.$transaction(async (tx) => {
+    // 先更新狀態確認回饋存在；不存在就不寫回覆（否則撞 FK 變 500）
+    // feedback 沒有 replied_at 欄位，回覆時間以 feedback_replies.created_at 為準
+    const affected = await tx.$executeRaw`UPDATE feedback SET status = 'replied', updated_at = NOW() WHERE id = ${id}`
+    if (affected === 0) throw new NotFoundError('找不到這則意見回饋')
+    await tx.$executeRaw`
+      INSERT INTO feedback_replies (feedback_id, admin_id, content, created_at)
+      VALUES (${id}, ${adminId}, ${content}, NOW())
+    `
+  })
   return { sent: true }
 }
 
