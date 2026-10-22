@@ -13,6 +13,7 @@ import { taipeiToday } from '../utils/date-utils';
 
 const DAILY_DRAW_LIMIT = 3;
 const CARD_CONTENT_MAX = 50;
+
 /** 參與者資格檢查：僅挑戰參與者可抽卡 */
 const assertParticipant = async (cohortId: number, userId: number): Promise<void> => {
   if (!(await isChallengeCohort(cohortId))) throw new NotFoundError('找不到共同挑戰');
