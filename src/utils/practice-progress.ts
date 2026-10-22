@@ -6,7 +6,7 @@
  * - 首次打卡：+30%（共 50%）
  * - 後續打卡：50% / (最低目標 - 1)
  * - 達成最低目標：強制 100%
- * - 可超過 100%
+ * - 可超過 100%，上限 999%（MAX_PROGRESS，欄位 DECIMAL(5,2)）
  *
  * @see docs/practice-mvp/backend-implementation-plan.md
  */
@@ -55,6 +55,14 @@ export const FIRST_CHECKIN_PROGRESS = 50;
 export const COMPLETED_PROGRESS = 100;
 
 /**
+ * 進度上限（daodao#372）
+ *
+ * practices.progress_percentage 是 DECIMAL(5,2)，最大 999.99；超過會讓寫入失敗（Postgres 22003）。
+ * 取整數 999 而非 999.99：前端進度環與 App 以 Math.round 顯示，999.99 會顯示成「1000%」。
+ */
+export const MAX_PROGRESS = 999;
+
+/**
  * 計算最低目標打卡次數
  *
  * 公式：Math.ceil(週數 × 每週最少打卡天數)
@@ -91,7 +99,7 @@ export function calculateMinTargetCheckIns(config: PracticeProgressConfig): numb
  * 2. 首次打卡：50%（+30%）
  * 3. 後續打卡：每次 +50% / (最低目標 - 1)
  * 4. 達成最低目標：100%
- * 5. 可超過 100%
+ * 5. 可超過 100%，上限 MAX_PROGRESS（999%）
  *
  * @param config 實踐配置
  * @param checkInCount 當前打卡次數（含本次）
@@ -135,8 +143,8 @@ export function calculateProgress(
     percentage = FIRST_CHECKIN_PROGRESS + remainingCheckIns * percentagePerCheckIn;
   }
 
-  // 四捨五入到小數點後兩位
-  percentage = Math.round(percentage * 100) / 100;
+  // 四捨五入到小數點後兩位，並封頂避免超出欄位精度
+  percentage = Math.min(Math.round(percentage * 100) / 100, MAX_PROGRESS);
 
   return {
     percentage,
