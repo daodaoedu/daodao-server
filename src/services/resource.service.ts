@@ -22,6 +22,7 @@ import {
 import { createResourceSchema, updateResourceSchema } from '../validators/resource.validator';
 import { DEFAULT_RESOURCE_PAGE_LIMIT, MAX_RESOURCE_PAGE_LIMIT } from '../constants/mappings';
 import * as tagService from './tag.service';
+import { assertResourceNotCoachLocked } from './practice.service';
 import { createSuccessResponse, createCursorPaginatedResponse } from '../utils/response-helper';
 import { ApiResponse, CursorPaginatedApiResponse, Facets, FacetValue } from '../types/api-response.types';
 
@@ -693,6 +694,9 @@ export async function updateResource(externalId: string, data: Record<string, un
       throw new ForbiddenError(`無權限修改此資源 (資源所有者: ${existingResource.created_by}, 當前用戶: ${userId})`);
     }
 
+    // 燈塔本期實踐上的教練資源：學員不可改（daodao#331）
+    await assertResourceNotCoachLocked(resourceId, userId);
+
     // 驗證數據 - 使用 safeParse 避免驗證錯誤
     const validationResult = updateResourceSchema.safeParse(data);
     if (!validationResult.success) {
@@ -781,6 +785,9 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
     if (existingResource.created_by !== userId) {
       throw new ForbiddenError('無權限刪除此資源');
     }
+
+    // 燈塔本期實踐上的教練資源：學員不可刪（daodao#331）
+    await assertResourceNotCoachLocked(existingResource.id, userId);
 
     // 軟刪除資源
     await tx.resources.update({
