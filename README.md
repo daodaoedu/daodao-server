@@ -424,7 +424,11 @@ daodao-server/
    pnpm install
    ```
 
-2. 建立 .env.dev 檔案並配置必要的環境變數
+2. 從範本建立環境變數檔案並填入實際值（本機 `pnpm run dev` 讀取 `.env`）:
+
+   ```bash
+   cp .env.dev.example .env
+   ```
 
 3. 生成 Prisma 客戶端:
 
@@ -473,7 +477,7 @@ pnpm run test:clean         # 清除 Jest 快取
 
 ### 使用 Docker
 
-1. 建立必要的環境變數檔案 (.env.dev, .env.prod)
+1. 從範本建立必要的環境變數檔案並填入實際值 (`cp .env.dev.example .env.dev`、`cp .env.prod.example .env.prod`)
 
 2. 啟動 Docker 容器:
 
@@ -654,7 +658,7 @@ DaoDao Server 提供完整的 RESTful API，採用版本化設計和標準化回
 - `EMAIL_ADDRESS`, `EMAIL_PASSWORD`: 電子郵件設定
 - `LOG_LEVEL`: 日誌等級 (debug/info/warn/error)
 
-詳細的環境變數配置請參考 .env.dev_temp 和 .env.prod_temp 檔案。
+詳細的環境變數配置請參考 .env.dev.example 和 .env.prod.example 範本（只含佔位符；實際值不可進版控）。
 
 ## 測試
 
