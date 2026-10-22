@@ -1018,6 +1018,37 @@ describe('Practice Service', () => {
       const data = prismaMock.practices.create.mock.calls[0][0].data as { start_date: Date; end_date: Date };
       expect(data.end_date.getTime() - data.start_date.getTime()).toBe(6 * 86_400_000);
     });
+
+    // daodao#336：開始日取台北日曆日，不受程序時區影響（台北 00:00–08:00 時 UTC 還是前一天）
+    describe('start_date is today in Asia/Taipei', () => {
+      afterEach(() => jest.useRealTimers());
+
+      it.each([
+        ['台北 00:00', '2026-10-22', '2026-10-28', '2026-10-21T16:00:00.000Z'],
+        ['台北 07:59', '2026-10-22', '2026-10-28', '2026-10-21T23:59:00.000Z'],
+        ['台北 08:00', '2026-10-22', '2026-10-28', '2026-10-22T00:00:00.000Z'],
+        ['台北 14:00', '2026-10-22', '2026-10-28', '2026-10-22T06:00:00.000Z'],
+      ])('%s 複製 7 天實踐：開始 %s、結束 %s', async (_label, expectedStart, expectedEnd, now) => {
+        jest.useFakeTimers({ now: new Date(now), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask', 'setTimeout', 'setInterval'] });
+        prismaMock.practices.findUnique.mockResolvedValue({
+          id: 5, user_id: 2, cohort_id: null, deleted_at: null, privacy_status: 'public', status: 'active',
+          title: '每天寫三行', practice_action: '書寫', duration_days: 7, session_duration_minutes: 30,
+          frequency_min_days: 2, frequency_max_days: 4, practice_time_periods: [], other_context: null,
+          theme_color: '#FCDD84', template_id: null
+        } as any);
+        prismaMock.entity_tags.findMany.mockResolvedValue([] as any);
+        prismaMock.entity_resources.findMany.mockResolvedValue([] as any);
+        prismaMock.practices.create.mockResolvedValue({ id: 9, external_id: 'copied-uuid' } as any);
+        prismaMock.practices.update.mockResolvedValue({} as any);
+
+        await copyPractice(5, 1);
+
+        const data = prismaMock.practices.create.mock.calls[0][0].data as { start_date: Date; end_date: Date; status: string };
+        expect(data.start_date.toISOString()).toBe(`${expectedStart}T00:00:00.000Z`);
+        expect(data.end_date.toISOString()).toBe(`${expectedEnd}T00:00:00.000Z`);
+        expect(data.status).toBe('active');
+      });
+    });
   });
 
   describe('deleteFunction', () => {
