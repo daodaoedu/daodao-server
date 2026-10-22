@@ -564,8 +564,9 @@ jobs:
               fi
               if [ $i -eq 10 ]; then
                 echo "❌ Readiness check failed after 10 attempts (DB or Redis unreachable)"
-                docker exec $NEW_CONTAINER wget -q -O - http://localhost:3000/api/v1/health/ready 2>&1 || true
-                docker logs $NEW_CONTAINER --tail=50 || true
+                # 503 時 busybox wget 不印 body；prod 的 logging driver 是 none，docker logs 也看不到，改用 node 印出各依賴狀態
+                docker exec $NEW_CONTAINER node -e 'fetch("http://localhost:3000/api/v1/health/ready").then(r => r.text()).then(console.log).catch(console.error)' || true
+                docker logs $NEW_CONTAINER --tail=50 2>&1 || true
                 exit 1
               fi
               echo "Readiness check attempt $i/10, waiting..."
@@ -669,7 +670,7 @@ jobs:
               fi
               if [ \$i -eq 10 ]; then
                 echo '❌ Final readiness check failed after 10 attempts (DB or Redis unreachable)'
-                docker compose exec -T ${{ env.APP_SERVICE }} wget -q -O - http://localhost:3000/api/v1/health/ready || true
+                docker compose exec -T ${{ env.APP_SERVICE }} node -e 'fetch(\"http://localhost:3000/api/v1/health/ready\").then(r => r.text()).then(console.log).catch(console.error)' || true
                 exit 1
               fi
               echo \"Readiness check attempt \$i/10 failed, retrying...\"
