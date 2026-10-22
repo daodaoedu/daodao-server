@@ -415,16 +415,19 @@ jobs:
             fi
 
             # 檢查環境文件（docker compose 會驗證所有 service 的 env_file）
+            # 範本只有佔位符：只替「非本次部署」的環境補檔讓 compose 驗證通過，
+            # 本次部署的 .env.${APP_ENV} 必須是伺服器上既有的真實設定，不從範本產生
             for env in prod production dev; do
-              if [ ! -f .env.${env} ] && [ -f .env.${env}_temp ]; then
-                cp .env.${env}_temp .env.${env}
-                echo "Created .env.${env} from template"
+              if [ "$env" != "$APP_ENV" ] && [ ! -f .env.${env} ] && [ -f .env.${env}.example ]; then
+                cp .env.${env}.example .env.${env}
+                echo "Created placeholder .env.${env} from example (compose validation only)"
               fi
             done
 
             ENV_FILE=.env.${APP_ENV}
             if [ ! -f "$ENV_FILE" ]; then
               echo "❌ Required environment file $ENV_FILE is missing"
+              echo "   Create it on the server from .env.${APP_ENV}.example and fill in real values"
               exit 1
             fi
 
