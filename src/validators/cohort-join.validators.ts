@@ -36,6 +36,7 @@ export const cohortJoinInfoResponseSchema = z.object({
   joinDeadline: z.date().nullable().openapi({ description: '加入截止日' }),
   participantCount: z.number().int().nonnegative().openapi({ description: '已加入人數' }),
   inviteMessage: z.string().nullable(), canJoin: z.boolean(), unavailableReason: z.enum(['not_published', 'expired', 'full', 'paused']).nullable(),
+  unavailableReasons: z.array(z.enum(['not_published', 'expired', 'full', 'paused'])).openapi({ description: '所有成立的不可加入原因（依優先序，第一個等於 unavailableReason）；可加入時為空陣列' }),
   privacy: privacySchema,
   visibilityNotice: z.string(), organization: z.object({ name: z.string(), bio: z.string().nullable(), externalLink: z.string().nullable() })
 });
