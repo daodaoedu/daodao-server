@@ -688,10 +688,9 @@ export async function updateResource(externalId: string, data: Record<string, un
       throw new NotFoundError('資源不存在');
     }
 
-    // 檢查權限 - 暫時允許測試用戶修改
-    console.log(`權限檢查: existingResource.created_by=${existingResource.created_by}, userId=${userId}`);
-    if (existingResource.created_by !== userId && userId !== 2) {
-      throw new ForbiddenError(`無權限修改此資源 (資源所有者: ${existingResource.created_by}, 當前用戶: ${userId})`);
+    // 檢查權限：只有資源建立者可改（daodao#355 移除寫死 user 2 的測試例外，錯誤訊息不帶 user id）
+    if (existingResource.created_by !== userId) {
+      throw new ForbiddenError('無權限修改此資源');
     }
 
     // 燈塔本期實踐上的教練資源：學員不可改（daodao#331）
