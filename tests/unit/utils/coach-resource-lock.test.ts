@@ -43,12 +43,29 @@ describe('pickCoachLockedRelationIds', () => {
       expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 300, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1, 2]));
     });
 
-    it('學員另存一份同內容（沒帶天數）→ 只鎖天數對得上的兩筆，學員那份不鎖', () => {
+    it('學員之後另存一份同內容 → 只鎖先建立的兩筆，學員那份不鎖；結果與查詢順序無關', () => {
       expect(pickCoachLockedRelationIds(dayTemplate, [
-        dayRelation(1, 777, null),
+        dayRelation(3, 777, null),
+        dayRelation(1, 900, 'day:2'),
+        dayRelation(2, 901, 'day:3')
+      ])).toEqual(new Set([1, 2]));
+    });
+
+    it('一筆 id 對得上（天數已漂移）＋兩筆重建 → id 對得上的必鎖，另補鎖一筆，總數不超過位置數＋id 對得上的筆數', () => {
+      const withHistory = [...dayTemplate, { resource_id: 500, note: 'day:5', deleted_at: new Date('2026-10-01'), resources: sheet }];
+      expect(pickCoachLockedRelationIds(withHistory, [
+        dayRelation(1, 500, 'day:5'),
         dayRelation(2, 900, 'day:2'),
         dayRelation(3, 901, 'day:3')
-      ])).toEqual(new Set([2, 3]));
+      ])).toEqual(new Set([1, 2]));
+    });
+
+    it('教練把模板資源從第 2 天移到第 3 天後，舊的重建列（第 2 天）仍鎖、學員之後另存的第 3 天那份不鎖', () => {
+      const moved = [
+        { resource_id: 300, note: 'day:2', deleted_at: new Date('2026-10-01'), resources: sheet },
+        { resource_id: 302, note: 'day:3', deleted_at: null, resources: sheet }
+      ];
+      expect(pickCoachLockedRelationIds(moved, [dayRelation(1, 900, 'day:2'), dayRelation(2, 777, 'day:3')])).toEqual(new Set([1]));
     });
 
     it('教練改過模板：舊關聯軟刪、新關聯現存 → 只依現存關聯計數，不因歷史多鎖', () => {
