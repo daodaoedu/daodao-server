@@ -3,7 +3,7 @@ import { loggerService } from './logging/logger.service';
 import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
-import { dateOf, deriveJoinability, deriveRunStatus, today } from './cohort-run-state';
+import { dateOf, deriveChallengeJoinability, deriveRunStatus, today } from './cohort-run-state';
 
 /** 探索頁與詳情共用的查詢欄位 */
 const challengeSelect = {
@@ -59,7 +59,7 @@ const buildSummaries = async (rows: ChallengeRow[], userId: number | null, now: 
 
   return rows.map(row => {
     const participantCount = countByCohort.get(row.id) ?? 0;
-    const joinability = deriveJoinability(row, participantCount, now);
+    const joinability = deriveChallengeJoinability(row, participantCount, now);
     return {
       id: row.id,
       displayName: row.display_name,
@@ -163,9 +163,9 @@ const join = async (challengeId: number, userId: number, now = new Date()) => {
     if (!cohort) throw new NotFoundError('找不到共同挑戰');
 
     const participantCount = await tx.cohort_enrollments.count({ where: { cohort_id: challengeId, status: 'joined' } });
-    const joinability = deriveJoinability(row, participantCount, now);
+    const joinability = deriveChallengeJoinability(row, participantCount, now);
     if (!joinability.canJoin) {
-      const messages = { ended: '此挑戰已結束，不再接受新加入', expired: '此挑戰的加入期限已截止', full: '此挑戰已額滿', paused: '此挑戰目前暫停加入' } as const;
+      const messages = { ended: '此挑戰已結束，不再接受新加入', started: '此挑戰已開始，不再接受新加入', expired: '此挑戰的加入期限已截止', full: '此挑戰已額滿', paused: '此挑戰目前暫停加入' } as const;
       throw new ConflictError(messages[joinability.unavailableReason!]);
     }
 
