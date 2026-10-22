@@ -10,6 +10,8 @@ export interface FeedbackItem {
   createdAt: string
   /** 最後一則 feedback_replies 的時間；尚未回覆為 null */
   repliedAt: string | null
+  /** 錯誤回報附的截圖（feedback.meta.screenshots 中的 http(s) 網址）；沒有截圖為空陣列 */
+  screenshots: string[]
 }
 
 export interface FeedbackListResult {
