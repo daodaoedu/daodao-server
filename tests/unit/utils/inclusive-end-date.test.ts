@@ -1,4 +1,4 @@
-import { inclusiveEndDate } from '@/utils/date-utils';
+import { inclusiveEndDate, taipeiToday } from '@/utils/date-utils';
 import { calculateDateShift, calculateEndDate } from '@/validators/practice-business.validators';
 
 // daodao#277：範本、梯次指派與學員實踐共用同一條結束日規則（含開始日當天，結束日 = 開始日 + 天數 − 1）
@@ -22,6 +22,19 @@ describe('inclusiveEndDate', () => {
     const start = utc('2026-10-20');
     inclusiveEndDate(start, 7);
     expect(start.toISOString()).toBe('2026-10-20T00:00:00.000Z');
+  });
+});
+
+// daodao#336：「今天」取台北日曆日，存成 UTC 零點，不受程序時區影響
+describe('taipeiToday', () => {
+  it.each([
+    ['台北 00:00（UTC 前一天 16:00）', '2026-10-21T16:00:00.000Z', '2026-10-22'],
+    ['台北 07:59（UTC 前一天 23:59）', '2026-10-21T23:59:00.000Z', '2026-10-22'],
+    ['台北 08:00（UTC 00:00）', '2026-10-22T00:00:00.000Z', '2026-10-22'],
+    ['台北 23:59（UTC 15:59）', '2026-10-22T15:59:00.000Z', '2026-10-22'],
+    ['台北跨年 00:30', '2026-12-31T16:30:00.000Z', '2027-01-01'],
+  ])('%s → %s', (_label, now, expected) => {
+    expect(taipeiToday(new Date(now)).toISOString()).toBe(`${expected}T00:00:00.000Z`);
   });
 });
 
