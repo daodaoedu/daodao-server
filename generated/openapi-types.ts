@@ -42557,6 +42557,11 @@ export interface components {
              */
             status: "draft" | "not_started" | "active" | "completed" | "archived";
             /**
+             * @description 隱私狀態（private／public／delayed）
+             * @example public
+             */
+            privacyStatus?: string;
+            /**
              * @description 是否有相關資源
              * @example true
              */
