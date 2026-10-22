@@ -1624,6 +1624,37 @@ async function getCoachLockedResources(practice: CoachLockSubject): Promise<Arra
 }
 
 /**
+ * 資源是燈塔本期實踐上被鎖定的教練資源時，擋下 PATCH／DELETE /resources/:id（daodao#331）。
+ * #278 修正前存檔過的實踐，教練資源列已重建成學員所有；若先改名，內容就對不上模板、鎖定判定失效，
+ * 所以要在改之前擋。例外：資源建立者改別人實踐上的資源列——模板共用的資源列屬於教練，教練改自己的資源不受影響。
+ */
+export async function assertResourceNotCoachLocked(resource: { id: number; created_by: number }, userId: number): Promise<void> {
+  const links = (await prismaClient.entity_resources.findMany({
+    where: { entity_type: 'practice', resource_id: resource.id, deleted_at: null },
+    select: { entity_id: true }
+  })) ?? [];
+  if (links.length === 0) return;
+
+  const practices = ((await prismaClient.practices.findMany({
+    where: { id: { in: [...new Set(links.map(link => link.entity_id))] }, deleted_at: null },
+    select: { id: true, user_id: true, cohort_id: true, template_id: true, creation_source: true }
+  })) ?? [])
+    .filter(isCoachResourceLockActive)
+    .filter(practice => practice.user_id === userId || resource.created_by !== userId);
+  if (practices.length === 0) return;
+
+  const relations = (await prismaClient.entity_resources.findMany({
+    where: { entity_type: 'practice', entity_id: { in: practices.map(practice => practice.id) }, deleted_at: null },
+    include: { resources: { select: { name: true, url: true } } }
+  })) ?? [];
+  const lockedRelationIds = await loadCoachLockedRelationIds(practices, relations);
+  const locked = relations.find(er => er.resource_id === resource.id && lockedRelationIds.has(er.id));
+  if (locked) {
+    throw new ForbiddenError(`教練加入的資源不可移除或修改：${locked.resources.name}`);
+  }
+}
+
+/**
  * 封存實踐
  */
 export async function archive(id: number, userId: number): Promise<ApiSuccessResponse<{ success: boolean }>> {
