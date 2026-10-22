@@ -5,6 +5,17 @@
 /** 一天的毫秒數 */
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/**
+ * 今天的台北日曆日（存成 UTC 零點的 Date，對齊 @db.Date 欄位）。
+ * 不受程序時區影響：台北 00:00–08:00 時 UTC 仍是前一天，不能用 setHours(0, 0, 0, 0)（daodao#336）。
+ */
+export function taipeiToday(now: Date = new Date()): Date {
+  const shifted = new Date(now.getTime() + TAIPEI_OFFSET_MS);
+  return new Date(`${shifted.toISOString().slice(0, 10)}T00:00:00Z`);
+}
+
 /**
  * 期間結束日：含開始日當天共 durationDays 天，結束日 = 開始日 + 天數 − 1。
  * 範本綁定、共同挑戰、梯次指派複製的實踐與個人實踐共用這一條規則（daodao#277）。
