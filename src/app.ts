@@ -56,6 +56,10 @@ import { responseEnhancerMiddleware } from './middleware/response-enhancer';
 // 引入資料庫資訊和監控路由
 import dbInfoRoutes from './routes/db-info.routes';
 import monitorRoutes from './routes/monitor.routes';
+// readiness 檢查依賴（daodao#362）
+import { prisma } from './services/database/prisma.service';
+import redis from './services/database/redis.service';
+import { checkReadiness, toPublicReadiness } from './services/health.service';
 // 引入城市路由
 import cityRoutes from './routes/city.routes';
 // 引入通知路由
@@ -393,6 +397,20 @@ export function setupTypescriptRoutes(app: express.Application) {
     });
   });
   console.log('✅ v1 健康檢查端點已註冊 - 可在 /api/v1/health 訪問');
+
+  // v1 readiness 端點：實際連 DB 與 Redis，任一連不到回 503（daodao#362）
+  // /api/v1/health 維持 liveness（compose healthcheck 用），CD 部署後檢查與外部監控改用這支
+  app.get('/api/v1/health/ready', async (_req, res) => {
+    const result = await checkReadiness({
+      database: () => prisma.$queryRaw`SELECT 1`,
+      redis: () => redis.ping(),
+    });
+    if (result.status !== 'ok') {
+      console.error('❌ readiness 檢查失敗:', JSON.stringify(result.checks));
+    }
+    res.status(result.status === 'ok' ? 200 : 503).json(toPublicReadiness(result));
+  });
+  console.log('✅ v1 readiness 端點已註冊 - 可在 /api/v1/health/ready 訪問');
 
   // 使用 Prisma 架構，不需要手動加載模型
   console.log('✅ 已啟用 Prisma 資料庫架構');
