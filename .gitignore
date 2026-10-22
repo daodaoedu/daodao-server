@@ -1,7 +1,11 @@
 node_modules
+# 環境變數：實際值不進版控，只追蹤不含秘密的範本
 .env
-.env.dev
-.env.prod
+.env.*
+.env.*_temp
+!.env.example
+!.env.*.example
+!.env.test
 .DS_Store
 coverage
 dist
