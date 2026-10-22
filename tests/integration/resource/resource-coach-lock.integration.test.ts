@@ -82,7 +82,10 @@ describe('教練資源鎖定：PATCH／DELETE /resources/:id 不可繞過（daod
   const lighthouseDraft = { id: 1, user_id: userId, cohort_id: 7, template_id: templateId, creation_source: 'cohort_template' };
 
   const mockPractice = (overrides: Partial<typeof lighthouseDraft> = {}) => {
-    prismaMock.practices.findMany.mockResolvedValue([{ ...lighthouseDraft, ...overrides }] as any);
+    const practices = [{ ...lighthouseDraft, ...overrides }];
+    prismaMock.practices.findMany.mockImplementation((async (args: any) =>
+      practices.filter(practice => args?.where?.user_id === undefined || practice.user_id === args.where.user_id)
+    ) as any);
   };
 
   beforeAll(async () => {
@@ -173,14 +176,23 @@ describe('教練資源鎖定：PATCH／DELETE /resources/:id 不可繞過（daod
     expect(response.status).toBe(200);
   });
 
-  it('只看操作者自己的實踐：查實踐時以 user_id 過濾（教練改自己模板上的資源不受影響）', async () => {
-    prismaMock.practices.findMany.mockResolvedValue([] as any);
+  it('教練改自己建立、掛在學員草稿上的模板資源列 → 200（只鎖學員）', async () => {
+    const coachId = 9;
+    prismaMock.resources.findFirst.mockResolvedValue({ ...coachRow, created_by: coachId } as any);
+    userToken = createAuthToken({ id: coachId, email: 'coach@test.com' });
+
+    const response = await patch(COACH_RESOURCE_EXTERNAL_ID, { name: '教練更新的名稱' });
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.resources.update).toHaveBeenCalled();
+  });
+
+  it('不是資源建立者卻有改寫權限的帳號（user 2 例外）改學員的鎖定資源 → 403', async () => {
+    userToken = createAuthToken({ id: 2, email: 'tester@test.com' });
 
     const response = await patch(COACH_RESOURCE_EXTERNAL_ID, { name: '改掉的名字' });
 
-    expect(response.status).toBe(200);
-    expect(prismaMock.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ user_id: userId })
-    }));
+    expect(response.status).toBe(403);
+    expect(prismaMock.resources.update).not.toHaveBeenCalled();
   });
 });

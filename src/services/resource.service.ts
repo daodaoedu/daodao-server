@@ -695,7 +695,7 @@ export async function updateResource(externalId: string, data: Record<string, un
     }
 
     // 燈塔本期實踐上的教練資源：學員不可改（daodao#331）
-    await assertResourceNotCoachLocked(resourceId, userId);
+    await assertResourceNotCoachLocked(existingResource, userId);
 
     // 驗證數據 - 使用 safeParse 避免驗證錯誤
     const validationResult = updateResourceSchema.safeParse(data);
@@ -787,7 +787,7 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
     }
 
     // 燈塔本期實踐上的教練資源：學員不可刪（daodao#331）
-    await assertResourceNotCoachLocked(existingResource.id, userId);
+    await assertResourceNotCoachLocked(existingResource, userId);
 
     // 軟刪除資源
     await tx.resources.update({
