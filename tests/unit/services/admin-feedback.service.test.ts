@@ -1,6 +1,8 @@
-import { prismaMock } from '@tests/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
 import adminFeedbackService from '@/services/admin-feedback.service';
+import { NotFoundError } from '@/middleware/error.middleware';
+import { feedbackReplySchema } from '@/validators/admin-feedback.validator';
 
 /**
  * feedback / feedback_replies 不在 prisma/schema.prisma，欄位以 daodao-storage 為準：
@@ -66,10 +68,11 @@ describe('adminFeedbackService.listFeedback', () => {
           id: 7, userId: 12, userName: '小島', content: '送出按鈕沒反應', category: 'bug', status: 'replied',
           createdAt: '2026-10-10T03:00:00.000Z', repliedAt: '2026-10-10T05:00:00.000Z',
           screenshots: ['https://storage-dev.daodao.so/bug-reports/1791698535059-fd8570e1.png'],
+          replies: [],
         },
         {
           id: 6, userId: null, userName: null, content: '希望有深色模式', category: 'feature', status: 'pending',
-          createdAt: '2026-10-09T03:00:00.000Z', repliedAt: null, screenshots: [],
+          createdAt: '2026-10-09T03:00:00.000Z', repliedAt: null, screenshots: [], replies: [],
         },
       ],
     });
@@ -120,15 +123,82 @@ describe('adminFeedbackService.listFeedback', () => {
   });
 });
 
+describe('adminFeedbackService.listFeedback 回覆內容（daodao#313）', () => {
+  it('每則回饋帶出回覆內容（依時間排序），後台重新整理後才看得到已送出的回覆', async () => {
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ total: 1n }] as never)
+      .mockResolvedValueOnce([{ total: 1n, pending: 0n, this_month: 1n }] as never)
+      .mockResolvedValueOnce([
+        {
+          id: 9, user_id: 12, user_name: '小島', content: '找不到設定', category: 'question', status: 'replied',
+          created_at: new Date('2026-10-20T03:00:00Z'), replied_at: new Date('2026-10-21T05:00:00Z'), meta: null,
+          // json_agg 回來的 created_at 是字串（Postgres 時區格式）
+          replies: [
+            { id: 3, content: '在右上角頭像選單', createdAt: '2026-10-21T13:00:00.123456+08:00' },
+          ],
+        },
+      ] as never);
+
+    const result = await adminFeedbackService.listFeedback({ limit: 20, offset: 0 });
+    expect(result.items[0].replies).toEqual([
+      { id: 3, content: '在右上角頭像選單', createdAt: '2026-10-21T05:00:00.123Z' },
+    ]);
+
+    const listSql = prismaMock.$queryRaw.mock.calls
+      .map(([arg]) => sqlText(arg))
+      .find((s) => /LEFT JOIN users u/.test(s));
+    expect(listSql).toMatch(/fr\.content/);
+    expect(listSql).toMatch(/ORDER BY fr\.created_at/);
+  });
+});
+
 describe('adminFeedbackService.replyToFeedback', () => {
+  beforeEach(() => setupTransactionMock());
+
   it('寫回覆後更新 feedback 時不碰不存在的 replied_at 欄位', async () => {
     prismaMock.$executeRaw.mockResolvedValue(1 as never);
-    await expect(adminFeedbackService.replyToFeedback(7, '已修正，謝謝回報')).resolves.toEqual({ sent: true });
+    await expect(adminFeedbackService.replyToFeedback(7, '已修正，謝謝回報', 99)).resolves.toEqual({ sent: true });
 
     const sqls = prismaMock.$executeRaw.mock.calls.map(([arg]) => sqlText(arg));
     const update = sqls.find((s) => /UPDATE feedback SET/.test(s));
     expect(update).toBeDefined();
     expect(update).not.toMatch(/replied_at/);
     expect(update).toMatch(/status = 'replied'/);
+  });
+
+  it('回覆記下是哪位管理者回的（feedback_replies.admin_id）', async () => {
+    prismaMock.$executeRaw.mockResolvedValue(1 as never);
+    await adminFeedbackService.replyToFeedback(7, '已修正', 99);
+
+    const insert = prismaMock.$executeRaw.mock.calls.find(([arg]) => /INSERT INTO feedback_replies/.test(sqlText(arg)));
+    expect(sqlText(insert?.[0])).toMatch(/admin_id/);
+    expect(insert?.slice(1)).toEqual(expect.arrayContaining([7, 99, '已修正']));
+  });
+
+  it('回饋不存在時回 404，不寫入回覆（原本撞 FK 變 500）', async () => {
+    prismaMock.$executeRaw.mockResolvedValue(0 as never);
+    await expect(adminFeedbackService.replyToFeedback(404404, '已修正', 99)).rejects.toBeInstanceOf(NotFoundError);
+
+    const insert = prismaMock.$executeRaw.mock.calls.find(([arg]) => /INSERT INTO feedback_replies/.test(sqlText(arg)));
+    expect(insert).toBeUndefined();
+  });
+});
+
+describe('adminFeedbackService.updateFeedbackStatus', () => {
+  it('回饋不存在時回 404，不再假裝更新成功', async () => {
+    prismaMock.$executeRaw.mockResolvedValue(0 as never);
+    await expect(adminFeedbackService.updateFeedbackStatus(404404, 'closed')).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('更新成功回 updated: true', async () => {
+    prismaMock.$executeRaw.mockResolvedValue(1 as never);
+    await expect(adminFeedbackService.updateFeedbackStatus(7, 'closed')).resolves.toEqual({ updated: true });
+  });
+});
+
+describe('feedbackReplySchema', () => {
+  it('回覆內容去頭尾空白；只有空白視為空白回覆', () => {
+    expect(feedbackReplySchema.parse({ content: '  謝謝回報  ' })).toEqual({ content: '謝謝回報' });
+    expect(feedbackReplySchema.safeParse({ content: '   ' }).success).toBe(false);
   });
 });
