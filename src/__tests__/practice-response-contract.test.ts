@@ -179,6 +179,12 @@ describe('practice list (GET /practices)', () => {
     expect(typeof practice.id).toBe('string');
     expect(practice).not.toHaveProperty('internalId');
   });
+
+  // #358：列表與詳情共用 practiceEntityResponseSchema，privacyStatus 一樣不能被濾掉
+  it('keeps privacyStatus in list items', async () => {
+    const res = await request(app).get('/api/v1/practices').expect(200);
+    expect(res.body.data[0].privacyStatus).toBe('public');
+  });
 });
 
 describe('my practices (GET /practices/me)', () => {
