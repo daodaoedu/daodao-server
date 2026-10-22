@@ -28,7 +28,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
-import { inclusiveEndDate } from '../utils/date-utils';
+import { inclusiveEndDate, taipeiToday } from '../utils/date-utils';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import {
@@ -2008,8 +2008,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
       }
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = taipeiToday();
 
     const endDate = source.duration_days ? inclusiveEndDate(today, source.duration_days) : null;
 
