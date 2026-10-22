@@ -187,12 +187,37 @@ describe('教練資源鎖定：PATCH／DELETE /resources/:id 不可繞過（daod
     expect(prismaMock.resources.update).toHaveBeenCalled();
   });
 
-  it('不是資源建立者卻有改寫權限的帳號（user 2 例外）改學員的鎖定資源 → 403', async () => {
+  it('user 2 改學員的鎖定資源 → 403', async () => {
     userToken = createAuthToken({ id: 2, email: 'tester@test.com' });
 
     const response = await patch(COACH_RESOURCE_EXTERNAL_ID, { name: '改掉的名字' });
 
     expect(response.status).toBe(403);
     expect(prismaMock.resources.update).not.toHaveBeenCalled();
+  });
+
+  describe('PATCH 的擁有者檢查不再有 user 2 例外（daodao#355）', () => {
+    it('user 2 改別人一般的資源（不在任何實踐上）→ 403，訊息不含任何 user id', async () => {
+      prismaMock.entity_resources.findMany.mockResolvedValue([] as any);
+      userToken = createAuthToken({ id: 2, email: 'tester@test.com' });
+
+      const response = await patch(MY_RESOURCE_EXTERNAL_ID, { name: '改掉的名字' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error?.message ?? response.body.message).toBe('無權限修改此資源');
+      expect(JSON.stringify(response.body)).not.toMatch(/資源所有者|當前用戶/);
+      expect(prismaMock.resources.update).not.toHaveBeenCalled();
+    });
+
+    it('user 2 改自己建立的資源 → 200', async () => {
+      prismaMock.entity_resources.findMany.mockResolvedValue([] as any);
+      prismaMock.resources.findFirst.mockResolvedValue({ ...myRow, created_by: 2 } as any);
+      userToken = createAuthToken({ id: 2, email: 'tester@test.com' });
+
+      const response = await patch(MY_RESOURCE_EXTERNAL_ID, { name: '改掉的名字' });
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.resources.update).toHaveBeenCalled();
+    });
   });
 });
