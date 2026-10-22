@@ -61,6 +61,7 @@ jest.mock('@/services/r2.service', () => ({
 import {
   createCheckIn,
   createCheckInWithImages,
+  deleteCheckIn,
   getCheckIns,
   calculateStreak,
   updatePracticeProgress,
@@ -305,6 +306,34 @@ describe('Practice CheckIn Service', () => {
 
       // 最低目標 = ceil(100 / 7 × 7) = 100；50% + 55 × 50 / 99 = 77.78%（用 14 天會變成 261.54%）
       expect(result.data.practiceProgressPercentage).toBe(77.78);
+    });
+
+    // daodao#372：progress_percentage 是 DECIMAL(5,2)，第 19 次（7 天／每週 1 次）算出 1000% 會溢位 → 500
+    it('caps written progress at 999 on the 19th check-in of a 7-day, once-a-week practice', async () => {
+      const testPractice = createTestPractice({
+        status: 'active',
+        first_checkin_at: new Date(),
+        end_date: new Date(futureStart.getTime() + 6 * 24 * 60 * 60 * 1000),
+        duration_days: 7,
+        frequency_min_days: 1,
+        frequency_max_days: 1,
+        progress_percentage: createDecimalMock(950)
+      });
+
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(null);
+      prismaMock.practice_checkins.count.mockResolvedValue(18); // 本次為第 19 次
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.create.mockResolvedValue(createTestCheckIn());
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice });
+      prismaMock.follows.findMany.mockResolvedValue([] as any);
+
+      const result = await createCheckIn(1, createCheckInRequest(), 1);
+
+      const written = prismaMock.practices.update.mock.calls[0][0].data as { progress_percentage: number };
+      expect(written.progress_percentage).toBe(999);
+      expect(written.progress_percentage).toBeLessThanOrEqual(999.99);
+      expect(result.data.practiceProgressPercentage).toBe(999);
     });
 
     it('should use transaction for database operations', async () => {
@@ -647,6 +676,31 @@ describe('Practice CheckIn Service', () => {
         'Failed to calculate streak',
         expect.objectContaining({ practiceId: 1, userId: 1, error })
       );
+    });
+  });
+
+  describe('deleteCheckIn', () => {
+    // daodao#372：刪除打卡後用剩餘次數重算進度並寫回，同樣不可超過 DECIMAL(5,2) 上限
+    it('caps recalculated progress at 999 when many check-ins remain', async () => {
+      const testPractice = createTestPractice({
+        status: 'active',
+        duration_days: 7,
+        frequency_min_days: 1,
+        frequency_max_days: 1,
+        progress_percentage: createDecimalMock(999)
+      });
+
+      prismaMock.practice_checkins.findFirst.mockResolvedValue(createTestCheckIn({ id: 30 }) as any);
+      prismaMock.entity_tags.deleteMany.mockResolvedValue({ count: 0 } as any);
+      prismaMock.practice_checkins.delete.mockResolvedValue(createTestCheckIn({ id: 30 }) as any);
+      prismaMock.practice_checkins.count.mockResolvedValue(29); // 刪除後剩 29 次（未封頂會算出 1500%）
+      prismaMock.practices.findUnique.mockResolvedValue(testPractice);
+      prismaMock.practices.update.mockResolvedValue({ ...testPractice });
+
+      await deleteCheckIn(30, 1, 1);
+
+      const written = prismaMock.practices.update.mock.calls[0][0].data as { progress_percentage: number };
+      expect(written.progress_percentage).toBe(999);
     });
   });
 
