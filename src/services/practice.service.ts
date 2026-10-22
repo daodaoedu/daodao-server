@@ -1573,7 +1573,7 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
 }
 
 type CoachLockSubject = { id: number; cohort_id: number | null; template_id: number | null; creation_source: string | null };
-type PracticeResourceRelation = { id: number; entity_id: number; resource_id: number; resources: { name: string; url: string | null } };
+type PracticeResourceRelation = { id: number; entity_id: number; resource_id: number; note: string | null; resources: { name: string; url: string | null } };
 
 /**
  * 找出教練加的實踐資源關聯 id（判定規則見 pickCoachLockedRelationIds）。
@@ -1597,7 +1597,7 @@ async function loadCoachLockedRelationIds(practices: CoachLockSubject[], relatio
       entity_type: 'practice_template',
       entity_id: { in: [...new Set(lockedPractices.map(practice => practice.template_id as number))] }
     },
-    select: { entity_id: true, resource_id: true, resources: { select: { name: true, url: true } } }
+    select: { entity_id: true, resource_id: true, note: true, deleted_at: true, resources: { select: { name: true, url: true } } }
   });
 
   const lockedIds = new Set<number>();

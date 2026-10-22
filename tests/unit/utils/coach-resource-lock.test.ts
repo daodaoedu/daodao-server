@@ -26,6 +26,55 @@ describe('pickCoachLockedRelationIds', () => {
     const history = [...template, { resource_id: 200, resources: { name: '指定讀物', url: '' } }];
     expect(pickCoachLockedRelationIds(history, [relation(1, 555, '指定讀物'), relation(2, 556, '指定讀物')])).toEqual(new Set([1]));
   });
+
+  describe('同名同網址的教練資源放在不同天（daodao#355）', () => {
+    const sheet = { name: '練習單', url: 'https://example.com/sheet' };
+    const dayTemplate = [
+      { resource_id: 300, note: 'day:2', deleted_at: null, resources: sheet },
+      { resource_id: 301, note: 'day:3', deleted_at: null, resources: sheet }
+    ];
+    const dayRelation = (id: number, resourceId: number, note: string | null) => ({ id, resource_id: resourceId, note, resources: sheet });
+
+    it('實踐資源列已重建（id 都對不上）→ 兩筆都鎖', () => {
+      expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 900, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1, 2]));
+    });
+
+    it('一筆 id 對得上、另一筆已重建 → 兩筆都鎖', () => {
+      expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 300, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1, 2]));
+    });
+
+    it('學員另存一份同內容（沒帶天數）→ 只鎖天數對得上的兩筆，學員那份不鎖', () => {
+      expect(pickCoachLockedRelationIds(dayTemplate, [
+        dayRelation(1, 777, null),
+        dayRelation(2, 900, 'day:2'),
+        dayRelation(3, 901, 'day:3')
+      ])).toEqual(new Set([2, 3]));
+    });
+
+    it('教練改過模板：舊關聯軟刪、新關聯現存 → 只依現存關聯計數，不因歷史多鎖', () => {
+      const edited = [
+        { resource_id: 290, note: 'day:2', deleted_at: new Date('2026-10-01'), resources: sheet },
+        { resource_id: 291, note: 'day:3', deleted_at: new Date('2026-10-01'), resources: sheet },
+        { resource_id: 300, note: 'day:2', deleted_at: null, resources: sheet }
+      ];
+      expect(pickCoachLockedRelationIds(edited, [dayRelation(1, 900, 'day:2'), dayRelation(2, 777, null)])).toEqual(new Set([1]));
+    });
+
+    it('模板現存關聯是同天重複的舊 seed（天數相同）→ 視為一筆，學員自己的同名資源不鎖', () => {
+      const seeded = [
+        { resource_id: 310, note: null, deleted_at: null, resources: sheet },
+        { resource_id: 311, note: null, deleted_at: null, resources: sheet },
+        { resource_id: 312, note: null, deleted_at: null, resources: sheet }
+      ];
+      expect(pickCoachLockedRelationIds(seeded, [dayRelation(1, 310, null), dayRelation(2, 777, null)])).toEqual(new Set([1]));
+      expect(pickCoachLockedRelationIds(seeded, [dayRelation(1, 900, null), dayRelation(2, 777, null)])).toEqual(new Set([1]));
+    });
+
+    it('教練已從模板拿掉（只剩軟刪關聯）→ 照舊以內容補鎖一筆', () => {
+      const removed = dayTemplate.map(link => ({ ...link, deleted_at: new Date('2026-10-01') }));
+      expect(pickCoachLockedRelationIds(removed, [dayRelation(1, 900, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1]));
+    });
+  });
 });
 
 describe('isCoachResourceLockActive', () => {

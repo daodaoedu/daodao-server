@@ -4,6 +4,8 @@
  * 這裡只看實踐本身；是否為燈塔場次（共同挑戰不鎖）由呼叫端查 cohorts.program.kind。
  */
 
+import { parseResourceDay } from './resource-day';
+
 export interface LockableResource {
   name: string;
   url?: string | null;
@@ -20,33 +22,77 @@ export const isCoachResourceLockActive = (practice: {
 export const resourceContentKey = (resource: { name: string; url?: string | null }): string =>
   `${resource.name}\u0000${resource.url || ''}`;
 
-type ResourceLink = { resource_id: number; resources: { name: string; url?: string | null } };
+type ResourceLink = {
+  resource_id: number;
+  /** entity_resources.note，存 dayNumber（day:N） */
+  note?: string | null;
+  deleted_at?: Date | null;
+  resources: { name: string; url?: string | null };
+};
+
+/** 模板上一個教練資源的位置；day 為 undefined 表示教練已從模板拿掉（只剩軟刪關聯），不限天數 */
+type ContentSlot = { day: number | null | undefined };
+
+/**
+ * 每種內容在模板上佔幾個位置：現存關聯依天數去重（同天的重複關聯是舊 seed 殘留，算一筆）；
+ * 只剩軟刪關聯的內容（教練事後拿掉）保留一個不限天數的位置。
+ */
+const buildContentSlots = (templateLinks: ResourceLink[]): Map<string, ContentSlot[]> => {
+  const liveDays = new Map<string, Set<number | null>>();
+  const allContents = new Set<string>();
+  for (const link of templateLinks) {
+    const key = resourceContentKey(link.resources);
+    allContents.add(key);
+    if (link.deleted_at) continue;
+    const days = liveDays.get(key) ?? new Set<number | null>();
+    days.add(parseResourceDay(link.note));
+    liveDays.set(key, days);
+  }
+  const slots = new Map<string, ContentSlot[]>();
+  for (const key of allContents) {
+    const days = liveDays.get(key);
+    slots.set(key, days ? [...days].map(day => ({ day })) : [{ day: undefined }]);
+  }
+  return slots;
+};
+
+/** 從內容的剩餘位置拿一個：sameDayOnly 只拿天數相同的，否則天數相同優先、沒有就拿第一個 */
+const takeSlot = (slots: ContentSlot[] | undefined, day: number | null, sameDayOnly: boolean): boolean => {
+  if (!slots || slots.length === 0) return false;
+  let index = slots.findIndex(slot => slot.day === day);
+  if (index === -1 && !sameDayOnly) index = 0;
+  if (index === -1) return false;
+  slots.splice(index, 1);
+  return true;
+};
 
 /**
  * 從實踐目前的資源關聯中挑出教練加的那幾筆，回傳關聯 id。
  * 草稿建立時共用模板的 resources 列，resource_id 掛過模板（含已軟刪的模板關聯）就是教練加的；
  * 教練改模板、或修正前學員存檔都會重建 resources 列換掉 id，所以 id 對不上時再比名稱＋網址，
- * 但每種內容最多補鎖一筆，學員自己另存的同名資源不會被一起鎖住。
+ * 補鎖的筆數以模板上該內容的位置數為上限（見 buildContentSlots），天數相同的關聯優先，
+ * 學員自己另存的同名資源不會被一起鎖住；模板在不同天放同名同網址的資源則每一天各鎖一筆（daodao#355）。
  */
 export const pickCoachLockedRelationIds = <R extends ResourceLink & { id: number }>(
   templateLinks: ResourceLink[],
   relations: R[]
 ): Set<number> => {
   const templateResourceIds = new Set(templateLinks.map(link => link.resource_id));
+  const slots = buildContentSlots(templateLinks);
   const lockedIds = new Set<number>();
-  const coveredContents = new Set<string>();
   for (const relation of relations) {
     if (!templateResourceIds.has(relation.resource_id)) continue;
     lockedIds.add(relation.id);
-    coveredContents.add(resourceContentKey(relation.resources));
+    takeSlot(slots.get(resourceContentKey(relation.resources)), parseResourceDay(relation.note), false);
   }
 
-  const pendingContents = new Set(templateLinks.map(link => resourceContentKey(link.resources)).filter(key => !coveredContents.has(key)));
-  for (const relation of relations) {
-    const key = resourceContentKey(relation.resources);
-    if (lockedIds.has(relation.id) || !pendingContents.has(key)) continue;
-    lockedIds.add(relation.id);
-    pendingContents.delete(key);
+  for (const sameDayOnly of [true, false]) {
+    for (const relation of relations) {
+      if (lockedIds.has(relation.id)) continue;
+      if (takeSlot(slots.get(resourceContentKey(relation.resources)), parseResourceDay(relation.note), sameDayOnly)) {
+        lockedIds.add(relation.id);
+      }
+    }
   }
   return lockedIds;
 };
