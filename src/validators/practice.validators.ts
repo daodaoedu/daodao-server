@@ -774,6 +774,9 @@ export const practiceEntityResponseSchema = z.object({
   practiceTimePeriods: z.array(z.string()).openapi({ description: '偏好實踐時段', example: ['morning', 'evening'] }),
   otherContext: z.string().optional().openapi({ description: '其他說明' }),
   status: practiceStatusSchema,
+  // 編輯頁靠這個欄位顯示原本的隱私；缺了會預設成 private、存檔把公開實踐改回私人（#358）
+  // 用 string 而非 enum：DB 欄位是 VARCHAR，舊資料若有其他值不應讓整個回應驗證失敗
+  privacyStatus: z.string().optional().openapi({ description: '隱私狀態（private／public／delayed）', example: 'public' }),
   hasResources: z.boolean().openapi({ description: '是否有相關資源', example: true }),
   resources: z.array(practiceResourceEntitySchema).optional().openapi({
     description: '使用的資源列表',
