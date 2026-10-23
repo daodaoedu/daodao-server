@@ -187,9 +187,13 @@ const emailHistoryStatsSchema = z.object({
     description: '待發送數量',
     example: 20
   }),
+  skippedCount: z.number().int().openapi({
+    description: '略過數量（後台停用模板、沒有真的寄出；不計入已發送與成功率）',
+    example: 15
+  }),
   successRate: z.number().openapi({
-    description: '成功率（百分比）',
-    example: 95.0
+    description: '成功率（百分比）＝ sent ÷ (sent + failed)，排除 skipped 與 pending',
+    example: 96.94
   }),
   openedCount: z.number().int().openapi({
     description: '已開啟數量',
