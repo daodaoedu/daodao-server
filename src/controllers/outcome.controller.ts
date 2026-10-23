@@ -20,7 +20,7 @@ import {
 
 /**
  * 創建成果
- * POST /api/v1/outcomes/projects/:projectId
+ * POST /api/v1/projects/:projectId/outcomes
  */
 export const createOutcome = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
@@ -45,7 +45,7 @@ export const createOutcome = asyncHandler(async (req: Request, res: Response): P
 
 /**
  * 獲取專案的成果列表
- * GET /api/v1/outcomes/projects/:projectId
+ * GET /api/v1/projects/:projectId/outcomes
  */
 export const getOutcomes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { projectId } = req.params;
@@ -59,7 +59,7 @@ export const getOutcomes = asyncHandler(async (req: Request, res: Response): Pro
 
 /**
  * 獲取用戶的成果列表
- * GET /api/v1/outcomes/my
+ * GET /api/v1/projects/outcomes/me
  */
 export const getMyOutcomes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
@@ -77,7 +77,7 @@ export const getMyOutcomes = asyncHandler(async (req: Request, res: Response): P
 
 /**
  * 獲取成果詳情
- * GET /api/v1/outcomes/projects/:projectId/:outcomeId
+ * GET /api/v1/projects/:projectId/outcomes/:outcomeId
  */
 export const getOutcomeDetail = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { projectId, outcomeId } = req.params;
@@ -97,7 +97,7 @@ export const getOutcomeDetail = asyncHandler(async (req: Request, res: Response)
 
 /**
  * 更新成果
- * PUT /api/v1/outcomes/projects/:projectId/:outcomeId
+ * PUT /api/v1/projects/:projectId/outcomes/:outcomeId
  */
 export const updateOutcome = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
@@ -126,24 +126,8 @@ export const updateOutcome = asyncHandler(async (req: Request, res: Response): P
 });
 
 /**
- * 獲取公開成果列表（分頁）
- * GET /api/v1/outcomes/public
- */
-export const getPublicOutcomes = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const page = parseInt(req.query.page as string) || 1;
-  const pageSize = parseInt(req.query.pageSize as string) || 10;
-
-  const result = await outcomeService.getPublicOutcomes(page, pageSize);
-
-  // 驗證響應格式
-  const validatedResponse = outcomeListResponseSchema.parse(result);
-
-  res.json(validatedResponse);
-});
-
-/**
  * 刪除成果
- * DELETE /api/v1/outcomes/projects/:projectId/:outcomeId
+ * DELETE /api/v1/projects/:projectId/outcomes/:outcomeId
  */
 export const deleteOutcome = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const user = req.user as UserJwtPayload;
