@@ -482,7 +482,7 @@ const getMyLearningFootprints = async (
 // Helper functions
 
 const getPracticesByCategory = async (userId: number, includeArchived: boolean): Promise<Array<{ category: string; count: number; avgProgress: number }>> => {
-  const where: Record<string, unknown> = { user_id: userId };
+  const where: Record<string, unknown> = { user_id: userId, deleted_at: null };
   if (!includeArchived) {
     where.status = { not: 'archived' };
   }
@@ -568,6 +568,7 @@ const getProgressStats = async (userId: number): Promise<{ averageProgress: numb
     where: {
       user_id: userId,
       practices: {
+        deleted_at: null,
         status: { not: 'archived' }
       }
     }
@@ -577,6 +578,7 @@ const getProgressStats = async (userId: number): Promise<{ averageProgress: numb
   const practiceCount = await prisma.practices.count({
     where: {
       user_id: userId,
+      deleted_at: null,
       status: { not: 'archived' }
     }
   });
