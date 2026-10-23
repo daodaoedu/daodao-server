@@ -400,8 +400,8 @@ fi
 ### 2. 環境檢查
 添加健康檢查端點：
 ```typescript
-// src/routes/health.routes.ts
-router.get('/permissions-check', async (req, res) => {
+// 例：在 src/app.ts 的 setupTypescriptRoutes 內新增（/api/v1/health 系列端點都定義在 app.ts）
+app.get('/api/v1/health/permissions-check', async (req, res) => {
   const permissionCount = await prisma.permissions.count();
   const roleCount = await prisma.roles.count();
   const rolePermissionCount = await prisma.role_permissions.count();
