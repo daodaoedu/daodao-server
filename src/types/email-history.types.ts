@@ -78,7 +78,9 @@ export interface EmailHistoryStats {
   failedCount: number;
   /** 待發送數量 */
   pendingCount: number;
-  /** 成功率（百分比） */
+  /** 略過數量（後台停用模板、沒有真的寄出；不計入已發送與成功率） */
+  skippedCount: number;
+  /** 成功率（百分比）＝ sent ÷ (sent + failed)，排除 skipped 與 pending */
   successRate: number;
   /** 已開啟數量 */
   openedCount: number;

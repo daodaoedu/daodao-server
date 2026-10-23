@@ -158,50 +158,64 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
     total: bigint
     success: bigint
     failed: bigint
+    skipped: bigint
     curr_total: bigint
     curr_success: bigint
     curr_failed: bigint
+    curr_skipped: bigint
     prev_total: bigint
     prev_success: bigint
     prev_failed: bigint
+    prev_skipped: bigint
   }>>`
     SELECT
       COUNT(*)::bigint as total,
       COUNT(*) FILTER (WHERE status = 'sent')::bigint as success,
       COUNT(*) FILTER (WHERE status = 'failed')::bigint as failed,
+      COUNT(*) FILTER (WHERE status = 'skipped')::bigint as skipped,
       COUNT(*) FILTER (WHERE sent_at >= ${thisMonthStart})::bigint as curr_total,
       COUNT(*) FILTER (WHERE status = 'sent' AND sent_at >= ${thisMonthStart})::bigint as curr_success,
       COUNT(*) FILTER (WHERE status = 'failed' AND sent_at >= ${thisMonthStart})::bigint as curr_failed,
+      COUNT(*) FILTER (WHERE status = 'skipped' AND sent_at >= ${thisMonthStart})::bigint as curr_skipped,
       COUNT(*) FILTER (WHERE sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_total,
       COUNT(*) FILTER (WHERE status = 'sent' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_success,
-      COUNT(*) FILTER (WHERE status = 'failed' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_failed
+      COUNT(*) FILTER (WHERE status = 'failed' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_failed,
+      COUNT(*) FILTER (WHERE status = 'skipped' AND sent_at < ${thisMonthStart} AND sent_at >= ${lastMonthStart})::bigint as prev_skipped
     FROM email_logs
   `;
 
-  const total = Number(result[0]?.total ?? 0);
-  const success = Number(result[0]?.success ?? 0);
-  const failed = Number(result[0]?.failed ?? 0);
-  const currTotal = Number(result[0]?.curr_total ?? 0);
-  const currSuccess = Number(result[0]?.curr_success ?? 0);
-  const currFailed = Number(result[0]?.curr_failed ?? 0);
-  const prevTotal = Number(result[0]?.prev_total ?? 0);
-  const prevSuccess = Number(result[0]?.prev_success ?? 0);
-  const prevFailed = Number(result[0]?.prev_failed ?? 0);
+  const n = (key: keyof NonNullable<typeof result[0]>) => Number(result[0]?.[key] ?? 0);
 
-  const curSent = currTotal;
-  const prevSent = prevTotal;
-  const curSuccessRate = currTotal > 0 ? Math.round((currSuccess / currTotal) * 1000) / 10 : 0;
-  const prevSuccessRate = prevTotal > 0 ? Math.round((prevSuccess / prevTotal) * 1000) / 10 : 0;
-  const curBounceRate = currTotal > 0 ? Math.round((currFailed / currTotal) * 1000) / 10 : 0;
-  const prevBounceRate = prevTotal > 0 ? Math.round((prevFailed / prevTotal) * 1000) / 10 : 0;
+  // skipped（後台停用模板、沒有真的寄出）不算發送，也不進成功率／退信率分母（daodao#294）
+  const success = n('success');
+  const failed = n('failed');
+  const skipped = n('skipped');
+  const currSuccess = n('curr_success');
+  const currFailed = n('curr_failed');
+  const prevSuccess = n('prev_success');
+  const prevFailed = n('prev_failed');
+
+  const totalSent = n('total') - skipped;
+  const curSent = n('curr_total') - n('curr_skipped');
+  const prevSent = n('prev_total') - n('prev_skipped');
+
+  /** 分子 ÷ 實際嘗試寄出數（sent + failed），四捨五入到小數一位 */
+  const rate = (part: number, sent: number, fail: number) =>
+    sent + fail > 0 ? Math.round((part / (sent + fail)) * 1000) / 10 : 0;
+
+  const curSuccessRate = rate(currSuccess, currSuccess, currFailed);
+  const prevSuccessRate = rate(prevSuccess, prevSuccess, prevFailed);
+  const curBounceRate = rate(currFailed, currSuccess, currFailed);
+  const prevBounceRate = rate(prevFailed, prevSuccess, prevFailed);
 
   const pct = (cur: number, prev: number) =>
     prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 1000) / 10;
 
   return {
-    totalSent: total,
-    successRate: total > 0 ? Math.round((success / total) * 1000) / 10 : 0,
-    bounceRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : 0,
+    totalSent,
+    skippedCount: skipped,
+    successRate: rate(success, success, failed),
+    bounceRate: rate(failed, success, failed),
     queueSize: 0,
     sentChange: pct(curSent, prevSent),
     successRateChange: pct(curSuccessRate, prevSuccessRate),
