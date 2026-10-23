@@ -224,49 +224,11 @@ export const outcomeParamsSchema = z.object({
   description: '包含專案ID和成果ID的路徑參數'
 });
 
-/**
- * 專案路徑參數驗證模式（成果專用）
- */
-export const outcomeProjectParamsSchema = z.object({
-  projectId: z.string({
-    message: '專案ID為必填項目'
-  }).min(1, '專案ID不能為空')
-    .openapi({
-      description: '查詢成果所屬的專案唯一識別ID',
-      example: 'project_123',
-      examples: ['project_123', 'my-learning-journey', 'bootcamp-2024']
-    })
-}).openapi({
-  description: '包含專案ID的路徑參數（用於查詢成果）'
-});
-
-/**
- * 公開成果查詢參數驗證模式
- */
-export const publicOutcomesQuerySchema = z.object({
-  page: z.string().regex(/^\d+$/, '頁數必須是正整數').transform(Number).optional()
-    .openapi({
-      description: '公開成果列表的頁碼',
-      example: '1',
-      examples: ['1', '2', '3']
-    }),
-  pageSize: z.string().regex(/^\d+$/, '每頁數量必須是正整數').transform(Number).optional()
-    .openapi({
-      description: '每頁顯示的公開成果數量',
-      example: '10',
-      examples: ['10', '20', '30']
-    })
-}).openapi({
-  description: '公開成果列表查詢的參數設定'
-});
-
 // 導出驗證類型
 export type CreateOutcomeData = z.infer<typeof createOutcomeSchema>;
 export type UpdateOutcomeData = z.infer<typeof updateOutcomeSchema>;
 export type OutcomeQueryParams = z.infer<typeof outcomeQuerySchema>;
 export type OutcomeParamsData = z.infer<typeof outcomeParamsSchema>;
-export type OutcomeProjectParamsData = z.infer<typeof outcomeProjectParamsSchema>;
-export type PublicOutcomesQueryData = z.infer<typeof publicOutcomesQuerySchema>;
 
 // =====================================
 // Response Validation Schemas
