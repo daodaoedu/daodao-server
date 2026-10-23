@@ -16,6 +16,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
 import type {
   ApiSuccessResponse,
   PaginatedApiResponse
@@ -87,7 +88,7 @@ const DEFAULT_TEMPLATES: Omit<PracticeTemplateEntity, 'createdAt' | 'answerCount
     frequencyMaxDays: 7,
     durationDays: 28,
     sessionDurationMinutes: 60,
-    practiceTimePeriods: ['anytime'],
+    practiceTimePeriods: [],
     suggestedTags: ['閱讀', '深度學習']
   },
   {
@@ -147,7 +148,7 @@ const DEFAULT_TEMPLATES: Omit<PracticeTemplateEntity, 'createdAt' | 'answerCount
     frequencyMaxDays: 3,
     durationDays: 90,
     sessionDurationMinutes: 60,
-    practiceTimePeriods: ['anytime'],
+    practiceTimePeriods: [],
     suggestedTags: ['程式', '技術', '學習']
   },
   {
@@ -288,7 +289,7 @@ export async function getTemplates(
         frequencyMaxDays: t.frequency_max_days,
         durationDays: t.duration_days,
         sessionDurationMinutes: t.session_duration_minutes,
-        practiceTimePeriods: t.practice_time_periods || [],
+        practiceTimePeriods: sanitizePracticeTimePeriods(t.practice_time_periods),
         suggestedTags: tagsByTemplateId.get(t.id) || [],
         resources: resourcesByTemplateId.get(t.id),
         answerCount: countByTemplateId.get(t.id) ?? 0,
@@ -398,7 +399,7 @@ export async function getTemplateById(
         frequencyMaxDays: template.frequency_max_days,
         durationDays: template.duration_days,
         sessionDurationMinutes: template.session_duration_minutes,
-        practiceTimePeriods: template.practice_time_periods || [],
+        practiceTimePeriods: sanitizePracticeTimePeriods(template.practice_time_periods),
         suggestedTags: templateTags.map(et => et.tags.name),
         resources: resources.length > 0 ? resources : undefined,
         organization: template.organization ? {
@@ -578,7 +579,7 @@ export async function getRandomTemplates(
         frequencyMaxDays: t.frequency_max_days,
         durationDays: t.duration_days,
         sessionDurationMinutes: t.session_duration_minutes,
-        practiceTimePeriods: t.practice_time_periods || [],
+        practiceTimePeriods: sanitizePracticeTimePeriods(t.practice_time_periods),
         suggestedTags: tagsByTemplateId.get(t.id) || [],
         resources: resourcesByTemplateId.get(t.id),
         answerCount: countByTemplateId.get(t.id) ?? 0,
@@ -756,7 +757,7 @@ async function createTemplateCore(
     frequencyMaxDays: template.frequency_max_days,
     durationDays: template.duration_days,
     sessionDurationMinutes: template.session_duration_minutes,
-    practiceTimePeriods: template.practice_time_periods || [],
+    practiceTimePeriods: sanitizePracticeTimePeriods(template.practice_time_periods),
     suggestedTags,
     answerCount: 0,
     createdAt: template.created_at?.toISOString() || new Date().toISOString()
@@ -1114,7 +1115,7 @@ export async function getPopularTemplates(
         frequencyMaxDays: t.frequency_max_days,
         durationDays: t.duration_days,
         sessionDurationMinutes: t.session_duration_minutes,
-        practiceTimePeriods: t.practice_time_periods || [],
+        practiceTimePeriods: sanitizePracticeTimePeriods(t.practice_time_periods),
         suggestedTags: tagsByTemplateId.get(t.id) || [],
         resources: resourcesByTemplateId.get(t.id),
         answerCount: countByTemplateId.get(t.id) ?? 0,

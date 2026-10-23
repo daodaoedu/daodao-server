@@ -126,6 +126,28 @@ describe('me response contracts', () => {
     expect(res.body.pagination).toBeDefined();
   });
 
+  // daodao#382：舊燈塔模板派發的實踐 practiceTimePeriods 含 "30"，不可讓整包列表回 400
+  it('returns 200 and drops invalid practiceTimePeriods values instead of failing the whole list', async () => {
+    meService.getMyPractices.mockResolvedValueOnce({
+      success: true,
+      data: [
+        { ...mockPractice, id: 'practice-uuid-legacy', practiceTimePeriods: ['30'] },
+        { ...mockPractice, id: 'practice-uuid-mixed', practiceTimePeriods: ['30', 'morning', 'anytime', 'commute'] },
+        mockPractice
+      ],
+      pagination: { currentPage: 1, totalPages: 1, totalItems: 3, itemsPerPage: 10, hasNext: false, hasPrev: false },
+      timestamp: new Date().toISOString()
+    });
+
+    const res = await request(app).get('/api/v1/me/practices').expect(200);
+    expect(res.body.data.map((p: { practiceTimePeriods: string[] }) => p.practiceTimePeriods)).toEqual([
+      [],
+      ['morning', 'commute'],
+      ['morning', 'evening']
+    ]);
+    expect(res.text).not.toContain('"30"');
+  });
+
   it('validates GET /me/practice-stats against myPracticeStatsApiResponseSchema', async () => {
     const res = await request(app).get('/api/v1/me/practice-stats').expect(200);
     expect(() => myPracticeStatsApiResponseSchema.parse(res.body)).not.toThrow();
