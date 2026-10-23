@@ -1159,6 +1159,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
       prismaClient.practices.aggregate({
         where: {
           user_id: userId,
+          deleted_at: null,
           status: { not: 'archived' }
         },
         _count: {
@@ -1170,6 +1171,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
         where: {
           user_id: userId,
           practices: {
+            deleted_at: null,
             status: { not: 'archived' }
           }
         },
@@ -1183,6 +1185,7 @@ export async function getUserStats(userId: number): Promise<ApiSuccessResponse<P
       by: ['status'],
       where: {
         user_id: userId,
+        deleted_at: null,
         status: { not: 'archived' }
       },
       _count: {
@@ -2278,6 +2281,7 @@ export async function getRecentPracticeCount(userId: number, days = 7): Promise<
   return prismaClient.practices.count({
     where: {
       user_id: userId,
+      deleted_at: null,
       created_at: {
         gte: since
       }
