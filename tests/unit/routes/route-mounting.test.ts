@@ -10,7 +10,9 @@
  *      所以 /api/v1/feedback 掛 requireOnboardingComplete
  * 2. 結構測試：檢查 Express router stack（不是 import 字串）——src/routes 底下每個 route 檔匯出的
  *    Router 都必須真的被 app.use 掛進 app（直接或巢狀）；只匯出 factory 的 route 檔（dev-login）
- *    必須被一個已掛載的 route 檔引入。已知未掛載的死檔列在 KNOWN_UNMOUNTED（daodao#298）。
+ *    必須被一個已掛載的 route 檔引入。沒有豁免清單：未掛載的 route 檔要嘛掛上、要嘛刪除。
+ * 3. Regression（daodao#298）：outcome／proxy／health／index 四個從未掛載的路由檔已刪除——
+ *    /api/v1/outcomes/*、/api/v1/proxy/image 不存在（404），/api/v1/health 仍是 app.ts 那支。
  */
 
 import { prismaMock } from '@tests/utils/prisma-mock';
@@ -37,16 +39,6 @@ import feedbackRoutes from '@/routes/feedback.routes';
 
 const ROUTES_DIR = path.resolve(__dirname, '../../../src/routes');
 
-/**
- * 已知未掛載、且本次不處理的 route 檔，追蹤於 daodao#298（決定掛載或刪除）。
- * 不要把新的 route 檔加進來規避這個測試——該做的是在 app.ts 掛載它。
- */
-const KNOWN_UNMOUNTED = new Set([
-  'index.ts', // 舊的彙整 router，從未被 app.ts 使用（daodao#298）
-  'health.routes.ts', // app.ts 直接定義 GET /api/v1/health，這個 router 只被 index.ts 引用（daodao#298）
-  'outcome.routes.ts', // 沒有任何檔案 import（/api/v1/outcomes 不存在）（daodao#298）
-  'proxy.routes.ts', // 沒有任何檔案 import（圖片代理 /api/v1/proxy/* 不存在）（daodao#298）
-]);
 
 interface Layer {
   handle: unknown;
@@ -126,7 +118,7 @@ describe('route mounting', () => {
     const mounted = collectMountedHandles(appStack(app));
     const routeFiles = fs
       .readdirSync(ROUTES_DIR)
-      .filter((f) => f.endsWith('.ts') && !KNOWN_UNMOUNTED.has(f));
+      .filter((f) => f.endsWith('.ts'));
 
     const loaded = routeFiles.map((file) => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -158,17 +150,25 @@ describe('route mounting', () => {
     });
   });
 
-  it('KNOWN_UNMOUNTED entries are really unmounted (drop them from the allowlist once daodao#298 mounts or deletes them)', () => {
-    const mounted = collectMountedHandles(appStack(app));
-    const nowMounted = [...KNOWN_UNMOUNTED].filter((file) => {
-      const full = path.join(ROUTES_DIR, file);
-      if (!fs.existsSync(full)) return false;
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require(full) as Record<string, unknown>;
-      return Object.values(mod)
-        .filter(isRouter)
-        .some((router) => mounted.has(router));
-    });
-    expect(nowMounted).toEqual([]);
+  it('src/routes 沒有 router 彙整檔 index.ts（從未掛載的舊彙整 router，daodao#298）', () => {
+    expect(fs.existsSync(path.join(ROUTES_DIR, 'index.ts'))).toBe(false);
+  });
+
+  it.each([
+    ['get', '/api/v1/outcomes/public'],
+    ['get', '/api/v1/outcomes/my'],
+    ['post', '/api/v1/outcomes/projects/1'],
+    ['get', '/api/v1/proxy/image?url=https://pub-abc.r2.dev/a.png'],
+  ] as const)('never-mounted endpoint %s %s stays absent (404, daodao#298)', async (method, url) => {
+    const res = await request(app)[method](url);
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /api/v1/health is still served by app.ts (liveness payload)', async () => {
+    const res = await request(app).get('/api/v1/health');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(
+      expect.objectContaining({ status: 'ok', uptime: expect.any(Number), timestamp: expect.any(String) })
+    );
   });
 });

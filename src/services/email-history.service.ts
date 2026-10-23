@@ -11,6 +11,7 @@ import type {
   EmailHistoryStats,
   EmailHistoryResponse
 } from '../types/email-history.types';
+import { EMAIL_STATUS } from '../types/email';
 
 /**
  * 取得郵件發送歷史
@@ -161,6 +162,7 @@ const getEmailHistoryStats = async (
   let sentCount = 0;
   let failedCount = 0;
   let pendingCount = 0;
+  let skippedCount = 0;
   let totalRecords = 0;
 
   for (const group of statusGroups) {
@@ -168,25 +170,29 @@ const getEmailHistoryStats = async (
     totalRecords += count;
 
     switch (group.status) {
-      case 'sent':
-        sentCount = count;
+      case EMAIL_STATUS.SENT:
+        sentCount += count;
         break;
-      case 'failed':
-        failedCount = count;
+      case EMAIL_STATUS.FAILED:
+        failedCount += count;
         break;
-      case 'pending':
-        pendingCount = count;
+      case EMAIL_STATUS.PENDING:
+        pendingCount += count;
+        break;
+      case EMAIL_STATUS.SKIPPED:
+        // 後台停用模板、沒有真的寄出，不算已發送（daodao#294）
+        skippedCount += count;
         break;
       default:
-        // 其他狀態計入已發送
-        sentCount += count;
+        // 未知狀態只計入總數，不灌進已發送
         break;
     }
   }
 
-  // 計算成功率
-  const successRate = totalRecords > 0
-    ? Number(((sentCount / totalRecords) * 100).toFixed(2))
+  // 成功率只看真的嘗試寄出的信（sent + failed），排除 skipped 與 pending
+  const attemptedCount = sentCount + failedCount;
+  const successRate = attemptedCount > 0
+    ? Number(((sentCount / attemptedCount) * 100).toFixed(2))
     : 0;
 
   // 計算開啟統計
@@ -206,6 +212,7 @@ const getEmailHistoryStats = async (
     sentCount,
     failedCount,
     pendingCount,
+    skippedCount,
     successRate,
     openedCount,
     openRate
