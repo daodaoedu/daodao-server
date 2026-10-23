@@ -1532,7 +1532,9 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
       where: {
         entity_type: 'practice',
         entity_id: { in: practiceIds },
-        deleted_at: null
+        deleted_at: null,
+        // 資源本身已軟刪（DELETE /resources/:id）時不列出；涵蓋修正前刪除、關聯還留著的資料（daodao#375）
+        resources: { deleted_at: null }
       },
       include: {
         resources: {
@@ -1614,8 +1616,9 @@ async function loadCoachLockedRelationIds(practices: CoachLockSubject[], relatio
 async function getCoachLockedResources(practice: CoachLockSubject): Promise<Array<{ relationId: number; name: string; url: string; dayNumber: number | null }>> {
   if (!isCoachResourceLockActive(practice)) return [];
 
+  // 已刪資源不顯示在詳情，學員存檔不會送回，不能再當成鎖定資源擋下（daodao#375）
   const relations = (await prismaClient.entity_resources.findMany({
-    where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null },
+    where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null, resources: { deleted_at: null } },
     include: { resources: { select: { name: true, url: true } } }
   })) ?? [];
   const lockedRelationIds = await loadCoachLockedRelationIds([practice], relations);

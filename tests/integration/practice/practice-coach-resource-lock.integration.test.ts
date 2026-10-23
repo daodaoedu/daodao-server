@@ -322,4 +322,55 @@ describe('教練資源鎖定（daodao#278）', () => {
       }));
     });
   });
+
+  describe('資源本身已軟刪、實踐關聯還在（daodao#375）', () => {
+    const deletedAt = new Date('2026-10-22T13:13:00.000Z');
+    const withResourceDeleted = (relation: (typeof practiceRelations)[number]) =>
+      ({ ...relation, resources: { ...relation.resources, deleted_at: deletedAt } });
+
+    /** 模擬 DB：查詢帶 resources.deleted_at = null 時才會濾掉已刪資源 */
+    const mockPracticeRelations = (relations: Array<Record<string, any>>) => {
+      prismaMock.entity_resources.findMany.mockImplementation((async (args: any) => {
+        if (args?.where?.entity_type === 'practice_template') {
+          return [{ entity_id: templateId, resource_id: coachResourceId, resources: { name: '暖身影片', url: 'https://example.com/warmup' } }];
+        }
+        return args?.where?.resources?.deleted_at === null
+          ? relations.filter(relation => !relation.resources.deleted_at)
+          : relations;
+      }) as any);
+    };
+
+    it('GET 詳情：不列出已刪除的資源', async () => {
+      mockPractice({ cohort_id: null as unknown as number });
+      mockPracticeRelations([practiceRelations[0], withResourceDeleted(practiceRelations[1])]);
+
+      const response = await request(app).get(PRACTICE_URL).set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(200);
+      const names = (response.body.data.resources as Array<{ name: string }>).map(resource => resource.name);
+      expect(names).toEqual(['暖身影片']);
+    });
+
+    it('教練刪掉自己的資源後，學員存檔不帶那筆 → 200，不被已刪資源的鎖擋下', async () => {
+      mockPractice();
+      mockPracticeRelations([withResourceDeleted(practiceRelations[0]), practiceRelations[1]]);
+
+      const response = await put({ resources: [{ name: '我的筆記' }] });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('GET 詳情：其餘教練資源的鎖定不受影響', async () => {
+      mockPractice();
+      mockPracticeRelations([...practiceRelations, withResourceDeleted({ ...practiceRelations[1], id: 502, resource_id: 201 })]);
+
+      const response = await request(app).get(PRACTICE_URL).set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.resources).toEqual([
+        expect.objectContaining({ name: '暖身影片', isLocked: true }),
+        expect.objectContaining({ name: '我的筆記', isLocked: false })
+      ]);
+    });
+  });
 });
