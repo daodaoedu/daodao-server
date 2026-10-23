@@ -728,6 +728,32 @@ describe('Resource Service', () => {
       // Assert: Verify tags are not updated
       expect(mockTagService.setEntityTags).not.toHaveBeenCalled();
     });
+
+    it('回應是交易提交後的新資料，不是改名前的舊名稱（daodao#375）', async () => {
+      const existingResource = createTestResource({ external_id: resourceId, created_by: userId, name: '舊名稱' });
+      let committed = false;
+      prismaMock.$transaction.mockImplementation((async (fn: any) => {
+        const result = await fn(prismaMock);
+        committed = true;
+        return result;
+      }) as any);
+      prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
+      prismaMock.resources.update.mockResolvedValue(existingResource);
+      // getResourceById 讀到的內容取決於交易是否已提交
+      prismaMock.resources.findFirst.mockImplementationOnce((async () =>
+        ({ ...existingResource, name: committed ? '新名稱' : '舊名稱' })) as any);
+      prismaMock.$queryRaw.mockResolvedValueOnce([]);
+      prismaMock.resource_review.aggregate.mockResolvedValueOnce({
+        _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
+        _count: { id: 0 },
+        _sum: {}, _min: {}, _max: {}
+      } as any);
+      mockResponseHelper.createSuccessResponse.mockImplementation((data) => ({ success: true, data }));
+
+      const result = await resourceService.updateResource(resourceId, { name: '新名稱' }, userId);
+
+      expect(result.data?.name).toBe('新名稱');
+    });
   });
 
   describe('deleteResource', () => {
@@ -766,6 +792,20 @@ describe('Resource Service', () => {
       });
 
       expect(result.success).toBe(true);
+    });
+
+    it('一併軟刪實踐上指向這筆資源的關聯，實踐詳情不再列出（daodao#375）', async () => {
+      const existingResource = createTestResource({ external_id: resourceId, created_by: userId });
+      prismaMock.resources.findFirst.mockResolvedValue(existingResource);
+      prismaMock.resources.update.mockResolvedValue(existingResource);
+      prismaMock.entity_resources.updateMany.mockResolvedValue({ count: 1 } as any);
+
+      await resourceService.deleteResource(resourceId, userId);
+
+      expect(prismaMock.entity_resources.updateMany).toHaveBeenCalledWith({
+        where: { resource_id: existingResource.id, entity_type: 'practice', deleted_at: null },
+        data: { deleted_at: expect.any(Date) }
+      });
     });
 
     it('should throw NotFoundError when resource not found', async () => {
