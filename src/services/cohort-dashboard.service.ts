@@ -3,6 +3,7 @@ import { ForbiddenError } from '../middleware/error.middleware';
 import type { CohortDashboardQuery, CohortParticipantsQuery } from '../validators/cohort-dashboard.validators';
 import { prisma } from './database/prisma.service';
 import { startOfWeekUtc } from './cohort-stat.service';
+import { inclusiveEndDate } from '../utils/date-utils';
 
 /**
  * 儀表板改走即時查詢（FRD 3.3）：所有區塊都吃「實踐篩選 × 日期範圍」，
@@ -46,6 +47,25 @@ const practiceWhere = (scope: Scope): Prisma.Sql => Prisma.sql`
 const checkinRange = (range: Range): Prisma.Sql => Prisma.sql`pc.checkin_date >= ${range.from}::date AND pc.checkin_date <= ${range.to}::date`;
 const practiceJoin = Prisma.sql`practices p LEFT JOIN practice_templates pt ON pt.id = p.template_id`;
 
+/**
+ * 場次「連結實踐模板」是實踐清單與日期的正本（daodao#343）：還沒有學員實踐的模板也要出現在篩選與總覽，
+ * 日期與編輯頁一致＝綁定開始日（未指定時用場次開始日）＋模板天數（含頭尾），不從學員實踐的 MIN/MAX 推。
+ */
+const linkedPractices = (
+  cohortStartDate: Date,
+  bindings: Array<{ start_date: Date | null; practice_template: { title: string; duration_days: number | null } }>
+): Array<{ title: string; startDate: Date; endDate: Date | null }> => {
+  const seen = new Set<string>();
+  return bindings.flatMap(binding => {
+    const title = binding.practice_template.title;
+    if (seen.has(title)) return [];
+    seen.add(title);
+    const startDate = binding.start_date ?? cohortStartDate;
+    const endDate = binding.practice_template.duration_days ? inclusiveEndDate(startDate, binding.practice_template.duration_days) : null;
+    return [{ title, startDate, endDate }];
+  });
+};
+
 const getDashboard = async (programId: number, cohortId: number, actorId: number, query: CohortDashboardQuery, now = new Date()) => {
   const cohort = await assertCoach(programId, cohortId, actorId);
   const range = resolveRange(cohort, query, now);
@@ -55,7 +75,12 @@ const getDashboard = async (programId: number, cohortId: number, actorId: number
   const thisWeekStart = addDays(utcDate(dateOnly(now)), -6);
   const lastWeekStart = addDays(thisWeekStart, -7);
 
-  const [enrollmentRows, kpiRows, practiceRows, overviewRows, heatRows, tagRows, moodRows, trendRows, hourRows] = await Promise.all([
+  const [bindings, enrollmentRows, kpiRows, practiceRows, overviewRows, heatRows, tagRows, moodRows, trendRows, hourRows] = await Promise.all([
+    prisma.cohort_templates.findMany({
+      where: { cohort_id: cohortId, unbound_at: null },
+      orderBy: [{ bound_at: 'asc' }, { id: 'asc' }],
+      select: { start_date: true, practice_template: { select: { title: true, duration_days: true } } }
+    }),
     prisma.$queryRaw<Array<{ enrolled: bigint }>>`
       SELECT COUNT(*)::bigint AS enrolled FROM cohort_enrollments
       WHERE cohort_id = ${cohortId} AND status = 'joined' AND role = 'member'
@@ -130,15 +155,23 @@ const getDashboard = async (programId: number, cohortId: number, actorId: number
   const thisWeek = sum(thisWeekStart, addDays(thisWeekStart, 7));
   const lastWeek = sum(lastWeekStart, thisWeekStart);
   const moodByKey = new Map(moodRows.map(row => [row.mood, count(row.count)]));
+  const linked = linkedPractices(cohort.start_date, bindings);
+  const linkedTitles = new Set(linked.map(item => item.title));
+  const overviewByTitle = new Map(overviewRows.map(row => [row.title, row]));
+  const emptyOverview = { started: 0n, checkins: 0n, active_days: 0n, participant_days: 0n, avg_length: null };
+  const overview = [
+    ...linked.map(item => ({ ...emptyOverview, ...overviewByTitle.get(item.title), title: item.title, start_date: item.startDate, end_date: item.endDate })),
+    ...overviewRows.filter(row => !linkedTitles.has(row.title))
+  ];
 
   return {
     computedAt: now,
     range: { from: dateOnly(range.from), to: dateOnly(range.to) },
     practiceTitle: scope.practiceTitle,
-    practices: practiceRows.map(row => ({ title: row.title, startDate: row.start_date, endDate: row.end_date })),
+    practices: [...linked, ...practiceRows.filter(row => !linkedTitles.has(row.title)).map(row => ({ title: row.title, startDate: row.start_date, endDate: row.end_date }))],
     kpi: { enrolled: count(enrollmentRows[0]?.enrolled), activated: count(kpiRows[0]?.activated), activeThisWeek: count(kpiRows[0]?.active_this_week) },
     checkins: count(kpiRows[0]?.checkins),
-    practiceOverview: overviewRows.map(row => ({
+    practiceOverview: overview.map(row => ({
       title: row.title, startDate: row.start_date, endDate: row.end_date,
       startedCount: count(row.started), checkinCount: count(row.checkins),
       avgCheckinPeople: count(row.active_days) === 0 ? 0 : Math.round((count(row.participant_days) / count(row.active_days)) * 10) / 10,
