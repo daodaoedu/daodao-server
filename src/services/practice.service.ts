@@ -30,6 +30,7 @@ import {
 import { calculatePagination } from '../utils/pagination-helper';
 import { inclusiveEndDate, taipeiToday } from '../utils/date-utils';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
+import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
 import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import {
   INITIAL_PROGRESS,
@@ -283,7 +284,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
             sessionDurationMinutes: practice.session_duration_minutes || undefined,
-      practiceTimePeriods: practice.practice_time_periods || [],
+      practiceTimePeriods: sanitizePracticeTimePeriods(practice.practice_time_periods),
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       privacyStatus: practice.privacy_status || 'public',
@@ -454,7 +455,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
             sessionDurationMinutes: practice.session_duration_minutes || undefined,
-      practiceTimePeriods: practice.practice_time_periods || [],
+      practiceTimePeriods: sanitizePracticeTimePeriods(practice.practice_time_periods),
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       privacyStatus: practice.privacy_status || 'public',
@@ -686,7 +687,7 @@ async function createPracticeCore(
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
       sessionDurationMinutes: practice.session_duration_minutes || undefined,
-      practiceTimePeriods: practice.practice_time_periods || [],
+      practiceTimePeriods: sanitizePracticeTimePeriods(practice.practice_time_periods),
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       privacyStatus: practice.privacy_status || 'public',
@@ -996,7 +997,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
       frequencyMinDays: practice.frequency_min_days || undefined,
       frequencyMaxDays: practice.frequency_max_days || undefined,
             sessionDurationMinutes: practice.session_duration_minutes || undefined,
-      practiceTimePeriods: practice.practice_time_periods || [],
+      practiceTimePeriods: sanitizePracticeTimePeriods(practice.practice_time_periods),
       otherContext: practice.other_context || undefined,
       status: practice.status as PracticeStatus || 'active',
       privacyStatus: practice.privacy_status || 'public',
@@ -1833,7 +1834,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
       frequencyMinDays: updatedPractice.frequency_min_days || undefined,
       frequencyMaxDays: updatedPractice.frequency_max_days || undefined,
       sessionDurationMinutes: updatedPractice.session_duration_minutes || undefined,
-      practiceTimePeriods: updatedPractice.practice_time_periods || [],
+      practiceTimePeriods: sanitizePracticeTimePeriods(updatedPractice.practice_time_periods),
       otherContext: updatedPractice.other_context || undefined,
       status: updatedPractice.status as PracticeStatus || 'not_started',
       privacyStatus: updatedPractice.privacy_status || 'public',
@@ -2024,7 +2025,7 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
           session_duration_minutes: source.session_duration_minutes,
           frequency_min_days: source.frequency_min_days,
           frequency_max_days: source.frequency_max_days,
-          practice_time_periods: source.practice_time_periods,
+          practice_time_periods: sanitizePracticeTimePeriods(source.practice_time_periods),
           other_context: source.other_context,
           has_resources: sourceResources.length > 0,
           theme_color: source.theme_color,

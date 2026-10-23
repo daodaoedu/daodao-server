@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
+import { PRACTICE_TIME_PERIODS } from '../utils/practice-time-periods';
 
 /**
  * 實踐建立流程的數值邊界（daodaoedu/daodao#141）
@@ -36,7 +37,7 @@ export const practiceStatusSchema = z.enum(['draft', 'not_started', 'active', 'c
 });
 
 // 實踐時段 Schema
-export const practiceTimePeriodSchema = z.enum(['morning', 'afternoon', 'evening', 'night', 'commute']).openapi({
+export const practiceTimePeriodSchema = z.enum(PRACTICE_TIME_PERIODS).openapi({
   description: '實踐時段 (morning: 早上, afternoon: 下午, evening: 傍晚, night: 晚上, commute: 通勤時)',
   example: 'morning',
   examples: ['morning', 'afternoon', 'evening', 'night', 'commute']
