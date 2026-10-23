@@ -64,6 +64,18 @@ describe('ensureCohortDrafts', () => {
     });
   });
 
+  // daodao#382：舊模板存著 "30"，派發時不可再把它複製進學員實踐
+  it('drops invalid practice_time_periods from legacy templates when copying drafts', async () => {
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { ...bindings[0], practice_template: { ...bindings[0].practice_template, practice_time_periods: ['30', 'evening'] } },
+      { ...bindings[1], practice_template: { ...bindings[1].practice_template, practice_time_periods: ['30'] } },
+    ] as never);
+    prismaMock.practices.createMany.mockResolvedValue({ count: 2 });
+    await ensureCohortDrafts(prismaMock, 8, 42);
+    const { data } = prismaMock.practices.createMany.mock.calls[0][0] as { data: { practice_time_periods: string[] }[] };
+    expect(data.map((row) => row.practice_time_periods)).toEqual([['evening'], []]);
+  });
+
   it('seeds the draft dates from the cohort so the start date is never blank', async () => {
     prismaMock.cohort_templates.findMany.mockResolvedValue([bindings[0]] as never);
     prismaMock.practices.createMany.mockResolvedValue({ count: 1 });

@@ -2,6 +2,7 @@ import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableEntityError } from '../middleware/error.middleware';
 import { inclusiveEndDate } from '../utils/date-utils';
+import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
 import { writeLighthouseAudit } from '../utils/lighthouse-audit';
 import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import { assertTemplateReady, ORG_TEMPLATE_TITLE_MAX, type BindOrganizationTemplateInput, type CreateOrganizationTemplateInput, type OrganizationTemplateListQuery, type OrganizationTemplateResourceInput, type UpdateOrganizationTemplateInput } from '../validators/organization-template.validators';
@@ -53,7 +54,7 @@ const map = (row: TemplateRow, resources: TemplateResource[] = [], tags: string[
   return {
     id: row.id, externalId: row.external_id, organizationId: row.organization_id, title: row.title, practiceAction: row.practice_action,
     durationDays: row.duration_days, frequencyMinDays: row.frequency_min_days, frequencyMaxDays: row.frequency_max_days,
-    sessionDurationMinutes: row.session_duration_minutes, practiceTimePeriods: row.practice_time_periods, timingOther: row.other_context ?? null,
+    sessionDurationMinutes: row.session_duration_minutes, practiceTimePeriods: sanitizePracticeTimePeriods(row.practice_time_periods), timingOther: row.other_context ?? null,
     status: asStatus(row.status), archivedAt: row.archived_at ?? null, tags,
     boundCohortIds: row.cohort_templates.map(item => item.cohort_id), bindings, resources,
     generatedDraftCount: row._count.practices, createdAt: row.created_at, updatedAt: row.updated_at
@@ -291,7 +292,7 @@ const duplicate = async (organizationId: number, templateId: number, userId: num
     data: {
       organization_id: organizationId, title, practice_action: source.practice_action, duration_days: source.duration_days,
       frequency_min_days: source.frequency_min_days, frequency_max_days: source.frequency_max_days, session_duration_minutes: source.session_duration_minutes,
-      practice_time_periods: source.practice_time_periods, other_context: source.other_context ?? null, status: asStatus(source.status)
+      practice_time_periods: sanitizePracticeTimePeriods(source.practice_time_periods), other_context: source.other_context ?? null, status: asStatus(source.status)
     },
     select
   });

@@ -1,5 +1,6 @@
 import type { PrismaClient } from '../../generated/prisma';
 import { MS_PER_DAY, inclusiveEndDate } from '../utils/date-utils';
+import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
 import { DURATION_DAYS_MAX } from '../validators/practice.validators';
 import { day, today } from './cohort-run-state';
 
@@ -182,7 +183,8 @@ export const ensureCohortDrafts = async (
         frequency_min_days: binding.practice_template.frequency_min_days,
         frequency_max_days: binding.practice_template.frequency_max_days,
         session_duration_minutes: binding.practice_template.session_duration_minutes,
-        practice_time_periods: binding.practice_template.practice_time_periods,
+        // 舊模板可能存著 enum 外的值（例如 "30"，daodao#382），派發時濾掉，不再複製髒資料
+        practice_time_periods: sanitizePracticeTimePeriods(binding.practice_template.practice_time_periods),
         other_context: binding.practice_template.other_context,
         status,
         creation_source: 'cohort_template',

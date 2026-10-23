@@ -6,7 +6,8 @@
  */
 
 import { z } from 'zod';
-import { DURATION_DAYS_MAX, DURATION_DAYS_MIN, SESSION_MINUTES_MAX, SESSION_MINUTES_MIN } from './practice.validators';
+import { PRACTICE_TIME_PERIODS, sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
+import { DURATION_DAYS_MAX, DURATION_DAYS_MIN, SESSION_MINUTES_MAX, SESSION_MINUTES_MIN, practiceTimePeriodSchema } from './practice.validators';
 
 // Practice query parameters schema (for ME endpoints)
 // 基於新的 Prisma schema，移除已棄用的 contentType 欄位
@@ -271,7 +272,10 @@ export const myPracticeItemSchema = z.object({
     minimum: SESSION_MINUTES_MIN,
     maximum: SESSION_MINUTES_MAX
   }),
-  practiceTimePeriods: z.array(z.enum(['morning', 'afternoon', 'evening', 'night', 'commute'])).openapi({
+  // 舊資料可能含 enum 外的值（daodao#382），回應前濾掉，不讓單筆髒資料拖垮整個列表
+  practiceTimePeriods: z.array(z.string()).transform(sanitizePracticeTimePeriods).pipe(z.array(practiceTimePeriodSchema)).openapi({
+    type: 'array',
+    items: { type: 'string', enum: [...PRACTICE_TIME_PERIODS] },
     description: "練習時段",
     example: ["morning", "evening"]
   }),
