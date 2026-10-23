@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { asyncHandler } from '../middleware/error.middleware'
+import { asyncHandler, UnauthorizedError } from '../middleware/error.middleware'
 import { createSuccessResponse } from '../utils/response-helper'
 import adminFeedbackService from '../services/admin-feedback.service'
 import {
@@ -24,7 +24,8 @@ const updateFeedbackStatus = asyncHandler(async (req: Request, res: Response) =>
 const replyToFeedback = asyncHandler(async (req: Request, res: Response) => {
   const { id } = feedbackIdParamSchema.parse(req.params)
   const { content } = feedbackReplySchema.parse(req.body)
-  const result = await adminFeedbackService.replyToFeedback(id, content)
+  if (!req.user?.id) throw new UnauthorizedError('請先登入')
+  const result = await adminFeedbackService.replyToFeedback(id, content, req.user.id)
   res.json(createSuccessResponse(result))
 })
 
