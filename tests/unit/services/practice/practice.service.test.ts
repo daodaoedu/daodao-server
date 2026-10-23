@@ -926,12 +926,14 @@ describe('Practice Service', () => {
       };
       const updatedStatus = () => (prismaMock.practices.update.mock.calls[0][0] as any).data.status;
 
-      const arrange = (startDate: Date, status = 'draft') => {
+      const arrange = (startDate: Date, status = 'draft', endDate: Date | null = null) => {
         prismaMock.practices.findUnique.mockResolvedValue({
           id: 1,
           user_id: 1,
           status,
           start_date: startDate,
+          end_date: endDate,
+          duration_days: 14,
           practice_time_periods: [],
           created_at: new Date(),
           deleted_at: null
@@ -987,6 +989,26 @@ describe('Practice Service', () => {
       it('publishes a draft via status=not_started as active when it starts today', async () => {
         arrange(taipeiMidnight(0));
         await update(1, { status: 'not_started' }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      // daodao#304：燈塔草稿期間已過才啟用，直接是已完成，不能打卡；也不寄「實踐建立」PE01
+      it('publishes a draft whose end date has passed as completed', async () => {
+        arrange(taipeiMidnight(-20), 'draft', taipeiMidnight(-7));
+        await update(1, { status: 'active', isDraft: false }, 1);
+        expect(updatedStatus()).toBe('completed');
+        expect(mockEnqueuePracticeEmail).not.toHaveBeenCalled();
+      });
+
+      it('publishes a draft whose end date is today as active', async () => {
+        arrange(taipeiMidnight(-13), 'draft', taipeiMidnight(0));
+        await update(1, { status: 'active', isDraft: false }, 1);
+        expect(updatedStatus()).toBe('active');
+      });
+
+      it('uses the end date recomputed from a start date sent in the same request', async () => {
+        arrange(taipeiMidnight(-20), 'draft', taipeiMidnight(-7));
+        await update(1, { isDraft: false, startDate: taipeiMidnight(0).toISOString().slice(0, 10) }, 1);
         expect(updatedStatus()).toBe('active');
       });
 
