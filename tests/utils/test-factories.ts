@@ -52,6 +52,7 @@ export const createTestUser = (overrides: Partial<any> = {}) => {
     activity_stats_id: overrides.activity_stats_id || null,
     custom_position: overrides.custom_position || null,
     hide_connections_count: overrides.hide_connections_count ?? false,
+    last_lighthouse_organization_id: overrides.last_lighthouse_organization_id ?? null,
     ...overrides
   };
 };
