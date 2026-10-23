@@ -318,10 +318,10 @@ describe('calculateProgress', () => {
     expect(result.hasReachedMinTarget).toBe(true);
   });
 
-  it('returns FIRST_CHECKIN_PROGRESS even when minTarget=1 (first-checkin branch takes priority)', () => {
+  it('returns COMPLETED_PROGRESS on first check-in when minTarget=1 (min target reached, daodao#378)', () => {
     const shortConfig: PracticeProgressConfig = { frequencyMinDays: 1, frequencyMaxDays: 1, durationDays: 1 };
     const r1 = calculateProgress(shortConfig, 1);
-    expect(r1.percentage).toBe(FIRST_CHECKIN_PROGRESS);
+    expect(r1.percentage).toBe(COMPLETED_PROGRESS);
     expect(r1.isFirstCheckIn).toBe(true);
     expect(r1.hasReachedMinTarget).toBe(true);
   });
