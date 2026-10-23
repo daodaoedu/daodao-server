@@ -1440,9 +1440,10 @@ router.post('/gamification/leaderboard/reset', authenticateAny, requireSuperAdmi
 
 router.get('/onboarding/flows', authenticateAny, requireAdmin, adminCommunityController.listFlows as RequestHandler);
 router.post('/onboarding/flows', authenticateAny, requireAdmin, adminCommunityController.createFlow as RequestHandler);
-router.put('/onboarding/flows/:id', authenticateAny, requireAdmin, adminCommunityController.updateFlow as RequestHandler);
-router.delete('/onboarding/flows/:id', authenticateAny, requireAdmin, adminCommunityController.deleteFlow as RequestHandler);
-router.get('/onboarding/flows/:id/analytics', authenticateAny, requireAdmin, adminCommunityController.getFlowAnalytics as RequestHandler);
+// 參數名需與 flowIdParamSchema 的 flowId 一致，否則一律解析成 NaN 回 400（daodao#245）
+router.put('/onboarding/flows/:flowId', authenticateAny, requireAdmin, adminCommunityController.updateFlow as RequestHandler);
+router.delete('/onboarding/flows/:flowId', authenticateAny, requireAdmin, adminCommunityController.deleteFlow as RequestHandler);
+router.get('/onboarding/flows/:flowId/analytics', authenticateAny, requireAdmin, adminCommunityController.getFlowAnalytics as RequestHandler);
 router.get('/member-directory/fields', authenticateAny, requireAdmin, adminCommunityController.listProfileFields as RequestHandler);
 router.post('/member-directory/fields', authenticateAny, requireAdmin, adminCommunityController.createField as RequestHandler);
 router.put('/member-directory/fields/:id', authenticateAny, requireAdmin, adminCommunityController.updateField as RequestHandler);
