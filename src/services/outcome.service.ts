@@ -9,9 +9,8 @@ import type {
   OutcomeUpdateRequest,
   OutcomeResponse
 } from '../types/outcome.types';
-import { ApiSuccessResponse, PaginatedApiResponse } from '../types/api-response.types';
-import { createSuccessResponse, createPaginatedResponse } from '../utils/response-helper';
-import { calculatePagination } from '../utils/pagination-helper';
+import { ApiSuccessResponse } from '../types/api-response.types';
+import { createSuccessResponse } from '../utils/response-helper';
 import { NotFoundError, BadRequestError } from '../middleware/error.middleware';
 
 /**
@@ -301,49 +300,6 @@ export const updateOutcome = async (
 };
 
 /**
- * 獲取公開成果列表（分頁）
- */
-export const getPublicOutcomes = async (
-  page = 1,
-  pageSize = 10
-): Promise<PaginatedApiResponse<OutcomeResponse>> => {
-  const offset = (page - 1) * pageSize;
-
-  const [outcomes, total] = await Promise.all([
-    prisma.outcome.findMany({
-      where: {
-        post: {
-          visibility: 'public'
-        }
-      },
-      include: {
-        post: true
-      },
-      orderBy: {
-        id: 'asc'
-      },
-      take: pageSize,
-      skip: offset
-    }),
-    prisma.outcome.count({
-      where: {
-        post: {
-          visibility: 'public'
-        }
-      }
-    })
-  ]);
-
-  const formattedOutcomes = outcomes
-    .filter(outcome => outcome.post)
-    .map(outcome => formatOutcomeResponse(outcome as Record<string, unknown>, outcome.post as Record<string, unknown>));
-
-  const paginationInfo = calculatePagination(page, pageSize, total);
-
-  return createPaginatedResponse(formattedOutcomes, paginationInfo);
-};
-
-/**
  * 刪除成果
  */
 export const deleteOutcome = async (
@@ -394,6 +350,5 @@ export const outcomeService = {
   getMyOutcomes,
   getOutcomeDetail,
   updateOutcome,
-  getPublicOutcomes,
   deleteOutcome
 } as const;

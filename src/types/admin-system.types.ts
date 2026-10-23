@@ -62,7 +62,11 @@ export interface DashboardActiveUsersResponse {
  * Email 統計回應
  */
 export interface EmailStatsResponse {
+  /** 已發送筆數（不含 skipped） */
   totalSent: number
+  /** 略過筆數（後台停用模板、沒有真的寄出） */
+  skippedCount: number
+  /** 成功率（%）＝ sent ÷ (sent + failed) */
   successRate: number
   bounceRate: number
   queueSize: number
