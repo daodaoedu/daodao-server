@@ -232,6 +232,26 @@ export function initialStatusForStartDate(startDate: Date, now: Date = new Date(
 }
 
 /**
+ * 依期間決定非草稿實踐的狀態（daodao#304）
+ *
+ * 結束日已過（Asia/Taipei 日曆日，與 checkHasPassedEndDate／completeExpiredPractices 同規則）→ completed；
+ * 否則依開始日給 active／not_started。燈塔草稿期間已過才啟用時，不能標成可打卡的狀態。
+ * 沒有結束日時沿用 initialStatusForStartDate。
+ *
+ * @param startDate 開始日期
+ * @param endDate 結束日期（使用者可見的最後一天）
+ * @param now 目前時間（測試用）
+ */
+export function statusForPeriod(
+  startDate: Date,
+  endDate: Date | null | undefined,
+  now: Date = new Date()
+): 'not_started' | 'active' | 'completed' {
+  if (endDate && toTaipeiDateString(new Date(endDate)) < toTaipeiDateString(now)) return 'completed';
+  return initialStatusForStartDate(startDate, now);
+}
+
+/**
  * 檢查實踐是否已過期
  *
  * 優先使用 end_date（使用者可見的到期日）以 Asia/Taipei 時區判斷，

@@ -41,6 +41,7 @@ import {
   canEdit,
   checkHasPassedEndDate,
   initialStatusForStartDate,
+  statusForPeriod,
   type PracticeStatusType
 } from '../utils/practice-status';
 import {
@@ -859,28 +860,6 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     if (data.practiceAction !== undefined) updateData.practice_action = data.practiceAction;
     if (data.otherContext !== undefined) updateData.other_context = data.otherContext;
 
-    // 處理 isDraft 欄位：優先於 status；發布草稿、或未打卡實踐改開始日時，依開始日決定 active／not_started（daodao#212）
-    // startDate 在有打卡後已被 stripLockedFields 移除，所以改開始日只會發生在尚未打卡的實踐
-    const nextStartDate = data.startDate
-      ? new Date(data.startDate)
-      : existingPractice.start_date ?? new Date();
-    if (data.isDraft === true) {
-      updateData.status = 'draft';
-    } else if (
-      existingPractice.status === 'draft' &&
-      (data.isDraft === false || data.status === 'not_started')
-    ) {
-      // 發布草稿（isDraft=false 或 status='not_started' 兩種寫法，同 isPublishingDraft）
-      updateData.status = initialStatusForStartDate(nextStartDate);
-    } else if (data.status !== undefined) {
-      updateData.status = data.status;
-    } else if (
-      data.startDate !== undefined &&
-      (existingPractice.status === 'not_started' || existingPractice.status === 'active')
-    ) {
-      updateData.status = initialStatusForStartDate(nextStartDate);
-    }
-
     if (data.privacyStatus !== undefined) updateData.privacy_status = data.privacyStatus;
 
     // 處理頻率相關欄位
@@ -888,6 +867,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     if (data.frequencyMaxDays !== undefined) updateData.frequency_max_days = data.frequencyMaxDays;
     if (data.sessionDurationMinutes !== undefined) updateData.session_duration_minutes = data.sessionDurationMinutes;
     if (data.practiceTimePeriods !== undefined) updateData.practice_time_periods = data.practiceTimePeriods;
+
+    // 本次更新後的結束日：改開始日或天數時下方會重算，否則沿用原結束日
+    let nextEndDate: Date | null = existingPractice.end_date;
 
     // 處理日期相關欄位（需要重新計算 end_date）
     if (data.startDate !== undefined || data.durationDays !== undefined) {
@@ -906,8 +888,32 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
       // 重新計算 end_date
       if (newStartDate) {
-        updateData.end_date = inclusiveEndDate(newStartDate, newDurationDays);
+        nextEndDate = inclusiveEndDate(newStartDate, newDurationDays);
+        updateData.end_date = nextEndDate;
       }
+    }
+
+    // 處理 isDraft 欄位：優先於 status；發布草稿、或未打卡實踐改開始日時，依期間決定 active／not_started／completed
+    // （daodao#212 依開始日；daodao#304 結束日已過的草稿啟用後直接 completed，不能再打卡）
+    // startDate 在有打卡後已被 stripLockedFields 移除，所以改開始日只會發生在尚未打卡的實踐
+    const nextStartDate = data.startDate
+      ? new Date(data.startDate)
+      : existingPractice.start_date ?? new Date();
+    if (data.isDraft === true) {
+      updateData.status = 'draft';
+    } else if (
+      existingPractice.status === 'draft' &&
+      (data.isDraft === false || data.status === 'not_started')
+    ) {
+      // 發布草稿（isDraft=false 或 status='not_started' 兩種寫法，同 isPublishingDraft）
+      updateData.status = statusForPeriod(nextStartDate, nextEndDate);
+    } else if (data.status !== undefined) {
+      updateData.status = data.status;
+    } else if (
+      data.startDate !== undefined &&
+      (existingPractice.status === 'not_started' || existingPractice.status === 'active')
+    ) {
+      updateData.status = statusForPeriod(nextStartDate, nextEndDate);
     }
 
     updateData.updated_at = new Date();
@@ -1033,7 +1039,8 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     // 支援 isDraft=false 或 status='not_started' 來發布草稿
     const isPublishingDraft = existingPractice.status === 'draft' &&
       (data.isDraft === false || data.status === 'not_started');
-    if (isPublishingDraft) {
+    // 期間已過的草稿啟用後直接是 completed（daodao#304），不寄「實踐建立」信、也不發新實踐通知
+    if (isPublishingDraft && updateData.status !== 'completed') {
       enqueuePracticeEmail('PE01', id, userId).catch(err => {
         loggerService.error('Failed to enqueue PE01 email for published draft', { practiceId: id, error: err });
       });
