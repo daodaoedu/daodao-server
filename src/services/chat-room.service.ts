@@ -100,6 +100,7 @@ export const listMyRooms = async (userId: number) => {
       where: {
         program: {
           kind: 'lighthouse',
+          archived_at: null,
           deleted_at: null,
           organization: {
             status: 'active',
