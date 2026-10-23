@@ -184,7 +184,7 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
     FROM email_logs
   `;
 
-  const n = (key: keyof NonNullable<typeof result[0]>) => Number(result[0]?.[key] ?? 0);
+  const n = (key: keyof NonNullable<typeof result[0]>): number => Number(result[0]?.[key] ?? 0);
 
   // skipped（後台停用模板、沒有真的寄出）不算發送，也不進成功率／退信率分母（daodao#294）
   const success = n('success');
@@ -200,7 +200,7 @@ const getEmailStats = async (): Promise<EmailStatsResponse> => {
   const prevSent = n('prev_total') - n('prev_skipped');
 
   /** 分子 ÷ 實際嘗試寄出數（sent + failed），四捨五入到小數一位 */
-  const rate = (part: number, sent: number, fail: number) =>
+  const rate = (part: number, sent: number, fail: number): number =>
     sent + fail > 0 ? Math.round((part / (sent + fail)) * 1000) / 10 : 0;
 
   const curSuccessRate = rate(currSuccess, currSuccess, currFailed);
