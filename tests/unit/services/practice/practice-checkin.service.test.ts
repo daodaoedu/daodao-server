@@ -618,6 +618,117 @@ describe('Practice CheckIn Service', () => {
         expect.objectContaining({ practiceId: 1, error })
       );
     });
+
+    // Regression daodao#257：catch 不可把已分類的 AppError 改成 500
+    describe('access errors keep their HTTP status (daodao#257)', () => {
+      it('returns 404 when practice does not exist', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue(null);
+
+        await expect(getCheckIns(1, {}, 2)).rejects.toMatchObject({
+          statusCode: 404,
+          message: '實踐不存在'
+        });
+      });
+
+      it('returns 404 when practice is soft-deleted', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          ...mockActivePractice,
+          deleted_at: new Date('2026-10-22T00:00:00Z')
+        } as any);
+
+        await expect(getCheckIns(1, {}, 99)).rejects.toMatchObject({
+          statusCode: 404,
+          message: '實踐不存在'
+        });
+      });
+
+      it('returns 403 for non-owner viewing a private practice', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          ...mockActivePractice,
+          privacy_status: 'private'
+        } as any);
+
+        await expect(getCheckIns(1, {}, 2)).rejects.toMatchObject({
+          statusCode: 403,
+          message: '此實踐為私人，無法查看打卡紀錄'
+        });
+      });
+
+      it('returns 403 for anonymous request on a private practice', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          ...mockActivePractice,
+          privacy_status: 'private'
+        } as any);
+
+        await expect(getCheckIns(1, {})).rejects.toMatchObject({
+          statusCode: 403,
+          message: '此實踐為私人，無法查看打卡紀錄'
+        });
+      });
+
+      it('returns 403 for non-owner viewing a draft practice', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          ...mockActivePractice,
+          status: 'draft'
+        } as any);
+
+        await expect(getCheckIns(1, {}, 2)).rejects.toMatchObject({
+          statusCode: 403,
+          message: '沒有權限查看此實踐的打卡紀錄'
+        });
+      });
+
+      it('returns 403 for non-owner viewing an unfinished delayed practice', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          ...mockActivePractice,
+          privacy_status: 'delayed'
+        } as any);
+
+        await expect(getCheckIns(1, {}, 2)).rejects.toMatchObject({
+          statusCode: 403,
+          message: '此實踐尚未完成，打卡紀錄暫不公開'
+        });
+      });
+
+      it('allows owner to view own private practice', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue({
+          ...mockActivePractice,
+          privacy_status: 'private'
+        } as any);
+        prismaMock.practice_checkins.findMany.mockResolvedValue(mockCheckIns);
+        prismaMock.practice_checkins.count.mockResolvedValue(1);
+        prismaMock.entity_tags.findMany.mockResolvedValue([]);
+        prismaMock.entity_stats.findMany.mockResolvedValue([]);
+
+        const result = await getCheckIns(1, {}, 99);
+
+        expect(result.success).toBe(true);
+      });
+
+      it('still wraps unexpected errors as 500', async () => {
+        prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
+        prismaMock.practice_checkins.findMany.mockRejectedValue(new Error('connection reset'));
+
+        await expect(getCheckIns(1, {}, 99)).rejects.toMatchObject({
+          statusCode: 500,
+          message: '取得簽到記錄失敗'
+        });
+      });
+    });
+
+    it('orders by checkin_date then id so same-day pagination is stable (daodao#372)', async () => {
+      prismaMock.practices.findUnique.mockResolvedValue(mockActivePractice as any);
+      prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+      prismaMock.practice_checkins.count.mockResolvedValue(0);
+
+      await getCheckIns(1, { page: 2, limit: 10 });
+
+      expect(prismaMock.practice_checkins.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [{ checkin_date: 'desc' }, { id: 'desc' }]
+        })
+      );
+    });
   });
 
   describe('calculateStreak', () => {
