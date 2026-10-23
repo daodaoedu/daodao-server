@@ -40,6 +40,20 @@ describe('timeline service', () => {
     expect(query.values).toContain(500);
   });
 
+  it('excludes check-ins of soft-deleted practices from events and streaks (daodao#386)', async () => {
+    prismaMock.future_letters.findMany.mockResolvedValue([]);
+    prismaMock.quiz_results.findMany.mockResolvedValue([]);
+    prismaMock.practice_checkins.findMany.mockResolvedValue([]);
+    prismaMock.$queryRaw.mockResolvedValue([]);
+
+    await timelineService.getTimeline(7, undefined, 20);
+
+    const where = prismaMock.practice_checkins.findMany.mock.calls[0][0]?.where;
+    expect(where).toMatchObject({ user_id: 7, practices: { deleted_at: null } });
+    const query = prismaMock.$queryRaw.mock.calls[0][0] as { strings: string[] };
+    expect(query.strings.join(' ')).toMatch(/JOIN practices[\s\S]*deleted_at IS NULL/);
+  });
+
   it('binds the timeline cursor date in the bounded streak query', async () => {
     const before = new Date('2026-08-22T00:00:00.000Z');
     prismaMock.future_letters.findMany.mockResolvedValue([]);

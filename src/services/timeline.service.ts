@@ -97,6 +97,7 @@ async function getTimeline(userId: number, cursor: string | undefined, limit: nu
     prisma.practice_checkins.findMany({
       where: {
         user_id: userId,
+        practices: { deleted_at: null },
         ...(before && checkinRelation === 'same' ? {
           OR: [
             { checkin_date: { lt: before } },
@@ -118,8 +119,10 @@ async function getTimeline(userId: number, cursor: string | undefined, limit: nu
     }),
     prisma.$queryRaw<Array<{ checkin_date: Date }>>(Prisma.sql`
       SELECT DISTINCT checkin_date
-      FROM practice_checkins
-      WHERE user_id = ${userId}
+      FROM practice_checkins pc
+      JOIN practices p ON p.id = pc.practice_id
+      WHERE pc.user_id = ${userId}
+        AND p.deleted_at IS NULL
       ${streakDateBoundary}
       ORDER BY checkin_date DESC
       LIMIT ${MAX_STREAK_CHECKIN_DATES}
