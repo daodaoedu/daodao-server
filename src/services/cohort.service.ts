@@ -10,6 +10,7 @@ import { ensureRoom } from './chat-room.service';
 
 /** Prisma select 含新欄位與 sessions */
 const select = {
+  program: { select: { name: true, organization_id: true, organization: { select: { name: true, status: true } } } },
   id: true, program_id: true, slug: true, display_name: true,
   tagline: true,
   start_date: true, end_date: true, join_token: true, join_paused: true,
@@ -24,6 +25,7 @@ const select = {
 } as const;
 
 type CohortRow = {
+  program: { name: string; organization_id: number; organization: { name: string; status: string } };
   id: number; program_id: number; slug: string; display_name: string;
   tagline: string | null;
   start_date: Date; end_date: Date; join_token: string | null; join_paused: boolean;
@@ -65,6 +67,7 @@ const formatTime = (value: Date | null): string | null => {
 const formatDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 const map = (row: CohortRow): CohortResponse => ({
+  organizationId: row.program.organization_id, organizationName: row.program.organization.name,
   id: row.id, programId: row.program_id, slug: row.slug, displayName: row.display_name,
   tagline: row.tagline,
   startDate: row.start_date, endDate: row.end_date, joinToken: row.join_token, joinPaused: row.join_paused,
@@ -196,7 +199,7 @@ const assertOrganization = async (organizationId: number, userId: number): Promi
 const getOwned = async (programId: number, cohortId: number, userId: number) => {
   const row = await prisma.cohorts.findFirst({
     where: { id: cohortId, program_id: programId, deleted_at: null, program: { ...ACTIVE_PROGRAM_WHERE, organization: { organization_members: { some: { user_id: userId } } } } },
-    select: { ...select, program: { select: { organization: { select: { status: true } } } } }
+    select
   });
   if (!row) throw new ForbiddenError('無權限存取此場次');
   if (row.program.organization.status !== 'active') throw new ForbiddenError('此組織目前已停權');
@@ -213,7 +216,7 @@ const listByOrganization = async (organizationId: number, userId: number): Promi
   await assertOrganization(organizationId, userId);
   const rows = await prisma.cohorts.findMany({
     where: { deleted_at: null, program: { organization_id: organizationId, ...ACTIVE_PROGRAM_WHERE } },
-    select: { ...select, program: { select: { name: true } } },
+    select,
     orderBy: [{ start_date: 'desc' }, { created_at: 'desc' }]
   });
   const joined = rows.length === 0 ? [] : await prisma.cohort_enrollments.groupBy({

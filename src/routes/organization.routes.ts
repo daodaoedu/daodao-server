@@ -1,5 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { registry } from '../config/openapi-registry';
+import { lighthousePreferenceController } from '../controllers/lighthouse-preference.controller';
+import { lighthousePreferenceResponseSchema, updateLighthousePreferenceSchema } from '../validators/lighthouse-preference.validators';
 import { organizationController } from '../controllers/organization.controller';
 import { programController } from '../controllers/program.controller';
 import { cohortController } from '../controllers/cohort.controller';
@@ -159,7 +161,12 @@ registry.registerPath({
   responses: { 204: { description: '成員已移除' }, 404: { $ref: '#/components/responses/NotFoundError' }, 409: { $ref: '#/components/responses/ConflictError' }, ...authErrors }
 });
 
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/preferences', tags: ['Lighthouse Organizations'], summary: '讀取本人上次使用的燈塔組織', security: [{ bearerAuth: [] }], responses: { 200: { description: '帳號偏好', content: { 'application/json': { schema: apiSuccessResponseSchema(lighthousePreferenceResponseSchema) } } }, ...authErrors } });
+registry.registerPath({ method: 'patch', path: '/api/v1/lighthouse/preferences', tags: ['Lighthouse Organizations'], summary: '保存本人目前使用的燈塔組織', security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: updateLighthousePreferenceSchema } } } }, responses: { 200: { description: '帳號偏好已保存', content: { 'application/json': { schema: apiSuccessResponseSchema(lighthousePreferenceResponseSchema) } } }, ...authErrors } });
+
 router.use(authenticateAny as RequestHandler);
+router.get('/preferences', lighthousePreferenceController.get as RequestHandler);
+router.patch('/preferences', validate(updateLighthousePreferenceSchema), lighthousePreferenceController.update as RequestHandler);
 router.post('/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
 router.post('/admin/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
 router.get('/admin/organizations', requireAdmin as RequestHandler, organizationController.listAllOrganizations as RequestHandler);

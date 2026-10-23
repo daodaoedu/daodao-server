@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { generateOpenApiDocument, registry } from '../src/config/openapi-registry';
+import { registerHealthOpenApi } from '../src/config/health-openapi';
 
 /**
  * 自動載入所有使用 registry 的 validators
@@ -108,6 +109,7 @@ async function main() {
 
     // 2. 載入所有 routes（會自動註冊 paths）
     await loadAllRoutes();
+    registerHealthOpenApi();
 
     console.log('\n📊 Registry 統計:');
     console.log(`  - Schemas: ${Object.keys(registry.definitions).length} 個`);
