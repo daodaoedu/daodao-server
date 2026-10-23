@@ -664,7 +664,7 @@ export async function createResource(data: Record<string, unknown>, userId: numb
  * @returns 更新後的資源
  */
 export async function updateResource(externalId: string, data: Record<string, unknown>, userId: number): Promise<ApiResponse<import('../types/resource.types').ResourceResponse | null>> {
-  return await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     // 轉換 external_id 為內部 id
     console.log(`🔍 嘗試轉換 external_id: ${externalId}`);
     let resourceId: number;
@@ -755,10 +755,10 @@ export async function updateResource(externalId: string, data: Record<string, un
     if (validatedData.tags !== undefined && validatedData.tags !== null) {
       await tagService.setEntityTags('resource', existingResource.id, validatedData.tags, userId, tx);
     }
-
-    const updatedResource = await getResourceById(externalId);
-    return updatedResource;
   });
+
+  // getResourceById 走交易外連線，要等交易提交後再讀，否則回應是改名前的舊資料（daodao#375）
+  return await getResourceById(externalId);
 }
 
 /**
@@ -797,6 +797,12 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
       data: {
         deleted_at: new Date()
       }
+    });
+
+    // 一併軟刪實踐上指向它的關聯，實踐詳情／列表不再列出（daodao#375）；模板關聯留給教練資源鎖定判定，不動
+    await tx.entity_resources.updateMany({
+      where: { resource_id: existingResource.id, entity_type: 'practice', deleted_at: null },
+      data: { deleted_at: new Date() }
     });
 
     return createSuccessResponse({ message: '資源已成功刪除' });
