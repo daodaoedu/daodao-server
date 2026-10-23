@@ -3958,10 +3958,6 @@ components:
           nullable: true
           description: 指定第幾天使用此資源（null 代表整段實踐期間皆可使用）
           example: 3
-        isLocked:
-          type: boolean
-          description: 教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除
-          example: false
       required:
         - id
         - name
@@ -3986,10 +3982,6 @@ components:
         isChallenge:
           type: boolean
           description: 是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）
-          example: false
-        isCohortPrivacyLocked:
-          type: boolean
-          description: 是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）
           example: false
         practiceAction:
           type: string
@@ -4048,10 +4040,6 @@ components:
             - active
             - completed
             - archived
-        privacyStatus:
-          type: string
-          description: 隱私狀態（private／public／delayed）
-          example: public
         hasResources:
           type: boolean
           description: 是否有相關資源
@@ -15357,11 +15345,6 @@ components:
           nullable: true
           description: 活動課程卡為 cohortId 字串（導向 /cohorts/{id}）；虛擬空間（personal/challenge）為 null
           example: '12'
-        programId:
-          type: integer
-          nullable: true
-          description: 活動課程卡所屬燈塔系列 id（canManage 時導向管理端 /lighthouse/programs/{programId}/cohorts/{id}）；虛擬空間為 null
-          example: 3
         name:
           type: string
           description: 空間名稱
@@ -15403,10 +15386,6 @@ components:
           type: boolean
           description: 目前使用者是否為發起人
           example: false
-        canManage:
-          type: boolean
-          description: 目前使用者是否為該場次所屬組織成員、可進管理端（前端據此導向 /lighthouse/programs/{programId}/cohorts/{id}/dashboard）
-          example: false
         lastActivityAt:
           type: string
           nullable: true
@@ -15414,7 +15393,6 @@ components:
       required:
         - kind
         - id
-        - programId
         - name
         - host
         - memberCount
@@ -15422,7 +15400,6 @@ components:
         - hasActivePractice
         - practiceCount
         - isHost
-        - canManage
         - lastActivityAt
     PublicSpace:
       type: object
@@ -20220,18 +20197,17 @@ paths:
                           description: 挑戰運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
                         canJoin:
                           type: boolean
-                          description: 目前是否可加入（只有未開始的挑戰可加入）
+                          description: 目前是否可加入
                         unavailableReason:
                           type: string
                           nullable: true
                           enum:
                             - ended
-                            - started
                             - expired
                             - full
                             - paused
                             - null
-                          description: 不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null
+                          description: 不可加入原因；可加入時為 null
                         isJoined:
                           type: boolean
                           description: 當前使用者是否已加入；未登入一律 false
@@ -45739,21 +45715,6 @@ paths:
                         type: integer
                       queuedCount:
                         type: integer
-                      sendableCount:
-                        type: integer
-                        description: 會寄出邀請信的筆數（新邀請、已邀請重寄、曾退出重新邀請）
-                      skippedCount:
-                        type: integer
-                        description: 已加入而略過、不重寄的筆數
-                      blockedReason:
-                        type: string
-                        nullable: true
-                        enum:
-                          - not_published
-                          - expired
-                          - full
-                          - null
-                        description: 此期目前不可寄送邀請的原因（未發布／已過加入截止日／已額滿）；可寄送時為 null
                       items:
                         type: array
                         items:
@@ -45788,9 +45749,6 @@ paths:
                       - validCount
                       - errorCount
                       - queuedCount
-                      - sendableCount
-                      - skippedCount
-                      - blockedReason
                       - items
                     description: The main response data
                   timestamp:
@@ -45884,21 +45842,6 @@ paths:
                         type: integer
                       queuedCount:
                         type: integer
-                      sendableCount:
-                        type: integer
-                        description: 會寄出邀請信的筆數（新邀請、已邀請重寄、曾退出重新邀請）
-                      skippedCount:
-                        type: integer
-                        description: 已加入而略過、不重寄的筆數
-                      blockedReason:
-                        type: string
-                        nullable: true
-                        enum:
-                          - not_published
-                          - expired
-                          - full
-                          - null
-                        description: 此期目前不可寄送邀請的原因（未發布／已過加入截止日／已額滿）；可寄送時為 null
                       items:
                         type: array
                         items:
@@ -45933,9 +45876,6 @@ paths:
                       - validCount
                       - errorCount
                       - queuedCount
-                      - sendableCount
-                      - skippedCount
-                      - blockedReason
                       - items
                     description: The main response data
                   timestamp:
@@ -54724,16 +54664,6 @@ paths:
                           - full
                           - paused
                           - null
-                      unavailableReasons:
-                        type: array
-                        items:
-                          type: string
-                          enum:
-                            - not_published
-                            - expired
-                            - full
-                            - paused
-                        description: 所有成立的不可加入原因（依優先序，第一個等於 unavailableReason）；可加入時為空陣列
                       privacy:
                         type: object
                         properties:
@@ -54790,7 +54720,6 @@ paths:
                       - inviteMessage
                       - canJoin
                       - unavailableReason
-                      - unavailableReasons
                       - privacy
                       - visibilityNotice
                       - organization
@@ -55814,18 +55743,17 @@ paths:
                           description: 挑戰運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
                         canJoin:
                           type: boolean
-                          description: 目前是否可加入（只有未開始的挑戰可加入）
+                          description: 目前是否可加入
                         unavailableReason:
                           type: string
                           nullable: true
                           enum:
                             - ended
-                            - started
                             - expired
                             - full
                             - paused
                             - null
-                          description: 不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null
+                          description: 不可加入原因；可加入時為 null
                         isJoined:
                           type: boolean
                           description: 當前使用者是否已加入；未登入一律 false
@@ -55990,18 +55918,17 @@ paths:
                         description: 挑戰運行狀態：upcoming（未開始）、ongoing（進行中）、ended（已結束）
                       canJoin:
                         type: boolean
-                        description: 目前是否可加入（只有未開始的挑戰可加入）
+                        description: 目前是否可加入
                       unavailableReason:
                         type: string
                         nullable: true
                         enum:
                           - ended
-                          - started
                           - expired
                           - full
                           - paused
                           - null
-                        description: 不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null
+                        description: 不可加入原因；可加入時為 null
                       isJoined:
                         type: boolean
                         description: 當前使用者是否已加入；未登入一律 false
@@ -58510,6 +58437,16 @@ paths:
       summary: 挑戰主題列表
       security: &ref_117
         - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 只列某組織底下的挑戰主題
+          required: false
+          description: 只列某組織底下的挑戰主題
+          name: organizationId
+          in: query
       responses:
         '200':
           description: 主題列表
@@ -58645,6 +58582,11 @@ paths:
             schema:
               type: object
               properties:
+                organizationId:
+                  type: integer
+                  minimum: 0
+                  exclusiveMinimum: true
+                  description: 所屬組織 ID（通常為島島官方組織）
                 name:
                   type: string
                   minLength: 1
@@ -58655,6 +58597,7 @@ paths:
                   nullable: true
                   maxLength: 2000
               required:
+                - organizationId
                 - name
       responses:
         '201':
@@ -60318,6 +60261,16 @@ paths:
       tags: *ref_116
       summary: 組織模板列表
       security: *ref_117
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            description: 組織 ID（模板隸屬組織）
+          required: true
+          description: 組織 ID（模板隸屬組織）
+          name: organizationId
+          in: query
       responses:
         '200':
           description: 模板列表
@@ -60579,8 +60532,13 @@ paths:
                   items:
                     $ref: '#/components/schemas/PracticeResourceInput'
                   maxItems: 5
+                organizationId:
+                  type: integer
+                  minimum: 0
+                  exclusiveMinimum: true
               required:
                 - title
+                - organizationId
       responses:
         '201':
           description: 已建立
