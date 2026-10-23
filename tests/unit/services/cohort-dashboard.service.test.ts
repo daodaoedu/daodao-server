@@ -18,6 +18,44 @@ const mockDashboardQueries = () => prismaMock.$queryRaw
   .mockResolvedValueOnce([{ hour: 21, count: 6n }] as never);
 
 describe('cohortDashboardService.get', () => {
+  beforeEach(() => {
+    prismaMock.cohort_templates.findMany.mockResolvedValue([] as never);
+  });
+
+  // daodao#343：篩選與實踐總覽以場次「連結實踐模板」為準——沒有學員實踐的模板也要列出，日期用綁定設定（開始日＋模板天數）
+  it('lists every linked template with the dates saved on the binding, even when no learner practice exists yet', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...cohort, start_date: day('2026-10-19'), end_date: day('2026-11-30') } as never);
+    prismaMock.cohort_templates.findMany.mockResolvedValue([
+      { start_date: day('2026-10-15'), practice_template: { title: '一個月準備 iPAS', duration_days: 14 } },
+      { start_date: day('2026-10-21'), practice_template: { title: '共讀102', duration_days: 7 } },
+      { start_date: null, practice_template: { title: '無天數模板', duration_days: null } }
+    ] as never);
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ enrolled: 1n }] as never)
+      .mockResolvedValueOnce([{ activated: 1n, active_this_week: 1n, checkins: 2n }] as never)
+      // 學員實踐只有「共讀102」（日期是舊的）＋一個自建實踐
+      .mockResolvedValueOnce([{ title: '共讀102', start_date: day('2026-10-15'), end_date: day('2026-10-26') }, { title: '自己的實踐', start_date: day('2026-10-20'), end_date: day('2026-10-30') }] as never)
+      .mockResolvedValueOnce([
+        { title: '共讀102', start_date: day('2026-10-15'), end_date: day('2026-10-26'), started: 1n, checkins: 2n, active_days: 2n, participant_days: 2n, avg_length: 10 },
+        { title: '自己的實踐', start_date: day('2026-10-20'), end_date: day('2026-10-30'), started: 0n, checkins: 0n, active_days: 0n, participant_days: 0n, avg_length: null }
+      ] as never)
+      .mockResolvedValueOnce([] as never).mockResolvedValueOnce([] as never).mockResolvedValueOnce([] as never).mockResolvedValueOnce([] as never).mockResolvedValueOnce([] as never);
+    const result = await cohortDashboardService.get(2, 8, 42, {}, new Date('2026-10-23T04:00:00Z'));
+    expect(prismaMock.cohort_templates.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { cohort_id: 8, unbound_at: null } }));
+    expect(result.practices).toEqual([
+      { title: '一個月準備 iPAS', startDate: day('2026-10-15'), endDate: day('2026-10-28') },
+      { title: '共讀102', startDate: day('2026-10-21'), endDate: day('2026-10-27') },
+      { title: '無天數模板', startDate: day('2026-10-19'), endDate: null },
+      { title: '自己的實踐', startDate: day('2026-10-20'), endDate: day('2026-10-30') }
+    ]);
+    expect(result.practiceOverview.map(row => [row.title, row.startDate, row.endDate, row.startedCount, row.checkinCount])).toEqual([
+      ['一個月準備 iPAS', day('2026-10-15'), day('2026-10-28'), 0, 0],
+      ['共讀102', day('2026-10-21'), day('2026-10-27'), 1, 2],
+      ['無天數模板', day('2026-10-19'), null, 0, 0],
+      ['自己的實踐', day('2026-10-20'), day('2026-10-30'), 0, 0]
+    ]);
+  });
+
   it('rejects a cohort outside the actor organizations', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(null);
     await expect(cohortDashboardService.get(2, 8, 42, {}, now)).rejects.toBeInstanceOf(ForbiddenError);
