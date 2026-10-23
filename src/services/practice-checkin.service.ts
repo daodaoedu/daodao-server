@@ -8,7 +8,7 @@
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
-import { ConflictError, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
+import { AppError, ConflictError, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import {
   CheckInEntity,
   CheckInResponseWithEncouragement,
@@ -447,9 +447,11 @@ export async function createCheckInWithImages(
  * 取得簽到記錄列表
  *
  * 存取規則：
- * - 草稿狀態(draft)的實踐：僅擁有者可查看打卡紀錄
- * - 其他狀態的實踐：所有人皆可查看打卡紀錄
- * - 已刪除的實踐：不可查看
+ * - 不存在或已刪除的實踐：404
+ * - 草稿狀態(draft)的實踐：僅擁有者可查看打卡紀錄，其他人 403
+ * - privacy_status = private：僅擁有者可查看，其他人（含未登入）403
+ * - privacy_status = delayed：實踐完成前僅擁有者可查看，其他人 403
+ * - 其他情況：所有人皆可查看打卡紀錄
  */
 export async function getCheckIns(practiceId: number, params: CheckInQueryParams, requestUserId?: number): Promise<PaginatedApiResponse<CheckInEntity>> {
   try {
@@ -515,7 +517,8 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
         where,
         skip,
         take,
-        orderBy: { checkin_date: 'desc' },
+        // checkin_date 是 DATE，同日多筆需 id 當第二鍵，offset 分頁才穩定
+        orderBy: [{ checkin_date: 'desc' }, { id: 'desc' }],
         include: {
           practices: {
             select: {
@@ -597,6 +600,10 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
     );
 
   } catch (error) {
+    // 已分類的錯誤（404／403）原樣拋出，只有未預期錯誤才包成 500
+    if (error instanceof AppError) {
+      throw error;
+    }
     loggerService.error('Failed to retrieve check-ins', { practiceId, error });
     throw new InternalServerError('取得簽到記錄失敗');
   }
