@@ -52,6 +52,27 @@ describe('cohortMessageService', () => {
     expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'CohortMessage', actorId: 42, recipientId: 77, entityType: 'cohort', entityId: 8, priority: 'P1' }));
   });
 
+  // daodao#344：今日焦點送出的訊息要出現在學員該實踐的留言串（與打卡鼓勵相同，私密留言＝學員與帶領人可見）
+  it('posts the message as a private comment on the selected practice in the same transaction', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue(enrollment as never);
+    prismaMock.practices.findFirst.mockResolvedValue({ id: 31 } as never);
+    prismaMock.cohort_messages.create.mockResolvedValue({ ...messageRow, category: 'celebrate', body: '恭喜完成第 7 天！' } as never);
+    await cohortMessageService.sendMessage(2, 8, 42, 77, { category: 'celebrate', body: '恭喜完成第 7 天！', practiceId: 31 });
+    expect(prismaMock.comments.create).toHaveBeenCalledWith({
+      data: { target_type: 'practice', target_id: 31, user_id: 42, content: '恭喜完成第 7 天！', visibility: 'private', parent_id: null }
+    });
+    expect(createEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not create a practice comment when no practice is selected', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.findFirst.mockResolvedValue(enrollment as never);
+    prismaMock.cohort_messages.create.mockResolvedValue({ ...messageRow, practice_id: null, practice: null } as never);
+    await cohortMessageService.sendMessage(2, 8, 42, 77, { category: 'encourage', body: '加油' });
+    expect(prismaMock.comments.create).not.toHaveBeenCalled();
+  });
+
   it('rejects a template from another organization', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
     prismaMock.cohort_enrollments.findFirst.mockResolvedValue(enrollment as never);
