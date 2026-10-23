@@ -83,7 +83,7 @@ const listMessages = async (programId: number, cohortId: number, actorId: number
   return { participant, total: rows.length, items: rows.map(mapMessage) };
 };
 
-/** 送出鼓勵／訊息（FR-TF-06）：存 cohort_messages、發 in-app 通知、寫審計 */
+/** 送出鼓勵／訊息（FR-TF-06）：存 cohort_messages（帶 practiceId 時同步寫成該實踐的留言）、發 in-app 通知、寫審計 */
 const sendMessage = async (programId: number, cohortId: number, actorId: number, userId: number, input: SendCohortMessageInput) => {
   const cohort = await assertCoach(programId, cohortId, actorId);
   await assertParticipant(cohortId, userId);
@@ -100,6 +100,13 @@ const sendMessage = async (programId: number, cohortId: number, actorId: number,
       data: { cohort_id: cohortId, sender_user_id: actorId, recipient_user_id: userId, practice_id: input.practiceId ?? null, template_id: input.templateId ?? null, category: input.category, body: input.body },
       select: messageSelect
     });
+    // 選了實踐就同時留在該實踐的留言串（daodao#344），學員在實踐頁就看得到；
+    // 與打卡鼓勵（cohort-encouragement）一樣是私密留言：只有實踐擁有者（學員）與帶領人可見
+    if (input.practiceId) {
+      await tx.comments.create({
+        data: { target_type: 'practice', target_id: input.practiceId, user_id: actorId, content: input.body, visibility: 'private', parent_id: null }
+      });
+    }
     await tx.$executeRaw`
       INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, new_value)
       VALUES (${actorId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_MESSAGE_SENT}, 'cohort', ${String(cohortId)},
