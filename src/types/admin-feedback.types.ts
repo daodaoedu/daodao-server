@@ -12,6 +12,14 @@ export interface FeedbackItem {
   repliedAt: string | null
   /** 錯誤回報附的截圖（feedback.meta.screenshots 中的 http(s) 網址）；沒有截圖為空陣列 */
   screenshots: string[]
+  /** 後台送出的回覆（feedback_replies），依時間由舊到新；沒有回覆為空陣列 */
+  replies: FeedbackReply[]
+}
+
+export interface FeedbackReply {
+  id: number
+  content: string
+  createdAt: string
 }
 
 export interface FeedbackListResult {

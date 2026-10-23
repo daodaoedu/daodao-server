@@ -12,7 +12,7 @@ export const feedbackIdParamSchema = z.object({
 })
 
 export const feedbackReplySchema = z.object({
-  content: z.string().min(1),
+  content: z.string().trim().min(1, '回覆內容不可空白'),
 })
 
 export const feedbackStatusSchema = z.object({
