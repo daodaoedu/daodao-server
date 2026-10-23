@@ -118,8 +118,9 @@ export function calculateProgress(
   if (checkInCount === 0) {
     // 尚未打卡
     percentage = INITIAL_PROGRESS;
-  } else if (isFirstCheckIn) {
+  } else if (isFirstCheckIn && !hasReachedMinTarget) {
     // 首次打卡：直接跳到 50%
+    // 最低目標只有 1 次時首次打卡即達標，交給下方「達成最低目標」分支給 100%（daodao#378）
     percentage = FIRST_CHECKIN_PROGRESS;
   } else if (hasReachedMinTarget) {
     // 達成或超過最低目標
