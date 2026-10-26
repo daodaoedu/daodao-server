@@ -23,10 +23,10 @@ export const generateGroupChatMessageEmail = (
   const subject = `${input.groupName} 有新訊息`;
   const preheader = `${senderName} 在「${groupName}」發布了新訊息`;
   const mentionLine = input.mentionedRecipient
-    ? '<p>並提到了你。</p>'
+    ? '<p>並提到了你</p>'
     : '';
   const replyLine = input.replyToRecipient
-    ? '<p>這則訊息回覆了你先前在聊天室中的訊息。</p>'
+    ? '<p>這則訊息回覆了你先前在聊天室中的訊息</p>'
     : '';
 
   return generateStandardEmail({
