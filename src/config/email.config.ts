@@ -6,11 +6,15 @@
 export interface EmailConfig {
   // SMTP 配置
   smtp: {
-    service: string;
+    service: 'gmail';
     auth: {
       user: string;
       pass: string;
     };
+  } | {
+    host: string;
+    port: number;
+    secure: boolean;
   };
 
   // 發送者配置
@@ -43,9 +47,10 @@ export interface EmailConfig {
 /**
  * 驗證必要的環境變數
  */
-function validateEnvironment(): void {
-  const required = ['EMAIL_ADDRESS', 'EMAIL_PASSWORD', 'FRONTEND_URL'];
-  const missing = required.filter(key => !process.env[key]);
+function validateEnvironment(env: NodeJS.ProcessEnv): void {
+  const required = ['EMAIL_ADDRESS', 'FRONTEND_URL'];
+  if (!env.SMTP_HOST) required.push('EMAIL_PASSWORD');
+  const missing = required.filter(key => !env[key]);
   
   if (missing.length > 0) {
     throw new Error(`缺少必要的郵件環境變數: ${missing.join(', ')}`);
@@ -55,27 +60,40 @@ function validateEnvironment(): void {
 /**
  * 創建郵件配置
  */
-export function createEmailConfig(): EmailConfig {
-  validateEnvironment();
+export function createEmailConfig(env: NodeJS.ProcessEnv = process.env): EmailConfig {
+  validateEnvironment(env);
+
+  let smtp: EmailConfig['smtp'];
+  if (env.SMTP_HOST) {
+    const portText = env.SMTP_PORT ?? '1025';
+    const port = Number(portText);
+    if (!/^[0-9]+$/.test(portText) || !Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error('SMTP_PORT 必須是 1 到 65535 的整數');
+    }
+    const secureText = env.SMTP_SECURE ?? 'false';
+    if (secureText !== 'true' && secureText !== 'false') {
+      throw new Error('SMTP_SECURE 必須是 true 或 false');
+    }
+    smtp = { host: env.SMTP_HOST, port, secure: secureText === 'true' };
+  } else {
+    smtp = {
+      service: 'gmail',
+      auth: { user: env.EMAIL_ADDRESS || '', pass: env.EMAIL_PASSWORD || '' },
+    };
+  }
   
   return {
-    smtp: {
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_ADDRESS || '',
-        pass: process.env.EMAIL_PASSWORD || ''
-      }
-    },
-    
+    smtp,
+
     sender: {
       name: '島島阿學',
-      email: process.env.EMAIL_ADDRESS || ''
+      email: env.EMAIL_ADDRESS || ''
     },
     
     urls: {
-      frontend: process.env.FRONTEND_URL || '',
-      website: process.env.WEBSITE_URL || 'https://daodao.so',
-      backend: process.env.BACKEND_URL || 'http://localhost:3000'
+      frontend: env.FRONTEND_URL || '',
+      website: env.WEBSITE_URL || 'https://daodao.so',
+      backend: env.BACKEND_URL || 'http://localhost:3000'
     },
     
     retry: {
@@ -84,9 +102,9 @@ export function createEmailConfig(): EmailConfig {
     },
 
     bulk: {
-      delayMs: Number(process.env.EMAIL_BULK_DELAY_MS) || 100,
-      batchSize: Number(process.env.EMAIL_BATCH_SIZE) || 10,
-      maxConcurrent: Number(process.env.EMAIL_MAX_CONCURRENT) || 3
+      delayMs: Number(env.EMAIL_BULK_DELAY_MS) || 100,
+      batchSize: Number(env.EMAIL_BATCH_SIZE) || 10,
+      maxConcurrent: Number(env.EMAIL_MAX_CONCURRENT) || 3
     }
   };
 }
