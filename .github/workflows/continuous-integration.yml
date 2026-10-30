@@ -45,18 +45,6 @@ env:
   DOCKER_BUILDKIT: 1
 
 jobs:
-  workflow-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install workflow test dependency
-        run: python -m pip install PyYAML==6.0.2
-      - name: Test quality gate failure propagation
-        run: python -m unittest discover -s .github/scripts/__tests__ -p 'test_*.py' -v
-
   # ===== 主要測試與品質檢查階段 =====
   # 目的：執行完整的程式碼品質檢查流程
   # 包含項目：
@@ -68,8 +56,8 @@ jobs:
   # 運行環境：ubuntu-latest（穩定且快速）
   # =====================================
   test:
-    needs: workflow-tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -98,6 +86,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      # 先跑 workflow 自身的回歸測試（原本獨立的 workflow-tests job，併入以省一次 runner 計費）
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install workflow test dependency
+        run: python -m pip install PyYAML==6.0.2
+      - name: Test quality gate failure propagation
+        run: python -m unittest discover -s .github/scripts/__tests__ -p 'test_*.py' -v
 
       - name: Checkout database schema for integration tests
         uses: actions/checkout@v4
@@ -249,6 +246,7 @@ jobs:
   # ==============================
   notify-success:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: test
     if: success()
     steps:
@@ -298,6 +296,7 @@ jobs:
   # ==============================
   notify-failure:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: test
     if: failure()
     steps:
