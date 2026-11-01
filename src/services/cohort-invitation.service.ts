@@ -88,15 +88,22 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
   await bulkEnqueueEmails(jobs);
   const recipients = await prisma.users.findMany({
     where: { contacts: { email: { in: jobs.map(job => job.to) } } },
-    select: { id: true }
+    select: { id: true, contacts: { select: { email: true } } }
   });
+  const invitationByEmail = new Map(created.filter(item => isInvitationSendable(item.state) && item.inviteToken).map(item => [item.email, item.inviteToken]));
   await Promise.all(recipients.map(recipient => notificationEventService.createEvent({
     type: NOTIFICATION_TYPES.COHORT_INVITATION,
     actorId,
     recipientId: recipient.id,
     entityType: 'cohort',
     entityId: cohort.id,
-    payload: { message: `你收到「${cohort.display_name}」的加入邀請。` },
+    payload: {
+      cohortName: cohort.display_name,
+      message: `你收到「${cohort.display_name}」的加入邀請。`,
+      ...(recipient.contacts?.email && invitationByEmail.get(recipient.contacts.email) && {
+        url: `${base}/cohorts/join/${invitationByEmail.get(recipient.contacts.email)}`
+      })
+    },
     priority: 'P1'
   })));
   return { total: emails.length, validCount: emails.length - errors, errorCount: errors, queuedCount: jobs.length, ...countStates(created), blockedReason: null, items: created.map(({ inviteToken: _inviteToken, ...item }) => item) };
