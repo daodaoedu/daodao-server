@@ -21,7 +21,7 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
   const result = await prisma.$transaction(async tx => {
     const enrollment = await tx.cohort_enrollments.findFirst({
       where: { id: enrollmentId, cohort_id: cohortId, cohort: { program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } } },
-      select: { id: true, user_id: true, status: true }
+      select: { id: true, user_id: true, status: true, cohort: { select: { display_name: true } } }
     });
     if (!enrollment) throw new ForbiddenError('無權限移除此成員');
     if (enrollment.status !== 'joined' && enrollment.status !== 'invited') throw new ConflictError('此成員目前不在期內');
@@ -34,12 +34,12 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
               ${JSON.stringify({ status: enrollment.status })}::jsonb,
               ${JSON.stringify({ status: 'removed', affectedCount: 1, detachedPracticeCount: detached.count })}::jsonb)
     `;
-    return { userId: enrollment.user_id, detachedPracticeCount: detached.count };
+    return { userId: enrollment.user_id, detachedPracticeCount: detached.count, cohortName: enrollment.cohort?.display_name };
   });
   if (result.userId !== null) {
-    await notificationEventService.createEvent({ type: NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, actorId, recipientId: result.userId, entityType: 'cohort', entityId: cohortId, payload: { message: '你已不再參與此期，原有實踐已轉回個人實踐。' }, priority: 'P1' });
+    await notificationEventService.createEvent({ type: NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, actorId, recipientId: result.userId, entityType: 'cohort', entityId: cohortId, payload: { ...(result.cohortName && { cohortName: result.cohortName }), message: `你已不再參與${result.cohortName ? `「${result.cohortName}」` : '此期'}，原有實踐已轉回個人實踐。` }, priority: 'P1' });
   }
-  return result;
+  return { userId: result.userId, detachedPracticeCount: result.detachedPracticeCount };
 };
 const listLearners = async (programId: number, cohortId: number, actorId: number) => {
   const cohort = await prisma.cohorts.findFirst({ where: { id: cohortId, program_id: programId, program: { organization: { organization_members: { some: { user_id: actorId } } } } }, select: { id: true } });

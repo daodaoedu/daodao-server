@@ -2,8 +2,6 @@ import { Prisma } from '../../generated/prisma';
 import { bulkEnqueueEmails, type EmailJobData } from '../queues/email.queue';
 import { prisma } from './database/prisma.service';
 import { generateCohortWeeklyDigestEmail } from './email/cohort-weekly-digest-template';
-import { notificationEventService } from './notification-event.service';
-import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 interface CountRow { count: bigint }
 interface AttentionRow { user_id: number; nickname: string | null }
@@ -85,17 +83,6 @@ export const sendWeeklyCohortDigests = async (now = new Date()): Promise<number>
         emailType: 'cohort_weekly_digest',
         userId: membership.user.id,
         priority: 'P2'
-      });
-      await notificationEventService.createEvent({
-        type: NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST,
-        actorId: membership.user.id,
-        recipientId: membership.user.id,
-        entityType: 'cohort',
-        entityId: cohort.id,
-        payload: { checkinCount, pendingResponseCount: Number(pendingRows[0]?.count ?? 0n), needsAttentionCount: attentionRows.length, dashboardUrl },
-        priority: 'P2',
-        allowSelf: true,
-        dedupeWindowMs: 6 * 24 * 60 * 60 * 1000
       });
     }
   }
