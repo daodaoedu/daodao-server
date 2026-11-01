@@ -47,6 +47,7 @@ env:
 jobs:
   workflow-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,6 +71,7 @@ jobs:
   test:
     needs: workflow-tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -249,6 +251,7 @@ jobs:
   # ==============================
   notify-success:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: test
     if: success()
     steps:
@@ -298,6 +301,7 @@ jobs:
   # ==============================
   notify-failure:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: test
     if: failure()
     steps:
