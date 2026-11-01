@@ -104,11 +104,15 @@ const createNotificationEventService = () => {
         entityId,
         priority,
       });
-    } catch (error) {
-      // 4. 錯誤只 log，不拋出，避免影響主要業務流程
+    } catch {
+      // Payload and database errors may contain redeemable invitation tokens.
       loggerService.error('notification-event: failed to create event', {
-        error,
-        params,
+        type,
+        actorId,
+        recipientId,
+        entityType,
+        entityId,
+        priority,
       });
     }
   };

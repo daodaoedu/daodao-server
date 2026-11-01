@@ -9,6 +9,7 @@ import { asyncHandler, UnauthorizedError, NotFoundError, BadRequestError } from 
 import { notificationPreferenceService } from '../services/notification-preference.service';
 import { verifyUnsubscribeToken } from '../services/notification-unsubscribe.service';
 import { prisma } from '../services/database/prisma.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { createSuccessResponse } from '../utils/response-helper';
 
 // ============================================================================
@@ -90,6 +91,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
 
   const where: Prisma.notificationsWhereInput = {
     recipient_id: userId,
+    type: { not: NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST },
   };
 
   if (cursor) {
@@ -159,7 +161,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
 
   // 查詢未讀通知數（不受 cursor 分頁影響，始終返回全量未讀數）
   const unreadCount = await prisma.notifications.count({
-    where: { recipient_id: userId, is_read: false },
+    where: { recipient_id: userId, is_read: false, type: { not: NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST } },
   });
 
   // 對 payload 缺少 entity_external_id 的 practice 通知，批次補查 external_id
@@ -283,7 +285,10 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       ...(p.content !== undefined               && { content:               p.content as string }),
       ...(p.connection_request_id !== undefined && { connectionRequestId:   p.connection_request_id as number }),
       ...(p.reactionType !== undefined          && { reactionType:          p.reactionType as string }),
-      ...(p.url !== undefined                   && { url:                   p.url as string }),
+      ...(typeof p.url === 'string'             && { url: p.url }),
+      ...(typeof p.cohortName === 'string'      && { cohortName: p.cohortName }),
+      ...(typeof p.message === 'string'         && { message: p.message }),
+      ...(typeof p.entityTitle === 'string'     && { entityTitle: p.entityTitle }),
       ...(row.entity_type === 'buddy_request'   && { buddyRequestId:        row.entity_id }),
       ...((p.checkinId !== undefined || commentMetadata?.checkinId !== undefined) && {
         checkinId: (p.checkinId as number | undefined) ?? commentMetadata?.checkinId,

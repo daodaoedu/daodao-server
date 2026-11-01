@@ -9,6 +9,7 @@
  * 冪等性保證：只處理 processed_at IS NULL 的事件，處理完即標記 processed_at。
  */
 
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { Worker, Job } from 'bullmq';
 import { getQueueConnection } from './connection';
 import { loggerService } from '../services/logging/logger.service';
@@ -49,16 +50,22 @@ async function processNotificationInAppJob(job: Job<NotificationInAppJobData>): 
       count: events.length
     });
 
+    const now = new Date();
+    const processedIds: number[] = [];
+
+    // Retire pending legacy digests without turning them into in-app notifications.
+    // Email delivery is handled independently by the cohort digest scheduler.
     // 2. 按 recipient_id 分組
     const byRecipient = new Map<number, typeof events>();
     for (const event of events) {
+      if (event.type === NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST) {
+        processedIds.push(event.id);
+        continue;
+      }
       const list = byRecipient.get(event.recipient_id) ?? [];
       list.push(event);
       byRecipient.set(event.recipient_id, list);
     }
-
-    const now = new Date();
-    const processedIds: number[] = [];
 
     // 3. 對每位 recipient 逐一處理
     for (const [recipientId, recipientEvents] of byRecipient) {

@@ -184,7 +184,14 @@ describe('NotificationEventService', () => {
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         'notification-event: failed to create event',
-        expect.objectContaining({ error: expect.any(Error) }),
+        {
+          type: 'Comment',
+          actorId: 1,
+          recipientId: 2,
+          entityType: 'practice',
+          entityId: 10,
+          priority: 'P1',
+        },
       );
     });
 
