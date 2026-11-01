@@ -49,7 +49,7 @@ import {
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 import { assertChallengePracticeCopyable, assertChallengePracticeUpdatable, isChallengeCohort } from './challenge-acl.service';
-import { assertCohortPracticeUpdatable, isLighthouseCohort } from './cohort-acl.service';
+import { assertCohortPracticeUpdatable, isLighthouseCohort, canReadPrivateLighthousePractice } from './cohort-acl.service';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
@@ -391,7 +391,9 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
         practice.user_id,
         privacyStatus,
       );
-      if (!canAccess) {
+      const canReadWithinCohort = !canAccess && privacyStatus === 'private'
+        && await canReadPrivateLighthousePractice(practice, userId);
+      if (!canAccess && !canReadWithinCohort) {
         if (privacyStatus === 'private') {
           throw new ForbiddenError('此實踐為私人');
         }
