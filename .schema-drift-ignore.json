@@ -6,6 +6,7 @@
     "ai_service_configs",
     "alert_history",
     "alert_rules",
+    "audit_logs",
     "custom_report_configs",
     "email_execution_log",
     "event_recordings",
