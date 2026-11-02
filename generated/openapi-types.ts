@@ -15852,7 +15852,65 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** 拒絕刪除驗收 fixture 組織（不提供組織刪除功能） */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    organizationId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 組織 ID 驗證失敗 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description 參數驗證失敗
+                             * @example false
+                             * @enum {boolean}
+                             */
+                            success: false;
+                            error: {
+                                /**
+                                 * @description 驗證錯誤類型
+                                 * @example bad_request
+                                 * @enum {string}
+                                 */
+                                type: "bad_request";
+                                /**
+                                 * @description 錯誤說明
+                                 * @example 驗證失敗
+                                 */
+                                message: string;
+                                /** @description 欄位驗證錯誤清單 */
+                                details: {
+                                    /**
+                                     * @description 錯誤欄位
+                                     * @example organizationId
+                                     */
+                                    path: string;
+                                    /**
+                                     * @description 欄位驗證錯誤說明
+                                     * @example Invalid input: expected number, received NaN
+                                     */
+                                    message: string;
+                                }[];
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                404: components["responses"]["NotFoundError"];
+            };
+        };
         options?: never;
         head?: never;
         /** Admin 編輯或停權組織 */

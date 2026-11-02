@@ -43171,6 +43171,78 @@ paths:
                       processingTime: 23.1
         '401': *ref_113
         '403': *ref_114
+    delete:
+      tags:
+        - Lighthouse Organizations
+      summary: 拒絕刪除驗收 fixture 組織（不提供組織刪除功能）
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            example: 1
+          required: true
+          name: organizationId
+          in: path
+      responses:
+        '400':
+          description: 組織 ID 驗證失敗
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - false
+                    description: 參數驗證失敗
+                    example: false
+                  error:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - bad_request
+                        description: 驗證錯誤類型
+                        example: bad_request
+                      message:
+                        type: string
+                        description: 錯誤說明
+                        example: 驗證失敗
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            path:
+                              type: string
+                              description: 錯誤欄位
+                              example: organizationId
+                            message:
+                              type: string
+                              description: 欄位驗證錯誤說明
+                              example: 'Invalid input: expected number, received NaN'
+                          required:
+                            - path
+                            - message
+                        description: 欄位驗證錯誤清單
+                    required:
+                      - type
+                      - message
+                      - details
+                required:
+                  - success
+                  - error
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/v1/lighthouse/admin/organizations/{organizationId}/members:
     get:
       tags:
