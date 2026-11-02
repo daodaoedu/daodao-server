@@ -5,6 +5,8 @@
  * 所有函式皆為 pure function，無副作用、無 DB 存取。
  */
 
+import { day, today } from '../services/cohort-run-state';
+
 // === 內容生命週期 ===
 export { type CohortContentState, getCohortContentState } from '../middleware/cohort-content-lifecycle.middleware';
 
@@ -26,12 +28,11 @@ export interface CohortJoinEligibilityInput {
 /** 所有成立的不可加入原因，依優先序排列；加入頁同時顯示（daodao#281：截止＋暫停要兩個都看得到） */
 export const getCohortUnavailableReasons = (input: CohortJoinEligibilityInput): CohortUnavailableReason[] => {
   const { status, endDate, joinDeadline, capacity, participantCount, joinPaused, hasInvitation, now = new Date() } = input;
-  const day = (d: Date): string => d.toISOString().slice(0, 10);
   const deadline = joinDeadline ?? endDate;
 
   const reasons: CohortUnavailableReason[] = [];
   if (status !== 'published') reasons.push('not_published');
-  if (day(now) > day(deadline)) reasons.push('expired');
+  if (today(now) > day(deadline)) reasons.push('expired');
   if (capacity !== null && participantCount >= capacity) reasons.push('full');
   if (!hasInvitation && joinPaused) reasons.push('paused');
   return reasons;
