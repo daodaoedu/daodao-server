@@ -105,13 +105,7 @@ export class EmailService {
     }
     
     this.isConfigured = true;
-    this.transporter = nodemailer.createTransport({
-      service: emailConfig.smtp.service,
-      auth: {
-        user: emailConfig.smtp.auth.user,
-        pass: emailConfig.smtp.auth.pass
-      }
-    });
+    this.transporter = nodemailer.createTransport(emailConfig.smtp);
   }
 
   /**
