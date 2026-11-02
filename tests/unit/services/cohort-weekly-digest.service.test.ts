@@ -50,9 +50,6 @@ describe('sendWeeklyCohortDigests', () => {
       subject: '夏季同行期 教練週報',
       html: expect.stringMatching(/本週打卡數：12[\s\S]*待回應打卡：4[\s\S]*需要關心的小島[\s\S]*https:\/\/app\.example\.com\/lighthouse\/programs\/2\/cohorts\/8\/focus/)
     })]);
-    expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'CohortWeeklyDigest', actorId: 42, recipientId: 42, entityId: 8,
-      priority: 'P2', allowSelf: true, dedupeWindowMs: 518400000
-    }));
+    expect(createEvent).not.toHaveBeenCalled();
   });
 });

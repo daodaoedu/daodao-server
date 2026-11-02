@@ -26,6 +26,7 @@ jobs:
   check:
     name: Compare SQL ↔ Prisma schemas
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout daodao-server
         uses: actions/checkout@v4

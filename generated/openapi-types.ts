@@ -48240,6 +48240,26 @@ export interface components {
              */
             created_at: string;
             actor: components["schemas"]["NotificationActor"];
+            /**
+             * @description 通知關聯內容的名稱
+             * @example 學習地圖
+             */
+            entityTitle?: string;
+            /**
+             * @description 場次名稱；歷史資料可能缺少
+             * @example 夏季期
+             */
+            cohortName?: string;
+            /**
+             * @description 事件說明
+             * @example 你收到「夏季期」的加入邀請。
+             */
+            message?: string;
+            /**
+             * @description 有可用目的頁時提供的連結
+             * @example https://app.daodao.so/cohorts/join/invitation-token
+             */
+            url?: string;
         };
         /** @description 發送者資訊 */
         NotificationActor: {

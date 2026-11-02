@@ -7,6 +7,7 @@
 
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
+import { canReadPrivateLighthousePractice } from './cohort-acl.service';
 import { loggerService } from './logging/logger.service';
 import { AppError, ConflictError, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import {
@@ -449,7 +450,7 @@ export async function createCheckInWithImages(
  * 存取規則：
  * - 不存在或已刪除的實踐：404
  * - 草稿狀態(draft)的實踐：僅擁有者可查看打卡紀錄，其他人 403
- * - privacy_status = private：僅擁有者可查看，其他人（含未登入）403
+ * - privacy_status = private：擁有者可看；燈塔同場已加入學員與組織成員在保留期限內亦可看，其他人 403
  * - privacy_status = delayed：實踐完成前僅擁有者可查看，其他人 403
  * - 其他情況：所有人皆可查看打卡紀錄
  */
@@ -458,7 +459,7 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
     // 驗證實踐存在且未被刪除
     const practice = await prismaClient.practices.findUnique({
       where: { id: practiceId },
-      select: { id: true, user_id: true, status: true, deleted_at: true, privacy_status: true }
+      select: { id: true, user_id: true, status: true, deleted_at: true, privacy_status: true, cohort_id: true }
     });
 
     if (!practice || practice.deleted_at !== null) {
@@ -472,10 +473,10 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
       throw new ForbiddenError('沒有權限查看此實踐的打卡紀錄');
     }
 
-    // 隱私過濾：private 僅擁有者可看；delayed 未完成前僅擁有者可看
+    // private 允許燈塔同場成員；delayed 未完成前仍僅擁有者可看
     if (!isOwner) {
       const privacyStatus = practice.privacy_status ?? 'public';
-      if (privacyStatus === 'private') {
+      if (privacyStatus === 'private' && !await canReadPrivateLighthousePractice(practice, requestUserId)) {
         throw new ForbiddenError('此實踐為私人，無法查看打卡紀錄');
       }
       if (privacyStatus === 'delayed' && practice.status !== 'completed') {
