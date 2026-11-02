@@ -50,6 +50,11 @@ const adminUpdateOrganization = asyncHandler(async (req: Request, res: Response)
   res.json(createSuccessResponse(result));
 });
 
+/** Report the fixture deletion policy without enabling organization deletion. */
+const adminDeleteOrganization = asyncHandler(async (req: Request) => {
+  organizationService.rejectDeletion(organizationId(req));
+});
+
 const listMembers = asyncHandler(async (req: Request, res: Response) => {
   const result = organizationMemberListResponseSchema.parse(await organizationService.listMembers(organizationId(req), actorId(req)));
   res.json(createSuccessResponse(result));
@@ -82,6 +87,6 @@ const adminRemoveMember = asyncHandler(async (req: Request, res: Response) => {
 
 export const organizationController = {
   listOrganizations, listAllOrganizations, getOrganization, createOrganization, updateOrganization,
-  adminUpdateOrganization, listMembers, addMember, removeMember,
+  adminUpdateOrganization, adminDeleteOrganization, listMembers, addMember, removeMember,
   adminListMembers, adminAddMember, adminRemoveMember
 };

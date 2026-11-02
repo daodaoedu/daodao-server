@@ -4,6 +4,19 @@ export const organizationIdParamsSchema = z.object({
   organizationId: z.coerce.number().int().positive().openapi({ example: 1 })
 });
 
+// validate() returns this envelope directly rather than using globalErrorHandler.
+export const organizationIdValidationErrorResponseSchema = z.object({
+  success: z.literal(false).openapi({ description: '參數驗證失敗', example: false }),
+  error: z.object({
+    type: z.literal('bad_request').openapi({ description: '驗證錯誤類型', example: 'bad_request' }),
+    message: z.string().openapi({ description: '錯誤說明', example: '驗證失敗' }),
+    details: z.array(z.object({
+      path: z.string().openapi({ description: '錯誤欄位', example: 'organizationId' }),
+      message: z.string().openapi({ description: '欄位驗證錯誤說明', example: 'Invalid input: expected number, received NaN' })
+    })).openapi({ description: '欄位驗證錯誤清單' })
+  })
+});
+
 export const organizationMemberParamsSchema = organizationIdParamsSchema.extend({
   userId: z.coerce.number().int().positive().openapi({ example: 42 })
 });
