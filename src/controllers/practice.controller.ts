@@ -97,6 +97,7 @@ export class PracticeController {
    */
   getPractices = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const queryParams: PracticeQueryParams = {
+      commentViewer: req.user ? { id: req.user.id, role: req.user.roles?.[0] || '' } : undefined,
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
@@ -125,6 +126,7 @@ export class PracticeController {
     }
 
     const queryParams: PracticeQueryParams = {
+      commentViewer: req.user ? { id: req.user.id, role: req.user.roles?.[0] || '' } : undefined,
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
@@ -153,6 +155,7 @@ export class PracticeController {
     const userId = await externalToInternalId('user', userExternalId);
 
     const queryParams: PracticeQueryParams = {
+      commentViewer: req.user ? { id: req.user.id, role: req.user.roles?.[0] || '' } : undefined,
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 20,
       search: req.query.search as string,
@@ -178,7 +181,7 @@ export class PracticeController {
     const practiceId = await validateAndConvertPracticeId(req.params.id);
     const userId = req.user?.id;
 
-    const result = await practiceService.findById(practiceId, userId);
+    const result = await practiceService.findById(practiceId, userId, req.user?.roles?.[0] || '');
 
     // 驗證響應格式
     const validatedResponse = practiceApiResponseSchema.parse(result);

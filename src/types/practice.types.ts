@@ -262,6 +262,8 @@ export interface FavoriteEventRequest {
 
 // Query parameter interfaces
 export interface PracticeQueryParams {
+  /** Authenticated requester, supplied by controllers, never from query parameters. */
+  commentViewer?: { id: number; role: string };
   page?: number;
   limit?: number;
   search?: string;
