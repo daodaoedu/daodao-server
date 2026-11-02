@@ -1,4 +1,7 @@
 import { config } from 'dotenv';
+import { installSupertestLoopback } from './utils/supertest-loopback';
+
+installSupertestLoopback();
 
 // Route/service tests mock infrastructure. Importing the real Redis singleton
 // opens a socket even when the test never calls it. Tests that exercise Redis
