@@ -263,7 +263,9 @@ const createCohort = async (programId: number, input: AdminCreateCohortInput, no
           data: {
             program_id: programId, slug: generateSlug(input.startDate), display_name: input.displayName,
             start_date: startDate, end_date: endDate, join_deadline: input.joinDeadline ? toDate(input.joinDeadline) : null,
-            capacity: input.capacity ?? null, status: 'draft', join_token: null
+            capacity: input.capacity ?? null, status: 'draft', join_token: null,
+            // Challenge content is public (FR-CC-05); the shared cohort default is private.
+            is_private: false
           },
           select: { id: true }
         });
@@ -349,7 +351,7 @@ const duplicateCohort = async (programId: number, cohortId: number, now = new Da
       data: {
         program_id: programId, slug: generateSlug(startDate), display_name: `${source.display_name}（副本）`.slice(0, 100),
         start_date: source.start_date, end_date: source.end_date, join_deadline: source.join_deadline,
-        capacity: source.capacity, status: 'draft', join_token: null
+        capacity: source.capacity, status: 'draft', join_token: null, is_private: false
       },
       select: { id: true }
     });
