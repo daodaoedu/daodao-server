@@ -1324,6 +1324,7 @@ router.delete('/templates/:id',
  * 注意：必須在 /:id 之前定義，否則 'user' 會被當作 :id 參數
  */
 router.get('/user/:userId',
+  optionalAuth,
   validate(userPracticesParamsSchema, 'params'),
   validate(practiceQuerySchema, 'query'),
   practiceController.getUserPractices as RequestHandler);
