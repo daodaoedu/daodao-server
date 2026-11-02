@@ -253,6 +253,14 @@ const update = async (
   });
 };
 
+/** Reject deletion explicitly: fixture data is protected and general deletion is unsupported. */
+const rejectDeletion = (organizationId: number): never => {
+  if (isAcceptanceFixtureOrganization(organizationId)) {
+    throw new ForbiddenError('此組織是驗收 fixture，不可刪除；需要調整請改用 daodao-storage 的 fixture reset 腳本');
+  }
+  throw new NotFoundError('不支援刪除組織');
+};
+
 const adminUpdate = async (
   organizationId: number,
   adminId: number,
@@ -372,6 +380,7 @@ export const organizationService = {
   create,
   update,
   adminUpdate,
+  rejectDeletion,
   listMembers,
   adminListMembers,
   addMember,
