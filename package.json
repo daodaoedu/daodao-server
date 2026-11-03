@@ -34,7 +34,10 @@
     "types:generate": "pnpm run prisma:generate",
     "db:introspect": "prisma db pull",
     "db:seed": "prisma db seed",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:local": "node scripts/test-local.mjs",
+    "test:integration:local": "node scripts/test-local.mjs --integration",
+    "test:runner": "node --test scripts/__tests__/test-local.test.mjs"
   },
   "keywords": [],
   "author": "",
