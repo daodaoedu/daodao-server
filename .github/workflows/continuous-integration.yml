@@ -101,17 +101,21 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Read shared test database configuration
+        id: test-db
+        run: python3 .github/scripts/test-database-config.py >> "$GITHUB_OUTPUT"
+
       - name: Checkout database schema for integration tests
         uses: actions/checkout@v4
         with:
-          repository: daodaoedu/daodao-storage
-          ref: 74314dacc42b1a5866c8976d28e3959a72540a40
+          repository: ${{ steps.test-db.outputs.storage_repository }}
+          ref: ${{ steps.test-db.outputs.storage_ref }}
           path: _storage
           token: ${{ secrets.GIT_HUB_ACCESS_TOKEN }}
           persist-credentials: false
 
       - name: Initialize disposable integration database
-        run: bash .github/scripts/init-test-database.sh "${{ job.services.postgres.id }}" _storage/schema
+        run: bash .github/scripts/init-test-database.sh "${{ job.services.postgres.id }}" "_storage/${{ steps.test-db.outputs.schema_directory }}"
 
       # ===== Node.js 環境設定 =====
       # 設定指定版本的 Node.js 環境
@@ -206,6 +210,9 @@ jobs:
       # 逐一 wait PID，收集退出碼並等待所有背景任務完成
       # 任何一個檢查失敗都會導致整個步驟失敗
       # ========================
+      - name: Test local integration runner
+        run: pnpm run test:runner
+
       - name: Run checks in parallel
         shell: bash
         run: |
