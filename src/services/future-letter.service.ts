@@ -7,6 +7,9 @@ import { FUTURE_LETTER_STATUS, FutureLetterEntity, FutureLetterPage } from '../t
 import type { CreateFutureLetterInput, FutureLetterListQuery, UpdateFutureLetterInput } from '../validators/future-letter.validators';
 import { removeFutureLetterJob, scheduleFutureLetterDelivery } from '../queues/future-letter.queue';
 import { loggerService } from './logging/logger.service';
+import { EMAIL_TYPES } from '../types/email';
+import { enqueuePendingFutureLetterEmails, FUTURE_LETTER_EMAIL_CODE, FUTURE_LETTER_EMAIL_ENTITY } from './email/future-letter-email.service';
+import { FUTURE_LETTER_EMAIL_SUBJECT } from './email/future-letter-template';
 import {
   decryptFutureLetterContent,
   encryptFutureLetterContent,
@@ -279,12 +282,35 @@ async function send(userId: number, externalId: string, deliverAt: string): Prom
   return findById(userId, externalId);
 }
 
-/** Mark a scheduled letter delivered without producing a notification side channel. */
+/** Deliver due letters and commit the owner Email outbox atomically. */
 async function deliver(letterId: number): Promise<void> {
-  await prisma.future_letters.updateMany({
-    where: { id: letterId, status: FUTURE_LETTER_STATUS.SCHEDULED },
-    data: { status: FUTURE_LETTER_STATUS.DELIVERED, delivered_at: new Date(), updated_at: new Date() },
+  const now = new Date();
+  await prisma.$transaction(async tx => {
+    // The conditional write serializes competing workers; only its winner creates an outbox row.
+    const updated = await tx.future_letters.updateMany({
+      where: { id: letterId, status: FUTURE_LETTER_STATUS.SCHEDULED, deliver_at: { lte: now } },
+      data: { status: FUTURE_LETTER_STATUS.DELIVERED, delivered_at: now, updated_at: now },
+    });
+    if (updated.count === 0) return;
+    const letter = await tx.future_letters.findUnique({
+      where: { id: letterId },
+      select: { user_id: true, users: { select: { contacts: { select: { email: true } } } } },
+    });
+    if (!letter?.users.contacts?.email) return;
+    await tx.email_logs.create({ data: {
+      user_id: letter.user_id,
+      email_type: EMAIL_TYPES.NOTIFICATION,
+      entity_type: FUTURE_LETTER_EMAIL_ENTITY,
+      entity_id: letterId,
+      email_code: FUTURE_LETTER_EMAIL_CODE,
+      subject: FUTURE_LETTER_EMAIL_SUBJECT,
+      status: 'pending',
+      sent_at: null,
+      tracking_token: randomUUID(),
+    } });
   });
+  // Failed dispatch leaves the committed outbox pending; a delivery retry or startup can repair it.
+  await enqueuePendingFutureLetterEmails(letterId);
 }
 
 /** Idempotently record first open and return owner-decrypted content. */
