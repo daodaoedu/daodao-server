@@ -15,6 +15,7 @@ import { loggerService } from '../services/logging/logger.service';
 import { emailService } from '../services/email/email.service';
 import { updateEmailLogStatus } from '../services/email/email-log.service';
 import { retryFailedEmails } from './email.queue';
+import { recoverPendingFutureLetterEmails } from '../services/email/future-letter-email.service';
 
 export interface EmailWorkerOptions {
   concurrency?: number;
@@ -30,10 +31,11 @@ const defaultOptions: EmailWorkerOptions = {
 async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   const { to, subject, emailLogId, emailType } = job.data;
 
-  // 排程掃描任務：重試 failed set 中的郵件
+  // 排程掃描任務：補派未入列的未來信通知，並重試 failed set 中的郵件
   if (job.name === 'retry-scan') {
+    const recoveredFutureLetterEmails = await recoverPendingFutureLetterEmails();
     const result = await retryFailedEmails();
-    loggerService.info('Scheduled email retry scan done', result);
+    loggerService.info('Scheduled email retry scan done', { ...result, recoveredFutureLetterEmails });
     return;
   }
 

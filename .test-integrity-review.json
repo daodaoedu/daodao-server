@@ -1,0 +1,7 @@
+{
+  "base": "2ce453575e32757ac1316ad4cc1b42400dca286c",
+  "test_diff_sha256": "020ce5fec9f11cdc6ab3743a047020feae04fa53298909bf4d24ca8667fc270d",
+  "reviewer": "workspace user",
+  "reason": "User approved the original test rename and the additional periodic-outbox regression tests; original assertions remain and new behavior has RED/GREEN and real-service evidence.",
+  "evidence": "Codex conversation 2026-11-03: after the new regression test file and changed-digest requirement were presented, user replied \u597d, approving the updated test diff and completing push/PR. Earlier ok approved the original rename; commit push pr authorizes publication."
+}
