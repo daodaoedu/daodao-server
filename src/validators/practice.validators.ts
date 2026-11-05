@@ -45,6 +45,8 @@ export const practiceTimePeriodSchema = z.enum(PRACTICE_TIME_PERIODS).openapi({
 
 // 實踐資源 Schema (用於創建)
 export const practiceResourceInputSchema = z.object({
+  id: z.string().uuid().optional().openapi({ description: '既有資源 UUID；共用資源更新時保持原識別碼', example: '123e4567-e89b-12d3-a456-426614174000' }),
+  relevantDate: z.iso.date().nullable().optional().openapi({ description: '場次參考日期；學員不得更動', example: '2027-01-01' }),
   name: z.string({ message: '請輸入資源名稱' })
     .min(1, '請輸入資源名稱')
     .max(100, '資源名稱不可超過100字')
@@ -87,6 +89,7 @@ registry.register('PracticeResourceInput', practiceResourceInputSchema);
 
 // 實踐資源 Schema (API 回應)
 export const practiceResourceSchema = z.object({
+  relevantDate: z.iso.date().nullable().optional().openapi({ description: '場次參考日期，不限制可見性', example: '2027-01-01' }),
   id: z.string()
     .uuid('資源ID格式不正確')
     .openapi({
@@ -396,7 +399,7 @@ export const updatePracticeSchema = z.object({
   practiceTimePeriods: z.array(practiceTimePeriodSchema).max(4).optional(),
   otherContext: z.string().max(500).optional(),
   tags: z.array(z.string().min(1).max(50)).max(10, '標籤最多10個').optional(),
-  resources: z.array(practiceResourceInputSchema).max(RESOURCES_MAX, `資源最多${RESOURCES_MAX}個`).optional(),
+  resources: z.array(practiceResourceInputSchema).max(60, '場次共用資源與個人資源合計最多60個').optional(),
   status: practiceStatusSchema.optional(),
   privacyStatus: z.enum(['private', 'public', 'delayed']).optional(),
   isDraft: z.boolean().optional().openapi({
@@ -741,6 +744,7 @@ registry.register('PracticeStats', practiceStatsResponseSchema);
 
 // 實踐資源回應 Schema
 export const practiceResourceEntitySchema = z.object({
+  relevantDate: z.iso.date().nullable().optional().openapi({ description: '場次參考日期，不限制可見性', example: '2027-01-01' }),
   id: z.string().openapi({ description: '資源外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   name: z.string().openapi({ description: '資源名稱', example: 'React 官方文檔' }),
   url: z.string().optional().openapi({ description: '資源網址', example: 'https://react.dev/', format: 'uri' }),
@@ -764,6 +768,7 @@ export const practiceEntityResponseSchema = z.object({
   id: z.string().openapi({ description: '實踐活動外部 UUID', example: '123e4567-e89b-12d3-a456-426614174000', format: 'uuid' }),
   title: z.string().openapi({ description: '實踐活動標題', example: '每日閱讀 30 分鐘' }),
   isChallenge: z.boolean().optional().openapi({ description: '是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）', example: false }),
+  isCohortPractice: z.boolean().optional().openapi({ description: '由燈塔場次模板產生且仍屬於場次的實踐', example: false }),
   isCohortPrivacyLocked: z.boolean().optional().openapi({ description: '是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）', example: false }),
   practiceAction: z.string().optional().openapi({ description: '實踐行動描述', example: '閱讀技術書籍或文章' }),
   startDate: z.string().optional().openapi({ description: '開始日期 (YYYY-MM-DD)', example: '2024-01-15', format: 'date' }),

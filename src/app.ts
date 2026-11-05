@@ -1,3 +1,4 @@
+import './config/health-openapi';
 /**
  * TypeScript 應用程式整合
  * 負責初始化 TypeScript 模型和路由
@@ -154,31 +155,6 @@ export function setupTypescriptRoutes(app: express.Application) {
     meChatRoomRoutes, chatRoomRoutes, feedbackRoutes
   ];
   console.log('✅ 路由模組已載入');
-
-  // 註冊健康檢查端點到 OpenAPI
-  registry.registerPath({
-    method: 'get',
-    path: '/api/v1/health',
-    tags: ['System'],
-    summary: '健康檢查',
-    description: '檢查 API 服務是否正常運行',
-    responses: {
-      200: {
-        description: '服務正常運行',
-        content: {
-          'application/json': {
-            schema: z.object({
-              status: z.string(),
-              uptime: z.number(),
-              timestamp: z.string()
-            }).openapi({
-              description: '健康檢查響應'
-            })
-          }
-        }
-      }
-    }
-  });
 
   // 運行時生成 OpenAPI 文檔（官方推薦用法）
   console.log('📝 生成 OpenAPI 文檔...');
