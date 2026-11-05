@@ -59,7 +59,7 @@ const copyTemplateResources = async (
 ): Promise<void> => {
   const templateResources = await tx.entity_resources.findMany({
     where: { entity_type: 'practice_template', entity_id: { in: templateIds }, deleted_at: null },
-    select: { entity_id: true, resource_id: true, note: true },
+    select: { entity_id: true, resource_id: true, note: true, dayNumber: true },
   });
   if (templateResources.length === 0) return;
 
@@ -73,7 +73,7 @@ const copyTemplateResources = async (
     },
     select: { id: true, template_id: true },
   });
-  // note 帶著「第幾天使用」（day:N），要跟著複製，學員端才知道資源排在哪一天
+  // 一般備註與資源使用天數各自保留，避免草稿失去指定日期
   const links = drafts.flatMap((draft) =>
     templateResources
       .filter((resource) => resource.entity_id === draft.template_id)
@@ -83,6 +83,7 @@ const copyTemplateResources = async (
         entity_id: draft.id,
         created_by: userId,
         note: resource.note,
+        dayNumber: resource.dayNumber,
       }))
   );
   if (links.length === 0) return;

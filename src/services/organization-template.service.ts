@@ -4,7 +4,6 @@ import { ConflictError, ForbiddenError, NotFoundError, UnprocessableEntityError 
 import { inclusiveEndDate } from '../utils/date-utils';
 import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
 import { writeLighthouseAudit } from '../utils/lighthouse-audit';
-import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import { assertTemplateReady, ORG_TEMPLATE_TITLE_MAX, type BindOrganizationTemplateInput, type CreateOrganizationTemplateInput, type OrganizationTemplateListQuery, type OrganizationTemplateResourceInput, type UpdateOrganizationTemplateInput } from '../validators/organization-template.validators';
 import { day, today } from './cohort-run-state';
 import { prisma } from './database/prisma.service';
@@ -67,12 +66,12 @@ const loadResources = async (templateIds: number[]): Promise<Map<number, Templat
   if (templateIds.length === 0) return grouped;
   const rows = await prisma.entity_resources.findMany({
     where: { entity_type: ENTITY_TYPE, entity_id: { in: templateIds }, deleted_at: null },
-    select: { entity_id: true, note: true, resources: { select: { id: true, external_id: true, name: true, url: true } } },
+    select: { entity_id: true, dayNumber: true, resources: { select: { id: true, external_id: true, name: true, url: true } } },
     orderBy: { id: 'asc' }
   });
   for (const row of rows) {
     const list = grouped.get(row.entity_id) ?? [];
-    list.push({ id: row.resources.external_id ?? String(row.resources.id), name: row.resources.name, url: row.resources.url || null, dayNumber: parseResourceDay(row.note) });
+    list.push({ id: row.resources.external_id ?? String(row.resources.id), name: row.resources.name, url: row.resources.url || null, dayNumber: (row.dayNumber ?? null) });
     grouped.set(row.entity_id, list);
   }
   return grouped;
@@ -141,19 +140,19 @@ const replaceResources = async (templateId: number, userId: number, resources: A
   // resources 列，孤兒資料越積越多、id 也無謂地換掉
   const existing = await prisma.entity_resources.findMany({
     where: { entity_type: ENTITY_TYPE, entity_id: templateId, deleted_at: null },
-    select: { note: true, resources: { select: { name: true, url: true } } },
+    select: { dayNumber: true, resources: { select: { name: true, url: true } } },
     orderBy: { id: 'asc' }
   });
   const unchanged = existing.length === resources.length
     && existing.every((row, index) => row.resources.name === resources[index]?.name
       && (row.resources.url ?? '') === (resources[index]?.url ?? '')
-      && parseResourceDay(row.note) === (resources[index]?.dayNumber ?? null));
+      && (row.dayNumber ?? null) === (resources[index]?.dayNumber ?? null));
   if (unchanged) return;
 
   await prisma.entity_resources.updateMany({ where: { entity_type: ENTITY_TYPE, entity_id: templateId, deleted_at: null }, data: { deleted_at: new Date() } });
   for (const resource of resources) {
     const created = await prisma.resources.create({ data: { name: resource.name, url: resource.url || '', description: '', type: 'other', cost: 'free', created_by: userId } });
-    await prisma.entity_resources.create({ data: { resource_id: created.id, entity_type: ENTITY_TYPE, entity_id: templateId, created_by: userId, note: encodeResourceDay(resource.dayNumber) } });
+    await prisma.entity_resources.create({ data: { resource_id: created.id, entity_type: ENTITY_TYPE, entity_id: templateId, created_by: userId, dayNumber: resource.dayNumber ?? null } });
   }
 };
 

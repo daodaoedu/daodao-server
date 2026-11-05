@@ -95,7 +95,7 @@ describe('教練資源鎖定（daodao#278）', () => {
 
   const practiceRelations = [
     {
-      id: 500, resource_id: coachResourceId, entity_type: 'practice', entity_id: 1, note: 'day:2', deleted_at: null,
+      id: 500, resource_id: coachResourceId, entity_type: 'practice', entity_id: 1, dayNumber: 2, deleted_at: null,
       resources: { id: coachResourceId, external_id: '11111111-1111-4111-8111-111111111111', name: '暖身影片', url: 'https://example.com/warmup' }
     },
     {
@@ -269,19 +269,19 @@ describe('教練資源鎖定（daodao#278）', () => {
 
   describe('模板在不同天放同名同網址的資源、實踐資源列已重建（daodao#355）', () => {
     const sheet = { name: '練習單', url: 'https://example.com/sheet' };
-    const sheetRelation = (id: number, resourceId: number, note: string | null) => ({
-      id, resource_id: resourceId, entity_type: 'practice', entity_id: 1, note, deleted_at: null,
+    const sheetRelation = (id: number, resourceId: number, dayNumber: number | null) => ({
+      id, resource_id: resourceId, entity_type: 'practice', entity_id: 1, dayNumber, deleted_at: null,
       resources: { id: resourceId, external_id: `4444444${id}-4444-4444-8444-444444444444`, ...sheet }
     });
     // 模板關聯 id 600／601；學員實踐上的列已重建成 900／901，另有學員自己存的一份 777（沒帶天數）
-    const relations = [sheetRelation(510, 900, 'day:2'), sheetRelation(511, 901, 'day:3'), sheetRelation(512, 777, null)];
+    const relations = [sheetRelation(510, 900, 2), sheetRelation(511, 901, 3), sheetRelation(512, 777, null)];
 
     beforeEach(() => {
       prismaMock.entity_resources.findMany.mockImplementation((async (args: any) => {
         if (args?.where?.entity_type === 'practice_template') {
           return [
-            { entity_id: templateId, resource_id: 600, note: 'day:2', deleted_at: null, resources: sheet },
-            { entity_id: templateId, resource_id: 601, note: 'day:3', deleted_at: null, resources: sheet }
+            { entity_id: templateId, resource_id: 600, dayNumber: 2, deleted_at: null, resources: sheet },
+            { entity_id: templateId, resource_id: 601, dayNumber: 3, deleted_at: null, resources: sheet }
           ];
         }
         return relations;

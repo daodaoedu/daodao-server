@@ -118,6 +118,7 @@ model entity_resources {
   entity_id   Int
   created_by  Int
   note        String?
+  dayNumber   Int?      @map("day_number")
   created_at  DateTime? @default(now()) @db.Timestamptz(6)
   updated_at  DateTime? @db.Timestamptz(6)
   deleted_at  DateTime? @db.Timestamptz(6)
