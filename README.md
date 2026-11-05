@@ -735,6 +735,46 @@ tests/
 
 ### 執行測試
 
+#### 一鍵準備本機整合測試環境
+
+需要 Node.js 20 以上、已啟動的本機 Docker、Git，以及讀取 `daodaoedu/daodao-storage` 的 Git 權限。先安裝本 repo 依賴：
+
+```bash
+pnpm install --frozen-lockfile
+
+# 自動準備隔離 PostgreSQL，執行完整測試（含 src/ 與 tests/）
+pnpm run test:local
+
+# 同樣準備 DB，但只執行 tests/integration/
+pnpm run test:integration:local
+
+# 將參數傳給 Jest
+pnpm run test:local -- --runInBand --forceExit
+
+# 可重用已有的 storage Git checkout，仍只讀取固定 commit 的 schema
+pnpm run test:integration:local --schema-repo ../daodao-storage
+```
+
+入口會讀 `.github/test-database.json`，使用與 CI 相同的 storage commit 與
+`.github/scripts/init-test-database.sh`，啟動獨立 PostgreSQL container、等待就緒、
+初始化 canonical SQL、產生當前 Prisma client，再執行測試。既有 `DATABASE_URL`
+不會用來準備或執行測試；連線位置由本次 container 的動態 IPv4 loopback port 決定。
+首次執行可能需要下載 PostgreSQL image 與固定版 storage 內容。
+
+成功、測試失敗、初始化失敗或正常的 `Ctrl+C`／`SIGTERM` 都會清理本次自有 container
+與暫存內容，保留測試的失敗退出碼。缺 Docker、Git 權限或 DB 未於時間內就緒會明確失敗，
+不會略過整合測試。可用 `--ready-timeout-ms 120000` 調整 DB 就緒等待上限。
+硬性終止程序（例如 `SIGKILL`）無法執行清理 handler，應依 Docker resource label
+辨識本次殘留，勿對共用環境執行全域 prune。
+
+單元／route 測試既有的 Redis mock 維持不變；需要真 Redis 的 fullstack/E2E
+仍使用各自的隔離環境。Runner 不重設 Git 工作檔；既有測試產生的 `openapi.json`／
+`openapi.yaml` 變更需正常審閱，不能以 `git restore` 自動清掉其他人的工作。
+
+CI 與本機共用 schema ref；更新 `.github/test-database.json` 時，同步 CI 的 PostgreSQL
+service image。Workflow regression 會檢查兩者一致，並確保本機 runner 的生命週期測試
+是必要步驟。`pnpm run test:runner` 可只跑 runner 的行為回歸，無需真實 Docker。
+
 #### 基本測試命令
 
 ```bash

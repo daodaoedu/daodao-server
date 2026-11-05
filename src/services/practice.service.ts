@@ -5,6 +5,8 @@
  * 遵循 practice-api-v1.md 規範，整合 Prisma ORM 與資料驗證
  */
 
+import type { AuthUser } from '../types/comment.types';
+import { countVisiblePracticeComments } from './comment-visibility';
 import { Prisma } from '../../generated/prisma';
 import { prisma } from './database/prisma.service';
 import { loggerService } from './logging/logger.service';
@@ -233,7 +235,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
     // 取得統計數據、標籤和資源
     const practiceIds: number[] = practices.map(p => p.id);
     const [comments, allTags, checkInCounts, lastCheckInDates, resourcesByPracticeId, viewCounts, reactionCounts] = await Promise.all([
-      getCommentCounts(practiceIds),
+      getCommentCounts(practices, params.commentViewer),
       // 批量查詢標籤
       prismaClient.entity_tags.findMany({
         where: {
@@ -343,7 +345,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 /**
  * 取得單一實踐詳情
  */
-export async function findById(id: number, userId?: number): Promise<ApiSuccessResponse<PracticeEntity>> {
+export async function findById(id: number, userId?: number, viewerRole = ''): Promise<ApiSuccessResponse<PracticeEntity>> {
   try {
     const practice = await prismaClient.practices.findUnique({
       where: { id },
@@ -408,7 +410,7 @@ export async function findById(id: number, userId?: number): Promise<ApiSuccessR
 
     // 取得統計數據、標籤和資源
     const [comments, tags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts, avgWords] = await Promise.all([
-      getCommentCounts([id]),
+      getCommentCounts([practice], userId ? { id: userId, role: viewerRole } : undefined),
       // 查詢標籤
       prismaClient.entity_tags.findMany({
         where: {
@@ -965,7 +967,7 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
 
     // 取得統計數據、標籤和資源
     const [comments, updatedTags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts] = await Promise.all([
-      getCommentCounts([id]),
+      getCommentCounts([practice], userId ? { id: userId, role: '' } : undefined),
       // 查詢更新後的標籤
       prismaClient.entity_tags.findMany({
         where: {
@@ -1118,7 +1120,8 @@ export async function deleteFunction(id: number, userId: number): Promise<ApiSuc
  * @param viewerIsOwner 觀看者是否為該使用者本人；非本人時排除 private 及未完成的 delayed
  */
 export async function findUserPractices(userId: number, params: PracticeQueryParams, viewerIsOwner = true): Promise<PaginatedApiResponse<PracticeEntity>> {
-  return findAll({ ...params, userId, excludeNonPublic: !viewerIsOwner });
+  return findAll({ ...params, userId, excludeNonPublic: !viewerIsOwner,
+    commentViewer: params.commentViewer ?? (viewerIsOwner ? { id: userId, role: '' } : undefined) });
 }
 
 /**
@@ -1395,23 +1398,24 @@ async function updateResources(
 /**
  * 取得評論統計
  */
-async function getCommentCounts(practiceIds: number[]): Promise<Record<number, number>> {
-  if (!practiceIds.length) return {};
-
+async function getCommentCounts(
+  practices: Array<{ id: number; user_id: number }>,
+  viewer?: AuthUser,
+): Promise<Record<number, number>> {
+  if (!practices.length) return {};
+  const practiceIds = practices.map(practice => practice.id);
   try {
-    const comments = await prismaClient.comments.groupBy({
-      by: ['target_id'],
-      where: {
-        target_type: 'practice',
-        target_id: { in: practiceIds }
-      },
-      _count: { id: true }
-    });
-
-    return comments.reduce((acc, comment) => {
-      acc[comment.target_id] = comment._count?.id || 0;
-      return acc;
-    }, {} as Record<number, number>);
+    const [comments, relations] = await Promise.all([
+      prismaClient.comments.findMany({
+        where: { target_type: 'practice', target_id: { in: practiceIds } },
+        select: { id: true, user_id: true, target_id: true, target_type: true, visibility: true, parent_id: true },
+      }),
+      viewer?.role === '4'
+        ? prismaClient.mentor_participants.findMany({ where: { mentor_id: viewer.id }, select: { participant_id: true } })
+        : Promise.resolve([]),
+    ]);
+    return countVisiblePracticeComments(practices, comments, viewer,
+      new Set(relations.map(relation => relation.participant_id)));
   } catch (error) {
     loggerService.warn('Failed to get comment counts', { practiceIds, error });
     return {};
@@ -1817,7 +1821,7 @@ export async function unarchive(id: number, userId: number): Promise<ApiSuccessR
 
     // 取得統計數據和標籤
     const [comments, tags, lastCheckInDates, viewCount, reactionCounts] = await Promise.all([
-      getCommentCounts([id]),
+      getCommentCounts([practice], userId ? { id: userId, role: '' } : undefined),
       prismaClient.entity_tags.findMany({
         where: {
           entity_type: 'practice',

@@ -39,6 +39,7 @@ import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { loggerService } from './logging/logger.service';
 import { privacyService } from './privacy.service';
+import { canViewCommentSubject } from './comment-visibility';
 import { challengeAclService } from './challenge-acl.service';
 
 /**
@@ -788,51 +789,15 @@ export class CommentService implements CommentServiceInterface {
     entity: TargetEntity,
     mentorRelations?: MentorParticipantRelation[]
   ): Promise<boolean> {
-    // Public comments are visible to everyone
-    if (comment.visibility === 'public') {
-      return true;
+    if (canViewCommentSubject(comment, currentUser, entity.user_id)) return true;
+    let relations = mentorRelations;
+    if (currentUser?.role === '4' && !relations) {
+      relations = await prisma.mentor_participants.findMany({
+        where: { mentor_id: Number(currentUser.id) }
+      });
     }
-
-    // Anonymous users cannot see private comments
-    if (!currentUser || !currentUser.id) {
-      return false;
-    }
-
-    const commentUserId = Number(comment.user_id);
-    const currentUserId = Number(currentUser.id);
-    const entityUserId = Number(entity.user_id);
-
-    // Comment owner can always see their own comments
-    if (commentUserId === currentUserId) {
-      return true;
-    }
-
-    // Target entity owner can see all comments on their content
-    if (entityUserId === currentUserId) {
-      return true;
-    }
-
-    // Mentors can see their participants' comments
-    if (currentUser.role === '4') {
-      let relations = mentorRelations;
-      
-      if (!relations) {
-        const mentorParticipants = await prisma.mentor_participants.findMany({
-          where: { mentor_id: currentUserId }
-        });
-        relations = mentorParticipants.map(rel => ({
-          mentor_id: rel.mentor_id,
-          participant_id: rel.participant_id
-        }));
-      }
-
-      const participantIds = new Set(relations.map(rel => Number(rel.participant_id)));
-      if (participantIds.has(commentUserId)) {
-        return true;
-      }
-    }
-
-    return false;
+    return canViewCommentSubject(comment, currentUser, entity.user_id,
+      new Set((relations ?? []).map(relation => Number(relation.participant_id))));
   }
 
   /**

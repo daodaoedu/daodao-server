@@ -353,14 +353,6 @@ async function initializeBullMQ(): Promise<void> {
     await registerNotificationScheduledJobs(notificationInAppQueue, notificationEmailQueue, notificationWeeklyQueue);
     console.log('🔔 通知排程任務已註冊');
 
-    // ===== Future Letter Queue =====
-    futureLetterQueue = createFutureLetterQueue();
-    setFutureLetterQueue(futureLetterQueue);
-    futureLetterWorker = createFutureLetterWorker();
-    const { futureLetterService } = await import('./services/future-letter.service');
-    const recoveredFutureLetters = await futureLetterService.recoverOverdueDeliveries();
-    console.log(`💌 Future Letter Queue 已建立，補送 ${recoveredFutureLetters} 封逾期信件`);
-
     // ===== Social Notification Queue（關注/連結 fan-out）=====
     socialNotificationQueue = createSocialNotificationQueue();
     setSocialNotificationQueue(socialNotificationQueue);
@@ -379,6 +371,17 @@ async function initializeBullMQ(): Promise<void> {
 
     await registerEmailRetryScheduledJob(emailQueue);
     console.log('📧 Email 失敗重試排程已註冊（每小時 30 分）');
+
+    // ===== Future Letter Queue =====
+    futureLetterQueue = createFutureLetterQueue();
+    setFutureLetterQueue(futureLetterQueue);
+    futureLetterWorker = createFutureLetterWorker();
+    const { futureLetterService } = await import('./services/future-letter.service');
+    const recoveredFutureLetters = await futureLetterService.recoverOverdueDeliveries();
+    console.log(`💌 Future Letter Queue 已建立，補送 ${recoveredFutureLetters} 封逾期信件`);
+
+    const { recoverPendingFutureLetterEmails } = await import('./services/email/future-letter-email.service');
+    await recoverPendingFutureLetterEmails();
 
     // ===== Tag Rule Evaluation Queue（自動標籤規則評估）=====
     tagRuleQueue = createTagRuleQueue();
