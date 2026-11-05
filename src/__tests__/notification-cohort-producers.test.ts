@@ -27,6 +27,8 @@ it('persists each recipient invitation with its own join destination and cohort 
 });
 
 it('persists removal content with cohort name and no inaccessible destination', async () => {
+  prismaMock.practices.findMany.mockResolvedValue([]);
+  prismaMock.entity_resources.findMany.mockResolvedValue([]);
   prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 9, user_id: 77, status: 'joined', cohort: { display_name: '夏季期' } } as never);
   prismaMock.practices.updateMany.mockResolvedValue({ count: 1 });
   await cohortMembershipService.remove(2, 8, 9, 42);
