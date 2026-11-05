@@ -51,6 +51,31 @@ export const findUserByEmail = async (email: string): Promise<ApiResponse<{ cont
   return createSuccessResponse(result);
 };
 
+/** Resolve Google accounts by stable provider subject; Email alone cannot link legacy identities. */
+export const findUserByGoogleIdentity = async (googleId: string, email: string) => {
+  const accounts = await prisma.users.findMany({
+    where: { contacts: { google_id: googleId } },
+    take: 2,
+    include: {
+      contacts: true,
+      roles: true,
+      user_positions: { include: { position: true } }
+    }
+  });
+  if (accounts.length > 1) throw new ConflictError('此 Google 身分對應多個帳號，請先確認帳號資料');
+  const user = accounts[0];
+  if (user) return createSuccessResponse({ contact: user.contacts, user });
+  const collision = await prisma.users.findFirst({
+    where: { OR: [
+      { verified_login_email: { equals: email, mode: 'insensitive' } },
+      { contacts: { email: { equals: email, mode: 'insensitive' } } }
+    ] },
+    select: { id: true }
+  });
+  if (collision) throw new ConflictError('此 Email 已有帳號，需由島島確認登入身分');
+  return createSuccessResponse(null);
+};
+
 /**
  * 根據 Google ID 查找或創建臨時用戶
  * @returns 包含 user 和 isNewUser 標記的回應
@@ -564,6 +589,7 @@ export const isUserActive = async (userId: number): Promise<ApiResponse<boolean>
 };
 
 export const authService = {
+  findUserByGoogleIdentity,
   findUserByEmail,
   findOrCreateTempUser,
   createUserFromOAuth,

@@ -25,8 +25,9 @@ export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(100).openapi({ example: '島島學習社群' }),
   bio: z.string().trim().max(2000).nullable().optional().openapi({ example: '陪伴學習者持續行動' }),
   externalLink: z.string().url().nullable().optional().openapi({ example: 'https://example.com' }),
-  ownerUserId: z.number().int().positive().openapi({ example: 42 })
-});
+  ownerUserId: z.number().int().positive().optional().openapi({ example: 42 }),
+  ownerEmail: z.string().trim().toLowerCase().email().max(255).optional().openapi({ example: 'owner@example.com' })
+}).refine(value => (value.ownerUserId !== undefined) !== (value.ownerEmail !== undefined), { message: '必須且只能指定 ownerUserId 或 ownerEmail' });
 
 export const updateOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(100).optional().openapi({ example: '島島學習社群' }),

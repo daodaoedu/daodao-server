@@ -1,8 +1,10 @@
-/** Share the health contract between runtime registration and generated clients. */
+import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import { registry } from './openapi-registry';
-  // 註冊健康檢查端點到 OpenAPI
-  registry.registerPath({
+
+/** Register the same liveness contract in runtime and offline OpenAPI generation. */
+export const registerHealthOpenApi = (target: OpenAPIRegistry = registry): void => {
+  target.registerPath({
     method: 'get',
     path: '/api/v1/health',
     tags: ['System'],
@@ -25,3 +27,4 @@ import { registry } from './openapi-registry';
       }
     }
   });
+};
